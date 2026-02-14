@@ -22,10 +22,29 @@ struct ExtendApp: App {
             fatalError("Could not create ModelContainer: \(error)")
         }
     }()
+    
+    let registry = ModuleRegistry.shared
+    let state = ModuleState.shared
+    let dashboardState = DashboardState.shared
+    let exercisesState = ExercisesState.shared
+    let workoutsState = WorkoutsState.shared
+    let generateState = GenerateState.shared
+    let muscleGroupsState = MuscleGroupsState.shared
+    let equipmentState = EquipmentState.shared
+    let quickWorkoutState = QuickWorkoutState.shared
 
     var body: some Scene {
         WindowGroup {
             ContentView()
+                .environment(registry)
+                .environment(state)
+                .environment(dashboardState)
+                .environment(exercisesState)
+                .environment(workoutsState)
+                .environment(generateState)
+                .environment(muscleGroupsState)
+                .environment(equipmentState)
+                .environment(quickWorkoutState)
         }
         .modelContainer(sharedModelContainer)
     }
