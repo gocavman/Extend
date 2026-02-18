@@ -11,7 +11,7 @@ import UIKit
 /// Quick Workout module - quickly start a workout from available exercises
 public struct QuickWorkoutModule: AppModule {
     public let id: UUID = ModuleIDs.quickWorkout
-    public let displayName: String = "Quick Workout"
+    public let displayName: String = "Quick"
     public let iconName: String = "bolt.fill"
     public let description: String = "Start a quick workout from available exercises"
 
@@ -46,7 +46,7 @@ private struct QuickWorkoutModuleView: View {
     var body: some View {
         VStack(spacing: 0) {
             // Header with title
-            Text("Quick Workout")
+            Text("Quick")
                 .font(.title2)
                 .fontWeight(.bold)
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -63,7 +63,7 @@ private struct QuickWorkoutModuleView: View {
                                     Button(action: {
                                         UIImpactFeedbackGenerator(style: .light).impactOccurred()
                                         let workout = Workout(
-                                            name: "Quick: \(exercise.name)",
+                                            name: "\(exercise.name) (Quick)",
                                             notes: "",
                                             exercises: [WorkoutExercise(exerciseID: exercise.id)]
                                         )
@@ -106,20 +106,9 @@ private struct QuickWorkoutModuleView: View {
                 Section("All Exercises") {
                     ForEach(filteredExercises) { exercise in
                         HStack(spacing: 12) {
-                            Button(action: {
-                                UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                                let workout = Workout(
-                                    name: "Quick: \(exercise.name)",
-                                    notes: "",
-                                    exercises: [WorkoutExercise(exerciseID: exercise.id)]
-                                )
-                                startingWorkout = workout
-                            }) {
-                                Image(systemName: "play.circle.fill")
-                                    .foregroundColor(.black)
-                                    .font(.system(size: 20))
-                            }
-                            .buttonStyle(.plain)
+                            Image(systemName: "play.circle.fill")
+                                .foregroundColor(.black)
+                                .font(.system(size: 20))
 
                             VStack(alignment: .leading, spacing: 2) {
                                 Text(exercise.name)
@@ -129,16 +118,27 @@ private struct QuickWorkoutModuleView: View {
                             }
                             .frame(maxWidth: .infinity, alignment: .leading)
 
-                            Button(action: {
-                                UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                                quickWorkoutState.toggleFavorite(exerciseID: exercise.id)
-                            }) {
-                                Image(systemName: quickWorkoutState.isFavorite(exercise.id) ? "star.fill" : "star")
-                                    .foregroundColor(quickWorkoutState.isFavorite(exercise.id) ? .black : .gray)
-                            }
-                            .buttonStyle(.plain)
+                            Image(systemName: quickWorkoutState.isFavorite(exercise.id) ? "star.fill" : "star")
+                                .foregroundColor(quickWorkoutState.isFavorite(exercise.id) ? .black : .gray)
+                                .contentShape(Rectangle())
+                                .highPriorityGesture(
+                                    TapGesture().onEnded {
+                                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                                        quickWorkoutState.toggleFavorite(exerciseID: exercise.id)
+                                    }
+                                )
                         }
                         .padding(.vertical, 6)
+                        .contentShape(Rectangle())
+                        .onTapGesture {
+                            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                            let workout = Workout(
+                                name: "\(exercise.name) (Quick)",
+                                notes: "",
+                                exercises: [WorkoutExercise(exerciseID: exercise.id)]
+                            )
+                            startingWorkout = workout
+                        }
                     }
                 }
             }

@@ -35,16 +35,78 @@ private struct GenerateModuleView: View {
     @State private var showSaveWorkoutDialog = false
     @State private var hasGenerated = false
     @State private var startingWorkout: Workout?
+    @State private var showSavePresetDialog = false
+    @State private var presetName = ""
+    @State private var showManagePresets = false
+    @State private var selectedPresetId: UUID?
+
+    private var canSavePreset: Bool {
+        // Always allow saving presets - even with default settings
+        true
+    }
 
     var body: some View {
         VStack(spacing: 0) {
-            // Header with title
-            Text("Generate")
-                .font(.title2)
-                .fontWeight(.bold)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.horizontal, 16)
-                .padding(.vertical, 12)
+            // MARK: - Header with title, filter tags, and save button
+            VStack(alignment: .leading, spacing: 12) {
+                HStack {
+                    Text("Generate")
+                        .font(.title2)
+                        .fontWeight(.bold)
+                    Spacer()
+                    HStack(spacing: 12) {
+                        if !generateState.filterPresets.isEmpty {
+                            Button(action: {
+                                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                                showManagePresets = true
+                            }) {
+                                Image(systemName: "slider.horizontal.3")
+                                    .font(.system(size: 18))
+                                    .foregroundColor(.black)
+                            }
+                        }
+                        
+                        Button(action: {
+                            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                            showSavePresetDialog = true
+                        }) {
+                            Image(systemName: "heart")
+                                .font(.system(size: 18))
+                                .foregroundColor(.black)
+                        }
+                        .disabled(!canSavePreset)
+                    }
+                }
+                
+                // Filter tags
+                if !generateState.filterPresets.isEmpty {
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 8) {
+                            ForEach(generateState.filterPresets) { preset in
+                                Button(action: {
+                                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                                    generateState.applyFilterPreset(preset)
+                                    selectedPresetId = preset.id
+                                }) {
+                                    Text(preset.name)
+                                        .font(.caption)
+                                        .fontWeight(.semibold)
+                                        .foregroundColor(selectedPresetId == preset.id ? .white : .black)
+                                        .padding(.horizontal, 10)
+                                        .padding(.vertical, 6)
+                                        .background(selectedPresetId == preset.id ? Color.black : Color.clear)
+                                        .clipShape(Capsule())
+                                }
+                                .buttonStyle(.plain)
+                                .overlay(Capsule().stroke(Color.black, lineWidth: 1))
+                            }
+                        }
+                    }
+                }
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 12)
+            .background(Color(red: 0.96, green: 0.96, blue: 0.97))
 
             List {
                 // Min/Max Exercise Count Section
@@ -56,6 +118,7 @@ private struct GenerateModuleView: View {
                             Button(action: {
                                 if generateState.minExercises > 1 {
                                     generateState.minExercises -= 1
+                                    selectedPresetId = nil
                                 }
                             }) {
                                 Image(systemName: "minus.circle.fill")
@@ -70,6 +133,7 @@ private struct GenerateModuleView: View {
                             Button(action: {
                                 if generateState.minExercises < 100 {
                                     generateState.minExercises += 1
+                                    selectedPresetId = nil
                                 }
                             }) {
                                 Image(systemName: "plus.circle.fill")
@@ -87,6 +151,7 @@ private struct GenerateModuleView: View {
                             Button(action: {
                                 if generateState.maxExercises > 1 {
                                     generateState.maxExercises -= 1
+                                    selectedPresetId = nil
                                 }
                             }) {
                                 Image(systemName: "minus.circle.fill")
@@ -101,6 +166,7 @@ private struct GenerateModuleView: View {
                             Button(action: {
                                 if generateState.maxExercises < 100 {
                                     generateState.maxExercises += 1
+                                    selectedPresetId = nil
                                 }
                             }) {
                                 Image(systemName: "plus.circle.fill")
@@ -113,8 +179,11 @@ private struct GenerateModuleView: View {
                 }
 
                 // Filter Selection Section
-                Section("Filters") {
-                    Button(action: { showEquipmentFilter.toggle() }) {
+                Section {
+                    Button(action: { 
+                        selectedPresetId = nil
+                        showEquipmentFilter.toggle() 
+                    }) {
                         HStack {
                             Text("Equipment")
                             Spacer()
@@ -132,7 +201,10 @@ private struct GenerateModuleView: View {
                             .environment(equipmentState)
                     }
 
-                    Button(action: { showMuscleFilter.toggle() }) {
+                    Button(action: { 
+                        selectedPresetId = nil
+                        showMuscleFilter.toggle() 
+                    }) {
                         HStack {
                             Text("Muscle Groups")
                             Spacer()
@@ -149,12 +221,15 @@ private struct GenerateModuleView: View {
                             .environment(generateState)
                             .environment(muscleGroupsState)
                     }
+                } header: {
+                    Text("Filters")
                 }
 
                 // Generate Button Section
                 Section {
                     Button(action: {
                         UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                        selectedPresetId = nil  // Clear selection when generating
                         generateState.generateWorkout(
                             from: exercisesState.exercises,
                             equipment: equipmentState.sortedItems,
@@ -166,9 +241,16 @@ private struct GenerateModuleView: View {
                             Image(systemName: "sparkles")
                             Text("Generate Workout")
                         }
+                        .font(.subheadline)
+                        .fontWeight(.semibold)
+                        .foregroundColor(.white)
                         .frame(maxWidth: .infinity)
-                        .foregroundColor(.black)
+                        .padding()
+                        .background(Color.black)
+                        .cornerRadius(8)
                     }
+                    .listRowInsets(EdgeInsets())
+                    .listRowBackground(Color.clear)
                 }
 
                 // Generated Exercises Section
@@ -191,6 +273,10 @@ private struct GenerateModuleView: View {
                     .environment(MuscleGroupsState.shared)
                     .environment(EquipmentState.shared)
             }
+            .sheet(isPresented: $showManagePresets) {
+                ManageFilterPresetsView()
+                    .environment(generateState)
+            }
             .alert("Save Workout", isPresented: $showSaveWorkoutDialog) {
                 TextField("Workout Name", text: $saveWorkoutName)
                 Button("Cancel", role: .cancel) {}
@@ -208,6 +294,23 @@ private struct GenerateModuleView: View {
             } message: {
                 Text("Enter a name for this generated workout")
             }
+            .sheet(isPresented: $showSavePresetDialog) {
+                SaveFilterPresetSheet(
+                    name: $presetName,
+                    onSave: {
+                        if !presetName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                            generateState.addFilterPreset(name: presetName)
+                            presetName = ""
+                            showSavePresetDialog = false
+                            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                        }
+                    },
+                    onCancel: {
+                        presetName = ""
+                        showSavePresetDialog = false
+                    }
+                )
+            }
         }
         .onAppear {
             generateState.resetGenerated()
@@ -222,10 +325,21 @@ private struct EquipmentFilterView: View {
     @Environment(EquipmentState.self) var equipmentState
     @Environment(\.dismiss) var dismiss
 
+    private var equipmentOptions: [Equipment] {
+        let items = equipmentState.sortedItems
+        guard let noneIndex = items.firstIndex(where: { $0.name == "None" }) else {
+            return items
+        }
+        var reordered = items
+        let noneItem = reordered.remove(at: noneIndex)
+        reordered.insert(noneItem, at: 0)
+        return reordered
+    }
+
     var body: some View {
         NavigationStack {
             List {
-                ForEach(equipmentState.sortedItems) { equipment in
+                ForEach(equipmentOptions) { equipment in
                     HStack {
                         Text(equipment.name)
                         Spacer()
@@ -290,6 +404,172 @@ private struct MuscleGroupFilterView: View {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Done") { dismiss() }
                 }
+            }
+        }
+    }
+}
+
+// MARK: - Manage Filter Presets View
+
+private struct ManageFilterPresetsView: View {
+    @Environment(GenerateState.self) var generateState
+    @Environment(EquipmentState.self) var equipmentState
+    @Environment(MuscleGroupsState.self) var muscleGroupsState
+    @Environment(\.dismiss) var dismiss
+
+    @State private var showRenameDialog = false
+    @State private var renamePresetID: UUID?
+    @State private var renameValue = ""
+    @State private var showDeleteConfirmation = false
+    @State private var presetToDeleteId: UUID?
+    
+    // Helper functions to break down complex expressions
+    private func getEquipmentNames(for equipmentIDs: Set<UUID>) -> String {
+        equipmentIDs.compactMap { id in
+            equipmentState.sortedItems.first(where: { $0.id == id })?.name
+        }.joined(separator: ", ")
+    }
+    
+    private func getMuscleGroupNames(for muscleGroupIDs: Set<UUID>) -> String {
+        muscleGroupIDs.compactMap { id in
+            muscleGroupsState.sortedGroups.first(where: { $0.id == id })?.name
+        }.joined(separator: ", ")
+    }
+
+    var body: some View {
+        NavigationStack {
+            List {
+                if generateState.filterPresets.isEmpty {
+                    Text("No saved filters")
+                        .font(.caption)
+                        .foregroundColor(.gray)
+                } else {
+                    ForEach(generateState.filterPresets) { preset in
+                        FilterPresetRow(
+                            preset: preset,
+                            equipmentState: equipmentState,
+                            muscleGroupsState: muscleGroupsState,
+                            getEquipmentNames: getEquipmentNames,
+                            getMuscleGroupNames: getMuscleGroupNames,
+                            onRename: {
+                                renamePresetID = preset.id
+                                renameValue = preset.name
+                                showRenameDialog = true
+                            },
+                            onDelete: {
+                                presetToDeleteId = preset.id
+                                showDeleteConfirmation = true
+                            }
+                        )
+                    }
+                    .onMove { indices, newOffset in
+                        generateState.filterPresets.move(fromOffsets: indices, toOffset: newOffset)
+                        generateState.savePresetsPublic()
+                    }
+                }
+            }
+            .environment(\.editMode, .constant(.active))
+            .navigationTitle("Saved Filters")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Done") { dismiss() }
+                }
+            }
+            .alert("Rename Filter", isPresented: $showRenameDialog) {
+                TextField("Name", text: $renameValue)
+                Button("Cancel", role: .cancel) {}
+                Button("Save") {
+                    guard let id = renamePresetID else { return }
+                    generateState.updateFilterPresetName(id: id, name: renameValue)
+                }
+                .disabled(renameValue.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+            } message: {
+                Text("Enter a new name for this filter")
+            }
+            .alert("Delete Filter", isPresented: $showDeleteConfirmation) {
+                Button("Delete", role: .destructive) {
+                    if let id = presetToDeleteId {
+                        generateState.removeFilterPreset(id: id)
+                        presetToDeleteId = nil
+                    }
+                }
+                Button("Cancel", role: .cancel) {
+                    presetToDeleteId = nil
+                }
+            } message: {
+                if let id = presetToDeleteId,
+                   let preset = generateState.filterPresets.first(where: { $0.id == id }) {
+                    Text("Are you sure you want to delete '\(preset.name)'? This cannot be undone.")
+                }
+            }
+        }
+    }
+}
+
+// MARK: - Filter Preset Row View
+
+private struct FilterPresetRow: View {
+    let preset: GenerateFilterPreset
+    let equipmentState: EquipmentState
+    let muscleGroupsState: MuscleGroupsState
+    let getEquipmentNames: (Set<UUID>) -> String
+    let getMuscleGroupNames: (Set<UUID>) -> String
+    let onRename: () -> Void
+    let onDelete: () -> Void
+    
+    var body: some View {
+        HStack(spacing: 12) {
+            VStack(alignment: .leading, spacing: 4) {
+                Text(preset.name)
+                    .font(.subheadline)
+                    .fontWeight(.semibold)
+                    .foregroundColor(.black)
+                
+                // Filter details
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Min: \(preset.minExercises), Max: \(preset.maxExercises)")
+                        .font(.caption2)
+                        .foregroundColor(.gray)
+                    
+                    // Equipment names
+                    if !preset.equipmentIDs.isEmpty {
+                        Text("Equipment: \(getEquipmentNames(Set(preset.equipmentIDs)))")
+                            .font(.caption2)
+                            .foregroundColor(.gray)
+                            .lineLimit(1)
+                    }
+                    
+                    // Muscle group names
+                    if !preset.muscleGroupIDs.isEmpty {
+                        Text("Muscles: \(getMuscleGroupNames(Set(preset.muscleGroupIDs)))")
+                            .font(.caption2)
+                            .foregroundColor(.gray)
+                            .lineLimit(1)
+                    }
+                }
+                .padding(.top, 2)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            
+            HStack(spacing: 8) {
+                Button(action: {
+                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                    onRename()
+                }) {
+                    Image(systemName: "pencil")
+                        .foregroundColor(.black)
+                }
+                .buttonStyle(.plain)
+
+                Button(role: .destructive, action: {
+                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                    onDelete()
+                }) {
+                    Image(systemName: "trash")
+                        .foregroundColor(.red)
+                }
+                .buttonStyle(.plain)
             }
         }
     }
@@ -395,6 +675,40 @@ private struct GeneratedExercisesSection: View {
                 }
                 .frame(maxWidth: .infinity)
                 .foregroundColor(.black)
+            }
+        }
+    }
+}
+
+// MARK: - Save Filter Preset Sheet
+
+private struct SaveFilterPresetSheet: View {
+    @Binding var name: String
+    let onSave: () -> Void
+    let onCancel: () -> Void
+    
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section("Preset Name") {
+                    TextField("Enter name", text: $name)
+                }
+            }
+            .navigationTitle("Save Filter Preset")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Save") {
+                        onSave()
+                    }
+                    .disabled(name.isEmpty)
+                }
+                
+                ToolbarItem(placement: .topBarLeading) {
+                    Button("Cancel") {
+                        onCancel()
+                    }
+                }
             }
         }
     }

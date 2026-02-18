@@ -40,6 +40,12 @@ public struct ModuleIDs {
     
     /// Quick Workout module - quick workout from exercises
     public static let quickWorkout = UUID(uuidString: "0000000A-0000-0000-0000-000000000000")!
+    
+    /// Voice Trainer module - speak text with customizable timing
+    public static let voiceTrainer = UUID(uuidString: "0000000B-0000-0000-0000-000000000000")!
+    
+    /// Game 1 module - dog catching hearts game
+    public static let game1 = UUID(uuidString: "0000000C-0000-0000-0000-000000000000")!
 }
 
 /// Module Registry - manages all registered modules in the app

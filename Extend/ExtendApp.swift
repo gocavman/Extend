@@ -32,19 +32,24 @@ struct ExtendApp: App {
     let muscleGroupsState = MuscleGroupsState.shared
     let equipmentState = EquipmentState.shared
     let quickWorkoutState = QuickWorkoutState.shared
+    let workoutLogState = WorkoutLogState.shared
+    let voiceTrainerState = VoiceTrainerState()
 
     var body: some Scene {
         WindowGroup {
             ContentView()
-                .environment(registry)
-                .environment(state)
-                .environment(dashboardState)
+                .environment(DashboardState.shared)
+                .environment(ModuleRegistry.shared)
+                .environment(ModuleState.shared)
+                .environment(DashboardHeaderState.shared)
                 .environment(exercisesState)
                 .environment(workoutsState)
                 .environment(generateState)
                 .environment(muscleGroupsState)
                 .environment(equipmentState)
                 .environment(quickWorkoutState)
+                .environment(workoutLogState)
+                .environment(voiceTrainerState)
         }
         .modelContainer(sharedModelContainer)
     }

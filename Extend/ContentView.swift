@@ -15,14 +15,84 @@ struct ContentView: View {
     @Environment(DashboardState.self) var dashboardState
     
     var body: some View {
-        ZStack {
-            let hasTopModules = !state.topNavBarModules.isEmpty
-            let hasBottomModules = !state.bottomNavBarModules.isEmpty
-            
-            if hasTopModules && hasBottomModules {
-                // MARK: - Both NavBars Layout
+        let hasTopModules = !state.topNavBarModules.isEmpty
+        let hasBottomModules = !state.bottomNavBarModules.isEmpty
+        
+        if hasTopModules && hasBottomModules {
+            // MARK: - Both NavBars Layout
+            return AnyView(
                 VStack(spacing: 0) {
+                    navBarBackground
+                        .ignoresSafeArea(edges: .top)
+                        .frame(height: 0)
+                    
                     ModuleNavBar(position: .top)
+                
+                    ZStack {
+                        if let selectedModuleID = state.selectedModuleID,
+                           let selectedModule = registry.moduleWithID(selectedModuleID) {
+                            selectedModule.moduleView
+                                .transition(.opacity)
+                        } else {
+                            EmptyStateView()
+                                .transition(.opacity)
+                        }
+                    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    
+                    ModuleNavBar(position: .bottom)
+                    
+                    navBarBackground
+                        .ignoresSafeArea(edges: .bottom)
+                        .frame(height: 0)
+                }
+                .onAppear {
+                    registerSampleModules()
+                    if let firstModule = registry.visibleModules.first {
+                        state.selectModule(firstModule.id)
+                    }
+                }
+            )
+        } else if hasTopModules {
+            // MARK: - Top NavBar Only Layout
+            return AnyView(
+                VStack(spacing: 0) {
+                    navBarBackground
+                        .ignoresSafeArea(edges: .top)
+                        .frame(height: 0)
+                    
+                    ModuleNavBar(position: .top)
+                
+                    ZStack {
+                        if let selectedModuleID = state.selectedModuleID,
+                           let selectedModule = registry.moduleWithID(selectedModuleID) {
+                            selectedModule.moduleView
+                                .transition(.opacity)
+                        } else {
+                            EmptyStateView()
+                                .transition(.opacity)
+                        }
+                    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    
+                    navBarBackground
+                        .ignoresSafeArea(edges: .bottom)
+                        .frame(height: 0)
+                }
+                .onAppear {
+                    registerSampleModules()
+                    if let firstModule = registry.visibleModules.first {
+                        state.selectModule(firstModule.id)
+                    }
+                }
+            )
+        } else {
+            // MARK: - Bottom NavBar Layout (Default)
+            return AnyView(
+                VStack(spacing: 0) {
+                    navBarBackground
+                        .ignoresSafeArea(edges: .top)
+                        .frame(height: 0)
                     
                     ZStack {
                         if let selectedModuleID = state.selectedModuleID,
@@ -37,53 +107,22 @@ struct ContentView: View {
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                     
                     ModuleNavBar(position: .bottom)
-                }
-            } else if hasTopModules {
-                // MARK: - Top NavBar Only Layout
-                VStack(spacing: 0) {
-                    ModuleNavBar(position: .top)
                     
-                    ZStack {
-                        if let selectedModuleID = state.selectedModuleID,
-                           let selectedModule = registry.moduleWithID(selectedModuleID) {
-                            selectedModule.moduleView
-                                .transition(.opacity)
-                        } else {
-                            EmptyStateView()
-                                .transition(.opacity)
-                        }
-                    }
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    navBarBackground
+                        .ignoresSafeArea(edges: .bottom)
+                        .frame(height: 0)
                 }
-            } else {
-                // MARK: - Bottom NavBar Layout (Default)
-                VStack(spacing: 0) {
-                    ZStack {
-                        if let selectedModuleID = state.selectedModuleID,
-                           let selectedModule = registry.moduleWithID(selectedModuleID) {
-                            selectedModule.moduleView
-                                .transition(.opacity)
-                        } else {
-                            EmptyStateView()
-                                .transition(.opacity)
-                        }
+                .onAppear {
+                    registerSampleModules()
+                    if let firstModule = registry.visibleModules.first {
+                        state.selectModule(firstModule.id)
                     }
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    
-                    ModuleNavBar(position: .bottom)
                 }
-            }
-        }
-        .onAppear {
-            // Register sample modules on app launch
-            registerSampleModules()
-            
-            // Select first module by default
-            if let firstModule = registry.visibleModules.first {
-                state.selectModule(firstModule.id)
-            }
+            )
         }
     }
+    
+    // ...existing code...
     
     private func registerSampleModules() {
         let dashboardModule = DashboardModule()
@@ -96,6 +135,8 @@ struct ContentView: View {
         let equipmentModule = EquipmentModule()
         let generateModule = GenerateModule()
         let settingsModule = SettingsModule()
+        let voiceTrainerModule = VoiceTrainerModule()
+        let game1Module = Game1Module()
 
         registry.registerModule(dashboardModule)
         registry.registerModule(workoutModule)
@@ -107,25 +148,45 @@ struct ContentView: View {
         registry.registerModule(equipmentModule)
         registry.registerModule(generateModule)
         registry.registerModule(settingsModule)
+        registry.registerModule(voiceTrainerModule)
+        registry.registerModule(game1Module)
 
-        // Set default navbar modules using ModuleIDs (UUID-based identification)
-        // Bottom (5 max): Dashboard, Workout, Generate, Quick Workout, Settings
-        // Top: Log, Timer, Exercises, Muscles, Equipment
-        state.setBottomNavBarModules([
-            ModuleIDs.dashboard,
-            ModuleIDs.workouts,
-            ModuleIDs.generate,
-            ModuleIDs.quickWorkout,
-            ModuleIDs.settings
-        ])
-        
-        state.setTopNavBarModules([
-            ModuleIDs.progress,
-            ModuleIDs.timer,
-            ModuleIDs.exercises,
-            ModuleIDs.muscles,
-            ModuleIDs.equipment
-        ])
+        // Only set default navbar modules on first launch (when both are empty)
+        // This preserves user customizations
+        if state.topNavBarModules.isEmpty && state.bottomNavBarModules.isEmpty {
+            // Set default navbar modules using ModuleIDs (UUID-based identification)
+            // Bottom (5 max): Dashboard, Workout, Generate, Quick, Settings
+            // Top: Log, Timer, Exercises, Muscles, Equipment
+            state.setBottomNavBarModules([
+                ModuleIDs.dashboard,
+                ModuleIDs.workouts,
+                ModuleIDs.generate,
+                ModuleIDs.quickWorkout,
+                ModuleIDs.settings
+            ])
+            
+            state.setTopNavBarModules([
+                ModuleIDs.progress,
+                ModuleIDs.timer,
+                ModuleIDs.exercises,
+                ModuleIDs.muscles,
+                ModuleIDs.equipment
+            ])
+        }
+    }
+
+    private var navBarBackground: some View {
+        Group {
+            if state.navBarUseGradient {
+                LinearGradient(
+                    colors: [state.navBarBackgroundColor, state.navBarGradientSecondaryColor],
+                    startPoint: .leading,
+                    endPoint: .trailing
+                )
+            } else {
+                state.navBarBackgroundColor
+            }
+        }
     }
 }
 

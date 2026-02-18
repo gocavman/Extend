@@ -22,10 +22,6 @@ public struct ModuleNavBar: View {
     
     private var modulesToShow: [AnyAppModule] {
         let moduleList = position == .top ? state.topNavBarModules : state.bottomNavBarModules
-        if moduleList.isEmpty {
-            // If no preference set, show all visible modules
-            return registry.visibleModules
-        }
         return moduleList.compactMap { id in
             registry.visibleModules.first { $0.id == id }
         }
@@ -40,7 +36,8 @@ public struct ModuleNavBar: View {
                         ForEach(modulesToShow) { module in
                             ModuleNavButton(
                                 module: module,
-                                isSelected: state.selectedModuleID == module.id
+                                isSelected: state.selectedModuleID == module.id,
+                                textColor: state.navBarTextColor
                             ) {
                                 state.selectModule(module.id)
                             }
@@ -50,8 +47,21 @@ public struct ModuleNavBar: View {
                 }
             }
             .frame(height: 60)
-            .background(Color(red: 0.98, green: 0.98, blue: 1.0))
-            .border(width: 1, edges: [.bottom], color: Color(red: 0.92, green: 0.92, blue: 0.93))
+            .background(navBarBackground)
+        }
+    }
+
+    private var navBarBackground: some View {
+        Group {
+            if state.navBarUseGradient {
+                LinearGradient(
+                    colors: [state.navBarBackgroundColor, state.navBarGradientSecondaryColor],
+                    startPoint: .leading,
+                    endPoint: .trailing
+                )
+            } else {
+                state.navBarBackgroundColor
+            }
         }
     }
 }
@@ -61,8 +71,9 @@ public struct ModuleNavBar: View {
 private struct ModuleNavButton: View {
     let module: AnyAppModule
     let isSelected: Bool
+    let textColor: Color
     let action: () -> Void
-    
+
     var body: some View {
         Button(action: {
             UIImpactFeedbackGenerator(style: .light).impactOccurred()
@@ -71,13 +82,13 @@ private struct ModuleNavButton: View {
             VStack(spacing: 4) {
                 Image(systemName: module.iconName)
                     .font(.system(size: 16, weight: .semibold))
-                
+
                 Text(module.displayName)
                     .font(.caption2)
                     .lineLimit(1)
             }
             .frame(width: 60, height: 52)
-            .foregroundColor(isSelected ? .black : .gray)
+            .foregroundColor(isSelected ? textColor : textColor.opacity(0.6))
         }
         .background(
             Group {

@@ -453,6 +453,7 @@ private struct ExercisePickerView: View {
 
 public struct StartWorkoutView: View {
     @Environment(\.dismiss) var dismiss
+    @Environment(ModuleState.self) var moduleState
     @Environment(ExercisesState.self) var exercisesState
     @Environment(MuscleGroupsState.self) var muscleGroupsState
     @Environment(EquipmentState.self) var equipmentState
@@ -466,6 +467,8 @@ public struct StartWorkoutView: View {
     @State private var expandedInfo: Bool = false
     @State private var sets: [WorkoutSet] = []
     @State private var notes: String = ""
+    @State private var workoutStartTime: Date = Date()
+    @State private var exerciseData: [UUID: (sets: [WorkoutSet], notes: String, timerSeconds: Int)] = [:]
 
     private var currentExercise: Exercise? {
         guard currentExerciseIndex < workout.exercises.count else { return nil }
@@ -738,22 +741,51 @@ public struct StartWorkoutView: View {
                 }
             }
         }
-        .onAppear { initializeSets() }
+        .onAppear {
+            workoutStartTime = Date()
+            initializeSets()
+        }
         .onDisappear { timerTask?.cancel() }
     }
 
     private func previousExercise() {
         if currentExerciseIndex > 0 {
+            saveCurrentExerciseData()
             currentExerciseIndex -= 1
-            resetForNewExercise()
+            loadExerciseData()
         }
     }
 
     private func nextExercise() {
         if currentExerciseIndex < workout.exercises.count - 1 {
+            saveCurrentExerciseData()
             currentExerciseIndex += 1
-            resetForNewExercise()
+            loadExerciseData()
         }
+    }
+
+    private func saveCurrentExerciseData() {
+        guard let exerciseID = workout.exercises[safe: currentExerciseIndex]?.exerciseID else { return }
+        exerciseData[exerciseID] = (sets: sets, notes: notes, timerSeconds: timerSeconds)
+    }
+
+    private func loadExerciseData() {
+        guard let exerciseID = workout.exercises[safe: currentExerciseIndex]?.exerciseID else { return }
+        
+        if let savedData = exerciseData[exerciseID] {
+            sets = savedData.sets
+            notes = savedData.notes
+            timerSeconds = savedData.timerSeconds
+        } else {
+            sets = []
+            notes = ""
+            timerSeconds = 0
+            initializeSets()
+        }
+        
+        isTimerRunning = false
+        timerTask?.cancel()
+        expandedInfo = false
     }
 
     private func resetForNewExercise() {
@@ -809,7 +841,48 @@ public struct StartWorkoutView: View {
     }
 
     private func completeWorkout() {
-        // TODO: Save workout to log/history
+        // Save current exercise data
+        saveCurrentExerciseData()
+        
+        // Create logged exercises from saved data
+        var loggedExercises: [LoggedExercise] = []
+        
+        for workoutExercise in workout.exercises {
+            if let exercise = exercisesState.exercises.first(where: { $0.id == workoutExercise.exerciseID }),
+               let savedData = exerciseData[workoutExercise.exerciseID] {
+                
+                let loggedSets = savedData.sets.map { set in
+                    LoggedSet(reps: set.reps, weight: set.weight)
+                }
+                
+                let loggedExercise = LoggedExercise(
+                    exerciseID: exercise.id,
+                    exerciseName: exercise.name,
+                    sets: loggedSets,
+                    notes: savedData.notes
+                )
+                
+                loggedExercises.append(loggedExercise)
+            }
+        }
+        
+        // Calculate workout duration
+        let duration = Date().timeIntervalSince(workoutStartTime)
+        
+        // Create and save workout log
+        let workoutLog = WorkoutLog(
+            workoutName: workout.name,
+            completedAt: Date(),
+            exercises: loggedExercises,
+            notes: "",
+            duration: duration
+        )
+        
+        WorkoutLogState.shared.addLog(workoutLog)
+        
+        // Navigate to Log module
+        moduleState.selectModule(ModuleIDs.progress)
+        
         UIImpactFeedbackGenerator(style: .heavy).impactOccurred()
         dismiss()
     }
@@ -843,6 +916,14 @@ extension View {
             placeholder().opacity(shouldShow ? 1 : 0)
             self
         }
+    }
+}
+
+// MARK: - Array Safe Subscript Extension
+
+extension Array {
+    subscript(safe index: Int) -> Element? {
+        return indices.contains(index) ? self[index] : nil
     }
 }
 

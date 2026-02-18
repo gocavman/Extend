@@ -17,8 +17,86 @@ public final class GenerateState {
     public var selectedEquipmentIDs: Set<UUID> = []
     public var selectedMuscleGroupIDs: Set<UUID> = []
     public var generatedExercises: [GeneratedExerciseItem] = []
+    public var filterPresets: [GenerateFilterPreset] = []
 
-    private init() {}
+    @ObservationIgnored private let presetsKey = "generate_filter_presets"
+
+    private init() {
+        loadPresets()
+    }
+
+    // MARK: - Presets
+
+    public func addFilterPreset(name: String) {
+        let trimmedName = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedName.isEmpty else { return }
+        let preset = GenerateFilterPreset(
+            name: trimmedName,
+            equipmentIDs: Array(selectedEquipmentIDs),
+            muscleGroupIDs: Array(selectedMuscleGroupIDs),
+            minExercises: minExercises,
+            maxExercises: maxExercises
+        )
+        filterPresets.append(preset)
+        savePresets()
+    }
+
+    public func applyFilterPreset(_ preset: GenerateFilterPreset) {
+        selectedEquipmentIDs = Set(preset.equipmentIDs)
+        selectedMuscleGroupIDs = Set(preset.muscleGroupIDs)
+        
+        // Ensure min/max are valid (min should not be greater than max)
+        if preset.minExercises <= preset.maxExercises {
+            minExercises = preset.minExercises
+            maxExercises = preset.maxExercises
+        } else {
+            // If preset has invalid values, swap them
+            minExercises = min(preset.minExercises, preset.maxExercises)
+            maxExercises = max(preset.minExercises, preset.maxExercises)
+        }
+    }
+
+    public func removeFilterPreset(id: UUID) {
+        filterPresets.removeAll { $0.id == id }
+        savePresets()
+    }
+
+    public func updateFilterPresetName(id: UUID, name: String) {
+        if let index = filterPresets.firstIndex(where: { $0.id == id }) {
+            let trimmedName = name.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !trimmedName.isEmpty else { return }
+            
+            let oldPreset = filterPresets[index]
+            let updatedPreset = GenerateFilterPreset(
+                id: oldPreset.id,
+                name: trimmedName,
+                equipmentIDs: oldPreset.equipmentIDs,
+                muscleGroupIDs: oldPreset.muscleGroupIDs,
+                minExercises: oldPreset.minExercises,
+                maxExercises: oldPreset.maxExercises
+            )
+            filterPresets[index] = updatedPreset
+            savePresets()
+        }
+    }
+
+    private func savePresets() {
+        if let data = try? JSONEncoder().encode(filterPresets) {
+            UserDefaults.standard.set(data, forKey: presetsKey)
+        }
+    }
+    
+    public func savePresetsPublic() {
+        savePresets()
+    }
+
+    private func loadPresets() {
+        guard let data = UserDefaults.standard.data(forKey: presetsKey),
+              let presets = try? JSONDecoder().decode([GenerateFilterPreset].self, from: data) else {
+            return
+        }
+        filterPresets = presets
+    }
 
     /// Generates a balanced workout with three phases: diversity, randomness, and shuffle
     public func generateWorkout(
@@ -33,7 +111,11 @@ public final class GenerateState {
 
         guard !filtered.isEmpty else { return }
 
-        let targetCount = minExercises == maxExercises ? minExercises : Int.random(in: minExercises...maxExercises)
+        // Ensure min is not greater than max to avoid range error
+        let safeMin = min(minExercises, maxExercises)
+        let safeMax = max(minExercises, maxExercises)
+        
+        let targetCount = safeMin == safeMax ? safeMin : Int.random(in: safeMin...safeMax)
         var selected: [Exercise] = []
 
         // Phase 1: Diversity - Ensure representation of each selected filter
@@ -151,14 +233,13 @@ public final class GenerateState {
     ) -> [Exercise] {
         var result = selected
         let usedIDs = Set(result.map { $0.id })
-        let available = exercises.filter { !usedIDs.contains($0.id) }
+        var available = exercises.filter { !usedIDs.contains($0.id) }
 
         while result.count < targetCount && !available.isEmpty {
-            if let random = available.randomElement(),
-               !result.contains(where: { $0.id == random.id }) {
+            if let random = available.randomElement() {
                 result.append(random)
-            } else {
-                break
+                // Remove the selected exercise from available pool
+                available.removeAll { $0.id == random.id }
             }
         }
 
@@ -173,5 +254,30 @@ public struct GeneratedExerciseItem: Identifiable {
 
     public init(exercise: Exercise) {
         self.exercise = exercise
+    }
+}
+
+public struct GenerateFilterPreset: Identifiable, Codable, Hashable {
+    public let id: UUID
+    public let name: String
+    public let equipmentIDs: [UUID]
+    public let muscleGroupIDs: [UUID]
+    public let minExercises: Int
+    public let maxExercises: Int
+
+    public init(
+        id: UUID = UUID(),
+        name: String,
+        equipmentIDs: [UUID],
+        muscleGroupIDs: [UUID],
+        minExercises: Int = 5,
+        maxExercises: Int = 5
+    ) {
+        self.id = id
+        self.name = name
+        self.equipmentIDs = equipmentIDs
+        self.muscleGroupIDs = muscleGroupIDs
+        self.minExercises = minExercises
+        self.maxExercises = maxExercises
     }
 }
