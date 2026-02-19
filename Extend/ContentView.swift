@@ -17,16 +17,20 @@ struct ContentView: View {
     var body: some View {
         let hasTopModules = !state.topNavBarModules.isEmpty
         let hasBottomModules = !state.bottomNavBarModules.isEmpty
+        let selectedModule = state.selectedModuleID.flatMap { registry.moduleWithID($0) }
+        let shouldHideNavBars = selectedModule?.hidesNavBars ?? false
         
         if hasTopModules && hasBottomModules {
             // MARK: - Both NavBars Layout
             return AnyView(
                 VStack(spacing: 0) {
-                    navBarBackground
-                        .ignoresSafeArea(edges: .top)
-                        .frame(height: 0)
-                    
-                    ModuleNavBar(position: .top)
+                    if !shouldHideNavBars {
+                        navBarBackground
+                            .ignoresSafeArea(edges: .top)
+                            .frame(height: 0)
+                        
+                        ModuleNavBar(position: .top)
+                    }
                 
                     ZStack {
                         if let selectedModuleID = state.selectedModuleID,
@@ -38,13 +42,16 @@ struct ContentView: View {
                                 .transition(.opacity)
                         }
                     }
+                    .ignoresSafeArea()
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                     
-                    ModuleNavBar(position: .bottom)
-                    
-                    navBarBackground
-                        .ignoresSafeArea(edges: .bottom)
-                        .frame(height: 0)
+                    if !shouldHideNavBars {
+                        ModuleNavBar(position: .bottom)
+                        
+                        navBarBackground
+                            .ignoresSafeArea(edges: .bottom)
+                            .frame(height: 0)
+                    }
                 }
                 .onAppear {
                     registerSampleModules()
@@ -57,11 +64,13 @@ struct ContentView: View {
             // MARK: - Top NavBar Only Layout
             return AnyView(
                 VStack(spacing: 0) {
-                    navBarBackground
-                        .ignoresSafeArea(edges: .top)
-                        .frame(height: 0)
-                    
-                    ModuleNavBar(position: .top)
+                    if !shouldHideNavBars {
+                        navBarBackground
+                            .ignoresSafeArea(edges: .top)
+                            .frame(height: 0)
+                        
+                        ModuleNavBar(position: .top)
+                    }
                 
                     ZStack {
                         if let selectedModuleID = state.selectedModuleID,
@@ -73,11 +82,14 @@ struct ContentView: View {
                                 .transition(.opacity)
                         }
                     }
+                    .ignoresSafeArea()
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                     
-                    navBarBackground
-                        .ignoresSafeArea(edges: .bottom)
-                        .frame(height: 0)
+                    if !shouldHideNavBars {
+                        navBarBackground
+                            .ignoresSafeArea(edges: .bottom)
+                            .frame(height: 0)
+                    }
                 }
                 .onAppear {
                     registerSampleModules()
@@ -90,9 +102,11 @@ struct ContentView: View {
             // MARK: - Bottom NavBar Layout (Default)
             return AnyView(
                 VStack(spacing: 0) {
-                    navBarBackground
-                        .ignoresSafeArea(edges: .top)
-                        .frame(height: 0)
+                    if !shouldHideNavBars {
+                        navBarBackground
+                            .ignoresSafeArea(edges: .top)
+                            .frame(height: 0)
+                    }
                     
                     ZStack {
                         if let selectedModuleID = state.selectedModuleID,
@@ -104,13 +118,16 @@ struct ContentView: View {
                                 .transition(.opacity)
                         }
                     }
+                    .ignoresSafeArea()
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                     
-                    ModuleNavBar(position: .bottom)
-                    
-                    navBarBackground
-                        .ignoresSafeArea(edges: .bottom)
-                        .frame(height: 0)
+                    if !shouldHideNavBars {
+                        ModuleNavBar(position: .bottom)
+                        
+                        navBarBackground
+                            .ignoresSafeArea(edges: .bottom)
+                            .frame(height: 0)
+                    }
                 }
                 .onAppear {
                     registerSampleModules()

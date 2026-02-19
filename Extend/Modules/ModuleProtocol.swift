@@ -28,6 +28,9 @@ public protocol AppModule: Identifiable, Hashable {
     /// Whether this module is currently visible in the navbar
     var isVisible: Bool { get set }
     
+    /// Whether this module should hide the navigation bars (for full-screen experiences)
+    var hidesNavBars: Bool { get }
+    
     /// The view to display when this module is selected
     var moduleView: AnyView { get }
 }
@@ -40,5 +43,10 @@ extension AppModule {
     
     public static func == (lhs: Self, rhs: Self) -> Bool {
         lhs.id == rhs.id
+    }
+    
+    // Default: don't hide navbars
+    public var hidesNavBars: Bool {
+        return false
     }
 }

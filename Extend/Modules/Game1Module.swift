@@ -8,6 +8,158 @@
 
 import SwiftUI
 
+// MARK: - Action Configuration
+
+struct ActionConfig {
+    let id: String
+    let displayName: String
+    let unlockLevel: Int
+    let pointsPerCompletion: Int
+    let animationFrames: [Int]
+    let baseFrameInterval: TimeInterval
+    let variableTiming: [Int: TimeInterval]? // Optional custom timing per frame
+    let supportsFlip: Bool
+    let supportsSpeedBoost: Bool
+    let imagePrefix: String // Prefix for image names (e.g., "guy_curls" or "pushup")
+    
+    // Helper to get available actions for a level
+    static func actionsForLevel(_ level: Int) -> [ActionConfig] {
+        return ACTION_CONFIGS.filter { $0.unlockLevel <= level }
+    }
+    
+    // Helper to get level-based action IDs
+    static func levelBasedActionIDs(forLevel level: Int) -> Set<String> {
+        return Set(ACTION_CONFIGS.filter { $0.unlockLevel <= level }.map { $0.id })
+    }
+}
+
+// MARK: - Door Structure
+
+struct Door {
+    let id: String
+    let position: DoorPosition // left, right, top, bottom
+    let collisionSide: CollisionSide // which side triggers collision
+    let destinationRoomId: String
+    let x: CGFloat // Normalized position (0-1)
+    let y: CGFloat // Normalized position (0-1)
+    let width: CGFloat // Width as fraction of screen
+    let height: CGFloat // Height as fraction of screen
+    
+    enum DoorPosition {
+        case left
+        case right
+        case top
+        case bottom
+    }
+    
+    enum CollisionSide {
+        case left  // Collide when hitting from right (running right)
+        case right // Collide when hitting from left (running left)
+    }
+}
+
+// MARK: - Action Configurations
+
+let ACTION_CONFIGS: [ActionConfig] = [
+    // Level 1: Run - special case, handled separately (continuous points)
+    ActionConfig(
+        id: "run",
+        displayName: "Run",
+        unlockLevel: 1,
+        pointsPerCompletion: 1,
+        animationFrames: [],
+        baseFrameInterval: 0,
+        variableTiming: nil,
+        supportsFlip: false,
+        supportsSpeedBoost: true,
+        imagePrefix: "guy_move"
+    ),
+    
+    // Level 2: Jump
+    ActionConfig(
+        id: "jump",
+        displayName: "Jump",
+        unlockLevel: 2,
+        pointsPerCompletion: 2,
+        animationFrames: [1, 2, 3],
+        baseFrameInterval: 0.1,
+        variableTiming: nil,
+        supportsFlip: false,
+        supportsSpeedBoost: true,
+        imagePrefix: "guy_jump"
+    ),
+    
+    // Level 3: Curls
+    ActionConfig(
+        id: "curls",
+        displayName: "Bicep Curls",
+        unlockLevel: 3,
+        pointsPerCompletion: 3,
+        animationFrames: [2, 1, 2, 1, 3, 1],
+        baseFrameInterval: 0.2,
+        variableTiming: nil,
+        supportsFlip: true,
+        supportsSpeedBoost: true,
+        imagePrefix: "guy_curls"
+    ),
+    
+    // Level 4: Kettlebell
+    ActionConfig(
+        id: "kettlebell",
+        displayName: "Kettlebell swings",
+        unlockLevel: 4,
+        pointsPerCompletion: 4,
+        animationFrames: [1, 2, 3, 4, 5, 6, 7, 8, 7, 6, 7, 8, 7, 6, 7, 8, 7, 6, 5, 4, 3, 2, 1],
+        baseFrameInterval: 0.15,
+        variableTiming: nil,
+        supportsFlip: true,
+        supportsSpeedBoost: true,
+        imagePrefix: "kb"
+    ),
+    
+    // Level 5: Pull ups
+    ActionConfig(
+        id: "pullup",
+        displayName: "Pull ups",
+        unlockLevel: 5,
+        pointsPerCompletion: 5,
+        animationFrames: [1, 2, 3, 4, 3, 4, 3, 4, 3, 4, 3, 4, 3, 4, 3, 4, 3, 2, 1],
+        baseFrameInterval: 0.2,
+        variableTiming: nil,
+        supportsFlip: false,
+        supportsSpeedBoost: true,
+        imagePrefix: "pullup"
+    ),
+    
+    // Level 6: Push ups (with variable timing)
+    ActionConfig(
+        id: "pushup",
+        displayName: "Push ups",
+        unlockLevel: 6,
+        pointsPerCompletion: 6,
+        animationFrames: [1, 2, 3, 4, 3, 4, 3, 4, 3, 4, 3, 4, 3, 2, 1],
+        baseFrameInterval: 0.2,
+        variableTiming: [1: 0.1, 2: 0.1], // Frames 1 and 2 are faster
+        supportsFlip: true,
+        supportsSpeedBoost: true,
+        imagePrefix: "pushup"
+    ),
+    
+    // Level 7: Jumping jacks
+    ActionConfig(
+        id: "jumpingjack",
+        displayName: "Jumping jacks",
+        unlockLevel: 7,
+        pointsPerCompletion: 7,
+        animationFrames: [3, 4, 1, 2, 3, 4, 1, 2, 3, 4, 1, 2, 3, 4, 1, 2, 3, 4, 1, 2, 1],
+        baseFrameInterval: 0.15,
+        variableTiming: nil,
+        supportsFlip: false,
+        supportsSpeedBoost: true,
+        imagePrefix: "jumpingjack"
+    )
+]
+
 public struct Game1Module: AppModule {
     public let id: UUID = ModuleIDs.game1
     public let displayName: String = "Game 1"
@@ -16,9 +168,15 @@ public struct Game1Module: AppModule {
 
     public var order: Int = 0
     public var isVisible: Bool = true
+    public var hidesNavBars: Bool { true }
 
     public var moduleView: AnyView {
-        let view = Game1ModuleView(module: self)
+        let view = ZStack {
+            // Full opaque background to cover everything
+            Color(red: 0.95, green: 0.95, blue: 0.98)
+                .ignoresSafeArea()
+            Game1ModuleView(module: self)
+        }
         return AnyView(view)
     }
 }
@@ -80,6 +238,148 @@ struct FireworkParticle: Identifiable {
 
 // MARK: - Game State
 
+// MARK: - Level Box for Map
+
+struct LevelBox: Identifiable {
+    let id = UUID()
+    let levelNumber: Int
+    let x: CGFloat // Center X position on map
+    let y: CGFloat // Center Y position on map
+    let width: CGFloat
+    let height: CGFloat
+    
+    var isCompleted: Bool = false
+    var isAvailable: Bool = true
+}
+
+// MARK: - Game Map State
+
+@Observable
+class GameMapState {
+    var characterX: CGFloat = 0
+    var characterY: CGFloat = 0
+    var targetX: CGFloat = 0
+    var targetY: CGFloat = 0
+    var isMoving: Bool = false
+    var isTouchActive: Bool = false
+    var animationFrame: Int = 1
+    var characterRotation: Double = 0
+    var mapOffsetX: CGFloat = 0
+    var mapOffsetY: CGFloat = 0
+    var levelBoxes: [LevelBox] = []
+    var selectedLevelNumber: Int? = nil
+    var animationTimer: Timer? = nil
+    var movementTimer: Timer? = nil
+    
+    let mapWidth: CGFloat = 2000
+    let mapHeight: CGFloat = 2000
+    let characterSpeed: CGFloat = 200 // pixels per second
+    
+    init() {
+        // Set initial character position to center of map
+        characterX = mapWidth / 2
+        characterY = mapHeight / 2
+        targetX = mapWidth / 2
+        targetY = mapHeight / 2
+        initializeLevelBoxes()
+    }
+    
+    func initializeLevelBoxes(currentLevel: Int = 1) {
+        // Create 100 level boxes in 5-column grid (20 rows)
+        // Layout: 1-5, 10-6, 11-15, 20-16, etc. (zigzag pattern)
+        var boxes: [LevelBox] = []
+        let boxSize: CGFloat = 60
+        let spacing: CGFloat = 180
+        let columnCount = 5
+        let startX: CGFloat = 200
+        let startY: CGFloat = 200
+        
+        for level in 1...100 {
+            let row = (level - 1) / columnCount
+            let positionInRow = (level - 1) % columnCount
+            
+            // Determine if this row goes left-to-right or right-to-left
+            let isEvenRow = (row % 2) == 0
+            let col = isEvenRow ? positionInRow : (columnCount - 1 - positionInRow)
+            
+            let x = startX + CGFloat(col) * spacing
+            let y = startY + CGFloat(row) * spacing
+            
+            // Level is completed if player has passed it
+            let isCompleted = level < currentLevel
+            // Level is available if it's completed, currently playing, or next unlocked level
+            let isAvailable = level <= currentLevel
+            
+            boxes.append(LevelBox(
+                levelNumber: level,
+                x: x,
+                y: y,
+                width: boxSize,
+                height: boxSize,
+                isCompleted: isCompleted,
+                isAvailable: isAvailable
+            ))
+        }
+        
+        levelBoxes = boxes
+        // Don't reset character position here - let the view control it
+    }
+    
+    func moveCharacterTowards(_ targetX: CGFloat, _ targetY: CGFloat, deltaTime: CGFloat) {
+        let dx = targetX - characterX
+        let dy = targetY - characterY
+        let distance = sqrt(dx * dx + dy * dy)
+        
+        // Stop when close to target AND touch is released
+        if distance < 20 && !isTouchActive {
+            isMoving = false
+            return
+        }
+        
+        // Don't move if already at target
+        if distance < 1 {
+            isMoving = false
+            return
+        }
+        
+        isMoving = true
+        let moveDistance = characterSpeed * deltaTime
+        
+        // Don't overshoot the target
+        let actualMoveDistance = min(moveDistance, distance)
+        let moveX = (dx / distance) * actualMoveDistance
+        let moveY = (dy / distance) * actualMoveDistance
+        
+        characterX += moveX
+        characterY += moveY
+        
+        // Update rotation to face direction
+        characterRotation = atan2(dy, dx) * 180 / .pi
+    }
+    
+    func updateMapOffset(screenWidth: CGFloat, screenHeight: CGFloat) {
+        // Keep character centered - pan map so character stays in middle of screen
+        mapOffsetX = characterX - (screenWidth / 2)
+        mapOffsetY = characterY - (screenHeight / 2)
+        
+        // Note: We don't clamp here anymore since character is always centered on screen
+        // The level boxes will just pan off-screen naturally at edges
+    }
+    
+    func checkLevelBoxCollision() -> Int? {
+        for box in levelBoxes {
+            let dx = characterX - box.x
+            let dy = characterY - box.y
+            let distance = sqrt(dx * dx + dy * dy)
+            if distance < box.width / 2 {
+                return box.levelNumber
+            }
+        }
+        return nil
+    }
+}
+
+// ...existing code...
 @Observable
 class StickFigureGameState {
     var figurePosition: CGFloat = 0
@@ -92,25 +392,23 @@ class StickFigureGameState {
     var isWaving: Bool = false
     var waveFrame: Int = 0
     var shouldFlipWave: Bool = false
-    var isPerformingCurls: Bool = false
-    var curlFrame: Int = 0
-    var curlFlip: Bool = false
-    var isPerformingKettlebell: Bool = false
-    var kettlebellFrame: Int = 0
-    var kettlebellFlip: Bool = false
+    
+    // Generic action system
+    var currentPerformingAction: String? = nil // ID of action being performed
+    var actionFrame: Int = 0
+    var actionFlip: Bool = false
+    var actionTimer: Timer? = nil
+    
+    // Special case animations
     var isPerformingShaker: Bool = false
     var shakerFrame: Int = 0
     var shakerFlip: Bool = false
     var shakerCatchLocation: (x: CGFloat, y: CGFloat)?
-    var isPerformingPullup: Bool = false
-    var pullupFrame: Int = 0
+    
     var animationTimer: Timer?
     var jumpTimer: Timer?
     var waveTimer: Timer?
-    var curlsTimer: Timer?
-    var kettlebellTimer: Timer?
     var shakerTimer: Timer?
-    var pullupTimer: Timer?
     var idleTimer: Timer?
     var floatingTexts: [FloatingTextItem] = []
     var floatingTextTimer: Timer?
@@ -128,11 +426,7 @@ class StickFigureGameState {
     var timeElapsed: Double = 0
     var highScore: Int = 0
 
-    var totalJumpTime: Double = 0
-    var totalMoveTime: Double = 0
-    var totalCurlsTime: Double = 0
-    var totalKettlebellTime: Double = 0
-    var totalPullupTime: Double = 0
+    var actionTimes: [String: Double] = [:] // Dictionary to track time for each action
     var allTimeElapsed: Double = 0
     var totalLeavesCaught: Int = 0
     var totalShakersCaught: Int = 0
@@ -140,6 +434,14 @@ class StickFigureGameState {
     var actionStartTime: Double = 0
     var currentAction: String = ""
     var statsSaveAccumulator: Double = 0
+    
+    // Signal for UI to return to map after level completion
+    var shouldReturnToMap: Bool = false
+    
+    // Room and door system
+    var currentRoomId: String = "room_1"
+    var currentRoomName: String = "Room 1"
+    var doors: [Door] = [] // Doors in current room
     
     var fallingLeaves: [FallingLeaf] = []
     var leafSpawnTimer: Timer?
@@ -156,14 +458,14 @@ class StickFigureGameState {
     private let highScoreKey = "game1_high_score"
     private let currentLevelKey = "game1_current_level"
     private let currentPointsKey = "game1_current_points"
-    private let totalJumpKey = "game1_total_jump_time"
-    private let totalMoveKey = "game1_total_move_time"
-    private let totalCurlsKey = "game1_total_curls_time"
-    private let totalKettlebellKey = "game1_total_kettlebell_time"
-    private let totalPullupKey = "game1_total_pullup_time"
     private let allTimeElapsedKey = "game1_all_time_elapsed"
     private let totalLeavesCaughtKey = "game1_total_leaves_caught"
     private let totalShakersCaughtKey = "game1_total_shakers_caught"
+    
+    // Dynamic keys for actions: "game1_action_time_{actionId}"
+    private func actionTimeKey(for actionId: String) -> String {
+        return "game1_action_time_\(actionId)"
+    }
 
     init() {
         loadHighScore()
@@ -176,6 +478,124 @@ class StickFigureGameState {
         startLeafUpdater()
         startShakerUpdater()
         startFireworkUpdater()
+        initializeRoom(currentRoomId)
+    }
+    
+    // MARK: - Room Management
+    
+    func initializeRoom(_ roomId: String) {
+        currentRoomId = roomId
+        
+        // Check if it's a level room (level_1, level_2, etc.)
+        if roomId.hasPrefix("level_"), let levelString = roomId.components(separatedBy: "_").last, let level = Int(levelString) {
+            currentRoomName = "Level \(level)"
+            // Create a single door that returns to map
+            doors = [
+                Door(
+                    id: "door_return_right",
+                    position: .right,
+                    collisionSide: .left,
+                    destinationRoomId: "map",
+                    x: 0.95,
+                    y: 0.85,
+                    width: 0.05,
+                    height: 0.25
+                )
+            ]
+        } else {
+            // Original room setup for testing
+            switch roomId {
+            case "room_1":
+                currentRoomName = "Room 1"
+                doors = [
+                    Door(
+                        id: "door_right",
+                        position: .right,
+                        collisionSide: .left,
+                        destinationRoomId: "room_2",
+                        x: 0.95,
+                        y: 0.85,
+                        width: 0.05,
+                        height: 0.25
+                    )
+                ]
+            case "room_2":
+                currentRoomName = "Room 2"
+                doors = [
+                    Door(
+                        id: "door_left",
+                        position: .left,
+                        collisionSide: .right,
+                        destinationRoomId: "room_1",
+                        x: 0.05,
+                        y: 0.85,
+                        width: 0.05,
+                        height: 0.25
+                    )
+                ]
+            default:
+                currentRoomName = "Room Unknown"
+                doors = []
+            }
+        }
+    }
+    
+    // MARK: - Door and Screen Wrap Handling
+    
+    func checkDoorCollision(figureX: CGFloat, screenWidth: CGFloat, screenHeight: CGFloat, isMovingRight: Bool, isMovingLeft: Bool) -> Door? {
+        for door in doors {
+            let doorScreenX = door.x * screenWidth
+            let doorScreenY = door.y * screenHeight
+            let doorWidth = door.width * screenWidth
+            let doorHeight = door.height * screenHeight
+            
+            // Check if figure is within the door's horizontal bounds
+            let doorLeftEdge = doorScreenX - (doorWidth / 2)
+            let doorRightEdge = doorScreenX + (doorWidth / 2)
+            let doorTopEdge = doorScreenY - (doorHeight / 2)
+            let doorBottomEdge = doorScreenY + (doorHeight / 2)
+            
+            // Figure dimensions
+            let figureWidth: CGFloat = 100
+            let figureHeight: CGFloat = 150
+            
+            // Check vertical overlap
+            let baseY = screenHeight - 80
+            let figureY = baseY
+            let figureTopEdge = figureY - (figureHeight / 2)
+            let figureBottomEdge = figureY + (figureHeight / 2)
+            
+            let verticalOverlap = !(figureBottomEdge < doorTopEdge || figureTopEdge > doorBottomEdge)
+            
+            if verticalOverlap {
+                // Check collision based on direction and collision side
+                if door.collisionSide == .left && isMovingRight && figureX + (figureWidth / 2) >= doorLeftEdge && figureX < doorRightEdge {
+                    return door
+                } else if door.collisionSide == .right && isMovingLeft && figureX - (figureWidth / 2) <= doorRightEdge && figureX > doorLeftEdge {
+                    return door
+                }
+            }
+        }
+        return nil
+    }
+    
+    func handleScreenWrap(_ screenWidth: CGFloat) {
+        // Right edge wrap
+        if figurePosition > 1.0 {
+            figurePosition = -1.0
+        }
+        // Left edge wrap
+        else if figurePosition < -1.0 {
+            figurePosition = 1.0
+        }
+    }
+    
+    func stopMovingLeft() {
+        isMovingLeft = false
+    }
+    
+    func stopMovingRight() {
+        isMovingRight = false
     }
 
     private func loadHighScore() {
@@ -187,11 +607,12 @@ class StickFigureGameState {
     }
 
     private func loadStats() {
-        totalJumpTime = UserDefaults.standard.double(forKey: totalJumpKey)
-        totalMoveTime = UserDefaults.standard.double(forKey: totalMoveKey)
-        totalCurlsTime = UserDefaults.standard.double(forKey: totalCurlsKey)
-        totalKettlebellTime = UserDefaults.standard.double(forKey: totalKettlebellKey)
-        totalPullupTime = UserDefaults.standard.double(forKey: totalPullupKey)
+        // Load action times dynamically
+        for config in ACTION_CONFIGS {
+            let key = actionTimeKey(for: config.id)
+            actionTimes[config.id] = UserDefaults.standard.double(forKey: key)
+        }
+        
         allTimeElapsed = UserDefaults.standard.double(forKey: allTimeElapsedKey)
         totalLeavesCaught = UserDefaults.standard.integer(forKey: totalLeavesCaughtKey)
         totalShakersCaught = UserDefaults.standard.integer(forKey: totalShakersCaughtKey)
@@ -201,11 +622,12 @@ class StickFigureGameState {
     }
 
     func saveStats() {
-        UserDefaults.standard.set(totalJumpTime, forKey: totalJumpKey)
-        UserDefaults.standard.set(totalMoveTime, forKey: totalMoveKey)
-        UserDefaults.standard.set(totalCurlsTime, forKey: totalCurlsKey)
-        UserDefaults.standard.set(totalKettlebellTime, forKey: totalKettlebellKey)
-        UserDefaults.standard.set(totalPullupTime, forKey: totalPullupKey)
+        // Save action times dynamically
+        for (actionId, time) in actionTimes {
+            let key = actionTimeKey(for: actionId)
+            UserDefaults.standard.set(time, forKey: key)
+        }
+        
         UserDefaults.standard.set(allTimeElapsed, forKey: allTimeElapsedKey)
         UserDefaults.standard.set(totalLeavesCaught, forKey: totalLeavesCaughtKey)
         UserDefaults.standard.set(totalShakersCaught, forKey: totalShakersCaughtKey)
@@ -222,7 +644,7 @@ class StickFigureGameState {
     private func startIdleTimer() {
         idleTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] _ in
             guard let self = self else { return }
-            if !self.isMovingLeft && !self.isMovingRight && !self.isJumping && !self.isWaving && !self.isPerformingCurls && !self.isPerformingKettlebell && !self.isPerformingShaker && !self.isPerformingPullup {
+            if !self.isMovingLeft && !self.isMovingRight && !self.isJumping && !self.isWaving && self.currentPerformingAction == nil && !self.isPerformingShaker {
                 self.timeSinceLastMovement += 1.0
                 if self.timeSinceLastMovement >= 15.0 {
                     self.triggerWave()
@@ -361,8 +783,8 @@ class StickFigureGameState {
     
     func addPoints(_ points: Int, action: String) {
         // Only add to sessionActions if it's a level-based action (not leaves/shakers)
-        let levelBasedActions = ["run", "jump", "curls", "kettlebell", "pullup"]
-        if levelBasedActions.contains(action) {
+        let levelBasedActionIDs = ACTION_CONFIGS.map { $0.id }
+        if levelBasedActionIDs.contains(action) {
             sessionActions.insert(action)
         }
         
@@ -370,7 +792,7 @@ class StickFigureGameState {
         let maxComboForLevel = currentLevel // Level 1=1 action, Level 2=2 actions, etc.
         
         // Only count level-based unlocked actions for combo
-        let unlockedLevelBasedActions = getLevelBasedActionsForLevel(currentLevel)
+        let unlockedLevelBasedActions = ActionConfig.levelBasedActionIDs(forLevel: currentLevel)
         let validSessionActions = sessionActions.filter { unlockedLevelBasedActions.contains($0) }
         let comboCount = min(validSessionActions.count, maxComboForLevel)
         
@@ -381,9 +803,7 @@ class StickFigureGameState {
         let totalPoints = Int(ceil(exactPoints)) // Always round up
         currentPoints += totalPoints
         
-        print("DEBUG: Action=\(action), BasePoints=\(points), ComboCount=\(comboCount)/\(maxComboForLevel), Multiplier=\(multiplier), ExactPoints=\(exactPoints), RoundedPoints=\(totalPoints)")
-        
-        let pointsNeeded = currentLevel * 100
+        let pointsNeeded = pointsNeeded(forLevel: currentLevel)
         if currentPoints >= pointsNeeded {
             levelUp()
         }
@@ -392,50 +812,34 @@ class StickFigureGameState {
     
     func getMaxComboForLevel(_ level: Int) -> Int {
         // Returns the maximum number of level-based actions (not including leaves/shakers)
-        // Level 1: 1 action (run)
-        // Level 2: 2 actions (run, jump)
-        // Level 3: 3 actions (run, jump, curls)
-        // Level 4: 4 actions (run, jump, curls, kettlebell)
-        // Level 5: 5 actions (run, jump, curls, kettlebell, pullup)
         return level
-    }
-    
-    func getLevelBasedActionsForLevel(_ level: Int) -> Set<String> {
-        // Only level-based actions, not leaves/shakers
-        var actions: Set<String> = ["run"] // Level 1
-        if level >= 2 { actions.insert("jump") }
-        if level >= 3 { actions.insert("curls") }
-        if level >= 4 { actions.insert("kettlebell") }
-        if level >= 5 { actions.insert("pullup") }
-        return actions
     }
     
     func getValidComboCount() -> Int {
         let maxCombo = getMaxComboForLevel(currentLevel)
-        let unlockedActions = getLevelBasedActionsForLevel(currentLevel)
+        let unlockedActions = ActionConfig.levelBasedActionIDs(forLevel: currentLevel)
         let validCount = sessionActions.filter { unlockedActions.contains($0) }.count
         return min(validCount, maxCombo)
+    }
+    
+    func pointsNeeded(forLevel level: Int) -> Int {
+        // Level 1 requires 50 points, all other levels require level * 100
+        return level == 1 ? 50 : level * 100
     }
     
     func levelUp() {
         currentLevel += 1
         currentPoints = 0
+        shouldReturnToMap = true // Signal to return to map
         
-        // Show level up message with larger text
-        let newAction = getActionUnlockedAtLevel(currentLevel)
-        let message = "Level \(currentLevel)!\n\(newAction) Unlocked!"
-        addFloatingText(message, x: 0.5, y: 0.4, color: .purple, fontSize: 24)
-        saveStats()
-    }
-    
-    func getActionUnlockedAtLevel(_ level: Int) -> String {
-        switch level {
-        case 2: return "Jump"
-        case 3: return "Curls"
-        case 4: return "Kettlebell swings"
-        case 5: return "Pull ups"
-        default: return ""
+        // Show level up message with larger text and set selected action to new action
+        if let newAction = ACTION_CONFIGS.first(where: { $0.unlockLevel == currentLevel }) {
+            let message = "Level \(currentLevel)!\n\(newAction.displayName) Unlocked!"
+            addFloatingText(message, x: 0.5, y: 0.4, color: .purple, fontSize: 24)
+            // Automatically select the newly unlocked action
+            selectedAction = newAction.displayName
         }
+        saveStats()
     }
     
     func checkLeafCollisions(figureX: CGFloat, figureY: CGFloat, screenWidth: CGFloat, screenHeight: CGFloat) {
@@ -519,7 +923,7 @@ class StickFigureGameState {
         shakerFlip = Bool.random()
         
         var step = 0
-        shakerTimer = Timer.scheduledTimer(withTimeInterval: 0.3, repeats: true) { [weak self] timer in
+        shakerTimer = Timer.scheduledTimer(withTimeInterval: 0.15, repeats: true) { [weak self] timer in
             guard let self = self else {
                 timer.invalidate()
                 return
@@ -532,9 +936,9 @@ class StickFigureGameState {
             } else if step == 2 {
                 // Move to frame 2 (drinking)
                 self.shakerFrame = 2
-            } else if step >= 2 && step < 5 {
-                // Hold frame 2 for ~1 second (3 more intervals of 0.3s)
-            } else if step == 5 {
+            } else if step >= 2 && step < 3 {
+                // Hold frame 2 briefly (~0.15s)
+            } else if step == 3 {
                 // Back to frame 1
                 self.shakerFrame = 1
             } else {
@@ -582,17 +986,7 @@ class StickFigureGameState {
     }
 
     func recordActionTime(action: String, duration: Double) {
-        if action == "jump" {
-            totalJumpTime += duration
-        } else if action == "move" {
-            totalMoveTime += duration
-        } else if action == "curls" {
-            totalCurlsTime += duration
-        } else if action == "kettlebell" {
-            totalKettlebellTime += duration
-        } else if action == "pullup" {
-            totalPullupTime += duration
-        }
+        actionTimes[action, default: 0] += duration
         saveStats()
     }
 
@@ -631,8 +1025,7 @@ class StickFigureGameState {
         floatingTextTimer?.invalidate()
         idleTimer?.invalidate()
         waveTimer?.invalidate()
-        curlsTimer?.invalidate()
-        kettlebellTimer?.invalidate()
+        actionTimer?.invalidate()
         shakerTimer?.invalidate()
         leafSpawnTimer?.invalidate()
         shakerSpawnTimer?.invalidate()
@@ -641,41 +1034,582 @@ class StickFigureGameState {
     }
 }
 
+// MARK: - Corner Radius Modifier
+
+extension View {
+    func cornerRadius(_ radius: CGFloat, corners: UIRectCorner) -> some View {
+        clipShape(RoundedCorner(radius: radius, corners: corners))
+    }
+}
+
+struct RoundedCorner: Shape {
+    var radius: CGFloat = .infinity
+    var corners: UIRectCorner = .allCorners
+
+    func path(in rect: CGRect) -> Path {
+        let path = UIBezierPath(roundedRect: rect,
+                                byRoundingCorners: corners,
+                                cornerRadii: CGSize(width: radius, height: radius))
+        return Path(path.cgPath)
+    }
+}
+
 // MARK: - Main Game View
+
+// MARK: - Game Map View
+
+// MARK: - Game 1 Module View
 
 private struct Game1ModuleView: View {
     let module: Game1Module
     @State private var gameState = StickFigureGameState()
+    @State private var mapState = GameMapState()
+    @State private var showGameMap = true
+    @State private var hasInitializedMap = false
+    @State private var isTouchActive = false
+    @State private var lastTouchLocation: CGPoint = .zero
+    @State private var lastProcessedTouchLocation: CGPoint = .zero
+    @State private var targetSetForCurrentPress = false
     @State private var showStats = false
     @State private var showActionPicker = false
+    @State private var showLevelPicker = false
     @Environment(ModuleState.self) var moduleState
 
+    @ViewBuilder
     var body: some View {
+        if showGameMap {
+            mapScreen
+        } else {
+            gameplayScreen
+        }
+    }
+    
+    private var mapScreen: some View {
         ZStack {
-            Color(red: 0.95, green: 0.95, blue: 0.98)
-                .ignoresSafeArea()
-
             VStack(spacing: 0) {
+                // Top bar - Fixed at top
                 HStack {
-                    Button(action: {
-                        gameState.animationTimer?.invalidate()
-                        gameState.jumpTimer?.invalidate()
-                        gameState.floatingTextTimer?.invalidate()
-                        gameState.idleTimer?.invalidate()
-                        gameState.waveTimer?.invalidate()
-                        gameState.curlsTimer?.invalidate()
-                        gameState.kettlebellTimer?.invalidate()
-                        gameState.sessionActions.removeAll() // Reset combo for next session
-                        gameState.saveStats()
-                        moduleState.selectModule(ModuleIDs.dashboard)
-                    }) {
-                        HStack(spacing: 4) {
-                            Image(systemName: "xmark")
-                            Text("Exit")
+                        Button(action: {
+                            moduleState.selectModule(ModuleIDs.dashboard)
+                        }) {
+                            HStack(spacing: 4) {
+                                Image(systemName: "xmark")
+                                Text("Exit")
+                            }
+                            .foregroundColor(.white)
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 8)
+                            .background(Color.black.opacity(0.6))
+                            .cornerRadius(6)
                         }
-                        .foregroundColor(.white)
+                        
+                        Spacer()
+                        
+                        VStack(spacing: 4) {
+                            Text("Level \(gameState.currentLevel)")
+                                .font(.system(size: 14, weight: .bold))
+                                .foregroundColor(.white)
+                            
+                            GeometryReader { geometry in
+                                let pointsNeeded = gameState.pointsNeeded(forLevel: gameState.currentLevel)
+                                let progress = min(CGFloat(gameState.currentPoints) / CGFloat(pointsNeeded), 1.0)
+                                
+                                ZStack(alignment: .leading) {
+                                    RoundedRectangle(cornerRadius: 4)
+                                        .fill(Color.white.opacity(0.3))
+                                        .frame(height: 8)
+                                    
+                                    RoundedRectangle(cornerRadius: 4)
+                                        .fill(Color.green)
+                                        .frame(width: geometry.size.width * progress, height: 8)
+                                }
+                            }
+                            .frame(width: 120, height: 8)
+                            
+                            Text("\(gameState.currentPoints)/\(gameState.pointsNeeded(forLevel: gameState.currentLevel))")
+                                .font(.system(size: 10))
+                                .foregroundColor(.white.opacity(0.8))
+                        }
                         .padding(.horizontal, 12)
                         .padding(.vertical, 8)
+                        .background(Color.black.opacity(0.6))
+                        .cornerRadius(6)
+                        
+                        Spacer()
+                        
+                        Button(action: {
+                            showStats.toggle()
+                        }) {
+                            HStack(spacing: 4) {
+                                Image(systemName: "chart.bar.fill")
+                                Text("Stats")
+                            }
+                            .foregroundColor(.white)
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 8)
+                            .background(Color.black.opacity(0.6))
+                            .cornerRadius(6)
+                        }
+                    }
+                    .padding(12)
+                    .padding(.top, 50)
+                    .background(Color(red: 0.95, green: 0.95, blue: 0.98))
+                    .zIndex(1000)
+                    
+                    // Map area
+                    GeometryReader { geometry in
+                        ZStack {
+                            Rectangle()
+                                .fill(Color(red: 0.85, green: 0.95, blue: 0.85))
+                            
+                            // Draw connection lines between levels
+                            connectionLinesView(mapState: mapState)
+                            
+                            // Level boxes - manually create boxes without ForEach
+                            ZStack {
+                                // Level 1
+                                let box1 = mapState.levelBoxes.count > 0 ? mapState.levelBoxes[0] : nil
+                                if let box = box1 {
+                                    let screenX = box.x - mapState.mapOffsetX
+                                    let screenY = box.y - mapState.mapOffsetY
+                                    VStack {
+                                        Text("Level \(box.levelNumber)")
+                                            .font(.system(size: 14, weight: .bold))
+                                            .foregroundColor(box.isAvailable && !box.isCompleted ? .black : .white)
+                                    }
+                                    .frame(width: box.width, height: box.height)
+                                    .background(box.isCompleted ? Color.green : (box.isAvailable ? Color.white : Color.gray))
+                                    .cornerRadius(8)
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 8)
+                                            .stroke(box.isAvailable && !box.isCompleted ? Color.blue : Color.clear, lineWidth: 3)
+                                    )
+                                    .position(x: screenX, y: screenY)
+                                }
+                                
+                                // Level 2
+                                let box2 = mapState.levelBoxes.count > 1 ? mapState.levelBoxes[1] : nil
+                                if let box = box2 {
+                                    let screenX = box.x - mapState.mapOffsetX
+                                    let screenY = box.y - mapState.mapOffsetY
+                                    VStack {
+                                        Text("Level \(box.levelNumber)")
+                                            .font(.system(size: 14, weight: .bold))
+                                            .foregroundColor(box.isAvailable && !box.isCompleted ? .black : .white)
+                                    }
+                                    .frame(width: box.width, height: box.height)
+                                    .background(box.isCompleted ? Color.green : (box.isAvailable ? Color.white : Color.gray))
+                                    .cornerRadius(8)
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 8)
+                                            .stroke(box.isAvailable && !box.isCompleted ? Color.blue : Color.clear, lineWidth: 3)
+                                    )
+                                    .position(x: screenX, y: screenY)
+                                }
+                                
+                                // Level 3
+                                let box3 = mapState.levelBoxes.count > 2 ? mapState.levelBoxes[2] : nil
+                                if let box = box3 {
+                                    let screenX = box.x - mapState.mapOffsetX
+                                    let screenY = box.y - mapState.mapOffsetY
+                                    VStack {
+                                        Text("Level \(box.levelNumber)")
+                                            .font(.system(size: 14, weight: .bold))
+                                            .foregroundColor(box.isAvailable && !box.isCompleted ? .black : .white)
+                                    }
+                                    .frame(width: box.width, height: box.height)
+                                    .background(box.isCompleted ? Color.green : (box.isAvailable ? Color.white : Color.gray))
+                                    .cornerRadius(8)
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 8)
+                                            .stroke(box.isAvailable && !box.isCompleted ? Color.blue : Color.clear, lineWidth: 3)
+                                    )
+                                    .position(x: screenX, y: screenY)
+                                }
+                                
+                                // Level 4
+                                let box4 = mapState.levelBoxes.count > 3 ? mapState.levelBoxes[3] : nil
+                                if let box = box4 {
+                                    let screenX = box.x - mapState.mapOffsetX
+                                    let screenY = box.y - mapState.mapOffsetY
+                                    VStack {
+                                        Text("Level \(box.levelNumber)")
+                                            .font(.system(size: 14, weight: .bold))
+                                            .foregroundColor(box.isAvailable && !box.isCompleted ? .black : .white)
+                                    }
+                                    .frame(width: box.width, height: box.height)
+                                    .background(box.isCompleted ? Color.green : (box.isAvailable ? Color.white : Color.gray))
+                                    .cornerRadius(8)
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 8)
+                                            .stroke(box.isAvailable && !box.isCompleted ? Color.blue : Color.clear, lineWidth: 3)
+                                    )
+                                    .position(x: screenX, y: screenY)
+                                }
+                                
+                                // Level 5
+                                let box5 = mapState.levelBoxes.count > 4 ? mapState.levelBoxes[4] : nil
+                                if let box = box5 {
+                                    let screenX = box.x - mapState.mapOffsetX
+                                    let screenY = box.y - mapState.mapOffsetY
+                                    VStack {
+                                        Text("Level \(box.levelNumber)")
+                                            .font(.system(size: 14, weight: .bold))
+                                            .foregroundColor(box.isAvailable && !box.isCompleted ? .black : .white)
+                                    }
+                                    .frame(width: box.width, height: box.height)
+                                    .background(box.isCompleted ? Color.green : (box.isAvailable ? Color.white : Color.gray))
+                                    .cornerRadius(8)
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 8)
+                                            .stroke(box.isAvailable && !box.isCompleted ? Color.blue : Color.clear, lineWidth: 3)
+                                    )
+                                    .position(x: screenX, y: screenY)
+                                }
+                                
+                                // Level 6
+                                let box6 = mapState.levelBoxes.count > 5 ? mapState.levelBoxes[5] : nil
+                                if let box = box6 {
+                                    let screenX = box.x - mapState.mapOffsetX
+                                    let screenY = box.y - mapState.mapOffsetY
+                                    VStack {
+                                        Text("Level \(box.levelNumber)")
+                                            .font(.system(size: 14, weight: .bold))
+                                            .foregroundColor(box.isAvailable && !box.isCompleted ? .black : .white)
+                                    }
+                                    .frame(width: box.width, height: box.height)
+                                    .background(box.isCompleted ? Color.green : (box.isAvailable ? Color.white : Color.gray))
+                                    .cornerRadius(8)
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 8)
+                                            .stroke(box.isAvailable && !box.isCompleted ? Color.blue : Color.clear, lineWidth: 3)
+                                    )
+                                    .position(x: screenX, y: screenY)
+                                }
+                                
+                                // Level 7
+                                let box7 = mapState.levelBoxes.count > 6 ? mapState.levelBoxes[6] : nil
+                                if let box = box7 {
+                                    let screenX = box.x - mapState.mapOffsetX
+                                    let screenY = box.y - mapState.mapOffsetY
+                                    VStack {
+                                        Text("Level \(box.levelNumber)")
+                                            .font(.system(size: 14, weight: .bold))
+                                            .foregroundColor(box.isAvailable && !box.isCompleted ? .black : .white)
+                                    }
+                                    .frame(width: box.width, height: box.height)
+                                    .background(box.isCompleted ? Color.green : (box.isAvailable ? Color.white : Color.gray))
+                                    .cornerRadius(8)
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 8)
+                                            .stroke(box.isAvailable && !box.isCompleted ? Color.blue : Color.clear, lineWidth: 3)
+                                    )
+                                    .position(x: screenX, y: screenY)
+                                }
+                            }
+                            
+                            // Character - always render at center of screen for smooth experience
+                            VStack {
+                                Spacer()
+                                Image("topview\(mapState.animationFrame)")
+                                    .resizable()
+                                    .scaledToFit()
+                                    .frame(width: 40, height: 40)
+                                    .rotationEffect(.degrees(mapState.characterRotation + 90))
+                                Spacer()
+                            }
+                            .frame(width: 50, height: 50)
+                            .position(x: geometry.size.width / 2, y: geometry.size.height / 2)
+                        }
+                        .contentShape(Rectangle())
+                        .gesture(
+                            DragGesture(minimumDistance: 0)
+                                .onChanged { value in
+                                    mapState.isTouchActive = true
+                                    
+                                    // Only process if map is initialized
+                                    if !hasInitializedMap {
+                                        return
+                                    }
+                                    
+                                    // Update target only if finger has moved significantly from last processed location
+                                    let touchDx = value.location.x - lastProcessedTouchLocation.x
+                                    let touchDy = value.location.y - lastProcessedTouchLocation.y
+                                    let touchDist = sqrt(touchDx * touchDx + touchDy * touchDy)
+                                    
+                                    if touchDist > 30 || lastProcessedTouchLocation == .zero {
+                                        lastProcessedTouchLocation = value.location
+                                        
+                                        // Convert to world coordinates
+                                        let tapWorldX = value.location.x + mapState.mapOffsetX
+                                        let tapWorldY = value.location.y + mapState.mapOffsetY
+                                        
+                                        mapState.targetX = tapWorldX
+                                        mapState.targetY = tapWorldY
+                                        mapState.isMoving = true
+                                    }
+                                }
+                                .onEnded { _ in
+                                    mapState.isTouchActive = false
+                                    lastTouchLocation = .zero
+                                    lastProcessedTouchLocation = .zero
+                                    targetSetForCurrentPress = false
+                                }
+                        )
+                        .onAppear {
+                            // Reinitialize level boxes based on current progress
+                            mapState.initializeLevelBoxes(currentLevel: gameState.currentLevel)
+                            
+                            // Only set character position on first load, not when returning from level
+                            if !hasInitializedMap {
+                                // Center character NEXT TO the current/highest unlocked level (not on top of it)
+                                if gameState.currentLevel <= mapState.levelBoxes.count {
+                                    let targetBox = mapState.levelBoxes[gameState.currentLevel - 1]
+                                    // Position character to the left of the level box with offset
+                                    let offset: CGFloat = 100 // Distance from level box
+                                    mapState.characterX = targetBox.x - offset
+                                    mapState.characterY = targetBox.y
+                                    mapState.targetX = targetBox.x - offset
+                                    mapState.targetY = targetBox.y
+                                } else {
+                                    // Fallback: center on map
+                                    mapState.characterX = mapState.mapWidth / 2
+                                    mapState.characterY = mapState.mapHeight / 2
+                                    mapState.targetX = mapState.mapWidth / 2
+                                    mapState.targetY = mapState.mapHeight / 2
+                                }
+                                hasInitializedMap = true
+                            }
+                            
+                            mapState.animationTimer = Timer.scheduledTimer(withTimeInterval: 0.08, repeats: true) { _ in
+                                mapState.moveCharacterTowards(mapState.targetX, mapState.targetY, deltaTime: 0.08)
+                                mapState.updateMapOffset(screenWidth: geometry.size.width, screenHeight: geometry.size.height)
+                                
+                                if mapState.isMoving {
+                                    mapState.animationFrame = mapState.animationFrame == 2 ? 3 : 2
+                                } else {
+                                    mapState.animationFrame = 1
+                                }
+                                
+                                if let levelNumber = mapState.checkLevelBoxCollision() {
+                                    let levelBox = mapState.levelBoxes[levelNumber - 1]
+                                    // Only allow entry if available AND not completed
+                                    if levelBox.isAvailable && !levelBox.isCompleted {
+                                        gameState.currentLevel = levelNumber
+                                        gameState.initializeRoom("level_\(levelNumber)")
+                                        gameState.figurePosition = 0
+                                        showGameMap = false
+                                        mapState.animationTimer?.invalidate()
+                                        mapState.animationTimer = nil
+                                    }
+                                }
+                            }
+                        }
+                        .onDisappear {
+                            mapState.animationTimer?.invalidate()
+                            mapState.animationTimer = nil
+                        }
+                }
+            }
+            
+            // Stats overlay for map screen
+            if showStats {
+                VStack(spacing: 0) {
+                    HStack {
+                        Text("Statistics")
+                            .font(.headline)
+                            .fontWeight(.bold)
+
+                        Spacer()
+
+                        Button(action: { showStats = false }) {
+                            Image(systemName: "xmark.circle.fill")
+                                .font(.system(size: 20))
+                                .foregroundColor(.gray)
+                        }
+                    }
+                    .padding(16)
+                    .background(Color.white)
+
+                    List {
+                        StatRow(label: "Level", value: "\(gameState.currentLevel)")
+                        StatRow(label: "Current Points", value: "\(gameState.currentPoints)/\(gameState.pointsNeeded(forLevel: gameState.currentLevel))")
+                        StatRow(label: "Time Elapsed", value: String(format: "%.1f s", gameState.timeElapsed))
+                        StatRow(label: "All Time Elapsed", value: gameState.formatTimeDuration(gameState.allTimeElapsed * 1000))
+                        Divider()
+                        Text("Actions & Points")
+                            .font(.headline)
+                            .foregroundColor(.primary)
+                        
+                        // Dynamically generate action rows from config
+                        ForEach(ACTION_CONFIGS, id: \.id) { config in
+                            let timeValue = gameState.actionTimes[config.id] ?? 0
+                            let isCurrentLevel = config.unlockLevel == 1
+                            StatRow(
+                                label: "Lvl \(config.unlockLevel): \(config.displayName)",
+                                value: gameState.formatTimeDuration(timeValue),
+                                isUnlocked: gameState.currentLevel >= config.unlockLevel,
+                                isCurrentLevel: isCurrentLevel
+                            )
+                        }
+                        
+                        Divider()
+                        Text("Catchables (Always Available)")
+                            .font(.headline)
+                            .foregroundColor(.primary)
+                        StatRow(label: "Leaves", value: "\(gameState.totalLeavesCaught) caught", isUnlocked: true)
+                        StatRow(label: "Shakers", value: "\(gameState.totalShakersCaught) caught", isUnlocked: true)
+                        Divider()
+                        Text("Combo Boost")
+                            .font(.subheadline)
+                            .foregroundColor(.gray)
+                        Text("Mix different level-based actions (Run, Jump, Curls, etc.) in one session for a bonus! 2 actions = +2%, 3 actions = +3%, etc. Max combo = your current level. Leaves & shakers give points but don't count toward combo.")
+                            .font(.caption)
+                            .foregroundColor(.gray)
+                            .padding(.top, 2)
+                        Divider()
+                        Text("Developer Debug")
+                            .font(.subheadline)
+                            .foregroundColor(.red)
+                        
+                        HStack {
+                            Text("Set Level:")
+                                .foregroundColor(.gray)
+                            Spacer()
+                            Button(action: {
+                                showLevelPicker = true
+                            }) {
+                                HStack(spacing: 6) {
+                                    Text("Level \(gameState.currentLevel)")
+                                        .foregroundColor(.primary)
+                                    Image(systemName: "chevron.up.chevron.down")
+                                        .font(.caption)
+                                        .foregroundColor(.gray)
+                                }
+                                .padding(.horizontal, 12)
+                                .padding(.vertical, 6)
+                                .background(Color(UIColor.systemGray6))
+                                .cornerRadius(6)
+                            }
+                        }
+                        
+                        Button(action: {
+                            // Reset all game data
+                            gameState.currentLevel = 1
+                            gameState.currentPoints = 0
+                            gameState.sessionActions.removeAll()
+                            gameState.actionTimes.removeAll()
+                            gameState.totalLeavesCaught = 0
+                            gameState.totalShakersCaught = 0
+                            gameState.allTimeElapsed = 0
+                            gameState.timeElapsed = 0
+                            gameState.score = 0
+                            gameState.highScore = 0
+                            gameState.saveStats()
+                            gameState.saveHighScore()
+                            // Reinitialize map level boxes after reset
+                            mapState.initializeLevelBoxes(currentLevel: 1)
+                        }) {
+                            HStack {
+                                Image(systemName: "trash.fill")
+                                Text("Reset All Game Data")
+                            }
+                            .foregroundColor(.white)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 12)
+                            .background(Color.red)
+                            .cornerRadius(8)
+                        }
+                        .padding(.top, 8)
+                    }
+
+                    Spacer()
+                }
+                .frame(maxHeight: .infinity, alignment: .top)
+                .background(Color.white)
+                .cornerRadius(12, corners: [.topLeft, .topRight])
+                .padding(.horizontal, 12)
+                .padding(.top, 50)
+                .transition(.move(edge: .bottom))
+            }
+            
+            if showLevelPicker {
+                Color.black.opacity(0.3)
+                    .ignoresSafeArea()
+                    .onTapGesture {
+                        showLevelPicker = false
+                    }
+                
+                VStack(spacing: 0) {
+                    Spacer()
+                    
+                    VStack(spacing: 0) {
+                        HStack {
+                            Text("Select Level")
+                                .font(.headline)
+                                .fontWeight(.bold)
+                            
+                            Spacer()
+                            
+                            Button(action: { showLevelPicker = false }) {
+                                Image(systemName: "xmark.circle.fill")
+                                    .font(.system(size: 20))
+                                    .foregroundColor(.gray)
+                            }
+                        }
+                        .padding(16)
+                        .background(Color.white)
+                        
+                        VStack(spacing: 0) {
+                            let maxLevel = ACTION_CONFIGS.map { $0.unlockLevel }.max() ?? 7
+                            ForEach(1...maxLevel, id: \.self) { level in
+                                if level > 1 {
+                                    Divider()
+                                }
+                                ActionPickerButton(title: "Level \(level)", isSelected: gameState.currentLevel == level) {
+                                    gameState.currentLevel = level
+                                    gameState.currentPoints = 0
+                                    gameState.saveStats()
+                                    // Reinitialize map level boxes after level change
+                                    mapState.initializeLevelBoxes(currentLevel: level)
+                                    showLevelPicker = false
+                                }
+                            }
+                        }
+                        .background(Color.white)
+                    }
+                    .cornerRadius(12, corners: [.topLeft, .topRight])
+                    .padding(.horizontal, 12)
+                }
+                .transition(.move(edge: .bottom))
+            }
+        }
+    }
+    
+    private var gameplayScreen: some View {
+        ZStack {
+                VStack(spacing: 0) {
+                    Spacer()
+                        .frame(height: 50)
+                    HStack {
+                        Button(action: {
+                            gameState.animationTimer?.invalidate()
+                            gameState.jumpTimer?.invalidate()
+                            gameState.floatingTextTimer?.invalidate()
+                            gameState.idleTimer?.invalidate()
+                            gameState.waveTimer?.invalidate()
+                            gameState.actionTimer?.invalidate()
+                            gameState.sessionActions.removeAll() // Reset combo for next session
+                            gameState.saveStats()
+                            moduleState.selectModule(ModuleIDs.dashboard)
+                        }) {
+                            HStack(spacing: 4) {
+                                Image(systemName: "xmark")
+                                Text("Exit")
+                            }
+                            .foregroundColor(.white)
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 8)
                         .background(Color.black.opacity(0.6))
                         .cornerRadius(6)
                     }
@@ -689,7 +1623,7 @@ private struct Game1ModuleView: View {
                             .foregroundColor(.white)
                         
                         GeometryReader { geometry in
-                            let pointsNeeded = gameState.currentLevel * 100
+                            let pointsNeeded = gameState.pointsNeeded(forLevel: gameState.currentLevel)
                             let progress = min(CGFloat(gameState.currentPoints) / CGFloat(pointsNeeded), 1.0)
                             
                             ZStack(alignment: .leading) {
@@ -704,7 +1638,7 @@ private struct Game1ModuleView: View {
                         }
                         .frame(width: 120, height: 8)
                         
-                        Text("\(gameState.currentPoints)/\(gameState.currentLevel * 100)")
+                        Text("\(gameState.currentPoints)/\(gameState.pointsNeeded(forLevel: gameState.currentLevel))")
                             .font(.system(size: 10))
                             .foregroundColor(.white.opacity(0.8))
                         
@@ -769,7 +1703,17 @@ private struct Game1ModuleView: View {
 
                 Spacer()
 
-                GamePlayArea(gameState: gameState)
+                GamePlayArea(
+                    gameState: gameState,
+                    mapState: mapState,
+                    showGameMap: $showGameMap,
+                    startMovingLeftAction: startMovingLeft,
+                    stopMovingLeftAction: stopMovingLeft,
+                    startMovingRightAction: startMovingRight,
+                    stopMovingRightAction: stopMovingRight,
+                    startJumpAction: startJump,
+                    startActionAction: startAction
+                )
 
                 Spacer()
 
@@ -796,7 +1740,8 @@ private struct Game1ModuleView: View {
                     }
                     .padding(.horizontal, 12)
                 }
-                .padding(.bottom, 12)
+                .padding(.top, 50)
+                .padding(.bottom, 50)
             }
 
             if showStats {
@@ -819,18 +1764,26 @@ private struct Game1ModuleView: View {
 
                     List {
                         StatRow(label: "Level", value: "\(gameState.currentLevel)")
-                        StatRow(label: "Current Points", value: "\(gameState.currentPoints)/\(gameState.currentLevel * 100)")
+                        StatRow(label: "Current Points", value: "\(gameState.currentPoints)/\(gameState.pointsNeeded(forLevel: gameState.currentLevel))")
                         StatRow(label: "Time Elapsed", value: String(format: "%.1f s", gameState.timeElapsed))
                         StatRow(label: "All Time Elapsed", value: gameState.formatTimeDuration(gameState.allTimeElapsed * 1000))
                         Divider()
                         Text("Actions & Points")
                             .font(.headline)
                             .foregroundColor(.primary)
-                        StatRow(label: "Lvl 1: Run", value: gameState.formatTimeDuration(gameState.totalMoveTime), isUnlocked: true, isCurrentLevel: true)
-                        StatRow(label: "Lvl 2: Jump", value: gameState.formatTimeDuration(gameState.totalJumpTime), isUnlocked: gameState.currentLevel >= 2)
-                        StatRow(label: "Lvl 3: Curls", value: gameState.formatTimeDuration(gameState.totalCurlsTime), isUnlocked: gameState.currentLevel >= 3)
-                        StatRow(label: "Lvl 4: Kettlebell swings", value: gameState.formatTimeDuration(gameState.totalKettlebellTime), isUnlocked: gameState.currentLevel >= 4)
-                        StatRow(label: "Lvl 5: Pull ups", value: gameState.formatTimeDuration(gameState.totalPullupTime), isUnlocked: gameState.currentLevel >= 5)
+                        
+                        // Dynamically generate action rows from config
+                        ForEach(ACTION_CONFIGS, id: \.id) { config in
+                            let timeValue = gameState.actionTimes[config.id] ?? 0
+                            let isCurrentLevel = config.unlockLevel == 1
+                            StatRow(
+                                label: "Lvl \(config.unlockLevel): \(config.displayName)",
+                                value: gameState.formatTimeDuration(timeValue),
+                                isUnlocked: gameState.currentLevel >= config.unlockLevel,
+                                isCurrentLevel: isCurrentLevel
+                            )
+                        }
+                        
                         Divider()
                         Text("Catchables (Always Available)")
                             .font(.headline)
@@ -854,19 +1807,21 @@ private struct Game1ModuleView: View {
                             Text("Set Level:")
                                 .foregroundColor(.gray)
                             Spacer()
-                            Picker("Level", selection: Binding(
-                                get: { gameState.currentLevel },
-                                set: { newLevel in
-                                    gameState.currentLevel = newLevel
-                                    gameState.currentPoints = 0
-                                    gameState.saveStats()
+                            Button(action: {
+                                showLevelPicker = true
+                            }) {
+                                HStack(spacing: 6) {
+                                    Text("Level \(gameState.currentLevel)")
+                                        .foregroundColor(.primary)
+                                    Image(systemName: "chevron.up.chevron.down")
+                                        .font(.caption)
+                                        .foregroundColor(.gray)
                                 }
-                            )) {
-                                ForEach(1...5, id: \.self) { level in
-                                    Text("Level \(level)").tag(level)
-                                }
+                                .padding(.horizontal, 12)
+                                .padding(.vertical, 6)
+                                .background(Color(UIColor.systemGray6))
+                                .cornerRadius(6)
                             }
-                            .pickerStyle(.menu)
                         }
                         
                         Button(action: {
@@ -874,11 +1829,7 @@ private struct Game1ModuleView: View {
                             gameState.currentLevel = 1
                             gameState.currentPoints = 0
                             gameState.sessionActions.removeAll()
-                            gameState.totalJumpTime = 0
-                            gameState.totalMoveTime = 0
-                            gameState.totalCurlsTime = 0
-                            gameState.totalKettlebellTime = 0
-                            gameState.totalPullupTime = 0
+                            gameState.actionTimes.removeAll()
                             gameState.totalLeavesCaught = 0
                             gameState.totalShakersCaught = 0
                             gameState.allTimeElapsed = 0
@@ -887,6 +1838,8 @@ private struct Game1ModuleView: View {
                             gameState.highScore = 0
                             gameState.saveStats()
                             gameState.saveHighScore()
+                            // Reinitialize map level boxes after reset
+                            mapState.initializeLevelBoxes(currentLevel: 1)
                         }) {
                             HStack {
                                 Image(systemName: "trash.fill")
@@ -907,7 +1860,7 @@ private struct Game1ModuleView: View {
                 .background(Color.white)
                 .cornerRadius(12, corners: [.topLeft, .topRight])
                 .padding(.horizontal, 12)
-                .padding(.top, 12)
+                .padding(.top, 50)
                 .transition(.move(edge: .bottom))
             }
             
@@ -939,40 +1892,71 @@ private struct Game1ModuleView: View {
                         .background(Color.white)
                         
                         VStack(spacing: 0) {
-                            ActionPickerButton(title: "Run", isSelected: gameState.selectedAction == "Run") {
-                                gameState.selectedAction = "Run"
-                                showActionPicker = false
-                            }
-                            
-                            if gameState.currentLevel >= 2 {
-                                Divider()
-                                ActionPickerButton(title: "Jump", isSelected: gameState.selectedAction == "Jump") {
-                                    gameState.selectedAction = "Jump"
-                                    showActionPicker = false
+                            // Dynamically generate action buttons from config
+                            ForEach(Array(ACTION_CONFIGS.enumerated()), id: \.element.id) { index, config in
+                                if index > 0 {
+                                    Divider()
+                                }
+                                
+                                if gameState.currentLevel >= config.unlockLevel {
+                                    ActionPickerButton(
+                                        title: config.displayName,
+                                        isSelected: gameState.selectedAction == config.displayName
+                                    ) {
+                                        gameState.selectedAction = config.displayName
+                                        showActionPicker = false
+                                    }
                                 }
                             }
+                        }
+                        .background(Color.white)
+                    }
+                    .cornerRadius(12, corners: [.topLeft, .topRight])
+                    .padding(.horizontal, 12)
+                }
+                .transition(.move(edge: .bottom))
+            }
+            
+            if showLevelPicker {
+                Color.black.opacity(0.3)
+                    .ignoresSafeArea()
+                    .onTapGesture {
+                        showLevelPicker = false
+                    }
+                
+                VStack(spacing: 0) {
+                    Spacer()
+                    
+                    VStack(spacing: 0) {
+                        HStack {
+                            Text("Select Level")
+                                .font(.headline)
+                                .fontWeight(.bold)
                             
-                            if gameState.currentLevel >= 3 {
-                                Divider()
-                                ActionPickerButton(title: "Bicep Curls", isSelected: gameState.selectedAction == "Bicep Curls") {
-                                    gameState.selectedAction = "Bicep Curls"
-                                    showActionPicker = false
-                                }
+                            Spacer()
+                            
+                            Button(action: { showLevelPicker = false }) {
+                                Image(systemName: "xmark.circle.fill")
+                                    .font(.system(size: 20))
+                                    .foregroundColor(.gray)
                             }
-                            
-                            if gameState.currentLevel >= 4 {
-                                Divider()
-                                ActionPickerButton(title: "Kettlebell swings", isSelected: gameState.selectedAction == "Kettlebell swings") {
-                                    gameState.selectedAction = "Kettlebell swings"
-                                    showActionPicker = false
+                        }
+                        .padding(16)
+                        .background(Color.white)
+                        
+                        VStack(spacing: 0) {
+                            let maxLevel = ACTION_CONFIGS.map { $0.unlockLevel }.max() ?? 7
+                            ForEach(1...maxLevel, id: \.self) { level in
+                                if level > 1 {
+                                    Divider()
                                 }
-                            }
-                            
-                            if gameState.currentLevel >= 5 {
-                                Divider()
-                                ActionPickerButton(title: "Pull ups", isSelected: gameState.selectedAction == "Pull ups") {
-                                    gameState.selectedAction = "Pull ups"
-                                    showActionPicker = false
+                                ActionPickerButton(title: "Level \(level)", isSelected: gameState.currentLevel == level) {
+                                    gameState.currentLevel = level
+                                    gameState.currentPoints = 0
+                                    gameState.saveStats()
+                                    // Reinitialize map level boxes after level change
+                                    mapState.initializeLevelBoxes(currentLevel: level)
+                                    showLevelPicker = false
                                 }
                             }
                         }
@@ -984,6 +1968,58 @@ private struct Game1ModuleView: View {
                 .transition(.move(edge: .bottom))
             }
         }
+        .onChange(of: gameState.shouldReturnToMap) { oldValue, newValue in
+            if newValue {
+                // Delay to show the "Level Complete" message before returning
+                DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+                    // Update map level boxes for new level
+                    mapState.initializeLevelBoxes(currentLevel: gameState.currentLevel)
+                    
+                    // Position character near the new unlocked level
+                    if gameState.currentLevel <= mapState.levelBoxes.count {
+                        let levelBox = mapState.levelBoxes[gameState.currentLevel - 1]
+                        mapState.characterX = levelBox.x - 100
+                        mapState.characterY = levelBox.y
+                        mapState.targetX = levelBox.x - 100
+                        mapState.targetY = levelBox.y
+                    }
+                    
+                    showGameMap = true
+                    gameState.shouldReturnToMap = false
+                }
+            }
+        }
+    }
+    
+    @ViewBuilder
+    private func connectionLinesView(mapState: GameMapState) -> some View {
+        ZStack {
+            let levelBoxes = mapState.levelBoxes.sorted { $0.levelNumber < $1.levelNumber }
+            
+            ForEach(0..<levelBoxes.count - 1, id: \.self) { index in
+                let from = levelBoxes[index]
+                let to = levelBoxes[index + 1]
+                
+                drawConnectionLine(from: from, to: to, mapState: mapState)
+            }
+        }
+    }
+    
+    private func drawConnectionLine(from: LevelBox, to: LevelBox, mapState: GameMapState) -> some View {
+        let fromScreenX = from.x - mapState.mapOffsetX
+        let fromScreenY = from.y - mapState.mapOffsetY
+        let toScreenX = to.x - mapState.mapOffsetX
+        let toScreenY = to.y - mapState.mapOffsetY
+        
+        return Canvas { context, size in
+            var path = Path()
+            path.move(to: CGPoint(x: fromScreenX, y: fromScreenY))
+            path.addLine(to: CGPoint(x: toScreenX, y: toScreenY))
+            
+            let stroke = StrokeStyle(lineWidth: 2, dash: [5, 5])
+            context.stroke(path, with: .color(.blue.opacity(0.5)), style: stroke)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 }
 
@@ -1018,7 +2054,16 @@ private struct ActionPickerButton: View {
 
 private struct GamePlayArea: View {
     @Bindable var gameState: StickFigureGameState
+    var mapState: GameMapState
+    @Binding var showGameMap: Bool
     @State private var collisionTimer: Timer?
+    
+    var startMovingLeftAction: (StickFigureGameState, GeometryProxy) -> Void
+    var stopMovingLeftAction: (StickFigureGameState) -> Void
+    var startMovingRightAction: (StickFigureGameState, GeometryProxy) -> Void
+    var stopMovingRightAction: (StickFigureGameState) -> Void
+    var startJumpAction: (StickFigureGameState, GeometryProxy) -> Void
+    var startActionAction: (ActionConfig, StickFigureGameState) -> Void
     
     private func getStandImage() -> String {
         if gameState.selectedAction == "Bicep Curls" {
@@ -1043,9 +2088,9 @@ private struct GamePlayArea: View {
                         .contentShape(Rectangle())
                         .onLongPressGesture(minimumDuration: 0.01, pressing: { isPressing in
                             if isPressing {
-                                startMovingLeft(gameState: gameState, geometry: geometry)
+                                startMovingLeftAction(gameState, geometry)
                             } else {
-                                stopMovingLeft(gameState: gameState)
+                                stopMovingLeftAction(gameState)
                             }
                         }, perform: {})
 
@@ -1054,9 +2099,9 @@ private struct GamePlayArea: View {
                         .contentShape(Rectangle())
                         .onLongPressGesture(minimumDuration: 0.01, pressing: { isPressing in
                             if isPressing {
-                                startMovingRight(gameState: gameState, geometry: geometry)
+                                startMovingRightAction(gameState, geometry)
                             } else {
-                                stopMovingRight(gameState: gameState)
+                                stopMovingRightAction(gameState)
                             }
                         }, perform: {})
                 }
@@ -1064,11 +2109,14 @@ private struct GamePlayArea: View {
                 VStack {
                     Spacer()
 
-                    if gameState.isPerformingPullup {
-                        Image("pullup\(gameState.pullupFrame)")
+                    // Generic action rendering
+                    if let actionId = gameState.currentPerformingAction,
+                       let config = ACTION_CONFIGS.first(where: { $0.id == actionId }) {
+                        Image("\(config.imagePrefix)\(gameState.actionFrame)")
                             .resizable()
                             .scaledToFit()
                             .frame(width: 100, height: 150)
+                            .scaleEffect(x: gameState.actionFlip ? -1 : 1, y: 1)
                             .position(x: figureX, y: figureY)
                             .onTapGesture {
                                 // Ignore extra taps during animation
@@ -1082,28 +2130,6 @@ private struct GamePlayArea: View {
                             .position(x: figureX, y: figureY)
                             .onTapGesture {
                                 // Ignore extra taps during animation
-                            }
-                    } else if gameState.isPerformingKettlebell {
-                        Image("kb\(gameState.kettlebellFrame)")
-                            .resizable()
-                            .scaledToFit()
-                            .frame(width: 100, height: 150)
-                            .scaleEffect(x: gameState.kettlebellFlip ? -1 : 1, y: 1)
-                            .position(x: figureX, y: figureY)
-                            .onTapGesture {
-                                // Ignore extra taps during animation
-                            }
-                    } else if gameState.isPerformingCurls {
-                        Image("guy_curls\(gameState.curlFrame)")
-                            .resizable()
-                            .scaledToFit()
-                            .frame(width: 100, height: 150)
-                            .scaleEffect(x: gameState.curlFlip ? -1 : 1, y: 1)
-                            .position(x: figureX, y: figureY)
-                            .onTapGesture {
-                                if gameState.selectedAction == "Bicep Curls" {
-                                    // Ignore extra taps during animation
-                                }
                             }
                     } else if gameState.isWaving {
                         Image("guy_wave\(gameState.waveFrame)")
@@ -1127,21 +2153,14 @@ private struct GamePlayArea: View {
                             .scaleEffect(x: gameState.facingRight ? 1 : -1, y: 1)
                             .position(x: figureX, y: figureY)
                             .onTapGesture {
-                                if gameState.selectedAction == "Bicep Curls" {
-                                    if !gameState.isPerformingCurls && !gameState.isJumping {
-                                        startCurls(gameState: gameState)
-                                    }
-                                } else if gameState.selectedAction == "Kettlebell swings" {
-                                    if !gameState.isPerformingKettlebell && !gameState.isJumping {
-                                        startKettlebell(gameState: gameState)
-                                    }
-                                } else if gameState.selectedAction == "Pull ups" {
-                                    if !gameState.isPerformingPullup && !gameState.isJumping {
-                                        startPullup(gameState: gameState)
-                                    }
-                                } else if gameState.selectedAction == "Jump" {
+                                // Handle action taps dynamically
+                                if gameState.selectedAction == "Jump" {
                                     if !gameState.isJumping && gameState.animationFrame == 0 {
-                                        startJump(gameState: gameState, geometry: geometry)
+                                        startJumpAction(gameState, geometry)
+                                    }
+                                } else if let config = ACTION_CONFIGS.first(where: { $0.displayName == gameState.selectedAction }) {
+                                    if gameState.currentPerformingAction == nil && !gameState.isJumping {
+                                        startActionAction(config, gameState)
                                     }
                                 }
                             }
@@ -1183,6 +2202,45 @@ private struct GamePlayArea: View {
                         .opacity(1.0 - (particle.age / particle.lifespan))
                         .position(x: particle.x * geometry.size.width, y: particle.y * geometry.size.height)
                 }
+                
+                // Render doors
+                ForEach(gameState.doors, id: \.id) { door in
+                    let doorScreenX = door.x * geometry.size.width
+                    let doorWidth = door.width * geometry.size.width
+                    let doorHeight = door.height * geometry.size.height
+                    let figureBottomY = baseY // Align with standing guy's bottom
+                    let doorScreenY = figureBottomY - (doorHeight / 2) // Center door vertically on this bottom line
+                    
+                    Rectangle()
+                        .fill(Color(red: 0.6, green: 0.4, blue: 0.2)) // Brown color
+                        .frame(width: doorWidth, height: doorHeight)
+                        .position(x: doorScreenX, y: doorScreenY)
+                        .overlay(
+                            Rectangle()
+                                .stroke(Color(red: 0.4, green: 0.2, blue: 0.0), lineWidth: 2) // Darker brown border
+                                .frame(width: doorWidth, height: doorHeight)
+                                .position(x: doorScreenX, y: doorScreenY)
+                        )
+                        .overlay(
+                            Text("🚪")
+                                .font(.system(size: 20))
+                                .position(x: doorScreenX, y: doorScreenY)
+                        )
+                }
+                
+                // Room label
+                VStack(alignment: .center) {
+                    Text(gameState.currentRoomName)
+                        .font(.system(size: 18, weight: .semibold))
+                        .foregroundColor(.primary)
+                        .padding(.vertical, 8)
+                        .padding(.horizontal, 12)
+                        .background(Color.white.opacity(0.8))
+                        .cornerRadius(6)
+                    Spacer()
+                }
+                .frame(maxHeight: .infinity, alignment: .top)
+                .padding(.top, 16)
             }
             .onAppear {
                 collisionTimer = Timer.scheduledTimer(withTimeInterval: 0.016, repeats: true) { [weak gameState] _ in
@@ -1192,6 +2250,44 @@ private struct GamePlayArea: View {
                     let currentFigureY = currentBaseY - gameState.jumpHeight
                     gameState.checkLeafCollisions(figureX: currentFigureX, figureY: currentFigureY, screenWidth: geometry.size.width, screenHeight: geometry.size.height)
                     gameState.checkShakerCollisions(figureX: currentFigureX, figureY: currentFigureY, screenWidth: geometry.size.width, screenHeight: geometry.size.height)
+                    
+                    // Check door collision with directional detection
+                    if let door = gameState.checkDoorCollision(figureX: currentFigureX, screenWidth: geometry.size.width, screenHeight: geometry.size.height, isMovingRight: gameState.isMovingRight, isMovingLeft: gameState.isMovingLeft) {
+                        // Check if returning to map
+                        if door.destinationRoomId == "map" {
+                            // Mark current level as completed and unlock next level
+                            if gameState.currentLevel <= mapState.levelBoxes.count {
+                                // Create a copy of the array to trigger SwiftUI update
+                                var updatedBoxes = mapState.levelBoxes
+                                updatedBoxes[gameState.currentLevel - 1].isCompleted = true
+                                
+                                // Unlock next level
+                                if gameState.currentLevel < updatedBoxes.count {
+                                    updatedBoxes[gameState.currentLevel].isAvailable = true
+                                }
+                                
+                                // Reassign to trigger update
+                                mapState.levelBoxes = updatedBoxes
+                            }
+                            
+                            // Position character near the level they just exited
+                            if gameState.currentLevel <= mapState.levelBoxes.count {
+                                let levelBox = mapState.levelBoxes[gameState.currentLevel - 1]
+                                // Position slightly to the left of the level box
+                                mapState.characterX = levelBox.x - 150
+                                mapState.characterY = levelBox.y
+                                mapState.targetX = levelBox.x - 150
+                                mapState.targetY = levelBox.y
+                            }
+                            showGameMap = true
+                        } else {
+                            // Enter the door - move to center of new room
+                            gameState.initializeRoom(door.destinationRoomId)
+                            gameState.figurePosition = 0 // Center
+                            gameState.stopMovingLeft()
+                            gameState.stopMovingRight()
+                        }
+                    }
                 }
             }
             .onDisappear {
@@ -1202,7 +2298,7 @@ private struct GamePlayArea: View {
                 guard isWaving else { return }
                 if Bool.random() {
                     let greeting = Bool.random() ? "*hi*" : "*hey*"
-                    gameState.addFloatingText(greeting, x: normX, y: textStartY, color: .orange)
+                    gameState.addFloatingText(greeting, x: normX, y: textStartY, color: .blue)
                 }
             }
         }
@@ -1210,7 +2306,7 @@ private struct GamePlayArea: View {
 }
 
 private func startMovingLeft(gameState: StickFigureGameState, geometry: GeometryProxy) {
-    if gameState.isJumping || gameState.isWaving || gameState.isPerformingCurls || gameState.isPerformingKettlebell || gameState.isPerformingShaker || gameState.isPerformingPullup { return }
+    if gameState.isJumping || gameState.isWaving || gameState.currentPerformingAction != nil || gameState.isPerformingShaker { return }
     gameState.resetIdleTimer()
     if gameState.currentAction != "move" {
         gameState.currentAction = "move"
@@ -1237,7 +2333,7 @@ private func stopMovingLeft(gameState: StickFigureGameState) {
 }
 
 private func startMovingRight(gameState: StickFigureGameState, geometry: GeometryProxy) {
-    if gameState.isJumping || gameState.isWaving || gameState.isPerformingCurls || gameState.isPerformingKettlebell || gameState.isPerformingShaker || gameState.isPerformingPullup { return }
+    if gameState.isJumping || gameState.isWaving || gameState.currentPerformingAction != nil || gameState.isPerformingShaker { return }
     gameState.resetIdleTimer()
     if gameState.currentAction != "move" {
         gameState.currentAction = "move"
@@ -1280,10 +2376,13 @@ private func startAnimation(gameState: StickFigureGameState) {
             let moveSpeed = 0.03 * speedMultiplier
 
             if gameState.isMovingRight {
-                gameState.figurePosition = min(gameState.figurePosition + moveSpeed, 1.0)
+                gameState.figurePosition += moveSpeed
             } else if gameState.isMovingLeft {
-                gameState.figurePosition = max(gameState.figurePosition - moveSpeed, -1.0)
+                gameState.figurePosition -= moveSpeed
             }
+            
+            // Handle screen wrap-around
+            gameState.handleScreenWrap(1.0) // Normalized width is 1.0
         }
     }
 }
@@ -1292,115 +2391,92 @@ private func stopAnimation(gameState: StickFigureGameState) {
     gameState.animationTimer?.invalidate()
     gameState.animationTimer = nil
     gameState.animationFrame = 0
+}// MARK: - Generic Action Handler
+
+private func startAction(_ config: ActionConfig, gameState: StickFigureGameState) {
+    // Stop other animations
+    gameState.animationTimer?.invalidate()
+    gameState.actionTimer?.invalidate()
+    gameState.resetIdleTimer()
+    
+    // Set up action state
+    gameState.currentPerformingAction = config.id
+    gameState.actionFrame = config.animationFrames.first ?? 1
+    gameState.actionFlip = config.supportsFlip ? Bool.random() : false
+    
+    let actionStartTime = Date().timeIntervalSince1970 * 1000
+    
+    // Handle variable timing (like pushups)
+    if let variableTiming = config.variableTiming {
+        startActionWithVariableTiming(config, gameState: gameState, variableTiming: variableTiming, startTime: actionStartTime)
+    } else {
+        startActionWithUniformTiming(config, gameState: gameState, startTime: actionStartTime)
+    }
 }
 
-private func startCurls(gameState: StickFigureGameState) {
-    gameState.animationTimer?.invalidate()
-    gameState.curlsTimer?.invalidate()
-    gameState.resetIdleTimer()
-    gameState.isPerformingCurls = true
-    gameState.curlFrame = 1
-    gameState.curlFlip = false
-
-    let curlStartTime = Date().timeIntervalSince1970 * 1000
-    let animationSequence = [2, 1, 2, 1, 3, 1]
-    let flipSequence: [Bool] = [false, false, true, false, false, false]
-
+private func startActionWithUniformTiming(_ config: ActionConfig, gameState: StickFigureGameState, startTime: Double) {
     var frameIndex = 0
-    // Apply speed boost: 0.2s normal, 0.1s boosted (2x faster)
-    let baseInterval: TimeInterval = 0.2
-    let interval = gameState.speedBoostEndTime != nil ? baseInterval / 2.0 : baseInterval
+    let speedMultiplier = (config.supportsSpeedBoost && gameState.speedBoostEndTime != nil) ? 0.5 : 1.0
+    let interval = config.baseFrameInterval * speedMultiplier
     
-    gameState.curlsTimer = Timer.scheduledTimer(withTimeInterval: interval, repeats: true) { _ in
-        if frameIndex < animationSequence.count {
-            gameState.curlFrame = animationSequence[frameIndex]
-            gameState.curlFlip = flipSequence[frameIndex]
+    gameState.actionTimer = Timer.scheduledTimer(withTimeInterval: interval, repeats: true) { _ in
+        if frameIndex < config.animationFrames.count {
+            gameState.actionFrame = config.animationFrames[frameIndex]
             frameIndex += 1
         } else {
-            gameState.curlsTimer?.invalidate()
-            gameState.curlsTimer = nil
-            gameState.isPerformingCurls = false
-            gameState.curlFrame = 0
-            gameState.curlFlip = false
-
-            let curlDuration = Date().timeIntervalSince1970 * 1000 - curlStartTime
-            gameState.recordActionTime(action: "curls", duration: curlDuration)
-            if gameState.currentLevel >= 3 {
-                gameState.addPoints(3, action: "curls")
+            // Animation complete
+            gameState.actionTimer?.invalidate()
+            gameState.actionTimer = nil
+            gameState.currentPerformingAction = nil
+            gameState.actionFrame = 0
+            gameState.actionFlip = false
+            
+            let duration = Date().timeIntervalSince1970 * 1000 - startTime
+            gameState.recordActionTime(action: config.id, duration: duration)
+            
+            if gameState.currentLevel >= config.unlockLevel {
+                gameState.addPoints(config.pointsPerCompletion, action: config.id)
             }
         }
     }
 }
 
-private func startKettlebell(gameState: StickFigureGameState) {
-    gameState.animationTimer?.invalidate()
-    gameState.kettlebellTimer?.invalidate()
-    gameState.resetIdleTimer()
-    gameState.isPerformingKettlebell = true
-    gameState.kettlebellFrame = 1
-    gameState.kettlebellFlip = Bool.random()
-
-    let kettlebellStartTime = Date().timeIntervalSince1970 * 1000
-    let animationSequence = [1, 2, 3, 4, 5, 6, 7, 8, 7, 6, 7, 8, 7, 6, 7, 8, 7, 6, 5, 4, 3, 2, 1]
-
+private func startActionWithVariableTiming(_ config: ActionConfig, gameState: StickFigureGameState, variableTiming: [Int: TimeInterval], startTime: Double) {
     var frameIndex = 0
-    // Apply speed boost: 0.15s normal, 0.075s boosted (2x faster)
-    let baseInterval: TimeInterval = 0.15
-    let interval = gameState.speedBoostEndTime != nil ? baseInterval / 2.0 : baseInterval
+    let speedMultiplier = (config.supportsSpeedBoost && gameState.speedBoostEndTime != nil) ? 0.5 : 1.0
     
-    gameState.kettlebellTimer = Timer.scheduledTimer(withTimeInterval: interval, repeats: true) { _ in
-        if frameIndex < animationSequence.count {
-            gameState.kettlebellFrame = animationSequence[frameIndex]
-            frameIndex += 1
-        } else {
-            gameState.kettlebellTimer?.invalidate()
-            gameState.kettlebellTimer = nil
-            gameState.isPerformingKettlebell = false
-            gameState.kettlebellFrame = 0
-            gameState.kettlebellFlip = false
-
-            let kettlebellDuration = Date().timeIntervalSince1970 * 1000 - kettlebellStartTime
-            gameState.recordActionTime(action: "kettlebell", duration: kettlebellDuration)
-            if gameState.currentLevel >= 4 {
-                gameState.addPoints(4, action: "kettlebell")
+    func scheduleNextFrame() {
+        guard frameIndex < config.animationFrames.count else {
+            // Animation complete
+            gameState.actionTimer?.invalidate()
+            gameState.actionTimer = nil
+            gameState.currentPerformingAction = nil
+            gameState.actionFrame = 0
+            gameState.actionFlip = false
+            
+            let duration = Date().timeIntervalSince1970 * 1000 - startTime
+            gameState.recordActionTime(action: config.id, duration: duration)
+            
+            if gameState.currentLevel >= config.unlockLevel {
+                gameState.addPoints(config.pointsPerCompletion, action: config.id)
             }
+            return
+        }
+        
+        let currentFrame = config.animationFrames[frameIndex]
+        gameState.actionFrame = currentFrame
+        frameIndex += 1
+        
+        // Use custom timing if specified, otherwise use base interval
+        let baseInterval = variableTiming[currentFrame] ?? config.baseFrameInterval
+        let interval = baseInterval * speedMultiplier
+        
+        gameState.actionTimer = Timer.scheduledTimer(withTimeInterval: interval, repeats: false) { _ in
+            scheduleNextFrame()
         }
     }
-}
-
-private func startPullup(gameState: StickFigureGameState) {
-    gameState.animationTimer?.invalidate()
-    gameState.pullupTimer?.invalidate()
-    gameState.resetIdleTimer()
-    gameState.isPerformingPullup = true
-    gameState.pullupFrame = 1
-
-    let pullupStartTime = Date().timeIntervalSince1970 * 1000
-    // Animation sequence: 1,2,3,4,3,4,3,4,3,4,3,4,3,4,3,4,3,2,1 (7 reps at top)
-    let animationSequence = [1, 2, 3, 4, 3, 4, 3, 4, 3, 4, 3, 4, 3, 4, 3, 4, 3, 2, 1]
-
-    var frameIndex = 0
-    // Apply speed boost: 0.2s normal, 0.1s boosted (2x faster)
-    let baseInterval: TimeInterval = 0.2
-    let interval = gameState.speedBoostEndTime != nil ? baseInterval / 2.0 : baseInterval
     
-    gameState.pullupTimer = Timer.scheduledTimer(withTimeInterval: interval, repeats: true) { _ in
-        if frameIndex < animationSequence.count {
-            gameState.pullupFrame = animationSequence[frameIndex]
-            frameIndex += 1
-        } else {
-            gameState.pullupTimer?.invalidate()
-            gameState.pullupTimer = nil
-            gameState.isPerformingPullup = false
-            gameState.pullupFrame = 0
-
-            let pullupDuration = Date().timeIntervalSince1970 * 1000 - pullupStartTime
-            gameState.recordActionTime(action: "pullup", duration: pullupDuration)
-            if gameState.currentLevel >= 5 {
-                gameState.addPoints(5, action: "pullup")
-            }
-        }
-    }
+    scheduleNextFrame()
 }
 
 private func startJump(gameState: StickFigureGameState, geometry: GeometryProxy) {
@@ -1474,26 +2550,6 @@ private struct StatRow: View {
     }
 }
 
-// MARK: - Corner Radius Modifier
-
-extension View {
-    func cornerRadius(_ radius: CGFloat, corners: UIRectCorner) -> some View {
-        clipShape(RoundedCorner(radius: radius, corners: corners))
-    }
-}
-
-struct RoundedCorner: Shape {
-    var radius: CGFloat = .infinity
-    var corners: UIRectCorner = .allCorners
-
-    func path(in rect: CGRect) -> Path {
-        let path = UIBezierPath(roundedRect: rect,
-                                byRoundingCorners: corners,
-                                cornerRadii: CGSize(width: radius, height: radius))
-        return Path(path.cgPath)
-    }
-}
-
-#Preview {
-    Game1ModuleView(module: Game1Module())
-}
+// #Preview {
+//     Game1Module().view(environment: .init())
+// }

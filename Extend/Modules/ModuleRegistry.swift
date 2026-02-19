@@ -114,6 +114,7 @@ public struct AnyAppModule: Identifiable, Hashable {
     public let description: String
     public var order: Int
     public var isVisible: Bool
+    public let hidesNavBars: Bool
     private let _moduleView: () -> AnyView
     
     public var moduleView: AnyView {
@@ -127,6 +128,7 @@ public struct AnyAppModule: Identifiable, Hashable {
         self.description = module.description
         self.order = module.order
         self.isVisible = module.isVisible
+        self.hidesNavBars = module.hidesNavBars
         self._moduleView = { module.moduleView }
     }
     
