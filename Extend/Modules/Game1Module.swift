@@ -8,6 +8,14 @@
 
 import SwiftUI
 
+// MARK: - Flip Mode for Actions
+
+enum FlipMode {
+    case none           // No flipping
+    case random         // Random flip each time
+    case alternating    // Alternate flip each time
+}
+
 // MARK: - Action Configuration
 
 struct ActionConfig {
@@ -18,9 +26,10 @@ struct ActionConfig {
     let animationFrames: [Int]
     let baseFrameInterval: TimeInterval
     let variableTiming: [Int: TimeInterval]? // Optional custom timing per frame
-    let supportsFlip: Bool
+    let flipMode: FlipMode
     let supportsSpeedBoost: Bool
     let imagePrefix: String // Prefix for image names (e.g., "guy_curls" or "pushup")
+    let allowMovement: Bool // Whether character can move left/right during this action
     
     // Helper to get available actions for a level
     static func actionsForLevel(_ level: Int) -> [ActionConfig] {
@@ -61,102 +70,154 @@ struct Door {
 // MARK: - Action Configurations
 
 let ACTION_CONFIGS: [ActionConfig] = [
-    // Level 1: Run - special case, handled separately (continuous points)
+    // Level 1: Rest
+    ActionConfig(
+        id: "rest",
+        displayName: "Rest",
+        unlockLevel: 1,
+        pointsPerCompletion: 1,
+        animationFrames: [1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2], // 15 frames, ~2s duration for 15s total when repeated
+        baseFrameInterval: 0.1,
+        variableTiming: [2: 0.5], // Last frame (image 2) holds for 5x longer
+        flipMode: .none,
+        supportsSpeedBoost: false,
+        imagePrefix: "rest",
+        allowMovement: false
+    ),
+    
+    // Level 2: Run
     ActionConfig(
         id: "run",
         displayName: "Run",
-        unlockLevel: 1,
-        pointsPerCompletion: 1,
+        unlockLevel: 2,
+        pointsPerCompletion: 2,
         animationFrames: [],
         baseFrameInterval: 0,
         variableTiming: nil,
-        supportsFlip: false,
+        flipMode: .none,
         supportsSpeedBoost: true,
-        imagePrefix: "guy_move"
+        imagePrefix: "guy_move",
+        allowMovement: true
     ),
     
-    // Level 2: Jump
+    // Level 3: Jump
     ActionConfig(
         id: "jump",
         displayName: "Jump",
-        unlockLevel: 2,
-        pointsPerCompletion: 2,
+        unlockLevel: 3,
+        pointsPerCompletion: 3,
         animationFrames: [1, 2, 3],
         baseFrameInterval: 0.1,
         variableTiming: nil,
-        supportsFlip: false,
+        flipMode: .none,
         supportsSpeedBoost: true,
-        imagePrefix: "guy_jump"
+        imagePrefix: "guy_jump",
+        allowMovement: false
     ),
     
-    // Level 3: Curls
+    // Level 4: Jumping Jacks
+    ActionConfig(
+        id: "jumpingjack",
+        displayName: "Jumping Jacks",
+        unlockLevel: 4,
+        pointsPerCompletion: 4,
+        animationFrames: [3, 4, 1, 2, 3, 4, 1, 2, 3, 4, 1, 2, 3, 4, 1, 2, 3, 4, 1, 2, 1],
+        baseFrameInterval: 0.27,
+        variableTiming: nil,
+        flipMode: .none,
+        supportsSpeedBoost: true,
+        imagePrefix: "jumpingjack",
+        allowMovement: false
+    ),
+    
+    // Level 5: Yoga
+    ActionConfig(
+        id: "yoga",
+        displayName: "Yoga",
+        unlockLevel: 5,
+        pointsPerCompletion: 5,
+        animationFrames: [1, 1, 1, 2, 2, 2, 3, 3, 3, 4, 4, 4, 5, 5, 5, 6, 6, 6, 7, 7, 7, 8, 8, 8],
+        baseFrameInterval: 2.14,
+        variableTiming: [8: 5.0], // Last frame holds for 5 seconds
+        flipMode: .none,
+        supportsSpeedBoost: true,
+        imagePrefix: "yoga",
+        allowMovement: false
+    ),
+    
+    // Level 6: Bicep Curls - alternating flip
     ActionConfig(
         id: "curls",
         displayName: "Bicep Curls",
-        unlockLevel: 3,
-        pointsPerCompletion: 3,
-        animationFrames: [2, 1, 2, 1, 3, 1],
-        baseFrameInterval: 0.2,
-        variableTiming: nil,
-        supportsFlip: true,
-        supportsSpeedBoost: true,
-        imagePrefix: "guy_curls"
-    ),
-    
-    // Level 4: Kettlebell
-    ActionConfig(
-        id: "kettlebell",
-        displayName: "Kettlebell swings",
-        unlockLevel: 4,
-        pointsPerCompletion: 4,
-        animationFrames: [1, 2, 3, 4, 5, 6, 7, 8, 7, 6, 7, 8, 7, 6, 7, 8, 7, 6, 5, 4, 3, 2, 1],
-        baseFrameInterval: 0.15,
-        variableTiming: nil,
-        supportsFlip: true,
-        supportsSpeedBoost: true,
-        imagePrefix: "kb"
-    ),
-    
-    // Level 5: Pull ups
-    ActionConfig(
-        id: "pullup",
-        displayName: "Pull ups",
-        unlockLevel: 5,
-        pointsPerCompletion: 5,
-        animationFrames: [1, 2, 3, 4, 3, 4, 3, 4, 3, 4, 3, 4, 3, 4, 3, 4, 3, 2, 1],
-        baseFrameInterval: 0.2,
-        variableTiming: nil,
-        supportsFlip: false,
-        supportsSpeedBoost: true,
-        imagePrefix: "pullup"
-    ),
-    
-    // Level 6: Push ups (with variable timing)
-    ActionConfig(
-        id: "pushup",
-        displayName: "Push ups",
         unlockLevel: 6,
         pointsPerCompletion: 6,
-        animationFrames: [1, 2, 3, 4, 3, 4, 3, 4, 3, 4, 3, 4, 3, 2, 1],
-        baseFrameInterval: 0.2,
-        variableTiming: [1: 0.1, 2: 0.1], // Frames 1 and 2 are faster
-        supportsFlip: true,
+        animationFrames: [1, 2, 3, 2, 1, 1, 2, 3, 2, 1],
+        baseFrameInterval: 0.4,
+        variableTiming: nil,
+        flipMode: .alternating,
         supportsSpeedBoost: true,
-        imagePrefix: "pushup"
+        imagePrefix: "guy_curls",
+        allowMovement: true
     ),
     
-    // Level 7: Jumping jacks
+    // Level 7: Kettlebell - random flip
     ActionConfig(
-        id: "jumpingjack",
-        displayName: "Jumping jacks",
+        id: "kettlebell",
+        displayName: "Kettlebell Swings",
         unlockLevel: 7,
         pointsPerCompletion: 7,
-        animationFrames: [3, 4, 1, 2, 3, 4, 1, 2, 3, 4, 1, 2, 3, 4, 1, 2, 3, 4, 1, 2, 1],
-        baseFrameInterval: 0.15,
-        variableTiming: nil,
-        supportsFlip: false,
+        animationFrames: [1, 2, 3, 4, 5, 6, 7, 8, 7, 6, 7, 8, 7, 6, 7, 8, 7, 6, 7, 8, 7, 6, 7, 8, 7, 6, 5, 4, 3, 2, 1],
+        baseFrameInterval: 0.27,
+        variableTiming: [1: 0.35, 2: 0.25, 3: 0.20, 4: 0.18, 5: 0.18, 6: 0.20, 7: 0.22, 8: 0.25],
+        flipMode: .random,
         supportsSpeedBoost: true,
-        imagePrefix: "jumpingjack"
+        imagePrefix: "kb",
+        allowMovement: true
+    ),
+    
+    // Level 8: Push Ups - random flip
+    ActionConfig(
+        id: "pushup",
+        displayName: "Push Ups",
+        unlockLevel: 8,
+        pointsPerCompletion: 8,
+        animationFrames: [1, 2, 3, 4, 3, 4, 3, 4, 3, 4, 3, 4, 3, 4, 3, 4, 3, 4, 3, 4, 3, 4, 3, 2, 1],
+        baseFrameInterval: 0.4,
+        variableTiming: [1: 0.1, 2: 0.1],
+        flipMode: .random,
+        supportsSpeedBoost: true,
+        imagePrefix: "pushup",
+        allowMovement: true
+    ),
+    
+    // Level 9: Pull Ups
+    ActionConfig(
+        id: "pullup",
+        displayName: "Pull Ups",
+        unlockLevel: 9,
+        pointsPerCompletion: 9,
+        animationFrames: [1, 2, 3, 4, 3, 4, 3, 4, 3, 4, 3, 4, 3, 4, 3, 4, 3, 4, 3, 4, 3, 4, 3, 2, 1],
+        baseFrameInterval: 0.4,
+        variableTiming: nil,
+        flipMode: .none,
+        supportsSpeedBoost: true,
+        imagePrefix: "pullup",
+        allowMovement: true
+    ),
+    
+    // Level 10: Meditation
+    ActionConfig(
+        id: "meditation",
+        displayName: "Meditation",
+        unlockLevel: 10,
+        pointsPerCompletion: 10,
+        animationFrames: [1, 1, 1, 1, 1, 2, 3, 3, 3, 3, 3, 1, 1, 1, 1, 1],
+        baseFrameInterval: 0.2,
+        variableTiming: [1: 5.0], // Last frames hold for 5 seconds
+        flipMode: .none,
+        supportsSpeedBoost: false,
+        imagePrefix: "meditate",
+        allowMovement: false
     )
 ]
 
@@ -192,9 +253,44 @@ struct FloatingTextItem: Identifiable {
     var fontSize: CGFloat = 12
     var age: Double = 0
     let lifespan: Double = 2.0
+    var isMeditation: Bool = false // Flag for meditation text
 }
 
 // MARK: - Falling Leaf
+// MARK: - Falling Item Config
+
+struct FallingItemConfig {
+    let id: String
+    let iconName: String
+    let unlockLevel: Int
+    let points: Int
+    let color: Color
+}
+
+let FALLING_ITEM_CONFIGS: [FallingItemConfig] = [
+    FallingItemConfig(id: "leaf", iconName: "leaf.fill", unlockLevel: 1, points: 1, color: .green),
+    FallingItemConfig(id: "heart", iconName: "heart.fill", unlockLevel: 4, points: 2, color: .red),
+    FallingItemConfig(id: "brain", iconName: "brain.fill", unlockLevel: 7, points: 3, color: .purple),
+    FallingItemConfig(id: "sun", iconName: "sun.max.fill", unlockLevel: 10, points: 4, color: .yellow),
+]
+
+// MARK: - Falling Item
+
+struct FallingItem: Identifiable, Equatable {
+    let id: UUID = UUID()
+    let itemType: String  // "leaf", "heart", "brain", "sun"
+    var x: CGFloat
+    var y: CGFloat
+    var rotation: Double = 0
+    var horizontalVelocity: CGFloat = 0
+    var verticalSpeed: CGFloat = 0.003
+    
+    static func == (lhs: FallingItem, rhs: FallingItem) -> Bool {
+        lhs.id == rhs.id
+    }
+}
+
+// MARK: - Falling Leaf (legacy - kept for compatibility)
 
 struct FallingLeaf: Identifiable, Equatable {
     let id = UUID()
@@ -205,6 +301,21 @@ struct FallingLeaf: Identifiable, Equatable {
     var verticalSpeed: CGFloat = 0.003
     
     static func == (lhs: FallingLeaf, rhs: FallingLeaf) -> Bool {
+        lhs.id == rhs.id
+    }
+}
+
+// MARK: - Falling Heart (legacy - kept for compatibility)
+
+struct FallingHeart: Identifiable, Equatable {
+    let id = UUID()
+    var x: CGFloat
+    var y: CGFloat
+    var rotation: Double = 0
+    var horizontalVelocity: CGFloat = 0
+    var verticalSpeed: CGFloat = 0.003
+    
+    static func == (lhs: FallingHeart, rhs: FallingHeart) -> Bool {
         lhs.id == rhs.id
     }
 }
@@ -238,6 +349,969 @@ struct FireworkParticle: Identifiable {
 
 // MARK: - Game State
 
+// MARK: - Stick Figure Game State
+
+@Observable
+class StickFigureGameState {
+    // Core stats
+    var currentLevel: Int = 1
+    var currentPoints: Int = 0
+    var score: Int = 0
+    var highScore: Int = 0
+    var timeElapsed: Double = 0
+    var allTimeElapsed: Double = 0
+    var totalLeavesCaught: Int = 0
+    var totalHeartsCaught: Int = 0
+    var totalBrainsCaught: Int = 0
+    var totalSunsCaught: Int = 0
+    var totalShakersCaught: Int = 0
+    var totalCoinsCollected: Int = 0
+    var actionTimes: [String: Double] = [:]
+    var sessionActions: [String] = []
+
+    // Movement + animation
+    var figurePosition: CGFloat = 0
+    var jumpHeight: CGFloat = 0
+    var jumpFrame: Int = 0
+    var isJumping: Bool = false
+    var isMovingLeft: Bool = false
+    var isMovingRight: Bool = false
+    var facingRight: Bool = true
+    var animationFrame: Int = 0
+    var animationTimer: Timer?
+    var jumpTimer: Timer?
+    var movementTimer: Timer?
+
+    // Actions
+    var selectedAction: String = "Rest"
+    var currentAction: String = ""
+    var actionStartTime: Double = 0
+    var currentPerformingAction: String?
+    var actionFrame: Int = 0
+    var actionFlip: Bool = false
+    var lastActionFlip: [String: Bool] = [:]
+    var actionTimer: Timer?
+
+    // Idle / wave
+    var isWaving: Bool = false
+    var shouldFlipWave: Bool = false
+    var waveFrame: Int = 1
+    var waveTimer: Timer?
+    var idleTimer: Timer?
+
+    // Floating text + effects
+    var floatingTexts: [FloatingTextItem] = []
+    var floatingTextTimer: Timer?
+    var elapsedTimeTimer: Timer?
+    var fireworkParticles: [FireworkParticle] = []
+
+    // Falling items
+    var fallingItems: [FallingItem] = []
+    var fallingLeaves: [FallingLeaf] = []
+    var fallingHearts: [FallingHeart] = []
+    var fallingShakers: [FallingShaker] = []
+
+    // Shaker action
+    var isPerformingShaker: Bool = false
+    var shakerFrame: Int = 1
+    var shakerFlip: Bool = false
+    var shakerAnimationTimer: Timer?
+
+    // Meditation tracking
+    var meditationTotalDuration: Double = 0
+    var meditationTimeRemaining: Double = 0
+    var meditationCountdownTimer: Timer?
+
+    // Rest animation tracking
+    var restTotalDuration: Double = 0
+    var restTimeRemaining: Double = 0
+    var restCountdownTimer: Timer?
+    var restZzzTimer: Timer?
+    var restZzzLastTime: Double = 0
+
+    // Yoga animation tracking
+    var yogaTotalDuration: Double = 0
+    var yogaTimeRemaining: Double = 0
+    var yogaCountdownTimer: Timer?
+
+    // Pullup counting
+    var pullupCount: Int = 0
+    var pullupCountdownTimer: Timer?
+    var lastActionFrame: Int = 0  // Track previous frame for pullup detection
+    var lastPullupCounterTime: Double = 0  // Track when last pullup counter was shown
+    
+    // Action completion tracking for floating text
+    var lastCompletedAction: String = ""
+    var lastCompletedActionTime: Double = 0
+    
+    // Doors
+    var doors: [Door] = []
+
+    // Speed boost
+    var speedBoostEndTime: Date? = nil
+    var speedBoostTimeRemaining: Double {
+        guard let endTime = speedBoostEndTime else { return 0 }
+        return max(0, endTime.timeIntervalSinceNow)
+    }
+    var boostTimerUpdateTrigger = UUID() // Trigger for UI refresh
+    var boostTimerRefreshTimer: Timer?
+    var boostTimerTick: Int = 0 // Counter for boost timer updates
+
+    // Map return
+    var shouldReturnToMap: Bool = false
+
+    private let statsKey = "game1_stats"
+    private let highScoreKey = "game1_high_score"
+    private let mapPositionKey = "game1_map_position"
+
+    init() {
+        loadStats()
+        if selectedAction.isEmpty {
+            selectedAction = "Rest"
+        }
+        initializeRoom("level_1")
+        startMovementTimer()
+        startFloatingTextTimer()
+        resetIdleTimer()
+    }
+
+    func pointsNeeded(forLevel level: Int) -> Int {
+        return max(10, level * 20)
+    }
+
+    func recordActionTime(action: String, duration: Double) {
+        actionTimes[action, default: 0] += duration
+        // Note: timeElapsed and allTimeElapsed are now tracked continuously in the game loop
+        // Do not double-count by adding duration here
+        if ActionConfig.levelBasedActionIDs(forLevel: currentLevel).contains(action) {
+            sessionActions.append(action)
+        }
+    }
+
+    func addPoints(_ points: Int, action: String) {
+        if ActionConfig.levelBasedActionIDs(forLevel: currentLevel).contains(action) {
+            if !sessionActions.contains(action) {
+                sessionActions.append(action)
+            }
+        }
+
+        var awarded = points
+        let comboCount = getValidComboCount()
+        if comboCount > 1 {
+            let maxCombo = getMaxComboForLevel(currentLevel)
+            let bonusPercent = min(comboCount, maxCombo)
+            awarded += Int(Double(points) * (Double(bonusPercent) / 100.0))
+        }
+
+        currentPoints += awarded
+        score += awarded
+        if score > highScore {
+            highScore = score
+            saveHighScore()
+        }
+        
+        // Track completed action for floating text display in GamePlayArea
+        lastCompletedAction = action
+        lastCompletedActionTime = Date().timeIntervalSince1970
+
+        let needed = pointsNeeded(forLevel: currentLevel)
+        if currentPoints >= needed {
+            addFloatingText("Level Complete!", x: 0.5, y: 0.2, color: .purple, fontSize: 18)
+            spawnFireworks()
+            currentPoints = 0
+            sessionActions.removeAll()
+            shouldReturnToMap = true
+        }
+    }
+
+    func getValidComboCount() -> Int {
+        let validIDs = ActionConfig.levelBasedActionIDs(forLevel: currentLevel)
+        return Set(sessionActions).intersection(validIDs).count
+    }
+
+    func getMaxComboForLevel(_ level: Int) -> Int {
+        let availableActions = ACTION_CONFIGS.filter { $0.unlockLevel <= level }
+        return max(1, availableActions.count)
+    }
+
+    func formatTimeDuration(_ milliseconds: Double) -> String {
+        let totalSeconds = Int(milliseconds / 1000.0)
+        let seconds = totalSeconds % 60
+        let totalMinutes = totalSeconds / 60
+        let minutes = totalMinutes % 60
+        let totalHours = totalMinutes / 60
+        let hours = totalHours % 24
+        let days = totalHours / 24
+        let months = days / 30
+        
+        if months > 0 {
+            let remainingDays = days % 30
+            return String(format: "%dmo %dd %02d:%02d:%02d", months, remainingDays, hours, minutes, seconds)
+        } else if days > 0 {
+            return String(format: "%dd %02d:%02d:%02d", days, hours, minutes, seconds)
+        } else if hours > 0 {
+            return String(format: "%d:%02d:%02d", hours, minutes, seconds)
+        } else if minutes > 0 {
+            return String(format: "%d:%02d", minutes, seconds)
+        }
+        return String(format: "%ds", seconds)
+    }
+
+    func saveStats() {
+        let payload: [String: Any] = [
+            "currentLevel": currentLevel,
+            "currentPoints": currentPoints,
+            "score": score,
+            "allTimeElapsed": allTimeElapsed,
+            "totalLeavesCaught": totalLeavesCaught,
+            "totalHeartsCaught": totalHeartsCaught,
+            "totalBrainsCaught": totalBrainsCaught,
+            "totalSunsCaught": totalSunsCaught,
+            "totalShakersCaught": totalShakersCaught,
+            "totalCoinsCollected": totalCoinsCollected,
+            "selectedAction": selectedAction,
+            "actionTimes": actionTimes
+        ]
+        UserDefaults.standard.set(payload, forKey: statsKey)
+        UserDefaults.standard.synchronize()
+    }
+
+    private func loadStats() {
+        guard let payload = UserDefaults.standard.dictionary(forKey: statsKey) else { return }
+        currentLevel = payload["currentLevel"] as? Int ?? currentLevel
+        currentPoints = payload["currentPoints"] as? Int ?? currentPoints
+        score = payload["score"] as? Int ?? score
+        allTimeElapsed = payload["allTimeElapsed"] as? Double ?? allTimeElapsed
+        totalLeavesCaught = payload["totalLeavesCaught"] as? Int ?? totalLeavesCaught
+        totalHeartsCaught = payload["totalHeartsCaught"] as? Int ?? totalHeartsCaught
+        totalBrainsCaught = payload["totalBrainsCaught"] as? Int ?? totalBrainsCaught
+        totalSunsCaught = payload["totalSunsCaught"] as? Int ?? totalSunsCaught
+        totalShakersCaught = payload["totalShakersCaught"] as? Int ?? totalShakersCaught
+        totalCoinsCollected = payload["totalCoinsCollected"] as? Int ?? totalCoinsCollected
+        selectedAction = payload["selectedAction"] as? String ?? selectedAction
+        if let storedTimes = payload["actionTimes"] as? [String: Double] {
+            actionTimes = storedTimes
+        }
+        
+        // Force "Rest" as the only action available in level 1
+        if currentLevel == 1 {
+            selectedAction = "Rest"
+        }
+        
+        highScore = UserDefaults.standard.integer(forKey: highScoreKey)
+    }
+
+    func saveHighScore() {
+        UserDefaults.standard.set(highScore, forKey: highScoreKey)
+    }
+
+    func saveMapPosition(_ mapState: GameMapState) {
+        let payload: [String: Any] = [
+            "x": Double(mapState.characterX),
+            "y": Double(mapState.characterY)
+        ]
+        UserDefaults.standard.set(payload, forKey: mapPositionKey)
+    }
+
+    func loadMapPosition(_ mapState: GameMapState) {
+        guard let payload = UserDefaults.standard.dictionary(forKey: mapPositionKey) else { return }
+        if let x = payload["x"] as? Double, let y = payload["y"] as? Double {
+            mapState.characterX = CGFloat(x)
+            mapState.characterY = CGFloat(y)
+            mapState.targetX = CGFloat(x)
+            mapState.targetY = CGFloat(y)
+        }
+    }
+
+    func initializeRoom(_ roomId: String) {
+        if roomId == "map" {
+            doors = []
+            return
+        }
+
+        doors = [
+            Door(
+                id: "door_to_map",
+                position: .bottom,
+                collisionSide: .left,
+                destinationRoomId: "map",
+                x: 0.85,
+                y: 0.2,
+                width: 0.12,
+                height: 0.18
+            )
+        ]
+    }
+
+    func resetIdleTimer() {
+        idleTimer?.invalidate()
+        idleTimer = nil
+        isWaving = false
+        waveTimer?.invalidate()
+        waveTimer = nil
+
+        idleTimer = Timer.scheduledTimer(withTimeInterval: 15.0, repeats: false) { [weak self] _ in
+            self?.startWaveAnimation()
+        }
+    }
+
+    private func startWaveAnimation() {
+        isWaving = true
+        shouldFlipWave = Bool.random()
+        waveFrame = 1
+        waveTimer?.invalidate()
+        var ticks = 0
+        waveTimer = Timer.scheduledTimer(withTimeInterval: 0.2, repeats: true) { [weak self] timer in
+            guard let self = self else { return }
+            ticks += 1
+            self.waveFrame = self.waveFrame == 1 ? 2 : 1
+            if ticks >= 10 {
+                timer.invalidate()
+                self.isWaving = false
+                self.waveFrame = 1
+            }
+        }
+    }
+
+    private func startMovementTimer() {
+        movementTimer?.invalidate()
+        movementTimer = Timer.scheduledTimer(withTimeInterval: 0.016, repeats: true) { [weak self] _ in
+            guard let self = self else { return }
+            var delta: CGFloat = 0
+            if self.isMovingLeft {
+                delta = -0.011
+            } else if self.isMovingRight {
+                delta = 0.011
+            }
+            if self.speedBoostTimeRemaining > 0 {
+                delta *= 1.5
+            }
+            if delta != 0 {
+                // Allow wrapping - character appears on opposite side when going off-screen
+                self.figurePosition = self.figurePosition + delta
+                // Wrap around: if position goes beyond -1 or 1, wrap to opposite side
+                if self.figurePosition > 1 {
+                    self.figurePosition -= 2
+                } else if self.figurePosition < -1 {
+                    self.figurePosition += 2
+                }
+            }
+        }
+    }
+
+    func addFloatingText(_ text: String, x: CGFloat, y: CGFloat, color: Color, fontSize: CGFloat = 12, isMeditation: Bool = false) {
+        let item = FloatingTextItem(x: x, y: y, text: text, color: color, fontSize: fontSize, isMeditation: isMeditation)
+        floatingTexts.append(item)
+    }
+
+    private func startFloatingTextTimer() {
+        floatingTextTimer?.invalidate()
+        floatingTextTimer = Timer.scheduledTimer(withTimeInterval: 0.05, repeats: true) { [weak self] _ in
+            guard let self = self else { return }
+            for i in self.floatingTexts.indices.reversed() {
+                self.floatingTexts[i].age += 0.05
+                // Meditation text moves slower
+                let moveSpeed = self.floatingTexts[i].isMeditation ? 0.003 : 0.01
+                self.floatingTexts[i].y -= moveSpeed
+                if self.floatingTexts[i].age >= self.floatingTexts[i].lifespan {
+                    self.floatingTexts.remove(at: i)
+                }
+            }
+            for i in self.fireworkParticles.indices.reversed() {
+                self.fireworkParticles[i].age += 0.05
+                self.fireworkParticles[i].x += self.fireworkParticles[i].velocityX * 0.05
+                self.fireworkParticles[i].y += self.fireworkParticles[i].velocityY * 0.05
+                if self.fireworkParticles[i].age >= self.fireworkParticles[i].lifespan {
+                    self.fireworkParticles.remove(at: i)
+                }
+            }
+        }
+    }
+
+    private func spawnFireworks() {
+        let colors: [Color] = [.red, .orange, .yellow, .green, .blue, .purple]
+        let baseX: CGFloat = 0.5
+        let baseY: CGFloat = 0.3
+        for i in 0..<20 {
+            let angle = Double(i) * (2 * Double.pi / 20)
+            let speed: CGFloat = 0.3
+            fireworkParticles.append(
+                FireworkParticle(
+                    x: baseX,
+                    y: baseY,
+                    velocityX: CGFloat(cos(angle)) * speed,
+                    velocityY: CGFloat(sin(angle)) * speed,
+                    color: colors[i % colors.count]
+                )
+            )
+        }
+    }
+
+    func checkFallingItemCollisions(figureX: CGFloat, figureY: CGFloat, screenWidth: CGFloat, screenHeight: CGFloat) {
+        // Spawn falling items based on current level
+        let unlockedItems = FALLING_ITEM_CONFIGS.filter { $0.unlockLevel <= currentLevel }
+        let maxItems = max(4, unlockedItems.count * 2)
+        
+        if fallingItems.count < maxItems && Double.random(in: 0...1) < 0.002 {
+            if let itemConfig = unlockedItems.randomElement() {
+                let item = FallingItem(
+                    itemType: itemConfig.id,
+                    x: CGFloat.random(in: 0.05...0.95),
+                    y: 0.0,
+                    rotation: Double.random(in: 0...360),
+                    horizontalVelocity: CGFloat.random(in: -0.002...0.002),
+                    verticalSpeed: CGFloat.random(in: 0.0008...0.0015)
+                )
+                fallingItems.append(item)
+            }
+        }
+        
+        for i in fallingItems.indices.reversed() {
+            fallingItems[i].y += fallingItems[i].verticalSpeed
+            fallingItems[i].x += fallingItems[i].horizontalVelocity
+            fallingItems[i].rotation += 4
+            
+            let itemScreenX = fallingItems[i].x * screenWidth
+            let itemScreenY = fallingItems[i].y * screenHeight
+            let dx = itemScreenX - figureX
+            let characterCollisionY = figureY + 60
+            let dy = itemScreenY - characterCollisionY
+            
+            if sqrt(dx * dx + dy * dy) < 60 {
+                // Found the config for this item
+                if let config = FALLING_ITEM_CONFIGS.first(where: { $0.id == fallingItems[i].itemType }) {
+                    // Update stats
+                    switch fallingItems[i].itemType {
+                    case "leaf":
+                        totalLeavesCaught += 1
+                    case "heart":
+                        totalHeartsCaught += 1
+                    case "brain":
+                        totalBrainsCaught += 1
+                    case "sun":
+                        totalSunsCaught += 1
+                    default:
+                        break
+                    }
+                    
+                    addPoints(config.points, action: fallingItems[i].itemType)
+                    addFloatingText("+\(config.points)", x: fallingItems[i].x, y: fallingItems[i].y, color: config.color)
+                }
+                fallingItems.remove(at: i)
+                continue
+            }
+            
+            if fallingItems[i].y > 1.1 || fallingItems[i].x < -0.2 || fallingItems[i].x > 1.2 {
+                fallingItems.remove(at: i)
+            }
+        }
+    }
+
+    func checkLeafCollisions(figureX: CGFloat, figureY: CGFloat, screenWidth: CGFloat, screenHeight: CGFloat) {
+        if fallingLeaves.count < 4 && Double.random(in: 0...1) < 0.002 {
+            let leaf = FallingLeaf(
+                x: CGFloat.random(in: 0.05...0.95),
+                y: 0.0,
+                rotation: Double.random(in: 0...360),
+                horizontalVelocity: CGFloat.random(in: -0.002...0.002),
+                verticalSpeed: CGFloat.random(in: 0.0008...0.0015)
+            )
+            fallingLeaves.append(leaf)
+        }
+
+        for i in fallingLeaves.indices.reversed() {
+            fallingLeaves[i].y += fallingLeaves[i].verticalSpeed
+            fallingLeaves[i].x += fallingLeaves[i].horizontalVelocity
+            fallingLeaves[i].rotation += 4
+
+            let leafScreenX = fallingLeaves[i].x * screenWidth
+            let leafScreenY = fallingLeaves[i].y * screenHeight
+            let dx = leafScreenX - figureX
+            // Collision detection at the bottom/feet of character (60 pixels below top of collision box)
+            let characterCollisionY = figureY + 60
+            let dy = leafScreenY - characterCollisionY
+            if sqrt(dx * dx + dy * dy) < 60 {
+                totalLeavesCaught += 1
+                addPoints(1, action: "leaf")
+                addFloatingText("+1", x: fallingLeaves[i].x, y: fallingLeaves[i].y, color: .green)
+                fallingLeaves.remove(at: i)
+                continue
+            }
+
+            if fallingLeaves[i].y > 1.1 || fallingLeaves[i].x < -0.2 || fallingLeaves[i].x > 1.2 {
+                fallingLeaves.remove(at: i)
+            }
+        }
+    }
+
+    func checkHeartCollisions(figureX: CGFloat, figureY: CGFloat, screenWidth: CGFloat, screenHeight: CGFloat) {
+        if fallingHearts.count < 4 && Double.random(in: 0...1) < 0.002 {
+            let heart = FallingHeart(
+                x: CGFloat.random(in: 0.05...0.95),
+                y: 0.0,
+                rotation: Double.random(in: 0...360),
+                horizontalVelocity: CGFloat.random(in: -0.002...0.002),
+                verticalSpeed: CGFloat.random(in: 0.0008...0.0015)
+            )
+            fallingHearts.append(heart)
+        }
+
+        for i in fallingHearts.indices.reversed() {
+            fallingHearts[i].y += fallingHearts[i].verticalSpeed
+            fallingHearts[i].x += fallingHearts[i].horizontalVelocity
+            fallingHearts[i].rotation += 4
+
+            let heartScreenX = fallingHearts[i].x * screenWidth
+            let heartScreenY = fallingHearts[i].y * screenHeight
+            let dx = heartScreenX - figureX
+            // Collision detection at the bottom/feet of character (60 pixels below top of collision box)
+            let characterCollisionY = figureY + 60
+            let dy = heartScreenY - characterCollisionY
+            if sqrt(dx * dx + dy * dy) < 60 {
+                totalHeartsCaught += 1
+                addPoints(2, action: "heart")
+                addFloatingText("+2", x: fallingHearts[i].x, y: fallingHearts[i].y, color: .red)
+                fallingHearts.remove(at: i)
+                continue
+            }
+
+            if fallingHearts[i].y > 1.1 || fallingHearts[i].x < -0.2 || fallingHearts[i].x > 1.2 {
+                fallingHearts.remove(at: i)
+            }
+        }
+    }
+
+    func checkShakerCollisions(figureX: CGFloat, figureY: CGFloat, screenWidth: CGFloat, screenHeight: CGFloat) {
+        if fallingShakers.count < 1 && Double.random(in: 0...1) < 0.005 {
+            let shaker = FallingShaker(
+                x: CGFloat.random(in: 0.1...0.9),
+                y: 0.0,
+                rotation: Double.random(in: 0...360),
+                verticalSpeed: CGFloat.random(in: 0.001...0.002)
+            )
+            fallingShakers.append(shaker)
+        }
+
+        for i in fallingShakers.indices.reversed() {
+            fallingShakers[i].y += fallingShakers[i].verticalSpeed
+            fallingShakers[i].rotation += 6
+
+            let shakerScreenX = fallingShakers[i].x * screenWidth
+            let shakerScreenY = fallingShakers[i].y * screenHeight
+            let dx = shakerScreenX - figureX
+            // Collision detection at the bottom/feet of character (60 pixels below top of collision box)
+            let characterCollisionY = figureY + 60
+            let dy = shakerScreenY - characterCollisionY
+            if sqrt(dx * dx + dy * dy) < 60 {
+                totalShakersCaught += 1
+                addPoints(5, action: "shaker")
+                addFloatingText("Boost!", x: fallingShakers[i].x, y: fallingShakers[i].y, color: .orange)
+                fallingShakers.remove(at: i)
+
+                speedBoostEndTime = Date().addingTimeInterval(6)
+                // Start boost timer refresh for UI updates
+                boostTimerRefreshTimer?.invalidate()
+                boostTimerRefreshTimer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { [weak self] timer in
+                    guard let self = self else { return }
+                    if self.speedBoostTimeRemaining <= 0 {
+                        timer.invalidate()
+                        self.boostTimerRefreshTimer = nil
+                    }
+                    // Increment tick to trigger view updates
+                    self.boostTimerTick += 1
+                }
+                triggerShakerAnimation()
+                continue
+            }
+
+            if fallingShakers[i].y > 1.1 {
+                fallingShakers.remove(at: i)
+            }
+        }
+    }
+
+    private func triggerShakerAnimation() {
+        shakerAnimationTimer?.invalidate()
+        isPerformingShaker = true
+        shakerFlip = Bool.random()
+        shakerFrame = 1
+        
+        // Animation: show frame 1 briefly, then frame 2 for 1 second
+        var animationStage = 0
+        
+        shakerAnimationTimer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { [weak self] timer in
+            guard let self = self else {
+                timer.invalidate()
+                return
+            }
+            
+            animationStage += 1
+            
+            if animationStage == 1 {
+                // Show frame 1 for 0.1 seconds
+                self.shakerFrame = 1
+            } else if animationStage == 2 {
+                // Show frame 2 starting at 0.2 seconds
+                self.shakerFrame = 2
+            } else if animationStage >= 12 {
+                // After 1.2 seconds total (frame 2 for 1 second), complete animation
+                timer.invalidate()
+                self.shakerAnimationTimer = nil
+                self.isPerformingShaker = false
+                self.shakerFrame = 1
+                // Trigger fireworks when shaker animation completes
+                self.spawnFireworks()
+            }
+        }
+    }
+
+    func checkDoorCollision(figureX: CGFloat, screenWidth: CGFloat, screenHeight: CGFloat, isMovingRight: Bool, isMovingLeft: Bool, animatedDoorY: CGFloat) -> Door? {
+        for door in doors {
+            let doorScreenX = door.x * screenWidth
+            let doorWidth = door.width * screenWidth
+            let doorHeight = door.height * screenHeight
+            let doorScreenY = animatedDoorY
+
+            let withinX = abs(figureX - doorScreenX) < (doorWidth * 0.5)
+            let doorNearGround = doorScreenY >= (screenHeight - doorHeight - 60)
+            let doorVisible = doorScreenY >= 0 && doorScreenY <= screenHeight // Door must be on screen
+            let movingIntoDoor = (door.collisionSide == .left && isMovingRight) || (door.collisionSide == .right && isMovingLeft)
+
+            if withinX && doorNearGround && doorVisible && movingIntoDoor {
+                return door
+            }
+        }
+        return nil
+    }
+
+    // MARK: - Animation Helper Functions
+
+    func startAnimation(gameState: StickFigureGameState) {
+        gameState.animationTimer?.invalidate()
+        var frameCount = 0
+        gameState.animationTimer = Timer.scheduledTimer(withTimeInterval: 0.13, repeats: true) { _ in
+            frameCount += 1
+            gameState.animationFrame = ((frameCount - 1) % 4) + 1
+        }
+    }
+    
+    func stopAnimation(gameState: StickFigureGameState) {
+        gameState.animationTimer?.invalidate()
+        gameState.animationTimer = nil
+        gameState.animationFrame = 0
+    }
+    
+    func startMovingLeft(gameState: StickFigureGameState, geometry: GeometryProxy) {
+        // Check if movement is allowed for current action
+        if let currentAction = gameState.currentPerformingAction,
+           let config = ACTION_CONFIGS.first(where: { $0.id == currentAction }),
+           !config.allowMovement {
+            return
+        }
+        
+        gameState.resetIdleTimer()
+        if gameState.currentAction != "move" {
+            gameState.currentAction = "move"
+            gameState.actionStartTime = Date().timeIntervalSince1970 * 1000
+        }
+        gameState.isMovingLeft = true
+        gameState.isMovingRight = false
+        gameState.facingRight = false
+        if gameState.animationFrame == 0 {
+            startAnimation(gameState: gameState)
+        }
+    }
+    
+    func stopMovingLeft(gameState: StickFigureGameState) {
+        gameState.isMovingLeft = false
+        if !gameState.isMovingRight {
+            if gameState.currentAction == "move" {
+                let duration = Date().timeIntervalSince1970 * 1000 - gameState.actionStartTime
+                gameState.recordActionTime(action: "move", duration: duration)
+                gameState.currentAction = ""
+            }
+            stopAnimation(gameState: gameState)
+        }
+    }
+    
+    func startMovingRight(gameState: StickFigureGameState, geometry: GeometryProxy) {
+        // Check if movement is allowed for current action
+        if let currentAction = gameState.currentPerformingAction,
+           let config = ACTION_CONFIGS.first(where: { $0.id == currentAction }),
+           !config.allowMovement {
+            return
+        }
+        
+        gameState.resetIdleTimer()
+        if gameState.currentAction != "move" {
+            gameState.currentAction = "move"
+            gameState.actionStartTime = Date().timeIntervalSince1970 * 1000
+        }
+        gameState.isMovingRight = true
+        gameState.isMovingLeft = false
+        gameState.facingRight = true
+        if gameState.animationFrame == 0 {
+            startAnimation(gameState: gameState)
+        }
+    }
+    
+    func stopMovingRight(gameState: StickFigureGameState) {
+        gameState.isMovingRight = false
+        if !gameState.isMovingLeft {
+            if gameState.currentAction == "move" {
+                let duration = Date().timeIntervalSince1970 * 1000 - gameState.actionStartTime
+                gameState.recordActionTime(action: "move", duration: duration)
+                gameState.currentAction = ""
+            }
+            stopAnimation(gameState: gameState)
+        }
+    }
+    
+    func startJump(gameState: StickFigureGameState, geometry: GeometryProxy) {
+        guard !gameState.isJumping else { return }
+        gameState.isJumping = true
+        gameState.jumpFrame = 0
+        gameState.resetIdleTimer()
+        
+        let jumpStartTime = Date().timeIntervalSince1970 * 1000
+        let jumpHeightPeak: CGFloat = 100
+        
+        gameState.jumpTimer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { [weak gameState] _ in
+            guard let gameState = gameState else { return }
+            gameState.jumpFrame += 1
+            let frameCount = gameState.jumpFrame
+            
+            if frameCount == 1 {
+                gameState.jumpHeight = jumpHeightPeak * 0.6
+            } else if frameCount == 2 {
+                gameState.jumpHeight = jumpHeightPeak
+            } else if frameCount == 3 {
+                gameState.jumpHeight = jumpHeightPeak * 0.3
+            } else if frameCount >= 4 {
+                gameState.jumpHeight = 0
+            }
+
+            if frameCount >= 4 {
+                gameState.jumpTimer?.invalidate()
+                gameState.jumpTimer = nil
+                gameState.isJumping = false
+                gameState.jumpFrame = 0
+                gameState.jumpHeight = 0
+
+                let jumpDuration = Date().timeIntervalSince1970 * 1000 - jumpStartTime
+                gameState.recordActionTime(action: "jump", duration: jumpDuration)
+                if gameState.currentLevel >= 2 {
+                    gameState.addPoints(2, action: "jump")
+                }
+            }
+        }
+    }
+    
+    func startAction(_ config: ActionConfig, gameState: StickFigureGameState) {
+        // Stop other animations
+        gameState.animationTimer?.invalidate()
+        gameState.actionTimer?.invalidate()
+        
+        // Set up action state
+        gameState.currentPerformingAction = config.id
+        gameState.actionFrame = config.animationFrames.first ?? 1
+        
+        // Handle flip based on flipMode
+        switch config.flipMode {
+        case .none:
+            gameState.actionFlip = false
+        case .random:
+            gameState.actionFlip = Bool.random()
+        case .alternating:
+            // Toggle the flip state for this action
+            let currentFlip = gameState.lastActionFlip[config.id] ?? false
+            gameState.lastActionFlip[config.id] = !currentFlip
+            gameState.actionFlip = !currentFlip
+        }
+        
+        let actionStartTime = Date().timeIntervalSince1970 * 1000
+        
+        // Start meditation countdown timer if this is meditation
+        if config.id == "meditation" {
+            gameState.meditationTotalDuration = 56.2
+            gameState.meditationTimeRemaining = 56.2
+            gameState.meditationCountdownTimer?.invalidate()
+            gameState.meditationCountdownTimer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { [weak gameState] _ in
+                guard let gameState = gameState else { return }
+                gameState.meditationTimeRemaining = max(0, gameState.meditationTimeRemaining - 0.1)
+                if gameState.meditationTimeRemaining <= 0 {
+                    gameState.meditationCountdownTimer?.invalidate()
+                    gameState.meditationCountdownTimer = nil
+                }
+            }
+        }
+        
+        // Start rest countdown timer if this is rest
+        if config.id == "rest" {
+            gameState.restTotalDuration = 7.1
+            gameState.restTimeRemaining = 7.1
+            gameState.restZzzLastTime = 0
+            gameState.restCountdownTimer?.invalidate()
+            gameState.restZzzTimer?.invalidate()
+            gameState.restCountdownTimer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { [weak gameState] _ in
+                guard let gameState = gameState else { return }
+                gameState.restTimeRemaining = max(0, gameState.restTimeRemaining - 0.1)
+                if gameState.restTimeRemaining <= 0 {
+                    gameState.restCountdownTimer?.invalidate()
+                    gameState.restCountdownTimer = nil
+                    gameState.restZzzTimer?.invalidate()
+                    gameState.restZzzTimer = nil
+                }
+            }
+        }
+        
+        // Start yoga countdown timer if this is yoga
+        if config.id == "yoga" {
+            // Yoga animation is exactly 60 seconds: 21 frames at 2.14s + 3 frames at 5.0s = 44.94 + 15 = ~60s
+            gameState.yogaTotalDuration = 60.0
+            gameState.yogaTimeRemaining = 60.0
+            gameState.yogaCountdownTimer?.invalidate()
+            gameState.yogaCountdownTimer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { [weak gameState] _ in
+                guard let gameState = gameState else { return }
+                gameState.yogaTimeRemaining = max(0, gameState.yogaTimeRemaining - 0.1)
+                if gameState.yogaTimeRemaining <= 0 {
+                    gameState.yogaCountdownTimer?.invalidate()
+                    gameState.yogaCountdownTimer = nil
+                }
+            }
+        }
+        
+        // Start pullup countdown if this is a pullup
+        if config.id == "pullup" {
+            gameState.pullupCount = 0
+            gameState.lastActionFrame = 0
+            gameState.pullupCountdownTimer?.invalidate()
+            gameState.pullupCountdownTimer = nil
+        }
+        
+        // Handle variable timing (like pushups)
+        if let variableTiming = config.variableTiming {
+            startActionWithVariableTiming(config, gameState: gameState, variableTiming: variableTiming, startTime: actionStartTime)
+        } else {
+            startActionWithUniformTiming(config, gameState: gameState, startTime: actionStartTime)
+        }
+    }
+    
+    private func startActionWithUniformTiming(_ config: ActionConfig, gameState: StickFigureGameState, startTime: Double) {
+        var frameIndex = 0
+        let speedMultiplier = (config.supportsSpeedBoost && gameState.speedBoostTimeRemaining > 0) ? 0.5 : 1.0
+        let interval = config.baseFrameInterval * speedMultiplier
+        
+        let meditationTexts = ["Be mindful", "Take a deep breath", "Focus on your breathing", "Breathe"]
+        var meditationTextIndex = 0
+        
+        gameState.actionTimer = Timer.scheduledTimer(withTimeInterval: interval, repeats: true) { _ in
+            if frameIndex < config.animationFrames.count {
+                gameState.actionFrame = config.animationFrames[frameIndex]
+                
+                // Detect pullup reps: increment when transitioning to frame 3 (start of pullup motion)
+                if config.id == "pullup" && gameState.actionFrame == 3 && gameState.lastActionFrame != 3 {
+                    gameState.pullupCount += 1
+                    gameState.lastPullupCounterTime = Date().timeIntervalSince1970
+                }
+                
+                gameState.lastActionFrame = gameState.actionFrame
+                
+                if config.id == "meditation" && frameIndex > 0 && frameIndex % 3 == 0 && meditationTextIndex < meditationTexts.count {
+                    let text = meditationTexts[meditationTextIndex]
+                    gameState.addFloatingText(text, x: 0.5, y: 0.65, color: .blue, fontSize: 20, isMeditation: true)
+                    meditationTextIndex += 1
+                }
+                
+                frameIndex += 1
+            } else {
+                gameState.actionTimer?.invalidate()
+                gameState.actionTimer = nil
+                gameState.currentPerformingAction = nil
+                gameState.actionFrame = 0
+                gameState.actionFlip = false
+                
+                let duration = Date().timeIntervalSince1970 * 1000 - startTime
+                gameState.recordActionTime(action: config.id, duration: duration)
+                
+                if gameState.currentLevel >= config.unlockLevel {
+                    gameState.addPoints(config.pointsPerCompletion, action: config.id)
+                }
+            }
+        }
+    }
+    
+    private func startActionWithVariableTiming(_ config: ActionConfig, gameState: StickFigureGameState, variableTiming: [Int: TimeInterval], startTime: Double) {
+        var frameIndex = 0
+        let speedMultiplier = (config.supportsSpeedBoost && gameState.speedBoostTimeRemaining > 0) ? 0.5 : 1.0
+        
+        let meditationTexts = ["Be mindful", "Take a deep breath", "Focus on your breathing", "Breathe"]
+        var meditationTextIndex = 0
+        
+        let yogaTexts = ["Breathe in", "Hold it", "Breathe out", "Relax"]
+        var yogaTextIndex = 0
+        var nextYogaMessageTime = 5.0  // First yoga message at 5 seconds
+        var elapsedTime = 0.0
+        
+        func scheduleNextFrame() {
+            guard frameIndex < config.animationFrames.count else {
+                gameState.actionTimer?.invalidate()
+                gameState.actionTimer = nil
+                gameState.currentPerformingAction = nil
+                gameState.actionFrame = 0
+                gameState.actionFlip = false
+                
+                let duration = Date().timeIntervalSince1970 * 1000 - startTime
+                gameState.recordActionTime(action: config.id, duration: duration)
+                
+                if gameState.currentLevel >= config.unlockLevel {
+                    gameState.addPoints(config.pointsPerCompletion, action: config.id)
+                }
+                return
+            }
+            
+            let currentFrame = config.animationFrames[frameIndex]
+            gameState.actionFrame = currentFrame
+            
+            // Detect pullup reps: increment when transitioning to frame 3 (start of pullup motion)
+            if config.id == "pullup" && gameState.actionFrame == 3 && gameState.lastActionFrame != 3 {
+                gameState.pullupCount += 1
+                gameState.lastPullupCounterTime = Date().timeIntervalSince1970
+            }
+            
+            gameState.lastActionFrame = gameState.actionFrame
+            
+            if config.id == "meditation" && frameIndex > 0 && frameIndex % 3 == 0 && meditationTextIndex < meditationTexts.count {
+                let text = meditationTexts[meditationTextIndex]
+                gameState.addFloatingText(text, x: 0.5, y: 0.65, color: .blue, fontSize: 20, isMeditation: true)
+                meditationTextIndex += 1
+            }
+            
+            // For yoga, trigger messages at regular 5-second intervals
+            if config.id == "yoga" && elapsedTime >= nextYogaMessageTime && yogaTextIndex < yogaTexts.count {
+                let text = yogaTexts[yogaTextIndex]
+                gameState.addFloatingText(text, x: 0.5, y: 0.65, color: .blue, fontSize: 20, isMeditation: true)
+                yogaTextIndex += 1
+                nextYogaMessageTime += 5.0  // Next message in 5 seconds
+            }
+            
+            frameIndex += 1
+            
+            let baseInterval = variableTiming[currentFrame] ?? config.baseFrameInterval
+            let interval = baseInterval * speedMultiplier
+            elapsedTime += interval
+            
+            DispatchQueue.main.asyncAfter(deadline: .now() + interval) {
+                scheduleNextFrame()
+            }
+        }
+        
+        scheduleNextFrame()
+    }
+}
+
+// MARK: - Game State
+
 // MARK: - Level Box for Map
 
 struct LevelBox: Identifiable {
@@ -250,6 +1324,24 @@ struct LevelBox: Identifiable {
     
     var isCompleted: Bool = false
     var isAvailable: Bool = true
+}
+
+// MARK: - Tree Structure
+
+struct MapTree: Identifiable {
+    let id = UUID()
+    let x: CGFloat // Position on map
+    let y: CGFloat // Position on map
+    let size: CGFloat // Size multiplier (0.8 to 1.5)
+}
+
+// MARK: - Coin Structure
+
+struct MapCoin {
+    var x: CGFloat // Position on map
+    var y: CGFloat // Position on map
+    var isVisible: Bool = true
+    var lastCollectedTime: Date? = nil
 }
 
 // MARK: - Game Map State
@@ -267,9 +1359,16 @@ class GameMapState {
     var mapOffsetX: CGFloat = 0
     var mapOffsetY: CGFloat = 0
     var levelBoxes: [LevelBox] = []
+    var trees: [MapTree] = []
+    var coin: MapCoin? = nil
+    var mapFloatingTexts: [FloatingTextItem] = []
     var selectedLevelNumber: Int? = nil
     var animationTimer: Timer? = nil
     var movementTimer: Timer? = nil
+    var floatingTextTimer: Timer? = nil
+    var doorAnimationTimer: Timer? = nil
+    var doorY: CGFloat = -200 // Starting position (above screen)
+    var isDoorAnimating: Bool = false
     
     let mapWidth: CGFloat = 2000
     let mapHeight: CGFloat = 2000
@@ -282,6 +1381,7 @@ class GameMapState {
         targetX = mapWidth / 2
         targetY = mapHeight / 2
         initializeLevelBoxes()
+        generateCoin()
     }
     
     func initializeLevelBoxes(currentLevel: Int = 1) {
@@ -323,6 +1423,247 @@ class GameMapState {
         
         levelBoxes = boxes
         // Don't reset character position here - let the view control it
+        
+        // Generate trees after level boxes are created
+        generateTrees()
+    }
+    
+    func generateTrees() {
+        var newTrees: [MapTree] = []
+        let treeCount = 250 // Number of trees to generate
+        let minDistanceFromLevelBox: CGFloat = 100 // Minimum distance from level boxes
+        let minDistanceFromPath: CGFloat = 60 // Minimum distance from paths between levels
+        let edgeMargin: CGFloat = 100 // Keep trees away from edges
+        
+        // Generate random trees
+        for _ in 0..<treeCount {
+            var attempts = 0
+            let maxAttempts = 50
+            
+            while attempts < maxAttempts {
+                // Random position on map
+                let x = CGFloat.random(in: edgeMargin...(mapWidth - edgeMargin))
+                let y = CGFloat.random(in: edgeMargin...(mapHeight - edgeMargin))
+                
+                // Check if too close to any level box
+                var tooClose = false
+                for box in levelBoxes {
+                    let dx = x - box.x
+                    let dy = y - box.y
+                    let distance = sqrt(dx * dx + dy * dy)
+                    if distance < minDistanceFromLevelBox {
+                        tooClose = true
+                        break
+                    }
+                }
+                
+                // Check if too close to paths between consecutive levels
+                if !tooClose {
+                    for i in 0..<(levelBoxes.count - 1) {
+                        let box1 = levelBoxes[i]
+                        let box2 = levelBoxes[i + 1]
+                        
+                        // Calculate distance from point to line segment
+                        let distanceToPath = distanceFromPointToLineSegment(
+                            px: x, py: y,
+                            x1: box1.x, y1: box1.y,
+                            x2: box2.x, y2: box2.y
+                        )
+                        
+                        if distanceToPath < minDistanceFromPath {
+                            tooClose = true
+                            break
+                        }
+                    }
+                }
+                
+                if !tooClose {
+                    // Random size variation
+                    let size = CGFloat.random(in: 0.8...1.5)
+                    newTrees.append(MapTree(x: x, y: y, size: size))
+                    break
+                }
+                
+                attempts += 1
+            }
+        }
+        
+        trees = newTrees
+    }
+    
+    // Helper function to calculate distance from a point to a line segment
+    func distanceFromPointToLineSegment(px: CGFloat, py: CGFloat, x1: CGFloat, y1: CGFloat, x2: CGFloat, y2: CGFloat) -> CGFloat {
+        let dx = x2 - x1
+        let dy = y2 - y1
+        
+        if dx == 0 && dy == 0 {
+            // Line segment is a point
+            let dpx = px - x1
+            let dpy = py - y1
+            return sqrt(dpx * dpx + dpy * dpy)
+        }
+        
+        // Calculate projection factor
+        let t = max(0, min(1, ((px - x1) * dx + (py - y1) * dy) / (dx * dx + dy * dy)))
+        
+        // Find closest point on line segment
+        let closestX = x1 + t * dx
+        let closestY = y1 + t * dy
+        
+        // Return distance to closest point
+        let dpx = px - closestX
+        let dpy = py - closestY
+        return sqrt(dpx * dpx + dpy * dpy)
+    }
+    
+    func generateCoin() {
+        let minDistanceFromSpawn: CGFloat = 500
+        let spawnX = mapWidth / 2
+        let spawnY = mapHeight / 2
+        let edgeMargin: CGFloat = 100
+        
+        var attempts = 0
+        let maxAttempts = 100
+        
+        // Load last collected time from UserDefaults
+        let timestamp = UserDefaults.standard.double(forKey: "game1_coin_last_collected_time")
+        var lastCollectedTime: Date? = nil
+        if timestamp > 0 {
+            lastCollectedTime = Date(timeIntervalSince1970: timestamp)
+        }
+        
+        // Check if 12 hours have passed since last collection
+        var shouldBeVisible = true
+        if let lastCollected = lastCollectedTime {
+            let twelveHoursInSeconds: TimeInterval = 12 * 60 * 60
+            let timeSinceCollection = Date().timeIntervalSince(lastCollected)
+            shouldBeVisible = timeSinceCollection >= twelveHoursInSeconds
+        }
+        
+        while attempts < maxAttempts {
+            // Random position on map
+            let x = CGFloat.random(in: edgeMargin...(mapWidth - edgeMargin))
+            let y = CGFloat.random(in: edgeMargin...(mapHeight - edgeMargin))
+            
+            // Check distance from spawn point
+            let dx = x - spawnX
+            let dy = y - spawnY
+            let distanceFromSpawn = sqrt(dx * dx + dy * dy)
+            
+            if distanceFromSpawn >= minDistanceFromSpawn {
+                coin = MapCoin(x: x, y: y, isVisible: shouldBeVisible, lastCollectedTime: lastCollectedTime)
+                break
+            }
+            
+            attempts += 1
+        }
+        
+        // Fallback if no valid position found
+        if coin == nil {
+            coin = MapCoin(x: 200, y: 200, isVisible: shouldBeVisible, lastCollectedTime: lastCollectedTime)
+        }
+    }
+    
+    func checkCoinCollision() -> Bool {
+        guard let coin = coin, coin.isVisible else { return false }
+        
+        let dx = characterX - coin.x
+        let dy = characterY - coin.y
+        let distance = sqrt(dx * dx + dy * dy)
+        
+        // Collision radius
+        return distance < 40
+    }
+    
+    func collectCoin() {
+        coin?.isVisible = false
+        coin?.lastCollectedTime = Date()
+        
+        // Save the collection time
+        saveCoinLastCollectedTime()
+        
+        // Add floating text at character position with darker color for readability
+        addMapFloatingText("Yessssss!", x: characterX, y: characterY + 30, color: .black, fontSize: 20)
+        
+        // Regenerate coin only after 12 hours
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [weak self] in
+            guard let self = self else { return }
+            
+            // Check if 12 hours have passed
+            if let lastCollected = self.coin?.lastCollectedTime {
+                let twelveHoursInSeconds: TimeInterval = 12 * 60 * 60
+                let timeSinceCollection = Date().timeIntervalSince(lastCollected)
+                
+                if timeSinceCollection >= twelveHoursInSeconds {
+                    // 12 hours passed, generate new coin
+                    self.generateCoin()
+                }
+                // If less than 12 hours, coin stays invisible
+            } else {
+                // No last collected time, generate coin
+                self.generateCoin()
+            }
+        }
+    }
+    
+    func saveCoinLastCollectedTime() {
+        if let lastCollectedTime = coin?.lastCollectedTime {
+            UserDefaults.standard.set(lastCollectedTime.timeIntervalSince1970, forKey: "game1_coin_last_collected_time")
+        }
+    }
+    
+    func loadCoinLastCollectedTime() {
+        let timestamp = UserDefaults.standard.double(forKey: "game1_coin_last_collected_time")
+        if timestamp > 0 {
+            coin?.lastCollectedTime = Date(timeIntervalSince1970: timestamp)
+        }
+    }
+    
+    func getCoinTimeRemaining() -> TimeInterval? {
+        guard let lastCollected = coin?.lastCollectedTime else { return nil }
+        let twelveHoursInSeconds: TimeInterval = 12 * 60 * 60
+        let timeSinceCollection = Date().timeIntervalSince(lastCollected)
+        let remaining = twelveHoursInSeconds - timeSinceCollection
+        return remaining > 0 ? remaining : nil
+    }
+    
+    func addMapFloatingText(_ text: String, x: CGFloat, y: CGFloat, color: Color, fontSize: CGFloat = 12) {
+        let floatingText = FloatingTextItem(x: x, y: y, text: text, color: color, fontSize: fontSize)
+        mapFloatingTexts.append(floatingText)
+    }
+    
+    func updateMapFloatingTexts(deltaTime: Double) {
+        for i in mapFloatingTexts.indices.reversed() {
+            mapFloatingTexts[i].age += deltaTime
+            mapFloatingTexts[i].y -= 20 * deltaTime // Move upward
+            
+            if mapFloatingTexts[i].age >= mapFloatingTexts[i].lifespan {
+                mapFloatingTexts.remove(at: i)
+            }
+        }
+    }
+    
+    func startDoorSliding() {
+        isDoorAnimating = true
+        doorY = -200 // Reset to top of screen
+        doorAnimationTimer?.invalidate()
+        
+        doorAnimationTimer = Timer.scheduledTimer(withTimeInterval: 0.016, repeats: true) { [weak self] _ in
+            guard let self = self else { return }
+            self.doorY += 8 // Slide down at constant speed
+            
+            // Loop back to top when door goes off bottom of screen
+            if self.doorY > 900 {
+                self.doorY = -200
+            }
+        }
+    }
+    
+    func stopDoorSliding() {
+        isDoorAnimating = false
+        doorAnimationTimer?.invalidate()
+        doorAnimationTimer = nil
+        doorY = -200 // Reset position
     }
     
     func moveCharacterTowards(_ targetX: CGFloat, _ targetY: CGFloat, deltaTime: CGFloat) {
@@ -379,684 +1720,121 @@ class GameMapState {
     }
 }
 
-// ...existing code...
-@Observable
-class StickFigureGameState {
-    var figurePosition: CGFloat = 0
-    var animationFrame: Int = 0
-    var isMovingRight: Bool = false
-    var isMovingLeft: Bool = false
-    var isJumping: Bool = false
-    var jumpFrame: Int = 0
-    var jumpHeight: CGFloat = 0
-    var isWaving: Bool = false
-    var waveFrame: Int = 0
-    var shouldFlipWave: Bool = false
-    
-    // Generic action system
-    var currentPerformingAction: String? = nil // ID of action being performed
-    var actionFrame: Int = 0
-    var actionFlip: Bool = false
-    var actionTimer: Timer? = nil
-    
-    // Special case animations
-    var isPerformingShaker: Bool = false
-    var shakerFrame: Int = 0
-    var shakerFlip: Bool = false
-    var shakerCatchLocation: (x: CGFloat, y: CGFloat)?
-    
-    var animationTimer: Timer?
-    var jumpTimer: Timer?
-    var waveTimer: Timer?
-    var shakerTimer: Timer?
-    var idleTimer: Timer?
-    var floatingTexts: [FloatingTextItem] = []
-    var floatingTextTimer: Timer?
-    var facingRight: Bool = true
-    var timeSinceLastMovement: Double = 0
-    var selectedAction: String = "Run"
+// MARK: - Stat Row Component
 
-    var currentLevel: Int = 1
-    var currentPoints: Int = 0
-    var sessionActions: Set<String> = []
-    var sessionStartTime: Date = Date()
-    var lastRunPointTime: Date = Date()
-    
-    var score: Int = 0
-    var timeElapsed: Double = 0
-    var highScore: Int = 0
+private struct StatRow: View {
+    let label: String
+    let value: String
+    var isUnlocked: Bool = true
+    var isCurrentLevel: Bool = false
+    var unlocksAt: Int? = nil
 
-    var actionTimes: [String: Double] = [:] // Dictionary to track time for each action
-    var allTimeElapsed: Double = 0
-    var totalLeavesCaught: Int = 0
-    var totalShakersCaught: Int = 0
-
-    var actionStartTime: Double = 0
-    var currentAction: String = ""
-    var statsSaveAccumulator: Double = 0
-    
-    // Signal for UI to return to map after level completion
-    var shouldReturnToMap: Bool = false
-    
-    // Room and door system
-    var currentRoomId: String = "room_1"
-    var currentRoomName: String = "Room 1"
-    var doors: [Door] = [] // Doors in current room
-    
-    var fallingLeaves: [FallingLeaf] = []
-    var leafSpawnTimer: Timer?
-    var fallingShakers: [FallingShaker] = []
-    var shakerSpawnTimer: Timer?
-    var leafUpdateTimer: Timer?
-    var shakerUpdateTimer: Timer?
-    var speedBoostEndTime: Date?
-    var speedBoostTimer: Timer?
-    var speedBoostTimeRemaining: Double = 0.0
-    var fireworkParticles: [FireworkParticle] = []
-    var fireworkUpdateTimer: Timer?
-
-    private let highScoreKey = "game1_high_score"
-    private let currentLevelKey = "game1_current_level"
-    private let currentPointsKey = "game1_current_points"
-    private let allTimeElapsedKey = "game1_all_time_elapsed"
-    private let totalLeavesCaughtKey = "game1_total_leaves_caught"
-    private let totalShakersCaughtKey = "game1_total_shakers_caught"
-    
-    // Dynamic keys for actions: "game1_action_time_{actionId}"
-    private func actionTimeKey(for actionId: String) -> String {
-        return "game1_action_time_\(actionId)"
+    var body: some View {
+        HStack {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(label)
+                    .foregroundColor(isUnlocked ? .black : Color.gray.opacity(0.4))
+                if let unlockLevel = unlocksAt, !isUnlocked {
+                    Text("Unlocks at Level \(unlockLevel)")
+                        .font(.caption)
+                        .foregroundColor(.gray.opacity(0.6))
+                }
+            }
+            Spacer()
+            Text(value)
+                .fontWeight(isCurrentLevel ? .semibold : .regular)
+                .foregroundColor(isUnlocked ? .black : Color.gray.opacity(0.4))
+        }
     }
+}
 
-    init() {
-        loadHighScore()
-        loadStats()
-        startFloatingTextTimer()
-        startIdleTimer()
-        startTimeElapsedTimer()
-        startLeafSpawner()
-        startShakerSpawner()
-        startLeafUpdater()
-        startShakerUpdater()
-        startFireworkUpdater()
-        initializeRoom(currentRoomId)
-    }
+// MARK: - Stats List Content Helper
+
+private struct StatsListContent: View {
+    var gameState: StickFigureGameState
+    var onShowLevelPicker: () -> Void
+    var onResetData: () -> Void
     
-    // MARK: - Room Management
-    
-    func initializeRoom(_ roomId: String) {
-        currentRoomId = roomId
-        
-        // Check if it's a level room (level_1, level_2, etc.)
-        if roomId.hasPrefix("level_"), let levelString = roomId.components(separatedBy: "_").last, let level = Int(levelString) {
-            currentRoomName = "Level \(level)"
-            // Create a single door that returns to map
-            doors = [
-                Door(
-                    id: "door_return_right",
-                    position: .right,
-                    collisionSide: .left,
-                    destinationRoomId: "map",
-                    x: 0.95,
-                    y: 0.85,
-                    width: 0.05,
-                    height: 0.25
+    var body: some View {
+        List {
+            StatRow(label: "Level", value: "\(gameState.currentLevel)")
+            StatRow(label: "Current Points", value: "\(gameState.currentPoints)/\(gameState.pointsNeeded(forLevel: gameState.currentLevel))")
+            StatRow(label: "Time Elapsed", value: gameState.formatTimeDuration(gameState.timeElapsed * 1000))
+            StatRow(label: "All Time Elapsed", value: gameState.formatTimeDuration(gameState.allTimeElapsed * 1000))
+            Divider()
+            Text("Catchables (Always Available)")
+                .font(.headline)
+                .foregroundColor(.primary)
+            StatRow(label: "Leaves", value: "\(gameState.totalLeavesCaught) caught", isUnlocked: true)
+            StatRow(label: "Hearts", value: "\(gameState.totalHeartsCaught) caught", isUnlocked: gameState.currentLevel >= 4, unlocksAt: 4)
+            StatRow(label: "Brains", value: "\(gameState.totalBrainsCaught) caught", isUnlocked: gameState.currentLevel >= 7, unlocksAt: 7)
+            StatRow(label: "Suns", value: "\(gameState.totalSunsCaught) caught", isUnlocked: gameState.currentLevel >= 10, unlocksAt: 10)
+            StatRow(label: "Shakers", value: "\(gameState.totalShakersCaught) caught", isUnlocked: true)
+            StatRow(label: "Coins", value: "\(gameState.totalCoinsCollected) collected", isUnlocked: true)
+            Divider()
+            Text("Actions & Points")
+                .font(.headline)
+                .foregroundColor(.primary)
+            
+            // Dynamically generate action rows from config
+            ForEach(ACTION_CONFIGS, id: \.id) { config in
+                let timeValue = gameState.actionTimes[config.id] ?? 0
+                let isCurrentLevel = config.unlockLevel == 1
+                StatRow(
+                    label: "Lvl \(config.unlockLevel): \(config.displayName)",
+                    value: gameState.formatTimeDuration(timeValue),
+                    isUnlocked: gameState.currentLevel >= config.unlockLevel,
+                    isCurrentLevel: isCurrentLevel
                 )
-            ]
-        } else {
-            // Original room setup for testing
-            switch roomId {
-            case "room_1":
-                currentRoomName = "Room 1"
-                doors = [
-                    Door(
-                        id: "door_right",
-                        position: .right,
-                        collisionSide: .left,
-                        destinationRoomId: "room_2",
-                        x: 0.95,
-                        y: 0.85,
-                        width: 0.05,
-                        height: 0.25
-                    )
-                ]
-            case "room_2":
-                currentRoomName = "Room 2"
-                doors = [
-                    Door(
-                        id: "door_left",
-                        position: .left,
-                        collisionSide: .right,
-                        destinationRoomId: "room_1",
-                        x: 0.05,
-                        y: 0.85,
-                        width: 0.05,
-                        height: 0.25
-                    )
-                ]
-            default:
-                currentRoomName = "Room Unknown"
-                doors = []
             }
-        }
-    }
-    
-    // MARK: - Door and Screen Wrap Handling
-    
-    func checkDoorCollision(figureX: CGFloat, screenWidth: CGFloat, screenHeight: CGFloat, isMovingRight: Bool, isMovingLeft: Bool) -> Door? {
-        for door in doors {
-            let doorScreenX = door.x * screenWidth
-            let doorScreenY = door.y * screenHeight
-            let doorWidth = door.width * screenWidth
-            let doorHeight = door.height * screenHeight
             
-            // Check if figure is within the door's horizontal bounds
-            let doorLeftEdge = doorScreenX - (doorWidth / 2)
-            let doorRightEdge = doorScreenX + (doorWidth / 2)
-            let doorTopEdge = doorScreenY - (doorHeight / 2)
-            let doorBottomEdge = doorScreenY + (doorHeight / 2)
+            Divider()
+            Text("Combo Boost")
+                .font(.subheadline)
+                .foregroundColor(.gray)
+            Text("Mix different level-based actions (Rest, Run, Jump, Yoga, Bicep Curls, Kettlebell Swings, Push Ups, Pull Ups, Meditation) in one session for a bonus! 2 actions = +2%, 3 actions = +3%, etc. Max combo = your current level. Leaves & shakers give points but don't count toward combo.")
+                .font(.caption)
+                .foregroundColor(.gray)
+                .padding(.top, 2)
+            Divider()
+            Text("Developer Debug")
+                .font(.subheadline)
+                .foregroundColor(.red)
             
-            // Figure dimensions
-            let figureWidth: CGFloat = 100
-            let figureHeight: CGFloat = 150
-            
-            // Check vertical overlap
-            let baseY = screenHeight - 80
-            let figureY = baseY
-            let figureTopEdge = figureY - (figureHeight / 2)
-            let figureBottomEdge = figureY + (figureHeight / 2)
-            
-            let verticalOverlap = !(figureBottomEdge < doorTopEdge || figureTopEdge > doorBottomEdge)
-            
-            if verticalOverlap {
-                // Check collision based on direction and collision side
-                if door.collisionSide == .left && isMovingRight && figureX + (figureWidth / 2) >= doorLeftEdge && figureX < doorRightEdge {
-                    return door
-                } else if door.collisionSide == .right && isMovingLeft && figureX - (figureWidth / 2) <= doorRightEdge && figureX > doorLeftEdge {
-                    return door
+            HStack {
+                Text("Set Level:")
+                    .foregroundColor(.gray)
+                Spacer()
+                Button(action: onShowLevelPicker) {
+                    HStack(spacing: 6) {
+                        Text("Level \(gameState.currentLevel)")
+                            .foregroundColor(.primary)
+                        Image(systemName: "chevron.up.chevron.down")
+                            .font(.caption)
+                            .foregroundColor(.gray)
+                    }
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 6)
+                    .background(Color(UIColor.systemGray6))
+                    .cornerRadius(6)
                 }
             }
-        }
-        return nil
-    }
-    
-    func handleScreenWrap(_ screenWidth: CGFloat) {
-        // Right edge wrap
-        if figurePosition > 1.0 {
-            figurePosition = -1.0
-        }
-        // Left edge wrap
-        else if figurePosition < -1.0 {
-            figurePosition = 1.0
-        }
-    }
-    
-    func stopMovingLeft() {
-        isMovingLeft = false
-    }
-    
-    func stopMovingRight() {
-        isMovingRight = false
-    }
-
-    private func loadHighScore() {
-        highScore = UserDefaults.standard.integer(forKey: highScoreKey)
-    }
-
-    func saveHighScore() {
-        UserDefaults.standard.set(highScore, forKey: highScoreKey)
-    }
-
-    private func loadStats() {
-        // Load action times dynamically
-        for config in ACTION_CONFIGS {
-            let key = actionTimeKey(for: config.id)
-            actionTimes[config.id] = UserDefaults.standard.double(forKey: key)
-        }
-        
-        allTimeElapsed = UserDefaults.standard.double(forKey: allTimeElapsedKey)
-        totalLeavesCaught = UserDefaults.standard.integer(forKey: totalLeavesCaughtKey)
-        totalShakersCaught = UserDefaults.standard.integer(forKey: totalShakersCaughtKey)
-        currentLevel = max(1, UserDefaults.standard.integer(forKey: currentLevelKey))
-        if currentLevel == 0 { currentLevel = 1 }
-        currentPoints = UserDefaults.standard.integer(forKey: currentPointsKey)
-    }
-
-    func saveStats() {
-        // Save action times dynamically
-        for (actionId, time) in actionTimes {
-            let key = actionTimeKey(for: actionId)
-            UserDefaults.standard.set(time, forKey: key)
-        }
-        
-        UserDefaults.standard.set(allTimeElapsed, forKey: allTimeElapsedKey)
-        UserDefaults.standard.set(totalLeavesCaught, forKey: totalLeavesCaughtKey)
-        UserDefaults.standard.set(totalShakersCaught, forKey: totalShakersCaughtKey)
-        UserDefaults.standard.set(currentLevel, forKey: currentLevelKey)
-        UserDefaults.standard.set(currentPoints, forKey: currentPointsKey)
-    }
-
-    private func startFloatingTextTimer() {
-        floatingTextTimer = Timer.scheduledTimer(withTimeInterval: 0.016, repeats: true) { [weak self] _ in
-            self?.updateFloatingTexts()
-        }
-    }
-
-    private func startIdleTimer() {
-        idleTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] _ in
-            guard let self = self else { return }
-            if !self.isMovingLeft && !self.isMovingRight && !self.isJumping && !self.isWaving && self.currentPerformingAction == nil && !self.isPerformingShaker {
-                self.timeSinceLastMovement += 1.0
-                if self.timeSinceLastMovement >= 15.0 {
-                    self.triggerWave()
-                    self.timeSinceLastMovement = 0
+            
+            Button(action: onResetData) {
+                HStack {
+                    Image(systemName: "trash.fill")
+                    Text("Reset All Game Data")
                 }
+                .foregroundColor(.white)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 12)
+                .background(Color.red)
+                .cornerRadius(8)
             }
+            .padding(.top, 8)
         }
-    }
-
-    private func startTimeElapsedTimer() {
-        Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { [weak self] _ in
-            guard let self = self else { return }
-            self.timeElapsed += 0.1
-            self.allTimeElapsed += 0.1
-            self.statsSaveAccumulator += 0.1
-            if self.statsSaveAccumulator >= 1.0 {
-                self.saveStats()
-                self.statsSaveAccumulator = 0
-            }
-            
-            // Award 1 point per 1 second of running
-            if self.isMovingLeft || self.isMovingRight {
-                let now = Date()
-                if now.timeIntervalSince(self.lastRunPointTime) >= 1.0 {
-                    self.addPoints(1, action: "run")
-                    self.lastRunPointTime = now
-                }
-            }
-        }
-    }
-
-    private func updateFloatingTexts() {
-        for i in floatingTexts.indices {
-            floatingTexts[i].age += 0.016
-            floatingTexts[i].y -= 0.001
-        }
-        floatingTexts.removeAll { $0.age >= $0.lifespan }
-    }
-    
-    private func startLeafSpawner() {
-        leafSpawnTimer = Timer.scheduledTimer(withTimeInterval: 10.0, repeats: true) { [weak self] _ in
-            self?.spawnLeaf()
-        }
-    }
-    
-    private func spawnLeaf() {
-        let randomX = CGFloat.random(in: 0...1)
-        let horizontalVel = CGFloat.random(in: -0.002...0.002)
-        let leaf = FallingLeaf(x: randomX, y: 0, horizontalVelocity: horizontalVel)
-        fallingLeaves.append(leaf)
-    }
-    
-    private func startShakerSpawner() {
-        shakerSpawnTimer = Timer.scheduledTimer(withTimeInterval: 15.0, repeats: true) { [weak self] _ in
-            self?.spawnShaker()
-        }
-    }
-    
-    private func spawnShaker() {
-        let randomX = CGFloat.random(in: 0...1)
-        let shaker = FallingShaker(x: randomX, y: 0)
-        fallingShakers.append(shaker)
-    }
-    
-    private func startLeafUpdater() {
-        leafUpdateTimer = Timer.scheduledTimer(withTimeInterval: 0.016, repeats: true) { [weak self] _ in
-            self?.updateLeavesPositions()
-        }
-    }
-    
-    private func startShakerUpdater() {
-        shakerUpdateTimer = Timer.scheduledTimer(withTimeInterval: 0.016, repeats: true) { [weak self] _ in
-            self?.updateShakersPositions()
-        }
-    }
-    
-    private func updateLeavesPositions() {
-        for i in fallingLeaves.indices.reversed() {
-            fallingLeaves[i].y += fallingLeaves[i].verticalSpeed
-            fallingLeaves[i].x += fallingLeaves[i].horizontalVelocity
-            fallingLeaves[i].rotation += 2.0
-            
-            if fallingLeaves[i].y > 1.1 {
-                fallingLeaves.remove(at: i)
-            }
-        }
-    }
-    
-    private func updateShakersPositions() {
-        for i in fallingShakers.indices.reversed() {
-            fallingShakers[i].y += fallingShakers[i].verticalSpeed
-            fallingShakers[i].rotation += 3.0
-            
-            if fallingShakers[i].y > 1.1 {
-                fallingShakers.remove(at: i)
-            }
-        }
-    }
-    
-    private func startFireworkUpdater() {
-        fireworkUpdateTimer = Timer.scheduledTimer(withTimeInterval: 0.016, repeats: true) { [weak self] _ in
-            self?.updateFireworkParticles()
-        }
-    }
-    
-    private func updateFireworkParticles() {
-        for i in fireworkParticles.indices {
-            fireworkParticles[i].x += fireworkParticles[i].velocityX
-            fireworkParticles[i].y += fireworkParticles[i].velocityY
-            fireworkParticles[i].velocityY += 0.001 // Gravity
-            fireworkParticles[i].age += 0.016
-        }
-        fireworkParticles.removeAll { $0.age >= $0.lifespan }
-    }
-    
-    func createFireworks(at x: CGFloat, y: CGFloat) {
-        let colors: [Color] = [.red, .orange, .yellow, .green, .blue, .purple, .pink]
-        
-        for _ in 0..<20 {
-            let angle = Double.random(in: 0...(2 * .pi))
-            let speed = CGFloat.random(in: 0.003...0.008)
-            let velocityX = cos(angle) * speed
-            let velocityY = sin(angle) * speed - 0.005 // Initial upward velocity
-            let color = colors.randomElement() ?? .yellow
-            
-            let particle = FireworkParticle(
-                x: x,
-                y: y,
-                velocityX: velocityX,
-                velocityY: velocityY,
-                color: color
-            )
-            fireworkParticles.append(particle)
-        }
-    }
-    
-    func addPoints(_ points: Int, action: String) {
-        // Only add to sessionActions if it's a level-based action (not leaves/shakers)
-        let levelBasedActionIDs = ACTION_CONFIGS.map { $0.id }
-        if levelBasedActionIDs.contains(action) {
-            sessionActions.insert(action)
-        }
-        
-        // Get max possible combo for current level (number of unlocked level-based actions)
-        let maxComboForLevel = currentLevel // Level 1=1 action, Level 2=2 actions, etc.
-        
-        // Only count level-based unlocked actions for combo
-        let unlockedLevelBasedActions = ActionConfig.levelBasedActionIDs(forLevel: currentLevel)
-        let validSessionActions = sessionActions.filter { unlockedLevelBasedActions.contains($0) }
-        let comboCount = min(validSessionActions.count, maxComboForLevel)
-        
-        // Combo multiplier: base points + comboCount% bonus
-        // e.g., 1 action = 1.0x, 2 actions = 1.02x, 3 actions = 1.03x, etc.
-        let multiplier: Double = comboCount > 1 ? 1.0 + (Double(comboCount) * 0.01) : 1.0
-        let exactPoints = Double(points) * multiplier
-        let totalPoints = Int(ceil(exactPoints)) // Always round up
-        currentPoints += totalPoints
-        
-        let pointsNeeded = pointsNeeded(forLevel: currentLevel)
-        if currentPoints >= pointsNeeded {
-            levelUp()
-        }
-        saveStats()
-    }
-    
-    func getMaxComboForLevel(_ level: Int) -> Int {
-        // Returns the maximum number of level-based actions (not including leaves/shakers)
-        return level
-    }
-    
-    func getValidComboCount() -> Int {
-        let maxCombo = getMaxComboForLevel(currentLevel)
-        let unlockedActions = ActionConfig.levelBasedActionIDs(forLevel: currentLevel)
-        let validCount = sessionActions.filter { unlockedActions.contains($0) }.count
-        return min(validCount, maxCombo)
-    }
-    
-    func pointsNeeded(forLevel level: Int) -> Int {
-        // Level 1 requires 50 points, all other levels require level * 100
-        return level == 1 ? 50 : level * 100
-    }
-    
-    func levelUp() {
-        currentLevel += 1
-        currentPoints = 0
-        shouldReturnToMap = true // Signal to return to map
-        
-        // Show level up message with larger text and set selected action to new action
-        if let newAction = ACTION_CONFIGS.first(where: { $0.unlockLevel == currentLevel }) {
-            let message = "Level \(currentLevel)!\n\(newAction.displayName) Unlocked!"
-            addFloatingText(message, x: 0.5, y: 0.4, color: .purple, fontSize: 24)
-            // Automatically select the newly unlocked action
-            selectedAction = newAction.displayName
-        }
-        saveStats()
-    }
-    
-    func checkLeafCollisions(figureX: CGFloat, figureY: CGFloat, screenWidth: CGFloat, screenHeight: CGFloat) {
-        for i in fallingLeaves.indices.reversed() {
-            let leafScreenX = fallingLeaves[i].x * screenWidth
-            let leafScreenY = fallingLeaves[i].y * screenHeight
-            
-            let figureWidth: CGFloat = 100
-            let figureHeight: CGFloat = 150
-            // Only check collision with bottom half of figure (accounts for empty space at top of image)
-            let collisionHeight: CGFloat = figureHeight / 2
-            let adjustedFigureY = figureY + (figureHeight / 4) // Center the collision box on lower half
-            
-            if abs(leafScreenX - figureX) < figureWidth / 2 &&
-               abs(leafScreenY - adjustedFigureY) < collisionHeight / 2 {
-                totalLeavesCaught += 1
-                addFloatingText("gotcha!", x: fallingLeaves[i].x, y: fallingLeaves[i].y, color: .green)
-                addPoints(2, action: "leaves")
-                fallingLeaves.remove(at: i)
-            }
-        }
-    }
-    
-    func checkShakerCollisions(figureX: CGFloat, figureY: CGFloat, screenWidth: CGFloat, screenHeight: CGFloat) {
-        for i in fallingShakers.indices.reversed() {
-            let shakerScreenX = fallingShakers[i].x * screenWidth
-            let shakerScreenY = fallingShakers[i].y * screenHeight
-            
-            let figureWidth: CGFloat = 100
-            let figureHeight: CGFloat = 150
-            // Only check collision with bottom half of figure (accounts for empty space at top of image)
-            let collisionHeight: CGFloat = figureHeight / 2
-            let adjustedFigureY = figureY + (figureHeight / 4) // Center the collision box on lower half
-            
-            if abs(shakerScreenX - figureX) < figureWidth / 2 &&
-               abs(shakerScreenY - adjustedFigureY) < collisionHeight / 2 {
-                totalShakersCaught += 1
-                addPoints(3, action: "shakers")
-                // Store catch location for fireworks later
-                shakerCatchLocation = (x: fallingShakers[i].x, y: fallingShakers[i].y)
-                fallingShakers.remove(at: i)
-                triggerShakerAnimation()
-                activateSpeedBoost()
-            }
-        }
-    }
-    
-    func activateSpeedBoost() {
-        let boostDuration: TimeInterval = 10.0
-        speedBoostEndTime = Date().addingTimeInterval(boostDuration)
-        speedBoostTimeRemaining = boostDuration
-        
-        speedBoostTimer?.invalidate()
-        speedBoostTimer = Timer.scheduledTimer(withTimeInterval: 0.05, repeats: true) { [weak self] timer in
-            guard let self = self else {
-                timer.invalidate()
-                return
-            }
-            
-            if let endTime = self.speedBoostEndTime {
-                let remaining = endTime.timeIntervalSinceNow
-                if remaining <= 0 {
-                    self.speedBoostEndTime = nil
-                    self.speedBoostTimeRemaining = 0.0
-                    timer.invalidate()
-                    self.speedBoostTimer = nil
-                } else {
-                    self.speedBoostTimeRemaining = remaining
-                }
-            } else {
-                timer.invalidate()
-                self.speedBoostTimer = nil
-            }
-        }
-    }
-    
-    func triggerShakerAnimation() {
-        guard !isPerformingShaker else { return }
-        isPerformingShaker = true
-        shakerFrame = 1
-        shakerFlip = Bool.random()
-        
-        var step = 0
-        shakerTimer = Timer.scheduledTimer(withTimeInterval: 0.15, repeats: true) { [weak self] timer in
-            guard let self = self else {
-                timer.invalidate()
-                return
-            }
-            
-            step += 1
-            
-            if step == 1 {
-                // Frame 1 (already set)
-            } else if step == 2 {
-                // Move to frame 2 (drinking)
-                self.shakerFrame = 2
-            } else if step >= 2 && step < 3 {
-                // Hold frame 2 briefly (~0.15s)
-            } else if step == 3 {
-                // Back to frame 1
-                self.shakerFrame = 1
-            } else {
-                // End animation
-                timer.invalidate()
-                self.shakerTimer = nil
-                self.isPerformingShaker = false
-                self.shakerFrame = 0
-                self.shakerFlip = false
-                
-                // Trigger fireworks at catch location
-                if let location = self.shakerCatchLocation {
-                    self.createFireworks(at: location.x, y: location.y)
-                    self.shakerCatchLocation = nil
-                }
-            }
-        }
-    }
-    
-    func addFloatingText(_ text: String, x: CGFloat, y: CGFloat, color: Color, fontSize: CGFloat = 12) {
-        floatingTexts.append(FloatingTextItem(x: x, y: y, text: text, color: color, fontSize: fontSize))
-    }
-
-    func resetIdleTimer() {
-        timeSinceLastMovement = 0
-    }
-
-    func triggerWave() {
-        isWaving = true
-        waveFrame = 1
-        shouldFlipWave = Bool.random()
-
-        var frameCount = 0
-        waveTimer = Timer.scheduledTimer(withTimeInterval: 0.15, repeats: true) { [weak self] _ in
-            frameCount += 1
-            self?.waveFrame = (frameCount - 1) % 2 + 1
-
-            if frameCount >= 10 {
-                self?.waveTimer?.invalidate()
-                self?.waveTimer = nil
-                self?.isWaving = false
-                self?.waveFrame = 0
-            }
-        }
-    }
-
-    func recordActionTime(action: String, duration: Double) {
-        actionTimes[action, default: 0] += duration
-        saveStats()
-    }
-
-    func formatTimeDuration(_ milliseconds: Double) -> String {
-        let totalSeconds = milliseconds / 1000.0
-
-        let years = Int(totalSeconds / 31536000)
-        let yearRemainder = totalSeconds.truncatingRemainder(dividingBy: 31536000)
-
-        let months = Int(yearRemainder / 2592000)
-        let monthRemainder = yearRemainder.truncatingRemainder(dividingBy: 2592000)
-
-        let days = Int(monthRemainder / 86400)
-        let dayRemainder = monthRemainder.truncatingRemainder(dividingBy: 86400)
-
-        let hours = Int(dayRemainder / 3600)
-        let hourRemainder = dayRemainder.truncatingRemainder(dividingBy: 3600)
-
-        let minutes = Int(hourRemainder / 60)
-        let seconds = Int(hourRemainder.truncatingRemainder(dividingBy: 60))
-        let millis = Int(milliseconds.truncatingRemainder(dividingBy: 1000))
-
-        var components: [String] = []
-        if years > 0 { components.append("\(years)y") }
-        if months > 0 { components.append("\(months)mo") }
-        if days > 0 { components.append("\(days)d") }
-        if hours > 0 { components.append("\(hours)h") }
-        if minutes > 0 { components.append("\(minutes)m") }
-        if seconds > 0 { components.append("\(seconds)s") }
-        if millis > 0 { components.append("\(millis)ms") }
-
-        return components.isEmpty ? "0ms" : components.joined(separator: " ")
-    }
-
-    deinit {
-        floatingTextTimer?.invalidate()
-        idleTimer?.invalidate()
-        waveTimer?.invalidate()
-        actionTimer?.invalidate()
-        shakerTimer?.invalidate()
-        leafSpawnTimer?.invalidate()
-        shakerSpawnTimer?.invalidate()
-        leafUpdateTimer?.invalidate()
-        shakerUpdateTimer?.invalidate()
     }
 }
-
-// MARK: - Corner Radius Modifier
-
-extension View {
-    func cornerRadius(_ radius: CGFloat, corners: UIRectCorner) -> some View {
-        clipShape(RoundedCorner(radius: radius, corners: corners))
-    }
-}
-
-struct RoundedCorner: Shape {
-    var radius: CGFloat = .infinity
-    var corners: UIRectCorner = .allCorners
-
-    func path(in rect: CGRect) -> Path {
-        let path = UIBezierPath(roundedRect: rect,
-                                byRoundingCorners: corners,
-                                cornerRadii: CGSize(width: radius, height: radius))
-        return Path(path.cgPath)
-    }
-}
-
-// MARK: - Main Game View
-
-// MARK: - Game Map View
 
 // MARK: - Game 1 Module View
 
@@ -1073,6 +1851,8 @@ private struct Game1ModuleView: View {
     @State private var showStats = false
     @State private var showActionPicker = false
     @State private var showLevelPicker = false
+    @State private var showDoor = false
+    @State private var boostTimerUpdateTrigger = UUID() // Trigger for boost timer refresh
     @Environment(ModuleState.self) var moduleState
 
     @ViewBuilder
@@ -1090,6 +1870,8 @@ private struct Game1ModuleView: View {
                 // Top bar - Fixed at top
                 HStack {
                         Button(action: {
+                            // Save map position before exiting
+                            gameState.saveMapPosition(mapState)
                             moduleState.selectModule(ModuleIDs.dashboard)
                         }) {
                             HStack(spacing: 4) {
@@ -1164,6 +1946,27 @@ private struct Game1ModuleView: View {
                             
                             // Draw connection lines between levels
                             connectionLinesView(mapState: mapState)
+                            
+                            // Draw trees
+                            ForEach(mapState.trees) { tree in
+                                let screenX = tree.x - mapState.mapOffsetX
+                                let screenY = tree.y - mapState.mapOffsetY
+                                
+                                Text("🌲")
+                                    .font(.system(size: 30 * tree.size))
+                                    .position(x: screenX, y: screenY)
+                            }
+                            
+                            // Draw coin
+                            if let coin = mapState.coin, coin.isVisible {
+                                let coinScreenX = coin.x - mapState.mapOffsetX
+                                let coinScreenY = coin.y - mapState.mapOffsetY
+                                
+                                Text("🪙")
+                                    .font(.system(size: 40))
+                                    .position(x: coinScreenX, y: coinScreenY)
+                                    .shadow(color: .yellow.opacity(0.6), radius: 10)
+                            }
                             
                             // Level boxes - manually create boxes without ForEach
                             ZStack {
@@ -1306,6 +2109,66 @@ private struct Game1ModuleView: View {
                                     )
                                     .position(x: screenX, y: screenY)
                                 }
+                                
+                                // Level 8
+                                let box8 = mapState.levelBoxes.count > 7 ? mapState.levelBoxes[7] : nil
+                                if let box = box8 {
+                                    let screenX = box.x - mapState.mapOffsetX
+                                    let screenY = box.y - mapState.mapOffsetY
+                                    VStack {
+                                        Text("Level \(box.levelNumber)")
+                                            .font(.system(size: 14, weight: .bold))
+                                            .foregroundColor(box.isAvailable && !box.isCompleted ? .black : .white)
+                                    }
+                                    .frame(width: box.width, height: box.height)
+                                    .background(box.isCompleted ? Color.green : (box.isAvailable ? Color.white : Color.gray))
+                                    .cornerRadius(8)
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 8)
+                                            .stroke(box.isAvailable && !box.isCompleted ? Color.blue : Color.clear, lineWidth: 3)
+                                    )
+                                    .position(x: screenX, y: screenY)
+                                }
+                                
+                                // Level 9
+                                let box9 = mapState.levelBoxes.count > 8 ? mapState.levelBoxes[8] : nil
+                                if let box = box9 {
+                                    let screenX = box.x - mapState.mapOffsetX
+                                    let screenY = box.y - mapState.mapOffsetY
+                                    VStack {
+                                        Text("Level \(box.levelNumber)")
+                                            .font(.system(size: 14, weight: .bold))
+                                            .foregroundColor(box.isAvailable && !box.isCompleted ? .black : .white)
+                                    }
+                                    .frame(width: box.width, height: box.height)
+                                    .background(box.isCompleted ? Color.green : (box.isAvailable ? Color.white : Color.gray))
+                                    .cornerRadius(8)
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 8)
+                                            .stroke(box.isAvailable && !box.isCompleted ? Color.blue : Color.clear, lineWidth: 3)
+                                    )
+                                    .position(x: screenX, y: screenY)
+                                }
+                                
+                                // Level 10
+                                let box10 = mapState.levelBoxes.count > 9 ? mapState.levelBoxes[9] : nil
+                                if let box = box10 {
+                                    let screenX = box.x - mapState.mapOffsetX
+                                    let screenY = box.y - mapState.mapOffsetY
+                                    VStack {
+                                        Text("Level \(box.levelNumber)")
+                                            .font(.system(size: 14, weight: .bold))
+                                            .foregroundColor(box.isAvailable && !box.isCompleted ? .black : .white)
+                                    }
+                                    .frame(width: box.width, height: box.height)
+                                    .background(box.isCompleted ? Color.green : (box.isAvailable ? Color.white : Color.gray))
+                                    .cornerRadius(8)
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 8)
+                                            .stroke(box.isAvailable && !box.isCompleted ? Color.blue : Color.clear, lineWidth: 3)
+                                    )
+                                    .position(x: screenX, y: screenY)
+                                }
                             }
                             
                             // Character - always render at center of screen for smooth experience
@@ -1320,6 +2183,19 @@ private struct Game1ModuleView: View {
                             }
                             .frame(width: 50, height: 50)
                             .position(x: geometry.size.width / 2, y: geometry.size.height / 2)
+                            
+                            // Floating text on map
+                            ForEach(mapState.mapFloatingTexts) { floatingText in
+                                let screenX = floatingText.x - mapState.mapOffsetX
+                                let screenY = floatingText.y - mapState.mapOffsetY
+                                
+                                Text(floatingText.text)
+                                    .font(.system(size: floatingText.fontSize, weight: .bold))
+                                    .foregroundColor(floatingText.color)
+                                    .opacity(1.0 - (floatingText.age / floatingText.lifespan))
+                                    .shadow(color: .black.opacity(0.3), radius: 2)
+                                    .position(x: screenX, y: screenY)
+                            }
                         }
                         .contentShape(Rectangle())
                         .gesture(
@@ -1362,21 +2238,27 @@ private struct Game1ModuleView: View {
                             
                             // Only set character position on first load, not when returning from level
                             if !hasInitializedMap {
-                                // Center character NEXT TO the current/highest unlocked level (not on top of it)
-                                if gameState.currentLevel <= mapState.levelBoxes.count {
-                                    let targetBox = mapState.levelBoxes[gameState.currentLevel - 1]
-                                    // Position character to the left of the level box with offset
-                                    let offset: CGFloat = 100 // Distance from level box
-                                    mapState.characterX = targetBox.x - offset
-                                    mapState.characterY = targetBox.y
-                                    mapState.targetX = targetBox.x - offset
-                                    mapState.targetY = targetBox.y
-                                } else {
-                                    // Fallback: center on map
-                                    mapState.characterX = mapState.mapWidth / 2
-                                    mapState.characterY = mapState.mapHeight / 2
-                                    mapState.targetX = mapState.mapWidth / 2
-                                    mapState.targetY = mapState.mapHeight / 2
+                                // Try to load saved position
+                                gameState.loadMapPosition(mapState)
+                                
+                                // If no saved position (loadMapPosition will check), set default
+                                if mapState.characterX == mapState.mapWidth / 2 && mapState.characterY == mapState.mapHeight / 2 {
+                                    // Center character NEXT TO the current/highest unlocked level (not on top of it)
+                                    if gameState.currentLevel <= mapState.levelBoxes.count {
+                                        let targetBox = mapState.levelBoxes[gameState.currentLevel - 1]
+                                        // Position character to the left of the level box with offset
+                                        let offset: CGFloat = 100 // Distance from level box
+                                        mapState.characterX = targetBox.x - offset
+                                        mapState.characterY = targetBox.y
+                                        mapState.targetX = targetBox.x - offset
+                                        mapState.targetY = targetBox.y
+                                    } else {
+                                        // Fallback: center on map
+                                        mapState.characterX = mapState.mapWidth / 2
+                                        mapState.characterY = mapState.mapHeight / 2
+                                        mapState.targetX = mapState.mapWidth / 2
+                                        mapState.targetY = mapState.mapHeight / 2
+                                    }
                                 }
                                 hasInitializedMap = true
                             }
@@ -1384,6 +2266,7 @@ private struct Game1ModuleView: View {
                             mapState.animationTimer = Timer.scheduledTimer(withTimeInterval: 0.08, repeats: true) { _ in
                                 mapState.moveCharacterTowards(mapState.targetX, mapState.targetY, deltaTime: 0.08)
                                 mapState.updateMapOffset(screenWidth: geometry.size.width, screenHeight: geometry.size.height)
+                                mapState.updateMapFloatingTexts(deltaTime: 0.08)
                                 
                                 if mapState.isMoving {
                                     mapState.animationFrame = mapState.animationFrame == 2 ? 3 : 2
@@ -1398,16 +2281,72 @@ private struct Game1ModuleView: View {
                                         gameState.currentLevel = levelNumber
                                         gameState.initializeRoom("level_\(levelNumber)")
                                         gameState.figurePosition = 0
-                                        showGameMap = false
+                                        showDoor = false // Hide door by default when entering room
+                                        showGameMap = false // Switch to gameplay view
                                         mapState.animationTimer?.invalidate()
                                         mapState.animationTimer = nil
                                     }
+                                }
+                                
+                                // Check coin collision
+                                if mapState.checkCoinCollision() {
+                                    gameState.currentPoints += 100
+                                    gameState.totalCoinsCollected += 1
+                                    mapState.collectCoin()
+                                    
+                                    // Check if level up occurred on map
+                                    let pointsNeeded = gameState.pointsNeeded(forLevel: gameState.currentLevel)
+                                    if gameState.currentPoints >= pointsNeeded {
+                                        // Level up on map
+                                        let nextLevel = gameState.currentLevel + 1
+                                        
+                                        // Show level up message
+                                        if let newAction = ACTION_CONFIGS.first(where: { $0.unlockLevel == nextLevel }) {
+                                            let message = "Level \(nextLevel)!\n\(newAction.displayName) Unlocked!"
+                                            mapState.addMapFloatingText(message, x: mapState.characterX, y: mapState.characterY - 50, color: .purple, fontSize: 24)
+                                            gameState.selectedAction = newAction.displayName
+                                        } else {
+                                            mapState.addMapFloatingText("Level \(nextLevel)!", x: mapState.characterX, y: mapState.characterY - 50, color: .purple, fontSize: 24)
+                                        }
+                                        
+                                        // Reset points and increment level
+                                        gameState.currentPoints = 0
+                                        gameState.currentLevel = nextLevel
+                                        
+                                        // Update map level boxes for new level
+                                        if gameState.currentLevel - 1 > 0 && gameState.currentLevel - 1 <= mapState.levelBoxes.count {
+                                            var updatedBoxes = mapState.levelBoxes
+                                            updatedBoxes[gameState.currentLevel - 2].isCompleted = true
+                                            
+                                            if gameState.currentLevel - 1 < updatedBoxes.count {
+                                                updatedBoxes[gameState.currentLevel - 1].isAvailable = true
+                                            }
+                                            
+                                            mapState.levelBoxes = updatedBoxes
+                                        }
+                                        
+                                        gameState.saveStats()
+                                    }
+                                }
+                            }
+                            
+                            // Separate timer for tracking elapsed time on map (0.1 second intervals)
+                            gameState.elapsedTimeTimer?.invalidate()
+                            gameState.elapsedTimeTimer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { [weak gameState] _ in
+                                guard let gameState = gameState else { return }
+                                gameState.timeElapsed += 0.1
+                                gameState.allTimeElapsed += 0.1
+                                // Auto-save stats every 10 seconds to persist elapsed time
+                                if Int(gameState.allTimeElapsed * 10) % 100 == 0 {
+                                    gameState.saveStats()
                                 }
                             }
                         }
                         .onDisappear {
                             mapState.animationTimer?.invalidate()
                             mapState.animationTimer = nil
+                            gameState.elapsedTimeTimer?.invalidate()
+                            gameState.elapsedTimeTimer = nil
                         }
                 }
             }
@@ -1431,103 +2370,55 @@ private struct Game1ModuleView: View {
                     .padding(16)
                     .background(Color.white)
 
-                    List {
-                        StatRow(label: "Level", value: "\(gameState.currentLevel)")
-                        StatRow(label: "Current Points", value: "\(gameState.currentPoints)/\(gameState.pointsNeeded(forLevel: gameState.currentLevel))")
-                        StatRow(label: "Time Elapsed", value: String(format: "%.1f s", gameState.timeElapsed))
-                        StatRow(label: "All Time Elapsed", value: gameState.formatTimeDuration(gameState.allTimeElapsed * 1000))
-                        Divider()
-                        Text("Actions & Points")
-                            .font(.headline)
-                            .foregroundColor(.primary)
-                        
-                        // Dynamically generate action rows from config
-                        ForEach(ACTION_CONFIGS, id: \.id) { config in
-                            let timeValue = gameState.actionTimes[config.id] ?? 0
-                            let isCurrentLevel = config.unlockLevel == 1
-                            StatRow(
-                                label: "Lvl \(config.unlockLevel): \(config.displayName)",
-                                value: gameState.formatTimeDuration(timeValue),
-                                isUnlocked: gameState.currentLevel >= config.unlockLevel,
-                                isCurrentLevel: isCurrentLevel
-                            )
-                        }
-                        
-                        Divider()
-                        Text("Catchables (Always Available)")
-                            .font(.headline)
-                            .foregroundColor(.primary)
-                        StatRow(label: "Leaves", value: "\(gameState.totalLeavesCaught) caught", isUnlocked: true)
-                        StatRow(label: "Shakers", value: "\(gameState.totalShakersCaught) caught", isUnlocked: true)
-                        Divider()
-                        Text("Combo Boost")
-                            .font(.subheadline)
-                            .foregroundColor(.gray)
-                        Text("Mix different level-based actions (Run, Jump, Curls, etc.) in one session for a bonus! 2 actions = +2%, 3 actions = +3%, etc. Max combo = your current level. Leaves & shakers give points but don't count toward combo.")
-                            .font(.caption)
-                            .foregroundColor(.gray)
-                            .padding(.top, 2)
-                        Divider()
-                        Text("Developer Debug")
-                            .font(.subheadline)
-                            .foregroundColor(.red)
-                        
-                        HStack {
-                            Text("Set Level:")
-                                .foregroundColor(.gray)
-                            Spacer()
-                            Button(action: {
-                                showLevelPicker = true
-                            }) {
-                                HStack(spacing: 6) {
-                                    Text("Level \(gameState.currentLevel)")
-                                        .foregroundColor(.primary)
-                                    Image(systemName: "chevron.up.chevron.down")
-                                        .font(.caption)
-                                        .foregroundColor(.gray)
-                                }
-                                .padding(.horizontal, 12)
-                                .padding(.vertical, 6)
-                                .background(Color(UIColor.systemGray6))
-                                .cornerRadius(6)
-                            }
-                        }
-                        
-                        Button(action: {
+                    StatsListContent(
+                        gameState: gameState,
+                        onShowLevelPicker: { showLevelPicker = true },
+                        onResetData: {
                             // Reset all game data
                             gameState.currentLevel = 1
                             gameState.currentPoints = 0
+                            gameState.selectedAction = "Rest"
                             gameState.sessionActions.removeAll()
                             gameState.actionTimes.removeAll()
                             gameState.totalLeavesCaught = 0
+                            gameState.totalHeartsCaught = 0
+                            gameState.totalBrainsCaught = 0
+                            gameState.totalSunsCaught = 0
                             gameState.totalShakersCaught = 0
+                            gameState.totalCoinsCollected = 0
                             gameState.allTimeElapsed = 0
                             gameState.timeElapsed = 0
                             gameState.score = 0
                             gameState.highScore = 0
                             gameState.saveStats()
                             gameState.saveHighScore()
+                            
+                            // Clear coin last collected time
+                            UserDefaults.standard.removeObject(forKey: "game1_coin_last_collected_time")
+                            
                             // Reinitialize map level boxes after reset
                             mapState.initializeLevelBoxes(currentLevel: 1)
-                        }) {
-                            HStack {
-                                Image(systemName: "trash.fill")
-                                Text("Reset All Game Data")
+                            
+                            // Regenerate coin (will be visible since no collection time)
+                            mapState.generateCoin()
+                            
+                            // Position character next to level 1
+                            if mapState.levelBoxes.count > 0 {
+                                let level1Box = mapState.levelBoxes[0]
+                                let offset: CGFloat = 100
+                                mapState.characterX = level1Box.x - offset
+                                mapState.characterY = level1Box.y
+                                mapState.targetX = level1Box.x - offset
+                                mapState.targetY = level1Box.y
                             }
-                            .foregroundColor(.white)
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 12)
-                            .background(Color.red)
-                            .cornerRadius(8)
                         }
-                        .padding(.top, 8)
-                    }
+                    )
 
                     Spacer()
                 }
                 .frame(maxHeight: .infinity, alignment: .top)
                 .background(Color.white)
-                .cornerRadius(12, corners: [.topLeft, .topRight])
+                .cornerRadius(12)
                 .padding(.horizontal, 12)
                 .padding(.top, 50)
                 .transition(.move(edge: .bottom))
@@ -1578,7 +2469,7 @@ private struct Game1ModuleView: View {
                         }
                         .background(Color.white)
                     }
-                    .cornerRadius(12, corners: [.topLeft, .topRight])
+                    .cornerRadius(12)
                     .padding(.horizontal, 12)
                 }
                 .transition(.move(edge: .bottom))
@@ -1588,28 +2479,40 @@ private struct Game1ModuleView: View {
     
     private var gameplayScreen: some View {
         ZStack {
-                VStack(spacing: 0) {
-                    Spacer()
-                        .frame(height: 50)
-                    HStack {
-                        Button(action: {
-                            gameState.animationTimer?.invalidate()
-                            gameState.jumpTimer?.invalidate()
-                            gameState.floatingTextTimer?.invalidate()
-                            gameState.idleTimer?.invalidate()
-                            gameState.waveTimer?.invalidate()
-                            gameState.actionTimer?.invalidate()
-                            gameState.sessionActions.removeAll() // Reset combo for next session
-                            gameState.saveStats()
-                            moduleState.selectModule(ModuleIDs.dashboard)
-                        }) {
-                            HStack(spacing: 4) {
-                                Image(systemName: "xmark")
-                                Text("Exit")
-                            }
-                            .foregroundColor(.white)
-                            .padding(.horizontal, 12)
-                            .padding(.vertical, 8)
+            VStack(spacing: 0) {
+                HStack {
+                    Button(action: {
+                        gameState.animationTimer?.invalidate()
+                        gameState.jumpTimer?.invalidate()
+                        gameState.floatingTextTimer?.invalidate()
+                        gameState.elapsedTimeTimer?.invalidate()
+                        gameState.idleTimer?.invalidate()
+                        gameState.waveTimer?.invalidate()
+                        gameState.actionTimer?.invalidate()
+                        gameState.shakerAnimationTimer?.invalidate()
+                        gameState.sessionActions.removeAll() // Reset combo for next session
+                        gameState.timeElapsed = 0 // Reset session time elapsed
+                        gameState.fireworkParticles.removeAll() // Clear any lingering fireworks
+                        gameState.saveStats()
+                        
+                        // Save the current level to map position for restoration
+                        if gameState.currentLevel <= mapState.levelBoxes.count {
+                            let currentLevelBox = mapState.levelBoxes[gameState.currentLevel - 1]
+                            // Position character below the level they were working on
+                            mapState.characterX = currentLevelBox.x
+                            mapState.characterY = currentLevelBox.y + 150
+                            gameState.saveMapPosition(mapState)
+                        }
+                        
+                        moduleState.selectModule(ModuleIDs.dashboard)
+                    }) {
+                        HStack(spacing: 4) {
+                            Image(systemName: "xmark")
+                            Text("Exit")
+                        }
+                        .foregroundColor(.white)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 8)
                         .background(Color.black.opacity(0.6))
                         .cornerRadius(6)
                     }
@@ -1642,24 +2545,50 @@ private struct Game1ModuleView: View {
                             .font(.system(size: 10))
                             .foregroundColor(.white.opacity(0.8))
                         
-                        // Combo Boost Bar
-                        if gameState.getValidComboCount() > 1 {
-                            let maxCombo = gameState.getMaxComboForLevel(gameState.currentLevel)
-                            let comboCount = min(gameState.getValidComboCount(), maxCombo)
-                            HStack(spacing: 4) {
-                                Image(systemName: "star.fill")
-                                    .font(.system(size: 10))
-                                    .foregroundColor(.yellow)
-                                Text("Bonus: \(comboCount)%")
-                                    .font(.system(size: 10, weight: .bold))
-                                    .foregroundColor(.yellow)
+                        // Combo Boost Bar - Fixed height container
+                        ZStack {
+                            if gameState.getValidComboCount() > 1 {
+                                let maxCombo = gameState.getMaxComboForLevel(gameState.currentLevel)
+                                let comboCount = min(gameState.getValidComboCount(), maxCombo)
+                                HStack(spacing: 4) {
+                                    Image(systemName: "star.fill")
+                                        .font(.system(size: 10))
+                                        .foregroundColor(.yellow)
+                                    Text("Bonus: \(comboCount)%")
+                                        .font(.system(size: 10, weight: .bold))
+                                        .foregroundColor(.yellow)
+                                }
+                                .padding(.horizontal, 8)
+                                .padding(.vertical, 4)
+                                .background(Color.orange.opacity(0.8))
+                                .cornerRadius(4)
+                                .padding(.top, 4)
                             }
-                            .padding(.horizontal, 8)
-                            .padding(.vertical, 4)
-                            .background(Color.orange.opacity(0.8))
-                            .cornerRadius(4)
-                            .padding(.top, 4)
                         }
+                        .frame(height: 26)
+                        .padding(.top, 0)
+                        
+                        // Speed Boost Timer - Fixed height container
+                        ZStack {
+                            if gameState.speedBoostEndTime != nil && gameState.speedBoostTimeRemaining > 0 {
+                                HStack(spacing: 4) {
+                                    Image(systemName: "bolt.fill")
+                                        .font(.system(size: 10))
+                                        .foregroundColor(.yellow)
+                                    Text(String(format: "Boost: %.1fs", gameState.speedBoostTimeRemaining))
+                                        .font(.system(size: 10, weight: .bold))
+                                        .foregroundColor(.yellow)
+                                }
+                                .padding(.horizontal, 8)
+                                .padding(.vertical, 4)
+                                .background(Color.orange.opacity(0.8))
+                                .cornerRadius(4)
+                                .padding(.top, 4)
+                                .id(gameState.boostTimerTick) // Force refresh when tick changes
+                            }
+                        }
+                        .frame(height: 26)
+                        .padding(.top, 0)
                     }
                     .padding(.horizontal, 12)
                     .padding(.vertical, 8)
@@ -1683,186 +2612,160 @@ private struct Game1ModuleView: View {
                     }
                 }
                 .padding(12)
-
-                // Speed Boost Timer
-                if gameState.speedBoostEndTime != nil && gameState.speedBoostTimeRemaining > 0 {
-                    HStack(spacing: 6) {
-                        Image(systemName: "bolt.fill")
-                            .foregroundColor(.yellow)
-                            .font(.system(size: 14))
-                        Text(String(format: "%.1fs", gameState.speedBoostTimeRemaining))
-                            .font(.system(size: 14, weight: .bold))
-                            .foregroundColor(.white)
-                    }
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 6)
-                    .background(Color.orange.opacity(0.8))
-                    .cornerRadius(8)
-                    .padding(.top, 4)
-                }
-
-                Spacer()
+                .padding(.top, 60)
 
                 GamePlayArea(
                     gameState: gameState,
                     mapState: mapState,
                     showGameMap: $showGameMap,
-                    startMovingLeftAction: startMovingLeft,
-                    stopMovingLeftAction: stopMovingLeft,
-                    startMovingRightAction: startMovingRight,
-                    stopMovingRightAction: stopMovingRight,
-                    startJumpAction: startJump,
-                    startActionAction: startAction
+                    showDoor: $showDoor,
+                    startMovingLeftAction: { gs, geo in gs.startMovingLeft(gameState: gs, geometry: geo) },
+                    stopMovingLeftAction: { gs in gs.stopMovingLeft(gameState: gs) },
+                    startMovingRightAction: { gs, geo in gs.startMovingRight(gameState: gs, geometry: geo) },
+                    stopMovingRightAction: { gs in gs.stopMovingRight(gameState: gs) },
+                    startJumpAction: { gs, geo in gs.startJump(gameState: gs, geometry: geo) },
+                    startActionAction: { config, gs in gs.startAction(config, gameState: gs) }
                 )
-
-                Spacer()
-
-                VStack(spacing: 8) {
-                    Text("Action")
-                        .font(.caption)
-                        .foregroundColor(.gray)
-
-                    Button(action: {
-                        showActionPicker = true
-                    }) {
-                        HStack(spacing: 6) {
-                            Text(gameState.selectedAction)
-                                .foregroundColor(.primary)
-                            Image(systemName: "chevron.up.chevron.down")
-                                .font(.caption)
-                                .foregroundColor(.gray)
-                        }
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 8)
-                        .frame(maxWidth: .infinity)
-                        .background(Color(UIColor.systemGray6))
-                        .cornerRadius(8)
-                    }
-                    .padding(.horizontal, 12)
-                }
-                .padding(.top, 50)
-                .padding(.bottom, 50)
-            }
-
-            if showStats {
-                VStack(spacing: 0) {
-                    HStack {
-                        Text("Statistics")
-                            .font(.headline)
-                            .fontWeight(.bold)
-
-                        Spacer()
-
-                        Button(action: { showStats = false }) {
-                            Image(systemName: "xmark.circle.fill")
-                                .font(.system(size: 20))
-                                .foregroundColor(.gray)
-                        }
-                    }
-                    .padding(16)
-                    .background(Color.white)
-
-                    List {
-                        StatRow(label: "Level", value: "\(gameState.currentLevel)")
-                        StatRow(label: "Current Points", value: "\(gameState.currentPoints)/\(gameState.pointsNeeded(forLevel: gameState.currentLevel))")
-                        StatRow(label: "Time Elapsed", value: String(format: "%.1f s", gameState.timeElapsed))
-                        StatRow(label: "All Time Elapsed", value: gameState.formatTimeDuration(gameState.allTimeElapsed * 1000))
-                        Divider()
-                        Text("Actions & Points")
-                            .font(.headline)
-                            .foregroundColor(.primary)
-                        
-                        // Dynamically generate action rows from config
-                        ForEach(ACTION_CONFIGS, id: \.id) { config in
-                            let timeValue = gameState.actionTimes[config.id] ?? 0
-                            let isCurrentLevel = config.unlockLevel == 1
-                            StatRow(
-                                label: "Lvl \(config.unlockLevel): \(config.displayName)",
-                                value: gameState.formatTimeDuration(timeValue),
-                                isUnlocked: gameState.currentLevel >= config.unlockLevel,
-                                isCurrentLevel: isCurrentLevel
-                            )
-                        }
-                        
-                        Divider()
-                        Text("Catchables (Always Available)")
-                            .font(.headline)
-                            .foregroundColor(.primary)
-                        StatRow(label: "Leaves", value: "\(gameState.totalLeavesCaught) caught", isUnlocked: true)
-                        StatRow(label: "Shakers", value: "\(gameState.totalShakersCaught) caught", isUnlocked: true)
-                        Divider()
-                        Text("Combo Boost")
-                            .font(.subheadline)
-                            .foregroundColor(.gray)
-                        Text("Mix different level-based actions (Run, Jump, Curls, etc.) in one session for a bonus! 2 actions = +2%, 3 actions = +3%, etc. Max combo = your current level. Leaves & shakers give points but don't count toward combo.")
-                            .font(.caption)
-                            .foregroundColor(.gray)
-                            .padding(.top, 2)
-                        Divider()
-                        Text("Developer Debug")
-                            .font(.subheadline)
-                            .foregroundColor(.red)
-                        
-                        HStack {
-                            Text("Set Level:")
-                                .foregroundColor(.gray)
+                .frame(height: 500)
+                
+                // Movement buttons with action selector in center
+                VStack(spacing: 4) {
+                    HStack(spacing: 12) {
+                        // Left button - only available in level 2+
+                        if gameState.currentLevel >= 2 {
+                            Button(action: {}) {
+                                Image(systemName: "arrowshape.left.fill")
+                                    .font(.system(size: 18))
+                                    .foregroundColor(.white)
+                                    .frame(width: 40, height: 40)
+                                    .background(Color.gray)
+                                    .cornerRadius(6)
+                            }
+                            .onLongPressGesture(minimumDuration: 0.01, pressing: { isPressing in
+                                // Prevent movement during meditation
+                                guard gameState.currentPerformingAction != "meditation" else { return }
+                                
+                                if isPressing {
+                                    gameState.resetIdleTimer()
+                                    if gameState.currentAction != "move" {
+                                        gameState.currentAction = "move"
+                                        gameState.actionStartTime = Date().timeIntervalSince1970 * 1000
+                                    }
+                                    gameState.isMovingLeft = true
+                                    gameState.isMovingRight = false
+                                    gameState.facingRight = false
+                                    if gameState.animationFrame == 0 {
+                                        gameState.startAnimation(gameState: gameState)
+                                    }
+                                } else {
+                                    gameState.isMovingLeft = false
+                                    if !gameState.isMovingRight {
+                                        if gameState.currentAction == "move" {
+                                            let duration = Date().timeIntervalSince1970 * 1000 - gameState.actionStartTime
+                                            gameState.recordActionTime(action: "move", duration: duration)
+                                            gameState.currentAction = ""
+                                        }
+                                        gameState.stopAnimation(gameState: gameState)
+                                    }
+                                }
+                            }, perform: {})
+                        } else {
+                            // Spacer in level 1 where left button would be
                             Spacer()
+                                .frame(width: 40, height: 40)
+                        }
+                        
+                        // Action button in center
+                        VStack(spacing: 4) {
+                            Text("Action")
+                                .font(.caption2)
+                                .foregroundColor(.gray)
+                            
                             Button(action: {
-                                showLevelPicker = true
+                                showActionPicker = true
                             }) {
-                                HStack(spacing: 6) {
-                                    Text("Level \(gameState.currentLevel)")
+                                HStack(spacing: 4) {
+                                    Text(gameState.selectedAction)
+                                        .font(.caption)
                                         .foregroundColor(.primary)
                                     Image(systemName: "chevron.up.chevron.down")
-                                        .font(.caption)
+                                        .font(.caption2)
                                         .foregroundColor(.gray)
                                 }
-                                .padding(.horizontal, 12)
+                                .padding(.horizontal, 8)
                                 .padding(.vertical, 6)
                                 .background(Color(UIColor.systemGray6))
                                 .cornerRadius(6)
                             }
                         }
+                        .frame(maxWidth: .infinity)
                         
-                        Button(action: {
-                            // Reset all game data
-                            gameState.currentLevel = 1
-                            gameState.currentPoints = 0
-                            gameState.sessionActions.removeAll()
-                            gameState.actionTimes.removeAll()
-                            gameState.totalLeavesCaught = 0
-                            gameState.totalShakersCaught = 0
-                            gameState.allTimeElapsed = 0
-                            gameState.timeElapsed = 0
-                            gameState.score = 0
-                            gameState.highScore = 0
-                            gameState.saveStats()
-                            gameState.saveHighScore()
-                            // Reinitialize map level boxes after reset
-                            mapState.initializeLevelBoxes(currentLevel: 1)
-                        }) {
-                            HStack {
-                                Image(systemName: "trash.fill")
-                                Text("Reset All Game Data")
+                        // Right button - only available in level 2+
+                        if gameState.currentLevel >= 2 {
+                            Button(action: {}) {
+                                Image(systemName: "arrowshape.right.fill")
+                                    .font(.system(size: 18))
+                                    .foregroundColor(.white)
+                                    .frame(width: 40, height: 40)
+                                    .background(Color.gray)
+                                    .cornerRadius(6)
                             }
-                            .foregroundColor(.white)
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 12)
-                            .background(Color.red)
-                            .cornerRadius(8)
+                            .onLongPressGesture(minimumDuration: 0.01, pressing: { isPressing in
+                                // Prevent movement during meditation
+                                guard gameState.currentPerformingAction != "meditation" else { return }
+                                
+                                if isPressing {
+                                    gameState.resetIdleTimer()
+                                    if gameState.currentAction != "move" {
+                                        gameState.currentAction = "move"
+                                        gameState.actionStartTime = Date().timeIntervalSince1970 * 1000
+                                    }
+                                    gameState.isMovingRight = true
+                                    gameState.isMovingLeft = false
+                                    gameState.facingRight = true
+                                    if gameState.animationFrame == 0 {
+                                        gameState.startAnimation(gameState: gameState)
+                                    }
+                                } else {
+                                    gameState.isMovingRight = false
+                                    if !gameState.isMovingLeft {
+                                        if gameState.currentAction == "move" {
+                                            let duration = Date().timeIntervalSince1970 * 1000 - gameState.actionStartTime
+                                            gameState.recordActionTime(action: "move", duration: duration)
+                                            gameState.currentAction = ""
+                                        }
+                                        gameState.stopAnimation(gameState: gameState)
+                                    }
+                                }
+                            }, perform: {})
+                        } else {
+                            // Spacer in level 1 where right button would be
+                            Spacer()
+                                .frame(width: 40, height: 40)
                         }
-                        .padding(.top, 8)
                     }
-
+                    .padding(.horizontal, 12)
+                    
                     Spacer()
+                        .frame(height: 12)
+                    
+                    Button(action: {
+                        mapState.startDoorSliding()
+                        showDoor = true
+                    }) {
+                        Text("Exit Room")
+                            .foregroundColor(.white)
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 8)
+                            .background(Color.red.opacity(0.7))
+                            .cornerRadius(6)
+                    }
+                    .padding(.bottom, 8)
                 }
-                .frame(maxHeight: .infinity, alignment: .top)
-                .background(Color.white)
-                .cornerRadius(12, corners: [.topLeft, .topRight])
                 .padding(.horizontal, 12)
-                .padding(.top, 50)
-                .transition(.move(edge: .bottom))
+                .background(Color(red: 0.95, green: 0.95, blue: 0.98))
             }
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
             
             if showActionPicker {
                 Color.black.opacity(0.3)
@@ -1904,6 +2807,7 @@ private struct Game1ModuleView: View {
                                         isSelected: gameState.selectedAction == config.displayName
                                     ) {
                                         gameState.selectedAction = config.displayName
+                                        gameState.resetIdleTimer()
                                         showActionPicker = false
                                     }
                                 }
@@ -1911,9 +2815,81 @@ private struct Game1ModuleView: View {
                         }
                         .background(Color.white)
                     }
-                    .cornerRadius(12, corners: [.topLeft, .topRight])
+                    .cornerRadius(12)
                     .padding(.horizontal, 12)
                 }
+                .transition(.move(edge: .bottom))
+            }
+
+            if showStats {
+                VStack(spacing: 0) {
+                    HStack {
+                        Text("Statistics")
+                            .font(.headline)
+                            .fontWeight(.bold)
+
+                        Spacer()
+
+                        Button(action: { showStats = false }) {
+                            Image(systemName: "xmark.circle.fill")
+                                .font(.system(size: 20))
+                                .foregroundColor(.gray)
+                        }
+                    }
+                    .padding(16)
+                    .background(Color.white)
+
+                    StatsListContent(
+                        gameState: gameState,
+                        onShowLevelPicker: { showLevelPicker = true },
+                        onResetData: {
+                            // Reset all game data
+                            gameState.currentLevel = 1
+                            gameState.currentPoints = 0
+                            gameState.selectedAction = "Rest"
+                            gameState.sessionActions.removeAll()
+                            gameState.actionTimes.removeAll()
+                            gameState.totalLeavesCaught = 0
+                            gameState.totalHeartsCaught = 0
+                            gameState.totalBrainsCaught = 0
+                            gameState.totalSunsCaught = 0
+                            gameState.totalShakersCaught = 0
+                            gameState.totalCoinsCollected = 0
+                            gameState.allTimeElapsed = 0
+                            gameState.timeElapsed = 0
+                            gameState.score = 0
+                            gameState.highScore = 0
+                            gameState.saveStats()
+                            gameState.saveHighScore()
+                            
+                            // Clear coin last collected time
+                            UserDefaults.standard.removeObject(forKey: "game1_coin_last_collected_time")
+                            
+                            // Reinitialize map level boxes after reset
+                            mapState.initializeLevelBoxes(currentLevel: 1)
+                            
+                            // Regenerate coin (will be visible since no collection time)
+                            mapState.generateCoin()
+                            
+                            // Position character next to level 1
+                            if mapState.levelBoxes.count > 0 {
+                                let level1Box = mapState.levelBoxes[0]
+                                let offset: CGFloat = 100
+                                mapState.characterX = level1Box.x - offset
+                                mapState.characterY = level1Box.y
+                                mapState.targetX = level1Box.x - offset
+                                mapState.targetY = level1Box.y
+                            }
+                        }
+                    )
+
+                    Spacer()
+                }
+                .frame(maxHeight: .infinity, alignment: .top)
+                .background(Color.white)
+                .cornerRadius(12)
+                .padding(.horizontal, 12)
+                .padding(.top, 50)
                 .transition(.move(edge: .bottom))
             }
             
@@ -1962,7 +2938,7 @@ private struct Game1ModuleView: View {
                         }
                         .background(Color.white)
                     }
-                    .cornerRadius(12, corners: [.topLeft, .topRight])
+                    .cornerRadius(12)
                     .padding(.horizontal, 12)
                 }
                 .transition(.move(edge: .bottom))
@@ -1972,16 +2948,26 @@ private struct Game1ModuleView: View {
             if newValue {
                 // Delay to show the "Level Complete" message before returning
                 DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+                    // Increment level now that we're returning to map
+                    gameState.currentLevel += 1
+                    
+                    // Auto-select the highest-level action available for the new level
+                    let availableActions = ACTION_CONFIGS.filter { $0.unlockLevel <= gameState.currentLevel }
+                    if let highestAction = availableActions.max(by: { $0.unlockLevel < $1.unlockLevel }) {
+                        gameState.selectedAction = highestAction.displayName
+                    }
+                    
                     // Update map level boxes for new level
                     mapState.initializeLevelBoxes(currentLevel: gameState.currentLevel)
                     
-                    // Position character near the new unlocked level
-                    if gameState.currentLevel <= mapState.levelBoxes.count {
-                        let levelBox = mapState.levelBoxes[gameState.currentLevel - 1]
-                        mapState.characterX = levelBox.x - 100
-                        mapState.characterY = levelBox.y
-                        mapState.targetX = levelBox.x - 100
-                        mapState.targetY = levelBox.y
+                    // Position character below the level they just completed
+                    let completedLevel = gameState.currentLevel - 1
+                    if completedLevel > 0 && completedLevel <= mapState.levelBoxes.count {
+                        let levelBox = mapState.levelBoxes[completedLevel - 1]
+                        mapState.characterX = levelBox.x
+                        mapState.characterY = levelBox.y + 150
+                        mapState.targetX = levelBox.x
+                        mapState.targetY = levelBox.y + 150
                     }
                     
                     showGameMap = true
@@ -1991,8 +2977,7 @@ private struct Game1ModuleView: View {
         }
     }
     
-    @ViewBuilder
-    private func connectionLinesView(mapState: GameMapState) -> some View {
+    func connectionLinesView(mapState: GameMapState) -> some View {
         ZStack {
             let levelBoxes = mapState.levelBoxes.sorted { $0.levelNumber < $1.levelNumber }
             
@@ -2005,7 +2990,7 @@ private struct Game1ModuleView: View {
         }
     }
     
-    private func drawConnectionLine(from: LevelBox, to: LevelBox, mapState: GameMapState) -> some View {
+    func drawConnectionLine(from: LevelBox, to: LevelBox, mapState: GameMapState) -> some View {
         let fromScreenX = from.x - mapState.mapOffsetX
         let fromScreenY = from.y - mapState.mapOffsetY
         let toScreenX = to.x - mapState.mapOffsetX
@@ -2056,6 +3041,7 @@ private struct GamePlayArea: View {
     @Bindable var gameState: StickFigureGameState
     var mapState: GameMapState
     @Binding var showGameMap: Bool
+    @Binding var showDoor: Bool
     @State private var collisionTimer: Timer?
     
     var startMovingLeftAction: (StickFigureGameState, GeometryProxy) -> Void
@@ -2087,10 +3073,12 @@ private struct GamePlayArea: View {
                         .fill(Color.clear)
                         .contentShape(Rectangle())
                         .onLongPressGesture(minimumDuration: 0.01, pressing: { isPressing in
-                            if isPressing {
-                                startMovingLeftAction(gameState, geometry)
-                            } else {
-                                stopMovingLeftAction(gameState)
+                            if gameState.currentLevel >= 2 {
+                                if isPressing {
+                                    startMovingLeftAction(gameState, geometry)
+                                } else {
+                                    stopMovingLeftAction(gameState)
+                                }
                             }
                         }, perform: {})
 
@@ -2098,10 +3086,12 @@ private struct GamePlayArea: View {
                         .fill(Color.clear)
                         .contentShape(Rectangle())
                         .onLongPressGesture(minimumDuration: 0.01, pressing: { isPressing in
-                            if isPressing {
-                                startMovingRightAction(gameState, geometry)
-                            } else {
-                                stopMovingRightAction(gameState)
+                            if gameState.currentLevel >= 2 {
+                                if isPressing {
+                                    startMovingRightAction(gameState, geometry)
+                                } else {
+                                    stopMovingRightAction(gameState)
+                                }
                             }
                         }, perform: {})
                 }
@@ -2139,7 +3129,7 @@ private struct GamePlayArea: View {
                             .scaleEffect(x: gameState.shouldFlipWave ? -1 : 1, y: 1)
                             .position(x: figureX, y: figureY)
                     } else if gameState.isJumping {
-                        Image("guy_jump\(gameState.jumpFrame)")
+                        Image("guy_jump\(max(1, gameState.jumpFrame))")
                             .resizable()
                             .scaledToFit()
                             .frame(width: 100, height: 150)
@@ -2156,7 +3146,7 @@ private struct GamePlayArea: View {
                                 // Handle action taps dynamically
                                 if gameState.selectedAction == "Jump" {
                                     if !gameState.isJumping && gameState.animationFrame == 0 {
-                                        startJumpAction(gameState, geometry)
+                                        gameState.startJump(gameState: gameState, geometry: geometry)
                                     }
                                 } else if let config = ACTION_CONFIGS.first(where: { $0.displayName == gameState.selectedAction }) {
                                     if gameState.currentPerformingAction == nil && !gameState.isJumping {
@@ -2173,17 +3163,20 @@ private struct GamePlayArea: View {
                         .fontWeight(.semibold)
                         .foregroundColor(floatingText.color)
                         .opacity(1.0 - (floatingText.age / floatingText.lifespan))
-                        .position(x: floatingText.x * geometry.size.width, y: floatingText.y * geometry.size.height)
+                        .lineLimit(1)
+                        .position(x: max(40, min(geometry.size.width - 40, floatingText.x * geometry.size.width)), y: floatingText.y * geometry.size.height)
                 }
 
-                ForEach(gameState.fallingLeaves) { leaf in
-                    Image(systemName: "leaf.fill")
-                        .resizable()
-                        .scaledToFit()
-                        .frame(width: 15, height: 15)
-                        .foregroundColor(.green)
-                        .rotationEffect(.degrees(leaf.rotation))
-                        .position(x: leaf.x * geometry.size.width, y: leaf.y * geometry.size.height)
+                ForEach(gameState.fallingItems) { item in
+                    if let config = FALLING_ITEM_CONFIGS.first(where: { $0.id == item.itemType }) {
+                        Image(systemName: config.iconName)
+                            .resizable()
+                            .scaledToFit()
+                            .frame(width: 15, height: 15)
+                            .foregroundColor(config.color)
+                            .rotationEffect(.degrees(item.rotation))
+                            .position(x: item.x * geometry.size.width, y: item.y * geometry.size.height)
+                    }
                 }
 
                 ForEach(gameState.fallingShakers) { shaker in
@@ -2195,7 +3188,34 @@ private struct GamePlayArea: View {
                         .position(x: shaker.x * geometry.size.width, y: shaker.y * geometry.size.height)
                 }
                 
+                // Meditation countdown timer
+                if gameState.meditationTimeRemaining > 0 {
+                    Text(String(format: "%.1f", gameState.meditationTimeRemaining))
+                        .font(.system(size: 24, weight: .bold))
+                        .foregroundColor(.blue)
+                        .position(x: max(50, min(geometry.size.width - 50, figureX)), y: figureY)
+                }
+
+                // Rest countdown timer
+                if gameState.currentPerformingAction == "rest" && gameState.restTimeRemaining > 0 {
+                    Text(String(format: "%.1f", gameState.restTimeRemaining))
+                        .font(.system(size: 24, weight: .bold))
+                        .foregroundColor(.green)
+                        .position(x: max(50, min(geometry.size.width - 50, figureX)), y: figureY)
+                }
+
+                // Yoga countdown timer
+                if gameState.currentPerformingAction == "yoga" && gameState.yogaTimeRemaining > 0 {
+                    Text(String(format: "%.1f", gameState.yogaTimeRemaining))
+                        .font(.system(size: 24, weight: .bold))
+                        .foregroundColor(.orange)
+                        .position(x: max(50, min(geometry.size.width - 50, figureX)), y: figureY)
+                }
+                
+                // Pullup counter is now displayed as floating text in the collision timer
+
                 ForEach(gameState.fireworkParticles) { particle in
+
                     Circle()
                         .fill(particle.color)
                         .frame(width: 4, height: 4)
@@ -2204,55 +3224,82 @@ private struct GamePlayArea: View {
                 }
                 
                 // Render doors
-                ForEach(gameState.doors, id: \.id) { door in
-                    let doorScreenX = door.x * geometry.size.width
-                    let doorWidth = door.width * geometry.size.width
-                    let doorHeight = door.height * geometry.size.height
-                    let figureBottomY = baseY // Align with standing guy's bottom
-                    let doorScreenY = figureBottomY - (doorHeight / 2) // Center door vertically on this bottom line
+                if showDoor {
+                    ForEach(gameState.doors, id: \.id) { door in
+                        let doorScreenX = door.x * geometry.size.width
+                        let doorWidth = door.width * geometry.size.width
+                        let doorHeight = door.height * geometry.size.height
+                        // Use animated doorY from mapState - slides down continuously from top
+                        let doorScreenY = mapState.doorY
                     
-                    Rectangle()
-                        .fill(Color(red: 0.6, green: 0.4, blue: 0.2)) // Brown color
-                        .frame(width: doorWidth, height: doorHeight)
-                        .position(x: doorScreenX, y: doorScreenY)
-                        .overlay(
-                            Rectangle()
-                                .stroke(Color(red: 0.4, green: 0.2, blue: 0.0), lineWidth: 2) // Darker brown border
-                                .frame(width: doorWidth, height: doorHeight)
-                                .position(x: doorScreenX, y: doorScreenY)
-                        )
-                        .overlay(
-                            Text("🚪")
-                                .font(.system(size: 20))
-                                .position(x: doorScreenX, y: doorScreenY)
-                        )
+                    ZStack {
+                        Rectangle()
+                            .fill(Color(red: 0.6, green: 0.4, blue: 0.2)) // Brown color
+                            .frame(width: doorWidth, height: doorHeight)
+                        
+                        Rectangle()
+                            .stroke(Color(red: 0.4, green: 0.2, blue: 0.0), lineWidth: 2) // Darker brown border
+                            .frame(width: doorWidth, height: doorHeight)
+                        
+                        Text("🚪")
+                            .font(.system(size: 20))
+                    }
+                    .position(x: doorScreenX, y: doorScreenY)
+                    .transition(.move(edge: .top).combined(with: .opacity))
+                    }
                 }
-                
-                // Room label
-                VStack(alignment: .center) {
-                    Text(gameState.currentRoomName)
-                        .font(.system(size: 18, weight: .semibold))
-                        .foregroundColor(.primary)
-                        .padding(.vertical, 8)
-                        .padding(.horizontal, 12)
-                        .background(Color.white.opacity(0.8))
-                        .cornerRadius(6)
-                    Spacer()
-                }
-                .frame(maxHeight: .infinity, alignment: .top)
-                .padding(.top, 16)
             }
             .onAppear {
                 collisionTimer = Timer.scheduledTimer(withTimeInterval: 0.016, repeats: true) { [weak gameState] _ in
                     guard let gameState = gameState else { return }
+                    
                     let currentFigureX = ((gameState.figurePosition + 1.0) / 2.0) * geometry.size.width
-                    let currentBaseY = geometry.size.height - 80
+                    let currentBaseY = geometry.size.height - 120
                     let currentFigureY = currentBaseY - gameState.jumpHeight
-                    gameState.checkLeafCollisions(figureX: currentFigureX, figureY: currentFigureY, screenWidth: geometry.size.width, screenHeight: geometry.size.height)
+                    gameState.checkFallingItemCollisions(figureX: currentFigureX, figureY: currentFigureY, screenWidth: geometry.size.width, screenHeight: geometry.size.height)
                     gameState.checkShakerCollisions(figureX: currentFigureX, figureY: currentFigureY, screenWidth: geometry.size.width, screenHeight: geometry.size.height)
                     
-                    // Check door collision with directional detection
-                    if let door = gameState.checkDoorCollision(figureX: currentFigureX, screenWidth: geometry.size.width, screenHeight: geometry.size.height, isMovingRight: gameState.isMovingRight, isMovingLeft: gameState.isMovingLeft) {
+                    // Spawn pullup counter as floating text
+                    if gameState.currentPerformingAction == "pullup" && gameState.pullupCount > 0 && Date().timeIntervalSince1970 - gameState.lastPullupCounterTime < 0.1 {
+                        let normX = currentFigureX / geometry.size.width
+                        let normY = currentFigureY / geometry.size.height
+                        
+                        // Map pullup count to display number (1-6 normal, 97-100 inflated)
+                        let displayNumber = gameState.pullupCount > 6 ? min(100, 91 + gameState.pullupCount) : gameState.pullupCount
+                        let displayText = displayNumber == 100 ? "100!" : "\(displayNumber)"
+                        
+                        gameState.addFloatingText(displayText, x: normX, y: normY, color: .red, fontSize: 24)
+                    }
+                    
+                    // Spawn floating text for action completion
+                    if !gameState.lastCompletedAction.isEmpty && Date().timeIntervalSince1970 - gameState.lastCompletedActionTime < 0.1 {
+                        let normX = currentFigureX / geometry.size.width
+                        let normY = currentFigureY / geometry.size.height
+                        
+                        // Verify action exists in config
+                        if ACTION_CONFIGS.contains(where: { $0.id == gameState.lastCompletedAction }) {
+                            let displayText = "*\(gameState.lastCompletedAction)*"
+                            gameState.addFloatingText(displayText, x: normX, y: normY, color: .yellow, fontSize: 18)
+                        }
+                        
+                        gameState.lastCompletedAction = ""
+                    }
+                    
+                    // Spawn zzz floating text every 2 seconds during rest
+                    if gameState.currentPerformingAction == "rest" {
+                        let currentTime = gameState.restTotalDuration - gameState.restTimeRemaining
+                        if currentTime - gameState.restZzzLastTime >= 2.0 {
+                            gameState.restZzzLastTime = currentTime
+                            let normX = currentFigureX / geometry.size.width
+                            let normY = currentFigureY / geometry.size.height
+                            let randomOffsetX = CGFloat.random(in: -0.03...0.03)
+                            gameState.addFloatingText("zzz", x: normX + randomOffsetX, y: normY, color: .gray, fontSize: 20)
+                        }
+                    }
+                    
+                    // Check door collision only if door is visible
+                    if showDoor {
+                        if let door = gameState.checkDoorCollision(figureX: currentFigureX, screenWidth: geometry.size.width, screenHeight: geometry.size.height, isMovingRight: gameState.isMovingRight, isMovingLeft: gameState.isMovingLeft, animatedDoorY: mapState.doorY) {
                         // Check if returning to map
                         if door.destinationRoomId == "map" {
                             // Mark current level as completed and unlock next level
@@ -2270,29 +3317,51 @@ private struct GamePlayArea: View {
                                 mapState.levelBoxes = updatedBoxes
                             }
                             
-                            // Position character near the level they just exited
-                            if gameState.currentLevel <= mapState.levelBoxes.count {
-                                let levelBox = mapState.levelBoxes[gameState.currentLevel - 1]
-                                // Position slightly to the left of the level box
-                                mapState.characterX = levelBox.x - 150
-                                mapState.characterY = levelBox.y
-                                mapState.targetX = levelBox.x - 150
-                                mapState.targetY = levelBox.y
+                            // Position character below the level they just exited
+                            // currentLevel is still the level we're exiting (not incremented yet)
+                            let exitedLevelNumber = gameState.currentLevel
+                            if exitedLevelNumber > 0 && exitedLevelNumber <= mapState.levelBoxes.count {
+                                let levelBox = mapState.levelBoxes[exitedLevelNumber - 1]
+                                // Position below the level box (outside of it)
+                                mapState.characterX = levelBox.x
+                                mapState.characterY = levelBox.y + 150
+                                mapState.targetX = levelBox.x
+                                mapState.targetY = levelBox.y + 150
                             }
                             showGameMap = true
                         } else {
                             // Enter the door - move to center of new room
                             gameState.initializeRoom(door.destinationRoomId)
                             gameState.figurePosition = 0 // Center
-                            gameState.stopMovingLeft()
-                            gameState.stopMovingRight()
+                            stopMovingLeftAction(gameState)
+                            stopMovingRightAction(gameState)
+                            showDoor = false // Hide door when entering new room
                         }
+                    }
+                    }
+                }
+                
+                // Separate timer for tracking elapsed time at correct speed (0.1 second intervals)
+                gameState.elapsedTimeTimer?.invalidate()
+                gameState.elapsedTimeTimer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { [weak gameState] _ in
+                    guard let gameState = gameState else { return }
+                    gameState.timeElapsed += 0.1
+                    gameState.allTimeElapsed += 0.1
+                    // Auto-save stats every 10 seconds to persist elapsed time
+                    if Int(gameState.allTimeElapsed * 10) % 100 == 0 {
+                        gameState.saveStats()
                     }
                 }
             }
             .onDisappear {
                 collisionTimer?.invalidate()
                 collisionTimer = nil
+                mapState.stopDoorSliding()
+            }
+            .onChange(of: showDoor) { oldValue, newValue in
+                if !newValue {
+                    mapState.stopDoorSliding()
+                }
             }
             .onChange(of: gameState.isWaving) { _, isWaving in
                 guard isWaving else { return }
@@ -2304,252 +3373,3 @@ private struct GamePlayArea: View {
         }
     }
 }
-
-private func startMovingLeft(gameState: StickFigureGameState, geometry: GeometryProxy) {
-    if gameState.isJumping || gameState.isWaving || gameState.currentPerformingAction != nil || gameState.isPerformingShaker { return }
-    gameState.resetIdleTimer()
-    if gameState.currentAction != "move" {
-        gameState.currentAction = "move"
-        gameState.actionStartTime = Date().timeIntervalSince1970 * 1000
-    }
-    gameState.isMovingLeft = true
-    gameState.isMovingRight = false
-    gameState.facingRight = false
-    if gameState.animationFrame == 0 {
-        startAnimation(gameState: gameState)
-    }
-}
-
-private func stopMovingLeft(gameState: StickFigureGameState) {
-    gameState.isMovingLeft = false
-    if !gameState.isMovingRight {
-        if gameState.currentAction == "move" {
-            let duration = Date().timeIntervalSince1970 * 1000 - gameState.actionStartTime
-            gameState.recordActionTime(action: "move", duration: duration)
-            gameState.currentAction = ""
-        }
-        stopAnimation(gameState: gameState)
-    }
-}
-
-private func startMovingRight(gameState: StickFigureGameState, geometry: GeometryProxy) {
-    if gameState.isJumping || gameState.isWaving || gameState.currentPerformingAction != nil || gameState.isPerformingShaker { return }
-    gameState.resetIdleTimer()
-    if gameState.currentAction != "move" {
-        gameState.currentAction = "move"
-        gameState.actionStartTime = Date().timeIntervalSince1970 * 1000
-    }
-    gameState.isMovingRight = true
-    gameState.isMovingLeft = false
-    gameState.facingRight = true
-    if gameState.animationFrame == 0 {
-        startAnimation(gameState: gameState)
-    }
-}
-
-private func stopMovingRight(gameState: StickFigureGameState) {
-    gameState.isMovingRight = false
-    if !gameState.isMovingLeft {
-        if gameState.currentAction == "move" {
-            let duration = Date().timeIntervalSince1970 * 1000 - gameState.actionStartTime
-            gameState.recordActionTime(action: "move", duration: duration)
-            gameState.currentAction = ""
-        }
-        stopAnimation(gameState: gameState)
-    }
-}
-
-private func startAnimation(gameState: StickFigureGameState) {
-    gameState.animationTimer?.invalidate()
-
-    var currentFrame = 1
-    gameState.animationTimer = Timer.scheduledTimer(withTimeInterval: 0.08, repeats: true) { _ in
-        if gameState.isMovingLeft || gameState.isMovingRight {
-            gameState.animationFrame = currentFrame
-            currentFrame += 1
-            if currentFrame > 4 {
-                currentFrame = 1
-            }
-
-            // Apply speed boost multiplier if active
-            let speedMultiplier: CGFloat = gameState.speedBoostEndTime != nil ? 2.0 : 1.0
-            let moveSpeed = 0.03 * speedMultiplier
-
-            if gameState.isMovingRight {
-                gameState.figurePosition += moveSpeed
-            } else if gameState.isMovingLeft {
-                gameState.figurePosition -= moveSpeed
-            }
-            
-            // Handle screen wrap-around
-            gameState.handleScreenWrap(1.0) // Normalized width is 1.0
-        }
-    }
-}
-
-private func stopAnimation(gameState: StickFigureGameState) {
-    gameState.animationTimer?.invalidate()
-    gameState.animationTimer = nil
-    gameState.animationFrame = 0
-}// MARK: - Generic Action Handler
-
-private func startAction(_ config: ActionConfig, gameState: StickFigureGameState) {
-    // Stop other animations
-    gameState.animationTimer?.invalidate()
-    gameState.actionTimer?.invalidate()
-    gameState.resetIdleTimer()
-    
-    // Set up action state
-    gameState.currentPerformingAction = config.id
-    gameState.actionFrame = config.animationFrames.first ?? 1
-    gameState.actionFlip = config.supportsFlip ? Bool.random() : false
-    
-    let actionStartTime = Date().timeIntervalSince1970 * 1000
-    
-    // Handle variable timing (like pushups)
-    if let variableTiming = config.variableTiming {
-        startActionWithVariableTiming(config, gameState: gameState, variableTiming: variableTiming, startTime: actionStartTime)
-    } else {
-        startActionWithUniformTiming(config, gameState: gameState, startTime: actionStartTime)
-    }
-}
-
-private func startActionWithUniformTiming(_ config: ActionConfig, gameState: StickFigureGameState, startTime: Double) {
-    var frameIndex = 0
-    let speedMultiplier = (config.supportsSpeedBoost && gameState.speedBoostEndTime != nil) ? 0.5 : 1.0
-    let interval = config.baseFrameInterval * speedMultiplier
-    
-    gameState.actionTimer = Timer.scheduledTimer(withTimeInterval: interval, repeats: true) { _ in
-        if frameIndex < config.animationFrames.count {
-            gameState.actionFrame = config.animationFrames[frameIndex]
-            frameIndex += 1
-        } else {
-            // Animation complete
-            gameState.actionTimer?.invalidate()
-            gameState.actionTimer = nil
-            gameState.currentPerformingAction = nil
-            gameState.actionFrame = 0
-            gameState.actionFlip = false
-            
-            let duration = Date().timeIntervalSince1970 * 1000 - startTime
-            gameState.recordActionTime(action: config.id, duration: duration)
-            
-            if gameState.currentLevel >= config.unlockLevel {
-                gameState.addPoints(config.pointsPerCompletion, action: config.id)
-            }
-        }
-    }
-}
-
-private func startActionWithVariableTiming(_ config: ActionConfig, gameState: StickFigureGameState, variableTiming: [Int: TimeInterval], startTime: Double) {
-    var frameIndex = 0
-    let speedMultiplier = (config.supportsSpeedBoost && gameState.speedBoostEndTime != nil) ? 0.5 : 1.0
-    
-    func scheduleNextFrame() {
-        guard frameIndex < config.animationFrames.count else {
-            // Animation complete
-            gameState.actionTimer?.invalidate()
-            gameState.actionTimer = nil
-            gameState.currentPerformingAction = nil
-            gameState.actionFrame = 0
-            gameState.actionFlip = false
-            
-            let duration = Date().timeIntervalSince1970 * 1000 - startTime
-            gameState.recordActionTime(action: config.id, duration: duration)
-            
-            if gameState.currentLevel >= config.unlockLevel {
-                gameState.addPoints(config.pointsPerCompletion, action: config.id)
-            }
-            return
-        }
-        
-        let currentFrame = config.animationFrames[frameIndex]
-        gameState.actionFrame = currentFrame
-        frameIndex += 1
-        
-        // Use custom timing if specified, otherwise use base interval
-        let baseInterval = variableTiming[currentFrame] ?? config.baseFrameInterval
-        let interval = baseInterval * speedMultiplier
-        
-        gameState.actionTimer = Timer.scheduledTimer(withTimeInterval: interval, repeats: false) { _ in
-            scheduleNextFrame()
-        }
-    }
-    
-    scheduleNextFrame()
-}
-
-private func startJump(gameState: StickFigureGameState, geometry: GeometryProxy) {
-    gameState.animationTimer?.invalidate()
-    gameState.jumpTimer?.invalidate()
-    gameState.resetIdleTimer()
-    gameState.isJumping = true
-    gameState.jumpFrame = 1
-    gameState.jumpHeight = 0
-
-    let figureX = ((gameState.figurePosition + 1.0) / 2.0)
-    let baseY = geometry.size.height - 80
-    let startY = max(0.05, (baseY - 120) / geometry.size.height)
-    gameState.addFloatingText("*jump*", x: figureX, y: startY, color: .blue)
-
-    let jumpStartTime = Date().timeIntervalSince1970 * 1000
-    let jumpHeightPeak: CGFloat = 100
-
-    var frameCount = 0
-    // Apply speed boost: 0.1s normal, 0.05s boosted (2x faster)
-    let baseInterval: TimeInterval = 0.1
-    let interval = gameState.speedBoostEndTime != nil ? baseInterval / 2.0 : baseInterval
-    
-    gameState.jumpTimer = Timer.scheduledTimer(withTimeInterval: interval, repeats: true) { _ in
-        frameCount += 1
-        gameState.jumpFrame = min(frameCount, 3)
-
-        if frameCount == 1 {
-            gameState.jumpHeight = jumpHeightPeak * 0.5
-        } else if frameCount == 2 {
-            gameState.jumpHeight = jumpHeightPeak
-        } else if frameCount == 3 {
-            gameState.jumpHeight = jumpHeightPeak * 0.3
-        } else if frameCount >= 4 {
-            gameState.jumpHeight = 0
-        }
-
-        if frameCount >= 4 {
-            gameState.jumpTimer?.invalidate()
-            gameState.jumpTimer = nil
-            gameState.isJumping = false
-            gameState.jumpFrame = 0
-            gameState.jumpHeight = 0
-
-            let jumpDuration = Date().timeIntervalSince1970 * 1000 - jumpStartTime
-            gameState.recordActionTime(action: "jump", duration: jumpDuration)
-            if gameState.currentLevel >= 2 {
-                gameState.addPoints(2, action: "jump")
-            }
-        }
-    }
-}
-
-// MARK: - Stats Row
-
-private struct StatRow: View {
-    let label: String
-    let value: String
-    var isUnlocked: Bool = true
-    var isCurrentLevel: Bool = false
-
-    var body: some View {
-        HStack {
-            Text(label)
-                .foregroundColor(isCurrentLevel ? .black : (isUnlocked ? .gray : Color.gray.opacity(0.4)))
-            Spacer()
-            Text(value)
-                .fontWeight(isCurrentLevel ? .semibold : .regular)
-                .foregroundColor(isCurrentLevel ? .black : (isUnlocked ? .black : Color.gray.opacity(0.4)))
-        }
-    }
-}
-
-// #Preview {
-//     Game1Module().view(environment: .init())
-// }
