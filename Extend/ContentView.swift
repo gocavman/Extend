@@ -154,6 +154,7 @@ struct ContentView: View {
         let settingsModule = SettingsModule()
         let voiceTrainerModule = VoiceTrainerModule()
         let game1Module = Game1Module()
+        let stickFigureAnimatorModule = StickFigureAnimatorModule()
 
         registry.registerModule(dashboardModule)
         registry.registerModule(workoutModule)
@@ -167,6 +168,7 @@ struct ContentView: View {
         registry.registerModule(settingsModule)
         registry.registerModule(voiceTrainerModule)
         registry.registerModule(game1Module)
+        registry.registerModule(stickFigureAnimatorModule)
 
         // Only set default navbar modules on first launch (when both are empty)
         // This preserves user customizations

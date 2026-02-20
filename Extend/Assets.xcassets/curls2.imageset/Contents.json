@@ -1,17 +1,14 @@
 {
   "images" : [
     {
-      "filename" : "guy_curls2.png",
+      "filename" : "curls2.png",
       "idiom" : "universal",
       "scale" : "1x"
     },
     {
+      "filename" : "curls2@2x.png",
       "idiom" : "universal",
       "scale" : "2x"
-    },
-    {
-      "idiom" : "universal",
-      "scale" : "3x"
     }
   ],
   "info" : {

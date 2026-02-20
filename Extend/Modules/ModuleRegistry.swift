@@ -46,6 +46,9 @@ public struct ModuleIDs {
     
     /// Game 1 module - dog catching hearts game
     public static let game1 = UUID(uuidString: "0000000C-0000-0000-0000-000000000000")!
+    
+    /// Stick Figure Animator module - create custom animations
+    public static let stickFigureAnimator = UUID(uuidString: "0000000D-0000-0000-0000-000000000000")!
 }
 
 /// Module Registry - manages all registered modules in the app

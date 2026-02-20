@@ -28,7 +28,7 @@ struct ActionConfig {
     let variableTiming: [Int: TimeInterval]? // Optional custom timing per frame
     let flipMode: FlipMode
     let supportsSpeedBoost: Bool
-    let imagePrefix: String // Prefix for image names (e.g., "guy_curls" or "pushup")
+    let imagePrefix: String // Prefix for image names (e.g., "curls" or "pushup")
     let allowMovement: Bool // Whether character can move left/right during this action
     
     // Helper to get available actions for a level
@@ -151,12 +151,12 @@ let ACTION_CONFIGS: [ActionConfig] = [
         displayName: "Bicep Curls",
         unlockLevel: 6,
         pointsPerCompletion: 6,
-        animationFrames: [1, 2, 3, 2, 1, 1, 2, 3, 2, 1],
+        animationFrames: [1,2,3,4,1,2,3,4,1,2,3,4,1,2,3,4,1,2,3,4,1],
         baseFrameInterval: 0.4,
         variableTiming: nil,
         flipMode: .alternating,
         supportsSpeedBoost: true,
-        imagePrefix: "guy_curls",
+        imagePrefix: "curls",
         allowMovement: true
     ),
     
@@ -360,6 +360,10 @@ class StickFigureGameState {
     var highScore: Int = 0
     var timeElapsed: Double = 0
     var allTimeElapsed: Double = 0
+    
+    // Time tracking - unified system
+    private var gameSessionStartTime: Double = 0  // When current app session started
+    private var lastSavedTime: Double = 0  // Last time we saved stats
     var totalLeavesCaught: Int = 0
     var totalHeartsCaught: Int = 0
     var totalBrainsCaught: Int = 0
@@ -469,6 +473,13 @@ class StickFigureGameState {
         if selectedAction.isEmpty {
             selectedAction = "Rest"
         }
+        
+        // Initialize time tracking
+        gameSessionStartTime = Date().timeIntervalSince1970
+        lastSavedTime = gameSessionStartTime
+        
+        // Start unified time tracking timer
+        startUnifiedTimeTimer()
         initializeRoom("level_1")
         startMovementTimer()
         startFloatingTextTimer()
@@ -574,6 +585,28 @@ class StickFigureGameState {
         ]
         UserDefaults.standard.set(payload, forKey: statsKey)
         UserDefaults.standard.synchronize()
+    }
+    
+    // MARK: - Unified Time Tracking
+    
+    private func startUnifiedTimeTimer() {
+        // Use a 0.1 second timer to continuously track elapsed time
+        elapsedTimeTimer?.invalidate()
+        elapsedTimeTimer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { [weak self] _ in
+            guard let self = self else { return }
+            
+            let currentTime = Date().timeIntervalSince1970
+            let timeSinceLastCheck = currentTime - self.gameSessionStartTime
+            
+            // Update allTimeElapsed to reflect continuous time
+            self.allTimeElapsed += 0.1
+            self.timeElapsed += 0.1
+            
+            // Auto-save every 10 seconds (100 * 0.1 second intervals)
+            if Int(self.allTimeElapsed * 10) % 100 == 0 {
+                self.saveStats()
+            }
+        }
     }
 
     private func loadStats() {
@@ -1751,7 +1784,7 @@ private struct StatRow: View {
 // MARK: - Stats List Content Helper
 
 private struct StatsListContent: View {
-    var gameState: StickFigureGameState
+    @Bindable var gameState: StickFigureGameState
     var onShowLevelPicker: () -> Void
     var onResetData: () -> Void
     
@@ -1853,14 +1886,27 @@ private struct Game1ModuleView: View {
     @State private var showLevelPicker = false
     @State private var showDoor = false
     @State private var boostTimerUpdateTrigger = UUID() // Trigger for boost timer refresh
+    @State private var showProgrammableDemo = false // NEW: Toggle for programmable stick figure demo
     @Environment(ModuleState.self) var moduleState
+    @Environment(\.scenePhase) var scenePhase
 
     @ViewBuilder
     var body: some View {
-        if showGameMap {
-            mapScreen
-        } else {
-            gameplayScreen
+        Group {
+            if showProgrammableDemo {
+                ProgrammableStickFigureDemo(isPresented: $showProgrammableDemo)
+            } else if showGameMap {
+                mapScreen
+            } else {
+                gameplayScreen
+            }
+        }
+        .onChange(of: scenePhase) { oldValue, newValue in
+            // Save game state when app goes to background or is about to terminate
+            if newValue == .background || newValue == .inactive {
+                print("🎮 App going to background/inactive - Saving game state")
+                gameState.saveStats()
+            }
         }
     }
     
@@ -1872,6 +1918,8 @@ private struct Game1ModuleView: View {
                         Button(action: {
                             // Save map position before exiting
                             gameState.saveMapPosition(mapState)
+                            // Save stats immediately on exit
+                            gameState.saveStats()
                             moduleState.selectModule(ModuleIDs.dashboard)
                         }) {
                             HStack(spacing: 4) {
@@ -1931,6 +1979,18 @@ private struct Game1ModuleView: View {
                             .padding(.vertical, 8)
                             .background(Color.black.opacity(0.6))
                             .cornerRadius(6)
+                        }
+                        
+                        Button(action: {
+                            showProgrammableDemo = true
+                        }) {
+                            Image(systemName: "figure.stand")
+                                .font(.system(size: 18))
+                                .foregroundColor(.white)
+                                .padding(.horizontal, 12)
+                                .padding(.vertical, 8)
+                                .background(Color.black.opacity(0.6))
+                                .cornerRadius(6)
                         }
                     }
                     .padding(12)
@@ -2285,6 +2345,7 @@ private struct Game1ModuleView: View {
                                         showGameMap = false // Switch to gameplay view
                                         mapState.animationTimer?.invalidate()
                                         mapState.animationTimer = nil
+                                        // Don't clear elapsedTimeTimer here - let gameplayScreen handle it
                                     }
                                 }
                                 
@@ -2330,99 +2391,26 @@ private struct Game1ModuleView: View {
                                 }
                             }
                             
-                            // Separate timer for tracking elapsed time on map (0.1 second intervals)
-                            gameState.elapsedTimeTimer?.invalidate()
-                            gameState.elapsedTimeTimer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { [weak gameState] _ in
-                                guard let gameState = gameState else { return }
-                                gameState.timeElapsed += 0.1
-                                gameState.allTimeElapsed += 0.1
-                                // Auto-save stats every 10 seconds to persist elapsed time
-                                if Int(gameState.allTimeElapsed * 10) % 100 == 0 {
-                                    gameState.saveStats()
-                                }
-                            }
+                            // Timer is managed by mapScreen.onAppear and gameplayScreen.onAppear
                         }
                         .onDisappear {
+                            print("❌ TIMER CLEARED at mapScreen GeometryReader disappear")
                             mapState.animationTimer?.invalidate()
                             mapState.animationTimer = nil
-                            gameState.elapsedTimeTimer?.invalidate()
-                            gameState.elapsedTimeTimer = nil
+                            // Don't clear elapsedTimeTimer here - each screen manages its own timer
                         }
                 }
             }
             
-            // Stats overlay for map screen
-            if showStats {
-                VStack(spacing: 0) {
-                    HStack {
-                        Text("Statistics")
-                            .font(.headline)
-                            .fontWeight(.bold)
-
-                        Spacer()
-
-                        Button(action: { showStats = false }) {
-                            Image(systemName: "xmark.circle.fill")
-                                .font(.system(size: 20))
-                                .foregroundColor(.gray)
-                        }
-                    }
-                    .padding(16)
-                    .background(Color.white)
-
-                    StatsListContent(
-                        gameState: gameState,
-                        onShowLevelPicker: { showLevelPicker = true },
-                        onResetData: {
-                            // Reset all game data
-                            gameState.currentLevel = 1
-                            gameState.currentPoints = 0
-                            gameState.selectedAction = "Rest"
-                            gameState.sessionActions.removeAll()
-                            gameState.actionTimes.removeAll()
-                            gameState.totalLeavesCaught = 0
-                            gameState.totalHeartsCaught = 0
-                            gameState.totalBrainsCaught = 0
-                            gameState.totalSunsCaught = 0
-                            gameState.totalShakersCaught = 0
-                            gameState.totalCoinsCollected = 0
-                            gameState.allTimeElapsed = 0
-                            gameState.timeElapsed = 0
-                            gameState.score = 0
-                            gameState.highScore = 0
-                            gameState.saveStats()
-                            gameState.saveHighScore()
-                            
-                            // Clear coin last collected time
-                            UserDefaults.standard.removeObject(forKey: "game1_coin_last_collected_time")
-                            
-                            // Reinitialize map level boxes after reset
-                            mapState.initializeLevelBoxes(currentLevel: 1)
-                            
-                            // Regenerate coin (will be visible since no collection time)
-                            mapState.generateCoin()
-                            
-                            // Position character next to level 1
-                            if mapState.levelBoxes.count > 0 {
-                                let level1Box = mapState.levelBoxes[0]
-                                let offset: CGFloat = 100
-                                mapState.characterX = level1Box.x - offset
-                                mapState.characterY = level1Box.y
-                                mapState.targetX = level1Box.x - offset
-                                mapState.targetY = level1Box.y
-                            }
-                        }
-                    )
-
-                    Spacer()
-                }
-                .frame(maxHeight: .infinity, alignment: .top)
-                .background(Color.white)
-                .cornerRadius(12)
-                .padding(.horizontal, 12)
-                .padding(.top, 50)
-                .transition(.move(edge: .bottom))
-            }
+            // ...existing code...
+            // Unified stats overlay
+            StatsOverlayView(
+                gameState: gameState,
+                mapState: mapState,
+                showStats: $showStats,
+                showLevelPicker: $showLevelPicker,
+                showProgrammableDemo: $showProgrammableDemo
+            )
             
             if showLevelPicker {
                 Color.black.opacity(0.3)
@@ -2475,6 +2463,15 @@ private struct Game1ModuleView: View {
                 .transition(.move(edge: .bottom))
             }
         }
+        .onAppear {
+            // Unified timer is now managed in gameState init and runs continuously
+            print("🗺️  MAP SCREEN APPEARED - Unified timer is running")
+        }
+        .onDisappear {
+            print("❌ MAP SCREEN DISAPPEARED")
+            // Save stats when map screen disappears
+            gameState.saveStats()
+        }
     }
     
     private var gameplayScreen: some View {
@@ -2485,7 +2482,7 @@ private struct Game1ModuleView: View {
                         gameState.animationTimer?.invalidate()
                         gameState.jumpTimer?.invalidate()
                         gameState.floatingTextTimer?.invalidate()
-                        gameState.elapsedTimeTimer?.invalidate()
+                        // DO NOT invalidate elapsedTimeTimer - it's the unified continuous timer
                         gameState.idleTimer?.invalidate()
                         gameState.waveTimer?.invalidate()
                         gameState.actionTimer?.invalidate()
@@ -2821,134 +2818,29 @@ private struct Game1ModuleView: View {
                 .transition(.move(edge: .bottom))
             }
 
-            if showStats {
-                VStack(spacing: 0) {
-                    HStack {
-                        Text("Statistics")
-                            .font(.headline)
-                            .fontWeight(.bold)
-
-                        Spacer()
-
-                        Button(action: { showStats = false }) {
-                            Image(systemName: "xmark.circle.fill")
-                                .font(.system(size: 20))
-                                .foregroundColor(.gray)
-                        }
-                    }
-                    .padding(16)
-                    .background(Color.white)
-
-                    StatsListContent(
-                        gameState: gameState,
-                        onShowLevelPicker: { showLevelPicker = true },
-                        onResetData: {
-                            // Reset all game data
-                            gameState.currentLevel = 1
-                            gameState.currentPoints = 0
-                            gameState.selectedAction = "Rest"
-                            gameState.sessionActions.removeAll()
-                            gameState.actionTimes.removeAll()
-                            gameState.totalLeavesCaught = 0
-                            gameState.totalHeartsCaught = 0
-                            gameState.totalBrainsCaught = 0
-                            gameState.totalSunsCaught = 0
-                            gameState.totalShakersCaught = 0
-                            gameState.totalCoinsCollected = 0
-                            gameState.allTimeElapsed = 0
-                            gameState.timeElapsed = 0
-                            gameState.score = 0
-                            gameState.highScore = 0
-                            gameState.saveStats()
-                            gameState.saveHighScore()
-                            
-                            // Clear coin last collected time
-                            UserDefaults.standard.removeObject(forKey: "game1_coin_last_collected_time")
-                            
-                            // Reinitialize map level boxes after reset
-                            mapState.initializeLevelBoxes(currentLevel: 1)
-                            
-                            // Regenerate coin (will be visible since no collection time)
-                            mapState.generateCoin()
-                            
-                            // Position character next to level 1
-                            if mapState.levelBoxes.count > 0 {
-                                let level1Box = mapState.levelBoxes[0]
-                                let offset: CGFloat = 100
-                                mapState.characterX = level1Box.x - offset
-                                mapState.characterY = level1Box.y
-                                mapState.targetX = level1Box.x - offset
-                                mapState.targetY = level1Box.y
-                            }
-                        }
-                    )
-
-                    Spacer()
-                }
-                .frame(maxHeight: .infinity, alignment: .top)
-                .background(Color.white)
-                .cornerRadius(12)
-                .padding(.horizontal, 12)
-                .padding(.top, 50)
-                .transition(.move(edge: .bottom))
-            }
-            
-            if showLevelPicker {
-                Color.black.opacity(0.3)
-                    .ignoresSafeArea()
-                    .onTapGesture {
-                        showLevelPicker = false
-                    }
-                
-                VStack(spacing: 0) {
-                    Spacer()
-                    
-                    VStack(spacing: 0) {
-                        HStack {
-                            Text("Select Level")
-                                .font(.headline)
-                                .fontWeight(.bold)
-                            
-                            Spacer()
-                            
-                            Button(action: { showLevelPicker = false }) {
-                                Image(systemName: "xmark.circle.fill")
-                                    .font(.system(size: 20))
-                                    .foregroundColor(.gray)
-                            }
-                        }
-                        .padding(16)
-                        .background(Color.white)
-                        
-                        VStack(spacing: 0) {
-                            let maxLevel = ACTION_CONFIGS.map { $0.unlockLevel }.max() ?? 7
-                            ForEach(1...maxLevel, id: \.self) { level in
-                                if level > 1 {
-                                    Divider()
-                                }
-                                ActionPickerButton(title: "Level \(level)", isSelected: gameState.currentLevel == level) {
-                                    gameState.currentLevel = level
-                                    gameState.currentPoints = 0
-                                    gameState.saveStats()
-                                    // Reinitialize map level boxes after level change
-                                    mapState.initializeLevelBoxes(currentLevel: level)
-                                    showLevelPicker = false
-                                }
-                            }
-                        }
-                        .background(Color.white)
-                    }
-                    .cornerRadius(12)
-                    .padding(.horizontal, 12)
-                }
-                .transition(.move(edge: .bottom))
-            }
+            // Unified stats overlay
+            StatsOverlayView(
+                gameState: gameState,
+                mapState: mapState,
+                showStats: $showStats,
+                showLevelPicker: $showLevelPicker,
+                showProgrammableDemo: $showProgrammableDemo
+            )
+        }
+        .onAppear {
+            // Unified timer is now managed in gameState init and runs continuously
+            print("🎮 GAMEPLAY SCREEN APPEARED - Unified timer is running")
+        }
+        .onDisappear {
+            print("🎮 GAMEPLAY SCREEN DISAPPEARED")
+            // Save stats when gameplay screen disappears
+            gameState.saveStats()
         }
         .onChange(of: gameState.shouldReturnToMap) { oldValue, newValue in
             if newValue {
                 // Delay to show the "Level Complete" message before returning
                 DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
-                    // Increment level now that we're returning to map
+                    // Increment level now that we're returning
                     gameState.currentLevel += 1
                     
                     // Auto-select the highest-level action available for the new level
@@ -3053,7 +2945,7 @@ private struct GamePlayArea: View {
     
     private func getStandImage() -> String {
         if gameState.selectedAction == "Bicep Curls" {
-            return "guy_curls1"
+            return "curls1"
         } else {
             return "guy_stand"
         }
@@ -3328,6 +3220,8 @@ private struct GamePlayArea: View {
                                 mapState.targetX = levelBox.x
                                 mapState.targetY = levelBox.y + 150
                             }
+                            // Save stats when exiting level via door
+                            gameState.saveStats()
                             showGameMap = true
                         } else {
                             // Enter the door - move to center of new room
@@ -3340,22 +3234,16 @@ private struct GamePlayArea: View {
                     }
                     }
                 }
-                
-                // Separate timer for tracking elapsed time at correct speed (0.1 second intervals)
-                gameState.elapsedTimeTimer?.invalidate()
-                gameState.elapsedTimeTimer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { [weak gameState] _ in
-                    guard let gameState = gameState else { return }
-                    gameState.timeElapsed += 0.1
-                    gameState.allTimeElapsed += 0.1
-                    // Auto-save stats every 10 seconds to persist elapsed time
-                    if Int(gameState.allTimeElapsed * 10) % 100 == 0 {
-                        gameState.saveStats()
-                    }
-                }
+            }
+            .onAppear {
+                print("🎮 GAMEPLAY AREA APPEARED")
+                // Timer is managed by gameplayScreen.onAppear
             }
             .onDisappear {
+                print("🎮 GAMEPLAY AREA DISAPPEARED")
                 collisionTimer?.invalidate()
                 collisionTimer = nil
+                // Don't invalidate elapsedTimeTimer here - let gameplayScreen handle it
                 mapState.stopDoorSliding()
             }
             .onChange(of: showDoor) { oldValue, newValue in
@@ -3369,6 +3257,93 @@ private struct GamePlayArea: View {
                     let greeting = Bool.random() ? "*hi*" : "*hey*"
                     gameState.addFloatingText(greeting, x: normX, y: textStartY, color: .blue)
                 }
+            }
+        }
+    }
+}
+
+// MARK: - Stats Overlay View (Unified for all screens)
+
+private struct StatsOverlayView: View {
+    var gameState: StickFigureGameState
+    var mapState: GameMapState
+    var showStats: Binding<Bool>
+    var showLevelPicker: Binding<Bool>
+    var showProgrammableDemo: Binding<Bool>
+    
+    var body: some View {
+        if showStats.wrappedValue {
+            VStack(spacing: 0) {
+                HStack {
+                    Text("Statistics")
+                        .font(.headline)
+                        .fontWeight(.bold)
+
+                    Spacer()
+                    
+                    Button(action: { showStats.wrappedValue = false }) {
+                        Image(systemName: "xmark.circle.fill")
+                            .font(.system(size: 20))
+                            .foregroundColor(.gray)
+                    }
+                }
+                .padding(16)
+                .background(Color.white)
+
+                StatsListContent(
+                    gameState: gameState,
+                    onShowLevelPicker: { showLevelPicker.wrappedValue = true },
+                    onResetData: {
+                        // Reset all game data
+                        gameState.currentLevel = 1
+                        gameState.currentPoints = 0
+                        gameState.selectedAction = "Rest"
+                        gameState.sessionActions.removeAll()
+                        gameState.actionTimes.removeAll()
+                        gameState.totalLeavesCaught = 0
+                        gameState.totalHeartsCaught = 0
+                        gameState.totalBrainsCaught = 0
+                        gameState.totalSunsCaught = 0
+                        gameState.totalShakersCaught = 0
+                        gameState.totalCoinsCollected = 0
+                        gameState.allTimeElapsed = 0
+                        gameState.timeElapsed = 0
+                        gameState.score = 0
+                        gameState.highScore = 0
+                        gameState.saveStats()
+                        gameState.saveHighScore()
+                        
+                        // Clear coin last collected time
+                        UserDefaults.standard.removeObject(forKey: "game1_coin_last_collected_time")
+                        
+                        // Reinitialize map level boxes after reset
+                        mapState.initializeLevelBoxes(currentLevel: 1)
+                        
+                        // Regenerate coin (will be visible since no collection time)
+                        mapState.generateCoin()
+                        
+                        // Position character next to level 1
+                        if mapState.levelBoxes.count > 0 {
+                            let level1Box = mapState.levelBoxes[0]
+                            let offset: CGFloat = 100
+                            mapState.characterX = level1Box.x - offset
+                            mapState.characterY = level1Box.y
+                            mapState.targetX = level1Box.x - offset
+                            mapState.targetY = level1Box.y
+                        }
+                    }
+                )
+
+                Spacer()
+            }
+            .frame(maxHeight: .infinity, alignment: .top)
+            .background(Color.white)
+            .cornerRadius(12)
+            .padding(.horizontal, 12)
+            .padding(.top, 50)
+            .transition(.move(edge: .bottom))
+            .onAppear {
+                print("📊 STATS OVERLAY APPEARED - Timer status: \(gameState.elapsedTimeTimer != nil)")
             }
         }
     }
