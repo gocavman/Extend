@@ -91,8 +91,8 @@ let ACTION_CONFIGS: [ActionConfig] = [
         displayName: "Run",
         unlockLevel: 2,
         pointsPerCompletion: 2,
-        animationFrames: [],
-        baseFrameInterval: 0,
+        animationFrames: [1, 2, 3, 4, 3, 2, 1], // Run sequence: 1->2->3->4->3->2->1 then back to stand (guy_stand)
+        baseFrameInterval: 0.15,
         variableTiming: nil,
         flipMode: .none,
         supportsSpeedBoost: true,
@@ -395,6 +395,7 @@ class StickFigureGameState {
     var actionFlip: Bool = false
     var lastActionFlip: [String: Bool] = [:]
     var actionTimer: Timer?
+    var currentStickFigure: StickFigure2D?  // For rendering custom stick figure animations
 
     // Idle / wave
     var isWaving: Bool = false
@@ -594,9 +595,6 @@ class StickFigureGameState {
         elapsedTimeTimer?.invalidate()
         elapsedTimeTimer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { [weak self] _ in
             guard let self = self else { return }
-            
-            let currentTime = Date().timeIntervalSince1970
-            let timeSinceLastCheck = currentTime - self.gameSessionStartTime
             
             // Update allTimeElapsed to reflect continuous time
             self.allTimeElapsed += 0.1
@@ -1149,6 +1147,11 @@ class StickFigureGameState {
         gameState.currentPerformingAction = config.id
         gameState.actionFrame = config.animationFrames.first ?? 1
         
+        // Load stick figure poses if this is a stick figure action (like Run)
+        if config.id == "run" {
+            loadStickFigureFrames(forAnimation: "Run", gameState: gameState)
+        }
+        
         // Handle flip based on flipMode
         switch config.flipMode {
         case .none:
@@ -1241,6 +1244,11 @@ class StickFigureGameState {
         gameState.actionTimer = Timer.scheduledTimer(withTimeInterval: interval, repeats: true) { _ in
             if frameIndex < config.animationFrames.count {
                 gameState.actionFrame = config.animationFrames[frameIndex]
+                
+                // Load stick figure frame for Run animation
+                if config.id == "run" {
+                    self.loadStickFigureFrame(frameNumber: gameState.actionFrame, forAnimation: "Run", gameState: gameState)
+                }
                 
                 // Detect pullup reps: increment when transitioning to frame 3 (start of pullup motion)
                 if config.id == "pullup" && gameState.actionFrame == 3 && gameState.lastActionFrame != 3 {
@@ -1340,6 +1348,31 @@ class StickFigureGameState {
         }
         
         scheduleNextFrame()
+    }
+    
+    private func loadStickFigureFrames(forAnimation animationName: String, gameState: StickFigureGameState) {
+        // Load saved animation frames from UserDefaults
+        if let data = UserDefaults.standard.data(forKey: "saved_animation_frames"),
+           let savedFrames = try? JSONDecoder().decode([AnimationFrame].self, from: data) {
+            // Find all frames matching this animation name and sort by frame number
+            let animationFrames = savedFrames.filter { $0.name == animationName }
+                .sorted { $0.frameNumber < $1.frameNumber }
+            
+            // Load the first frame immediately
+            if let firstFrame = animationFrames.first {
+                gameState.currentStickFigure = firstFrame.pose.toStickFigure2D()
+            }
+        }
+    }
+    
+    private func loadStickFigureFrame(frameNumber: Int, forAnimation animationName: String, gameState: StickFigureGameState) {
+        // Load a specific frame by number from saved animation frames
+        if let data = UserDefaults.standard.data(forKey: "saved_animation_frames"),
+           let savedFrames = try? JSONDecoder().decode([AnimationFrame].self, from: data) {
+            if let frame = savedFrames.first(where: { $0.name == animationName && $0.frameNumber == frameNumber }) {
+                gameState.currentStickFigure = frame.pose.toStickFigure2D()
+            }
+        }
     }
 }
 
@@ -1886,7 +1919,7 @@ private struct Game1ModuleView: View {
     @State private var showLevelPicker = false
     @State private var showDoor = false
     @State private var boostTimerUpdateTrigger = UUID() // Trigger for boost timer refresh
-    @State private var showProgrammableDemo = false // NEW: Toggle for programmable stick figure demo
+    @State private var showProgrammableDemo = false // NEW: Toggle for stick figure editor
     @Environment(ModuleState.self) var moduleState
     @Environment(\.scenePhase) var scenePhase
 
@@ -1894,7 +1927,13 @@ private struct Game1ModuleView: View {
     var body: some View {
         Group {
             if showProgrammableDemo {
-                ProgrammableStickFigureDemo(isPresented: $showProgrammableDemo)
+                ZStack {
+                    Color.white.ignoresSafeArea()
+                    
+                    StickFigure2DEditorView(onDismiss: {
+                        showProgrammableDemo = false
+                    })
+                }
             } else if showGameMap {
                 mapScreen
             } else {
@@ -2994,15 +3033,27 @@ private struct GamePlayArea: View {
                     // Generic action rendering
                     if let actionId = gameState.currentPerformingAction,
                        let config = ACTION_CONFIGS.first(where: { $0.id == actionId }) {
-                        Image("\(config.imagePrefix)\(gameState.actionFrame)")
-                            .resizable()
-                            .scaledToFit()
-                            .frame(width: 100, height: 150)
-                            .scaleEffect(x: gameState.actionFlip ? -1 : 1, y: 1)
-                            .position(x: figureX, y: figureY)
-                            .onTapGesture {
-                                // Ignore extra taps during animation
-                            }
+                        // Use stick figure for Run action
+                        if config.id == "run", let stickFigure = gameState.currentStickFigure {
+                            StickFigure2DView(figure: stickFigure)
+                                .frame(width: 100, height: 150)
+                                .scaleEffect(x: gameState.actionFlip ? -1 : 1, y: 1)
+                                .position(x: figureX, y: figureY)
+                                .onTapGesture {
+                                    // Ignore extra taps during animation
+                                }
+                        } else {
+                            // Use image for other actions
+                            Image("\(config.imagePrefix)\(gameState.actionFrame)")
+                                .resizable()
+                                .scaledToFit()
+                                .frame(width: 100, height: 150)
+                                .scaleEffect(x: gameState.actionFlip ? -1 : 1, y: 1)
+                                .position(x: figureX, y: figureY)
+                                .onTapGesture {
+                                    // Ignore extra taps during animation
+                                }
+                        }
                     } else if gameState.isPerformingShaker {
                         Image("shaker\(gameState.shakerFrame)")
                             .resizable()

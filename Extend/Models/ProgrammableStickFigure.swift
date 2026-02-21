@@ -120,37 +120,67 @@ struct SavedStickFigurePose: Codable {
 
 class PoseManager: ObservableObject {
     @Published var savedPoses: [SavedPose] = []
-    
+
+    private let savedPosesKey = "saved_stick_figure_poses"
+    private let defaultStandKey = "default_stick_figure_stand_pose"
+
     init() {
         loadPoses()
     }
-    
+
     func savePose(_ pose: StickFigurePose, name: String, positionNumber: Int) {
         let newPose = SavedPose(name: name, positionNumber: positionNumber, pose: pose)
         savedPoses.append(newPose)
+        if name == "Stand" {
+            saveDefaultStandPose(pose)
+        }
         persistPoses()
     }
-    
+
     func deletePose(_ pose: SavedPose) {
         savedPoses.removeAll { $0.id == pose.id }
         persistPoses()
     }
-    
-    func getPosesForAnimation(named name: String) -> [SavedPose] {
-        return savedPoses.filter { $0.name == name }.sorted { $0.positionNumber < $1.positionNumber }
+
+    func movePoses(fromOffsets offsets: IndexSet, toOffset: Int) {
+        savedPoses.move(fromOffsets: offsets, toOffset: toOffset)
+        persistPoses()
     }
-    
+
+    func getPosesForAnimation(named name: String) -> [SavedPose] {
+        savedPoses.filter { $0.name == name }.sorted { $0.positionNumber < $1.positionNumber }
+    }
+
     private func persistPoses() {
         if let encoded = try? JSONEncoder().encode(savedPoses) {
-            UserDefaults.standard.set(encoded, forKey: "saved_stick_figure_poses")
+            UserDefaults.standard.set(encoded, forKey: savedPosesKey)
         }
     }
-    
+
     private func loadPoses() {
-        if let data = UserDefaults.standard.data(forKey: "saved_stick_figure_poses"),
+        if let data = UserDefaults.standard.data(forKey: savedPosesKey),
            let decoded = try? JSONDecoder().decode([SavedPose].self, from: data) {
             savedPoses = decoded
         }
+
+        if savedPoses.isEmpty, let defaultStand = loadDefaultStandPose() {
+            let seed = SavedPose(name: "Stand", positionNumber: 1, pose: defaultStand)
+            savedPoses = [seed]
+            persistPoses()
+        }
+    }
+
+    private func saveDefaultStandPose(_ pose: StickFigurePose) {
+        let encoded = try? JSONEncoder().encode(SavedStickFigurePose(from: pose))
+        UserDefaults.standard.set(encoded, forKey: defaultStandKey)
+    }
+
+    func loadDefaultStandPose() -> StickFigurePose? {
+        guard let data = UserDefaults.standard.data(forKey: defaultStandKey),
+              let decoded = try? JSONDecoder().decode(SavedStickFigurePose.self, from: data) else {
+            return nil
+        }
+        return decoded.toStickFigurePose()
     }
 }
 
@@ -190,6 +220,9 @@ struct ClothingStyle {
     var shoulderWidth: CGFloat
     var bodyThickness: CGFloat
     var shoulderJointSize: CGFloat
+    var torsoTopLength: CGFloat
+    var torsoBottomLength: CGFloat
+    var neckLength: CGFloat
     
     // Individual body part colors
     var headNeckColor: Color
@@ -212,6 +245,9 @@ struct ClothingStyle {
         shoulderWidth: 20,
         bodyThickness: 6,
         shoulderJointSize: 6,
+        torsoTopLength: 35,
+        torsoBottomLength: 35,
+        neckLength: 20,
         headNeckColor: Color(red: 0.9, green: 0.7, blue: 0.6),
         torsoShoulderColor: Color(red: 0.9, green: 0.7, blue: 0.6),
         upperArmColor: Color(red: 0.9, green: 0.7, blue: 0.6),
@@ -234,6 +270,9 @@ struct ClothingStyle {
         defaults.set(Double(shoulderWidth), forKey: "prog_stick_shoulder_width")
         defaults.set(Double(bodyThickness), forKey: "prog_stick_body_thickness")
         defaults.set(Double(shoulderJointSize), forKey: "prog_stick_shoulder_joint_size")
+        defaults.set(Double(torsoTopLength), forKey: "prog_stick_torso_top_length")
+        defaults.set(Double(torsoBottomLength), forKey: "prog_stick_torso_bottom_length")
+        defaults.set(Double(neckLength), forKey: "prog_stick_neck_length")
         defaults.set(headNeckColor.toHex(), forKey: "prog_stick_head_neck_color")
         defaults.set(torsoShoulderColor.toHex(), forKey: "prog_stick_torso_shoulder_color")
         defaults.set(upperArmColor.toHex(), forKey: "prog_stick_upper_arm_color")
@@ -259,6 +298,9 @@ struct ClothingStyle {
             shoulderWidth: 20,
             bodyThickness: 6,
             shoulderJointSize: CGFloat(defaults.object(forKey: "prog_stick_shoulder_joint_size") as? Double ?? 6),
+            torsoTopLength: CGFloat(defaults.object(forKey: "prog_stick_torso_top_length") as? Double ?? 35),
+            torsoBottomLength: CGFloat(defaults.object(forKey: "prog_stick_torso_bottom_length") as? Double ?? 35),
+            neckLength: CGFloat(defaults.object(forKey: "prog_stick_neck_length") as? Double ?? 20),
             headNeckColor: Color(hex: defaults.string(forKey: "prog_stick_head_neck_color") ?? "#E6B399") ?? skinDefault,
             torsoShoulderColor: Color(hex: defaults.string(forKey: "prog_stick_torso_shoulder_color") ?? "#E6B399") ?? skinDefault,
             upperArmColor: Color(hex: defaults.string(forKey: "prog_stick_upper_arm_color") ?? "#E6B399") ?? skinDefault,
@@ -271,7 +313,7 @@ struct ClothingStyle {
     }
 }
 
-extension Color {
+fileprivate extension Color {
     func toHex() -> String {
         guard let components = UIColor(self).cgColor.components else { return "#000000" }
         let r = Int(components[0] * 255.0)
@@ -315,113 +357,60 @@ struct StickFigurePose {
     var footRight: CGPoint
     var frontArmIsLeft: Bool
     var frontLegIsLeft: Bool
-    
-    static func standing(at origin: CGPoint, shoulderWidth: CGFloat = 10) -> StickFigurePose {
-        let headY = origin.y - 60
-        let neckY = origin.y - 50
-        let shoulderY = origin.y - 45
-        let elbowY = origin.y - 15
-        let handY = origin.y + 5
-        let hipY = origin.y
-        let kneeY = origin.y + 25
-        let footY = origin.y + 50
+
+    func translated(to targetOrigin: CGPoint) -> StickFigurePose {
+        let dx = targetOrigin.x - bodyPosition.x
+        let dy = targetOrigin.y - bodyPosition.y
+        return StickFigurePose(
+            bodyPosition: CGPoint(x: bodyPosition.x + dx, y: bodyPosition.y + dy),
+            headPosition: CGPoint(x: headPosition.x + dx, y: headPosition.y + dy),
+            headTilt: headTilt,
+            neckPosition: CGPoint(x: neckPosition.x + dx, y: neckPosition.y + dy),
+            shoulderLeft: CGPoint(x: shoulderLeft.x + dx, y: shoulderLeft.y + dy),
+            shoulderRight: CGPoint(x: shoulderRight.x + dx, y: shoulderRight.y + dy),
+            waistPosition: CGPoint(x: waistPosition.x + dx, y: waistPosition.y + dy),
+            elbowLeft: CGPoint(x: elbowLeft.x + dx, y: elbowLeft.y + dy),
+            elbowRight: CGPoint(x: elbowRight.x + dx, y: elbowRight.y + dy),
+            handLeft: CGPoint(x: handLeft.x + dx, y: handLeft.y + dy),
+            handRight: CGPoint(x: handRight.x + dx, y: handRight.y + dy),
+            hipLeft: CGPoint(x: hipLeft.x + dx, y: hipLeft.y + dy),
+            hipRight: CGPoint(x: hipRight.x + dx, y: hipRight.y + dy),
+            kneeLeft: CGPoint(x: kneeLeft.x + dx, y: kneeLeft.y + dy),
+            kneeRight: CGPoint(x: kneeRight.x + dx, y: kneeRight.y + dy),
+            footLeft: CGPoint(x: footLeft.x + dx, y: footLeft.y + dy),
+            footRight: CGPoint(x: footRight.x + dx, y: footRight.y + dy),
+            frontArmIsLeft: frontArmIsLeft,
+            frontLegIsLeft: frontLegIsLeft
+        )
+    }
+
+    static func standing(at origin: CGPoint, shoulderWidth: CGFloat = 10, torsoTopLength: CGFloat = 35, torsoBottomLength: CGFloat = 35, neckLength: CGFloat = 20) -> StickFigurePose {
+        let headY = origin.y - (neckLength + torsoTopLength + 15)  // 15 is head radius * 1.5
+        let shoulderY = origin.y - (torsoTopLength + 20)
+        let elbowY = origin.y - (torsoTopLength - 25)
+        let handY = origin.y - (torsoTopLength - 55)
+        let hipY = origin.y - (torsoBottomLength)
+        let kneeY = origin.y + 20
+        let footY = origin.y + 45
         let halfShoulder = shoulderWidth / 2
-        let hipWidth = shoulderWidth * 0.8
-        let halfHip = hipWidth / 2
         
         return StickFigurePose(
             bodyPosition: origin,
             headPosition: CGPoint(x: origin.x, y: headY),
-            neckPosition: CGPoint(x: origin.x, y: neckY),
-            shoulderLeft: CGPoint(x: origin.x - halfShoulder, y: shoulderY),
-            shoulderRight: CGPoint(x: origin.x + halfShoulder, y: shoulderY),
-            waistPosition: CGPoint(x: origin.x, y: origin.y - 10),
+            neckPosition: CGPoint(x: origin.x, y: shoulderY),
+            shoulderLeft: CGPoint(x: origin.x, y: shoulderY),
+            shoulderRight: CGPoint(x: origin.x, y: shoulderY),
+            waistPosition: CGPoint(x: origin.x, y: origin.y - 3),
             elbowLeft: CGPoint(x: origin.x - halfShoulder - 1, y: elbowY),
             elbowRight: CGPoint(x: origin.x + halfShoulder + 1, y: elbowY),
             handLeft: CGPoint(x: origin.x - halfShoulder - 2, y: handY),
             handRight: CGPoint(x: origin.x + halfShoulder + 2, y: handY),
-            hipLeft: CGPoint(x: origin.x - halfHip, y: hipY),
-            hipRight: CGPoint(x: origin.x + halfHip, y: hipY),
+            hipLeft: CGPoint(x: origin.x, y: hipY),
+            hipRight: CGPoint(x: origin.x, y: hipY),
             kneeLeft: CGPoint(x: origin.x - halfShoulder, y: kneeY),
             kneeRight: CGPoint(x: origin.x + halfShoulder, y: kneeY),
             footLeft: CGPoint(x: origin.x - halfShoulder - 2, y: footY),
             footRight: CGPoint(x: origin.x + halfShoulder + 2, y: footY),
-            frontArmIsLeft: true,
-            frontLegIsLeft: true
-        )
-    }
-    
-    static func running1(at origin: CGPoint, shoulderWidth: CGFloat = 10) -> StickFigurePose {
-        let headY = origin.y - 58
-        let neckY = origin.y - 48
-        let shoulderY = origin.y - 43
-        let elbowYL = origin.y - 30
-        let elbowYR = origin.y - 20
-        let handYL = origin.y - 15
-        let handYR = origin.y - 5
-        let hipY = origin.y
-        let kneeYL = origin.y + 15
-        let kneeYR = origin.y + 30
-        let footYL = origin.y + 35
-        let footYR = origin.y + 50
-        let halfShoulder = shoulderWidth / 2
-        let armSwing = shoulderWidth * 0.8
-        
-        return StickFigurePose(
-            bodyPosition: origin,
-            headPosition: CGPoint(x: origin.x, y: headY),
-            neckPosition: CGPoint(x: origin.x, y: neckY),
-            shoulderLeft: CGPoint(x: origin.x - halfShoulder, y: shoulderY),
-            shoulderRight: CGPoint(x: origin.x + halfShoulder, y: shoulderY),
-            waistPosition: CGPoint(x: origin.x, y: origin.y - 10),
-            elbowLeft: CGPoint(x: origin.x - armSwing, y: elbowYL),
-            elbowRight: CGPoint(x: origin.x + armSwing + 5, y: elbowYR),
-            handLeft: CGPoint(x: origin.x - halfShoulder, y: handYL),
-            handRight: CGPoint(x: origin.x + armSwing + 8, y: handYR),
-            hipLeft: CGPoint(x: origin.x - halfShoulder, y: hipY),
-            hipRight: CGPoint(x: origin.x + halfShoulder, y: hipY),
-            kneeLeft: CGPoint(x: origin.x - halfShoulder + 3, y: kneeYL),
-            kneeRight: CGPoint(x: origin.x + halfShoulder + 4, y: kneeYR),
-            footLeft: CGPoint(x: origin.x - halfShoulder, y: footYL),
-            footRight: CGPoint(x: origin.x + halfShoulder + 7, y: footYR),
-            frontArmIsLeft: true,
-            frontLegIsLeft: true
-        )
-    }
-    
-    static func running2(at origin: CGPoint, shoulderWidth: CGFloat = 10) -> StickFigurePose {
-        let headY = origin.y - 58
-        let neckY = origin.y - 48
-        let shoulderY = origin.y - 43
-        let elbowYL = origin.y - 20
-        let elbowYR = origin.y - 30
-        let handYL = origin.y - 5
-        let handYR = origin.y - 15
-        let hipY = origin.y
-        let kneeYL = origin.y + 30
-        let kneeYR = origin.y + 15
-        let footYL = origin.y + 50
-        let footYR = origin.y + 35
-        let halfShoulder = shoulderWidth / 2
-        let armSwing = shoulderWidth * 0.8
-        
-        return StickFigurePose(
-            bodyPosition: origin,
-            headPosition: CGPoint(x: origin.x, y: headY),
-            neckPosition: CGPoint(x: origin.x, y: neckY),
-            shoulderLeft: CGPoint(x: origin.x - halfShoulder, y: shoulderY),
-            shoulderRight: CGPoint(x: origin.x + halfShoulder, y: shoulderY),
-            waistPosition: CGPoint(x: origin.x, y: origin.y - 10),
-            elbowLeft: CGPoint(x: origin.x - armSwing - 5, y: elbowYL),
-            elbowRight: CGPoint(x: origin.x + armSwing, y: elbowYR),
-            handLeft: CGPoint(x: origin.x - armSwing - 8, y: handYL),
-            handRight: CGPoint(x: origin.x + halfShoulder, y: handYR),
-            hipLeft: CGPoint(x: origin.x - halfShoulder, y: hipY),
-            hipRight: CGPoint(x: origin.x + halfShoulder, y: hipY),
-            kneeLeft: CGPoint(x: origin.x - halfShoulder - 4, y: kneeYL),
-            kneeRight: CGPoint(x: origin.x + halfShoulder + 3, y: kneeYR),
-            footLeft: CGPoint(x: origin.x - halfShoulder - 7, y: footYL),
-            footRight: CGPoint(x: origin.x + halfShoulder, y: footYR),
             frontArmIsLeft: true,
             frontLegIsLeft: true
         )
@@ -615,11 +604,8 @@ struct ProgrammableStickFigure: View {
     private func drawLimbs(in context: GraphicsContext) {
         let torsoMid = CGPoint(x: (pose.hipLeft.x + pose.hipRight.x) / 2, y: pose.hipLeft.y)
         
-        // Draw torso with waist bend
-        // Upper torso: from neck to waist
-        drawMuscleSegment(from: pose.neckPosition, to: pose.waistPosition, thickness: clothing.bodyThickness * 2, color: clothing.torsoShoulderColor, in: context)
-        // Lower torso: from waist to hips
-        drawMuscleSegment(from: pose.waistPosition, to: torsoMid, thickness: clothing.bodyThickness * 2, color: clothing.torsoShoulderColor, in: context)
+        // Draw torso directly from head to hips (no neck, no waist bend)
+        drawMuscleSegment(from: pose.headPosition, to: torsoMid, thickness: clothing.bodyThickness, color: clothing.torsoShoulderColor, in: context)
         
         let frontArmLeft = pose.frontArmIsLeft
         let frontLegLeft = pose.frontLegIsLeft
@@ -678,6 +664,11 @@ struct ProgrammableStickFigure: View {
             context.stroke(circle, with: .color(clothing.headNeckColor.opacity(0.7)), lineWidth: 0.5)
         }
         
+        // Waist joint
+        let waistRadius: CGFloat = 5
+        let waistCircle = Circle().path(in: CGRect(x: pose.waistPosition.x - waistRadius, y: pose.waistPosition.y - waistRadius, width: waistRadius * 2, height: waistRadius * 2))
+        context.fill(waistCircle, with: .color(clothing.torsoShoulderColor))
+        
         let legThickness = clothing.bodyThickness * 1.5
         let hipRadius = (legThickness / 2) * 0.6
         let hipJoints = [pose.hipLeft, pose.hipRight]
@@ -727,7 +718,8 @@ struct ProgrammableStickFigure: View {
         headContext.rotate(by: .degrees(pose.headTilt))
         headContext.translateBy(x: -pose.headPosition.x, y: -pose.headPosition.y)
         
-        let headCircle = Circle().path(in: CGRect(x: pose.headPosition.x - 8, y: pose.headPosition.y - 8, width: 16, height: 16))
+        let headRadius: CGFloat = 12  // Increased from 8
+        let headCircle = Circle().path(in: CGRect(x: pose.headPosition.x - headRadius, y: pose.headPosition.y - headRadius, width: headRadius * 2, height: headRadius * 2))
         headContext.fill(headCircle, with: .color(clothing.headNeckColor))
         headContext.stroke(headCircle, with: .color(.black), lineWidth: 0.5)
     }
@@ -796,73 +788,77 @@ struct ProgrammableStickFigureDemo: View {
     @State private var runFrame = 0
     @State private var clothing = ClothingStyle.load()
     @State private var showEditor = false
+    @State private var standPose: StickFigurePose? = nil
+    @State private var livePose: StickFigurePose? = nil
+    @State private var poseManager = PoseManager()
     @Binding var isPresented: Bool
     
     var body: some View {
-        VStack(spacing: 0) {
-            // Header with buttons
-            HStack {
-                Button(action: {
-                    print("Back button tapped - isPresented = \(isPresented)")
-                    isPresented = false
-                }) {
-                    HStack(spacing: 4) {
-                        Image(systemName: "chevron.left")
-                        Text("Back")
-                    }
-                    .foregroundColor(.blue)
-                    .contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
-                
-                Spacer()
-
-                Text("Programmable Stick Figure")
-                    .font(.headline)
-                
-                Spacer()
-                
-                Button(action: {
-                    print("🖊️  Edit button tapped!")
-                    showEditor = true
-                }) {
-                    Image(systemName: "pencil.and.scribble")
-                        .font(.system(size: 20))
-                        .foregroundColor(.white)
-                        .frame(width: 50, height: 50)
-                        .background(Color.blue)
-                        .cornerRadius(8)
+        ZStack {
+            VStack(spacing: 0) {
+                // Header with buttons
+                HStack {
+                    Button(action: {
+                        print("Back button tapped - isPresented = \(isPresented)")
+                        isPresented = false
+                    }) {
+                        HStack(spacing: 4) {
+                            Image(systemName: "chevron.left")
+                            Text("Back")
+                        }
+                        .foregroundColor(.blue)
                         .contentShape(Rectangle())
+                        .padding(.vertical, 8)
+                        .padding(.horizontal, 12)
+                    }
+                    
+                    Spacer()
+
+                    Text("Programmable Stick Figure")
+                        .font(.headline)
+                    
+                    Spacer()
+                    
+                    Button(action: {
+                        print("🖊️  Edit button tapped!")
+                        showEditor = true
+                    }) {
+                        Image(systemName: "pencil.and.scribble")
+                            .font(.system(size: 20))
+                            .foregroundColor(.white)
+                            .frame(width: 50, height: 50)
+                            .background(Color.blue)
+                            .cornerRadius(8)
+                            .contentShape(Rectangle())
+                    }
                 }
-                .buttonStyle(.plain)
-            }
-            .padding(.vertical, 12)
-            .padding(.horizontal)
-            .padding(.top, 50)
-            .background(Color(red: 0.95, green: 0.95, blue: 0.98))
+                .padding(.vertical, 12)
+                .padding(.horizontal)
+                .padding(.top, 50)
+                .background(Color(red: 0.95, green: 0.95, blue: 0.98))
+                .zIndex(100)
                 
                 // Figure display with extended background
                 GeometryReader { geometry in
                     let centerX = geometry.size.width / 2
+                    let targetOrigin = CGPoint(x: centerX, y: 200)
                     VStack {
                         ZStack {
                             RoundedRectangle(cornerRadius: 12)
                                 .fill(Color(red: 0.95, green: 0.95, blue: 0.98))
-                            
-                            if isRunning {
-                                if runFrame % 2 == 0 {
-                                    ProgrammableStickFigure(pose: .running1(at: CGPoint(x: centerX, y: 100), shoulderWidth: clothing.shoulderWidth), clothing: clothing, scale: 1.5)
-                                } else {
-                                    ProgrammableStickFigure(pose: .running2(at: CGPoint(x: centerX, y: 100), shoulderWidth: clothing.shoulderWidth), clothing: clothing, scale: 1.5)
-                                }
+
+                            if let livePoseData = livePose {
+                                ProgrammableStickFigure(pose: livePoseData.translated(to: targetOrigin), clothing: clothing, scale: 1.5)
+                            } else if let standPoseData = standPose {
+                                ProgrammableStickFigure(pose: standPoseData.translated(to: targetOrigin), clothing: clothing, scale: 1.5)
                             } else {
-                                ProgrammableStickFigure(pose: .standing(at: CGPoint(x: centerX, y: 100), shoulderWidth: clothing.shoulderWidth), clothing: clothing, scale: 1.5)
+                                ProgrammableStickFigure(pose: .standing(at: targetOrigin, shoulderWidth: clothing.shoulderWidth, torsoTopLength: clothing.torsoTopLength, torsoBottomLength: clothing.torsoBottomLength, neckLength: clothing.neckLength), clothing: clothing, scale: 1.5)
                             }
                         }
-                        .frame(height: 200)
+                        .frame(height: 300)
                     }
                 }
-                .frame(height: 240)
+                .frame(height: 360)
             
                 // Buttons
                 HStack(spacing: 16) {
@@ -873,16 +869,6 @@ struct ProgrammableStickFigureDemo: View {
                             .padding(.horizontal, 20)
                             .padding(.vertical, 10)
                             .background(isRunning ? Color.gray : Color.blue)
-                            .cornerRadius(8)
-                    }
-                    
-                    Button(action: { isRunning = true }) {
-                        Text("Run")
-                            .font(.subheadline)
-                            .foregroundColor(.white)
-                            .padding(.horizontal, 20)
-                            .padding(.vertical, 10)
-                            .background(isRunning ? Color.blue : Color.gray)
                             .cornerRadius(8)
                     }
                 }
@@ -995,21 +981,6 @@ struct ProgrammableStickFigureDemo: View {
                                 .labelsHidden()
                                 .onChange(of: clothing.feetColor) { _, _ in clothing.save() }
                         }
-                        
-                        Divider()
-                            .padding(.vertical, 4)
-                        
-                        Text("Body Proportions")
-                            .font(.subheadline)
-                            .fontWeight(.semibold)
-                        
-                        VStack(alignment: .leading, spacing: 8) {
-                            Text("Shoulder Joint Size: \(Int(clothing.shoulderJointSize))")
-                                .font(.caption)
-                                .foregroundColor(.gray)
-                            Slider(value: $clothing.shoulderJointSize, in: 3...12, step: 1)
-                                .onChange(of: clothing.shoulderJointSize) { _, _ in clothing.save() }
-                        }
                     }
                     .padding()
                     .background(Color(red: 0.96, green: 0.96, blue: 0.97))
@@ -1026,10 +997,30 @@ struct ProgrammableStickFigureDemo: View {
                 }
             }
             .sheet(isPresented: $showEditor) {
-                DraggableJointEditorView(clothing: $clothing)
+                DraggableJointEditorView(clothing: $clothing, livePose: $livePose)
+            }
+        }
+        .onAppear {
+            // Load the "Stand" pose if it exists
+            if let standPoseData = poseManager.savedPoses.first(where: { $0.name == "Stand" }) {
+                standPose = standPoseData.pose.toStickFigurePose()
+            } else if let defaultStand = poseManager.loadDefaultStandPose() {
+                standPose = defaultStand
+            }
+        }
+        .onChange(of: showEditor) { oldValue, newValue in
+            // When editor closes, refresh the Stand pose in case it was updated
+            if oldValue && !newValue {
+                if let standPoseData = poseManager.savedPoses.first(where: { $0.name == "Stand" }) {
+                    standPose = standPoseData.pose.toStickFigurePose()
+                } else if let defaultStand = poseManager.loadDefaultStandPose() {
+                    standPose = defaultStand
+                }
             }
         }
     }
+}
+
 #Preview {
     @Previewable @State var isPresented = true
     ProgrammableStickFigureDemo(isPresented: $isPresented)
@@ -1074,6 +1065,98 @@ struct DirectionalObject: Codable, Identifiable, Equatable {
     }
 }
 
+// MARK: - Draggable Object View Component
+
+struct DraggableObjectView: View {
+    let object: DirectionalObject
+    let isDragged: Bool
+    let draggedHandle: String?
+    let onMove: (CGPoint) -> Void
+    let onResize: (CGFloat, CGFloat) -> Void
+    let onRotate: (Double) -> Void
+    let onDragStart: (String) -> Void
+    let onDragEnd: () -> Void
+
+    var body: some View {
+        ZStack(alignment: .center) {
+            Group {
+                if object.objectType == "image" {
+                    if let imageData = object.imageData, let uiImage = UIImage(data: imageData) {
+                        Image(uiImage: uiImage)
+                            .resizable()
+                            .scaledToFit()
+                            .frame(width: object.width, height: object.height)
+                    } else {
+                        Rectangle()
+                            .fill(Color.gray.opacity(0.3))
+                            .frame(width: object.width, height: object.height)
+                            .overlay(Text("No Image").font(.caption))
+                    }
+                } else if object.objectType == "ball" {
+                    Circle()
+                        .fill(Color(hex: object.color) ?? .red)
+                        .frame(width: object.width, height: object.height)
+                } else if object.objectType == "box" {
+                    RoundedRectangle(cornerRadius: 4)
+                        .fill(Color(hex: object.color) ?? .red)
+                        .frame(width: object.width, height: object.height)
+                } else {
+                    Capsule()
+                        .fill(Color(hex: object.color) ?? .red)
+                        .frame(width: object.width, height: object.height)
+                }
+            }
+            .rotationEffect(.degrees(object.rotation))
+
+            Circle()
+                .fill(isDragged && draggedHandle == "resize" ? Color.orange : Color.yellow)
+                .frame(width: 8, height: 8)
+                .position(CGPoint(x: object.position.x + object.width / 2 + 4, y: object.position.y + object.height / 2 + 4))
+                .gesture(
+                    DragGesture()
+                        .onChanged { value in
+                            onDragStart("resize")
+                            let newWidth = max(10, value.location.x - object.position.x)
+                            let newHeight = max(10, value.location.y - object.position.y)
+                            onResize(newWidth, newHeight)
+                        }
+                        .onEnded { _ in
+                            onDragEnd()
+                        }
+                )
+
+            Circle()
+                .fill(isDragged && draggedHandle == "rotate" ? Color.green : Color.cyan)
+                .frame(width: 8, height: 8)
+                .position(CGPoint(x: object.position.x + object.width / 2 + 4, y: object.position.y - object.height / 2 - 4))
+                .gesture(
+                    DragGesture()
+                        .onChanged { value in
+                            onDragStart("rotate")
+                            let dx = value.location.x - object.position.x
+                            let dy = value.location.y - object.position.y
+                            let angle = atan2(dy, dx) * 180 / .pi
+                            onRotate(angle)
+                        }
+                        .onEnded { _ in
+                            onDragEnd()
+                        }
+                )
+        }
+        .position(object.position)
+        .gesture(
+            DragGesture()
+                .onChanged { value in
+                    onDragStart("move")
+                    onMove(value.location)
+                }
+                .onEnded { _ in
+                    onDragEnd()
+                }
+        )
+    }
+}
+
 struct AnimationFrameWithObjects: Codable, Identifiable {
     let id: UUID
     let name: String
@@ -1103,9 +1186,11 @@ struct DraggableJointEditorView: View {
     @State private var draggedJoint: String?
     @State private var lastWaistDragLocation: CGPoint = .zero
     @State private var initialUpperBodyPositions: [String: CGPoint] = [:]
+    @State private var cumulativeWaistRotation: Double = 0 // Total rotation angle from start of drag
     @State private var draggedObjectId: UUID?
     @State private var draggedObjectHandle: String?
     @Binding var clothing: ClothingStyle
+    @Binding var livePose: StickFigurePose?
     @State private var showSaveAlert = false
     @State private var selectedObjectType: String = "ball"
     @State private var selectedColor: Color = .red
@@ -1115,15 +1200,20 @@ struct DraggableJointEditorView: View {
     @State private var constrainLegs = true
     @State private var constrainArms = true
     @State private var constrainHead = true
+    @State private var isReorderingPoses = false
     @Environment(\.dismiss) var dismiss
     
     let canvasSize = CGSize(width: 400, height: 450)
     
-    init(clothing: Binding<ClothingStyle>) {
+    init(clothing: Binding<ClothingStyle>, livePose: Binding<StickFigurePose?> = .constant(nil)) {
         self._clothing = clothing
-        let origin = CGPoint(x: 200, y: 225)
-        _currentPose = State(initialValue: .standing(at: origin, shoulderWidth: 20))
-    }
+        self._livePose = livePose
+         let origin = CGPoint(x: 200, y: 225)
+         
+         // Always create a fresh standing pose to test 2D rotation
+         // TODO: Re-enable saved pose loading after 2D rotation is verified
+         _currentPose = State(initialValue: .standing(at: origin, shoulderWidth: 20, torsoTopLength: clothing.wrappedValue.torsoTopLength, torsoBottomLength: clothing.wrappedValue.torsoBottomLength, neckLength: clothing.wrappedValue.neckLength))
+     }
     
     var body: some View {
         VStack(spacing: 12) {
@@ -1146,9 +1236,13 @@ struct DraggableJointEditorView: View {
                     Spacer()
                     
                     Button(action: {
-                        print("🔄 Reset pose to default")
-                        let origin = CGPoint(x: 200, y: 225)
-                        currentPose = .standing(at: origin, shoulderWidth: 20)
+                        print("🔄 Reset pose to saved Stand")
+                        if let standPoseData = poseManager.savedPoses.first(where: { $0.name == "Stand" }) {
+                            currentPose = standPoseData.pose.toStickFigurePose()
+                        } else {
+                            let origin = CGPoint(x: 200, y: 225)
+                            currentPose = .standing(at: origin, shoulderWidth: 20, torsoTopLength: clothing.torsoTopLength, torsoBottomLength: clothing.torsoBottomLength, neckLength: clothing.neckLength)
+                        }
                         draggedJoint = nil
                     }) {
                         Image(systemName: "arrow.counterclockwise")
@@ -1159,6 +1253,7 @@ struct DraggableJointEditorView: View {
                     }
                 }
                 .padding(.horizontal, 16)
+                .padding(.top, 50)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
                 
@@ -1212,7 +1307,7 @@ struct DraggableJointEditorView: View {
                 ForEach(getAllJoints(), id: \.name) { joint in
                     Circle()
                         .fill(draggedJoint == joint.name ? Color.red : Color.blue)
-                        .frame(width: 12, height: 12)
+                        .frame(width: 6, height: 6)
                         .position(joint.position)
                         .scaleEffect(1.5)
                         .gesture(
@@ -1230,9 +1325,9 @@ struct DraggableJointEditorView: View {
                 
                 // Head swivel dot (green)
                 ZStack {
-                    Circle().fill(Color.clear).frame(width: 20, height: 20)
+                    Circle().fill(Color.clear).frame(width: 12, height: 12)
                     Circle().fill(draggedJoint == "headSwivel" ? Color.orange : Color.green)
-                        .frame(width: 10, height: 10)
+                        .frame(width: 6, height: 6)
                 }
                 .position(currentPose.headPosition)
                 .scaleEffect(1.5)
@@ -1263,9 +1358,9 @@ struct DraggableJointEditorView: View {
                 
                 // Waist bend dot (purple)
                 ZStack {
-                    Circle().fill(Color.clear).frame(width: 20, height: 20)
+                    Circle().fill(Color.clear).frame(width: 12, height: 12)
                     Circle().fill(draggedJoint == "waist" ? Color.orange : Color.purple)
-                        .frame(width: 10, height: 10)
+                        .frame(width: 6, height: 6)
                 }
                 .position(currentPose.waistPosition)
                 .scaleEffect(1.5)
@@ -1275,6 +1370,7 @@ struct DraggableJointEditorView: View {
                             if draggedJoint != "waist" {
                                 draggedJoint = "waist"
                                 lastWaistDragLocation = value.location
+                                cumulativeWaistRotation = 0
                                 
                                 // Store the initial positions of upper body at start of drag
                                 initialUpperBodyPositions = [
@@ -1295,10 +1391,15 @@ struct DraggableJointEditorView: View {
                             let incrementalAngle = atan2(dx, -dy) * 180 / .pi
                             
                             // Reduce sensitivity by scaling down the angle
-                            let scaledAngle = incrementalAngle * 0.5
+                            let scaledAngle = incrementalAngle * 0.15
+                            
+                            // Add to cumulative rotation
+                            cumulativeWaistRotation += scaledAngle
                             
                             lastWaistDragLocation = value.location
                             
+                            // Rotate around waist as the fixed pivot point
+                            // Like clock hands rotating around the center
                             let waistX = currentPose.waistPosition.x
                             let waistY = currentPose.waistPosition.y
                             
@@ -1315,29 +1416,50 @@ struct DraggableJointEditorView: View {
                                 )
                             }
                             
-                            // Apply incremental rotation to current positions
-                            currentPose.headPosition = rotateAroundWaist(currentPose.headPosition, angle: scaledAngle)
-                            currentPose.neckPosition = rotateAroundWaist(currentPose.neckPosition, angle: scaledAngle)
-                            currentPose.shoulderLeft = rotateAroundWaist(currentPose.shoulderLeft, angle: scaledAngle)
-                            currentPose.shoulderRight = rotateAroundWaist(currentPose.shoulderRight, angle: scaledAngle)
-                            currentPose.elbowLeft = rotateAroundWaist(currentPose.elbowLeft, angle: scaledAngle)
-                            currentPose.elbowRight = rotateAroundWaist(currentPose.elbowRight, angle: scaledAngle)
-                            currentPose.handLeft = rotateAroundWaist(currentPose.handLeft, angle: scaledAngle)
-                            currentPose.handRight = rotateAroundWaist(currentPose.handRight, angle: scaledAngle)
+                            // Apply cumulative rotation to INITIAL positions, not current positions
+                            // This ensures rigid body rotation from the original state like a minute hand
+                            // Only the UPPER body rotates around the waist
+                            // Upper body (like minute hand)
+                            if let initialHead = initialUpperBodyPositions["head"] {
+                                currentPose.headPosition = rotateAroundWaist(initialHead, angle: cumulativeWaistRotation)
+                            }
+                            if let initialNeck = initialUpperBodyPositions["neck"] {
+                                currentPose.neckPosition = rotateAroundWaist(initialNeck, angle: cumulativeWaistRotation)
+                            }
+                            if let initialShoulderLeft = initialUpperBodyPositions["shoulderLeft"] {
+                                currentPose.shoulderLeft = rotateAroundWaist(initialShoulderLeft, angle: cumulativeWaistRotation)
+                            }
+                            if let initialShoulderRight = initialUpperBodyPositions["shoulderRight"] {
+                                currentPose.shoulderRight = rotateAroundWaist(initialShoulderRight, angle: cumulativeWaistRotation)
+                            }
+                            if let initialElbowLeft = initialUpperBodyPositions["elbowLeft"] {
+                                currentPose.elbowLeft = rotateAroundWaist(initialElbowLeft, angle: cumulativeWaistRotation)
+                            }
+                            if let initialElbowRight = initialUpperBodyPositions["elbowRight"] {
+                                currentPose.elbowRight = rotateAroundWaist(initialElbowRight, angle: cumulativeWaistRotation)
+                            }
+                            if let initialHandLeft = initialUpperBodyPositions["handLeft"] {
+                                currentPose.handLeft = rotateAroundWaist(initialHandLeft, angle: cumulativeWaistRotation)
+                            }
+                            if let initialHandRight = initialUpperBodyPositions["handRight"] {
+                                currentPose.handRight = rotateAroundWaist(initialHandRight, angle: cumulativeWaistRotation)
+                            }
+                            // Lower body stays stationary (like hour hand pointing at 6)
                         }
                         .onEnded { _ in
                             draggedJoint = nil
                             lastWaistDragLocation = .zero
                             initialUpperBodyPositions = [:]
+                            cumulativeWaistRotation = 0
                         }
                 )
                 .zIndex(draggedJoint == "waist" ? 100 : 0)
                 
                 // Body position dot (yellow)
                 ZStack {
-                    Circle().fill(Color.clear).frame(width: 20, height: 20)
+                    Circle().fill(Color.clear).frame(width: 12, height: 12)
                     Circle().fill(draggedJoint == "body" ? Color.orange : Color.yellow)
-                        .frame(width: 10, height: 10)
+                        .frame(width: 6, height: 6)
                 }
                 .position(currentPose.bodyPosition)
                 .scaleEffect(1.5)
@@ -1391,6 +1513,39 @@ struct DraggableJointEditorView: View {
             
             // Save Controls
             VStack(spacing: 10) {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Body Proportions")
+                        .font(.subheadline)
+                        .fontWeight(.semibold)
+                    
+                    Text("Torso Top Length: \(Int(clothing.torsoTopLength))")
+                        .font(.caption)
+                        .foregroundColor(.gray)
+                    Slider(value: $clothing.torsoTopLength, in: 20...60, step: 1)
+                        .onChange(of: clothing.torsoTopLength) { _, _ in
+                            applyProportionsToPose()
+                            clothing.save()
+                        }
+                    
+                    Text("Torso Bottom Length: \(Int(clothing.torsoBottomLength))")
+                        .font(.caption)
+                        .foregroundColor(.gray)
+                    Slider(value: $clothing.torsoBottomLength, in: 5...50, step: 1)
+                        .onChange(of: clothing.torsoBottomLength) { _, _ in
+                            applyProportionsToPose()
+                            clothing.save()
+                        }
+                    
+                    Text("Neck Length: \(Int(clothing.neckLength))")
+                        .font(.caption)
+                        .foregroundColor(.gray)
+                    Slider(value: $clothing.neckLength, in: 5...40, step: 1)
+                        .onChange(of: clothing.neckLength) { _, _ in
+                            applyProportionsToPose()
+                            clothing.save()
+                        }
+                }
+
                 HStack {
                     Text("Animation Name:")
                     TextField("e.g., Running", text: $poseName)
@@ -1516,13 +1671,26 @@ struct DraggableJointEditorView: View {
             // Saved Poses
             if !poseManager.savedPoses.isEmpty {
                 VStack(alignment: .leading, spacing: 10) {
-                    Text("Saved Poses: \(poseManager.savedPoses.count)")
-                        .font(.subheadline)
-                        .fontWeight(.semibold)
-                    
-                    ScrollView {
-                        VStack(alignment: .leading, spacing: 8) {
-                            ForEach(poseManager.savedPoses) { pose in
+                    HStack {
+                        Text("Saved Poses: \(poseManager.savedPoses.count)")
+                            .font(.subheadline)
+                            .fontWeight(.semibold)
+
+                        Spacer()
+
+                        Button(isReorderingPoses ? "Done" : "Reorder") {
+                            isReorderingPoses.toggle()
+                        }
+                        .font(.caption)
+                        .foregroundColor(.blue)
+                    }
+
+                    List {
+                        ForEach(poseManager.savedPoses) { pose in
+                            Button(action: {
+                                currentPose = pose.pose.toStickFigurePose()
+                                draggedJoint = nil
+                            }) {
                                 HStack {
                                     VStack(alignment: .leading) {
                                         Text("\(pose.name) - Position \(pose.positionNumber)")
@@ -1538,13 +1706,16 @@ struct DraggableJointEditorView: View {
                                             .foregroundColor(.red)
                                     }
                                 }
-                                .padding(8)
-                                .background(Color(red: 0.96, green: 0.96, blue: 0.97))
-                                .cornerRadius(8)
+                                .foregroundColor(.black)
                             }
                         }
+                        .onMove { indices, newOffset in
+                            poseManager.movePoses(fromOffsets: indices, toOffset: newOffset)
+                        }
                     }
-                    .frame(maxHeight: 150)
+                    .listStyle(.plain)
+                    .frame(height: 180)
+                    .environment(\.editMode, .constant(isReorderingPoses ? .active : .inactive))
                 }
                 .padding()
                 .background(Color(red: 0.92, green: 0.95, blue: 0.98))
@@ -1554,6 +1725,14 @@ struct DraggableJointEditorView: View {
             
                     Spacer()
                 }
+        }
+        .onDisappear {
+            livePose = currentPose
+        }
+        .alert("Pose Saved", isPresented: $showSaveAlert) {
+            Button("OK") { showSaveAlert = false }
+        } message: {
+            Text("Your pose has been saved successfully!")
         }
     }
     
@@ -1605,23 +1784,21 @@ struct DraggableJointEditorView: View {
             currentPose.neckPosition = newPosition
             
         case "shoulderLeft":
-            if constrainHead {
-                // Left shoulder at fixed distance below and to the left of neck
-                newPosition.x = currentPose.neckPosition.x - 10
-                newPosition.y = currentPose.neckPosition.y + neckToShoulder
-            }
+            // Shoulders are locked at the top center of the torso
+            let torsoMidX = (currentPose.shoulderLeft.x + currentPose.shoulderRight.x) / 2
+            let shoulderY = currentPose.neckPosition.y + neckToShoulder
+            newPosition.x = torsoMidX
+            newPosition.y = shoulderY
             currentPose.shoulderLeft = newPosition
-            // Update elbow and hand to maintain their distances
             updateChildLimbsLeft(from: newPosition, distA: shoulderToElbow, distB: elbowToHand)
-            
+
         case "shoulderRight":
-            if constrainHead {
-                // Right shoulder at fixed distance below and to the right of neck
-                newPosition.x = currentPose.neckPosition.x + 10
-                newPosition.y = currentPose.neckPosition.y + neckToShoulder
-            }
+            // Shoulders are locked at the top center of the torso
+            let torsoMidX = (currentPose.shoulderLeft.x + currentPose.shoulderRight.x) / 2
+            let shoulderY = currentPose.neckPosition.y + neckToShoulder
+            newPosition.x = torsoMidX
+            newPosition.y = shoulderY
             currentPose.shoulderRight = newPosition
-            // Update elbow and hand to maintain their distances
             updateChildLimbsRight(from: newPosition, distA: shoulderToElbow, distB: elbowToHand)
             
         case "elbowLeft":
@@ -1699,15 +1876,11 @@ struct DraggableJointEditorView: View {
             currentPose.handRight = newPosition
             
         case "hipLeft":
-            if constrainHead {
-                // Hip stays directly below corresponding shoulder at fixed torso distance
-                let shoulderMidX = (currentPose.shoulderLeft.x + currentPose.shoulderRight.x) / 2
-                let shoulderMidY = (currentPose.shoulderLeft.y + currentPose.shoulderRight.y) / 2
-                // Offset from midpoint based on shoulder width
-                let shoulderOffsetX = currentPose.shoulderLeft.x - shoulderMidX
-                newPosition.x = shoulderMidX + shoulderOffsetX
-                newPosition.y = shoulderMidY + shoulderToHip
-            }
+            // Hips are locked at the bottom center of the torso
+            let torsoMidX = (currentPose.shoulderLeft.x + currentPose.shoulderRight.x) / 2
+            let shoulderMidY = (currentPose.shoulderLeft.y + currentPose.shoulderRight.y) / 2
+            newPosition.x = torsoMidX
+            newPosition.y = shoulderMidY + shoulderToHip
             currentPose.hipLeft = newPosition
             // Update knee and foot to maintain their distances
             if constrainLegs {
@@ -1731,15 +1904,11 @@ struct DraggableJointEditorView: View {
             }
             
         case "hipRight":
-            if constrainHead {
-                // Hip stays directly below corresponding shoulder at fixed torso distance
-                let shoulderMidX = (currentPose.shoulderLeft.x + currentPose.shoulderRight.x) / 2
-                let shoulderMidY = (currentPose.shoulderLeft.y + currentPose.shoulderRight.y) / 2
-                // Offset from midpoint based on shoulder width
-                let shoulderOffsetX = currentPose.shoulderRight.x - shoulderMidX
-                newPosition.x = shoulderMidX + shoulderOffsetX
-                newPosition.y = shoulderMidY + shoulderToHip
-            }
+            // Hips are locked at the bottom center of the torso
+            let torsoMidX = (currentPose.shoulderLeft.x + currentPose.shoulderRight.x) / 2
+            let shoulderMidY = (currentPose.shoulderLeft.y + currentPose.shoulderRight.y) / 2
+            newPosition.x = torsoMidX
+            newPosition.y = shoulderMidY + shoulderToHip
             currentPose.hipRight = newPosition
             // Update knee and foot to maintain their distances
             if constrainLegs {
@@ -1901,8 +2070,9 @@ struct DraggableJointEditorView: View {
     }
     
     private func addObject() {
+        let base = currentPose.bodyPosition
         let newObject = DirectionalObject(
-            position: CGPoint(x: 200 + CGFloat.random(in: -30...30), y: 225 + CGFloat.random(in: -30...30)),
+            position: CGPoint(x: base.x + CGFloat.random(in: -30...30), y: base.y + CGFloat.random(in: -30...30)),
             width: 30,
             height: 30,
             rotation: 0,
@@ -1913,100 +2083,35 @@ struct DraggableJointEditorView: View {
         )
         currentObjects.append(newObject)
     }
-}
 
-// MARK: - Draggable Object View Component
+     private func applyProportionsToPose() {
+        let origin = currentPose.bodyPosition
+        let newHeadY = origin.y - (clothing.neckLength + clothing.torsoTopLength + 15)
+        let newShoulderY = origin.y - (clothing.torsoTopLength + 20)
+        let newHipY = origin.y - clothing.torsoBottomLength
 
-struct DraggableObjectView: View {
-    let object: DirectionalObject
-    let isDragged: Bool
-    let draggedHandle: String?
-    let onMove: (CGPoint) -> Void
-    let onResize: (CGFloat, CGFloat) -> Void
-    let onRotate: (Double) -> Void
-    let onDragStart: (String) -> Void
-    let onDragEnd: () -> Void
-    
-    var body: some View {
-        ZStack(alignment: .center) {
-            // Main object
-            Group {
-                if object.objectType == "image" {
-                    if let imageData = object.imageData, let uiImage = UIImage(data: imageData) {
-                        Image(uiImage: uiImage)
-                            .resizable()
-                            .scaledToFit()
-                            .frame(width: object.width, height: object.height)
-                    } else {
-                        Rectangle()
-                            .fill(Color.gray.opacity(0.3))
-                            .frame(width: object.width, height: object.height)
-                            .overlay(Text("No Image").font(.caption))
-                    }
-                } else if object.objectType == "ball" {
-                    Circle()
-                        .fill(Color(hex: object.color) ?? .red)
-                        .frame(width: object.width, height: object.height)
-                } else if object.objectType == "box" {
-                    RoundedRectangle(cornerRadius: 4)
-                        .fill(Color(hex: object.color) ?? .red)
-                        .frame(width: object.width, height: object.height)
-                } else {
-                    Capsule()
-                        .fill(Color(hex: object.color) ?? .red)
-                        .frame(width: object.width, height: object.height)
-                }
-            }
-            .rotationEffect(.degrees(object.rotation))
-            
-            // Resize handle (bottom-right corner)
-            Circle()
-                .fill(isDragged && draggedHandle == "resize" ? Color.orange : Color.yellow)
-                .frame(width: 8, height: 8)
-                .position(CGPoint(x: object.position.x + object.width/2 + 4, y: object.position.y + object.height/2 + 4))
-                .gesture(
-                    DragGesture()
-                        .onChanged { value in
-                            onDragStart("resize")
-                            let newWidth = max(10, value.location.x - object.position.x)
-                            let newHeight = max(10, value.location.y - object.position.y)
-                            onResize(newWidth, newHeight)
-                        }
-                        .onEnded { _ in
-                            onDragEnd()
-                        }
-                )
-            
-            // Rotation handle (top-right corner)
-            Circle()
-                .fill(isDragged && draggedHandle == "rotate" ? Color.green : Color.cyan)
-                .frame(width: 8, height: 8)
-                .position(CGPoint(x: object.position.x + object.width/2 + 4, y: object.position.y - object.height/2 - 4))
-                .gesture(
-                    DragGesture()
-                        .onChanged { value in
-                            onDragStart("rotate")
-                            let dx = value.location.x - object.position.x
-                            let dy = value.location.y - object.position.y
-                            let angle = atan2(dy, dx) * 180 / .pi
-                            onRotate(angle)
-                        }
-                        .onEnded { _ in
-                            onDragEnd()
-                        }
-                )
-        }
-        .position(object.position)
-        .gesture(
-            DragGesture()
-                .onChanged { value in
-                    onDragStart("move")
-                    onMove(value.location)
-                }
-                .onEnded { _ in
-                    onDragEnd()
-                }
-        )
+        let oldShoulderY = (currentPose.shoulderLeft.y + currentPose.shoulderRight.y) / 2
+        let oldHipY = (currentPose.hipLeft.y + currentPose.hipRight.y) / 2
+        let shoulderDelta = newShoulderY - oldShoulderY
+        let hipDelta = newHipY - oldHipY
+
+        currentPose.headPosition = CGPoint(x: origin.x, y: newHeadY)
+        currentPose.neckPosition = CGPoint(x: origin.x, y: newShoulderY)
+        currentPose.shoulderLeft = CGPoint(x: origin.x, y: newShoulderY)
+        currentPose.shoulderRight = CGPoint(x: origin.x, y: newShoulderY)
+        currentPose.waistPosition = CGPoint(x: origin.x, y: (newShoulderY + newHipY) / 2)
+
+        currentPose.elbowLeft.y += shoulderDelta
+        currentPose.elbowRight.y += shoulderDelta
+        currentPose.handLeft.y += shoulderDelta
+        currentPose.handRight.y += shoulderDelta
+
+        currentPose.hipLeft = CGPoint(x: origin.x, y: newHipY)
+        currentPose.hipRight = CGPoint(x: origin.x, y: newHipY)
+        currentPose.kneeLeft.y += hipDelta
+        currentPose.kneeRight.y += hipDelta
+        currentPose.footLeft.y += hipDelta
+        currentPose.footRight.y += hipDelta
     }
 }
 

@@ -25,7 +25,6 @@ public struct StickFigureAnimatorModule: AppModule {
 // MARK: - Stick Figure Animator View
 
 private struct StickFigureAnimatorModuleView: View {
-    @State private var clothing = ClothingStyle.load()
     @State private var showAnimationEditor = false
     
     var body: some View {
@@ -59,7 +58,7 @@ private struct StickFigureAnimatorModuleView: View {
             .navigationTitle("Stick Figure Animator")
             .navigationBarTitleDisplayMode(.inline)
             .sheet(isPresented: $showAnimationEditor) {
-                DraggableJointEditorView(clothing: $clothing)
+                StickFigure2DEditorView()
             }
         }
     }
