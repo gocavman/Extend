@@ -3035,7 +3035,7 @@ private struct GamePlayArea: View {
                        let config = ACTION_CONFIGS.first(where: { $0.id == actionId }) {
                         // Use stick figure for Run action
                         if config.id == "run", let stickFigure = gameState.currentStickFigure {
-                            StickFigure2DView(figure: stickFigure)
+                            StickFigure2DView(figure: stickFigure, canvasSize: CGSize(width: 100, height: 150))
                                 .frame(width: 100, height: 150)
                                 .scaleEffect(x: gameState.actionFlip ? -1 : 1, y: 1)
                                 .position(x: figureX, y: figureY)

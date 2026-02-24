@@ -174,8 +174,8 @@ fileprivate extension Color {
 
 /// 2D Stick Figure with angle-based joint hierarchy and customizable colors
 struct StickFigure2D {
-    // Root position
-    var waistPosition: CGPoint = CGPoint(x: 200, y: 225)
+    // Root position (centered in 600x720 base canvas)
+    var waistPosition: CGPoint = CGPoint(x: 300, y: 360)
     
     // Joint angles (in degrees, 0° points up, 90° points right)
     var waistTorsoAngle: Double = 0 // Rotation of entire upper body around waist (orange dot)
@@ -194,7 +194,7 @@ struct StickFigure2D {
     var rightFootAngle: Double = 0
     
     // Scale
-    var scale: Double = 1.0 // Size multiplier (1.0 = 100%)
+    var scale: Double = 1.2 // Size multiplier (1.2 = 100% in new display system - default size)
     var headRadiusMultiplier: Double = 1.0 // Head size multiplier (1.0 = normal size)
     
     // Colors for each body part
@@ -418,6 +418,7 @@ struct StickFigure2D {
 
 struct StickFigure2DView: View {
     let figure: StickFigure2D
+    let canvasSize: CGSize
     let jointRadius: CGFloat = 5
     let jointColor: Color = .blue
     
@@ -429,16 +430,25 @@ struct StickFigure2DView: View {
     
     private func drawFigure(in context: GraphicsContext) {
         // Get canvas center for scaling
-        let canvasSize = CGSize(width: 400, height: 450)
         let canvasCenter = CGPoint(x: canvasSize.width / 2, y: canvasSize.height / 2)
         
-        // Helper function to scale a point around the canvas center
+        // Base canvas dimensions (the coordinate space figure positions are in)
+        let baseCanvasSize = CGSize(width: 600, height: 720)
+        let baseCenter = CGPoint(x: baseCanvasSize.width / 2, y: baseCanvasSize.height / 2)
+        
+        // Helper function to scale a point from base coordinates to actual canvas
         func scalePoint(_ point: CGPoint) -> CGPoint {
-            let dx = point.x - canvasCenter.x
-            let dy = point.y - canvasCenter.y
+            // First, scale from base canvas to actual canvas size
+            let canvasScale = canvasSize.width / baseCanvasSize.width
+            
+            // Calculate offset from base center
+            let dx = point.x - baseCenter.x
+            let dy = point.y - baseCenter.y
+            
+            // Apply both canvas scaling and figure scaling around the center
             return CGPoint(
-                x: canvasCenter.x + dx * figure.scale,
-                y: canvasCenter.y + dy * figure.scale
+                x: canvasCenter.x + dx * canvasScale * figure.scale,
+                y: canvasCenter.y + dy * canvasScale * figure.scale
             )
         }
         
@@ -478,7 +488,9 @@ struct StickFigure2DView: View {
         drawSegment(from: rightUpperArmEnd, to: rightForearmEnd, color: figure.rightArmColor, in: context)
         
         // Draw head
-        let scaledHeadRadius = figure.headRadius * figure.scale * figure.headRadiusMultiplier
+        // Calculate canvasScale (scalePoint already applied figure.scale, so we only need canvasScale here)
+        let canvasScale = canvasSize.width / baseCanvasSize.width
+        let scaledHeadRadius = figure.headRadius * canvasScale * figure.scale * figure.headRadiusMultiplier
         let headCircle = Circle().path(in: CGRect(
             x: headPos.x - scaledHeadRadius,
             y: headPos.y - scaledHeadRadius,
@@ -521,6 +533,8 @@ struct StickFigure2DView: View {
 struct ImagePickerView: View {
     @Environment(\.dismiss) var dismiss
     @Binding var objects: [AnimationObject]
+    @State private var selectedTab = 0
+    @State private var selectedPhoto: PhotosPickerItem?
     
     let availableImages = [
         "guy_stand", "guy_move1", "guy_move2", "guy_move3", "guy_move4",
@@ -540,53 +554,260 @@ struct ImagePickerView: View {
     
     var body: some View {
         NavigationView {
-            ScrollView {
-                LazyVGrid(columns: [GridItem(.adaptive(minimum: 80))], spacing: 16) {
-                    ForEach(availableImages, id: \.self) { imageName in
-                        VStack {
-                            if let uiImage = UIImage(named: imageName) {
-                                Image(uiImage: uiImage)
-                                    .resizable()
-                                    .aspectRatio(contentMode: .fit)
-                                    .frame(height: 60)
-                            } else {
-                                RoundedRectangle(cornerRadius: 8)
-                                    .fill(Color.gray.opacity(0.3))
-                                    .frame(height: 60)
-                                    .overlay(
-                                        Text("?").font(.caption)
-                                    )
-                            }
-                            
-                            Button(action: {
-                                let newObject = AnimationObject(
-                                    imageName: imageName,
-                                    position: CGPoint(x: 200, y: 225),
-                                    rotation: 0,
-                                    scale: 1.0
-                                )
-                                objects.append(newObject)
-                                dismiss()
-                            }) {
-                                Text("Add")
-                                    .font(.caption)
-                                    .foregroundColor(.blue)
+            VStack {
+                Picker("Source", selection: $selectedTab) {
+                    Text("Built-in").tag(0)
+                    Text("Photos").tag(1)
+                }
+                .pickerStyle(.segmented)
+                .padding()
+                
+                if selectedTab == 0 {
+                    // Built-in images
+                    ScrollView {
+                        LazyVGrid(columns: [GridItem(.adaptive(minimum: 80))], spacing: 16) {
+                            ForEach(availableImages, id: \.self) { imageName in
+                                VStack {
+                                    if let uiImage = UIImage(named: imageName) {
+                                        Image(uiImage: uiImage)
+                                            .resizable()
+                                            .aspectRatio(contentMode: .fit)
+                                            .frame(height: 60)
+                                    } else {
+                                        RoundedRectangle(cornerRadius: 8)
+                                            .fill(Color.gray.opacity(0.3))
+                                            .frame(height: 60)
+                                            .overlay(
+                                                Text("?").font(.caption)
+                                            )
+                                    }
+                                    
+                                    Button(action: {
+                                        let newObject = AnimationObject(
+                                            imageName: imageName,
+                                            position: CGPoint(x: 300, y: 360),
+                                            rotation: 0,
+                                            scale: 1.0
+                                        )
+                                        objects.append(newObject)
+                                        dismiss()
+                                    }) {
+                                        Text("Add")
+                                            .font(.caption)
+                                            .foregroundColor(.blue)
+                                    }
+                                }
+                                .padding(8)
+                                .background(Color.gray.opacity(0.1))
+                                .cornerRadius(8)
                             }
                         }
-                        .padding(8)
-                        .background(Color.gray.opacity(0.1))
-                        .cornerRadius(8)
+                        .padding()
+                    }
+                } else {
+                    // Photo library picker
+                    VStack {
+                        PhotosPicker(selection: $selectedPhoto, matching: .images) {
+                            VStack(spacing: 16) {
+                                Image(systemName: "photo.on.rectangle.angled")
+                                    .font(.system(size: 48))
+                                    .foregroundColor(.blue)
+                                Text("Select Photo from Library")
+                                    .font(.headline)
+                                Text("Choose an image to add to your animation")
+                                    .font(.caption)
+                                    .foregroundColor(.gray)
+                                    .multilineTextAlignment(.center)
+                            }
+                            .padding(40)
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        }
+                        .onChange(of: selectedPhoto) { oldValue, newValue in
+                            Task {
+                                if let data = try? await newValue?.loadTransferable(type: Data.self),
+                                   let _ = UIImage(data: data) {
+                                    // Save image to app documents and create object
+                                    let imageName = "custom_\(UUID().uuidString)"
+                                    // TODO: In a real implementation, save the image to documents and use the name
+                                    // For now, we'll just use the built-in system
+                                    let newObject = AnimationObject(
+                                        imageName: imageName,
+                                        position: CGPoint(x: 300, y: 360),
+                                        rotation: 0,
+                                        scale: 1.0
+                                    )
+                                    objects.append(newObject)
+                                    dismiss()
+                                }
+                            }
+                        }
                     }
                 }
-                .padding()
             }
-            .navigationTitle("Select Image")
+            .navigationTitle("Add Image")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button("Done") {
                         dismiss()
                     }
+                }
+            }
+        }
+    }
+}
+
+// MARK: - Frames Manager View
+
+struct FramesManagerView: View {
+    @Environment(\.dismiss) var dismiss
+    @Environment(\.editMode) var editMode
+    @Binding var savedFrames: [AnimationFrame]
+    var onSelectFrame: (AnimationFrame) -> Void
+    var onSave: () -> Void
+    
+    @State private var editingFrameId: UUID?
+    @State private var editingName: String = ""
+    @State private var editingFrameNumber: String = ""
+    @State private var frameToDelete: AnimationFrame?
+    @State private var showDeleteConfirmation = false
+    
+    var body: some View {
+        NavigationView {
+            VStack {
+                if savedFrames.isEmpty {
+                    VStack(spacing: 16) {
+                        Image(systemName: "film.stack")
+                            .font(.system(size: 48))
+                            .foregroundColor(.gray)
+                        Text("No saved frames yet")
+                            .font(.headline)
+                            .foregroundColor(.gray)
+                        Text("Save frames to create animations")
+                            .font(.caption)
+                            .foregroundColor(.gray)
+                    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                } else {
+                    List {
+                        ForEach(savedFrames) { frame in
+                            if editingFrameId == frame.id {
+                                // Edit mode for this frame
+                                VStack(spacing: 8) {
+                                    TextField("Frame Name", text: $editingName)
+                                        .textFieldStyle(.roundedBorder)
+                                    
+                                    TextField("Frame Number", text: $editingFrameNumber)
+                                        .textFieldStyle(.roundedBorder)
+                                        .keyboardType(.numberPad)
+                                    
+                                    HStack {
+                                        Button("Cancel") {
+                                            editingFrameId = nil
+                                        }
+                                        .buttonStyle(.bordered)
+                                        
+                                        Spacer()
+                                        
+                                        Button("Save") {
+                                            if let index = savedFrames.firstIndex(where: { $0.id == frame.id }) {
+                                                let frameNum = Int(editingFrameNumber) ?? frame.frameNumber
+                                                let newFrame = AnimationFrame(
+                                                    id: frame.id,
+                                                    name: editingName,
+                                                    frameNumber: frameNum,
+                                                    pose: savedFrames[index].pose.toStickFigure2D()
+                                                )
+                                                savedFrames[index] = newFrame
+                                                onSave()
+                                                editingFrameId = nil
+                                            }
+                                        }
+                                        .buttonStyle(.borderedProminent)
+                                    }
+                                }
+                                .padding(.vertical, 8)
+                            } else {
+                                // Normal display mode
+                                HStack(spacing: 12) {
+                                    Button(action: {
+                                        onSelectFrame(frame)
+                                    }) {
+                                        HStack(spacing: 12) {
+                                            VStack(alignment: .leading, spacing: 4) {
+                                                Text(frame.name)
+                                                    .font(.subheadline)
+                                                    .fontWeight(.semibold)
+                                                    .foregroundColor(.primary)
+                                                Text("Frame #\(frame.frameNumber)")
+                                                    .font(.caption)
+                                                    .foregroundColor(.gray)
+                                            }
+                                            Spacer()
+                                        }
+                                    }
+                                    .buttonStyle(.plain)
+                                    
+                                    // Only show rename/delete buttons when in Edit mode
+                                    if editMode?.wrappedValue.isEditing == true {
+                                        // Rename button
+                                        Button(action: {
+                                            editingFrameId = frame.id
+                                            editingName = frame.name
+                                            editingFrameNumber = "\(frame.frameNumber)"
+                                        }) {
+                                            Image(systemName: "pencil.circle")
+                                                .foregroundColor(.blue)
+                                                .font(.title3)
+                                        }
+                                        .buttonStyle(.plain)
+                                        
+                                        // Delete button
+                                        Button(action: {
+                                            frameToDelete = frame
+                                            showDeleteConfirmation = true
+                                        }) {
+                                            Image(systemName: "trash.circle")
+                                                .foregroundColor(.red)
+                                                .font(.title3)
+                                        }
+                                        .buttonStyle(.plain)
+                                    }
+                                }
+                            }
+                        }
+                        .onMove { indices, newOffset in
+                            savedFrames.move(fromOffsets: indices, toOffset: newOffset)
+                            onSave()
+                        }
+                    }
+                    .listStyle(.insetGrouped)
+                }
+            }
+            .navigationTitle("Saved Frames")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    EditButton()
+                }
+                
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Done") {
+                        dismiss()
+                    }
+                }
+            }
+            .alert("Delete Frame?", isPresented: $showDeleteConfirmation) {
+                Button("Cancel", role: .cancel) { }
+                Button("Delete", role: .destructive) {
+                    if let frame = frameToDelete {
+                        savedFrames.removeAll { $0.id == frame.id }
+                        onSave()
+                    }
+                }
+            } message: {
+                if let frame = frameToDelete {
+                    Text("Are you sure you want to delete '\(frame.name)'?")
                 }
             }
         }
@@ -602,7 +823,7 @@ struct SaveFrameDialog: View {
     var onCancel: () -> Void
     
     var body: some View {
-        VStack(spacing: 16) {
+        VStack(spacing: 4) {
             Text("Save Animation Frame")
                 .font(.headline)
                 .padding()
@@ -666,6 +887,7 @@ struct StickFigure2DEditorView: View {
     @State private var showDeleteConfirmation = false
     @State private var frameToDelete: AnimationFrame? = nil
     @State private var isEditingFrames = false
+    @State private var showFramesManager = false // New state for frames manager sheet
     @State private var scrollToCanvas = false
     @State private var objects: [AnimationObject] = []
     @State private var showImagePicker = false
@@ -673,10 +895,24 @@ struct StickFigure2DEditorView: View {
     @State private var selectedAnimationName = ""
     @State private var frameSequence = "1,2,3,4,3,2,1"
     @State private var isPlayingAnimation = false
+    @State private var loopAnimation = false // Loop animation checkbox state
     @State private var currentFrameIndex = 0
     @State private var animationTimer: Timer? = nil
+    @State private var isControlsCollapsed = true // Controls start collapsed
+    @State private var isColorsCollapsed = true // Colors start collapsed
+    @State private var isAnimationPlaybackCollapsed = true // Animation Playback starts collapsed
+    @State private var canvasOffset: CGSize = .zero // Offset for panning the canvas
+    @State private var lastCanvasOffset: CGSize = .zero // Last offset before new drag
+    @State private var availableWidth: CGFloat = 390 // Default to iPhone width
     
-    let canvasSize = CGSize(width: 400, height: 450)
+    var canvasSize: CGSize {
+        let width = availableWidth - 32 // Account for padding
+        // Scale proportionally from 600x720 base (1.2 ratio for wider canvas with extra space)
+        // This gives more horizontal space around the figure
+        let scale = width / 600.0
+        let height = 720.0 * scale // Much taller canvas for figure at all scales
+        return CGSize(width: width, height: height)
+    }
 
     private func wrapAngle(_ angle: Double) -> Double {
         var wrapped = angle.truncatingRemainder(dividingBy: 360)
@@ -703,6 +939,10 @@ struct StickFigure2DEditorView: View {
                 loadSavedFrames()
                 // Load the last saved figure state, or default Stand pose if none exists
                 loadLastFigureState()
+                // Always ensure scale is at 100% (1.2) when opening
+                if figure.scale != 1.2 {
+                    figure.scale = 1.2
+                }
             }
             .onDisappear {
                 // Save the current figure state when leaving the editor
@@ -720,7 +960,14 @@ struct StickFigure2DEditorView: View {
             .onChange(of: figure.rightKneeAngle) { saveCurrentFigureState() }
             .onChange(of: figure.leftFootAngle) { saveCurrentFigureState() }
             .onChange(of: figure.rightFootAngle) { saveCurrentFigureState() }
-            .onChange(of: figure.scale) { saveCurrentFigureState() }
+            .onChange(of: figure.scale) { oldValue, newValue in
+                saveCurrentFigureState()
+                // Reset canvas offset when scale returns to 100% or below
+                if newValue <= 1.2 && canvasOffset != .zero {
+                    canvasOffset = .zero
+                    lastCanvasOffset = .zero
+                }
+            }
             .onChange(of: figure.strokeThickness) { saveCurrentFigureState() }
     }
     
@@ -741,9 +988,17 @@ struct StickFigure2DEditorView: View {
     }
     
     var contentWithTorsoOnChanges: some View {
-        VStack(spacing: 0) {
-            headerView
-            scrollableContent
+        GeometryReader { geometry in
+            VStack(spacing: 0) {
+                headerView
+                scrollableContent
+            }
+            .onAppear {
+                availableWidth = geometry.size.width
+            }
+            .onChange(of: geometry.size.width) { oldValue, newValue in
+                availableWidth = newValue
+            }
         }
     }
     
@@ -753,14 +1008,15 @@ struct StickFigure2DEditorView: View {
                 VStack(spacing: 16) {
                     canvasView
                         .id("canvas")
-                    animationPlaybackView
                     sizeControlView
+                    animationPlaybackView
                     jointControlsView
                     colorControlsView
                     objectsControlsView
                     animationControlsView
                 }
-                .padding(4)
+                .padding(.horizontal, 16)
+                .padding(.vertical, 8)
             }
             .onChange(of: scrollToCanvas) { oldValue, newValue in
                 if newValue {
@@ -822,10 +1078,11 @@ struct StickFigure2DEditorView: View {
     
     var canvasView: some View {
         ZStack {
+            // Background
             RoundedRectangle(cornerRadius: 12)
                 .fill(Color(red: 0.95, green: 0.95, blue: 0.98))
             
-            StickFigure2DView(figure: figure)
+            StickFigure2DView(figure: figure, canvasSize: canvasSize)
             
             // Render animation objects
             ForEach(objects) { object in
@@ -850,28 +1107,60 @@ struct StickFigure2DEditorView: View {
             }
         }
         .frame(width: canvasSize.width, height: canvasSize.height)
-        .padding(4)
+        .offset(canvasOffset)
+        .contentShape(Rectangle()) // Make entire ZStack tappable/draggable
+        .simultaneousGesture(
+            // Pan gesture that works alongside other gestures
+            DragGesture(minimumDistance: 30) // Higher threshold to avoid conflicts
+                .onChanged { value in
+                    // Only allow panning when zoomed in AND not dragging a joint
+                    if figure.scale > 1.2 && draggedJoint == nil {
+                        canvasOffset = CGSize(
+                            width: lastCanvasOffset.width + value.translation.width,
+                            height: lastCanvasOffset.height + value.translation.height
+                        )
+                    }
+                }
+                .onEnded { _ in
+                    // Save the final offset for next drag
+                    if figure.scale > 1.2 && draggedJoint == nil {
+                        lastCanvasOffset = canvasOffset
+                    }
+                }
+        )
     }
     
     // Helper function to scale points for drag handles
     private func scalePoint(_ point: CGPoint) -> CGPoint {
+        // Base canvas dimensions
+        let baseCanvasSize = CGSize(width: 600, height: 720)
+        let baseCenter = CGPoint(x: baseCanvasSize.width / 2, y: baseCanvasSize.height / 2)
+        
         let canvasCenter = CGPoint(x: canvasSize.width / 2, y: canvasSize.height / 2)
-        let dx = point.x - canvasCenter.x
-        let dy = point.y - canvasCenter.y
+        let canvasScale = canvasSize.width / baseCanvasSize.width
+        
+        let dx = point.x - baseCenter.x
+        let dy = point.y - baseCenter.y
         return CGPoint(
-            x: canvasCenter.x + dx * figure.scale,
-            y: canvasCenter.y + dy * figure.scale
+            x: canvasCenter.x + dx * canvasScale * figure.scale,
+            y: canvasCenter.y + dy * canvasScale * figure.scale
         )
     }
     
     // Helper function to unscale drag positions back to figure coordinates
     private func unscalePoint(_ point: CGPoint) -> CGPoint {
+        // Base canvas dimensions
+        let baseCanvasSize = CGSize(width: 600, height: 720)
+        let baseCenter = CGPoint(x: baseCanvasSize.width / 2, y: baseCanvasSize.height / 2)
+        
         let canvasCenter = CGPoint(x: canvasSize.width / 2, y: canvasSize.height / 2)
+        let canvasScale = canvasSize.width / baseCanvasSize.width
+        
         let dx = point.x - canvasCenter.x
         let dy = point.y - canvasCenter.y
         return CGPoint(
-            x: canvasCenter.x + dx / figure.scale,
-            y: canvasCenter.y + dy / figure.scale
+            x: baseCenter.x + dx / (canvasScale * figure.scale),
+            y: baseCenter.y + dy / (canvasScale * figure.scale)
         )
     }
     
@@ -942,6 +1231,28 @@ struct StickFigure2DEditorView: View {
     
     var jointHandles: some View {
         Group {
+            // Waist (root position - draggable for moving entire figure)
+            ZStack {
+                Circle()
+                    .fill(draggedJoint == "waist" ? Color.red : Color.orange)
+                    .frame(width: 8, height: 8)
+                
+                // Larger invisible hit area
+                Circle()
+                    .fill(Color.clear)
+                    .frame(width: 30, height: 30)
+            }
+            .position(scalePoint(figure.waistPosition))
+            .gesture(DragGesture()
+                .onChanged { value in
+                    draggedJoint = "waist"
+                    figure.waistPosition = unscalePoint(value.location)
+                }
+                .onEnded { _ in
+                    draggedJoint = nil
+                }
+            )
+            
             // Mid-torso (center of rotation for upper torso and waist hinge)
             ZStack {
                 Circle()
@@ -1170,149 +1481,266 @@ struct StickFigure2DEditorView: View {
     
     var jointControlsView: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Joint Controls").font(.subheadline).fontWeight(.semibold)
-            
-            VStack(alignment: .leading, spacing: 8) {
-                HStack {
-                    Text("Waist Rotation:")
-                    Slider(value: $figure.waistTorsoAngle, in: -180...180, step: 1)
-                    Text("\(Int(figure.waistTorsoAngle))°")
-                        .frame(width: 40)
+            Button(action: {
+                withAnimation {
+                    isControlsCollapsed.toggle()
                 }
-                
+            }) {
                 HStack {
-                    Text("Left Shoulder:")
-                    Slider(value: $figure.leftShoulderAngle, in: -180...180, step: 1)
-                    Text("\(Int(figure.leftShoulderAngle))°")
-                        .frame(width: 40)
-                }
-                
-                HStack {
-                    Text("Right Shoulder:")
-                    Slider(value: $figure.rightShoulderAngle, in: -180...180, step: 1)
-                    Text("\(Int(figure.rightShoulderAngle))°")
-                        .frame(width: 40)
-                }
-                
-                HStack {
-                    Text("Left Elbow:")
-                    Slider(value: $figure.leftElbowAngle, in: -180...180, step: 1)
-                    Text("\(Int(figure.leftElbowAngle))°")
-                        .frame(width: 40)
-                }
-                
-                HStack {
-                    Text("Right Elbow:")
-                    Slider(value: $figure.rightElbowAngle, in: -180...180, step: 1)
-                    Text("\(Int(figure.rightElbowAngle))°")
-                        .frame(width: 40)
-                }
-                
-                HStack {
-                    Text("Left Knee:")
-                    Slider(value: $figure.leftKneeAngle, in: -180...180, step: 1)
-                    Text("\(Int(figure.leftKneeAngle))°")
-                        .frame(width: 40)
-                }
-                
-                HStack {
-                    Text("Right Knee:")
-                    Slider(value: $figure.rightKneeAngle, in: -180...180, step: 1)
-                    Text("\(Int(figure.rightKneeAngle))°")
-                        .frame(width: 40)
-                }
-                
-                HStack {
-                    Text("Left Foot:")
-                    Slider(value: $figure.leftFootAngle, in: -180...180, step: 1)
-                    Text("\(Int(figure.leftFootAngle))°")
-                        .frame(width: 40)
-                }
-                
-                HStack {
-                    Text("Right Foot:")
-                    Slider(value: $figure.rightFootAngle, in: -180...180, step: 1)
-                    Text("\(Int(figure.rightFootAngle))°")
-                        .frame(width: 40)
-                }
-                
-                HStack {
-                    Text("Head:")
-                    Slider(value: $figure.headAngle, in: -180...180, step: 1)
-                    Text("\(Int(figure.headAngle))°")
-                        .frame(width: 40)
-                }
-                
-                HStack {
-                    Text("Head Size:")
-                    Slider(value: $figure.headRadiusMultiplier, in: 0.5...2.0, step: 0.1)
-                    Text("\(String(format: "%.1f", figure.headRadiusMultiplier))x")
-                        .frame(width: 40)
+                    Text("Controls")
+                        .font(.subheadline)
+                        .fontWeight(.semibold)
+                        .foregroundColor(.primary)
+                    Spacer()
+                    Image(systemName: isControlsCollapsed ? "chevron.right" : "chevron.down")
+                        .font(.caption)
+                        .foregroundColor(.gray)
                 }
             }
-            .padding()
-            .background(Color.gray.opacity(0.1))
-            .cornerRadius(8)
+            
+            if !isControlsCollapsed {
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack {
+                        Text("Stroke Thickness:")
+                        Button(action: { figure.strokeThickness = max(0.5, figure.strokeThickness - 0.5) }) {
+                            Image(systemName: "minus.circle")
+                        }
+                        Slider(value: $figure.strokeThickness, in: 0.5...20, step: 0.5)
+                        Button(action: { figure.strokeThickness = min(20, figure.strokeThickness + 0.5) }) {
+                            Image(systemName: "plus.circle")
+                        }
+                        Text("\(String(format: "%.1f", figure.strokeThickness))")
+                            .frame(width: 40)
+                    }
+                    
+                    Divider()
+                    
+                    HStack {
+                        Text("Waist Rotation:")
+                        Button(action: { figure.waistTorsoAngle = max(-180, figure.waistTorsoAngle - 1) }) {
+                            Image(systemName: "minus.circle")
+                        }
+                        Slider(value: $figure.waistTorsoAngle, in: -180...180, step: 1)
+                        Button(action: { figure.waistTorsoAngle = min(180, figure.waistTorsoAngle + 1) }) {
+                            Image(systemName: "plus.circle")
+                        }
+                        Text("\(Int(figure.waistTorsoAngle))°")
+                            .frame(width: 40)
+                    }
+                    
+                    HStack {
+                        Text("Left Shoulder:")
+                        Button(action: { figure.leftShoulderAngle = max(-180, figure.leftShoulderAngle - 1) }) {
+                            Image(systemName: "minus.circle")
+                        }
+                        Slider(value: $figure.leftShoulderAngle, in: -180...180, step: 1)
+                        Button(action: { figure.leftShoulderAngle = min(180, figure.leftShoulderAngle + 1) }) {
+                            Image(systemName: "plus.circle")
+                        }
+                        Text("\(Int(figure.leftShoulderAngle))°")
+                            .frame(width: 40)
+                    }
+                    
+                    HStack {
+                        Text("Right Shoulder:")
+                        Button(action: { figure.rightShoulderAngle = max(-180, figure.rightShoulderAngle - 1) }) {
+                            Image(systemName: "minus.circle")
+                        }
+                        Slider(value: $figure.rightShoulderAngle, in: -180...180, step: 1)
+                        Button(action: { figure.rightShoulderAngle = min(180, figure.rightShoulderAngle + 1) }) {
+                            Image(systemName: "plus.circle")
+                        }
+                        Text("\(Int(figure.rightShoulderAngle))°")
+                            .frame(width: 40)
+                    }
+                    
+                    HStack {
+                        Text("Left Elbow:")
+                        Button(action: { figure.leftElbowAngle = max(-180, figure.leftElbowAngle - 1) }) {
+                            Image(systemName: "minus.circle")
+                        }
+                        Slider(value: $figure.leftElbowAngle, in: -180...180, step: 1)
+                        Button(action: { figure.leftElbowAngle = min(180, figure.leftElbowAngle + 1) }) {
+                            Image(systemName: "plus.circle")
+                        }
+                        Text("\(Int(figure.leftElbowAngle))°")
+                            .frame(width: 40)
+                    }
+                    
+                    HStack {
+                        Text("Right Elbow:")
+                        Button(action: { figure.rightElbowAngle = max(-180, figure.rightElbowAngle - 1) }) {
+                            Image(systemName: "minus.circle")
+                        }
+                        Slider(value: $figure.rightElbowAngle, in: -180...180, step: 1)
+                        Button(action: { figure.rightElbowAngle = min(180, figure.rightElbowAngle + 1) }) {
+                            Image(systemName: "plus.circle")
+                        }
+                        Text("\(Int(figure.rightElbowAngle))°")
+                            .frame(width: 40)
+                    }
+                    
+                    HStack {
+                        Text("Left Knee:")
+                        Button(action: { figure.leftKneeAngle = max(-180, figure.leftKneeAngle - 1) }) {
+                            Image(systemName: "minus.circle")
+                        }
+                        Slider(value: $figure.leftKneeAngle, in: -180...180, step: 1)
+                        Button(action: { figure.leftKneeAngle = min(180, figure.leftKneeAngle + 1) }) {
+                            Image(systemName: "plus.circle")
+                        }
+                        Text("\(Int(figure.leftKneeAngle))°")
+                            .frame(width: 40)
+                    }
+                    
+                    HStack {
+                        Text("Right Knee:")
+                        Button(action: { figure.rightKneeAngle = max(-180, figure.rightKneeAngle - 1) }) {
+                            Image(systemName: "minus.circle")
+                        }
+                        Slider(value: $figure.rightKneeAngle, in: -180...180, step: 1)
+                        Button(action: { figure.rightKneeAngle = min(180, figure.rightKneeAngle + 1) }) {
+                            Image(systemName: "plus.circle")
+                        }
+                        Text("\(Int(figure.rightKneeAngle))°")
+                            .frame(width: 40)
+                    }
+                    
+                    HStack {
+                        Text("Left Foot:")
+                        Button(action: { figure.leftFootAngle = max(-180, figure.leftFootAngle - 1) }) {
+                            Image(systemName: "minus.circle")
+                        }
+                        Slider(value: $figure.leftFootAngle, in: -180...180, step: 1)
+                        Button(action: { figure.leftFootAngle = min(180, figure.leftFootAngle + 1) }) {
+                            Image(systemName: "plus.circle")
+                        }
+                        Text("\(Int(figure.leftFootAngle))°")
+                            .frame(width: 40)
+                    }
+                    
+                    HStack {
+                        Text("Right Foot:")
+                        Button(action: { figure.rightFootAngle = max(-180, figure.rightFootAngle - 1) }) {
+                            Image(systemName: "minus.circle")
+                        }
+                        Slider(value: $figure.rightFootAngle, in: -180...180, step: 1)
+                        Button(action: { figure.rightFootAngle = min(180, figure.rightFootAngle + 1) }) {
+                            Image(systemName: "plus.circle")
+                        }
+                        Text("\(Int(figure.rightFootAngle))°")
+                            .frame(width: 40)
+                    }
+                    
+                    HStack {
+                        Text("Head:")
+                        Button(action: { figure.headAngle = max(-180, figure.headAngle - 1) }) {
+                            Image(systemName: "minus.circle")
+                        }
+                        Slider(value: $figure.headAngle, in: -180...180, step: 1)
+                        Button(action: { figure.headAngle = min(180, figure.headAngle + 1) }) {
+                            Image(systemName: "plus.circle")
+                        }
+                        Text("\(Int(figure.headAngle))°")
+                            .frame(width: 40)
+                    }
+                    
+                    HStack {
+                        Text("Head Size:")
+                        Button(action: { figure.headRadiusMultiplier = max(0.5, figure.headRadiusMultiplier - 0.1) }) {
+                            Image(systemName: "minus.circle")
+                        }
+                        Slider(value: $figure.headRadiusMultiplier, in: 0.5...2.0, step: 0.1)
+                        Button(action: { figure.headRadiusMultiplier = min(2.0, figure.headRadiusMultiplier + 0.1) }) {
+                            Image(systemName: "plus.circle")
+                        }
+                        Text("\(String(format: "%.1f", figure.headRadiusMultiplier))x")
+                            .frame(width: 40)
+                    }
+                }
+                .padding()
+                .background(Color.gray.opacity(0.1))
+                .cornerRadius(8)
+            }
         }
-        .padding()
     }
     
     var animationPlaybackView: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Animation Playback").font(.subheadline).fontWeight(.semibold)
-            
-            VStack(alignment: .leading, spacing: 8) {
-                HStack {
-                    Text("Animation Name:")
-                    TextField("e.g., Run, Jump", text: $selectedAnimationName)
-                        .textFieldStyle(.roundedBorder)
+            Button(action: {
+                withAnimation {
+                    isAnimationPlaybackCollapsed.toggle()
                 }
-                
+            }) {
                 HStack {
-                    Text("Frame Sequence:")
-                    TextField("e.g., 1,2,3,4,3,2,1", text: $frameSequence)
-                        .textFieldStyle(.roundedBorder)
-                }
-                
-                HStack(spacing: 12) {
-                    Button(action: playAnimation) {
-                        Label("Play", systemImage: "play.fill")
-                            .font(.caption)
-                            .frame(maxWidth: .infinity)
-                            .padding(8)
-                            .background(Color.green)
-                            .foregroundColor(.white)
-                            .cornerRadius(6)
-                    }
-                    .disabled(selectedAnimationName.isEmpty || frameSequence.isEmpty)
-                    
-                    Button(action: stopAnimation) {
-                        Label("Stop", systemImage: "stop.fill")
-                            .font(.caption)
-                            .frame(maxWidth: .infinity)
-                            .padding(8)
-                            .background(Color.red)
-                            .foregroundColor(.white)
-                            .cornerRadius(6)
-                    }
-                    .disabled(!isPlayingAnimation)
+                    Text("Animation Playback")
+                        .font(.subheadline)
+                        .fontWeight(.semibold)
+                        .foregroundColor(.primary)
+                    Spacer()
+                    Image(systemName: isAnimationPlaybackCollapsed ? "chevron.right" : "chevron.down")
+                        .font(.caption)
+                        .foregroundColor(.gray)
                 }
             }
-            .padding()
-            .background(Color.gray.opacity(0.1))
-            .cornerRadius(8)
+            
+            if !isAnimationPlaybackCollapsed {
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack {
+                        Text("Animation Name:")
+                        TextField("e.g., Run, Jump", text: $selectedAnimationName)
+                            .textFieldStyle(.roundedBorder)
+                    }
+                    
+                    HStack {
+                        Text("Frame Sequence:")
+                        TextField("e.g., 1,2,3,4,3,2,1", text: $frameSequence)
+                            .textFieldStyle(.roundedBorder)
+                    }
+                    
+                    // Loop checkbox
+                    Toggle("Loop animation", isOn: $loopAnimation)
+                        .font(.caption)
+                    
+                    HStack(spacing: 12) {
+                        Button(action: playAnimation) {
+                            Label("Play", systemImage: "play.fill")
+                                .font(.caption)
+                                .frame(maxWidth: .infinity)
+                                .padding(8)
+                                .background(Color.green)
+                                .foregroundColor(.white)
+                                .cornerRadius(6)
+                        }
+                        .disabled(selectedAnimationName.isEmpty || frameSequence.isEmpty)
+                        
+                        Button(action: stopAnimation) {
+                            Label("Stop", systemImage: "stop.fill")
+                                .font(.caption)
+                                .frame(maxWidth: .infinity)
+                                .padding(8)
+                                .background(Color.red)
+                                .foregroundColor(.white)
+                                .cornerRadius(6)
+                        }
+                        .disabled(!isPlayingAnimation)
+                    }
+                }
+                .padding()
+                .background(Color.gray.opacity(0.1))
+                .cornerRadius(8)
+            }
         }
-        .padding()
     }
     
     var sizeControlView: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
-                Text("Figure Size:")
-                Spacer()
-                Text("\(Int(figure.scale * 100))%")
-                    .frame(width: 40)
+                // Display scale: internal 1.2 = 100%, so divide by 1.2 and multiply by 100
+                // Use round() to ensure clean percentages (50%, 100%, 150%, 200%)
+                Text("Figure Size (\(Int(round(figure.scale / 1.2 * 100)))%)")
                     .fontWeight(.semibold)
+                Spacer()
             }
 
             HStack(spacing: 12) {
@@ -1320,17 +1748,18 @@ struct StickFigure2DEditorView: View {
                     .font(.caption)
                     .foregroundColor(.gray)
 
-                Slider(value: $figure.scale, in: 0.5...2.0, step: 0.05)
+                // Internal range: 0.6 to 2.4 (maps to display 50% to 200%)
+                // 1.2 internal = 100% display (default)
+                Slider(value: $figure.scale, in: 0.6...2.4, step: 0.06)
 
                 Text("200%")
                     .font(.caption)
                     .foregroundColor(.gray)
             }
         }
-        .padding()
+        .padding(8)
         .background(Color.gray.opacity(0.1))
         .cornerRadius(8)
-        .padding()
     }
     
     private func playAnimation() {
@@ -1352,7 +1781,8 @@ struct StickFigure2DEditorView: View {
             currentFrameIndex = (currentFrameIndex + 1) % frameNumbers.count
             loadFrameAtIndex(currentFrameIndex, from: frameNumbers)
             
-            if currentFrameIndex == frameNumbers.count - 1 {
+            // Stop animation if not looping and reached the end
+            if !loopAnimation && currentFrameIndex == frameNumbers.count - 1 {
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
                     self.stopAnimation()
                 }
@@ -1376,99 +1806,104 @@ struct StickFigure2DEditorView: View {
     
     var colorControlsView: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Colors").font(.subheadline).fontWeight(.semibold)
-            
-            VStack(alignment: .leading, spacing: 8) {
-                HStack {
-                    Text("Head:")
-                    Spacer()
-                    ColorPicker("", selection: $figure.headColor)
-                        .frame(width: 50)
+            Button(action: {
+                withAnimation {
+                    isColorsCollapsed.toggle()
                 }
-                
+            }) {
                 HStack {
-                    Text("Torso:")
+                    Text("Colors")
+                        .font(.subheadline)
+                        .fontWeight(.semibold)
+                        .foregroundColor(.primary)
                     Spacer()
-                    ColorPicker("", selection: $figure.torsoColor)
-                        .frame(width: 50)
-                }
-                
-                HStack {
-                    Text("Left Arm:")
-                    Spacer()
-                    ColorPicker("", selection: $figure.leftArmColor)
-                        .frame(width: 50)
-                }
-                
-                HStack {
-                    Text("Right Arm:")
-                    Spacer()
-                    ColorPicker("", selection: $figure.rightArmColor)
-                        .frame(width: 50)
-                }
-                
-                HStack {
-                    Text("Hands:")
-                    Spacer()
-                    ColorPicker("", selection: $figure.handColor)
-                        .frame(width: 50)
-                }
-                
-                HStack {
-                    Text("Left Leg:")
-                    Spacer()
-                    ColorPicker("", selection: $figure.leftLegColor)
-                        .frame(width: 50)
-                }
-                
-                HStack {
-                    Text("Right Leg:")
-                    Spacer()
-                    ColorPicker("", selection: $figure.rightLegColor)
-                        .frame(width: 50)
-                }
-                
-                HStack {
-                    Text("Feet:")
-                    Spacer()
-                    ColorPicker("", selection: $figure.footColor)
-                        .frame(width: 50)
-                }
-                
-                Divider()
-                
-                HStack {
-                    Text("Stroke Thickness:")
-                    Slider(value: $figure.strokeThickness, in: 0.5...20, step: 0.5)
-                    Text("\(String(format: "%.1f", figure.strokeThickness))")
-                        .frame(width: 40)
+                    Image(systemName: isColorsCollapsed ? "chevron.right" : "chevron.down")
+                        .font(.caption)
+                        .foregroundColor(.gray)
                 }
             }
-            .padding()
-            .background(Color.gray.opacity(0.1))
-            .cornerRadius(8)
+            
+            if !isColorsCollapsed {
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack {
+                        Text("Head:")
+                        Spacer()
+                        ColorPicker("", selection: $figure.headColor)
+                            .frame(width: 50)
+                    }
+                    
+                    HStack {
+                        Text("Torso:")
+                        Spacer()
+                        ColorPicker("", selection: $figure.torsoColor)
+                            .frame(width: 50)
+                    }
+                    
+                    HStack {
+                        Text("Left Arm:")
+                        Spacer()
+                        ColorPicker("", selection: $figure.leftArmColor)
+                            .frame(width: 50)
+                    }
+                    
+                    HStack {
+                        Text("Right Arm:")
+                        Spacer()
+                        ColorPicker("", selection: $figure.rightArmColor)
+                            .frame(width: 50)
+                    }
+                    
+                    HStack {
+                        Text("Hands:")
+                        Spacer()
+                        ColorPicker("", selection: $figure.handColor)
+                            .frame(width: 50)
+                    }
+                    
+                    HStack {
+                        Text("Left Leg:")
+                        Spacer()
+                        ColorPicker("", selection: $figure.leftLegColor)
+                            .frame(width: 50)
+                    }
+                    
+                    HStack {
+                        Text("Right Leg:")
+                        Spacer()
+                        ColorPicker("", selection: $figure.rightLegColor)
+                            .frame(width: 50)
+                    }
+                    
+                    HStack {
+                        Text("Feet:")
+                        Spacer()
+                        ColorPicker("", selection: $figure.footColor)
+                            .frame(width: 50)
+                    }
+                }
+                .padding()
+                .background(Color.gray.opacity(0.1))
+                .cornerRadius(8)
+            }
         }
-        .padding()
     }
     
     var objectsControlsView: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Objects").font(.subheadline).fontWeight(.semibold)
+            Button(action: {
+                showImagePicker = true
+            }) {
+                Label("Add Image Object", systemImage: "photo.badge.plus")
+                    .font(.caption)
+                    .frame(maxWidth: .infinity)
+                    .padding(8)
+                    .background(Color.blue)
+                    .foregroundColor(.white)
+                    .cornerRadius(6)
+            }
             
-            VStack(alignment: .leading, spacing: 8) {
-                Button(action: {
-                    showImagePicker = true
-                }) {
-                    Label("Add Image Object", systemImage: "photo.badge.plus")
-                        .font(.caption)
-                        .frame(maxWidth: .infinity)
-                        .padding(8)
-                        .background(Color.blue)
-                        .foregroundColor(.white)
-                        .cornerRadius(6)
-                }
-                
-                if !objects.isEmpty {
+            if !objects.isEmpty {
+                VStack(alignment: .leading, spacing: 8) {
                     Text("Current Objects:").font(.caption2).foregroundColor(.gray)
                     
                     ForEach(objects) { object in
@@ -1487,19 +1922,18 @@ struct StickFigure2DEditorView: View {
                         .padding(.vertical, 4)
                     }
                 }
+                .padding()
+                .background(Color.gray.opacity(0.1))
+                .cornerRadius(8)
             }
-            .padding()
-            .background(Color.gray.opacity(0.1))
-            .cornerRadius(8)
         }
-        .padding()
         .sheet(isPresented: $showImagePicker) {
             ImagePickerView(objects: $objects)
         }
     }
     
     var animationControlsView: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: 0) {
             Text("Animation").font(.subheadline).fontWeight(.semibold)
             
             HStack(spacing: 12) {
@@ -1509,87 +1943,18 @@ struct StickFigure2DEditorView: View {
                 }
                 .buttonStyle(.bordered)
                 
+                Button(action: { showFramesManager = true }) {
+                    Label("Open Frame", systemImage: "folder.badge.gearshape")
+                        .font(.caption)
+                }
+                .buttonStyle(.bordered)
+                
                 Spacer()
             }
             .padding()
             .background(Color.gray.opacity(0.1))
             .cornerRadius(8)
-            
-            // Saved frames list
-            if !savedFrames.isEmpty {
-                VStack(alignment: .leading, spacing: 8) {
-                    HStack {
-                        Text("Saved Frames").font(.caption).fontWeight(.semibold)
-                        Spacer()
-                        Button(action: {
-                            isEditingFrames.toggle()
-                        }) {
-                            Text(isEditingFrames ? "Done" : "Edit")
-                                .font(.caption)
-                        }
-                    }
-                    
-                    List {
-                        ForEach(savedFrames) { frame in
-                            HStack(spacing: 12) {
-                                if isEditingFrames {
-                                    Image(systemName: "line.3.horizontal")
-                                        .foregroundColor(.gray)
-                                        .font(.caption)
-                                }
-                                
-                                Button(action: {
-                                    if !isEditingFrames {
-                                        figure = frame.pose.toStickFigure2D()
-                                        scrollToCanvas = true
-                                    }
-                                }) {
-                                    HStack(spacing: 8) {
-                                        VStack(alignment: .leading, spacing: 4) {
-                                            Text(frame.name)
-                                                .font(.subheadline)
-                                                .fontWeight(.semibold)
-                                                .lineLimit(1)
-                                            Text("Frame #\(frame.frameNumber)")
-                                                .font(.caption)
-                                                .foregroundColor(.gray)
-                                        }
-                                        Spacer()
-                                    }
-                                }
-                                .buttonStyle(.plain)
-                                .disabled(isEditingFrames)
-                                
-                                if isEditingFrames {
-                                    Button(action: {
-                                        frameToDelete = frame
-                                        showDeleteConfirmation = true
-                                    }) {
-                                        Image(systemName: "trash")
-                                            .foregroundColor(.red)
-                                    }
-                                    .buttonStyle(.borderless)
-                                }
-                            }
-                        }
-                        .onMove { indices, newOffset in
-                            savedFrames.move(fromOffsets: indices, toOffset: newOffset)
-                            saveSavedFrames()
-                        }
-                    }
-                    .frame(height: 200)
-                    .listStyle(.plain)
-                    .environment(\.editMode, isEditingFrames ? .constant(.active) : .constant(.inactive))
-                }
-                .padding(.horizontal)
-            } else {
-                Text("No saved frames yet")
-                    .font(.caption)
-                    .foregroundColor(.gray)
-                    .padding()
-            }
         }
-        .padding()
         .sheet(isPresented: $showSaveFrameDialog) {
             SaveFrameDialog(
                 frameName: $frameName,
@@ -1598,18 +1963,16 @@ struct StickFigure2DEditorView: View {
                 onCancel: { showSaveFrameDialog = false }
             )
         }
-        .alert("Delete Frame?", isPresented: $showDeleteConfirmation) {
-            Button("Cancel", role: .cancel) { }
-            Button("Delete", role: .destructive) {
-                if let frameToDelete = frameToDelete {
-                    savedFrames.removeAll { $0.id == frameToDelete.id }
-                    saveSavedFrames()
-                }
-            }
-        } message: {
-            if let frame = frameToDelete {
-                Text("Are you sure you want to delete '\(frame.name)'?")
-            }
+        .sheet(isPresented: $showFramesManager) {
+            FramesManagerView(
+                savedFrames: $savedFrames,
+                onSelectFrame: { frame in
+                    figure = frame.pose.toStickFigure2D()
+                    scrollToCanvas = true
+                    showFramesManager = false
+                },
+                onSave: saveSavedFrames
+            )
         }
     }
     
@@ -1699,6 +2062,11 @@ struct StickFigure2DEditorView: View {
     private func resetFigure() {
         // Load the default Stand pose
         figure = StickFigure2D.defaultStand()
+        // Set scale to 200% (2.4)
+        figure.scale = 2.4
+        // Reset canvas offset
+        canvasOffset = .zero
+        lastCanvasOffset = .zero
         // Save this as the current state
         saveCurrentFigureState()
     }
@@ -1860,7 +2228,7 @@ struct StickFigure2DEditorInlineView: View {
                 RoundedRectangle(cornerRadius: 12)
                     .fill(Color(red: 0.95, green: 0.95, blue: 0.98))
                 
-                StickFigure2DView(figure: figure)
+                StickFigure2DView(figure: figure, canvasSize: canvasSize)
                 
                 // Draggable joint handles
                 Group {
