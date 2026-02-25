@@ -133,5 +133,22 @@
       "frameNumbers": [1, 2, 3, 4, 3, 4, 3, 4, 3, 4, 3, 4, 3, 4, 3, 4, 3, 4, 3, 4, 3, 4, 3, 2, 1],
       "baseFrameInterval": 0.2
     }
+  },
+  {
+    "id": "meditation",
+    "displayName": "Meditation",
+    "unlockLevel": 10,
+    "pointsPerCompletion": 10,
+    "variableTiming": {
+      "1": 5.0
+    },
+    "flipMode": "none",
+    "supportsSpeedBoost": false,
+    "allowMovement": false,
+    "stickFigureAnimation": {
+      "animationName": "Meditation",
+      "frameNumbers": [1, 1, 1, 1, 1, 2, 3, 3, 3, 3, 3, 1, 1, 1, 1, 1],
+      "baseFrameInterval": 0.2
+    }
   }
 ]

@@ -1,0 +1,192 @@
+[
+  {
+    "id": 1,
+    "name": "Rest",
+    "displayName": "Rest",
+    "pointsToComplete": 50,
+    "availableActions": ["rest"],
+    "catchables": {
+      "leaves": { "chance": 0.3, "points": 1 },
+      "shakers": { "chance": 0.1, "points": 2 }
+    },
+    "mapX": 300,
+    "mapY": 500,
+    "width": 80,
+    "height": 80,
+    "difficulty": 1.0,
+    "description": "Take it easy"
+  },
+  {
+    "id": 2,
+    "name": "Run",
+    "displayName": "Run",
+    "pointsToComplete": 100,
+    "availableActions": ["rest", "run"],
+    "catchables": {
+      "leaves": { "chance": 0.4, "points": 1 },
+      "hearts": { "chance": 0.15, "points": 5 },
+      "shakers": { "chance": 0.1, "points": 2 }
+    },
+    "mapX": 600,
+    "mapY": 500,
+    "width": 80,
+    "height": 80,
+    "difficulty": 1.2,
+    "description": "Pick up the pace"
+  },
+  {
+    "id": 3,
+    "name": "Jump",
+    "displayName": "Jump",
+    "pointsToComplete": 150,
+    "availableActions": ["rest", "run", "jump"],
+    "catchables": {
+      "leaves": { "chance": 0.35, "points": 1 },
+      "hearts": { "chance": 0.2, "points": 5 },
+      "shakers": { "chance": 0.15, "points": 2 }
+    },
+    "mapX": 900,
+    "mapY": 500,
+    "width": 80,
+    "height": 80,
+    "difficulty": 1.4,
+    "description": "Get off the ground"
+  },
+  {
+    "id": 4,
+    "name": "Jumping Jacks",
+    "displayName": "Jumping Jacks",
+    "pointsToComplete": 200,
+    "availableActions": ["rest", "run", "jump", "jumpingjack"],
+    "catchables": {
+      "leaves": { "chance": 0.3, "points": 1 },
+      "hearts": { "chance": 0.25, "points": 5 },
+      "brains": { "chance": 0.1, "points": 10 },
+      "shakers": { "chance": 0.15, "points": 2 }
+    },
+    "mapX": 1200,
+    "mapY": 500,
+    "width": 80,
+    "height": 80,
+    "difficulty": 1.6,
+    "description": "Coordination challenge"
+  },
+  {
+    "id": 5,
+    "name": "Yoga",
+    "displayName": "Yoga",
+    "pointsToComplete": 250,
+    "availableActions": ["rest", "run", "jump", "jumpingjack", "yoga"],
+    "catchables": {
+      "leaves": { "chance": 0.25, "points": 1 },
+      "hearts": { "chance": 0.3, "points": 5 },
+      "brains": { "chance": 0.15, "points": 10 },
+      "shakers": { "chance": 0.1, "points": 2 }
+    },
+    "mapX": 1500,
+    "mapY": 500,
+    "width": 80,
+    "height": 80,
+    "difficulty": 1.8,
+    "description": "Find your balance"
+  },
+  {
+    "id": 6,
+    "name": "Bicep Curls",
+    "displayName": "Bicep Curls",
+    "pointsToComplete": 300,
+    "availableActions": ["rest", "run", "jump", "jumpingjack", "yoga", "curls"],
+    "catchables": {
+      "leaves": { "chance": 0.2, "points": 1 },
+      "hearts": { "chance": 0.25, "points": 5 },
+      "brains": { "chance": 0.2, "points": 10 },
+      "shakers": { "chance": 0.15, "points": 2 }
+    },
+    "mapX": 1800,
+    "mapY": 500,
+    "width": 80,
+    "height": 80,
+    "difficulty": 2.0,
+    "description": "Build some strength"
+  },
+  {
+    "id": 7,
+    "name": "Kettlebell Swings",
+    "displayName": "Kettlebell Swings",
+    "pointsToComplete": 350,
+    "availableActions": ["rest", "run", "jump", "jumpingjack", "yoga", "curls", "kettlebell"],
+    "catchables": {
+      "leaves": { "chance": 0.15, "points": 1 },
+      "hearts": { "chance": 0.2, "points": 5 },
+      "brains": { "chance": 0.25, "points": 10 },
+      "suns": { "chance": 0.1, "points": 15 },
+      "shakers": { "chance": 0.15, "points": 2 }
+    },
+    "mapX": 2100,
+    "mapY": 500,
+    "width": 80,
+    "height": 80,
+    "difficulty": 2.2,
+    "description": "Power and momentum"
+  },
+  {
+    "id": 8,
+    "name": "Push Ups",
+    "displayName": "Push Ups",
+    "pointsToComplete": 400,
+    "availableActions": ["rest", "run", "jump", "jumpingjack", "yoga", "curls", "kettlebell", "pushup"],
+    "catchables": {
+      "leaves": { "chance": 0.1, "points": 1 },
+      "hearts": { "chance": 0.15, "points": 5 },
+      "brains": { "chance": 0.3, "points": 10 },
+      "suns": { "chance": 0.15, "points": 15 },
+      "shakers": { "chance": 0.15, "points": 2 }
+    },
+    "mapX": 2400,
+    "mapY": 500,
+    "width": 80,
+    "height": 80,
+    "difficulty": 2.4,
+    "description": "Upper body endurance"
+  },
+  {
+    "id": 9,
+    "name": "Pull Ups",
+    "displayName": "Pull Ups",
+    "pointsToComplete": 450,
+    "availableActions": ["rest", "run", "jump", "jumpingjack", "yoga", "curls", "kettlebell", "pushup", "pullup"],
+    "catchables": {
+      "leaves": { "chance": 0.05, "points": 1 },
+      "hearts": { "chance": 0.1, "points": 5 },
+      "brains": { "chance": 0.35, "points": 10 },
+      "suns": { "chance": 0.2, "points": 15 },
+      "shakers": { "chance": 0.15, "points": 2 }
+    },
+    "mapX": 2700,
+    "mapY": 500,
+    "width": 80,
+    "height": 80,
+    "difficulty": 2.6,
+    "description": "The ultimate challenge"
+  },
+  {
+    "id": 10,
+    "name": "Meditation",
+    "displayName": "Meditation",
+    "pointsToComplete": 500,
+    "availableActions": ["rest", "run", "jump", "jumpingjack", "yoga", "curls", "kettlebell", "pushup", "pullup", "meditation"],
+    "catchables": {
+      "leaves": { "chance": 0.0, "points": 1 },
+      "hearts": { "chance": 0.05, "points": 5 },
+      "brains": { "chance": 0.4, "points": 10 },
+      "suns": { "chance": 0.25, "points": 15 },
+      "shakers": { "chance": 0.1, "points": 2 }
+    },
+    "mapX": 3000,
+    "mapY": 500,
+    "width": 80,
+    "height": 80,
+    "difficulty": 2.8,
+    "description": "Inner peace and reflection"
+  }
+]

@@ -63,14 +63,57 @@ struct ActionConfig: Codable {
     let allowMovement: Bool // Whether character can move left/right during this action
     let stickFigureAnimation: StickFigureAnimationConfig?
     
-    // Helper to get available actions for a level
+    // Helper to get available actions for a level (legacy - uses unlockLevel)
     static func actionsForLevel(_ level: Int) -> [ActionConfig] {
         return ACTION_CONFIGS.filter { $0.unlockLevel <= level }
+    }
+    
+    // Helper to check if an action is available for a specific level (uses LEVEL_CONFIGS)
+    static func isActionAvailableForLevel(_ actionId: String, level: Int) -> Bool {
+        if let levelConfig = LEVEL_CONFIGS.first(where: { $0.id == level }) {
+            return levelConfig.isActionAvailable(actionId)
+        }
+        return false
+    }
+    
+    // Helper to get available actions for a level using LEVEL_CONFIGS
+    static func availableActionsForLevel(_ level: Int) -> [ActionConfig] {
+        if let levelConfig = LEVEL_CONFIGS.first(where: { $0.id == level }) {
+            return ACTION_CONFIGS.filter { levelConfig.isActionAvailable($0.id) }
+        }
+        return []
     }
     
     // Helper to get level-based action IDs
     static func levelBasedActionIDs(forLevel level: Int) -> Set<String> {
         return Set(ACTION_CONFIGS.filter { $0.unlockLevel <= level }.map { $0.id })
+    }
+}
+
+// MARK: - Level Configuration
+
+struct CatchableConfig: Codable {
+    let chance: Double  // Probability of spawning (0.0 to 1.0)
+    let points: Int     // Points awarded when caught
+}
+
+struct LevelConfig: Codable {
+    let id: Int
+    let name: String
+    let displayName: String
+    let pointsToComplete: Int
+    let availableActions: [String]  // Action IDs available in this level
+    let catchables: [String: CatchableConfig]  // Catchable types and their config
+    let mapX: CGFloat
+    let mapY: CGFloat
+    let width: CGFloat
+    let height: CGFloat
+    let difficulty: Double
+    let description: String
+    
+    // Helper to check if an action is available in this level
+    func isActionAvailable(_ actionId: String) -> Bool {
+        return availableActions.contains(actionId)
     }
 }
 
@@ -122,9 +165,34 @@ func loadActionConfigs() -> [ActionConfig] {
     return []
 }
 
+/// Loads level configurations from levels.json
+func loadLevels() -> [LevelConfig] {
+    // Try to load from bundle
+    if let url = Bundle.main.url(forResource: "levels", withExtension: "json"),
+       let data = try? Data(contentsOf: url) {
+        let decoder = JSONDecoder()
+        if let levels = try? decoder.decode([LevelConfig].self, from: data) {
+            print("✅ Successfully loaded \(levels.count) level configurations from JSON")
+            return levels
+        } else {
+            print("⚠️ Failed to decode levels.json")
+        }
+    } else {
+        print("⚠️ Could not find levels.json in bundle")
+    }
+    
+    // Fallback to empty array
+    print("❌ No level configurations available - game will not work properly")
+    return []
+}
+
 // MARK: - Action Configurations
 
 let ACTION_CONFIGS: [ActionConfig] = loadActionConfigs()
+
+// MARK: - Level Configurations
+
+let LEVEL_CONFIGS: [LevelConfig] = loadLevels()
 
 public struct Game1Module: AppModule {
     public let id: UUID = ModuleIDs.game1
@@ -1367,43 +1435,27 @@ class GameMapState {
     }
     
     func initializeLevelBoxes(currentLevel: Int = 1) {
-        // Create 100 level boxes in 5-column grid (20 rows)
-        // Layout: 1-5, 10-6, 11-15, 20-16, etc. (zigzag pattern)
+        // Create level boxes from LEVEL_CONFIGS data
         var boxes: [LevelBox] = []
-        let boxSize: CGFloat = 60
-        let spacing: CGFloat = 180
-        let columnCount = 5
-        let startX: CGFloat = 200
-        let startY: CGFloat = 200
         
-        for level in 1...100 {
-            let row = (level - 1) / columnCount
-            let positionInRow = (level - 1) % columnCount
-            
-            // Determine if this row goes left-to-right or right-to-left
-            let isEvenRow = (row % 2) == 0
-            let col = isEvenRow ? positionInRow : (columnCount - 1 - positionInRow)
-            
-            let x = startX + CGFloat(col) * spacing
-            let y = startY + CGFloat(row) * spacing
-            
+        for levelConfig in LEVEL_CONFIGS {
             // Level is completed if player has passed it
-            let isCompleted = level < currentLevel
+            let isCompleted = levelConfig.id < currentLevel
             // Level is available if it's completed, currently playing, or next unlocked level
-            let isAvailable = level <= currentLevel
+            let isAvailable = levelConfig.id <= currentLevel
             
             boxes.append(LevelBox(
-                levelNumber: level,
-                x: x,
-                y: y,
-                width: boxSize,
-                height: boxSize,
+                levelNumber: levelConfig.id,
+                x: levelConfig.mapX,
+                y: levelConfig.mapY,
+                width: levelConfig.width,
+                height: levelConfig.height,
                 isCompleted: isCompleted,
                 isAvailable: isAvailable
             ))
         }
         
-        levelBoxes = boxes
+        levelBoxes = boxes.sorted { $0.levelNumber < $1.levelNumber }
         // Don't reset character position here - let the view control it
         
         // Generate trees after level boxes are created
@@ -1802,6 +1854,9 @@ private struct StatsListContent: View {
                 }
                 .buttonStyle(.plain)
             }
+            .simultaneousGesture(TapGesture().onEnded {
+                showLevelPicker.wrappedValue = true
+            })
             
             Button(action: onResetData) {
                 HStack {
