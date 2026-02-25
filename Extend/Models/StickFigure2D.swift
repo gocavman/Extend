@@ -588,7 +588,7 @@ struct ImagePickerView: View {
             VStack {
                 Picker("Source", selection: $selectedTab) {
                     Text("Built-in").tag(0)
-                    Text("Photos").tag(1)
+                    Text("Photos").tag(1) //these would be stored in local storage only and won't persist
                 }
                 .pickerStyle(.segmented)
                 .padding()
