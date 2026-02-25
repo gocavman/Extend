@@ -580,7 +580,7 @@ struct ImagePickerView: View {
     
     let availableImages = [
         // Useful assets only
-        "Apple", "Dumbbell", "Kettlebell"
+        "Apple", "Dumbbell", "Kettlebell", "Shaker"
     ]
     
     var body: some View {

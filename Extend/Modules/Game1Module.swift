@@ -464,6 +464,8 @@ class StickFigureGameState {
     // Stick figure animation frames
     var standFrame: StickFigure2D?  // Stand frame
     var moveFrames: [StickFigure2D] = []  // Move frames 1-4
+    var shakerFrames: [StickFigure2D] = []  // Shaker frames 1-2
+    var shakerFrameObjects: [[AnimationObject]] = []  // Objects for Shaker frames 1-2
     var actionStickFigureFrames: [StickFigure2D] = []  // Current action's stick figure frames
 
     // Idle / wave
@@ -729,6 +731,20 @@ class StickFigureGameState {
             }
         }
         print("DEBUG: Loaded \(moveFrames.count) Move frames total")
+        
+        // Load Shaker frames 1-2
+        shakerFrames = []
+        shakerFrameObjects = []
+        for frameNum in 1...2 {
+            if let frame = allFrames.first(where: { $0.name == "Shaker" && $0.frameNumber == frameNum }) {
+                print("DEBUG: ✓ Loaded Shaker frame \(frameNum) with \(frame.objects.count) objects")
+                shakerFrames.append(frame.pose.toStickFigure2D())
+                shakerFrameObjects.append(frame.objects)
+            } else {
+                print("DEBUG: ✗ Shaker frame \(frameNum) not found")
+            }
+        }
+        print("DEBUG: Loaded \(shakerFrames.count) Shaker frames total")
     }
 
     func saveHighScore() {
@@ -3062,19 +3078,43 @@ private struct GamePlayArea: View {
     @Binding var showGameMap: Bool
     @Binding var showDoor: Bool
     @State private var collisionTimer: Timer?
-    
+
     var startMovingLeftAction: (StickFigureGameState, GeometryProxy) -> Void
     var stopMovingLeftAction: (StickFigureGameState) -> Void
     var startMovingRightAction: (StickFigureGameState, GeometryProxy) -> Void
     var stopMovingRightAction: (StickFigureGameState) -> Void
     var startJumpAction: (StickFigureGameState, GeometryProxy) -> Void
     var startActionAction: (ActionConfig, StickFigureGameState) -> Void
-    
+
     private func getStandImage() -> String {
         if gameState.selectedAction == "Bicep Curls" {
             return "curls1"
         } else {
             return "guy_stand"
+        }
+    }
+
+    @ViewBuilder
+    private func renderShakerObject(_ object: AnimationObject, editorToBaseScaleX: CGFloat, editorToBaseScaleY: CGFloat, gameToBaseScaleX: CGFloat, gameToBaseScaleY: CGFloat) -> some View {
+        if let uiImage = UIImage(named: object.imageName) {
+            // Convert object position from editor canvas to base canvas
+            let basePosX = object.position.x * editorToBaseScaleX
+            let basePosY = object.position.y * editorToBaseScaleY
+
+            // Convert from base canvas to game canvas for rendering
+            let gamePosX = basePosX / gameToBaseScaleX
+            let gamePosY = basePosY / gameToBaseScaleY
+
+            // Calculate scaled object dimensions
+            let objWidth = 50 * object.scale / gameToBaseScaleX
+            let objHeight = 50 * object.scale / gameToBaseScaleY
+
+            Image(uiImage: uiImage)
+                .resizable()
+                .aspectRatio(contentMode: .fit)
+                .frame(width: objWidth, height: objHeight)
+                .rotationEffect(.degrees(object.rotation))
+                .position(x: gamePosX, y: gamePosY)
         }
     }
 
@@ -3142,15 +3182,91 @@ private struct GamePlayArea: View {
                                 }
                         }
                     } else if gameState.isPerformingShaker {
-                        // Shaker animation - placeholder
-                        Text("?")
-                            .font(.system(size: 60))
-                            .foregroundColor(.gray)
-                            .frame(width: 100, height: 150)
+                        // Shaker animation - show frame 1 or 2
+                        let frameIndex = gameState.shakerFrame - 1  // Convert 1-based to 0-based
+                        if frameIndex >= 0 && frameIndex < gameState.shakerFrames.count {
+                            // Canvas dimensions:
+                            // - Editor UI uses 400x500 for display
+                            // - StickFigure2DView internally uses 600x720 base coordinates for drawing
+                            // - Game uses 150x225 for display
+                            let editorCanvasSize = CGSize(width: 400, height: 500)
+                            let baseCanvasSize = CGSize(width: 600, height: 720)
+                            let gameCanvasSize = CGSize(width: 150, height: 225)
+                            
+                            // Scale from editor canvas to base canvas (objects are saved in editor coords)
+                            let editorToBaseScaleX = baseCanvasSize.width / editorCanvasSize.width
+                            let editorToBaseScaleY = baseCanvasSize.height / editorCanvasSize.height
+                            
+                            // Scale from game canvas to base canvas (for rendering)
+                            let gameToBaseScaleX = baseCanvasSize.width / gameCanvasSize.width
+                            let gameToBaseScaleY = baseCanvasSize.height / gameCanvasSize.height
+                            
+                            // Get the objects for this frame
+                            let frameObjects = frameIndex < gameState.shakerFrameObjects.count ? gameState.shakerFrameObjects[frameIndex] : []
+                            let shakerFigure = gameState.shakerFrames[frameIndex]
+                            let shouldFlip = gameState.shakerFlip
+                            
+                            ZStack {
+                                // Render the stick figure
+                                StickFigure2DView(figure: shakerFigure, canvasSize: gameCanvasSize)
+                                
+                                // Render each object manually (without ForEach to avoid closure issues)
+                                Group {
+                                    if frameObjects.count > 0 {
+                                        let object = frameObjects[0]
+                                        if let uiImage = UIImage(named: object.imageName) {
+                                            let basePosX = object.position.x * editorToBaseScaleX
+                                            let basePosY = object.position.y * editorToBaseScaleY
+                                            let gamePosX = basePosX / gameToBaseScaleX
+                                            let gamePosY = basePosY / gameToBaseScaleY
+                                            let objWidth = 50 * object.scale / gameToBaseScaleX
+                                            let objHeight = 50 * object.scale / gameToBaseScaleY
+                                            
+                                            Image(uiImage: uiImage)
+                                                .resizable()
+                                                .aspectRatio(contentMode: .fit)
+                                                .frame(width: objWidth, height: objHeight)
+                                                .rotationEffect(.degrees(object.rotation))
+                                                .position(x: gamePosX, y: gamePosY)
+                                        }
+                                    }
+                                    if frameObjects.count > 1 {
+                                        let object = frameObjects[1]
+                                        if let uiImage = UIImage(named: object.imageName) {
+                                            let basePosX = object.position.x * editorToBaseScaleX
+                                            let basePosY = object.position.y * editorToBaseScaleY
+                                            let gamePosX = basePosX / gameToBaseScaleX
+                                            let gamePosY = basePosY / gameToBaseScaleY
+                                            let objWidth = 50 * object.scale / gameToBaseScaleX
+                                            let objHeight = 50 * object.scale / gameToBaseScaleY
+                                            
+                                            Image(uiImage: uiImage)
+                                                .resizable()
+                                                .aspectRatio(contentMode: .fit)
+                                                .frame(width: objWidth, height: objHeight)
+                                                .rotationEffect(.degrees(object.rotation))
+                                                .position(x: gamePosX, y: gamePosY)
+                                        }
+                                    }
+                                }
+                            }
+                            .frame(width: gameCanvasSize.width, height: gameCanvasSize.height)
+                            .scaleEffect(x: shouldFlip ? -1 : 1, y: 1)
                             .position(x: figureX, y: figureY)
                             .onTapGesture {
                                 // Ignore extra taps during animation
                             }
+                        } else {
+                            // No Shaker frame - show placeholder
+                            Text("?")
+                                .font(.system(size: 60))
+                                .foregroundColor(.gray)
+                                .frame(width: 100, height: 150)
+                                .position(x: figureX, y: figureY)
+                                .onTapGesture {
+                                    // Ignore extra taps during animation
+                                }
+                        }
                     } else if gameState.isWaving {
                         // Wave animation - placeholder
                         Text("?")

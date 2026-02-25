@@ -424,4 +424,19 @@
    1. Test on all iPhone sizes (SE, regular, Pro Max)
    2. Use @Environment(\.horizontalSizeClass) if needed
    3. Adjust padding and font sizes with GeometryReader
-*/
+ 
+ Add Object to 2D Stick Figure Editor:
+   1. Add image asset to Assets.xcassets (PNG format recommended)
+      - Name the asset clearly (e.g., "Dumbbell", "Shaker", "Kettlebell")
+      - Asset should have transparent background for best results
+   2. Add asset name to availableImages array in StickFigure2D.swift
+      Location: ImagePickerView struct, line ~583
+      Example: "Apple", "Dumbbell", "Kettlebell", "Shaker"
+   3. Test in the editor:
+      - Open Stick Figure Animator module
+      - Tap "Add Object" button
+      - Verify new asset appears in Built-in tab
+      - Add to canvas and verify it can be positioned/rotated
+      - Save a frame with the object to verify persistence
+ */
+
