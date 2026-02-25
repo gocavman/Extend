@@ -52,6 +52,21 @@ enum FlipMode: String, Codable {
 
 // MARK: - Action Configuration
 
+struct ActionFloatingTextConfig: Codable {
+    let timing: TimeInterval?
+    let text: [String]?
+    let random: Bool?
+    let loop: Bool?
+    let color: String?
+}
+
+struct FloatingTextTracker {
+    var lastTriggerTime: Double = 0
+    var textIndex: Int = 0
+    var nextTriggerTime: Double = 0
+    var hasCompleted: Bool = false  // Track if we've cycled through all text
+}
+
 struct ActionConfig: Codable {
     let id: String
     let displayName: String
@@ -62,12 +77,13 @@ struct ActionConfig: Codable {
     let supportsSpeedBoost: Bool
     let allowMovement: Bool // Whether character can move left/right during this action
     let stickFigureAnimation: StickFigureAnimationConfig?
-    
+    let floatingText: ActionFloatingTextConfig?
+
     // Helper to get available actions for a level (legacy - uses unlockLevel)
     static func actionsForLevel(_ level: Int) -> [ActionConfig] {
         return ACTION_CONFIGS.filter { $0.unlockLevel <= level }
     }
-    
+
     // Helper to check if an action is available for a specific level (uses LEVEL_CONFIGS)
     static func isActionAvailableForLevel(_ actionId: String, level: Int) -> Bool {
         if let levelConfig = LEVEL_CONFIGS.first(where: { $0.id == level }) {
@@ -75,7 +91,7 @@ struct ActionConfig: Codable {
         }
         return false
     }
-    
+
     // Helper to get available actions for a level using LEVEL_CONFIGS
     static func availableActionsForLevel(_ level: Int) -> [ActionConfig] {
         if let levelConfig = LEVEL_CONFIGS.first(where: { $0.id == level }) {
@@ -83,7 +99,7 @@ struct ActionConfig: Codable {
         }
         return []
     }
-    
+
     // Helper to get level-based action IDs
     static func levelBasedActionIDs(forLevel level: Int) -> Set<String> {
         return Set(ACTION_CONFIGS.filter { $0.unlockLevel <= level }.map { $0.id })
@@ -391,6 +407,9 @@ class StickFigureGameState {
     var floatingTextTimer: Timer?
     var elapsedTimeTimer: Timer?
     var fireworkParticles: [FireworkParticle] = []
+    var actionFloatingTextActionId: String? = nil
+    var actionFloatingTextLastTime: Double = 0
+    var actionFloatingTextIndex: Int = 0
 
     // Falling items
     var fallingItems: [FallingItem] = []
@@ -426,6 +445,9 @@ class StickFigureGameState {
     var pullupCountdownTimer: Timer?
     var lastActionFrame: Int = 0  // Track previous frame for pullup detection
     var lastPullupCounterTime: Double = 0  // Track when last pullup counter was shown
+    
+    // Generic floating text tracking for actions
+    var floatingTextTrackers: [String: FloatingTextTracker] = [:]  // Per-action tracking
     
     // Action completion tracking for floating text
     var lastCompletedAction: String = ""
@@ -1237,14 +1259,6 @@ class StickFigureGameState {
             }
         }
         
-        // Start pullup countdown if this is a pullup
-        if config.id == "pullup" {
-            gameState.pullupCount = 0
-            gameState.lastActionFrame = 0
-            gameState.pullupCountdownTimer?.invalidate()
-            gameState.pullupCountdownTimer = nil
-        }
-        
         // Handle variable timing (like pushups)
         if let variableTiming = config.variableTiming {
             startActionWithVariableTiming(config, gameState: gameState, variableTiming: variableTiming, startTime: actionStartTime)
@@ -1266,12 +1280,6 @@ class StickFigureGameState {
                     gameState.currentStickFigure = gameState.actionStickFigureFrames[frameIndex]
                 }
                 
-                // Detect pullup reps: increment when transitioning to frame 3 (start of pullup motion)
-                if config.id == "pullup" && frameIndex == 2 && gameState.lastActionFrame != 2 {
-                    gameState.pullupCount += 1
-                    gameState.lastPullupCounterTime = Date().timeIntervalSince1970
-                }
-                
                 gameState.lastActionFrame = frameIndex
                 gameState.currentFrameIndex = frameIndex
                 
@@ -1279,10 +1287,16 @@ class StickFigureGameState {
             } else {
                 gameState.actionTimer?.invalidate()
                 gameState.actionTimer = nil
+                let currentAction = gameState.currentPerformingAction
                 gameState.currentPerformingAction = nil
                 gameState.currentFrameIndex = 0
                 gameState.actionFlip = false
                 gameState.currentStickFigure = nil
+                
+                // Clean up floating text tracker for this action
+                if let action = currentAction {
+                    gameState.floatingTextTrackers.removeValue(forKey: action)
+                }
                 
                 let duration = Date().timeIntervalSince1970 * 1000 - startTime
                 gameState.recordActionTime(action: config.id, duration: duration)
@@ -1298,19 +1312,25 @@ class StickFigureGameState {
         var frameIndex = 0
         let speedMultiplier = (config.supportsSpeedBoost && gameState.speedBoostTimeRemaining > 0) ? 0.5 : 1.0
         
-        let yogaTexts = ["Breathe in", "Hold it", "Breathe out", "Relax"]
-        var yogaTextIndex = 0
-        var nextYogaMessageTime = 5.0  // First yoga message at 5 seconds
+        // Initialize config-driven floating text state
+        var floatingTextIndex = 0
+        var nextFloatingTextTime = config.floatingText?.timing ?? 0
         var elapsedTime = 0.0
         
         func scheduleNextFrame() {
             guard frameIndex < gameState.actionStickFigureFrames.count else {
                 gameState.actionTimer?.invalidate()
                 gameState.actionTimer = nil
+                let currentAction = gameState.currentPerformingAction
                 gameState.currentPerformingAction = nil
                 gameState.currentFrameIndex = 0
                 gameState.actionFlip = false
                 gameState.currentStickFigure = nil
+                
+                // Clean up floating text tracker for this action
+                if let action = currentAction {
+                    gameState.floatingTextTrackers.removeValue(forKey: action)
+                }
                 
                 let duration = Date().timeIntervalSince1970 * 1000 - startTime
                 gameState.recordActionTime(action: config.id, duration: duration)
@@ -1326,20 +1346,23 @@ class StickFigureGameState {
                 gameState.currentStickFigure = gameState.actionStickFigureFrames[frameIndex]
             }
             
-            // Detect pullup reps: increment when transitioning to frame 3 (start of pullup motion)
-            if config.id == "pullup" && frameIndex == 2 && gameState.lastActionFrame != 2 {
-                gameState.pullupCount += 1
-                gameState.lastPullupCounterTime = Date().timeIntervalSince1970
-            }
-            
             gameState.lastActionFrame = frameIndex
             
-            // For yoga, trigger messages at regular 5-second intervals
-            if config.id == "yoga" && elapsedTime >= nextYogaMessageTime && yogaTextIndex < yogaTexts.count {
-                let text = yogaTexts[yogaTextIndex]
-                gameState.addFloatingText(text, x: 0.5, y: 0.65, color: .blue, fontSize: 20, isMeditation: true)
-                yogaTextIndex += 1
-                nextYogaMessageTime += 5.0  // Next message in 5 seconds
+            // Handle config-driven floating text
+            if let floatingTextConfig = config.floatingText, let texts = floatingTextConfig.text, !texts.isEmpty {
+                if elapsedTime >= nextFloatingTextTime {
+                    let text: String
+                    if floatingTextConfig.random ?? false {
+                        // Random selection
+                        text = texts.randomElement() ?? texts[0]
+                    } else {
+                        // Sequential selection
+                        text = texts[floatingTextIndex % texts.count]
+                        floatingTextIndex += 1
+                    }
+                    gameState.addFloatingText(text, x: 0.5, y: 0.65, color: .blue, fontSize: 20, isMeditation: true)
+                    nextFloatingTextTime += floatingTextConfig.timing ?? 5.0
+                }
             }
             
             gameState.lastActionFrame = frameIndex
@@ -3457,41 +3480,74 @@ private struct GamePlayArea: View {
                     gameState.checkFallingItemCollisions(figureX: currentFigureX, figureY: currentFigureY, screenWidth: geometry.size.width, screenHeight: geometry.size.height)
                     gameState.checkShakerCollisions(figureX: currentFigureX, figureY: currentFigureY, screenWidth: geometry.size.width, screenHeight: geometry.size.height)
                     
-                    // Spawn pullup counter as floating text
-                    if gameState.currentPerformingAction == "pullup" && gameState.pullupCount > 0 && Date().timeIntervalSince1970 - gameState.lastPullupCounterTime < 0.1 {
+                    // Spawn config-driven floating text for current action
+                    if let currentAction = gameState.currentPerformingAction,
+                       let config = ACTION_CONFIGS.first(where: { $0.id == currentAction }) {
+                        
                         let normX = currentFigureX / geometry.size.width
                         let normY = currentFigureY / geometry.size.height
                         
-                        // Map pullup count to display number (1-6 normal, 97-100 inflated)
-                        let displayNumber = gameState.pullupCount > 6 ? min(100, 91 + gameState.pullupCount) : gameState.pullupCount
-                        let displayText = displayNumber == 100 ? "100!" : "\(displayNumber)"
-                        
-                        gameState.addFloatingText(displayText, x: normX, y: normY, color: .red, fontSize: 24)
-                    }
-                    
-                    // Spawn floating text for action completion
-                    if !gameState.lastCompletedAction.isEmpty && Date().timeIntervalSince1970 - gameState.lastCompletedActionTime < 0.1 {
-                        let normX = currentFigureX / geometry.size.width
-                        let normY = currentFigureY / geometry.size.height
-                        
-                        // Verify action exists in config
-                        if ACTION_CONFIGS.contains(where: { $0.id == gameState.lastCompletedAction }) {
-                            let displayText = "*\(gameState.lastCompletedAction)*"
-                            gameState.addFloatingText(displayText, x: normX, y: normY, color: .yellow, fontSize: 18)
-                        }
-                        
-                        gameState.lastCompletedAction = ""
-                    }
-                    
-                    // Spawn zzz floating text every 2 seconds during rest
-                    if gameState.currentPerformingAction == "rest" {
-                        let currentTime = gameState.restTotalDuration - gameState.restTimeRemaining
-                        if currentTime - gameState.restZzzLastTime >= 2.0 {
-                            gameState.restZzzLastTime = currentTime
-                            let normX = currentFigureX / geometry.size.width
-                            let normY = currentFigureY / geometry.size.height
-                            let randomOffsetX = CGFloat.random(in: -0.03...0.03)
-                            gameState.addFloatingText("zzz", x: normX + randomOffsetX, y: normY, color: .gray, fontSize: 20)
+                        // Generic config-driven floating text for all actions
+                        if let floatingTextConfig = config.floatingText,
+                           let texts = floatingTextConfig.text,
+                           !texts.isEmpty {
+                            
+                            // Initialize tracker if needed
+                            if gameState.floatingTextTrackers[currentAction] == nil {
+                                gameState.floatingTextTrackers[currentAction] = FloatingTextTracker(
+                                    lastTriggerTime: Date().timeIntervalSince1970,
+                                    textIndex: 0,
+                                    nextTriggerTime: floatingTextConfig.timing ?? 0.1,
+                                    hasCompleted: false
+                                )
+                            }
+                            
+                            var tracker = gameState.floatingTextTrackers[currentAction]!
+                            let currentTime = Date().timeIntervalSince1970
+                            
+                            // Check if we should display text
+                            let shouldLoop = floatingTextConfig.loop ?? true  // Default to looping
+                            let hasCompletedAndShouldNotLoop = tracker.hasCompleted && !shouldLoop
+                            
+                            if !hasCompletedAndShouldNotLoop && currentTime - tracker.lastTriggerTime >= tracker.nextTriggerTime {
+                                let text: String
+                                if floatingTextConfig.random ?? false {
+                                    // Random selection
+                                    text = texts.randomElement() ?? texts[0]
+                                } else {
+                                    // Sequential selection
+                                    text = texts[tracker.textIndex % texts.count]
+                                    tracker.textIndex += 1
+                                    
+                                    // Mark as completed if we've gone through all text
+                                    if tracker.textIndex >= texts.count {
+                                        tracker.hasCompleted = true
+                                    }
+                                }
+                                
+                                // Determine color
+                                let colorString = floatingTextConfig.color ?? "gray"
+                                let textColor: Color = {
+                                    switch colorString.lowercased() {
+                                    case "red": return .red
+                                    case "blue": return .blue
+                                    case "green": return .green
+                                    case "yellow": return .yellow
+                                    case "orange": return .orange
+                                    case "purple": return .purple
+                                    case "pink": return .pink
+                                    case "white": return .white
+                                    default: return .gray
+                                    }
+                                }()
+                                
+                                // Add random horizontal offset for certain actions like rest
+                                let xOffset = (currentAction == "rest") ? CGFloat.random(in: -0.03...0.03) : 0
+                                gameState.addFloatingText(text, x: normX + xOffset, y: normY, color: textColor, fontSize: 20)
+                                
+                                tracker.lastTriggerTime = currentTime
+                                gameState.floatingTextTrackers[currentAction] = tracker
+                            }
                         }
                     }
                     

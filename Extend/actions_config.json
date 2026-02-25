@@ -8,6 +8,13 @@
     "flipMode": "none",
     "supportsSpeedBoost": false,
     "allowMovement": false,
+    "floatingText": {
+      "timing": 2.0,
+      "text": ["zzz"],
+      "random": false,
+      "loop": true,
+      "color": "gray"
+    },
     "stickFigureAnimation": {
       "animationName": "Rest",
       "frameNumbers": [1],
@@ -68,6 +75,13 @@
     "flipMode": "none",
     "supportsSpeedBoost": true,
     "allowMovement": false,
+    "floatingText": {
+      "timing": 5.0,
+      "text": ["Breathe in", "Hold it", "Breathe out", "Relax"],
+      "random": false,
+      "loop": true,
+      "color": "blue"
+    },
     "stickFigureAnimation": {
       "animationName": "Yoga",
       "frameNumbers": [1, 2, 3, 4],
@@ -128,6 +142,13 @@
     "flipMode": "none",
     "supportsSpeedBoost": true,
     "allowMovement": true,
+    "floatingText": {
+      "timing": 0.4,
+      "text": ["1", "2", "3", "4", "5", "6", "97", "98", "99", "100!"],
+      "random": false,
+      "loop": false,
+      "color": "red"
+    },
     "stickFigureAnimation": {
       "animationName": "Pull up",
       "frameNumbers": [1, 2, 3, 4, 3, 4, 3, 4, 3, 4, 3, 4, 3, 4, 3, 4, 3, 4, 3, 4, 3, 4, 3, 2, 1],
@@ -145,6 +166,13 @@
     "flipMode": "none",
     "supportsSpeedBoost": false,
     "allowMovement": false,
+    "floatingText": {
+      "timing": 5.0,
+      "text": ["Breathe in", "Hold it", "Breathe out", "Relax"],
+      "random": false,
+      "loop": true,
+      "color": "blue"
+    },
     "stickFigureAnimation": {
       "animationName": "Meditation",
       "frameNumbers": [1, 1, 1, 1, 1, 2, 3, 3, 3, 3, 3, 1, 1, 1, 1, 1],
