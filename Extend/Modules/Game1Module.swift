@@ -3095,19 +3095,16 @@ private struct GamePlayArea: View {
     }
 
     @ViewBuilder
-    private func renderShakerObject(_ object: AnimationObject, editorToBaseScaleX: CGFloat, editorToBaseScaleY: CGFloat, gameToBaseScaleX: CGFloat, gameToBaseScaleY: CGFloat) -> some View {
+    private func renderShakerObject(_ object: AnimationObject, baseToGameScaleX: CGFloat, baseToGameScaleY: CGFloat) -> some View {
         if let uiImage = UIImage(named: object.imageName) {
-            // Convert object position from editor canvas to base canvas
-            let basePosX = object.position.x * editorToBaseScaleX
-            let basePosY = object.position.y * editorToBaseScaleY
-
-            // Convert from base canvas to game canvas for rendering
-            let gamePosX = basePosX / gameToBaseScaleX
-            let gamePosY = basePosY / gameToBaseScaleY
+            // Objects are stored in base canvas coordinates (600x720)
+            // Convert to game canvas coordinates for rendering
+            let gamePosX = object.position.x * baseToGameScaleX
+            let gamePosY = object.position.y * baseToGameScaleY
 
             // Calculate scaled object dimensions
-            let objWidth = 50 * object.scale / gameToBaseScaleX
-            let objHeight = 50 * object.scale / gameToBaseScaleY
+            let objWidth = 50 * object.scale * baseToGameScaleX
+            let objHeight = 50 * object.scale * baseToGameScaleY
 
             Image(uiImage: uiImage)
                 .resizable()
@@ -3186,20 +3183,9 @@ private struct GamePlayArea: View {
                         let frameIndex = gameState.shakerFrame - 1  // Convert 1-based to 0-based
                         if frameIndex >= 0 && frameIndex < gameState.shakerFrames.count {
                             // Canvas dimensions:
-                            // - Editor UI uses 400x500 for display
-                            // - StickFigure2DView internally uses 600x720 base coordinates for drawing
-                            // - Game uses 150x225 for display
-                            let editorCanvasSize = CGSize(width: 400, height: 500)
-                            let baseCanvasSize = CGSize(width: 600, height: 720)
+                            // - Objects are stored in base canvas coordinates (600x720)
+                            // - Game renders in 150x225
                             let gameCanvasSize = CGSize(width: 150, height: 225)
-                            
-                            // Scale from editor canvas to base canvas (objects are saved in editor coords)
-                            let editorToBaseScaleX = baseCanvasSize.width / editorCanvasSize.width
-                            let editorToBaseScaleY = baseCanvasSize.height / editorCanvasSize.height
-                            
-                            // Scale from game canvas to base canvas (for rendering)
-                            let gameToBaseScaleX = baseCanvasSize.width / gameCanvasSize.width
-                            let gameToBaseScaleY = baseCanvasSize.height / gameCanvasSize.height
                             
                             // Get the objects for this frame
                             let frameObjects = frameIndex < gameState.shakerFrameObjects.count ? gameState.shakerFrameObjects[frameIndex] : []
@@ -3215,12 +3201,21 @@ private struct GamePlayArea: View {
                                     if frameObjects.count > 0 {
                                         let object = frameObjects[0]
                                         if let uiImage = UIImage(named: object.imageName) {
-                                            let basePosX = object.position.x * editorToBaseScaleX
-                                            let basePosY = object.position.y * editorToBaseScaleY
-                                            let gamePosX = basePosX / gameToBaseScaleX
-                                            let gamePosY = basePosY / gameToBaseScaleY
-                                            let objWidth = 50 * object.scale / gameToBaseScaleX
-                                            let objHeight = 50 * object.scale / gameToBaseScaleY
+                                            // Apply the same coordinate transformation as the stick figure
+                                            let baseCanvasSize = CGSize(width: 600, height: 720)
+                                            let baseCenter = CGPoint(x: baseCanvasSize.width / 2, y: baseCanvasSize.height / 2)
+                                            let canvasCenter = CGPoint(x: gameCanvasSize.width / 2, y: gameCanvasSize.height / 2)
+                                            let canvasScale = gameCanvasSize.width / baseCanvasSize.width
+                                            
+                                            // Transform object position: same formula as stick figure
+                                            let dx = object.position.x - baseCenter.x
+                                            let dy = object.position.y - baseCenter.y
+                                            let gamePosX = canvasCenter.x + dx * canvasScale * shakerFigure.scale
+                                            let gamePosY = canvasCenter.y + dy * canvasScale * shakerFigure.scale
+                                            
+                                            // Scale object size by the same factors
+                                            let objWidth = 50 * object.scale * canvasScale * shakerFigure.scale
+                                            let objHeight = 50 * object.scale * canvasScale * shakerFigure.scale
                                             
                                             Image(uiImage: uiImage)
                                                 .resizable()
@@ -3233,12 +3228,21 @@ private struct GamePlayArea: View {
                                     if frameObjects.count > 1 {
                                         let object = frameObjects[1]
                                         if let uiImage = UIImage(named: object.imageName) {
-                                            let basePosX = object.position.x * editorToBaseScaleX
-                                            let basePosY = object.position.y * editorToBaseScaleY
-                                            let gamePosX = basePosX / gameToBaseScaleX
-                                            let gamePosY = basePosY / gameToBaseScaleY
-                                            let objWidth = 50 * object.scale / gameToBaseScaleX
-                                            let objHeight = 50 * object.scale / gameToBaseScaleY
+                                            // Apply the same coordinate transformation as the stick figure
+                                            let baseCanvasSize = CGSize(width: 600, height: 720)
+                                            let baseCenter = CGPoint(x: baseCanvasSize.width / 2, y: baseCanvasSize.height / 2)
+                                            let canvasCenter = CGPoint(x: gameCanvasSize.width / 2, y: gameCanvasSize.height / 2)
+                                            let canvasScale = gameCanvasSize.width / baseCanvasSize.width
+                                            
+                                            // Transform object position: same formula as stick figure
+                                            let dx = object.position.x - baseCenter.x
+                                            let dy = object.position.y - baseCenter.y
+                                            let gamePosX = canvasCenter.x + dx * canvasScale * shakerFigure.scale
+                                            let gamePosY = canvasCenter.y + dy * canvasScale * shakerFigure.scale
+                                            
+                                            // Scale object size by the same factors
+                                            let objWidth = 50 * object.scale * canvasScale * shakerFigure.scale
+                                            let objHeight = 50 * object.scale * canvasScale * shakerFigure.scale
                                             
                                             Image(uiImage: uiImage)
                                                 .resizable()

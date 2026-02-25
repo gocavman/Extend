@@ -1192,7 +1192,7 @@ struct StickFigure2DEditorView: View {
                         .aspectRatio(contentMode: .fit)
                         .frame(width: 50 * object.scale, height: 50 * object.scale)
                         .rotationEffect(.degrees(object.rotation))
-                        .position(object.position)
+                        .position(baseToCanvasPosition(object.position))
                 }
             }
             
@@ -1264,6 +1264,38 @@ struct StickFigure2DEditorView: View {
         )
     }
     
+    // Helper function to convert object position from base canvas to display canvas
+    private func baseToCanvasPosition(_ basePosition: CGPoint) -> CGPoint {
+        let baseCanvasSize = CGSize(width: 600, height: 720)
+        let baseCenter = CGPoint(x: baseCanvasSize.width / 2, y: baseCanvasSize.height / 2)
+        
+        let canvasCenter = CGPoint(x: canvasSize.width / 2, y: canvasSize.height / 2)
+        let canvasScale = canvasSize.width / baseCanvasSize.width
+        
+        let dx = basePosition.x - baseCenter.x
+        let dy = basePosition.y - baseCenter.y
+        return CGPoint(
+            x: canvasCenter.x + dx * canvasScale * figure.scale,
+            y: canvasCenter.y + dy * canvasScale * figure.scale
+        )
+    }
+    
+    // Helper function to convert object position from display canvas to base canvas
+    private func canvasToBasePosition(_ canvasPosition: CGPoint) -> CGPoint {
+        let baseCanvasSize = CGSize(width: 600, height: 720)
+        let baseCenter = CGPoint(x: baseCanvasSize.width / 2, y: baseCanvasSize.height / 2)
+        
+        let canvasCenter = CGPoint(x: canvasSize.width / 2, y: canvasSize.height / 2)
+        let canvasScale = canvasSize.width / baseCanvasSize.width
+        
+        let dx = canvasPosition.x - canvasCenter.x
+        let dy = canvasPosition.y - canvasCenter.y
+        return CGPoint(
+            x: baseCenter.x + dx / (canvasScale * figure.scale),
+            y: baseCenter.y + dy / (canvasScale * figure.scale)
+        )
+    }
+    
     // Function to create control handles for animation objects
     @ViewBuilder
     private func objectControlHandles(for object: AnimationObject) -> some View {
@@ -1279,12 +1311,13 @@ struct StickFigure2DEditorView: View {
                     .fill(Color.clear)
                     .frame(width: 28, height: 28)
             }
-            .position(object.position)
+            .position(baseToCanvasPosition(object.position))
             .gesture(DragGesture()
                 .onChanged { value in
                     selectedObjectId = object.id
                     if let index = objects.firstIndex(where: { $0.id == object.id }) {
-                        objects[index].position = value.location
+                        // Convert drag position from canvas space to base canvas space
+                        objects[index].position = canvasToBasePosition(value.location)
                     }
                 }
                 .onEnded { _ in }
@@ -1297,9 +1330,10 @@ struct StickFigure2DEditorView: View {
                 x: cos(angle + .pi / 4) * resizeHandleDistance,
                 y: sin(angle + .pi / 4) * resizeHandleDistance
             )
+            let objectCanvasPos = baseToCanvasPosition(object.position)
             let resizePosition = CGPoint(
-                x: object.position.x + resizeOffset.x,
-                y: object.position.y + resizeOffset.y
+                x: objectCanvasPos.x + resizeOffset.x,
+                y: objectCanvasPos.y + resizeOffset.y
             )
             
             ZStack {
@@ -1316,8 +1350,9 @@ struct StickFigure2DEditorView: View {
                 .onChanged { value in
                     selectedObjectId = object.id
                     if let index = objects.firstIndex(where: { $0.id == object.id }) {
-                        let dx = value.location.x - objects[index].position.x
-                        let dy = value.location.y - objects[index].position.y
+                        let objectBasePos = objects[index].position
+                        let dx = canvasToBasePosition(value.location).x - objectBasePos.x
+                        let dy = canvasToBasePosition(value.location).y - objectBasePos.y
                         let newScale = sqrt(dx * dx + dy * dy) / resizeHandleDistance
                         objects[index].scale = max(0.1, newScale)
                     }
@@ -1332,8 +1367,8 @@ struct StickFigure2DEditorView: View {
                 y: sin(angle) * rotateHandleDistance
             )
             let rotatePosition = CGPoint(
-                x: object.position.x + rotateOffset.x,
-                y: object.position.y + rotateOffset.y
+                x: objectCanvasPos.x + rotateOffset.x,
+                y: objectCanvasPos.y + rotateOffset.y
             )
             
             ZStack {
@@ -1350,8 +1385,10 @@ struct StickFigure2DEditorView: View {
                 .onChanged { value in
                     selectedObjectId = object.id
                     if let index = objects.firstIndex(where: { $0.id == object.id }) {
-                        let dx = value.location.x - objects[index].position.x
-                        let dy = value.location.y - objects[index].position.y
+                        let objectBasePos = objects[index].position
+                        let dragBasePos = canvasToBasePosition(value.location)
+                        let dx = dragBasePos.x - objectBasePos.x
+                        let dy = dragBasePos.y - objectBasePos.y
                         let newAngle = atan2(dy, dx) * 180 / .pi
                         objects[index].rotation = newAngle
                     }
@@ -2126,6 +2163,11 @@ struct StickFigure2DEditorView: View {
             pose: figure,
             objects: objects  // Save the current objects with this frame
         )
+        
+        // Debug: print saved object positions
+        for (i, obj) in objects.enumerated() {
+            print("DEBUG SAVE: object[\(i)] name=\(obj.imageName), position=\(obj.position), scale=\(obj.scale), rotation=\(obj.rotation)")
+        }
         
         savedFrames.append(frame)
         

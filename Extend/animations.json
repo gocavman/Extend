@@ -175,63 +175,63 @@
     }
   },
   {
-    "createdAt" : 793730170.096229,
-    "frameNumber" : 1,
-    "id" : "B440905C-6711-434C-8E4A-85DB937E9D19",
-    "name" : "Shaker",
-    "objects" : [
-      {
-        "id" : "175C43D8-C1CA-4BCD-8708-63D61587C561",
-        "imageName" : "Shaker",
-        "position" : [
-          233.33333333333334,
-          204.33333333333331
-        ],
-        "rotation" : 51.94717176895972,
-        "scale" : 0.8167091825667748
+      "createdAt" : 793736145.347045,
+      "frameNumber" : 1,
+      "id" : "B4F4684D-7EBA-411F-BB28-848D7F6B1B97",
+      "name" : "Shaker",
+      "objects" : [
+        {
+          "id" : "175C43D8-C1CA-4BCD-8708-63D61587C561",
+          "imageName" : "Shaker",
+          "position" : [
+            332.43243243243245,
+            345.36036036036035
+          ],
+          "rotation" : 51.94717176895972,
+          "scale" : 0.8167091825667748
+        }
+      ],
+      "pose" : {
+        "footColor" : "#000000",
+        "handColor" : "#000000",
+        "headAngle" : 0,
+        "headColor" : "#000000",
+        "headRadiusMultiplier" : 1,
+        "leftArmColor" : "#000000",
+        "leftElbowAngle" : -37,
+        "leftFootAngle" : 0,
+        "leftHandAngle" : -45,
+        "leftKneeAngle" : -170,
+        "leftLegColor" : "#000000",
+        "leftShoulderAngle" : -133,
+        "midTorsoAngle" : 0,
+        "rightArmColor" : "#000000",
+        "rightElbowAngle" : 37,
+        "rightFootAngle" : 0,
+        "rightHandAngle" : 45,
+        "rightKneeAngle" : 170,
+        "rightLegColor" : "#000000",
+        "rightShoulderAngle" : 133,
+        "scale" : 2.4,
+        "strokeThickness" : 3,
+        "torsoColor" : "#000000",
+        "waistTorsoAngle" : 0
       }
-    ],
-    "pose" : {
-      "footColor" : "#000000",
-      "handColor" : "#000000",
-      "headAngle" : 0,
-      "headColor" : "#000000",
-      "headRadiusMultiplier" : 1,
-      "leftArmColor" : "#000000",
-      "leftElbowAngle" : -37,
-      "leftFootAngle" : 0,
-      "leftHandAngle" : -45,
-      "leftKneeAngle" : -170,
-      "leftLegColor" : "#000000",
-      "leftShoulderAngle" : -133,
-      "midTorsoAngle" : 0,
-      "rightArmColor" : "#000000",
-      "rightElbowAngle" : 37,
-      "rightFootAngle" : 0,
-      "rightHandAngle" : 45,
-      "rightKneeAngle" : 170,
-      "rightLegColor" : "#000000",
-      "rightShoulderAngle" : 133,
-      "scale" : 2.4,
-      "strokeThickness" : 3,
-      "torsoColor" : "#000000",
-      "waistTorsoAngle" : 0
-    }
-  },
+    },
   {
-    "createdAt" : 793730212.83829,
+    "createdAt" : 793736277.101693,
     "frameNumber" : 2,
-    "id" : "22AA557A-3607-435D-A785-B1667A195C6D",
+    "id" : "F4AAC0A9-3ADF-4803-98BD-ED06D6415103",
     "name" : "Shaker",
     "objects" : [
       {
         "id" : "175C43D8-C1CA-4BCD-8708-63D61587C561",
         "imageName" : "Shaker",
         "position" : [
-          218.66666666666669,
-          133
+          324.09909909909913,
+          302.1171171171171
         ],
-        "rotation" : -52.19347005529559,
+        "rotation" : -61.47688139368789,
         "scale" : 0.8167091825667748
       }
     ],
@@ -250,7 +250,7 @@
       "leftShoulderAngle" : -133,
       "midTorsoAngle" : 0,
       "rightArmColor" : "#000000",
-      "rightElbowAngle" : -453.24713890161644,
+      "rightElbowAngle" : -448.4583564580004,
       "rightFootAngle" : 0,
       "rightHandAngle" : 45,
       "rightKneeAngle" : 170,
