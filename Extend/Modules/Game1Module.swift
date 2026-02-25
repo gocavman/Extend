@@ -10,7 +10,7 @@ import SwiftUI
 
 // MARK: - Stick Figure Animation Manager
 
-struct StickFigureAnimationConfig {
+struct StickFigureAnimationConfig: Codable {
     let animationName: String
     let frameNumbers: [Int]
     let baseFrameInterval: TimeInterval
@@ -44,7 +44,7 @@ struct StickFigureAnimationConfig {
 
 // MARK: - Flip Mode for Actions
 
-enum FlipMode {
+enum FlipMode: String, Codable {
     case none           // No flipping
     case random         // Random flip each time
     case alternating    // Alternate flip each time
@@ -52,7 +52,7 @@ enum FlipMode {
 
 // MARK: - Action Configuration
 
-struct ActionConfig {
+struct ActionConfig: Codable {
     let id: String
     let displayName: String
     let unlockLevel: Int
@@ -62,28 +62,6 @@ struct ActionConfig {
     let supportsSpeedBoost: Bool
     let allowMovement: Bool // Whether character can move left/right during this action
     let stickFigureAnimation: StickFigureAnimationConfig?
-    
-    init(
-        id: String,
-        displayName: String,
-        unlockLevel: Int,
-        pointsPerCompletion: Int,
-        variableTiming: [Int: TimeInterval]? = nil,
-        flipMode: FlipMode,
-        supportsSpeedBoost: Bool,
-        allowMovement: Bool,
-        stickFigureAnimation: StickFigureAnimationConfig? = nil
-    ) {
-        self.id = id
-        self.displayName = displayName
-        self.unlockLevel = unlockLevel
-        self.pointsPerCompletion = pointsPerCompletion
-        self.variableTiming = variableTiming
-        self.flipMode = flipMode
-        self.supportsSpeedBoost = supportsSpeedBoost
-        self.allowMovement = allowMovement
-        self.stickFigureAnimation = stickFigureAnimation
-    }
     
     // Helper to get available actions for a level
     static func actionsForLevel(_ level: Int) -> [ActionConfig] {
@@ -121,162 +99,32 @@ struct Door {
     }
 }
 
+// MARK: - Action Configuration Loading
+
+/// Loads action configurations from actions_config.json
+func loadActionConfigs() -> [ActionConfig] {
+    // Try to load from bundle
+    if let url = Bundle.main.url(forResource: "actions_config", withExtension: "json"),
+       let data = try? Data(contentsOf: url) {
+        let decoder = JSONDecoder()
+        if let configs = try? decoder.decode([ActionConfig].self, from: data) {
+            print("✅ Successfully loaded \(configs.count) action configurations from JSON")
+            return configs
+        } else {
+            print("⚠️ Failed to decode actions_config.json")
+        }
+    } else {
+        print("⚠️ Could not find actions_config.json in bundle")
+    }
+    
+    // Fallback to empty array - should not happen if JSON is properly included
+    print("❌ No action configurations available - game will not work properly")
+    return []
+}
+
 // MARK: - Action Configurations
 
-let ACTION_CONFIGS: [ActionConfig] = [
-    // Level 1: Rest - uses saved frames
-    ActionConfig(
-        id: "rest",
-        displayName: "Rest",
-        unlockLevel: 1,
-        pointsPerCompletion: 1,
-        variableTiming: nil,
-        flipMode: .none,
-        supportsSpeedBoost: false,
-        allowMovement: false,
-        stickFigureAnimation: StickFigureAnimationConfig(
-            animationName: "Rest",
-            frameNumbers: [1],
-            baseFrameInterval: 2.0
-        )
-    ),
-    
-    // Level 2: Run - uses Move frames 1-4
-    ActionConfig(
-        id: "run",
-        displayName: "Run",
-        unlockLevel: 2,
-        pointsPerCompletion: 2,
-        variableTiming: nil,
-        flipMode: .none,
-        supportsSpeedBoost: true,
-        allowMovement: true,
-        stickFigureAnimation: StickFigureAnimationConfig(
-            animationName: "Move",
-            frameNumbers: [1, 2, 3, 4],
-            baseFrameInterval: 0.15
-        )
-    ),
-    
-    // Level 3: Jump - will use saved frames when created
-    ActionConfig(
-        id: "jump",
-        displayName: "Jump",
-        unlockLevel: 3,
-        pointsPerCompletion: 3,
-        variableTiming: nil,
-        flipMode: .none,
-        supportsSpeedBoost: true,
-        allowMovement: false,
-        stickFigureAnimation: StickFigureAnimationConfig(
-            animationName: "Jump",
-            frameNumbers: [1, 2, 3],
-            baseFrameInterval: 0.1
-        )
-    ),
-    
-    // Level 4: Jumping Jacks - will use saved frames when created
-    ActionConfig(
-        id: "jumpingjack",
-        displayName: "Jumping Jacks",
-        unlockLevel: 4,
-        pointsPerCompletion: 4,
-        variableTiming: nil,
-        flipMode: .none,
-        supportsSpeedBoost: true,
-        allowMovement: false,
-        stickFigureAnimation: StickFigureAnimationConfig(
-            animationName: "Jumping Jacks",
-            frameNumbers: [1, 2, 3, 4],
-            baseFrameInterval: 0.27
-        )
-    ),
-    
-    // Level 5: Yoga - will use saved frames when created
-    ActionConfig(
-        id: "yoga",
-        displayName: "Yoga",
-        unlockLevel: 5,
-        pointsPerCompletion: 5,
-        variableTiming: nil,
-        flipMode: .none,
-        supportsSpeedBoost: true,
-        allowMovement: false,
-        stickFigureAnimation: StickFigureAnimationConfig(
-            animationName: "Yoga",
-            frameNumbers: [1, 2, 3, 4],
-            baseFrameInterval: 2.0
-        )
-    ),
-    
-    // Level 6: Bicep Curls - will use saved frames when created
-    ActionConfig(
-        id: "curls",
-        displayName: "Bicep Curls",
-        unlockLevel: 6,
-        pointsPerCompletion: 6,
-        variableTiming: nil,
-        flipMode: .alternating,
-        supportsSpeedBoost: true,
-        allowMovement: true,
-        stickFigureAnimation: StickFigureAnimationConfig(
-            animationName: "Bicep Curls",
-            frameNumbers: [1, 2, 3, 4],
-            baseFrameInterval: 0.4
-        )
-    ),
-    
-    // Level 7: Kettlebell - will use saved frames when created
-    ActionConfig(
-        id: "kettlebell",
-        displayName: "Kettlebell Swings",
-        unlockLevel: 7,
-        pointsPerCompletion: 7,
-        variableTiming: nil,
-        flipMode: .random,
-        supportsSpeedBoost: true,
-        allowMovement: true,
-        stickFigureAnimation: StickFigureAnimationConfig(
-            animationName: "Kettlebell Swings",
-            frameNumbers: [1, 2, 3, 4],
-            baseFrameInterval: 0.27
-        )
-    ),
-    
-    // Level 8: Push Ups - will use saved frames when created
-    ActionConfig(
-        id: "pushup",
-        displayName: "Push Ups",
-        unlockLevel: 8,
-        pointsPerCompletion: 8,
-        variableTiming: nil,
-        flipMode: .random,
-        supportsSpeedBoost: true,
-        allowMovement: true,
-        stickFigureAnimation: StickFigureAnimationConfig(
-            animationName: "Push Ups",
-            frameNumbers: [1, 2, 3, 4],
-            baseFrameInterval: 0.4
-        )
-    ),
-    
-    // Level 9: Pull Ups
-    ActionConfig(
-        id: "pullup",
-        displayName: "Pull Ups",
-        unlockLevel: 9,
-        pointsPerCompletion: 9,
-        variableTiming: nil,
-        flipMode: .none,
-        supportsSpeedBoost: true,
-        allowMovement: true,
-        stickFigureAnimation: StickFigureAnimationConfig(
-            animationName: "Pull up",
-            frameNumbers: [1, 2, 3, 4, 3, 4, 3, 4, 3, 4, 3, 4, 3, 4, 3, 4, 3, 4, 3, 4, 3, 4, 3, 2, 1],
-            baseFrameInterval: 0.2
-        )
-    )
-]
+let ACTION_CONFIGS: [ActionConfig] = loadActionConfigs()
 
 public struct Game1Module: AppModule {
     public let id: UUID = ModuleIDs.game1
@@ -1886,7 +1734,7 @@ private struct StatRow: View {
 
 private struct StatsListContent: View {
     @Bindable var gameState: StickFigureGameState
-    var onShowLevelPicker: () -> Void
+    var showLevelPicker: Binding<Bool>
     var onResetData: () -> Void
     
     var body: some View {
@@ -1939,7 +1787,7 @@ private struct StatsListContent: View {
                 Text("Set Level:")
                     .foregroundColor(.gray)
                 Spacer()
-                Button(action: onShowLevelPicker) {
+                Button(action: { showLevelPicker.wrappedValue = true }) {
                     HStack(spacing: 6) {
                         Text("Level \(gameState.currentLevel)")
                             .foregroundColor(.primary)
@@ -1952,6 +1800,7 @@ private struct StatsListContent: View {
                     .background(Color(UIColor.systemGray6))
                     .cornerRadius(6)
                 }
+                .buttonStyle(.plain)
             }
             
             Button(action: onResetData) {
@@ -3638,7 +3487,7 @@ private struct StatsOverlayView: View {
 
                 StatsListContent(
                     gameState: gameState,
-                    onShowLevelPicker: { showLevelPicker.wrappedValue = true },
+                    showLevelPicker: showLevelPicker,
                     onResetData: {
                         // Reset all game data
                         gameState.currentLevel = 1

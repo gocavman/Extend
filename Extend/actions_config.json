@@ -1,0 +1,137 @@
+[
+  {
+    "id": "rest",
+    "displayName": "Rest",
+    "unlockLevel": 1,
+    "pointsPerCompletion": 1,
+    "variableTiming": null,
+    "flipMode": "none",
+    "supportsSpeedBoost": false,
+    "allowMovement": false,
+    "stickFigureAnimation": {
+      "animationName": "Rest",
+      "frameNumbers": [1],
+      "baseFrameInterval": 2.0
+    }
+  },
+  {
+    "id": "run",
+    "displayName": "Run",
+    "unlockLevel": 2,
+    "pointsPerCompletion": 2,
+    "variableTiming": null,
+    "flipMode": "none",
+    "supportsSpeedBoost": true,
+    "allowMovement": true,
+    "stickFigureAnimation": {
+      "animationName": "Move",
+      "frameNumbers": [1, 2, 3, 4],
+      "baseFrameInterval": 0.15
+    }
+  },
+  {
+    "id": "jump",
+    "displayName": "Jump",
+    "unlockLevel": 3,
+    "pointsPerCompletion": 3,
+    "variableTiming": null,
+    "flipMode": "none",
+    "supportsSpeedBoost": true,
+    "allowMovement": false,
+    "stickFigureAnimation": {
+      "animationName": "Jump",
+      "frameNumbers": [1, 2, 3],
+      "baseFrameInterval": 0.1
+    }
+  },
+  {
+    "id": "jumpingjack",
+    "displayName": "Jumping Jacks",
+    "unlockLevel": 4,
+    "pointsPerCompletion": 4,
+    "variableTiming": null,
+    "flipMode": "none",
+    "supportsSpeedBoost": true,
+    "allowMovement": false,
+    "stickFigureAnimation": {
+      "animationName": "Jumping Jacks",
+      "frameNumbers": [1, 2, 3, 4],
+      "baseFrameInterval": 0.27
+    }
+  },
+  {
+    "id": "yoga",
+    "displayName": "Yoga",
+    "unlockLevel": 5,
+    "pointsPerCompletion": 5,
+    "variableTiming": null,
+    "flipMode": "none",
+    "supportsSpeedBoost": true,
+    "allowMovement": false,
+    "stickFigureAnimation": {
+      "animationName": "Yoga",
+      "frameNumbers": [1, 2, 3, 4],
+      "baseFrameInterval": 2.0
+    }
+  },
+  {
+    "id": "curls",
+    "displayName": "Bicep Curls",
+    "unlockLevel": 6,
+    "pointsPerCompletion": 6,
+    "variableTiming": null,
+    "flipMode": "alternating",
+    "supportsSpeedBoost": true,
+    "allowMovement": true,
+    "stickFigureAnimation": {
+      "animationName": "Bicep Curls",
+      "frameNumbers": [1, 2, 3, 4],
+      "baseFrameInterval": 0.4
+    }
+  },
+  {
+    "id": "kettlebell",
+    "displayName": "Kettlebell Swings",
+    "unlockLevel": 7,
+    "pointsPerCompletion": 7,
+    "variableTiming": null,
+    "flipMode": "random",
+    "supportsSpeedBoost": true,
+    "allowMovement": true,
+    "stickFigureAnimation": {
+      "animationName": "Kettlebell Swings",
+      "frameNumbers": [1, 2, 3, 4],
+      "baseFrameInterval": 0.27
+    }
+  },
+  {
+    "id": "pushup",
+    "displayName": "Push Ups",
+    "unlockLevel": 8,
+    "pointsPerCompletion": 8,
+    "variableTiming": null,
+    "flipMode": "random",
+    "supportsSpeedBoost": true,
+    "allowMovement": true,
+    "stickFigureAnimation": {
+      "animationName": "Push Ups",
+      "frameNumbers": [1, 2, 3, 4],
+      "baseFrameInterval": 0.4
+    }
+  },
+  {
+    "id": "pullup",
+    "displayName": "Pull Ups",
+    "unlockLevel": 9,
+    "pointsPerCompletion": 9,
+    "variableTiming": null,
+    "flipMode": "none",
+    "supportsSpeedBoost": true,
+    "allowMovement": true,
+    "stickFigureAnimation": {
+      "animationName": "Pull up",
+      "frameNumbers": [1, 2, 3, 4, 3, 4, 3, 4, 3, 4, 3, 4, 3, 4, 3, 4, 3, 4, 3, 4, 3, 4, 3, 2, 1],
+      "baseFrameInterval": 0.2
+    }
+  }
+]
