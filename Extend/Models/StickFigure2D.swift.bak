@@ -2354,46 +2354,46 @@ struct StickFigure2DEditorView: View {
         let targetAngle = wrapAngle(angle - midTorsoAngle)
         // Apply very strong damping for waist testing: blend 90% old angle with 10% new angle
         let newAngle = smoothedAngle(last: lastWaistAngle, target: targetAngle, alpha: 0.1)
-        figure.waistTorsoAngle = wrapAngle(newAngle)
-        lastWaistAngle = wrapAngle(newAngle)
+        figure.waistTorsoAngle = newAngle
+        lastWaistAngle = newAngle
     case "midTorso":
         let midTorsoAngle = 270.0 + figure.midTorsoAngle
         let targetAngle = wrapAngle(angle - midTorsoAngle)
         // Apply damping: blend 70% old angle with 30% new angle for smoother rotation
         let newAngle = smoothedAngle(last: lastMidTorsoAngle, target: targetAngle, alpha: 0.3)
-        figure.waistTorsoAngle = wrapAngle(newAngle)
-        lastMidTorsoAngle = wrapAngle(newAngle)
+        figure.waistTorsoAngle = newAngle
+        lastMidTorsoAngle = newAngle
     case "neck":
         let midTorsoAngle = 270.0 + figure.waistTorsoAngle
-        figure.midTorsoAngle = wrapAngle(angle - midTorsoAngle)
+        figure.midTorsoAngle = angle - midTorsoAngle
     case "head":
         // Head angle is stored as absolute world angle (0° = up)
         // Convert from atan2 angle (0° = right) to our system (0° = up)
-        figure.headAngle = wrapAngle(angle + 90)
+        figure.headAngle = angle + 90
     case "leftShoulder":
         let parentAngle = 270.0 + figure.midTorsoAngle + figure.waistTorsoAngle
-        figure.leftShoulderAngle = wrapAngle(angle - parentAngle)
+        figure.leftShoulderAngle = angle - parentAngle
     case "rightShoulder":
         let parentAngle = 270.0 + figure.midTorsoAngle + figure.waistTorsoAngle
-        figure.rightShoulderAngle = wrapAngle(angle - parentAngle)
+        figure.rightShoulderAngle = angle - parentAngle
     case "leftElbow":
         let parentAngle = 270.0 + figure.leftShoulderAngle + figure.midTorsoAngle + figure.waistTorsoAngle
-        figure.leftElbowAngle = wrapAngle(angle - parentAngle)
+        figure.leftElbowAngle = angle - parentAngle
     case "rightElbow":
         let parentAngle = 270.0 + figure.rightShoulderAngle + figure.midTorsoAngle + figure.waistTorsoAngle
-        figure.rightElbowAngle = wrapAngle(angle - parentAngle)
+        figure.rightElbowAngle = angle - parentAngle
     case "leftKnee":
         let parentAngle = 270.0 + figure.waistTorsoAngle
-        figure.leftKneeAngle = wrapAngle(angle - parentAngle)
+        figure.leftKneeAngle = angle - parentAngle
     case "rightKnee":
         let parentAngle = 270.0 + figure.waistTorsoAngle
-        figure.rightKneeAngle = wrapAngle(angle - parentAngle)
+        figure.rightKneeAngle = angle - parentAngle
     case "leftFoot":
         let parentAngle = 270.0 + figure.leftKneeAngle + figure.waistTorsoAngle
-        figure.leftFootAngle = wrapAngle(angle - parentAngle)
+        figure.leftFootAngle = angle - parentAngle
     case "rightFoot":
         let parentAngle = 270.0 + figure.rightKneeAngle + figure.waistTorsoAngle
-        figure.rightFootAngle = wrapAngle(angle - parentAngle)
+        figure.rightFootAngle = angle - parentAngle
     default:
         break
     }
@@ -2938,46 +2938,46 @@ struct StickFigure2DEditorInlineView: View {
         let targetAngle = wrapAngle(angle - midTorsoAngle)
         // Apply very strong damping for waist testing: blend 90% old angle with 10% new angle
         let newAngle = smoothedAngle(last: lastWaistAngle, target: targetAngle, alpha: 0.1)
-        figure.waistTorsoAngle = wrapAngle(newAngle)
-        lastWaistAngle = wrapAngle(newAngle)
+        figure.waistTorsoAngle = newAngle
+        lastWaistAngle = newAngle
     case "midTorso":
         let midTorsoAngle = 270.0 + figure.midTorsoAngle
         let targetAngle = wrapAngle(angle - midTorsoAngle)
         // Apply damping: blend 70% old angle with 30% new angle for smoother rotation
         let newAngle = smoothedAngle(last: lastMidTorsoAngle, target: targetAngle, alpha: 0.3)
-        figure.waistTorsoAngle = wrapAngle(newAngle)
-        lastMidTorsoAngle = wrapAngle(newAngle)
+        figure.waistTorsoAngle = newAngle
+        lastMidTorsoAngle = newAngle
     case "neck":
         let midTorsoAngle = 270.0 + figure.waistTorsoAngle
-        figure.midTorsoAngle = wrapAngle(angle - midTorsoAngle)
+        figure.midTorsoAngle = angle - midTorsoAngle
     case "head":
         // Head angle is stored as absolute world angle (0° = up)
         // Convert from atan2 angle (0° = right) to our system (0° = up)
-        figure.headAngle = wrapAngle(angle + 90)
+        figure.headAngle = angle + 90
     case "leftShoulder":
         let parentAngle = 270.0 + figure.midTorsoAngle + figure.waistTorsoAngle
-        figure.leftShoulderAngle = wrapAngle(angle - parentAngle)
+        figure.leftShoulderAngle = angle - parentAngle
     case "rightShoulder":
         let parentAngle = 270.0 + figure.midTorsoAngle + figure.waistTorsoAngle
-        figure.rightShoulderAngle = wrapAngle(angle - parentAngle)
+        figure.rightShoulderAngle = angle - parentAngle
     case "leftElbow":
         let parentAngle = 270.0 + figure.leftShoulderAngle + figure.midTorsoAngle + figure.waistTorsoAngle
-        figure.leftElbowAngle = wrapAngle(angle - parentAngle)
+        figure.leftElbowAngle = angle - parentAngle
     case "rightElbow":
         let parentAngle = 270.0 + figure.rightShoulderAngle + figure.midTorsoAngle + figure.waistTorsoAngle
-        figure.rightElbowAngle = wrapAngle(angle - parentAngle)
+        figure.rightElbowAngle = angle - parentAngle
     case "leftKnee":
         let parentAngle = 270.0 + figure.waistTorsoAngle
-        figure.leftKneeAngle = wrapAngle(angle - parentAngle)
+        figure.leftKneeAngle = angle - parentAngle
     case "rightKnee":
         let parentAngle = 270.0 + figure.waistTorsoAngle
-        figure.rightKneeAngle = wrapAngle(angle - parentAngle)
+        figure.rightKneeAngle = angle - parentAngle
     case "leftFoot":
         let parentAngle = 270.0 + figure.leftKneeAngle + figure.waistTorsoAngle
-        figure.leftFootAngle = wrapAngle(angle - parentAngle)
+        figure.leftFootAngle = angle - parentAngle
     case "rightFoot":
         let parentAngle = 270.0 + figure.rightKneeAngle + figure.waistTorsoAngle
-        figure.rightFootAngle = wrapAngle(angle - parentAngle)
+        figure.rightFootAngle = angle - parentAngle
     default:
         break
     }
