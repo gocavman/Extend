@@ -1082,18 +1082,14 @@ struct StickFigure2DEditorView: View {
                 // Save the current figure state when leaving the editor
                 saveCurrentFigureState()
             }
-            .onChange(of: figure.waistTorsoAngle) { saveCurrentFigureState() }
-            .onChange(of: figure.midTorsoAngle) { saveCurrentFigureState() }
-            .onChange(of: figure.headAngle) { saveCurrentFigureState() }
-            .onChange(of: figure.headRadiusMultiplier) { saveCurrentFigureState() }
-            .onChange(of: figure.leftShoulderAngle) { saveCurrentFigureState() }
-            .onChange(of: figure.rightShoulderAngle) { saveCurrentFigureState() }
-            .onChange(of: figure.leftElbowAngle) { saveCurrentFigureState() }
-            .onChange(of: figure.rightElbowAngle) { saveCurrentFigureState() }
-            .onChange(of: figure.leftKneeAngle) { saveCurrentFigureState() }
-            .onChange(of: figure.rightKneeAngle) { saveCurrentFigureState() }
-            .onChange(of: figure.leftFootAngle) { saveCurrentFigureState() }
-            .onChange(of: figure.rightFootAngle) { saveCurrentFigureState() }
+    }
+    
+    var baseView: some View {
+        contentWithScaleOnChanges
+    }
+    
+    var contentWithScaleOnChanges: some View {
+        contentWithLegOnChanges
             .onChange(of: figure.scale) { oldValue, newValue in
                 saveCurrentFigureState()
                 // Reset canvas offset when scale returns to 100% or below
@@ -1105,20 +1101,24 @@ struct StickFigure2DEditorView: View {
             .onChange(of: figure.strokeThickness) { saveCurrentFigureState() }
     }
     
-    var baseView: some View {
-        contentWithBodyOnChanges
-    }
-    
-    var contentWithBodyOnChanges: some View {
+    var contentWithLegOnChanges: some View {
         contentWithArmOnChanges
+            .onChange(of: figure.leftKneeAngle) { saveCurrentFigureState() }
+            .onChange(of: figure.rightKneeAngle) { saveCurrentFigureState() }
+            .onChange(of: figure.leftFootAngle) { saveCurrentFigureState() }
+            .onChange(of: figure.rightFootAngle) { saveCurrentFigureState() }
     }
     
     var contentWithArmOnChanges: some View {
-        contentWithJointOnChanges
-    }
-    
-    var contentWithJointOnChanges: some View {
         contentWithTorsoOnChanges
+            .onChange(of: figure.leftShoulderAngle) { saveCurrentFigureState() }
+            .onChange(of: figure.rightShoulderAngle) { saveCurrentFigureState() }
+            .onChange(of: figure.leftElbowAngle) { saveCurrentFigureState() }
+            .onChange(of: figure.rightElbowAngle) { saveCurrentFigureState() }
+            .onChange(of: figure.waistTorsoAngle) { saveCurrentFigureState() }
+            .onChange(of: figure.midTorsoAngle) { saveCurrentFigureState() }
+            .onChange(of: figure.headAngle) { saveCurrentFigureState() }
+            .onChange(of: figure.headRadiusMultiplier) { saveCurrentFigureState() }
     }
     
     var contentWithTorsoOnChanges: some View {
@@ -2194,6 +2194,14 @@ struct StickFigure2DEditorView: View {
         } else {
             // If no saved state, load the default Stand pose
             figure = StickFigure2D.defaultStand()
+        }
+    }
+    
+    private func saveCurrentFigureState() {
+        // Save the current figure state to UserDefaults
+        let pose = StickFigure2DPose(from: figure)
+        if let data = try? JSONEncoder().encode(pose) {
+            UserDefaults.standard.set(data, forKey: "last_figure_state_2d")
         }
     }
     

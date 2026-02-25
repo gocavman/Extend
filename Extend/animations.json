@@ -1,37 +1,37 @@
 [
   {
+    "name" : "Stand",
     "frameNumber" : 0,
-    "id" : "0C8F1C62-2EE7-4BA4-896E-AE5E3946C44B",
     "pose" : {
-      "rightArmColor" : "#000000",
-      "handColor" : "#000000",
-      "leftShoulderAngle" : -133,
-      "leftLegColor" : "#000000",
-      "rightShoulderAngle" : 133,
-      "rightKneeAngle" : 170,
-      "rightLegColor" : "#000000",
-      "footColor" : "#000000",
-      "leftKneeAngle" : -170,
-      "leftElbowAngle" : -37,
-      "waistTorsoAngle" : 0,
-      "leftFootAngle" : 0,
-      "midTorsoAngle" : 0,
-      "rightHandAngle" : -45,
-      "leftArmColor" : "#000000",
-      "torsoColor" : "#000000",
-      "headAngle" : 0,
-      "rightElbowAngle" : 37,
-      "headColor" : "#000000",
       "leftHandAngle" : -45,
       "rightFootAngle" : 0,
+      "rightKneeAngle" : 170,
+      "leftShoulderAngle" : -133,
+      "waistTorsoAngle" : 0,
+      "headAngle" : 0,
+      "rightElbowAngle" : 37,
+      "rightShoulderAngle" : 133,
+      "leftElbowAngle" : -37,
+      "midTorsoAngle" : 0,
+      "torsoColor" : "#000000",
+      "leftArmColor" : "#000000",
+      "leftLegColor" : "#000000",
+      "leftKneeAngle" : -170,
+      "headColor" : "#000000",
+      "rightLegColor" : "#000000",
+      "handColor" : "#000000",
+      "footColor" : "#000000",
+      "rightArmColor" : "#000000",
       "strokeThickness" : 8,
       "scale" : 2.4,
-      "headRadiusMultiplier" : 1
+      "headRadiusMultiplier" : 1,
+      "rightHandAngle" : -45,
+      "leftFootAngle" : 0
     },
     "objects" : [
 
     ],
     "createdAt" : 793669529.468777,
-    "name" : "Stand"
+    "id" : "0C8F1C62-2EE7-4BA4-896E-AE5E3946C44B"
   }
 ]
