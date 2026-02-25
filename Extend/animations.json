@@ -130,7 +130,7 @@
       "rightElbowAngle" : -34,
       "rightFootAngle" : 58,
       "rightHandAngle" : 45,
-      "rightKneeAngle" : -222.,
+      "rightKneeAngle" : -222,
       "rightLegColor" : "#000000",
       "rightShoulderAngle" : -199,
       "scale" : 2.4,
@@ -175,49 +175,49 @@
     }
   },
   {
-      "createdAt" : 793736145.347045,
-      "frameNumber" : 1,
-      "id" : "B4F4684D-7EBA-411F-BB28-848D7F6B1B97",
-      "name" : "Shaker",
-      "objects" : [
-        {
-          "id" : "175C43D8-C1CA-4BCD-8708-63D61587C561",
-          "imageName" : "Shaker",
-          "position" : [
-            332.43243243243245,
-            345.36036036036035
-          ],
-          "rotation" : 51.94717176895972,
-          "scale" : 0.8167091825667748
-        }
-      ],
-      "pose" : {
-        "footColor" : "#000000",
-        "handColor" : "#000000",
-        "headAngle" : 0,
-        "headColor" : "#000000",
-        "headRadiusMultiplier" : 1,
-        "leftArmColor" : "#000000",
-        "leftElbowAngle" : -37,
-        "leftFootAngle" : 0,
-        "leftHandAngle" : -45,
-        "leftKneeAngle" : -170,
-        "leftLegColor" : "#000000",
-        "leftShoulderAngle" : -133,
-        "midTorsoAngle" : 0,
-        "rightArmColor" : "#000000",
-        "rightElbowAngle" : 37,
-        "rightFootAngle" : 0,
-        "rightHandAngle" : 45,
-        "rightKneeAngle" : 170,
-        "rightLegColor" : "#000000",
-        "rightShoulderAngle" : 133,
-        "scale" : 2.4,
-        "strokeThickness" : 3,
-        "torsoColor" : "#000000",
-        "waistTorsoAngle" : 0
+    "createdAt" : 793736145.347045,
+    "frameNumber" : 1,
+    "id" : "B4F4684D-7EBA-411F-BB28-848D7F6B1B97",
+    "name" : "Shaker",
+    "objects" : [
+      {
+        "id" : "175C43D8-C1CA-4BCD-8708-63D61587C561",
+        "imageName" : "Shaker",
+        "position" : [
+          332.43243243243245,
+          345.36036036036035
+        ],
+        "rotation" : 51.94717176895972,
+        "scale" : 0.8167091825667748
       }
-    },
+    ],
+    "pose" : {
+      "footColor" : "#000000",
+      "handColor" : "#000000",
+      "headAngle" : 0,
+      "headColor" : "#000000",
+      "headRadiusMultiplier" : 1,
+      "leftArmColor" : "#000000",
+      "leftElbowAngle" : -37,
+      "leftFootAngle" : 0,
+      "leftHandAngle" : -45,
+      "leftKneeAngle" : -170,
+      "leftLegColor" : "#000000",
+      "leftShoulderAngle" : -133,
+      "midTorsoAngle" : 0,
+      "rightArmColor" : "#000000",
+      "rightElbowAngle" : 37,
+      "rightFootAngle" : 0,
+      "rightHandAngle" : 45,
+      "rightKneeAngle" : 170,
+      "rightLegColor" : "#000000",
+      "rightShoulderAngle" : 133,
+      "scale" : 2.4,
+      "strokeThickness" : 3,
+      "torsoColor" : "#000000",
+      "waistTorsoAngle" : 0
+    }
+  },
   {
     "createdAt" : 793736277.101693,
     "frameNumber" : 2,

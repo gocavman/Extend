@@ -1854,9 +1854,6 @@ private struct StatsListContent: View {
                 }
                 .buttonStyle(.plain)
             }
-            .simultaneousGesture(TapGesture().onEnded {
-                showLevelPicker.wrappedValue = true
-            })
             
             Button(action: onResetData) {
                 HStack {
