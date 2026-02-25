@@ -9,22 +9,41 @@ struct AnimationFrame: Codable, Identifiable {
     let name: String
     let frameNumber: Int
     let pose: StickFigure2DPose
+    let objects: [AnimationObject]  // Objects associated with this frame
     let createdAt: Date
     
-    init(name: String, frameNumber: Int, pose: StickFigure2D) {
+    init(name: String, frameNumber: Int, pose: StickFigure2D, objects: [AnimationObject] = []) {
         self.id = UUID()
         self.name = name
         self.frameNumber = frameNumber
         self.pose = StickFigure2DPose(from: pose)
+        self.objects = objects
         self.createdAt = Date()
     }
     
-    init(id: UUID, name: String, frameNumber: Int, pose: StickFigure2D) {
+    init(id: UUID, name: String, frameNumber: Int, pose: StickFigure2D, objects: [AnimationObject] = []) {
         self.id = id
         self.name = name
         self.frameNumber = frameNumber
         self.pose = StickFigure2DPose(from: pose)
+        self.objects = objects
         self.createdAt = Date()
+    }
+    
+    // Custom decoding to handle old JSON without objects field
+    enum CodingKeys: String, CodingKey {
+        case id, name, frameNumber, pose, objects, createdAt
+    }
+    
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(UUID.self, forKey: .id)
+        name = try container.decode(String.self, forKey: .name)
+        frameNumber = try container.decode(Int.self, forKey: .frameNumber)
+        pose = try container.decode(StickFigure2DPose.self, forKey: .pose)
+        // objects is optional - if not present, default to empty array
+        objects = try container.decodeIfPresent([AnimationObject].self, forKey: .objects) ?? []
+        createdAt = try container.decode(Date.self, forKey: .createdAt)
     }
 }
 
@@ -194,7 +213,7 @@ struct StickFigure2D {
     var rightFootAngle: Double = 0
     
     // Scale
-    var scale: Double = 1.2 // Size multiplier (1.2 = 100% in new display system - default size)
+    var scale: Double = 2.4 // Size multiplier (2.4 = 200% - default size for editing)
     var headRadiusMultiplier: Double = 1.0 // Head size multiplier (1.0 = normal size)
     
     // Colors for each body part
@@ -212,12 +231,32 @@ struct StickFigure2D {
     
     // Static default Stand pose
     static func defaultStand() -> StickFigure2D {
-        // Load from saved Stand frame if available
-        if let data = UserDefaults.standard.data(forKey: "default_stand_pose_2d"),
-           let pose = try? JSONDecoder().decode(StickFigure2DPose.self, from: data) {
-            return pose.toStickFigure2D()
+        // ALWAYS load from Bundle's animations.json (the authoritative default)
+        // Ignore Documents folder - that's for user edits, not defaults
+        
+        if let bundleURL = Bundle.main.url(forResource: "animations", withExtension: "json") {
+            do {
+                let data = try Data(contentsOf: bundleURL)
+                let decoder = JSONDecoder()
+                let frames = try decoder.decode([AnimationFrame].self, from: data)
+                print("DEBUG defaultStand: Loaded \(frames.count) frames from Bundle")
+                
+                // Look for Stand frame 0 in Bundle
+                if let standFrame = frames.first(where: { $0.name == "Stand" && $0.frameNumber == 0 }) {
+                    print("DEBUG defaultStand: ✓ Found Stand frame 0 in Bundle - using it")
+                    return standFrame.pose.toStickFigure2D()
+                } else {
+                    print("DEBUG defaultStand: ✗ Stand frame 0 not found in Bundle")
+                }
+            } catch {
+                print("DEBUG defaultStand: Error loading from Bundle: \(error)")
+            }
+        } else {
+            print("DEBUG defaultStand: Bundle/animations.json not found")
         }
-        // Otherwise return default constructor values
+        
+        // Final fallback: return default constructor values
+        print("DEBUG defaultStand: Using default constructor fallback")
         return StickFigure2D()
     }
     
@@ -537,19 +576,8 @@ struct ImagePickerView: View {
     @State private var selectedPhoto: PhotosPickerItem?
     
     let availableImages = [
-        "guy_stand", "guy_move1", "guy_move2", "guy_move3", "guy_move4",
-        "guy_wave1", "guy_wave2", "guy_jump1", "guy_jump2", "guy_jump3",
-        "pushup1", "pushup2", "pushup3", "pushup4",
-        "pullup1", "pullup2", "pullup3", "pullup4",
-        "jumpingjack1", "jumpingjack2", "jumpingjack3", "jumpingjack4",
-        "yoga1", "yoga2", "yoga3", "yoga4", "yoga5", "yoga6", "yoga7", "yoga8",
-        "meditate1", "meditate2", "meditate3",
-        "rest1", "rest2",
-        "kb1", "kb2", "kb3", "kb4", "kb5", "kb6", "kb7", "kb8",
-        "curls1", "curls2", "curls3", "curls4",
-        "shaker1", "shaker2", "Shaker",
-        "topview1", "topview2", "topview3",
-        "leaf", "Apple", "BlueDrink", "RedDrink"
+        // Useful assets only
+        "leaf", "Apple", "Dumbbell", "Kettlebell"
     ]
     
     var body: some View {
@@ -661,7 +689,6 @@ struct ImagePickerView: View {
 
 struct FramesManagerView: View {
     @Environment(\.dismiss) var dismiss
-    @Environment(\.editMode) var editMode
     @Binding var savedFrames: [AnimationFrame]
     var onSelectFrame: (AnimationFrame) -> Void
     var onSave: () -> Void
@@ -671,6 +698,52 @@ struct FramesManagerView: View {
     @State private var editingFrameNumber: String = ""
     @State private var frameToDelete: AnimationFrame?
     @State private var showDeleteConfirmation = false
+    @State private var isEditMode = false
+    @State private var persistedFrames: Set<UUID> = [] // Track which frames are persisted
+    
+    // MARK: - Persistence Functions
+    
+    private func loadPersistedFrames() {
+        // Load which frames are marked as persisted from UserDefaults
+        if let data = UserDefaults.standard.data(forKey: "persisted_frame_ids"),
+           let uuids = try? JSONDecoder().decode([UUID].self, from: data) {
+            persistedFrames = Set(uuids)
+            print("✓ Loaded persisted frame markers")
+        }
+    }
+    
+    private func savePersistedFrameMarkers() {
+        // Save which frames are marked as persisted to UserDefaults
+        do {
+            let encoder = JSONEncoder()
+            let data = try encoder.encode(Array(persistedFrames))
+            UserDefaults.standard.set(data, forKey: "persisted_frame_ids")
+            print("✓ Saved persisted frame markers")
+        } catch {
+            print("✗ Error saving persisted frame markers: \(error)")
+        }
+    }
+    
+    private func savePersistentFrames() {
+        // Get all frames that are marked as persisted
+        let framesToPersist = savedFrames.filter { persistedFrames.contains($0.id) }
+        
+        // Write directly to the project's animations.json file
+        let projectPath = "/Users/cavan/Developer/Extend/Extend/animations.json"
+        let animationsURL = URL(fileURLWithPath: projectPath)
+        
+        do {
+            let encoder = JSONEncoder()
+            encoder.outputFormatting = .prettyPrinted
+            let data = try encoder.encode(framesToPersist)
+            try data.write(to: animationsURL, options: .atomic)
+            print("✓ Saved \(framesToPersist.count) persisted frames directly to animations.json")
+            print("  Reload the project in Xcode to see changes")
+        } catch {
+            print("✗ Error saving persisted frames: \(error)")
+        }
+    }
+    
     
     var body: some View {
         NavigationView {
@@ -700,6 +773,26 @@ struct FramesManagerView: View {
                                     TextField("Frame Number", text: $editingFrameNumber)
                                         .textFieldStyle(.roundedBorder)
                                         .keyboardType(.numberPad)
+                                    
+                                    // Persist checkbox (disabled for Stand frame)
+                                    let isStandFrame = editingName == "Stand" && Int(editingFrameNumber) == 0
+                                    HStack {
+                                        Toggle("Persist to animations.json", isOn: Binding(
+                                            get: { persistedFrames.contains(frame.id) },
+                                            set: {
+                                                if $0 {
+                                                    persistedFrames.insert(frame.id)
+                                                } else {
+                                                    persistedFrames.remove(frame.id)
+                                                }
+                                                // Save markers and update animations.json
+                                                savePersistedFrameMarkers()
+                                                savePersistentFrames()
+                                            }
+                                        ))
+                                        .disabled(isStandFrame)
+                                    }
+                                    .opacity(isStandFrame ? 0.5 : 1.0)
                                     
                                     HStack {
                                         Button("Cancel") {
@@ -735,13 +828,29 @@ struct FramesManagerView: View {
                                     }) {
                                         HStack(spacing: 12) {
                                             VStack(alignment: .leading, spacing: 4) {
-                                                Text(frame.name)
-                                                    .font(.subheadline)
-                                                    .fontWeight(.semibold)
-                                                    .foregroundColor(.primary)
-                                                Text("Frame #\(frame.frameNumber)")
-                                                    .font(.caption)
-                                                    .foregroundColor(.gray)
+                                                HStack(spacing: 8) {
+                                                    Text(frame.name)
+                                                        .font(.subheadline)
+                                                        .fontWeight(.semibold)
+                                                        .foregroundColor(.primary)
+                                                    
+                                                    // Persist flag indicator
+                                                    if persistedFrames.contains(frame.id) {
+                                                        Image(systemName: "checkmark.circle.fill")
+                                                            .font(.caption)
+                                                            .foregroundColor(.green)
+                                                    }
+                                                }
+                                                
+                                                HStack(spacing: 12) {
+                                                    Text("Frame #\(frame.frameNumber)")
+                                                        .font(.caption)
+                                                        .foregroundColor(.gray)
+                                                    
+                                                    Text(frame.createdAt.formatted(date: .abbreviated, time: .shortened))
+                                                        .font(.caption2)
+                                                        .foregroundColor(.gray)
+                                                }
                                             }
                                             Spacer()
                                         }
@@ -749,7 +858,7 @@ struct FramesManagerView: View {
                                     .buttonStyle(.plain)
                                     
                                     // Only show rename/delete buttons when in Edit mode
-                                    if editMode?.wrappedValue.isEditing == true {
+                                    if isEditMode {
                                         // Rename button
                                         Button(action: {
                                             editingFrameId = frame.id
@@ -786,9 +895,33 @@ struct FramesManagerView: View {
             }
             .navigationTitle("Saved Frames")
             .navigationBarTitleDisplayMode(.inline)
+            .onAppear {
+                // Load which frames are marked as persisted
+                loadPersistedFrames()
+                
+                // Initialize Stand frame as persisted by default if not already set
+                if persistedFrames.isEmpty {
+                    if let standFrame = savedFrames.first(where: { $0.name == "Stand" && $0.frameNumber == 0 }) {
+                        persistedFrames.insert(standFrame.id)
+                    }
+                }
+                // Also save on first load
+                savePersistentFrames()
+                savePersistedFrameMarkers()
+            }
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
-                    EditButton()
+                    Button(action: {
+                        isEditMode.toggle()
+                        // Save when exiting edit mode
+                        if !isEditMode {
+                            savePersistedFrameMarkers()
+                            savePersistentFrames()
+                        }
+                    }) {
+                        Text(isEditMode ? "Done" : "Edit")
+                            .font(.headline)
+                    }
                 }
                 
                 ToolbarItem(placement: .navigationBarTrailing) {
@@ -936,12 +1069,13 @@ struct StickFigure2DEditorView: View {
     var body: some View {
         baseView
             .onAppear {
+                // Load saved frames list (all animations come from Bundle only)
                 loadSavedFrames()
                 // Load the last saved figure state, or default Stand pose if none exists
                 loadLastFigureState()
-                // Always ensure scale is at 100% (1.2) when opening
-                if figure.scale != 1.2 {
-                    figure.scale = 1.2
+                // Always ensure scale is at 200% (2.4) when opening
+                if figure.scale != 2.4 {
+                    figure.scale = 2.4
                 }
             }
             .onDisappear {
@@ -1113,8 +1247,8 @@ struct StickFigure2DEditorView: View {
             // Pan gesture that works alongside other gestures
             DragGesture(minimumDistance: 30) // Higher threshold to avoid conflicts
                 .onChanged { value in
-                    // Only allow panning when zoomed in AND not dragging a joint
-                    if figure.scale > 1.2 && draggedJoint == nil {
+                    // Only allow panning when zoomed in AND not dragging a joint AND not moving an object
+                    if figure.scale > 1.2 && draggedJoint == nil && selectedObjectId == nil {
                         canvasOffset = CGSize(
                             width: lastCanvasOffset.width + value.translation.width,
                             height: lastCanvasOffset.height + value.translation.height
@@ -1123,7 +1257,7 @@ struct StickFigure2DEditorView: View {
                 }
                 .onEnded { _ in
                     // Save the final offset for next drag
-                    if figure.scale > 1.2 && draggedJoint == nil {
+                    if figure.scale > 1.2 && draggedJoint == nil && selectedObjectId == nil {
                         lastCanvasOffset = canvasOffset
                     }
                 }
@@ -1168,16 +1302,16 @@ struct StickFigure2DEditorView: View {
     @ViewBuilder
     private func objectControlHandles(for object: AnimationObject) -> some View {
         Group {
-            // Center handle (for position adjustment)
+            // Yellow dot: Move the object
             ZStack {
                 Circle()
-                    .fill(selectedObjectId == object.id ? Color.yellow : Color.green)
-                    .frame(width: 8, height: 8)
+                    .fill(Color.yellow)
+                    .frame(width: 10, height: 10)
                 
                 // Larger invisible hit area
                 Circle()
                     .fill(Color.clear)
-                    .frame(width: 24, height: 24)
+                    .frame(width: 28, height: 28)
             }
             .position(object.position)
             .gesture(DragGesture()
@@ -1190,28 +1324,62 @@ struct StickFigure2DEditorView: View {
                 .onEnded { _ in }
             )
             
-            // Corner handle for rotation and scale
-            let handleDistance: CGFloat = 30
+            // Blue dot: Resize the object
+            let resizeHandleDistance: CGFloat = 40
             let angle = object.rotation * .pi / 180
-            let cornerOffset = CGPoint(
-                x: cos(angle) * handleDistance,
-                y: sin(angle) * handleDistance
+            let resizeOffset = CGPoint(
+                x: cos(angle + .pi / 4) * resizeHandleDistance,
+                y: sin(angle + .pi / 4) * resizeHandleDistance
             )
-            let cornerPosition = CGPoint(
-                x: object.position.x + cornerOffset.x,
-                y: object.position.y + cornerOffset.y
+            let resizePosition = CGPoint(
+                x: object.position.x + resizeOffset.x,
+                y: object.position.y + resizeOffset.y
             )
             
             ZStack {
                 Circle()
-                    .fill(selectedObjectId == object.id ? Color.orange : Color.red)
-                    .frame(width: 6, height: 6)
+                    .fill(Color.blue)
+                    .frame(width: 8, height: 8)
                 
                 Circle()
                     .fill(Color.clear)
-                    .frame(width: 20, height: 20)
+                    .frame(width: 24, height: 24)
             }
-            .position(cornerPosition)
+            .position(resizePosition)
+            .gesture(DragGesture()
+                .onChanged { value in
+                    selectedObjectId = object.id
+                    if let index = objects.firstIndex(where: { $0.id == object.id }) {
+                        let dx = value.location.x - objects[index].position.x
+                        let dy = value.location.y - objects[index].position.y
+                        let newScale = sqrt(dx * dx + dy * dy) / resizeHandleDistance
+                        objects[index].scale = max(0.1, newScale)
+                    }
+                }
+                .onEnded { _ in }
+            )
+            
+            // Red dot: Rotate the object
+            let rotateHandleDistance: CGFloat = 40
+            let rotateOffset = CGPoint(
+                x: cos(angle) * rotateHandleDistance,
+                y: sin(angle) * rotateHandleDistance
+            )
+            let rotatePosition = CGPoint(
+                x: object.position.x + rotateOffset.x,
+                y: object.position.y + rotateOffset.y
+            )
+            
+            ZStack {
+                Circle()
+                    .fill(Color.red)
+                    .frame(width: 8, height: 8)
+                
+                Circle()
+                    .fill(Color.clear)
+                    .frame(width: 24, height: 24)
+            }
+            .position(rotatePosition)
             .gesture(DragGesture()
                 .onChanged { value in
                     selectedObjectId = object.id
@@ -1219,9 +1387,7 @@ struct StickFigure2DEditorView: View {
                         let dx = value.location.x - objects[index].position.x
                         let dy = value.location.y - objects[index].position.y
                         let newAngle = atan2(dy, dx) * 180 / .pi
-                        let newScale = sqrt(dx * dx + dy * dy) / handleDistance
                         objects[index].rotation = newAngle
-                        objects[index].scale = max(0.1, newScale)
                     }
                 }
                 .onEnded { _ in }
@@ -1930,6 +2096,26 @@ struct StickFigure2DEditorView: View {
         .sheet(isPresented: $showImagePicker) {
             ImagePickerView(objects: $objects)
         }
+        .sheet(isPresented: $showSaveFrameDialog) {
+            SaveFrameDialog(
+                frameName: $frameName,
+                frameNumber: $frameNumber,
+                onSave: savePose,
+                onCancel: { showSaveFrameDialog = false }
+            )
+        }
+        .sheet(isPresented: $showFramesManager) {
+            FramesManagerView(
+                savedFrames: $savedFrames,
+                onSelectFrame: { frame in
+                    figure = frame.pose.toStickFigure2D()
+                    objects = frame.objects  // Load objects saved with the frame
+                    scrollToCanvas = true
+                    showFramesManager = false
+                },
+                onSave: { } // No-op: animations are loaded from Bundle only
+            )
+        }
     }
     
     var animationControlsView: some View {
@@ -1937,7 +2123,11 @@ struct StickFigure2DEditorView: View {
             Text("Animation").font(.subheadline).fontWeight(.semibold)
             
             HStack(spacing: 12) {
-                Button(action: { showSaveFrameDialog = true }) {
+                Button(action: {
+                    // Smart default: Stand is frameNumber 0, everything else starts at 1
+                    frameNumber = "0"
+                    showSaveFrameDialog = true
+                }) {
                     Label("Save Frame", systemImage: "square.and.arrow.down")
                         .font(.caption)
                 }
@@ -1955,40 +2145,34 @@ struct StickFigure2DEditorView: View {
             .background(Color.gray.opacity(0.1))
             .cornerRadius(8)
         }
-        .sheet(isPresented: $showSaveFrameDialog) {
-            SaveFrameDialog(
-                frameName: $frameName,
-                frameNumber: $frameNumber,
-                onSave: savePose,
-                onCancel: { showSaveFrameDialog = false }
-            )
-        }
-        .sheet(isPresented: $showFramesManager) {
-            FramesManagerView(
-                savedFrames: $savedFrames,
-                onSelectFrame: { frame in
-                    figure = frame.pose.toStickFigure2D()
-                    scrollToCanvas = true
-                    showFramesManager = false
-                },
-                onSave: saveSavedFrames
-            )
-        }
     }
     
     private func savePose() {
         let frameNum = Int(frameNumber) ?? 1
         let name = frameName.trimmingCharacters(in: .whitespaces).isEmpty ? "Frame \(frameNum)" : frameName
-        let frame = AnimationFrame(name: name, frameNumber: frameNum, pose: figure)
         
-        // Add to savedFrames list
+        // Create a rounded copy of the figure for saving (all angles as whole numbers)
+        var roundedFigure = figure
+        roundedFigure.waistTorsoAngle = round(roundedFigure.waistTorsoAngle)
+        roundedFigure.midTorsoAngle = round(roundedFigure.midTorsoAngle)
+        roundedFigure.torsoRotationAngle = round(roundedFigure.torsoRotationAngle)
+        roundedFigure.headAngle = round(roundedFigure.headAngle)
+        roundedFigure.leftShoulderAngle = round(roundedFigure.leftShoulderAngle)
+        roundedFigure.rightShoulderAngle = round(roundedFigure.rightShoulderAngle)
+        roundedFigure.leftElbowAngle = round(roundedFigure.leftElbowAngle)
+        roundedFigure.rightElbowAngle = round(roundedFigure.rightElbowAngle)
+        roundedFigure.leftHandAngle = round(roundedFigure.leftHandAngle)
+        roundedFigure.rightHandAngle = round(roundedFigure.rightHandAngle)
+        roundedFigure.leftKneeAngle = round(roundedFigure.leftKneeAngle)
+        roundedFigure.rightKneeAngle = round(roundedFigure.rightKneeAngle)
+        roundedFigure.leftFootAngle = round(roundedFigure.leftFootAngle)
+        roundedFigure.rightFootAngle = round(roundedFigure.rightFootAngle)
+        
+        // Create frame with current objects
+        let frame = AnimationFrame(name: name, frameNumber: frameNum, pose: roundedFigure, objects: objects)
+        
+        // Add to savedFrames list for display in the editor
         savedFrames.append(frame)
-        saveSavedFrames()
-        
-        // If this is the "Stand" pose, save it as the default
-        if name == "Stand" {
-            saveDefaultStandPose(figure)
-        }
         
         // Reset the dialog
         frameName = ""
@@ -1996,56 +2180,10 @@ struct StickFigure2DEditorView: View {
         showSaveFrameDialog = false
     }
     
-    private func saveSavedFrames() {
-        if let encoded = try? JSONEncoder().encode(savedFrames) {
-            UserDefaults.standard.set(encoded, forKey: "saved_animation_frames")
-        }
-    }
-    
     private func loadSavedFrames() {
-        if let data = UserDefaults.standard.data(forKey: "saved_animation_frames"),
-           let decoded = try? JSONDecoder().decode([AnimationFrame].self, from: data) {
-            savedFrames = decoded
-        }
-        
-        // If no Stand pose exists, create default one
-        if !savedFrames.contains(where: { $0.name == "Stand" }) {
-            let defaultStand = StickFigure2D()
-            let standFrame = AnimationFrame(name: "Stand", frameNumber: 0, pose: defaultStand)
-            savedFrames.insert(standFrame, at: 0)
-            saveSavedFrames()
-            saveDefaultStandPose(defaultStand)
-        }
-    }
-    
-    private func saveDefaultStandPose(_ figure: StickFigure2D) {
-        let pose = StickFigure2DPose(from: figure)
-        if let encoded = try? JSONEncoder().encode(pose) {
-            UserDefaults.standard.set(encoded, forKey: "default_stand_pose_2d")
-        }
-    }
-    
-    private func loadDefaultStandPose() -> StickFigure2D? {
-        if let data = UserDefaults.standard.data(forKey: "default_stand_pose_2d"),
-           let pose = try? JSONDecoder().decode(StickFigure2DPose.self, from: data) {
-            return pose.toStickFigure2D()
-        }
-        return nil
-    }
-    
-    private func loadPose() {
-        if let data = UserDefaults.standard.data(forKey: "last_saved_frame"),
-           let frame = try? JSONDecoder().decode(AnimationFrame.self, from: data) {
-            figure = frame.pose.toStickFigure2D()
-        }
-    }
-    
-    private func saveCurrentFigureState() {
-        // Save the current figure state for persistence
-        let pose = StickFigure2DPose(from: figure)
-        if let encoded = try? JSONEncoder().encode(pose) {
-            UserDefaults.standard.set(encoded, forKey: "last_figure_state_2d")
-        }
+        // Load all animations from Bundle (animations.json)
+        // This is the authoritative source - all animations are read-only
+        savedFrames = AnimationStorage.shared.loadFrames()
     }
     
     private func loadLastFigureState() {
@@ -2067,6 +2205,8 @@ struct StickFigure2DEditorView: View {
         // Reset canvas offset
         canvasOffset = .zero
         lastCanvasOffset = .zero
+        // Clear all objects
+        objects = []
         // Save this as the current state
         saveCurrentFigureState()
     }

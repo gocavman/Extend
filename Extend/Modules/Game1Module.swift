@@ -8,6 +8,30 @@
 
 import SwiftUI
 
+// MARK: - Stick Figure Animation Manager
+
+struct StickFigureAnimationConfig {
+    let animationName: String
+    let frameNumbers: [Int]
+    let baseFrameInterval: TimeInterval
+    
+    // Load frames from UserDefaults
+    func loadFrames() -> [StickFigure2D] {
+        guard let data = UserDefaults.standard.data(forKey: "saved_frames_2d"),
+              let allFrames = try? JSONDecoder().decode([AnimationFrame].self, from: data) else {
+            return []
+        }
+        
+        // Filter frames by animation name and frame numbers
+        return frameNumbers.compactMap { frameNum in
+            if let frame = allFrames.first(where: { $0.name == animationName && $0.frameNumber == frameNum }) {
+                return frame.pose.toStickFigure2D()
+            }
+            return nil
+        }
+    }
+}
+
 // MARK: - Flip Mode for Actions
 
 enum FlipMode {
@@ -30,6 +54,7 @@ struct ActionConfig {
     let supportsSpeedBoost: Bool
     let imagePrefix: String // Prefix for image names (e.g., "curls" or "pushup")
     let allowMovement: Bool // Whether character can move left/right during this action
+    let stickFigureAnimation: StickFigureAnimationConfig? // Use saved frames instead of images
     
     // Helper to get available actions for a level
     static func actionsForLevel(_ level: Int) -> [ActionConfig] {
@@ -70,37 +95,47 @@ struct Door {
 // MARK: - Action Configurations
 
 let ACTION_CONFIGS: [ActionConfig] = [
-    // Level 1: Rest
+    // Level 1: Rest - uses saved frames
     ActionConfig(
         id: "rest",
         displayName: "Rest",
         unlockLevel: 1,
         pointsPerCompletion: 1,
-        animationFrames: [1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2], // 15 frames, ~2s duration for 15s total when repeated
-        baseFrameInterval: 0.1,
-        variableTiming: [2: 0.5], // Last frame (image 2) holds for 5x longer
+        animationFrames: [1], // Will use frame numbers from saved frames
+        baseFrameInterval: 2.0,
+        variableTiming: nil,
         flipMode: .none,
         supportsSpeedBoost: false,
         imagePrefix: "rest",
-        allowMovement: false
+        allowMovement: false,
+        stickFigureAnimation: StickFigureAnimationConfig(
+            animationName: "Rest",
+            frameNumbers: [1],
+            baseFrameInterval: 2.0
+        )
     ),
     
-    // Level 2: Run
+    // Level 2: Run - uses Move frames 1-4
     ActionConfig(
         id: "run",
         displayName: "Run",
         unlockLevel: 2,
         pointsPerCompletion: 2,
-        animationFrames: [1, 2, 3, 4, 3, 2, 1], // Run sequence: 1->2->3->4->3->2->1 then back to stand (guy_stand)
+        animationFrames: [1, 2, 3, 4], // Move frames 1-4
         baseFrameInterval: 0.15,
         variableTiming: nil,
         flipMode: .none,
         supportsSpeedBoost: true,
         imagePrefix: "guy_move",
-        allowMovement: true
+        allowMovement: true,
+        stickFigureAnimation: StickFigureAnimationConfig(
+            animationName: "Move",
+            frameNumbers: [1, 2, 3, 4],
+            baseFrameInterval: 0.15
+        )
     ),
     
-    // Level 3: Jump
+    // Level 3: Jump - will use saved frames when created
     ActionConfig(
         id: "jump",
         displayName: "Jump",
@@ -112,85 +147,115 @@ let ACTION_CONFIGS: [ActionConfig] = [
         flipMode: .none,
         supportsSpeedBoost: true,
         imagePrefix: "guy_jump",
-        allowMovement: false
+        allowMovement: false,
+        stickFigureAnimation: StickFigureAnimationConfig(
+            animationName: "Jump",
+            frameNumbers: [1, 2, 3],
+            baseFrameInterval: 0.1
+        )
     ),
     
-    // Level 4: Jumping Jacks
+    // Level 4: Jumping Jacks - will use saved frames when created
     ActionConfig(
         id: "jumpingjack",
         displayName: "Jumping Jacks",
         unlockLevel: 4,
         pointsPerCompletion: 4,
-        animationFrames: [3, 4, 1, 2, 3, 4, 1, 2, 3, 4, 1, 2, 3, 4, 1, 2, 3, 4, 1, 2, 1],
+        animationFrames: [1, 2, 3, 4],
         baseFrameInterval: 0.27,
         variableTiming: nil,
         flipMode: .none,
         supportsSpeedBoost: true,
         imagePrefix: "jumpingjack",
-        allowMovement: false
+        allowMovement: false,
+        stickFigureAnimation: StickFigureAnimationConfig(
+            animationName: "Jumping Jacks",
+            frameNumbers: [1, 2, 3, 4],
+            baseFrameInterval: 0.27
+        )
     ),
     
-    // Level 5: Yoga
+    // Level 5: Yoga - will use saved frames when created
     ActionConfig(
         id: "yoga",
         displayName: "Yoga",
         unlockLevel: 5,
         pointsPerCompletion: 5,
-        animationFrames: [1, 1, 1, 2, 2, 2, 3, 3, 3, 4, 4, 4, 5, 5, 5, 6, 6, 6, 7, 7, 7, 8, 8, 8],
-        baseFrameInterval: 2.14,
-        variableTiming: [8: 5.0], // Last frame holds for 5 seconds
+        animationFrames: [1, 2, 3, 4],
+        baseFrameInterval: 2.0,
+        variableTiming: nil,
         flipMode: .none,
         supportsSpeedBoost: true,
         imagePrefix: "yoga",
-        allowMovement: false
+        allowMovement: false,
+        stickFigureAnimation: StickFigureAnimationConfig(
+            animationName: "Yoga",
+            frameNumbers: [1, 2, 3, 4],
+            baseFrameInterval: 2.0
+        )
     ),
     
-    // Level 6: Bicep Curls - alternating flip
+    // Level 6: Bicep Curls - will use saved frames when created
     ActionConfig(
         id: "curls",
         displayName: "Bicep Curls",
         unlockLevel: 6,
         pointsPerCompletion: 6,
-        animationFrames: [1,2,3,4,1,2,3,4,1,2,3,4,1,2,3,4,1,2,3,4,1],
+        animationFrames: [1, 2, 3, 4],
         baseFrameInterval: 0.4,
         variableTiming: nil,
         flipMode: .alternating,
         supportsSpeedBoost: true,
         imagePrefix: "curls",
-        allowMovement: true
+        allowMovement: true,
+        stickFigureAnimation: StickFigureAnimationConfig(
+            animationName: "Bicep Curls",
+            frameNumbers: [1, 2, 3, 4],
+            baseFrameInterval: 0.4
+        )
     ),
     
-    // Level 7: Kettlebell - random flip
+    // Level 7: Kettlebell - will use saved frames when created
     ActionConfig(
         id: "kettlebell",
         displayName: "Kettlebell Swings",
         unlockLevel: 7,
         pointsPerCompletion: 7,
-        animationFrames: [1, 2, 3, 4, 5, 6, 7, 8, 7, 6, 7, 8, 7, 6, 7, 8, 7, 6, 7, 8, 7, 6, 7, 8, 7, 6, 5, 4, 3, 2, 1],
+        animationFrames: [1, 2, 3, 4],
         baseFrameInterval: 0.27,
-        variableTiming: [1: 0.35, 2: 0.25, 3: 0.20, 4: 0.18, 5: 0.18, 6: 0.20, 7: 0.22, 8: 0.25],
+        variableTiming: nil,
         flipMode: .random,
         supportsSpeedBoost: true,
         imagePrefix: "kb",
-        allowMovement: true
+        allowMovement: true,
+        stickFigureAnimation: StickFigureAnimationConfig(
+            animationName: "Kettlebell Swings",
+            frameNumbers: [1, 2, 3, 4],
+            baseFrameInterval: 0.27
+        )
     ),
     
-    // Level 8: Push Ups - random flip
+    // Level 8: Push Ups - will use saved frames when created
     ActionConfig(
         id: "pushup",
         displayName: "Push Ups",
         unlockLevel: 8,
         pointsPerCompletion: 8,
-        animationFrames: [1, 2, 3, 4, 3, 4, 3, 4, 3, 4, 3, 4, 3, 4, 3, 4, 3, 4, 3, 4, 3, 4, 3, 2, 1],
+        animationFrames: [1, 2, 3, 4],
         baseFrameInterval: 0.4,
-        variableTiming: [1: 0.1, 2: 0.1],
+        variableTiming: nil,
         flipMode: .random,
         supportsSpeedBoost: true,
         imagePrefix: "pushup",
-        allowMovement: true
+        allowMovement: true,
+        stickFigureAnimation: StickFigureAnimationConfig(
+            animationName: "Push Ups",
+            frameNumbers: [1, 2, 3, 4],
+            baseFrameInterval: 0.4
+        )
     ),
     
-    // Level 9: Pull Ups
+    // Level 9: Pull Ups (keeping legacy image-based for now)
     ActionConfig(
         id: "pullup",
         displayName: "Pull Ups",
@@ -202,10 +267,11 @@ let ACTION_CONFIGS: [ActionConfig] = [
         flipMode: .none,
         supportsSpeedBoost: true,
         imagePrefix: "pullup",
-        allowMovement: true
+        allowMovement: true,
+        stickFigureAnimation: nil
     ),
     
-    // Level 10: Meditation
+    // Level 10: Meditation (keeping legacy image-based for now)
     ActionConfig(
         id: "meditation",
         displayName: "Meditation",
@@ -213,11 +279,12 @@ let ACTION_CONFIGS: [ActionConfig] = [
         pointsPerCompletion: 10,
         animationFrames: [1, 1, 1, 1, 1, 2, 3, 3, 3, 3, 3, 1, 1, 1, 1, 1],
         baseFrameInterval: 0.2,
-        variableTiming: [1: 5.0], // Last frames hold for 5 seconds
+        variableTiming: [1: 5.0],
         flipMode: .none,
         supportsSpeedBoost: false,
         imagePrefix: "meditate",
-        allowMovement: false
+        allowMovement: false,
+        stickFigureAnimation: nil
     )
 ]
 
@@ -396,6 +463,11 @@ class StickFigureGameState {
     var lastActionFlip: [String: Bool] = [:]
     var actionTimer: Timer?
     var currentStickFigure: StickFigure2D?  // For rendering custom stick figure animations
+    
+    // Stick figure animation frames
+    var standFrame: StickFigure2D?  // Stand frame
+    var moveFrames: [StickFigure2D] = []  // Move frames 1-4
+    var actionStickFigureFrames: [StickFigure2D] = []  // Current action's stick figure frames
 
     // Idle / wave
     var isWaving: Bool = false
@@ -630,6 +702,36 @@ class StickFigureGameState {
         }
         
         highScore = UserDefaults.standard.integer(forKey: highScoreKey)
+    }
+    
+    func loadStickFigureFrames() {
+        // Load from file-based storage
+        let allFrames = AnimationStorage.shared.loadFrames()
+        
+        print("DEBUG: Found \(allFrames.count) total saved frames")
+        allFrames.forEach { frame in
+            print("DEBUG: Frame - Name: '\(frame.name)', Number: \(frame.frameNumber)")
+        }
+        
+        // Load Stand frame (frameNumber 0 - as originally saved)
+        if let standFrameData = allFrames.first(where: { $0.name == "Stand" && $0.frameNumber == 0 }) {
+            standFrame = standFrameData.pose.toStickFigure2D()
+            print("DEBUG: ✓ Loaded Stand frame (frameNumber 0)")
+        } else {
+            print("DEBUG: ✗ Stand frame 0 not found")
+        }
+        
+        // Load Move frames 1-4
+        moveFrames = (1...4).compactMap { frameNum in
+            if let frame = allFrames.first(where: { $0.name == "Move" && $0.frameNumber == frameNum }) {
+                print("DEBUG: ✓ Loaded Move frame \(frameNum)")
+                return frame.pose.toStickFigure2D()
+            } else {
+                print("DEBUG: ✗ Move frame \(frameNum) not found")
+                return nil
+            }
+        }
+        print("DEBUG: Loaded \(moveFrames.count) Move frames total")
     }
 
     func saveHighScore() {
@@ -1147,9 +1249,16 @@ class StickFigureGameState {
         gameState.currentPerformingAction = config.id
         gameState.actionFrame = config.animationFrames.first ?? 1
         
-        // Load stick figure poses if this is a stick figure action (like Run)
-        if config.id == "run" {
-            loadStickFigureFrames(forAnimation: "Run", gameState: gameState)
+        // Load stick figure frames if this action has a stick figure animation
+        if let sfConfig = config.stickFigureAnimation {
+            gameState.actionStickFigureFrames = sfConfig.loadFrames()
+            // Set the first frame as current
+            if let firstFrame = gameState.actionStickFigureFrames.first {
+                gameState.currentStickFigure = firstFrame
+            }
+        } else {
+            gameState.actionStickFigureFrames = []
+            gameState.currentStickFigure = nil
         }
         
         // Handle flip based on flipMode
@@ -1245,9 +1354,9 @@ class StickFigureGameState {
             if frameIndex < config.animationFrames.count {
                 gameState.actionFrame = config.animationFrames[frameIndex]
                 
-                // Load stick figure frame for Run animation
-                if config.id == "run" {
-                    self.loadStickFigureFrame(frameNumber: gameState.actionFrame, forAnimation: "Run", gameState: gameState)
+                // Update stick figure frame if we have loaded frames
+                if !gameState.actionStickFigureFrames.isEmpty && frameIndex < gameState.actionStickFigureFrames.count {
+                    gameState.currentStickFigure = gameState.actionStickFigureFrames[frameIndex]
                 }
                 
                 // Detect pullup reps: increment when transitioning to frame 3 (start of pullup motion)
@@ -1271,6 +1380,7 @@ class StickFigureGameState {
                 gameState.currentPerformingAction = nil
                 gameState.actionFrame = 0
                 gameState.actionFlip = false
+                gameState.currentStickFigure = nil
                 
                 let duration = Date().timeIntervalSince1970 * 1000 - startTime
                 gameState.recordActionTime(action: config.id, duration: duration)
@@ -1301,6 +1411,7 @@ class StickFigureGameState {
                 gameState.currentPerformingAction = nil
                 gameState.actionFrame = 0
                 gameState.actionFlip = false
+                gameState.currentStickFigure = nil
                 
                 let duration = Date().timeIntervalSince1970 * 1000 - startTime
                 gameState.recordActionTime(action: config.id, duration: duration)
@@ -1313,6 +1424,11 @@ class StickFigureGameState {
             
             let currentFrame = config.animationFrames[frameIndex]
             gameState.actionFrame = currentFrame
+            
+            // Update stick figure frame if we have loaded frames
+            if !gameState.actionStickFigureFrames.isEmpty && frameIndex < gameState.actionStickFigureFrames.count {
+                gameState.currentStickFigure = gameState.actionStickFigureFrames[frameIndex]
+            }
             
             // Detect pullup reps: increment when transitioning to frame 3 (start of pullup motion)
             if config.id == "pullup" && gameState.actionFrame == 3 && gameState.lastActionFrame != 3 {
@@ -1348,31 +1464,6 @@ class StickFigureGameState {
         }
         
         scheduleNextFrame()
-    }
-    
-    private func loadStickFigureFrames(forAnimation animationName: String, gameState: StickFigureGameState) {
-        // Load saved animation frames from UserDefaults
-        if let data = UserDefaults.standard.data(forKey: "saved_animation_frames"),
-           let savedFrames = try? JSONDecoder().decode([AnimationFrame].self, from: data) {
-            // Find all frames matching this animation name and sort by frame number
-            let animationFrames = savedFrames.filter { $0.name == animationName }
-                .sorted { $0.frameNumber < $1.frameNumber }
-            
-            // Load the first frame immediately
-            if let firstFrame = animationFrames.first {
-                gameState.currentStickFigure = firstFrame.pose.toStickFigure2D()
-            }
-        }
-    }
-    
-    private func loadStickFigureFrame(frameNumber: Int, forAnimation animationName: String, gameState: StickFigureGameState) {
-        // Load a specific frame by number from saved animation frames
-        if let data = UserDefaults.standard.data(forKey: "saved_animation_frames"),
-           let savedFrames = try? JSONDecoder().decode([AnimationFrame].self, from: data) {
-            if let frame = savedFrames.first(where: { $0.name == animationName && $0.frameNumber == frameNumber }) {
-                gameState.currentStickFigure = frame.pose.toStickFigure2D()
-            }
-        }
     }
 }
 
@@ -3032,9 +3123,9 @@ private struct GamePlayArea: View {
 
                     // Generic action rendering
                     if let actionId = gameState.currentPerformingAction,
-                       let config = ACTION_CONFIGS.first(where: { $0.id == actionId }) {
-                        // Use stick figure for Run action
-                        if config.id == "run", let stickFigure = gameState.currentStickFigure {
+                       let _ = ACTION_CONFIGS.first(where: { $0.id == actionId }) {
+                        // Use stick figure if available
+                        if let stickFigure = gameState.currentStickFigure {
                             StickFigure2DView(figure: stickFigure, canvasSize: CGSize(width: 100, height: 150))
                                 .frame(width: 100, height: 150)
                                 .scaleEffect(x: gameState.actionFlip ? -1 : 1, y: 1)
@@ -3043,60 +3134,119 @@ private struct GamePlayArea: View {
                                     // Ignore extra taps during animation
                                 }
                         } else {
-                            // Use image for other actions
-                            Image("\(config.imagePrefix)\(gameState.actionFrame)")
-                                .resizable()
-                                .scaledToFit()
+                            // No frame found - show placeholder
+                            Text("?")
+                                .font(.system(size: 60))
+                                .foregroundColor(.gray)
                                 .frame(width: 100, height: 150)
-                                .scaleEffect(x: gameState.actionFlip ? -1 : 1, y: 1)
                                 .position(x: figureX, y: figureY)
                                 .onTapGesture {
                                     // Ignore extra taps during animation
                                 }
                         }
                     } else if gameState.isPerformingShaker {
-                        Image("shaker\(gameState.shakerFrame)")
-                            .resizable()
-                            .scaledToFit()
+                        // Shaker animation - placeholder
+                        Text("?")
+                            .font(.system(size: 60))
+                            .foregroundColor(.gray)
                             .frame(width: 100, height: 150)
-                            .scaleEffect(x: gameState.shakerFlip ? -1 : 1, y: 1)
                             .position(x: figureX, y: figureY)
                             .onTapGesture {
                                 // Ignore extra taps during animation
                             }
                     } else if gameState.isWaving {
-                        Image("guy_wave\(gameState.waveFrame)")
-                            .resizable()
-                            .scaledToFit()
+                        // Wave animation - placeholder
+                        Text("?")
+                            .font(.system(size: 60))
+                            .foregroundColor(.gray)
                             .frame(width: 100, height: 150)
-                            .scaleEffect(x: gameState.shouldFlipWave ? -1 : 1, y: 1)
                             .position(x: figureX, y: figureY)
                     } else if gameState.isJumping {
-                        Image("guy_jump\(max(1, gameState.jumpFrame))")
-                            .resizable()
-                            .scaledToFit()
+                        // Jump animation - placeholder
+                        Text("?")
+                            .font(.system(size: 60))
+                            .foregroundColor(.gray)
                             .frame(width: 100, height: 150)
-                            .scaleEffect(x: gameState.facingRight ? 1 : -1, y: 1)
                             .position(x: figureX, y: figureY)
                     } else {
-                        Image(gameState.animationFrame == 0 ? getStandImage() : "guy_move\(gameState.animationFrame)")
-                            .resizable()
-                            .scaledToFit()
-                            .frame(width: 100, height: 150)
-                            .scaleEffect(x: gameState.facingRight ? 1 : -1, y: 1)
-                            .position(x: figureX, y: figureY)
-                            .onTapGesture {
-                                // Handle action taps dynamically
-                                if gameState.selectedAction == "Jump" {
-                                    if !gameState.isJumping && gameState.animationFrame == 0 {
-                                        gameState.startJump(gameState: gameState, geometry: geometry)
+                        // Standing or Moving - use stick figure frames
+                        if gameState.animationFrame == 0 {
+                            // Standing - use Stand frame
+                            if let standFrame = gameState.standFrame {
+                                StickFigure2DView(figure: standFrame, canvasSize: CGSize(width: 100, height: 150))
+                                    .frame(width: 100, height: 150)
+                                    .scaleEffect(x: gameState.facingRight ? 1 : -1, y: 1)
+                                    .position(x: figureX, y: figureY)
+                                    .onTapGesture {
+                                        // Handle action taps dynamically
+                                        if gameState.selectedAction == "Jump" {
+                                            if !gameState.isJumping {
+                                                gameState.startJump(gameState: gameState, geometry: geometry)
+                                            }
+                                        } else if let config = ACTION_CONFIGS.first(where: { $0.displayName == gameState.selectedAction }) {
+                                            if gameState.currentPerformingAction == nil && !gameState.isJumping {
+                                                startActionAction(config, gameState)
+                                            }
+                                        }
                                     }
-                                } else if let config = ACTION_CONFIGS.first(where: { $0.displayName == gameState.selectedAction }) {
-                                    if gameState.currentPerformingAction == nil && !gameState.isJumping {
-                                        startActionAction(config, gameState)
+                            } else {
+                                // No Stand frame - show placeholder
+                                Text("?")
+                                    .font(.system(size: 60))
+                                    .foregroundColor(.gray)
+                                    .frame(width: 100, height: 150)
+                                    .position(x: figureX, y: figureY)
+                                    .onTapGesture {
+                                        if gameState.selectedAction == "Jump" {
+                                            if !gameState.isJumping {
+                                                gameState.startJump(gameState: gameState, geometry: geometry)
+                                            }
+                                        } else if let config = ACTION_CONFIGS.first(where: { $0.displayName == gameState.selectedAction }) {
+                                            if gameState.currentPerformingAction == nil && !gameState.isJumping {
+                                                startActionAction(config, gameState)
+                                            }
+                                        }
                                     }
-                                }
                             }
+                        } else {
+                            // Moving - use Move frames
+                            let moveIndex = gameState.animationFrame - 1
+                            if moveIndex >= 0 && moveIndex < gameState.moveFrames.count {
+                                StickFigure2DView(figure: gameState.moveFrames[moveIndex], canvasSize: CGSize(width: 100, height: 150))
+                                    .frame(width: 100, height: 150)
+                                    .scaleEffect(x: gameState.facingRight ? 1 : -1, y: 1)
+                                    .position(x: figureX, y: figureY)
+                                    .onTapGesture {
+                                        if gameState.selectedAction == "Jump" {
+                                            if !gameState.isJumping {
+                                                gameState.startJump(gameState: gameState, geometry: geometry)
+                                            }
+                                        } else if let config = ACTION_CONFIGS.first(where: { $0.displayName == gameState.selectedAction }) {
+                                            if gameState.currentPerformingAction == nil && !gameState.isJumping {
+                                                startActionAction(config, gameState)
+                                            }
+                                        }
+                                    }
+                            } else {
+                                // No Move frame - show placeholder
+                                Text("?")
+                                    .font(.system(size: 60))
+                                    .foregroundColor(.gray)
+                                    .frame(width: 100, height: 150)
+                                    .position(x: figureX, y: figureY)
+                                    .onTapGesture {
+                                        if gameState.selectedAction == "Jump" {
+                                            if !gameState.isJumping {
+                                                gameState.startJump(gameState: gameState, geometry: geometry)
+                                            }
+                                        } else if let config = ACTION_CONFIGS.first(where: { $0.displayName == gameState.selectedAction }) {
+                                            if gameState.currentPerformingAction == nil && !gameState.isJumping {
+                                                startActionAction(config, gameState)
+                                            }
+                                        }
+                                    }
+                            }
+                        }
                     }
                 }
 
@@ -3193,6 +3343,9 @@ private struct GamePlayArea: View {
                 }
             }
             .onAppear {
+                // Load stick figure frames from 2D editor
+                gameState.loadStickFigureFrames()
+                
                 collisionTimer = Timer.scheduledTimer(withTimeInterval: 0.016, repeats: true) { [weak gameState] _ in
                     guard let gameState = gameState else { return }
                     
