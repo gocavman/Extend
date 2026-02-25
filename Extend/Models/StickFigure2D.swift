@@ -458,6 +458,7 @@ struct StickFigure2D {
 struct StickFigure2DView: View {
     let figure: StickFigure2D
     let canvasSize: CGSize
+    var showJoints: Bool = false  // Default to not showing joints (for gameplay)
     let jointRadius: CGFloat = 5
     let jointColor: Color = .blue
     
@@ -539,14 +540,16 @@ struct StickFigure2DView: View {
         context.fill(headCircle, with: .color(figure.headColor))
         context.stroke(headCircle, with: .color(figure.headColor.opacity(0.8)), lineWidth: figure.strokeThickness)
         
-        // Draw joints
-        drawJoint(at: waistPos, in: context)
-        drawJoint(at: midTorsoPos, in: context)
-        drawJoint(at: neckPos, in: context)
-        drawJoint(at: leftUpperArmEnd, in: context)
-        drawJoint(at: rightUpperArmEnd, in: context)
-        drawJoint(at: leftUpperLegEnd, in: context)
-        drawJoint(at: rightUpperLegEnd, in: context)
+        // Draw joints only if showJoints is enabled (for editor mode)
+        if showJoints {
+            drawJoint(at: waistPos, in: context)
+            drawJoint(at: midTorsoPos, in: context)
+            drawJoint(at: neckPos, in: context)
+            drawJoint(at: leftUpperArmEnd, in: context)
+            drawJoint(at: rightUpperArmEnd, in: context)
+            drawJoint(at: leftUpperLegEnd, in: context)
+            drawJoint(at: rightUpperLegEnd, in: context)
+        }
     }
     
     private func drawSegment(from: CGPoint, to: CGPoint, color: Color, in context: GraphicsContext) {
@@ -577,7 +580,7 @@ struct ImagePickerView: View {
     
     let availableImages = [
         // Useful assets only
-        "leaf", "Apple", "Dumbbell", "Kettlebell"
+        "Apple", "Dumbbell", "Kettlebell"
     ]
     
     var body: some View {
@@ -1216,7 +1219,7 @@ struct StickFigure2DEditorView: View {
             RoundedRectangle(cornerRadius: 12)
                 .fill(Color(red: 0.95, green: 0.95, blue: 0.98))
             
-            StickFigure2DView(figure: figure, canvasSize: canvasSize)
+            StickFigure2DView(figure: figure, canvasSize: canvasSize, showJoints: true)
             
             // Render animation objects
             ForEach(objects) { object in
@@ -2376,7 +2379,7 @@ struct StickFigure2DEditorInlineView: View {
                 RoundedRectangle(cornerRadius: 12)
                     .fill(Color(red: 0.95, green: 0.95, blue: 0.98))
                 
-                StickFigure2DView(figure: figure, canvasSize: canvasSize)
+                StickFigure2DView(figure: figure, canvasSize: canvasSize, showJoints: true)
                 
                 // Draggable joint handles
                 Group {

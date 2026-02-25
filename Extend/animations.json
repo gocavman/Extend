@@ -1,37 +1,37 @@
 [
   {
-    "name" : "Stand",
-    "frameNumber" : 0,
     "pose" : {
       "leftHandAngle" : -45,
       "rightFootAngle" : 0,
+      "leftLegColor" : "#000000",
       "rightKneeAngle" : 170,
       "leftShoulderAngle" : -133,
-      "waistTorsoAngle" : 0,
-      "headAngle" : 0,
-      "rightElbowAngle" : 37,
-      "rightShoulderAngle" : 133,
-      "leftElbowAngle" : -37,
+      "headColor" : "#000000",
       "midTorsoAngle" : 0,
       "torsoColor" : "#000000",
-      "leftArmColor" : "#000000",
-      "leftLegColor" : "#000000",
-      "leftKneeAngle" : -170,
-      "headColor" : "#000000",
-      "rightLegColor" : "#000000",
-      "handColor" : "#000000",
-      "footColor" : "#000000",
-      "rightArmColor" : "#000000",
-      "strokeThickness" : 8,
-      "scale" : 2.4,
+      "strokeThickness" : 3,
       "headRadiusMultiplier" : 1,
+      "scale" : 2.4,
+      "leftElbowAngle" : -37,
+      "headAngle" : 0,
+      "footColor" : "#000000",
       "rightHandAngle" : -45,
-      "leftFootAngle" : 0
+      "leftFootAngle" : 0,
+      "handColor" : "#000000",
+      "leftKneeAngle" : -170,
+      "rightArmColor" : "#000000",
+      "waistTorsoAngle" : 0,
+      "rightLegColor" : "#000000",
+      "rightShoulderAngle" : 133,
+      "rightElbowAngle" : 37,
+      "leftArmColor" : "#000000"
     },
     "objects" : [
 
     ],
     "createdAt" : 793669529.468777,
-    "id" : "0C8F1C62-2EE7-4BA4-896E-AE5E3946C44B"
+    "id" : "0C8F1C62-2EE7-4BA4-896E-AE5E3946C44B",
+    "frameNumber" : 0,
+    "name" : "Stand"
   }
 ]

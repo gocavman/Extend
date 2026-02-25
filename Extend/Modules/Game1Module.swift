@@ -15,12 +15,9 @@ struct StickFigureAnimationConfig {
     let frameNumbers: [Int]
     let baseFrameInterval: TimeInterval
     
-    // Load frames from UserDefaults
+    // Load frames from Bundle (animations.json)
     func loadFrames() -> [StickFigure2D] {
-        guard let data = UserDefaults.standard.data(forKey: "saved_frames_2d"),
-              let allFrames = try? JSONDecoder().decode([AnimationFrame].self, from: data) else {
-            return []
-        }
+        let allFrames = AnimationStorage.shared.loadFrames()
         
         // Filter frames by animation name and frame numbers
         return frameNumbers.compactMap { frameNum in
@@ -3126,8 +3123,8 @@ private struct GamePlayArea: View {
                        let _ = ACTION_CONFIGS.first(where: { $0.id == actionId }) {
                         // Use stick figure if available
                         if let stickFigure = gameState.currentStickFigure {
-                            StickFigure2DView(figure: stickFigure, canvasSize: CGSize(width: 100, height: 150))
-                                .frame(width: 100, height: 150)
+                            StickFigure2DView(figure: stickFigure, canvasSize: CGSize(width: 150, height: 225))
+                                .frame(width: 150, height: 225)
                                 .scaleEffect(x: gameState.actionFlip ? -1 : 1, y: 1)
                                 .position(x: figureX, y: figureY)
                                 .onTapGesture {
@@ -3173,8 +3170,8 @@ private struct GamePlayArea: View {
                         if gameState.animationFrame == 0 {
                             // Standing - use Stand frame
                             if let standFrame = gameState.standFrame {
-                                StickFigure2DView(figure: standFrame, canvasSize: CGSize(width: 100, height: 150))
-                                    .frame(width: 100, height: 150)
+                                StickFigure2DView(figure: standFrame, canvasSize: CGSize(width: 150, height: 225))
+                                    .frame(width: 150, height: 225)
                                     .scaleEffect(x: gameState.facingRight ? 1 : -1, y: 1)
                                     .position(x: figureX, y: figureY)
                                     .onTapGesture {
@@ -3212,8 +3209,8 @@ private struct GamePlayArea: View {
                             // Moving - use Move frames
                             let moveIndex = gameState.animationFrame - 1
                             if moveIndex >= 0 && moveIndex < gameState.moveFrames.count {
-                                StickFigure2DView(figure: gameState.moveFrames[moveIndex], canvasSize: CGSize(width: 100, height: 150))
-                                    .frame(width: 100, height: 150)
+                                StickFigure2DView(figure: gameState.moveFrames[moveIndex], canvasSize: CGSize(width: 150, height: 225))
+                                    .frame(width: 150, height: 225)
                                     .scaleEffect(x: gameState.facingRight ? 1 : -1, y: 1)
                                     .position(x: figureX, y: figureY)
                                     .onTapGesture {
