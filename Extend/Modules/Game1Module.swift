@@ -748,6 +748,8 @@ class StickFigureGameState {
                 timer.invalidate()
                 self.isWaving = false
                 self.waveFrame = 1
+                // Restart the idle timer so the wave can play again
+                self.resetIdleTimer()
             }
         }
     }
@@ -3288,12 +3290,30 @@ private struct GamePlayArea: View {
                                 }
                         }
                     } else if gameState.isWaving {
-                        // Wave animation - placeholder
-                        Text("?")
-                            .font(.system(size: 60))
-                            .foregroundColor(.gray)
-                            .frame(width: 100, height: 150)
-                            .position(x: figureX, y: figureY)
+                        // Wave animation - load from animations.json
+                        if gameState.waveFrame >= 1 && gameState.waveFrame <= 2 {
+                            let allFrames = AnimationStorage.shared.loadFrames()
+                            if let waveFrameData = allFrames.first(where: { $0.name == "Wave" && $0.frameNumber == gameState.waveFrame }) {
+                                let waveFigure = waveFrameData.pose.toStickFigure2D()
+                                StickFigure2DView(figure: waveFigure, canvasSize: CGSize(width: 150, height: 225))
+                                    .frame(width: 150, height: 225)
+                                    .scaleEffect(x: gameState.shouldFlipWave ? -1 : 1, y: 1)
+                                    .position(x: figureX, y: figureY)
+                            } else {
+                                // Fallback if frames not found
+                                Text("?")
+                                    .font(.system(size: 60))
+                                    .foregroundColor(.gray)
+                                    .frame(width: 100, height: 150)
+                                    .position(x: figureX, y: figureY)
+                            }
+                        } else {
+                            Text("?")
+                                .font(.system(size: 60))
+                                .foregroundColor(.gray)
+                                .frame(width: 100, height: 150)
+                                .position(x: figureX, y: figureY)
+                        }
                     } else if gameState.isJumping {
                         // Jump animation - placeholder
                         Text("?")

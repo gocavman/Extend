@@ -173,19 +173,19 @@ struct StickFigure2DPose: Codable {
         var container = encoder.container(keyedBy: CodingKeys.self)
         try container.encode(waistPosition.x, forKey: .waistPositionX)
         try container.encode(waistPosition.y, forKey: .waistPositionY)
-        try container.encode(waistTorsoAngle, forKey: .waistTorsoAngle)
-        try container.encode(midTorsoAngle, forKey: .midTorsoAngle)
-        try container.encode(headAngle, forKey: .headAngle)
-        try container.encode(leftShoulderAngle, forKey: .leftShoulderAngle)
-        try container.encode(rightShoulderAngle, forKey: .rightShoulderAngle)
-        try container.encode(leftElbowAngle, forKey: .leftElbowAngle)
-        try container.encode(rightElbowAngle, forKey: .rightElbowAngle)
-        try container.encode(leftHandAngle, forKey: .leftHandAngle)
-        try container.encode(rightHandAngle, forKey: .rightHandAngle)
-        try container.encode(leftKneeAngle, forKey: .leftKneeAngle)
-        try container.encode(rightKneeAngle, forKey: .rightKneeAngle)
-        try container.encode(leftFootAngle, forKey: .leftFootAngle)
-        try container.encode(rightFootAngle, forKey: .rightFootAngle)
+        try container.encode(waistTorsoAngle.rounded(), forKey: .waistTorsoAngle)
+        try container.encode(midTorsoAngle.rounded(), forKey: .midTorsoAngle)
+        try container.encode(headAngle.rounded(), forKey: .headAngle)
+        try container.encode(leftShoulderAngle.rounded(), forKey: .leftShoulderAngle)
+        try container.encode(rightShoulderAngle.rounded(), forKey: .rightShoulderAngle)
+        try container.encode(leftElbowAngle.rounded(), forKey: .leftElbowAngle)
+        try container.encode(rightElbowAngle.rounded(), forKey: .rightElbowAngle)
+        try container.encode(leftHandAngle.rounded(), forKey: .leftHandAngle)
+        try container.encode(rightHandAngle.rounded(), forKey: .rightHandAngle)
+        try container.encode(leftKneeAngle.rounded(), forKey: .leftKneeAngle)
+        try container.encode(rightKneeAngle.rounded(), forKey: .rightKneeAngle)
+        try container.encode(leftFootAngle.rounded(), forKey: .leftFootAngle)
+        try container.encode(rightFootAngle.rounded(), forKey: .rightFootAngle)
         try container.encode(headColor, forKey: .headColor)
         try container.encode(torsoColor, forKey: .torsoColor)
         try container.encode(leftArmColor, forKey: .leftArmColor)
@@ -784,6 +784,18 @@ struct FramesManagerView: View {
     @State private var showDeleteConfirmation = false
     @State private var isEditMode = false
     @State private var persistedFrames: Set<UUID> = [] // Track which frames are persisted
+    @State private var searchText = "" // New: search functionality
+    
+    // Computed property to filter frames based on search text
+    private var filteredFrames: [AnimationFrame] {
+        if searchText.isEmpty {
+            return savedFrames
+        }
+        return savedFrames.filter { frame in
+            frame.name.lowercased().contains(searchText.lowercased()) ||
+            String(frame.frameNumber).contains(searchText)
+        }
+    }
     
     // MARK: - Persistence Functions
     
@@ -798,7 +810,27 @@ struct FramesManagerView: View {
     
     var body: some View {
         NavigationView {
-            VStack {
+            VStack(spacing: 0) {
+                // Search bar at the top
+                HStack(spacing: 12) {
+                    Image(systemName: "magnifyingglass")
+                        .foregroundColor(.gray)
+                    
+                    TextField("Search frames...", text: $searchText)
+                        .textFieldStyle(.roundedBorder)
+                    
+                    // Clear button (X)
+                    if !searchText.isEmpty {
+                        Button(action: { searchText = "" }) {
+                            Image(systemName: "xmark.circle.fill")
+                                .foregroundColor(.gray)
+                        }
+                    }
+                }
+                .padding()
+                .background(Color(.systemBackground))
+                
+                // Frames list
                 if savedFrames.isEmpty {
                     VStack(spacing: 16) {
                         Image(systemName: "film.stack")
@@ -812,9 +844,22 @@ struct FramesManagerView: View {
                             .foregroundColor(.gray)
                     }
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
+                } else if filteredFrames.isEmpty {
+                    VStack(spacing: 16) {
+                        Image(systemName: "magnifyingglass")
+                            .font(.system(size: 48))
+                            .foregroundColor(.gray)
+                        Text("No frames found")
+                            .font(.headline)
+                            .foregroundColor(.gray)
+                        Text("Try a different search term")
+                            .font(.caption)
+                            .foregroundColor(.gray)
+                    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
                 } else {
                     List {
-                        ForEach(savedFrames) { frame in
+                        ForEach(filteredFrames) { frame in
                             if editingFrameId == frame.id {
                                 // Edit mode for this frame
                                 VStack(spacing: 8) {

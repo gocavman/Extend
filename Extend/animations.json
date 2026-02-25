@@ -445,5 +445,79 @@
       "waistPositionY" : 298.963963963964,
       "waistTorsoAngle" : 0
     }
+  },
+  {
+    "createdAt" : 793755121.732234,
+    "frameNumber" : 1,
+    "id" : "5E48FD66-2434-49CC-BAA6-AEA893CE2445",
+    "name" : "Wave",
+    "objects" : [
+
+    ],
+    "pose" : {
+      "footColor" : "#000000",
+      "handColor" : "#000000",
+      "headAngle" : 0,
+      "headColor" : "#000000",
+      "headRadiusMultiplier" : 1,
+      "leftArmColor" : "#000000",
+      "leftElbowAngle" : -37,
+      "leftFootAngle" : 0,
+      "leftHandAngle" : -45,
+      "leftKneeAngle" : -170,
+      "leftLegColor" : "#000000",
+      "leftShoulderAngle" : -133,
+      "midTorsoAngle" : 0,
+      "rightArmColor" : "#000000",
+      "rightElbowAngle" : -81.56307939914467,
+      "rightFootAngle" : 0,
+      "rightHandAngle" : 45,
+      "rightKneeAngle" : 170,
+      "rightLegColor" : "#000000",
+      "rightShoulderAngle" : 133,
+      "scale" : 2.4,
+      "strokeThickness" : 3,
+      "torsoColor" : "#000000",
+      "waistPositionX" : 300,
+      "waistPositionY" : 360,
+      "waistTorsoAngle" : 0
+    }
+  },
+  {
+    "createdAt" : 793755133.546082,
+    "frameNumber" : 2,
+    "id" : "CC17EC67-2ED4-4D75-ABB4-A5F5E2019C48",
+    "name" : "Wave",
+    "objects" : [
+
+    ],
+    "pose" : {
+      "footColor" : "#000000",
+      "handColor" : "#000000",
+      "headAngle" : 0,
+      "headColor" : "#000000",
+      "headRadiusMultiplier" : 1,
+      "leftArmColor" : "#000000",
+      "leftElbowAngle" : -37,
+      "leftFootAngle" : 0,
+      "leftHandAngle" : -45,
+      "leftKneeAngle" : -170,
+      "leftLegColor" : "#000000",
+      "leftShoulderAngle" : -133,
+      "midTorsoAngle" : 0,
+      "rightArmColor" : "#000000",
+      "rightElbowAngle" : -136.5447664555948,
+      "rightFootAngle" : 0,
+      "rightHandAngle" : 45,
+      "rightKneeAngle" : 170,
+      "rightLegColor" : "#000000",
+      "rightShoulderAngle" : 133,
+      "scale" : 2.4,
+      "strokeThickness" : 3,
+      "torsoColor" : "#000000",
+      "waistPositionX" : 300,
+      "waistPositionY" : 360,
+      "waistTorsoAngle" : 0
+    }
   }
 ]
