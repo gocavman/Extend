@@ -3200,23 +3200,32 @@ private struct GamePlayArea: View {
                                 Group {
                                     if frameObjects.count > 0 {
                                         let object = frameObjects[0]
-                                        if let uiImage = UIImage(named: object.imageName) {
-                                            // Apply the same coordinate transformation as the stick figure
-                                            let baseCanvasSize = CGSize(width: 600, height: 720)
-                                            let baseCenter = CGPoint(x: baseCanvasSize.width / 2, y: baseCanvasSize.height / 2)
-                                            let canvasCenter = CGPoint(x: gameCanvasSize.width / 2, y: gameCanvasSize.height / 2)
-                                            let canvasScale = gameCanvasSize.width / baseCanvasSize.width
-                                            
-                                            // Transform object position: same formula as stick figure
-                                            let dx = object.position.x - baseCenter.x
-                                            let dy = object.position.y - baseCenter.y
-                                            let gamePosX = canvasCenter.x + dx * canvasScale * shakerFigure.scale
-                                            let gamePosY = canvasCenter.y + dy * canvasScale * shakerFigure.scale
-                                            
-                                            // Scale object size by the same factors
-                                            let objWidth = 50 * object.scale * canvasScale * shakerFigure.scale
-                                            let objHeight = 50 * object.scale * canvasScale * shakerFigure.scale
-                                            
+                                        
+                                        // Apply the same coordinate transformation as the stick figure
+                                        let baseCanvasSize = CGSize(width: 600, height: 720)
+                                        let baseCenter = CGPoint(x: baseCanvasSize.width / 2, y: baseCanvasSize.height / 2)
+                                        let canvasCenter = CGPoint(x: gameCanvasSize.width / 2, y: gameCanvasSize.height / 2)
+                                        let canvasScale = gameCanvasSize.width / baseCanvasSize.width
+                                        
+                                        // Transform object position: same formula as stick figure
+                                        let dx = object.position.x - baseCenter.x
+                                        let dy = object.position.y - baseCenter.y
+                                        let gamePosX = canvasCenter.x + dx * canvasScale * shakerFigure.scale
+                                        let gamePosY = canvasCenter.y + dy * canvasScale * shakerFigure.scale
+                                        
+                                        // Scale object size by the same factors
+                                        let objWidth = 50 * object.scale * canvasScale * shakerFigure.scale
+                                        let objHeight = 50 * object.scale * canvasScale * shakerFigure.scale
+                                        
+                                        if object.imageName == "line" {
+                                            // Render line object
+                                            Line()
+                                                .stroke(Color.black, lineWidth: (2 + (object.scale * 3)) * canvasScale * shakerFigure.scale)
+                                                .frame(width: objWidth, height: max(1, (2 + (object.scale * 3)) * canvasScale * shakerFigure.scale))
+                                                .rotationEffect(.degrees(object.rotation))
+                                                .position(x: gamePosX, y: gamePosY)
+                                        } else if let uiImage = UIImage(named: object.imageName) {
+                                            // Render image object
                                             Image(uiImage: uiImage)
                                                 .resizable()
                                                 .aspectRatio(contentMode: .fit)
@@ -3227,23 +3236,32 @@ private struct GamePlayArea: View {
                                     }
                                     if frameObjects.count > 1 {
                                         let object = frameObjects[1]
-                                        if let uiImage = UIImage(named: object.imageName) {
-                                            // Apply the same coordinate transformation as the stick figure
-                                            let baseCanvasSize = CGSize(width: 600, height: 720)
-                                            let baseCenter = CGPoint(x: baseCanvasSize.width / 2, y: baseCanvasSize.height / 2)
-                                            let canvasCenter = CGPoint(x: gameCanvasSize.width / 2, y: gameCanvasSize.height / 2)
-                                            let canvasScale = gameCanvasSize.width / baseCanvasSize.width
-                                            
-                                            // Transform object position: same formula as stick figure
-                                            let dx = object.position.x - baseCenter.x
-                                            let dy = object.position.y - baseCenter.y
-                                            let gamePosX = canvasCenter.x + dx * canvasScale * shakerFigure.scale
-                                            let gamePosY = canvasCenter.y + dy * canvasScale * shakerFigure.scale
-                                            
-                                            // Scale object size by the same factors
-                                            let objWidth = 50 * object.scale * canvasScale * shakerFigure.scale
-                                            let objHeight = 50 * object.scale * canvasScale * shakerFigure.scale
-                                            
+                                        
+                                        // Apply the same coordinate transformation as the stick figure
+                                        let baseCanvasSize = CGSize(width: 600, height: 720)
+                                        let baseCenter = CGPoint(x: baseCanvasSize.width / 2, y: baseCanvasSize.height / 2)
+                                        let canvasCenter = CGPoint(x: gameCanvasSize.width / 2, y: gameCanvasSize.height / 2)
+                                        let canvasScale = gameCanvasSize.width / baseCanvasSize.width
+                                        
+                                        // Transform object position: same formula as stick figure
+                                        let dx = object.position.x - baseCenter.x
+                                        let dy = object.position.y - baseCenter.y
+                                        let gamePosX = canvasCenter.x + dx * canvasScale * shakerFigure.scale
+                                        let gamePosY = canvasCenter.y + dy * canvasScale * shakerFigure.scale
+                                        
+                                        // Scale object size by the same factors
+                                        let objWidth = 50 * object.scale * canvasScale * shakerFigure.scale
+                                        let objHeight = 50 * object.scale * canvasScale * shakerFigure.scale
+                                        
+                                        if object.imageName == "line" {
+                                            // Render line object
+                                            Line()
+                                                .stroke(Color.black, lineWidth: (2 + (object.scale * 3)) * canvasScale * shakerFigure.scale)
+                                                .frame(width: objWidth, height: max(1, (2 + (object.scale * 3)) * canvasScale * shakerFigure.scale))
+                                                .rotationEffect(.degrees(object.rotation))
+                                                .position(x: gamePosX, y: gamePosY)
+                                        } else if let uiImage = UIImage(named: object.imageName) {
+                                            // Render image object
                                             Image(uiImage: uiImage)
                                                 .resizable()
                                                 .aspectRatio(contentMode: .fit)

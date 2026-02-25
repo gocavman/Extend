@@ -261,5 +261,189 @@
       "torsoColor" : "#000000",
       "waistTorsoAngle" : 0
     }
+  },
+  {
+    "createdAt" : 793739112.991199,
+    "frameNumber" : 1,
+    "id" : "F83B98F8-9EB0-4BC8-8A45-9B6A413D6D5A",
+    "name" : "Pull up",
+    "objects" : [
+      {
+        "id" : "97F21B27-8403-401A-AA43-D03680C2E72D",
+        "imageName" : "line",
+        "position" : [
+          299.09909909909913,
+          249.4144144144144
+        ],
+        "rotation" : 0,
+        "scale" : 3.363631477944949
+      }
+    ],
+    "pose" : {
+      "footColor" : "#000000",
+      "handColor" : "#000000",
+      "headAngle" : 0,
+      "headColor" : "#000000",
+      "headRadiusMultiplier" : 1,
+      "leftArmColor" : "#000000",
+      "leftElbowAngle" : -37,
+      "leftFootAngle" : 0,
+      "leftHandAngle" : -45,
+      "leftKneeAngle" : -170,
+      "leftLegColor" : "#000000",
+      "leftShoulderAngle" : -133,
+      "midTorsoAngle" : 0,
+      "rightArmColor" : "#000000",
+      "rightElbowAngle" : 37,
+      "rightFootAngle" : 0,
+      "rightHandAngle" : 45,
+      "rightKneeAngle" : 170,
+      "rightLegColor" : "#000000",
+      "rightShoulderAngle" : 133,
+      "scale" : 2.4,
+      "strokeThickness" : 3,
+      "torsoColor" : "#000000",
+      "waistPositionX" : 300,
+      "waistPositionY" : 360,
+      "waistTorsoAngle" : 0
+    }
+  },
+  {
+    "createdAt" : 793739219.770291,
+    "frameNumber" : 2,
+    "id" : "27ADDB95-969A-444A-813F-F2D80B91CE39",
+    "name" : "Pull up",
+    "objects" : [
+      {
+        "id" : "97F21B27-8403-401A-AA43-D03680C2E72D",
+        "imageName" : "line",
+        "position" : [
+          299.09909909909913,
+          249.4144144144144
+        ],
+        "rotation" : 0,
+        "scale" : 3.363631477944949
+      }
+    ],
+    "pose" : {
+      "footColor" : "#000000",
+      "handColor" : "#000000",
+      "headAngle" : 0,
+      "headColor" : "#000000",
+      "headRadiusMultiplier" : 1,
+      "leftArmColor" : "#000000",
+      "leftElbowAngle" : 63,
+      "leftFootAngle" : 0,
+      "leftHandAngle" : -45,
+      "leftKneeAngle" : -170,
+      "leftLegColor" : "#000000",
+      "leftShoulderAngle" : -112.05643352703936,
+      "midTorsoAngle" : 0,
+      "rightArmColor" : "#000000",
+      "rightElbowAngle" : -63,
+      "rightFootAngle" : 0,
+      "rightHandAngle" : 45,
+      "rightKneeAngle" : 170,
+      "rightLegColor" : "#000000",
+      "rightShoulderAngle" : 112.56505117707789,
+      "scale" : 2.4,
+      "strokeThickness" : 3,
+      "torsoColor" : "#000000",
+      "waistPositionX" : 300,
+      "waistPositionY" : 360,
+      "waistTorsoAngle" : 0
+    }
+  },
+  {
+    "createdAt" : 793739274.169766,
+    "frameNumber" : 3,
+    "id" : "C3906C7B-9603-47C5-BC17-4C46055F363F",
+    "name" : "Pull up",
+    "objects" : [
+      {
+        "id" : "97F21B27-8403-401A-AA43-D03680C2E72D",
+        "imageName" : "line",
+        "position" : [
+          299.09909909909913,
+          249.4144144144144
+        ],
+        "rotation" : 0,
+        "scale" : 3.363631477944949
+      }
+    ],
+    "pose" : {
+      "footColor" : "#000000",
+      "handColor" : "#000000",
+      "headAngle" : 0,
+      "headColor" : "#000000",
+      "headRadiusMultiplier" : 1,
+      "leftArmColor" : "#000000",
+      "leftElbowAngle" : 63,
+      "leftFootAngle" : 0,
+      "leftHandAngle" : -45,
+      "leftKneeAngle" : -170,
+      "leftLegColor" : "#000000",
+      "leftShoulderAngle" : -421.4195067431816,
+      "midTorsoAngle" : 0,
+      "rightArmColor" : "#000000",
+      "rightElbowAngle" : -63,
+      "rightFootAngle" : 0,
+      "rightHandAngle" : 45,
+      "rightKneeAngle" : 170,
+      "rightLegColor" : "#000000",
+      "rightShoulderAngle" : 61.99590929724036,
+      "scale" : 2.4,
+      "strokeThickness" : 3,
+      "torsoColor" : "#000000",
+      "waistPositionX" : 299.3243243243243,
+      "waistPositionY" : 337.47747747747746,
+      "waistTorsoAngle" : 0
+    }
+  },
+  {
+    "createdAt" : 793739365.133849,
+    "frameNumber" : 4,
+    "id" : "CDA24501-C768-42FC-AB30-8A6650C26EC3",
+    "name" : "Pull up",
+    "objects" : [
+      {
+        "id" : "97F21B27-8403-401A-AA43-D03680C2E72D",
+        "imageName" : "line",
+        "position" : [
+          299.09909909909913,
+          249.4144144144144
+        ],
+        "rotation" : 0,
+        "scale" : 3.363631477944949
+      }
+    ],
+    "pose" : {
+      "footColor" : "#000000",
+      "handColor" : "#000000",
+      "headAngle" : 0,
+      "headColor" : "#000000",
+      "headRadiusMultiplier" : 1,
+      "leftArmColor" : "#000000",
+      "leftElbowAngle" : 128,
+      "leftFootAngle" : 0,
+      "leftHandAngle" : -45,
+      "leftKneeAngle" : -170,
+      "leftLegColor" : "#000000",
+      "leftShoulderAngle" : -155.849311411825,
+      "midTorsoAngle" : 0,
+      "rightArmColor" : "#000000",
+      "rightElbowAngle" : -128.27893024006187,
+      "rightFootAngle" : 0,
+      "rightHandAngle" : 45,
+      "rightKneeAngle" : 170,
+      "rightLegColor" : "#000000",
+      "rightShoulderAngle" : -204.17144420979315,
+      "scale" : 2.4,
+      "strokeThickness" : 3,
+      "torsoColor" : "#000000",
+      "waistPositionX" : 299.09909909909913,
+      "waistPositionY" : 298.963963963964,
+      "waistTorsoAngle" : 0
+    }
   }
 ]

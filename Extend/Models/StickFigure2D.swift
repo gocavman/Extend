@@ -4,7 +4,7 @@ import PhotosUI
 
 // MARK: - Saveable Animation Frame
 
-struct AnimationFrame: Codable, Identifiable {
+struct AnimationFrame: Codable, Identifiable, Equatable {
     let id: UUID
     let name: String
     let frameNumber: Int
@@ -45,11 +45,16 @@ struct AnimationFrame: Codable, Identifiable {
         objects = try container.decodeIfPresent([AnimationObject].self, forKey: .objects) ?? []
         createdAt = try container.decode(Date.self, forKey: .createdAt)
     }
+    
+    // Equatable conformance
+    static func == (lhs: AnimationFrame, rhs: AnimationFrame) -> Bool {
+        lhs.id == rhs.id && lhs.name == rhs.name && lhs.frameNumber == rhs.frameNumber
+    }
 }
 
 // MARK: - Animation Objects
 
-struct AnimationObject: Codable, Identifiable {
+struct AnimationObject: Codable, Identifiable, Equatable {
     let id: UUID
     var imageName: String
     var position: CGPoint
@@ -66,6 +71,7 @@ struct AnimationObject: Codable, Identifiable {
 }
 
 struct StickFigure2DPose: Codable {
+    let waistPosition: CGPoint  // Add waist position
     let waistTorsoAngle: Double
     let midTorsoAngle: Double
     let headAngle: Double
@@ -92,6 +98,7 @@ struct StickFigure2DPose: Codable {
     let headRadiusMultiplier: Double
     
     init(from figure: StickFigure2D) {
+        self.waistPosition = figure.waistPosition  // Save waist position
         self.waistTorsoAngle = figure.waistTorsoAngle
         self.midTorsoAngle = figure.midTorsoAngle
         self.headAngle = figure.headAngle
@@ -120,6 +127,7 @@ struct StickFigure2DPose: Codable {
     
     func toStickFigure2D() -> StickFigure2D {
         var figure = StickFigure2D()
+        figure.waistPosition = waistPosition  // Restore waist position
         figure.waistTorsoAngle = waistTorsoAngle
         figure.midTorsoAngle = midTorsoAngle
         figure.headAngle = headAngle
@@ -145,6 +153,82 @@ struct StickFigure2DPose: Codable {
         figure.scale = scale
         figure.headRadiusMultiplier = headRadiusMultiplier
         return figure
+    }
+    
+    // Custom Codable to handle CGPoint
+    enum CodingKeys: String, CodingKey {
+        case waistPositionX, waistPositionY
+        case waistTorsoAngle, midTorsoAngle, headAngle
+        case leftShoulderAngle, rightShoulderAngle
+        case leftElbowAngle, rightElbowAngle
+        case leftHandAngle, rightHandAngle
+        case leftKneeAngle, rightKneeAngle
+        case leftFootAngle, rightFootAngle
+        case headColor, torsoColor, leftArmColor, rightArmColor
+        case leftLegColor, rightLegColor, handColor, footColor
+        case strokeThickness, scale, headRadiusMultiplier
+    }
+    
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(waistPosition.x, forKey: .waistPositionX)
+        try container.encode(waistPosition.y, forKey: .waistPositionY)
+        try container.encode(waistTorsoAngle, forKey: .waistTorsoAngle)
+        try container.encode(midTorsoAngle, forKey: .midTorsoAngle)
+        try container.encode(headAngle, forKey: .headAngle)
+        try container.encode(leftShoulderAngle, forKey: .leftShoulderAngle)
+        try container.encode(rightShoulderAngle, forKey: .rightShoulderAngle)
+        try container.encode(leftElbowAngle, forKey: .leftElbowAngle)
+        try container.encode(rightElbowAngle, forKey: .rightElbowAngle)
+        try container.encode(leftHandAngle, forKey: .leftHandAngle)
+        try container.encode(rightHandAngle, forKey: .rightHandAngle)
+        try container.encode(leftKneeAngle, forKey: .leftKneeAngle)
+        try container.encode(rightKneeAngle, forKey: .rightKneeAngle)
+        try container.encode(leftFootAngle, forKey: .leftFootAngle)
+        try container.encode(rightFootAngle, forKey: .rightFootAngle)
+        try container.encode(headColor, forKey: .headColor)
+        try container.encode(torsoColor, forKey: .torsoColor)
+        try container.encode(leftArmColor, forKey: .leftArmColor)
+        try container.encode(rightArmColor, forKey: .rightArmColor)
+        try container.encode(leftLegColor, forKey: .leftLegColor)
+        try container.encode(rightLegColor, forKey: .rightLegColor)
+        try container.encode(handColor, forKey: .handColor)
+        try container.encode(footColor, forKey: .footColor)
+        try container.encode(strokeThickness, forKey: .strokeThickness)
+        try container.encode(scale, forKey: .scale)
+        try container.encode(headRadiusMultiplier, forKey: .headRadiusMultiplier)
+    }
+    
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        // Waist position is optional - if not present, default to center
+        let x = try container.decodeIfPresent(CGFloat.self, forKey: .waistPositionX) ?? 300
+        let y = try container.decodeIfPresent(CGFloat.self, forKey: .waistPositionY) ?? 360
+        self.waistPosition = CGPoint(x: x, y: y)
+        self.waistTorsoAngle = try container.decode(Double.self, forKey: .waistTorsoAngle)
+        self.midTorsoAngle = try container.decode(Double.self, forKey: .midTorsoAngle)
+        self.headAngle = try container.decode(Double.self, forKey: .headAngle)
+        self.leftShoulderAngle = try container.decode(Double.self, forKey: .leftShoulderAngle)
+        self.rightShoulderAngle = try container.decode(Double.self, forKey: .rightShoulderAngle)
+        self.leftElbowAngle = try container.decode(Double.self, forKey: .leftElbowAngle)
+        self.rightElbowAngle = try container.decode(Double.self, forKey: .rightElbowAngle)
+        self.leftHandAngle = try container.decode(Double.self, forKey: .leftHandAngle)
+        self.rightHandAngle = try container.decode(Double.self, forKey: .rightHandAngle)
+        self.leftKneeAngle = try container.decode(Double.self, forKey: .leftKneeAngle)
+        self.rightKneeAngle = try container.decode(Double.self, forKey: .rightKneeAngle)
+        self.leftFootAngle = try container.decode(Double.self, forKey: .leftFootAngle)
+        self.rightFootAngle = try container.decode(Double.self, forKey: .rightFootAngle)
+        self.headColor = try container.decode(String.self, forKey: .headColor)
+        self.torsoColor = try container.decode(String.self, forKey: .torsoColor)
+        self.leftArmColor = try container.decode(String.self, forKey: .leftArmColor)
+        self.rightArmColor = try container.decode(String.self, forKey: .rightArmColor)
+        self.leftLegColor = try container.decode(String.self, forKey: .leftLegColor)
+        self.rightLegColor = try container.decode(String.self, forKey: .rightLegColor)
+        self.handColor = try container.decode(String.self, forKey: .handColor)
+        self.footColor = try container.decode(String.self, forKey: .footColor)
+        self.strokeThickness = try container.decode(CGFloat.self, forKey: .strokeThickness)
+        self.scale = try container.decode(Double.self, forKey: .scale)
+        self.headRadiusMultiplier = try container.decode(Double.self, forKey: .headRadiusMultiplier)
     }
 }
 
@@ -575,8 +659,6 @@ struct StickFigure2DView: View {
 struct ImagePickerView: View {
     @Environment(\.dismiss) var dismiss
     @Binding var objects: [AnimationObject]
-    @State private var selectedTab = 0
-    @State private var selectedPhoto: PhotosPickerItem?
     
     let availableImages = [
         // Useful assets only
@@ -586,81 +668,27 @@ struct ImagePickerView: View {
     var body: some View {
         NavigationView {
             VStack {
-                Picker("Source", selection: $selectedTab) {
-                    Text("Built-in").tag(0)
-                    Text("Photos").tag(1) //these would be stored in local storage only and won't persist
-                }
-                .pickerStyle(.segmented)
-                .padding()
-                
-                if selectedTab == 0 {
-                    // Built-in images
-                    ScrollView {
-                        LazyVGrid(columns: [GridItem(.adaptive(minimum: 80))], spacing: 16) {
-                            ForEach(availableImages, id: \.self) { imageName in
-                                VStack {
-                                    if let uiImage = UIImage(named: imageName) {
-                                        Image(uiImage: uiImage)
-                                            .resizable()
-                                            .aspectRatio(contentMode: .fit)
-                                            .frame(height: 60)
-                                    } else {
-                                        RoundedRectangle(cornerRadius: 8)
-                                            .fill(Color.gray.opacity(0.3))
-                                            .frame(height: 60)
-                                            .overlay(
-                                                Text("?").font(.caption)
-                                            )
-                                    }
-                                    
-                                    Button(action: {
-                                        let newObject = AnimationObject(
-                                            imageName: imageName,
-                                            position: CGPoint(x: 300, y: 360),
-                                            rotation: 0,
-                                            scale: 1.0
+                // Built-in objects only (removed Photos tab)
+                ScrollView {
+                    LazyVGrid(columns: [GridItem(.adaptive(minimum: 80))], spacing: 16) {
+                        // Image objects
+                        ForEach(availableImages, id: \.self) { imageName in
+                            VStack {
+                                if let uiImage = UIImage(named: imageName) {
+                                    Image(uiImage: uiImage)
+                                        .resizable()
+                                        .aspectRatio(contentMode: .fit)
+                                        .frame(height: 60)
+                                } else {
+                                    RoundedRectangle(cornerRadius: 8)
+                                        .fill(Color.gray.opacity(0.3))
+                                        .frame(height: 60)
+                                        .overlay(
+                                            Text("?").font(.caption)
                                         )
-                                        objects.append(newObject)
-                                        dismiss()
-                                    }) {
-                                        Text("Add")
-                                            .font(.caption)
-                                            .foregroundColor(.blue)
-                                    }
                                 }
-                                .padding(8)
-                                .background(Color.gray.opacity(0.1))
-                                .cornerRadius(8)
-                            }
-                        }
-                        .padding()
-                    }
-                } else {
-                    // Photo library picker
-                    VStack {
-                        PhotosPicker(selection: $selectedPhoto, matching: .images) {
-                            VStack(spacing: 16) {
-                                Image(systemName: "photo.on.rectangle.angled")
-                                    .font(.system(size: 48))
-                                    .foregroundColor(.blue)
-                                Text("Select Photo from Library")
-                                    .font(.headline)
-                                Text("Choose an image to add to your animation")
-                                    .font(.caption)
-                                    .foregroundColor(.gray)
-                                    .multilineTextAlignment(.center)
-                            }
-                            .padding(40)
-                            .frame(maxWidth: .infinity, maxHeight: .infinity)
-                        }
-                        .onChange(of: selectedPhoto) { oldValue, newValue in
-                            Task {
-                                if let data = try? await newValue?.loadTransferable(type: Data.self),
-                                   let _ = UIImage(data: data) {
-                                    // Save image to app documents and create object
-                                    let imageName = "custom_\(UUID().uuidString)"
-                                    // TODO: In a real implementation, save the image to documents and use the name
-                                    // For now, we'll just use the built-in system
+                                
+                                Button(action: {
                                     let newObject = AnimationObject(
                                         imageName: imageName,
                                         position: CGPoint(x: 300, y: 360),
@@ -669,13 +697,55 @@ struct ImagePickerView: View {
                                     )
                                     objects.append(newObject)
                                     dismiss()
+                                }) {
+                                    Text("Add")
+                                        .font(.caption)
+                                        .foregroundColor(.blue)
                                 }
                             }
+                            .padding(8)
+                            .background(Color.gray.opacity(0.1))
+                            .cornerRadius(8)
                         }
+                        
+                        // Line object
+                        VStack {
+                            VStack(spacing: 4) {
+                                Line()
+                                    .stroke(Color.black, lineWidth: 2)
+                                    .frame(height: 40)
+                                    .padding(10)
+                                Circle()
+                                    .fill(Color.blue)
+                                    .frame(width: 8, height: 8)
+                                Text("Thickness")
+                                    .font(.caption2)
+                            }
+                            .frame(height: 60)
+                            
+                            Button(action: {
+                                let newObject = AnimationObject(
+                                    imageName: "line",
+                                    position: CGPoint(x: 300, y: 480),
+                                    rotation: 0,
+                                    scale: 1.0
+                                )
+                                objects.append(newObject)
+                                dismiss()
+                            }) {
+                                Text("Add")
+                                    .font(.caption)
+                                    .foregroundColor(.blue)
+                            }
+                        }
+                        .padding(8)
+                        .background(Color.gray.opacity(0.1))
+                        .cornerRadius(8)
                     }
+                    .padding()
                 }
             }
-            .navigationTitle("Add Image")
+            .navigationTitle("Add Object")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
@@ -685,6 +755,17 @@ struct ImagePickerView: View {
                 }
             }
         }
+    }
+}
+
+// MARK: - Line Shape
+
+struct Line: Shape {
+    func path(in rect: CGRect) -> Path {
+        var path = Path()
+        path.move(to: CGPoint(x: rect.minX, y: rect.midY))
+        path.addLine(to: CGPoint(x: rect.maxX, y: rect.midY))
+        return path
     }
 }
 
@@ -1032,6 +1113,11 @@ struct StickFigure2DEditorView: View {
         return wrapAngle(last + delta * alpha)
     }
     
+    // Helper to adjust and wrap an angle by a delta
+    private func adjustAngle(_ currentAngle: Double, by delta: Double) -> Double {
+        wrapAngle(currentAngle + delta)
+    }
+    
     var body: some View {
         baseView
             .onAppear {
@@ -1065,6 +1151,10 @@ struct StickFigure2DEditorView: View {
                 }
             }
             .onChange(of: figure.strokeThickness) { saveCurrentFigureState() }
+            .onChange(of: savedFrames) { oldValue, newValue in
+                // Persist frames whenever they change
+                persistFramesToStorage()
+            }
     }
     
     var contentWithLegOnChanges: some View {
@@ -1186,7 +1276,15 @@ struct StickFigure2DEditorView: View {
             
             // Render animation objects
             ForEach(objects) { object in
-                if let uiImage = UIImage(named: object.imageName) {
+                if object.imageName == "line" {
+                    // Render line object
+                    Line()
+                        .stroke(Color.black, lineWidth: 2 + (object.scale * 3))
+                        .frame(width: 50 * object.scale, height: 2 + (object.scale * 3))
+                        .rotationEffect(.degrees(object.rotation))
+                        .position(baseToCanvasPosition(object.position))
+                } else if let uiImage = UIImage(named: object.imageName) {
+                    // Render image object
                     Image(uiImage: uiImage)
                         .resizable()
                         .aspectRatio(contentMode: .fit)
@@ -1686,131 +1784,131 @@ struct StickFigure2DEditorView: View {
                     
                     HStack {
                         Text("Waist Rotation:")
-                        Button(action: { figure.waistTorsoAngle = max(-180, figure.waistTorsoAngle - 1) }) {
+                        Button(action: { figure.waistTorsoAngle = adjustAngle(figure.waistTorsoAngle, by: -1) }) {
                             Image(systemName: "minus.circle")
                         }
                         Slider(value: $figure.waistTorsoAngle, in: -180...180, step: 1)
-                        Button(action: { figure.waistTorsoAngle = min(180, figure.waistTorsoAngle + 1) }) {
+                        Button(action: { figure.waistTorsoAngle = adjustAngle(figure.waistTorsoAngle, by: 1) }) {
                             Image(systemName: "plus.circle")
                         }
-                        Text("\(Int(figure.waistTorsoAngle))°")
+                        Text("\(Int(wrapAngle(figure.waistTorsoAngle)))°")
                             .frame(width: 40)
                     }
                     
                     HStack {
                         Text("Left Shoulder:")
-                        Button(action: { figure.leftShoulderAngle = max(-180, figure.leftShoulderAngle - 1) }) {
+                        Button(action: { figure.leftShoulderAngle = adjustAngle(figure.leftShoulderAngle, by: -1) }) {
                             Image(systemName: "minus.circle")
                         }
                         Slider(value: $figure.leftShoulderAngle, in: -180...180, step: 1)
-                        Button(action: { figure.leftShoulderAngle = min(180, figure.leftShoulderAngle + 1) }) {
+                        Button(action: { figure.leftShoulderAngle = adjustAngle(figure.leftShoulderAngle, by: 1) }) {
                             Image(systemName: "plus.circle")
                         }
-                        Text("\(Int(figure.leftShoulderAngle))°")
+                        Text("\(Int(wrapAngle(figure.leftShoulderAngle)))°")
                             .frame(width: 40)
                     }
                     
                     HStack {
                         Text("Right Shoulder:")
-                        Button(action: { figure.rightShoulderAngle = max(-180, figure.rightShoulderAngle - 1) }) {
+                        Button(action: { figure.rightShoulderAngle = adjustAngle(figure.rightShoulderAngle, by: -1) }) {
                             Image(systemName: "minus.circle")
                         }
                         Slider(value: $figure.rightShoulderAngle, in: -180...180, step: 1)
-                        Button(action: { figure.rightShoulderAngle = min(180, figure.rightShoulderAngle + 1) }) {
+                        Button(action: { figure.rightShoulderAngle = adjustAngle(figure.rightShoulderAngle, by: 1) }) {
                             Image(systemName: "plus.circle")
                         }
-                        Text("\(Int(figure.rightShoulderAngle))°")
+                        Text("\(Int(wrapAngle(figure.rightShoulderAngle)))°")
                             .frame(width: 40)
                     }
                     
                     HStack {
                         Text("Left Elbow:")
-                        Button(action: { figure.leftElbowAngle = max(-180, figure.leftElbowAngle - 1) }) {
+                        Button(action: { figure.leftElbowAngle = adjustAngle(figure.leftElbowAngle, by: -1) }) {
                             Image(systemName: "minus.circle")
                         }
                         Slider(value: $figure.leftElbowAngle, in: -180...180, step: 1)
-                        Button(action: { figure.leftElbowAngle = min(180, figure.leftElbowAngle + 1) }) {
+                        Button(action: { figure.leftElbowAngle = adjustAngle(figure.leftElbowAngle, by: 1) }) {
                             Image(systemName: "plus.circle")
                         }
-                        Text("\(Int(figure.leftElbowAngle))°")
+                        Text("\(Int(wrapAngle(figure.leftElbowAngle)))°")
                             .frame(width: 40)
                     }
                     
                     HStack {
                         Text("Right Elbow:")
-                        Button(action: { figure.rightElbowAngle = max(-180, figure.rightElbowAngle - 1) }) {
+                        Button(action: { figure.rightElbowAngle = adjustAngle(figure.rightElbowAngle, by: -1) }) {
                             Image(systemName: "minus.circle")
                         }
                         Slider(value: $figure.rightElbowAngle, in: -180...180, step: 1)
-                        Button(action: { figure.rightElbowAngle = min(180, figure.rightElbowAngle + 1) }) {
+                        Button(action: { figure.rightElbowAngle = adjustAngle(figure.rightElbowAngle, by: 1) }) {
                             Image(systemName: "plus.circle")
                         }
-                        Text("\(Int(figure.rightElbowAngle))°")
+                        Text("\(Int(wrapAngle(figure.rightElbowAngle)))°")
                             .frame(width: 40)
                     }
                     
                     HStack {
                         Text("Left Knee:")
-                        Button(action: { figure.leftKneeAngle = max(-180, figure.leftKneeAngle - 1) }) {
+                        Button(action: { figure.leftKneeAngle = adjustAngle(figure.leftKneeAngle, by: -1) }) {
                             Image(systemName: "minus.circle")
                         }
                         Slider(value: $figure.leftKneeAngle, in: -180...180, step: 1)
-                        Button(action: { figure.leftKneeAngle = min(180, figure.leftKneeAngle + 1) }) {
+                        Button(action: { figure.leftKneeAngle = adjustAngle(figure.leftKneeAngle, by: 1) }) {
                             Image(systemName: "plus.circle")
                         }
-                        Text("\(Int(figure.leftKneeAngle))°")
+                        Text("\(Int(wrapAngle(figure.leftKneeAngle)))°")
                             .frame(width: 40)
                     }
                     
                     HStack {
                         Text("Right Knee:")
-                        Button(action: { figure.rightKneeAngle = max(-180, figure.rightKneeAngle - 1) }) {
+                        Button(action: { figure.rightKneeAngle = adjustAngle(figure.rightKneeAngle, by: -1) }) {
                             Image(systemName: "minus.circle")
                         }
                         Slider(value: $figure.rightKneeAngle, in: -180...180, step: 1)
-                        Button(action: { figure.rightKneeAngle = min(180, figure.rightKneeAngle + 1) }) {
+                        Button(action: { figure.rightKneeAngle = adjustAngle(figure.rightKneeAngle, by: 1) }) {
                             Image(systemName: "plus.circle")
                         }
-                        Text("\(Int(figure.rightKneeAngle))°")
+                        Text("\(Int(wrapAngle(figure.rightKneeAngle)))°")
                             .frame(width: 40)
                     }
                     
                     HStack {
                         Text("Left Foot:")
-                        Button(action: { figure.leftFootAngle = max(-180, figure.leftFootAngle - 1) }) {
+                        Button(action: { figure.leftFootAngle = adjustAngle(figure.leftFootAngle, by: -1) }) {
                             Image(systemName: "minus.circle")
                         }
                         Slider(value: $figure.leftFootAngle, in: -180...180, step: 1)
-                        Button(action: { figure.leftFootAngle = min(180, figure.leftFootAngle + 1) }) {
+                        Button(action: { figure.leftFootAngle = adjustAngle(figure.leftFootAngle, by: 1) }) {
                             Image(systemName: "plus.circle")
                         }
-                        Text("\(Int(figure.leftFootAngle))°")
+                        Text("\(Int(wrapAngle(figure.leftFootAngle)))°")
                             .frame(width: 40)
                     }
                     
                     HStack {
                         Text("Right Foot:")
-                        Button(action: { figure.rightFootAngle = max(-180, figure.rightFootAngle - 1) }) {
+                        Button(action: { figure.rightFootAngle = adjustAngle(figure.rightFootAngle, by: -1) }) {
                             Image(systemName: "minus.circle")
                         }
                         Slider(value: $figure.rightFootAngle, in: -180...180, step: 1)
-                        Button(action: { figure.rightFootAngle = min(180, figure.rightFootAngle + 1) }) {
+                        Button(action: { figure.rightFootAngle = adjustAngle(figure.rightFootAngle, by: 1) }) {
                             Image(systemName: "plus.circle")
                         }
-                        Text("\(Int(figure.rightFootAngle))°")
+                        Text("\(Int(wrapAngle(figure.rightFootAngle)))°")
                             .frame(width: 40)
                     }
                     
                     HStack {
                         Text("Head:")
-                        Button(action: { figure.headAngle = max(-180, figure.headAngle - 1) }) {
+                        Button(action: { figure.headAngle = adjustAngle(figure.headAngle, by: -1) }) {
                             Image(systemName: "minus.circle")
                         }
                         Slider(value: $figure.headAngle, in: -180...180, step: 1)
-                        Button(action: { figure.headAngle = min(180, figure.headAngle + 1) }) {
+                        Button(action: { figure.headAngle = adjustAngle(figure.headAngle, by: 1) }) {
                             Image(systemName: "plus.circle")
                         }
-                        Text("\(Int(figure.headAngle))°")
+                        Text("\(Int(wrapAngle(figure.headAngle)))°")
                             .frame(width: 40)
                     }
                     
@@ -2171,16 +2269,44 @@ struct StickFigure2DEditorView: View {
         
         savedFrames.append(frame)
         
+        // Persist frames to UserDefaults
+        persistFramesToStorage()
+        
         // Reset the dialog
         frameName = ""
         frameNumber = "1"
         showSaveFrameDialog = false
     }
     
+    private func persistFramesToStorage() {
+        // Save all frames to UserDefaults so they persist between app restarts
+        let encoder = JSONEncoder()
+        if let data = try? encoder.encode(savedFrames) {
+            UserDefaults.standard.set(data, forKey: "saved_animation_frames_2d")
+            print("✓ Saved \(savedFrames.count) frames to UserDefaults")
+        } else {
+            print("✗ Error saving frames to UserDefaults")
+        }
+    }
+    
     private func loadSavedFrames() {
-        // Load all animations from Bundle (animations.json)
-        // This is the authoritative source - all animations are read-only
+        // First load from Bundle (animations.json)
         savedFrames = AnimationStorage.shared.loadFrames()
+        
+        // Then load any user-created frames from UserDefaults
+        if let data = UserDefaults.standard.data(forKey: "saved_animation_frames_2d") {
+            let decoder = JSONDecoder()
+            if let userFrames = try? decoder.decode([AnimationFrame].self, from: data) {
+                print("✓ Loaded \(userFrames.count) user-created frames from UserDefaults")
+                // Append user frames to bundle frames (avoiding duplicates by ID)
+                let bundleIds = Set(savedFrames.map { $0.id })
+                for userFrame in userFrames {
+                    if !bundleIds.contains(userFrame.id) {
+                        savedFrames.append(userFrame)
+                    }
+                }
+            }
+        }
     }
     
     private func loadLastFigureState() {
@@ -2613,70 +2739,70 @@ struct StickFigure2DEditorInlineView: View {
                     HStack {
                         Text("Waist Rotation:")
                         Slider(value: $figure.waistTorsoAngle, in: -180...180, step: 1)
-                        Text("\(Int(figure.waistTorsoAngle))°")
+                        Text("\(Int(wrapAngle(figure.waistTorsoAngle)))°")
                             .frame(width: 40)
                     }
                     
                     HStack {
                         Text("Left Shoulder:")
                         Slider(value: $figure.leftShoulderAngle, in: -180...180, step: 1)
-                        Text("\(Int(figure.leftShoulderAngle))°")
+                        Text("\(Int(wrapAngle(figure.leftShoulderAngle)))°")
                             .frame(width: 40)
                     }
                     
                     HStack {
                         Text("Right Shoulder:")
                         Slider(value: $figure.rightShoulderAngle, in: -180...180, step: 1)
-                        Text("\(Int(figure.rightShoulderAngle))°")
+                        Text("\(Int(wrapAngle(figure.rightShoulderAngle)))°")
                             .frame(width: 40)
                     }
                     
                     HStack {
                         Text("Left Elbow:")
                         Slider(value: $figure.leftElbowAngle, in: -180...180, step: 1)
-                        Text("\(Int(figure.leftElbowAngle))°")
+                        Text("\(Int(wrapAngle(figure.leftElbowAngle)))°")
                             .frame(width: 40)
                     }
                     
                     HStack {
                         Text("Right Elbow:")
                         Slider(value: $figure.rightElbowAngle, in: -180...180, step: 1)
-                        Text("\(Int(figure.rightElbowAngle))°")
+                        Text("\(Int(wrapAngle(figure.rightElbowAngle)))°")
                             .frame(width: 40)
                     }
                     
                     HStack {
                         Text("Left Knee:")
                         Slider(value: $figure.leftKneeAngle, in: -180...180, step: 1)
-                        Text("\(Int(figure.leftKneeAngle))°")
+                        Text("\(Int(wrapAngle(figure.leftKneeAngle)))°")
                             .frame(width: 40)
                     }
                     
                     HStack {
                         Text("Right Knee:")
                         Slider(value: $figure.rightKneeAngle, in: -180...180, step: 1)
-                        Text("\(Int(figure.rightKneeAngle))°")
+                        Text("\(Int(wrapAngle(figure.rightKneeAngle)))°")
                             .frame(width: 40)
                     }
                     
                     HStack {
                         Text("Left Foot:")
                         Slider(value: $figure.leftFootAngle, in: -180...180, step: 1)
-                        Text("\(Int(figure.leftFootAngle))°")
+                        Text("\(Int(wrapAngle(figure.leftFootAngle)))°")
                             .frame(width: 40)
                     }
                     
                     HStack {
                         Text("Right Foot:")
                         Slider(value: $figure.rightFootAngle, in: -180...180, step: 1)
-                        Text("\(Int(figure.rightFootAngle))°")
+                        Text("\(Int(wrapAngle(figure.rightFootAngle)))°")
                             .frame(width: 40)
                     }
                     
                     HStack {
                         Text("Head:")
                         Slider(value: $figure.headAngle, in: -180...180, step: 1)
-                        Text("\(Int(figure.headAngle))°")
+                        Text("\(Int(wrapAngle(figure.headAngle)))°")
                             .frame(width: 40)
                     }
                 }
