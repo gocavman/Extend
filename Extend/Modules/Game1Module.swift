@@ -27,6 +27,19 @@ struct StickFigureAnimationConfig {
             return nil
         }
     }
+    
+    // Load objects associated with frames
+    func loadObjects() -> [[AnimationObject]] {
+        let allFrames = AnimationStorage.shared.loadFrames()
+        
+        // Get objects for each frame number in order
+        return frameNumbers.map { frameNum in
+            if let frame = allFrames.first(where: { $0.name == animationName && $0.frameNumber == frameNum }) {
+                return frame.objects
+            }
+            return []
+        }
+    }
 }
 
 // MARK: - Flip Mode for Actions
@@ -44,14 +57,33 @@ struct ActionConfig {
     let displayName: String
     let unlockLevel: Int
     let pointsPerCompletion: Int
-    let animationFrames: [Int]
-    let baseFrameInterval: TimeInterval
     let variableTiming: [Int: TimeInterval]? // Optional custom timing per frame
     let flipMode: FlipMode
     let supportsSpeedBoost: Bool
-    let imagePrefix: String // Prefix for image names (e.g., "curls" or "pushup")
     let allowMovement: Bool // Whether character can move left/right during this action
-    let stickFigureAnimation: StickFigureAnimationConfig? // Use saved frames instead of images
+    let stickFigureAnimation: StickFigureAnimationConfig?
+    
+    init(
+        id: String,
+        displayName: String,
+        unlockLevel: Int,
+        pointsPerCompletion: Int,
+        variableTiming: [Int: TimeInterval]? = nil,
+        flipMode: FlipMode,
+        supportsSpeedBoost: Bool,
+        allowMovement: Bool,
+        stickFigureAnimation: StickFigureAnimationConfig? = nil
+    ) {
+        self.id = id
+        self.displayName = displayName
+        self.unlockLevel = unlockLevel
+        self.pointsPerCompletion = pointsPerCompletion
+        self.variableTiming = variableTiming
+        self.flipMode = flipMode
+        self.supportsSpeedBoost = supportsSpeedBoost
+        self.allowMovement = allowMovement
+        self.stickFigureAnimation = stickFigureAnimation
+    }
     
     // Helper to get available actions for a level
     static func actionsForLevel(_ level: Int) -> [ActionConfig] {
@@ -98,12 +130,9 @@ let ACTION_CONFIGS: [ActionConfig] = [
         displayName: "Rest",
         unlockLevel: 1,
         pointsPerCompletion: 1,
-        animationFrames: [1], // Will use frame numbers from saved frames
-        baseFrameInterval: 2.0,
         variableTiming: nil,
         flipMode: .none,
         supportsSpeedBoost: false,
-        imagePrefix: "rest",
         allowMovement: false,
         stickFigureAnimation: StickFigureAnimationConfig(
             animationName: "Rest",
@@ -118,12 +147,9 @@ let ACTION_CONFIGS: [ActionConfig] = [
         displayName: "Run",
         unlockLevel: 2,
         pointsPerCompletion: 2,
-        animationFrames: [1, 2, 3, 4], // Move frames 1-4
-        baseFrameInterval: 0.15,
         variableTiming: nil,
         flipMode: .none,
         supportsSpeedBoost: true,
-        imagePrefix: "guy_move",
         allowMovement: true,
         stickFigureAnimation: StickFigureAnimationConfig(
             animationName: "Move",
@@ -138,12 +164,9 @@ let ACTION_CONFIGS: [ActionConfig] = [
         displayName: "Jump",
         unlockLevel: 3,
         pointsPerCompletion: 3,
-        animationFrames: [1, 2, 3],
-        baseFrameInterval: 0.1,
         variableTiming: nil,
         flipMode: .none,
         supportsSpeedBoost: true,
-        imagePrefix: "guy_jump",
         allowMovement: false,
         stickFigureAnimation: StickFigureAnimationConfig(
             animationName: "Jump",
@@ -158,12 +181,9 @@ let ACTION_CONFIGS: [ActionConfig] = [
         displayName: "Jumping Jacks",
         unlockLevel: 4,
         pointsPerCompletion: 4,
-        animationFrames: [1, 2, 3, 4],
-        baseFrameInterval: 0.27,
         variableTiming: nil,
         flipMode: .none,
         supportsSpeedBoost: true,
-        imagePrefix: "jumpingjack",
         allowMovement: false,
         stickFigureAnimation: StickFigureAnimationConfig(
             animationName: "Jumping Jacks",
@@ -178,12 +198,9 @@ let ACTION_CONFIGS: [ActionConfig] = [
         displayName: "Yoga",
         unlockLevel: 5,
         pointsPerCompletion: 5,
-        animationFrames: [1, 2, 3, 4],
-        baseFrameInterval: 2.0,
         variableTiming: nil,
         flipMode: .none,
         supportsSpeedBoost: true,
-        imagePrefix: "yoga",
         allowMovement: false,
         stickFigureAnimation: StickFigureAnimationConfig(
             animationName: "Yoga",
@@ -198,12 +215,9 @@ let ACTION_CONFIGS: [ActionConfig] = [
         displayName: "Bicep Curls",
         unlockLevel: 6,
         pointsPerCompletion: 6,
-        animationFrames: [1, 2, 3, 4],
-        baseFrameInterval: 0.4,
         variableTiming: nil,
         flipMode: .alternating,
         supportsSpeedBoost: true,
-        imagePrefix: "curls",
         allowMovement: true,
         stickFigureAnimation: StickFigureAnimationConfig(
             animationName: "Bicep Curls",
@@ -218,12 +232,9 @@ let ACTION_CONFIGS: [ActionConfig] = [
         displayName: "Kettlebell Swings",
         unlockLevel: 7,
         pointsPerCompletion: 7,
-        animationFrames: [1, 2, 3, 4],
-        baseFrameInterval: 0.27,
         variableTiming: nil,
         flipMode: .random,
         supportsSpeedBoost: true,
-        imagePrefix: "kb",
         allowMovement: true,
         stickFigureAnimation: StickFigureAnimationConfig(
             animationName: "Kettlebell Swings",
@@ -238,12 +249,9 @@ let ACTION_CONFIGS: [ActionConfig] = [
         displayName: "Push Ups",
         unlockLevel: 8,
         pointsPerCompletion: 8,
-        animationFrames: [1, 2, 3, 4],
-        baseFrameInterval: 0.4,
         variableTiming: nil,
         flipMode: .random,
         supportsSpeedBoost: true,
-        imagePrefix: "pushup",
         allowMovement: true,
         stickFigureAnimation: StickFigureAnimationConfig(
             animationName: "Push Ups",
@@ -252,36 +260,21 @@ let ACTION_CONFIGS: [ActionConfig] = [
         )
     ),
     
-    // Level 9: Pull Ups (keeping legacy image-based for now)
+    // Level 9: Pull Ups
     ActionConfig(
         id: "pullup",
         displayName: "Pull Ups",
         unlockLevel: 9,
         pointsPerCompletion: 9,
-        animationFrames: [1, 2, 3, 4, 3, 4, 3, 4, 3, 4, 3, 4, 3, 4, 3, 4, 3, 4, 3, 4, 3, 4, 3, 2, 1],
-        baseFrameInterval: 0.4,
         variableTiming: nil,
         flipMode: .none,
         supportsSpeedBoost: true,
-        imagePrefix: "pullup",
         allowMovement: true,
-        stickFigureAnimation: nil
-    ),
-    
-    // Level 10: Meditation (keeping legacy image-based for now)
-    ActionConfig(
-        id: "meditation",
-        displayName: "Meditation",
-        unlockLevel: 10,
-        pointsPerCompletion: 10,
-        animationFrames: [1, 1, 1, 1, 1, 2, 3, 3, 3, 3, 3, 1, 1, 1, 1, 1],
-        baseFrameInterval: 0.2,
-        variableTiming: [1: 5.0],
-        flipMode: .none,
-        supportsSpeedBoost: false,
-        imagePrefix: "meditate",
-        allowMovement: false,
-        stickFigureAnimation: nil
+        stickFigureAnimation: StickFigureAnimationConfig(
+            animationName: "Pull up",
+            frameNumbers: [1, 2, 3, 4, 3, 4, 3, 4, 3, 4, 3, 4, 3, 4, 3, 4, 3, 4, 3, 4, 3, 4, 3, 2, 1],
+            baseFrameInterval: 0.2
+        )
     )
 ]
 
@@ -455,7 +448,8 @@ class StickFigureGameState {
     var currentAction: String = ""
     var actionStartTime: Double = 0
     var currentPerformingAction: String?
-    var actionFrame: Int = 0
+    var actionFrame: Int = 0  // DEPRECATED: Use currentFrameIndex instead
+    var currentFrameIndex: Int = 0  // Current frame index in action animation
     var actionFlip: Bool = false
     var lastActionFlip: [String: Bool] = [:]
     var actionTimer: Timer?
@@ -467,6 +461,7 @@ class StickFigureGameState {
     var shakerFrames: [StickFigure2D] = []  // Shaker frames 1-2
     var shakerFrameObjects: [[AnimationObject]] = []  // Objects for Shaker frames 1-2
     var actionStickFigureFrames: [StickFigure2D] = []  // Current action's stick figure frames
+    var actionStickFigureObjects: [[AnimationObject]] = []  // Objects for current action's frames
 
     // Idle / wave
     var isWaving: Bool = false
@@ -1260,17 +1255,19 @@ class StickFigureGameState {
         
         // Set up action state
         gameState.currentPerformingAction = config.id
-        gameState.actionFrame = config.animationFrames.first ?? 1
+        gameState.currentFrameIndex = 0
         
         // Load stick figure frames if this action has a stick figure animation
         if let sfConfig = config.stickFigureAnimation {
             gameState.actionStickFigureFrames = sfConfig.loadFrames()
+            gameState.actionStickFigureObjects = sfConfig.loadObjects()
             // Set the first frame as current
             if let firstFrame = gameState.actionStickFigureFrames.first {
                 gameState.currentStickFigure = firstFrame
             }
         } else {
             gameState.actionStickFigureFrames = []
+            gameState.actionStickFigureObjects = []
             gameState.currentStickFigure = nil
         }
         
@@ -1288,21 +1285,6 @@ class StickFigureGameState {
         }
         
         let actionStartTime = Date().timeIntervalSince1970 * 1000
-        
-        // Start meditation countdown timer if this is meditation
-        if config.id == "meditation" {
-            gameState.meditationTotalDuration = 56.2
-            gameState.meditationTimeRemaining = 56.2
-            gameState.meditationCountdownTimer?.invalidate()
-            gameState.meditationCountdownTimer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { [weak gameState] _ in
-                guard let gameState = gameState else { return }
-                gameState.meditationTimeRemaining = max(0, gameState.meditationTimeRemaining - 0.1)
-                if gameState.meditationTimeRemaining <= 0 {
-                    gameState.meditationCountdownTimer?.invalidate()
-                    gameState.meditationCountdownTimer = nil
-                }
-            }
-        }
         
         // Start rest countdown timer if this is rest
         if config.id == "rest" {
@@ -1358,40 +1340,31 @@ class StickFigureGameState {
     private func startActionWithUniformTiming(_ config: ActionConfig, gameState: StickFigureGameState, startTime: Double) {
         var frameIndex = 0
         let speedMultiplier = (config.supportsSpeedBoost && gameState.speedBoostTimeRemaining > 0) ? 0.5 : 1.0
-        let interval = config.baseFrameInterval * speedMultiplier
-        
-        let meditationTexts = ["Be mindful", "Take a deep breath", "Focus on your breathing", "Breathe"]
-        var meditationTextIndex = 0
+        let baseInterval = config.stickFigureAnimation?.baseFrameInterval ?? 0.15
+        let interval = baseInterval * speedMultiplier
         
         gameState.actionTimer = Timer.scheduledTimer(withTimeInterval: interval, repeats: true) { _ in
-            if frameIndex < config.animationFrames.count {
-                gameState.actionFrame = config.animationFrames[frameIndex]
-                
-                // Update stick figure frame if we have loaded frames
-                if !gameState.actionStickFigureFrames.isEmpty && frameIndex < gameState.actionStickFigureFrames.count {
+            if frameIndex < gameState.actionStickFigureFrames.count {
+                // Update stick figure frame
+                if frameIndex < gameState.actionStickFigureFrames.count {
                     gameState.currentStickFigure = gameState.actionStickFigureFrames[frameIndex]
                 }
                 
                 // Detect pullup reps: increment when transitioning to frame 3 (start of pullup motion)
-                if config.id == "pullup" && gameState.actionFrame == 3 && gameState.lastActionFrame != 3 {
+                if config.id == "pullup" && frameIndex == 2 && gameState.lastActionFrame != 2 {
                     gameState.pullupCount += 1
                     gameState.lastPullupCounterTime = Date().timeIntervalSince1970
                 }
                 
-                gameState.lastActionFrame = gameState.actionFrame
-                
-                if config.id == "meditation" && frameIndex > 0 && frameIndex % 3 == 0 && meditationTextIndex < meditationTexts.count {
-                    let text = meditationTexts[meditationTextIndex]
-                    gameState.addFloatingText(text, x: 0.5, y: 0.65, color: .blue, fontSize: 20, isMeditation: true)
-                    meditationTextIndex += 1
-                }
+                gameState.lastActionFrame = frameIndex
+                gameState.currentFrameIndex = frameIndex
                 
                 frameIndex += 1
             } else {
                 gameState.actionTimer?.invalidate()
                 gameState.actionTimer = nil
                 gameState.currentPerformingAction = nil
-                gameState.actionFrame = 0
+                gameState.currentFrameIndex = 0
                 gameState.actionFlip = false
                 gameState.currentStickFigure = nil
                 
@@ -1409,20 +1382,17 @@ class StickFigureGameState {
         var frameIndex = 0
         let speedMultiplier = (config.supportsSpeedBoost && gameState.speedBoostTimeRemaining > 0) ? 0.5 : 1.0
         
-        let meditationTexts = ["Be mindful", "Take a deep breath", "Focus on your breathing", "Breathe"]
-        var meditationTextIndex = 0
-        
         let yogaTexts = ["Breathe in", "Hold it", "Breathe out", "Relax"]
         var yogaTextIndex = 0
         var nextYogaMessageTime = 5.0  // First yoga message at 5 seconds
         var elapsedTime = 0.0
         
         func scheduleNextFrame() {
-            guard frameIndex < config.animationFrames.count else {
+            guard frameIndex < gameState.actionStickFigureFrames.count else {
                 gameState.actionTimer?.invalidate()
                 gameState.actionTimer = nil
                 gameState.currentPerformingAction = nil
-                gameState.actionFrame = 0
+                gameState.currentFrameIndex = 0
                 gameState.actionFlip = false
                 gameState.currentStickFigure = nil
                 
@@ -1435,27 +1405,18 @@ class StickFigureGameState {
                 return
             }
             
-            let currentFrame = config.animationFrames[frameIndex]
-            gameState.actionFrame = currentFrame
-            
-            // Update stick figure frame if we have loaded frames
-            if !gameState.actionStickFigureFrames.isEmpty && frameIndex < gameState.actionStickFigureFrames.count {
+            // Update stick figure frame
+            if frameIndex < gameState.actionStickFigureFrames.count {
                 gameState.currentStickFigure = gameState.actionStickFigureFrames[frameIndex]
             }
             
             // Detect pullup reps: increment when transitioning to frame 3 (start of pullup motion)
-            if config.id == "pullup" && gameState.actionFrame == 3 && gameState.lastActionFrame != 3 {
+            if config.id == "pullup" && frameIndex == 2 && gameState.lastActionFrame != 2 {
                 gameState.pullupCount += 1
                 gameState.lastPullupCounterTime = Date().timeIntervalSince1970
             }
             
-            gameState.lastActionFrame = gameState.actionFrame
-            
-            if config.id == "meditation" && frameIndex > 0 && frameIndex % 3 == 0 && meditationTextIndex < meditationTexts.count {
-                let text = meditationTexts[meditationTextIndex]
-                gameState.addFloatingText(text, x: 0.5, y: 0.65, color: .blue, fontSize: 20, isMeditation: true)
-                meditationTextIndex += 1
-            }
+            gameState.lastActionFrame = frameIndex
             
             // For yoga, trigger messages at regular 5-second intervals
             if config.id == "yoga" && elapsedTime >= nextYogaMessageTime && yogaTextIndex < yogaTexts.count {
@@ -1465,9 +1426,12 @@ class StickFigureGameState {
                 nextYogaMessageTime += 5.0  // Next message in 5 seconds
             }
             
+            gameState.lastActionFrame = frameIndex
+            gameState.currentFrameIndex = frameIndex
             frameIndex += 1
             
-            let baseInterval = variableTiming[currentFrame] ?? config.baseFrameInterval
+            // Use the base frame interval for timing from stick figure animation config
+            let baseInterval = config.stickFigureAnimation?.baseFrameInterval ?? 0.15
             let interval = baseInterval * speedMultiplier
             elapsedTime += interval
             
@@ -2782,8 +2746,6 @@ private struct Game1ModuleView: View {
                                     .cornerRadius(6)
                             }
                             .onLongPressGesture(minimumDuration: 0.01, pressing: { isPressing in
-                                // Prevent movement during meditation
-                                guard gameState.currentPerformingAction != "meditation" else { return }
                                 
                                 if isPressing {
                                     gameState.resetIdleTimer()
@@ -2851,8 +2813,6 @@ private struct Game1ModuleView: View {
                                     .cornerRadius(6)
                             }
                             .onLongPressGesture(minimumDuration: 0.01, pressing: { isPressing in
-                                // Prevent movement during meditation
-                                guard gameState.currentPerformingAction != "meditation" else { return }
                                 
                                 if isPressing {
                                     gameState.resetIdleTimer()
@@ -3160,13 +3120,68 @@ private struct GamePlayArea: View {
                        let _ = ACTION_CONFIGS.first(where: { $0.id == actionId }) {
                         // Use stick figure if available
                         if let stickFigure = gameState.currentStickFigure {
-                            StickFigure2DView(figure: stickFigure, canvasSize: CGSize(width: 150, height: 225))
-                                .frame(width: 150, height: 225)
-                                .scaleEffect(x: gameState.actionFlip ? -1 : 1, y: 1)
-                                .position(x: figureX, y: figureY)
-                                .onTapGesture {
-                                    // Ignore extra taps during animation
+                            let gameCanvasSize = CGSize(width: 150, height: 225)
+                            
+                            // Get current frame index
+                            let frameIndex = gameState.currentFrameIndex
+                            let frameObjects = frameIndex >= 0 && frameIndex < gameState.actionStickFigureObjects.count ? gameState.actionStickFigureObjects[frameIndex] : []
+                                
+                            ZStack {
+                                StickFigure2DView(figure: stickFigure, canvasSize: gameCanvasSize)
+                                
+                                // Render objects
+                                Group {
+                                    if frameObjects.count > 0 {
+                                        let object = frameObjects[0]
+                                        if object.imageName == "line" {
+                                            // Render line object
+                                            let baseCanvasSize = CGSize(width: 600, height: 720)
+                                            let baseCenter = CGPoint(x: baseCanvasSize.width / 2, y: baseCanvasSize.height / 2)
+                                            let canvasCenter = CGPoint(x: gameCanvasSize.width / 2, y: gameCanvasSize.height / 2)
+                                            let canvasScale = gameCanvasSize.width / baseCanvasSize.width
+                                            
+                                            let dx = object.position.x - baseCenter.x
+                                            let dy = object.position.y - baseCenter.y
+                                            let gamePosX = canvasCenter.x + dx * canvasScale * stickFigure.scale
+                                            let gamePosY = canvasCenter.y + dy * canvasScale * stickFigure.scale
+                                            
+                                            let objWidth = 50 * object.scale * canvasScale * stickFigure.scale
+                                            
+                                            Line()
+                                                .stroke(Color.black, lineWidth: (2 + (object.scale * 3)) * canvasScale * stickFigure.scale)
+                                                .frame(width: objWidth, height: max(1, (2 + (object.scale * 3)) * canvasScale * stickFigure.scale))
+                                                .rotationEffect(.degrees(object.rotation))
+                                                .position(x: gamePosX, y: gamePosY)
+                                        } else if let uiImage = UIImage(named: object.imageName) {
+                                            // Render image object
+                                            let baseCanvasSize = CGSize(width: 600, height: 720)
+                                            let baseCenter = CGPoint(x: baseCanvasSize.width / 2, y: baseCanvasSize.height / 2)
+                                            let canvasCenter = CGPoint(x: gameCanvasSize.width / 2, y: gameCanvasSize.height / 2)
+                                            let canvasScale = gameCanvasSize.width / baseCanvasSize.width
+                                            
+                                            let dx = object.position.x - baseCenter.x
+                                            let dy = object.position.y - baseCenter.y
+                                            let gamePosX = canvasCenter.x + dx * canvasScale * stickFigure.scale
+                                            let gamePosY = canvasCenter.y + dy * canvasScale * stickFigure.scale
+                                            
+                                            let objWidth = 50 * object.scale * canvasScale * stickFigure.scale
+                                            
+                                            Image(uiImage: uiImage)
+                                                .resizable()
+                                                .aspectRatio(contentMode: .fit)
+                                                .frame(width: objWidth, height: objWidth)
+                                                .rotationEffect(.degrees(object.rotation))
+                                                .position(x: gamePosX, y: gamePosY)
+                                        }
+                                    }
                                 }
+                            }
+                            .frame(width: gameCanvasSize.width, height: gameCanvasSize.height)
+                            .scaleEffect(x: gameState.actionFlip ? -1 : 1, y: 1)
+                            .position(x: figureX, y: figureY)
+                            .onTapGesture {
+                                // Ignore extra taps during animation
+                            }
                         } else {
                             // No frame found - show placeholder
                             Text("?")
@@ -3416,14 +3431,6 @@ private struct GamePlayArea: View {
                         .position(x: shaker.x * geometry.size.width, y: shaker.y * geometry.size.height)
                 }
                 
-                // Meditation countdown timer
-                if gameState.meditationTimeRemaining > 0 {
-                    Text(String(format: "%.1f", gameState.meditationTimeRemaining))
-                        .font(.system(size: 24, weight: .bold))
-                        .foregroundColor(.blue)
-                        .position(x: max(50, min(geometry.size.width - 50, figureX)), y: figureY)
-                }
-
                 // Rest countdown timer
                 if gameState.currentPerformingAction == "rest" && gameState.restTimeRemaining > 0 {
                     Text(String(format: "%.1f", gameState.restTimeRemaining))
