@@ -707,44 +707,11 @@ struct FramesManagerView: View {
     // MARK: - Persistence Functions
     
     private func loadPersistedFrames() {
-        // Load which frames are marked as persisted from UserDefaults
-        if let data = UserDefaults.standard.data(forKey: "persisted_frame_ids"),
-           let uuids = try? JSONDecoder().decode([UUID].self, from: data) {
-            persistedFrames = Set(uuids)
-            print("✓ Loaded persisted frame markers")
-        }
+        persistedFrames = AnimationPersistence.loadPersistedFrameMarkers()
     }
     
     private func savePersistedFrameMarkers() {
-        // Save which frames are marked as persisted to UserDefaults
-        do {
-            let encoder = JSONEncoder()
-            let data = try encoder.encode(Array(persistedFrames))
-            UserDefaults.standard.set(data, forKey: "persisted_frame_ids")
-            print("✓ Saved persisted frame markers")
-        } catch {
-            print("✗ Error saving persisted frame markers: \(error)")
-        }
-    }
-    
-    private func savePersistentFrames() {
-        // Get all frames that are marked as persisted
-        let framesToPersist = savedFrames.filter { persistedFrames.contains($0.id) }
-        
-        // Write directly to the project's animations.json file
-        let projectPath = "/Users/cavan/Developer/Extend/Extend/animations.json"
-        let animationsURL = URL(fileURLWithPath: projectPath)
-        
-        do {
-            let encoder = JSONEncoder()
-            encoder.outputFormatting = .prettyPrinted
-            let data = try encoder.encode(framesToPersist)
-            try data.write(to: animationsURL, options: .atomic)
-            print("✓ Saved \(framesToPersist.count) persisted frames directly to animations.json")
-            print("  Reload the project in Xcode to see changes")
-        } catch {
-            print("✗ Error saving persisted frames: \(error)")
-        }
+        AnimationPersistence.savePersistedFrameMarkers(persistedFrames)
     }
     
     
@@ -776,26 +743,6 @@ struct FramesManagerView: View {
                                     TextField("Frame Number", text: $editingFrameNumber)
                                         .textFieldStyle(.roundedBorder)
                                         .keyboardType(.numberPad)
-                                    
-                                    // Persist checkbox (disabled for Stand frame)
-                                    let isStandFrame = editingName == "Stand" && Int(editingFrameNumber) == 0
-                                    HStack {
-                                        Toggle("Persist to animations.json", isOn: Binding(
-                                            get: { persistedFrames.contains(frame.id) },
-                                            set: {
-                                                if $0 {
-                                                    persistedFrames.insert(frame.id)
-                                                } else {
-                                                    persistedFrames.remove(frame.id)
-                                                }
-                                                // Save markers and update animations.json
-                                                savePersistedFrameMarkers()
-                                                savePersistentFrames()
-                                            }
-                                        ))
-                                        .disabled(isStandFrame)
-                                    }
-                                    .opacity(isStandFrame ? 0.5 : 1.0)
                                     
                                     HStack {
                                         Button("Cancel") {
@@ -837,11 +784,12 @@ struct FramesManagerView: View {
                                                         .fontWeight(.semibold)
                                                         .foregroundColor(.primary)
                                                     
-                                                    // Persist flag indicator
-                                                    if persistedFrames.contains(frame.id) {
-                                                        Image(systemName: "checkmark.circle.fill")
+                                                    // Checkbox indicator (in animations.json)
+                                                    let bundleFrames = AnimationPersistence.loadFramesFromDisk()
+                                                    if bundleFrames.contains(where: { $0.id == frame.id }) {
+                                                        Image(systemName: "checkmark.square.fill")
                                                             .font(.caption)
-                                                            .foregroundColor(.green)
+                                                            .foregroundColor(.blue)
                                                     }
                                                 }
                                                 
@@ -857,6 +805,16 @@ struct FramesManagerView: View {
                                             }
                                             Spacer()
                                         }
+                                    }
+                                    .buttonStyle(.plain)
+                                    
+                                    // Copy to clipboard button
+                                    Button(action: {
+                                        copyFrameToClipboard(frame)
+                                    }) {
+                                        Image(systemName: "doc.on.doc")
+                                            .foregroundColor(.blue)
+                                            .font(.body)
                                     }
                                     .buttonStyle(.plain)
                                     
@@ -909,18 +867,12 @@ struct FramesManagerView: View {
                     }
                 }
                 // Also save on first load
-                savePersistentFrames()
-                savePersistedFrameMarkers()
+                loadPersistedFrames()
             }
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
                     Button(action: {
                         isEditMode.toggle()
-                        // Save when exiting edit mode
-                        if !isEditMode {
-                            savePersistedFrameMarkers()
-                            savePersistentFrames()
-                        }
                     }) {
                         Text(isEditMode ? "Done" : "Edit")
                             .font(.headline)
@@ -945,6 +897,17 @@ struct FramesManagerView: View {
                 if let frame = frameToDelete {
                     Text("Are you sure you want to delete '\(frame.name)'?")
                 }
+            }
+        }
+    }
+    
+    private func copyFrameToClipboard(_ frame: AnimationFrame) {
+        AnimationPersistence.exportFramesAsJSON([frame]) { jsonString, error in
+            if let jsonString = jsonString {
+                UIPasteboard.general.string = jsonString
+                print("✓ Copied frame '\(frame.name)' to clipboard")
+            } else if let error = error {
+                print("✗ Error copying frame: \(error.localizedDescription)")
             }
         }
     }
@@ -1146,11 +1109,11 @@ struct StickFigure2DEditorView: View {
                     canvasView
                         .id("canvas")
                     sizeControlView
+                    animationControlsView
                     animationPlaybackView
                     jointControlsView
                     colorControlsView
                     objectsControlsView
-                    animationControlsView
                 }
                 .padding(.horizontal, 16)
                 .padding(.vertical, 8)
@@ -2123,7 +2086,7 @@ struct StickFigure2DEditorView: View {
     
     var animationControlsView: some View {
         VStack(alignment: .leading, spacing: 0) {
-            Text("Animation").font(.subheadline).fontWeight(.semibold)
+            //Text("Animation").font(.subheadline).fontWeight(.semibold)
             
             HStack(spacing: 12) {
                 Button(action: {
@@ -2151,30 +2114,19 @@ struct StickFigure2DEditorView: View {
     }
     
     private func savePose() {
-        let frameNum = Int(frameNumber) ?? 1
-        let name = frameName.trimmingCharacters(in: .whitespaces).isEmpty ? "Frame \(frameNum)" : frameName
+        // Create a new AnimationFrame with the current pose, name, and frame number
+        guard let frameNum = Int(frameNumber) else {
+            // Invalid frame number, don't save
+            return
+        }
         
-        // Create a rounded copy of the figure for saving (all angles as whole numbers)
-        var roundedFigure = figure
-        roundedFigure.waistTorsoAngle = round(roundedFigure.waistTorsoAngle)
-        roundedFigure.midTorsoAngle = round(roundedFigure.midTorsoAngle)
-        roundedFigure.torsoRotationAngle = round(roundedFigure.torsoRotationAngle)
-        roundedFigure.headAngle = round(roundedFigure.headAngle)
-        roundedFigure.leftShoulderAngle = round(roundedFigure.leftShoulderAngle)
-        roundedFigure.rightShoulderAngle = round(roundedFigure.rightShoulderAngle)
-        roundedFigure.leftElbowAngle = round(roundedFigure.leftElbowAngle)
-        roundedFigure.rightElbowAngle = round(roundedFigure.rightElbowAngle)
-        roundedFigure.leftHandAngle = round(roundedFigure.leftHandAngle)
-        roundedFigure.rightHandAngle = round(roundedFigure.rightHandAngle)
-        roundedFigure.leftKneeAngle = round(roundedFigure.leftKneeAngle)
-        roundedFigure.rightKneeAngle = round(roundedFigure.rightKneeAngle)
-        roundedFigure.leftFootAngle = round(roundedFigure.leftFootAngle)
-        roundedFigure.rightFootAngle = round(roundedFigure.rightFootAngle)
+        let frame = AnimationFrame(
+            name: frameName.isEmpty ? "Unnamed" : frameName,
+            frameNumber: frameNum,
+            pose: figure,
+            objects: objects  // Save the current objects with this frame
+        )
         
-        // Create frame with current objects
-        let frame = AnimationFrame(name: name, frameNumber: frameNum, pose: roundedFigure, objects: objects)
-        
-        // Add to savedFrames list for display in the editor
         savedFrames.append(frame)
         
         // Reset the dialog

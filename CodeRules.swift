@@ -258,6 +258,31 @@
  - Level not on map: Check mapTiles has entry with matching level number
  - Wrong animation plays: Check frameNumbers in ACTION_CONFIGS matches your Frame Numbers
 
+ QUICK REFERENCE: GAMEPLAY CHARACTER SIZE
+ ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ The stick figure character size in gameplay is defined in 3 places in Game1Module.swift.
+ To adjust the character size, change all 3 locations to maintain consistency:
+ 
+ 1. STAND FRAME (Standing still - around line 3176):
+    StickFigure2DView(figure: standFrame, canvasSize: CGSize(width: 150, height: 225))
+        .frame(width: 150, height: 225)
+ 
+ 2. MOVE FRAMES (Walking/running - around line 3215):
+    StickFigure2DView(figure: gameState.moveFrames[moveIndex], canvasSize: CGSize(width: 150, height: 225))
+        .frame(width: 150, height: 225)
+ 
+ 3. ACTION FRAMES (Push ups, exercises, etc. - around line 3129):
+    StickFigure2DView(figure: stickFigure, canvasSize: CGSize(width: 150, height: 225))
+        .frame(width: 150, height: 225)
+ 
+ To resize the character, change both the canvasSize CGSize and the .frame() modifier width/height.
+ Keep the 2:3 aspect ratio (width:height) for proper proportions.
+ 
+ Examples:
+   - Smaller (50% of current): CGSize(width: 75, height: 112)
+   - Current (100%): CGSize(width: 150, height: 225) ✅
+   - Larger (150% of current): CGSize(width: 225, height: 337)
+
 
  HOW TO CREATE NEW CATCHABLES
  =============================
