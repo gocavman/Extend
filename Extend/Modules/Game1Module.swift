@@ -2419,6 +2419,7 @@ private struct Game1ModuleView: View {
                 showLevelPicker: $showLevelPicker,
                 showProgrammableDemo: $showProgrammableDemo
             )
+            .zIndex(100)
             
             if showLevelPicker {
                 Color.black.opacity(0.3)
@@ -2426,6 +2427,7 @@ private struct Game1ModuleView: View {
                     .onTapGesture {
                         showLevelPicker = false
                     }
+                    .zIndex(200)
                 
                 VStack(spacing: 0) {
                     Spacer()
@@ -2469,6 +2471,7 @@ private struct Game1ModuleView: View {
                     .padding(.horizontal, 12)
                 }
                 .transition(.move(edge: .bottom))
+                .zIndex(201)
             }
         }
         .onAppear {
@@ -2774,6 +2777,7 @@ private struct Game1ModuleView: View {
                     .onTapGesture {
                         showActionPicker = false
                     }
+                    .zIndex(200)
                 
                 VStack(spacing: 0) {
                     Spacer()
@@ -2820,6 +2824,60 @@ private struct Game1ModuleView: View {
                     .padding(.horizontal, 12)
                 }
                 .transition(.move(edge: .bottom))
+                .zIndex(201)
+            }
+
+            if showLevelPicker {
+                Color.black.opacity(0.3)
+                    .ignoresSafeArea()
+                    .onTapGesture {
+                        showLevelPicker = false
+                    }
+                    .zIndex(200)
+                
+                VStack(spacing: 0) {
+                    Spacer()
+                    
+                    VStack(spacing: 0) {
+                        HStack {
+                            Text("Select Level")
+                                .font(.headline)
+                                .fontWeight(.bold)
+                            
+                            Spacer()
+                            
+                            Button(action: { showLevelPicker = false }) {
+                                Image(systemName: "xmark.circle.fill")
+                                    .font(.system(size: 20))
+                                    .foregroundColor(.gray)
+                            }
+                        }
+                        .padding(16)
+                        .background(Color.white)
+                        
+                        VStack(spacing: 0) {
+                            let maxLevel = ACTION_CONFIGS.map { $0.unlockLevel }.max() ?? 7
+                            ForEach(1...maxLevel, id: \.self) { level in
+                                if level > 1 {
+                                    Divider()
+                                }
+                                ActionPickerButton(title: "Level \(level)", isSelected: gameState.currentLevel == level) {
+                                    gameState.currentLevel = level
+                                    gameState.currentPoints = 0
+                                    gameState.saveStats()
+                                    // Reinitialize map level boxes after level change
+                                    mapState.initializeLevelBoxes(currentLevel: level)
+                                    showLevelPicker = false
+                                }
+                            }
+                        }
+                        .background(Color.white)
+                    }
+                    .cornerRadius(12)
+                    .padding(.horizontal, 12)
+                }
+                .transition(.move(edge: .bottom))
+                .zIndex(202)
             }
 
             // Unified stats overlay
@@ -2830,6 +2888,7 @@ private struct Game1ModuleView: View {
                 showLevelPicker: $showLevelPicker,
                 showProgrammableDemo: $showProgrammableDemo
             )
+            .zIndex(100)
         }
         .onAppear {
             // Unified timer is now managed in gameState init and runs continuously
