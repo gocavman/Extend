@@ -2314,7 +2314,7 @@ struct StickFigure2DEditorView: View {
                     scrollToCanvas = true
                     showFramesManager = false
                 },
-                onSave: { } // No-op: animations are loaded from Bundle only
+                onSave: { persistFramesToStorage() } // Save deletions and edits to UserDefaults
             )
         }
     }

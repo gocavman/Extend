@@ -46,9 +46,16 @@
     "flipMode": "none",
     "supportsSpeedBoost": true,
     "allowMovement": false,
+    "floatingText": {
+      "timing": 0.5,
+      "text": ["jump", "whoohoo", "weee", "yay!"],
+      "random": true,
+      "loop": true,
+      "color": "red"
+    },
     "stickFigureAnimation": {
       "animationName": "Jump",
-      "frameNumbers": [1, 2, 3],
+      "frameNumbers": [1, 2, 3, 4, 4, 3, 2, 1],
       "baseFrameInterval": 0.1
     }
   },

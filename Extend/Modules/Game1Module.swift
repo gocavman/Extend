@@ -404,15 +404,11 @@ class StickFigureGameState {
 
     // Movement + animation
     var figurePosition: CGFloat = 0
-    var jumpHeight: CGFloat = 0
-    var jumpFrame: Int = 0
-    var isJumping: Bool = false
     var isMovingLeft: Bool = false
     var isMovingRight: Bool = false
     var facingRight: Bool = true
     var animationFrame: Int = 0
     var animationTimer: Timer?
-    var jumpTimer: Timer?
     var movementTimer: Timer?
     var lastMovementUpdateTime: Double = 0  // Track when movement was last updated to detect stuck movement
 
@@ -1228,46 +1224,6 @@ class StickFigureGameState {
                 gameState.currentAction = ""
             }
             stopAnimation(gameState: gameState)
-        }
-    }
-    
-    func startJump(gameState: StickFigureGameState, geometry: GeometryProxy) {
-        guard !gameState.isJumping else { return }
-        gameState.isJumping = true
-        gameState.jumpFrame = 0
-        gameState.resetIdleTimer()
-        
-        let jumpStartTime = Date().timeIntervalSince1970 * 1000
-        let jumpHeightPeak: CGFloat = 100
-        
-        gameState.jumpTimer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { [weak gameState] _ in
-            guard let gameState = gameState else { return }
-            gameState.jumpFrame += 1
-            let frameCount = gameState.jumpFrame
-            
-            if frameCount == 1 {
-                gameState.jumpHeight = jumpHeightPeak * 0.6
-            } else if frameCount == 2 {
-                gameState.jumpHeight = jumpHeightPeak
-            } else if frameCount == 3 {
-                gameState.jumpHeight = jumpHeightPeak * 0.3
-            } else if frameCount >= 4 {
-                gameState.jumpHeight = 0
-            }
-
-            if frameCount >= 4 {
-                gameState.jumpTimer?.invalidate()
-                gameState.jumpTimer = nil
-                gameState.isJumping = false
-                gameState.jumpFrame = 0
-                gameState.jumpHeight = 0
-
-                let jumpDuration = Date().timeIntervalSince1970 * 1000 - jumpStartTime
-                gameState.recordActionTime(action: "jump", duration: jumpDuration)
-                if gameState.currentLevel >= 2 {
-                    gameState.addPoints(2, action: "jump")
-                }
-            }
         }
     }
     
@@ -2590,7 +2546,6 @@ private struct Game1ModuleView: View {
                 HStack {
                     Button(action: {
                         gameState.animationTimer?.invalidate()
-                        gameState.jumpTimer?.invalidate()
                         gameState.floatingTextTimer?.invalidate()
                         // DO NOT invalidate elapsedTimeTimer - it's the unified continuous timer
                         gameState.idleTimer?.invalidate()
@@ -2730,7 +2685,6 @@ private struct Game1ModuleView: View {
                     stopMovingLeftAction: { gs in gs.stopMovingLeft(gameState: gs) },
                     startMovingRightAction: { gs, geo in gs.startMovingRight(gameState: gs, geometry: geo) },
                     stopMovingRightAction: { gs in gs.stopMovingRight(gameState: gs) },
-                    startJumpAction: { gs, geo in gs.startJump(gameState: gs, geometry: geo) },
                     startActionAction: { config, gs in gs.startAction(config, gameState: gs) }
                 )
                 .frame(height: 500)
@@ -3102,7 +3056,6 @@ private struct GamePlayArea: View {
     var stopMovingLeftAction: (StickFigureGameState) -> Void
     var startMovingRightAction: (StickFigureGameState, GeometryProxy) -> Void
     var stopMovingRightAction: (StickFigureGameState) -> Void
-    var startJumpAction: (StickFigureGameState, GeometryProxy) -> Void
     var startActionAction: (ActionConfig, StickFigureGameState) -> Void
 
     private func getStandImage() -> String {
@@ -3138,7 +3091,7 @@ private struct GamePlayArea: View {
         GeometryReader { geometry in
             let figureX = ((gameState.figurePosition + 1.0) / 2.0) * geometry.size.width
             let baseY = geometry.size.height - 80
-            let figureY = baseY - gameState.jumpHeight
+            let figureY = baseY
             let textStartY = max(0.05, (baseY - 120) / geometry.size.height)
             let normX = figureX / geometry.size.width
             
@@ -3388,13 +3341,6 @@ private struct GamePlayArea: View {
                                 .frame(width: 100, height: 150)
                                 .position(x: figureX, y: figureY)
                         }
-                    } else if gameState.isJumping {
-                        // Jump animation - placeholder
-                        Text("?")
-                            .font(.system(size: 60))
-                            .foregroundColor(.gray)
-                            .frame(width: 100, height: 150)
-                            .position(x: figureX, y: figureY)
                     } else {
                         // Standing or Moving - use stick figure frames
                         if gameState.animationFrame == 0 {
@@ -3469,11 +3415,11 @@ private struct GamePlayArea: View {
                                             if distanceFromCenter <= 5 && gameState.isMovingLeft == false && gameState.isMovingRight == false {
                                                 // Tapped center - trigger action
                                                 if gameState.selectedAction == "Jump" {
-                                                    if !gameState.isJumping {
-                                                        gameState.startJump(gameState: gameState, geometry: geometry)
+                                                    if let config = ACTION_CONFIGS.first(where: { $0.id == "jump" }) {
+                                                        startActionAction(config, gameState)
                                                     }
                                                 } else if let config = ACTION_CONFIGS.first(where: { $0.displayName == gameState.selectedAction }) {
-                                                    if gameState.currentPerformingAction == nil && !gameState.isJumping {
+                                                    if gameState.currentPerformingAction == nil {
                                                         startActionAction(config, gameState)
                                                     }
                                                 }
@@ -3541,11 +3487,11 @@ private struct GamePlayArea: View {
                                             
                                             if distanceFromCenter <= 5 && gameState.isMovingLeft == false && gameState.isMovingRight == false {
                                                 if gameState.selectedAction == "Jump" {
-                                                    if !gameState.isJumping {
-                                                        gameState.startJump(gameState: gameState, geometry: geometry)
+                                                    if let config = ACTION_CONFIGS.first(where: { $0.id == "jump" }) {
+                                                        startActionAction(config, gameState)
                                                     }
                                                 } else if let config = ACTION_CONFIGS.first(where: { $0.displayName == gameState.selectedAction }) {
-                                                    if gameState.currentPerformingAction == nil && !gameState.isJumping {
+                                                    if gameState.currentPerformingAction == nil {
                                                         startActionAction(config, gameState)
                                                     }
                                                 }
@@ -3615,11 +3561,11 @@ private struct GamePlayArea: View {
                                             
                                             if distanceFromCenter <= 5 && gameState.isMovingLeft == false && gameState.isMovingRight == false {
                                                 if gameState.selectedAction == "Jump" {
-                                                    if !gameState.isJumping {
-                                                        gameState.startJump(gameState: gameState, geometry: geometry)
+                                                    if let config = ACTION_CONFIGS.first(where: { $0.id == "jump" }) {
+                                                        startActionAction(config, gameState)
                                                     }
                                                 } else if let config = ACTION_CONFIGS.first(where: { $0.displayName == gameState.selectedAction }) {
-                                                    if gameState.currentPerformingAction == nil && !gameState.isJumping {
+                                                    if gameState.currentPerformingAction == nil {
                                                         startActionAction(config, gameState)
                                                     }
                                                 }
@@ -3687,11 +3633,11 @@ private struct GamePlayArea: View {
                                             
                                             if distanceFromCenter <= 5 && gameState.isMovingLeft == false && gameState.isMovingRight == false {
                                                 if gameState.selectedAction == "Jump" {
-                                                    if !gameState.isJumping {
-                                                        gameState.startJump(gameState: gameState, geometry: geometry)
+                                                    if let config = ACTION_CONFIGS.first(where: { $0.id == "jump" }) {
+                                                        startActionAction(config, gameState)
                                                     }
                                                 } else if let config = ACTION_CONFIGS.first(where: { $0.displayName == gameState.selectedAction }) {
-                                                    if gameState.currentPerformingAction == nil && !gameState.isJumping {
+                                                    if gameState.currentPerformingAction == nil {
                                                         startActionAction(config, gameState)
                                                     }
                                                 }
@@ -3800,7 +3746,7 @@ private struct GamePlayArea: View {
                     
                     let currentFigureX = ((gameState.figurePosition + 1.0) / 2.0) * geometry.size.width
                     let currentBaseY = geometry.size.height - 120
-                    let currentFigureY = currentBaseY - gameState.jumpHeight
+                    let currentFigureY = currentBaseY
                     gameState.checkFallingItemCollisions(figureX: currentFigureX, figureY: currentFigureY, screenWidth: geometry.size.width, screenHeight: geometry.size.height)
                     gameState.checkShakerCollisions(figureX: currentFigureX, figureY: currentFigureY, screenWidth: geometry.size.width, screenHeight: geometry.size.height)
                     
