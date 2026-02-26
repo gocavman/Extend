@@ -557,41 +557,41 @@
       "waistTorsoAngle" : 0
     }
   },
-  {
-    "createdAt" : 793821230.83591,
-    "frameNumber" : 2,
-    "id" : "BC080DC2-A792-4E08-9029-14243C8772F2",
-    "name" : "Rest",
-    "objects" : [
+    {
+      "createdAt" : 793822514.317748,
+      "frameNumber" : 2,
+      "id" : "C6F1AFAC-4A3C-464C-8ED8-52F59C2096D4",
+      "name" : "Rest",
+      "objects" : [
 
-    ],
-    "pose" : {
-      "footColor" : "#000000",
-      "handColor" : "#000000",
-      "headAngle" : 0,
-      "headColor" : "#000000",
-      "headRadiusMultiplier" : 1,
-      "leftArmColor" : "#000000",
-      "leftElbowAngle" : -161.87061559420394,
-      "leftFootAngle" : 0,
-      "leftHandAngle" : -45,
-      "leftKneeAngle" : 89.59651526494127,
-      "leftLegColor" : "#000000",
-      "leftShoulderAngle" : -24.862433081119832,
-      "midTorsoAngle" : 10.972240237811718,
-      "rightArmColor" : "#000000",
-      "rightElbowAngle" : -171.7289522422175,
-      "rightFootAngle" : 67.55224067840834,
-      "rightHandAngle" : 45,
-      "rightKneeAngle" : 56.74136844245288,
-      "rightLegColor" : "#000000",
-      "rightShoulderAngle" : -3.5936137295915387,
-      "scale" : 2.4,
-      "strokeThickness" : 3,
-      "torsoColor" : "#000000",
-      "waistPositionX" : 295.94594594594594,
-      "waistPositionY" : 423.06306306306305,
-      "waistTorsoAngle" : -88.42383018735906
+      ],
+      "pose" : {
+        "footColor" : "#000000",
+        "handColor" : "#000000",
+        "headAngle" : 0,
+        "headColor" : "#000000",
+        "headRadiusMultiplier" : 1,
+        "leftArmColor" : "#000000",
+        "leftElbowAngle" : -161.87061559420394,
+        "leftFootAngle" : 0,
+        "leftHandAngle" : -45,
+        "leftKneeAngle" : 89.59651526494127,
+        "leftLegColor" : "#000000",
+        "leftShoulderAngle" : -24.862433081119832,
+        "midTorsoAngle" : 10.972240237811718,
+        "rightArmColor" : "#000000",
+        "rightElbowAngle" : -171.7289522422175,
+        "rightFootAngle" : 8.482267171904994,
+        "rightHandAngle" : 45,
+        "rightKneeAngle" : 84.8636215075723,
+        "rightLegColor" : "#000000",
+        "rightShoulderAngle" : -3.5936137295915387,
+        "scale" : 2.4,
+        "strokeThickness" : 3,
+        "torsoColor" : "#000000",
+        "waistPositionX" : 295.94594594594594,
+        "waistPositionY" : 423.06306306306305,
+        "waistTorsoAngle" : -88.42383018735906
+      }
     }
-  }
-]
+  ]

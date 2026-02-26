@@ -76,6 +76,7 @@ struct ActionConfig: Codable {
     let flipMode: FlipMode
     let supportsSpeedBoost: Bool
     let allowMovement: Bool // Whether character can move left/right during this action
+    let countdown: Bool? // Optional: show countdown timer during animation
     let stickFigureAnimation: StickFigureAnimationConfig?
     let floatingText: ActionFloatingTextConfig?
 
@@ -428,6 +429,11 @@ class StickFigureGameState {
     var meditationTotalDuration: Double = 0
     var meditationTimeRemaining: Double = 0
     var meditationCountdownTimer: Timer?
+
+    // Generic countdown tracking for config-driven countdowns
+    var actionCountdownTotalDuration: Double = 0
+    var actionCountdownTimeRemaining: Double = 0
+    var actionCountdownTimer: Timer?
 
     // Rest animation tracking
     var restTotalDuration: Double = 0
@@ -1215,6 +1221,16 @@ class StickFigureGameState {
         }
     }
     
+    // MARK: - Helper: Calculate Animation Duration
+    
+    /// Calculates the total duration of an action animation based on its frame count and timing
+    private func calculateAnimationDuration(config: ActionConfig) -> Double {
+        guard let sfConfig = config.stickFigureAnimation else { return 0 }
+        let frameCount = Double(sfConfig.frameNumbers.count)
+        let baseInterval = sfConfig.baseFrameInterval
+        return frameCount * baseInterval
+    }
+    
     func startAction(_ config: ActionConfig, gameState: StickFigureGameState) {
         // Stop other animations
         gameState.animationTimer?.invalidate()
@@ -1253,37 +1269,18 @@ class StickFigureGameState {
         
         let actionStartTime = Date().timeIntervalSince1970 * 1000
         
-        // Start rest countdown timer if this is rest
-        if config.id == "rest" {
-            gameState.restTotalDuration = 7.1
-            gameState.restTimeRemaining = 7.1
-            gameState.restZzzLastTime = 0
-            gameState.restCountdownTimer?.invalidate()
-            gameState.restZzzTimer?.invalidate()
-            gameState.restCountdownTimer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { [weak gameState] _ in
+        // Start config-driven countdown timer if enabled
+        if config.countdown == true {
+            let duration = calculateAnimationDuration(config: config)
+            gameState.actionCountdownTotalDuration = duration
+            gameState.actionCountdownTimeRemaining = duration
+            gameState.actionCountdownTimer?.invalidate()
+            gameState.actionCountdownTimer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { [weak gameState] _ in
                 guard let gameState = gameState else { return }
-                gameState.restTimeRemaining = max(0, gameState.restTimeRemaining - 0.1)
-                if gameState.restTimeRemaining <= 0 {
-                    gameState.restCountdownTimer?.invalidate()
-                    gameState.restCountdownTimer = nil
-                    gameState.restZzzTimer?.invalidate()
-                    gameState.restZzzTimer = nil
-                }
-            }
-        }
-        
-        // Start yoga countdown timer if this is yoga
-        if config.id == "yoga" {
-            // Yoga animation is exactly 60 seconds: 21 frames at 2.14s + 3 frames at 5.0s = 44.94 + 15 = ~60s
-            gameState.yogaTotalDuration = 60.0
-            gameState.yogaTimeRemaining = 60.0
-            gameState.yogaCountdownTimer?.invalidate()
-            gameState.yogaCountdownTimer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { [weak gameState] _ in
-                guard let gameState = gameState else { return }
-                gameState.yogaTimeRemaining = max(0, gameState.yogaTimeRemaining - 0.1)
-                if gameState.yogaTimeRemaining <= 0 {
-                    gameState.yogaCountdownTimer?.invalidate()
-                    gameState.yogaCountdownTimer = nil
+                gameState.actionCountdownTimeRemaining = max(0, gameState.actionCountdownTimeRemaining - 0.1)
+                if gameState.actionCountdownTimeRemaining <= 0 {
+                    gameState.actionCountdownTimer?.invalidate()
+                    gameState.actionCountdownTimer = nil
                 }
             }
         }
@@ -3687,20 +3684,12 @@ private struct GamePlayArea: View {
                         .position(x: shaker.x * geometry.size.width, y: shaker.y * geometry.size.height)
                 }
                 
-                // Rest countdown timer
-                if gameState.currentPerformingAction == "rest" && gameState.restTimeRemaining > 0 {
-                    Text(String(format: "%.1f", gameState.restTimeRemaining))
-                        .font(.system(size: 24, weight: .bold))
-                        .foregroundColor(.green)
-                        .position(x: max(50, min(geometry.size.width - 50, figureX)), y: figureY)
-                }
-
-                // Yoga countdown timer
-                if gameState.currentPerformingAction == "yoga" && gameState.yogaTimeRemaining > 0 {
-                    Text(String(format: "%.1f", gameState.yogaTimeRemaining))
-                        .font(.system(size: 24, weight: .bold))
-                        .foregroundColor(.orange)
-                        .position(x: max(50, min(geometry.size.width - 50, figureX)), y: figureY)
+                // Config-driven countdown timer (replaces hardcoded rest/yoga)
+                if gameState.actionCountdownTimeRemaining > 0 {
+                    Text(String(format: "%.1f", gameState.actionCountdownTimeRemaining))
+                        .font(.system(size: 16, weight: .semibold, design: .default))
+                        .foregroundColor(Color(red: 0.4, green: 0.4, blue: 0.4))  // Dark gray
+                        .position(x: max(50, min(geometry.size.width - 50, figureX)), y: figureY - 120)  // Position higher above stick figure
                 }
                 
                 // Pullup counter is now displayed as floating text in the collision timer

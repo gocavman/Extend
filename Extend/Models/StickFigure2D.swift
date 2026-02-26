@@ -847,6 +847,19 @@ struct FramesManagerView: View {
     @State private var showDeleteConfirmation = false
     @State private var isEditMode = false
     @State private var persistedFrames: Set<UUID> = [] // Track which frames are persisted
+    @State private var searchText = ""
+    
+    // MARK: - Search Filter
+    
+    private var filteredFrames: [AnimationFrame] {
+        if searchText.isEmpty {
+            return savedFrames
+        }
+        return savedFrames.filter { frame in
+            frame.name.lowercased().contains(searchText.lowercased()) ||
+            String(frame.frameNumber).contains(searchText)
+        }
+    }
     
     // MARK: - Persistence Functions
     
@@ -876,8 +889,28 @@ struct FramesManagerView: View {
                     }
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                 } else {
-                    List {
-                        ForEach(savedFrames) { frame in
+                    VStack(spacing: 0) {
+                        // Search Bar
+                        HStack(spacing: 12) {
+                            Image(systemName: "magnifyingglass")
+                                .foregroundColor(.gray)
+                            
+                            TextField("Search frames...", text: $searchText)
+                                .textFieldStyle(.roundedBorder)
+                            
+                            if !searchText.isEmpty {
+                                Button(action: { searchText = "" }) {
+                                    Image(systemName: "xmark.circle.fill")
+                                        .foregroundColor(.gray)
+                                }
+                                .buttonStyle(.plain)
+                            }
+                        }
+                        .padding(12)
+                        .background(Color(.systemBackground))
+                        
+                        List {
+                            ForEach(filteredFrames) { frame in
                             if editingFrameId == frame.id {
                                 // Edit mode for this frame
                                 VStack(spacing: 8) {
@@ -996,6 +1029,7 @@ struct FramesManagerView: View {
                         }
                     }
                     .listStyle(.insetGrouped)
+                    }
                 }
             }
             .navigationTitle("Saved Frames")

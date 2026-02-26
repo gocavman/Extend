@@ -8,6 +8,7 @@
     "flipMode": "none",
     "supportsSpeedBoost": false,
     "allowMovement": false,
+    "countdown": true,
     "floatingText": {
       "timing": 2.0,
       "text": ["zzz"],
@@ -17,8 +18,8 @@
     },
     "stickFigureAnimation": {
       "animationName": "Rest",
-      "frameNumbers": [1],
-      "baseFrameInterval": 2.0
+      "frameNumbers": [1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,1],
+      "baseFrameInterval": 0.5
     }
   },
   {
@@ -75,6 +76,7 @@
     "flipMode": "none",
     "supportsSpeedBoost": true,
     "allowMovement": false,
+    "countdown": true,
     "floatingText": {
       "timing": 5.0,
       "text": ["Breathe in", "Hold it", "Breathe out", "Relax"],
