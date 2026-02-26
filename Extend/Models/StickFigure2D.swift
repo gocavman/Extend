@@ -173,19 +173,19 @@ struct StickFigure2DPose: Codable {
         var container = encoder.container(keyedBy: CodingKeys.self)
         try container.encode(waistPosition.x, forKey: .waistPositionX)
         try container.encode(waistPosition.y, forKey: .waistPositionY)
-        try container.encode(waistTorsoAngle.rounded(), forKey: .waistTorsoAngle)
-        try container.encode(midTorsoAngle.rounded(), forKey: .midTorsoAngle)
-        try container.encode(headAngle.rounded(), forKey: .headAngle)
-        try container.encode(leftShoulderAngle.rounded(), forKey: .leftShoulderAngle)
-        try container.encode(rightShoulderAngle.rounded(), forKey: .rightShoulderAngle)
-        try container.encode(leftElbowAngle.rounded(), forKey: .leftElbowAngle)
-        try container.encode(rightElbowAngle.rounded(), forKey: .rightElbowAngle)
-        try container.encode(leftHandAngle.rounded(), forKey: .leftHandAngle)
-        try container.encode(rightHandAngle.rounded(), forKey: .rightHandAngle)
-        try container.encode(leftKneeAngle.rounded(), forKey: .leftKneeAngle)
-        try container.encode(rightKneeAngle.rounded(), forKey: .rightKneeAngle)
-        try container.encode(leftFootAngle.rounded(), forKey: .leftFootAngle)
-        try container.encode(rightFootAngle.rounded(), forKey: .rightFootAngle)
+        try container.encode(waistTorsoAngle, forKey: .waistTorsoAngle)
+        try container.encode(midTorsoAngle, forKey: .midTorsoAngle)
+        try container.encode(headAngle, forKey: .headAngle)
+        try container.encode(leftShoulderAngle, forKey: .leftShoulderAngle)
+        try container.encode(rightShoulderAngle, forKey: .rightShoulderAngle)
+        try container.encode(leftElbowAngle, forKey: .leftElbowAngle)
+        try container.encode(rightElbowAngle, forKey: .rightElbowAngle)
+        try container.encode(leftHandAngle, forKey: .leftHandAngle)
+        try container.encode(rightHandAngle, forKey: .rightHandAngle)
+        try container.encode(leftKneeAngle, forKey: .leftKneeAngle)
+        try container.encode(rightKneeAngle, forKey: .rightKneeAngle)
+        try container.encode(leftFootAngle, forKey: .leftFootAngle)
+        try container.encode(rightFootAngle, forKey: .rightFootAngle)
         try container.encode(headColor, forKey: .headColor)
         try container.encode(torsoColor, forKey: .torsoColor)
         try container.encode(leftArmColor, forKey: .leftArmColor)
@@ -503,10 +503,11 @@ struct StickFigure2D {
     }
     
     // Left leg positions (lower body doesn't rotate with waist)
+    // Legs rotate directly from waist center - no fixed X offset
     var leftUpperLegEnd: CGPoint {
         let angle = 270.0 + leftKneeAngle // 270° = pointing down
         let radians = angle * .pi / 180
-        let x = waistPosition.x - shoulderWidth / 4 + upperLegLength * cos(radians)
+        let x = waistPosition.x + upperLegLength * cos(radians)
         let y = waistPosition.y + upperLegLength * sin(radians)
         return CGPoint(x: x, y: y)
     }
@@ -520,10 +521,11 @@ struct StickFigure2D {
     }
     
     // Right leg positions
+    // Legs rotate directly from waist center - no fixed X offset
     var rightUpperLegEnd: CGPoint {
         let angle = 270.0 + rightKneeAngle
         let radians = angle * .pi / 180
-        let x = waistPosition.x + shoulderWidth / 4 + upperLegLength * cos(radians)
+        let x = waistPosition.x + upperLegLength * cos(radians)
         let y = waistPosition.y + upperLegLength * sin(radians)
         return CGPoint(x: x, y: y)
     }
@@ -534,6 +536,67 @@ struct StickFigure2D {
         let x = rightUpperLegEnd.x + lowerLegLength * cos(radians)
         let y = rightUpperLegEnd.y + lowerLegLength * sin(radians)
         return CGPoint(x: x, y: y)
+    }
+}
+
+// MARK: - Grid Overlay
+
+struct GridOverlay: View {
+    let canvasSize: CGSize
+    let gridSpacing: CGFloat = 30  // Grid cell size (increased from 20)
+    
+    var body: some View {
+        Canvas { context, size in
+            drawGrid(in: context, size: size)
+        }
+    }
+    
+    private func drawGrid(in context: GraphicsContext, size: CGSize) {
+        var path = Path()
+        
+        // Calculate offset to center grid on the waist position (canvas center)
+        // The waist is at the center of the canvas
+        let canvasCenter = CGPoint(x: size.width / 2, y: size.height / 2)
+        let offset = gridSpacing / 2  // Offset to center grid on intersection point
+        
+        // Draw vertical lines - centered on canvas center
+        var x: CGFloat = canvasCenter.x - offset
+        while x <= size.width {
+            path.move(to: CGPoint(x: x, y: 0))
+            path.addLine(to: CGPoint(x: x, y: size.height))
+            x += gridSpacing
+        }
+        
+        // Also draw lines to the left of center
+        x = canvasCenter.x - offset - gridSpacing
+        while x >= 0 {
+            path.move(to: CGPoint(x: x, y: 0))
+            path.addLine(to: CGPoint(x: x, y: size.height))
+            x -= gridSpacing
+        }
+        
+        // Draw horizontal lines - centered on canvas center
+        var y: CGFloat = canvasCenter.y - offset
+        while y <= size.height {
+            path.move(to: CGPoint(x: 0, y: y))
+            path.addLine(to: CGPoint(x: size.width, y: y))
+            y += gridSpacing
+        }
+        
+        // Also draw lines above center
+        y = canvasCenter.y - offset - gridSpacing
+        while y >= 0 {
+            path.move(to: CGPoint(x: 0, y: y))
+            path.addLine(to: CGPoint(x: size.width, y: y))
+            y -= gridSpacing
+        }
+        
+        // Stroke the grid with a darker color
+        context.stroke(
+            path,
+            with: .color(Color.gray.opacity(0.3)),  // Darker (from 0.15)
+            lineWidth: 0.5
+        )
     }
 }
 
@@ -784,18 +847,6 @@ struct FramesManagerView: View {
     @State private var showDeleteConfirmation = false
     @State private var isEditMode = false
     @State private var persistedFrames: Set<UUID> = [] // Track which frames are persisted
-    @State private var searchText = "" // New: search functionality
-    
-    // Computed property to filter frames based on search text
-    private var filteredFrames: [AnimationFrame] {
-        if searchText.isEmpty {
-            return savedFrames
-        }
-        return savedFrames.filter { frame in
-            frame.name.lowercased().contains(searchText.lowercased()) ||
-            String(frame.frameNumber).contains(searchText)
-        }
-    }
     
     // MARK: - Persistence Functions
     
@@ -810,27 +861,7 @@ struct FramesManagerView: View {
     
     var body: some View {
         NavigationView {
-            VStack(spacing: 0) {
-                // Search bar at the top
-                HStack(spacing: 12) {
-                    Image(systemName: "magnifyingglass")
-                        .foregroundColor(.gray)
-                    
-                    TextField("Search frames...", text: $searchText)
-                        .textFieldStyle(.roundedBorder)
-                    
-                    // Clear button (X)
-                    if !searchText.isEmpty {
-                        Button(action: { searchText = "" }) {
-                            Image(systemName: "xmark.circle.fill")
-                                .foregroundColor(.gray)
-                        }
-                    }
-                }
-                .padding()
-                .background(Color(.systemBackground))
-                
-                // Frames list
+            VStack {
                 if savedFrames.isEmpty {
                     VStack(spacing: 16) {
                         Image(systemName: "film.stack")
@@ -844,22 +875,9 @@ struct FramesManagerView: View {
                             .foregroundColor(.gray)
                     }
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
-                } else if filteredFrames.isEmpty {
-                    VStack(spacing: 16) {
-                        Image(systemName: "magnifyingglass")
-                            .font(.system(size: 48))
-                            .foregroundColor(.gray)
-                        Text("No frames found")
-                            .font(.headline)
-                            .foregroundColor(.gray)
-                        Text("Try a different search term")
-                            .font(.caption)
-                            .foregroundColor(.gray)
-                    }
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
                 } else {
                     List {
-                        ForEach(filteredFrames) { frame in
+                        ForEach(savedFrames) { frame in
                             if editingFrameId == frame.id {
                                 // Edit mode for this frame
                                 VStack(spacing: 8) {
@@ -1316,6 +1334,9 @@ struct StickFigure2DEditorView: View {
             // Background
             RoundedRectangle(cornerRadius: 12)
                 .fill(Color(red: 0.95, green: 0.95, blue: 0.98))
+            
+            // Grid overlay
+            GridOverlay(canvasSize: canvasSize)
             
             StickFigure2DView(figure: figure, canvasSize: canvasSize, showJoints: true)
             
@@ -2428,605 +2449,29 @@ struct StickFigure2DEditorView: View {
         let parentAngle = 270.0 + figure.rightShoulderAngle + figure.midTorsoAngle + figure.waistTorsoAngle
         figure.rightElbowAngle = wrapAngle(angle - parentAngle)
     case "leftKnee":
-        let parentAngle = 270.0 + figure.waistTorsoAngle
-        figure.leftKneeAngle = wrapAngle(angle - parentAngle)
+        // Legs rotate directly from waist center
+        let angleFromWaist = calculateAngle(from: figure.waistPosition, to: position)
+        let parentAngle = 270.0 // Legs always point down, no waist rotation applied
+        figure.leftKneeAngle = wrapAngle(angleFromWaist - parentAngle)
     case "rightKnee":
-        let parentAngle = 270.0 + figure.waistTorsoAngle
-        figure.rightKneeAngle = wrapAngle(angle - parentAngle)
+        // Legs rotate directly from waist center
+        let angleFromWaist = calculateAngle(from: figure.waistPosition, to: position)
+        let parentAngle = 270.0 // Legs always point down, no waist rotation applied
+        figure.rightKneeAngle = wrapAngle(angleFromWaist - parentAngle)
     case "leftFoot":
-        let parentAngle = 270.0 + figure.leftKneeAngle + figure.waistTorsoAngle
-        figure.leftFootAngle = wrapAngle(angle - parentAngle)
+        // Feet are children of the knee, so calculate from the upper leg end position
+        let angleFromKnee = calculateAngle(from: figure.leftUpperLegEnd, to: position)
+        let parentAngle = 270.0 + figure.leftKneeAngle
+        figure.leftFootAngle = wrapAngle(angleFromKnee - parentAngle)
     case "rightFoot":
-        let parentAngle = 270.0 + figure.rightKneeAngle + figure.waistTorsoAngle
-        figure.rightFootAngle = wrapAngle(angle - parentAngle)
+        // Feet are children of the knee, so calculate from the upper leg end position
+        let angleFromKnee = calculateAngle(from: figure.rightUpperLegEnd, to: position)
+        let parentAngle = 270.0 + figure.rightKneeAngle
+        figure.rightFootAngle = wrapAngle(angleFromKnee - parentAngle)
     default:
         break
     }
-    
-    // Save the current state after any joint update
-    // saveCurrentFigureState()  -- Not needed for inline view (uses @Binding)
-    }
-    
-    private func getParentPosition(for jointName: String) -> CGPoint {
-        switch jointName {
-        case "waist":
-            return figure.midTorsoPosition
-        case "midTorso":
-            return figure.midTorsoPosition
-        case "neck":
-            return figure.midTorsoPosition
-        case "head":
-            return figure.neckPosition
-        case "leftShoulder":
-            return figure.neckPosition
-        case "rightShoulder":
-            return figure.neckPosition
-        case "leftElbow":
-            return figure.leftShoulderPosition
-        case "rightElbow":
-            return figure.rightShoulderPosition
-        case "leftKnee":
-            return figure.waistPosition
-        case "rightKnee":
-            return figure.waistPosition
-        case "leftFoot":
-            return figure.leftUpperLegEnd
-        case "rightFoot":
-            return figure.rightUpperLegEnd
-        default:
-            return CGPoint.zero
-        }
-    }
-    
-    private func calculateAngle(from: CGPoint, to: CGPoint) -> Double {
-        let dx = to.x - from.x
-        let dy = to.y - from.y
-        let radians = atan2(dy, dx)
-        return radians * 180 / .pi
-    }
-}
 
-// MARK: - Inline Editor Component
-
-struct StickFigure2DEditorInlineView: View {
-    @Binding var figure: StickFigure2D
-    @State private var draggedJoint: String? = nil
-    @State private var lastWaistAngle: Double = 0
-    @State private var lastMidTorsoAngle: Double = 0
-    
-    let canvasSize = CGSize(width: 400, height: 500)
-
-    private func wrapAngle(_ angle: Double) -> Double {
-        var wrapped = angle.truncatingRemainder(dividingBy: 360)
-        if wrapped <= -180 {
-            wrapped += 360
-        } else if wrapped > 180 {
-            wrapped -= 360
-        }
-        return wrapped
-    }
-
-    private func shortestAngleDelta(from current: Double, to target: Double) -> Double {
-        wrapAngle(target - current)
-    }
-
-    private func smoothedAngle(last: Double, target: Double, alpha: Double) -> Double {
-        let delta = shortestAngleDelta(from: last, to: target)
-        return wrapAngle(last + delta * alpha)
-    }
-    
-    // Helper function to scale points for drag handles
-    private func scalePoint(_ point: CGPoint) -> CGPoint {
-        let canvasCenter = CGPoint(x: canvasSize.width / 2, y: canvasSize.height / 2)
-        let dx = point.x - canvasCenter.x
-        let dy = point.y - canvasCenter.y
-        return CGPoint(
-            x: canvasCenter.x + dx * figure.scale,
-            y: canvasCenter.y + dy * figure.scale
-        )
-    }
-    
-    // Helper function to unscale drag positions back to figure coordinates
-    private func unscalePoint(_ point: CGPoint) -> CGPoint {
-        let canvasCenter = CGPoint(x: canvasSize.width / 2, y: canvasSize.height / 2)
-        let dx = point.x - canvasCenter.x
-        let dy = point.y - canvasCenter.y
-        return CGPoint(
-            x: canvasCenter.x + dx / figure.scale,
-            y: canvasCenter.y + dy / figure.scale
-        )
-    }
-    
-    var body: some View {
-        VStack(spacing: 16) {
-            // Canvas
-            ZStack {
-                RoundedRectangle(cornerRadius: 12)
-                    .fill(Color(red: 0.95, green: 0.95, blue: 0.98))
-                
-                StickFigure2DView(figure: figure, canvasSize: canvasSize, showJoints: true)
-                
-                // Draggable joint handles
-                Group {
-                    // Mid-torso (center of rotation for upper torso and waist hinge)
-                    ZStack {
-                        Circle()
-                            .fill(draggedJoint == "midTorso" ? Color.red : Color.cyan)
-                            .frame(width: 6, height: 6)
-                        
-                        // Larger invisible hit area
-                        Circle()
-                            .fill(Color.clear)
-                            .frame(width: 30, height: 30)
-                    }
-                    .position(scalePoint(figure.midTorsoPosition))
-                    .gesture(DragGesture()
-                        .onChanged { value in
-                            updateJoint("midTorso", with: unscalePoint(value.location))
-                        }
-                        .onEnded { _ in
-                            draggedJoint = nil
-                            lastMidTorsoAngle = figure.waistTorsoAngle
-                        }
-                    )
-
-                    // Neck (controls upper torso rotation)
-                    ZStack {
-                        Circle()
-                            .fill(draggedJoint == "neck" ? Color.red : Color.purple)
-                            .frame(width: 6, height: 6)
-                        
-                        // Larger invisible hit area
-                        Circle()
-                            .fill(Color.clear)
-                            .frame(width: 30, height: 30)
-                    }
-                    .position(scalePoint(figure.neckPosition))
-                    .gesture(DragGesture()
-                        .onChanged { value in
-                            updateJoint("neck", with: unscalePoint(value.location))
-                        }
-                        .onEnded { _ in
-                            draggedJoint = nil
-                            lastWaistAngle = figure.waistTorsoAngle
-                        }
-                    )
-
-                    // Left shoulder (at elbow position)
-                    ZStack {
-                        Circle()
-                            .fill(draggedJoint == "leftShoulder" ? Color.red : Color.blue)
-                            .frame(width: 6, height: 6)
-                        
-                        Circle()
-                            .fill(Color.clear)
-                            .frame(width: 30, height: 30)
-                    }
-                    .position(scalePoint(figure.leftUpperArmEnd))
-                    .gesture(DragGesture()
-                        .onChanged { value in
-                            updateJoint("leftShoulder", with: unscalePoint(value.location))
-                        }
-                        .onEnded { _ in
-                            draggedJoint = nil
-                        }
-                    )
-
-                    // Right shoulder (at elbow position)
-                    ZStack {
-                        Circle()
-                            .fill(draggedJoint == "rightShoulder" ? Color.red : Color.blue)
-                            .frame(width: 6, height: 6)
-                        
-                        Circle()
-                            .fill(Color.clear)
-                            .frame(width: 30, height: 30)
-                    }
-                    .position(scalePoint(figure.rightUpperArmEnd))
-                    .gesture(DragGesture()
-                        .onChanged { value in
-                            updateJoint("rightShoulder", with: unscalePoint(value.location))
-                        }
-                        .onEnded { _ in
-                            draggedJoint = nil
-                        }
-                    )
-
-                    // Left elbow (at forearm end)
-                    ZStack {
-                        Circle()
-                            .fill(draggedJoint == "leftElbow" ? Color.red : Color.green)
-                            .frame(width: 6, height: 6)
-                        
-                        Circle()
-                            .fill(Color.clear)
-                            .frame(width: 30, height: 30)
-                    }
-                    .position(scalePoint(figure.leftForearmEnd))
-                    .gesture(DragGesture()
-                        .onChanged { value in
-                            updateJoint("leftElbow", with: unscalePoint(value.location))
-                        }
-                        .onEnded { _ in
-                            draggedJoint = nil
-                        }
-                    )
-
-                    // Right elbow (at forearm end)
-                    ZStack {
-                        Circle()
-                            .fill(draggedJoint == "rightElbow" ? Color.red : Color.green)
-                            .frame(width: 6, height: 6)
-                        
-                        Circle()
-                            .fill(Color.clear)
-                            .frame(width: 30, height: 30)
-                    }
-                    .position(scalePoint(figure.rightForearmEnd))
-                    .gesture(DragGesture()
-                        .onChanged { value in
-                            updateJoint("rightElbow", with: unscalePoint(value.location))
-                        }
-                        .onEnded { _ in
-                            draggedJoint = nil
-                        }
-                    )
-
-                    // Head
-                    ZStack {
-                        Circle()
-                            .fill(draggedJoint == "head" ? Color.red : Color.purple)
-                            .frame(width: 6, height: 6)
-                        
-                        Circle()
-                            .fill(Color.clear)
-                            .frame(width: 30, height: 30)
-                    }
-                    .position(scalePoint(figure.headPosition))
-                    .gesture(DragGesture()
-                        .onChanged { value in
-                            updateJoint("head", with: unscalePoint(value.location))
-                        }
-                        .onEnded { _ in
-                            draggedJoint = nil
-                        }
-                    )
-
-                    // Left knee
-                    ZStack {
-                        Circle()
-                            .fill(draggedJoint == "leftKnee" ? Color.red : Color.yellow)
-                            .frame(width: 6, height: 6)
-                        
-                        Circle()
-                            .fill(Color.clear)
-                            .frame(width: 30, height: 30)
-                    }
-                    .position(scalePoint(figure.leftUpperLegEnd))
-                    .gesture(DragGesture()
-                        .onChanged { value in
-                            updateJoint("leftKnee", with: unscalePoint(value.location))
-                        }
-                        .onEnded { _ in
-                            draggedJoint = nil
-                        }
-                    )
-
-                    // Right knee
-                    ZStack {
-                        Circle()
-                            .fill(draggedJoint == "rightKnee" ? Color.red : Color.yellow)
-                            .frame(width: 6, height: 6)
-                        
-                        Circle()
-                            .fill(Color.clear)
-                            .frame(width: 30, height: 30)
-                    }
-                    .position(scalePoint(figure.rightUpperLegEnd))
-                    .gesture(DragGesture()
-                        .onChanged { value in
-                            updateJoint("rightKnee", with: unscalePoint(value.location))
-                        }
-                        .onEnded { _ in
-                            draggedJoint = nil
-                        }
-                    )
-
-                    // Left foot
-                    ZStack {
-                        Circle()
-                            .fill(draggedJoint == "leftFoot" ? Color.red : Color.pink)
-                            .frame(width: 6, height: 6)
-                        
-                        Circle()
-                            .fill(Color.clear)
-                            .frame(width: 30, height: 30)
-                    }
-                    .position(scalePoint(figure.leftFootEnd))
-                    .gesture(DragGesture()
-                        .onChanged { value in
-                            updateJoint("leftFoot", with: unscalePoint(value.location))
-                        }
-                        .onEnded { _ in
-                            draggedJoint = nil
-                        }
-                    )
-
-                    // Right foot
-                    ZStack {
-                        Circle()
-                            .fill(draggedJoint == "rightFoot" ? Color.red : Color.pink)
-                            .frame(width: 6, height: 6)
-                        
-                        Circle()
-                            .fill(Color.clear)
-                            .frame(width: 30, height: 30)
-                    }
-                    .position(scalePoint(figure.rightFootEnd))
-                    .gesture(DragGesture()
-                        .onChanged { value in
-                            updateJoint("rightFoot", with: unscalePoint(value.location))
-                        }
-                        .onEnded { _ in
-                            draggedJoint = nil
-                        }
-                    )
-                }
-            }
-            .frame(width: canvasSize.width, height: canvasSize.height)
-            .padding(4)
-            
-            // Controls
-            VStack(alignment: .leading, spacing: 12) {
-                Text("Joint Controls").font(.subheadline).fontWeight(.semibold)
-                
-                VStack(alignment: .leading, spacing: 8) {
-                    HStack {
-                        Text("Waist Rotation:")
-                        Slider(value: $figure.waistTorsoAngle, in: -180...180, step: 1)
-                        Text("\(Int(wrapAngle(figure.waistTorsoAngle)))°")
-                            .frame(width: 40)
-                    }
-                    
-                    HStack {
-                        Text("Left Shoulder:")
-                        Slider(value: $figure.leftShoulderAngle, in: -180...180, step: 1)
-                        Text("\(Int(wrapAngle(figure.leftShoulderAngle)))°")
-                            .frame(width: 40)
-                    }
-                    
-                    HStack {
-                        Text("Right Shoulder:")
-                        Slider(value: $figure.rightShoulderAngle, in: -180...180, step: 1)
-                        Text("\(Int(wrapAngle(figure.rightShoulderAngle)))°")
-                            .frame(width: 40)
-                    }
-                    
-                    HStack {
-                        Text("Left Elbow:")
-                        Slider(value: $figure.leftElbowAngle, in: -180...180, step: 1)
-                        Text("\(Int(wrapAngle(figure.leftElbowAngle)))°")
-                            .frame(width: 40)
-                    }
-                    
-                    HStack {
-                        Text("Right Elbow:")
-                        Slider(value: $figure.rightElbowAngle, in: -180...180, step: 1)
-                        Text("\(Int(wrapAngle(figure.rightElbowAngle)))°")
-                            .frame(width: 40)
-                    }
-                    
-                    HStack {
-                        Text("Left Knee:")
-                        Slider(value: $figure.leftKneeAngle, in: -180...180, step: 1)
-                        Text("\(Int(wrapAngle(figure.leftKneeAngle)))°")
-                            .frame(width: 40)
-                    }
-                    
-                    HStack {
-                        Text("Right Knee:")
-                        Slider(value: $figure.rightKneeAngle, in: -180...180, step: 1)
-                        Text("\(Int(wrapAngle(figure.rightKneeAngle)))°")
-                            .frame(width: 40)
-                    }
-                    
-                    HStack {
-                        Text("Left Foot:")
-                        Slider(value: $figure.leftFootAngle, in: -180...180, step: 1)
-                        Text("\(Int(wrapAngle(figure.leftFootAngle)))°")
-                            .frame(width: 40)
-                    }
-                    
-                    HStack {
-                        Text("Right Foot:")
-                        Slider(value: $figure.rightFootAngle, in: -180...180, step: 1)
-                        Text("\(Int(wrapAngle(figure.rightFootAngle)))°")
-                            .frame(width: 40)
-                    }
-                    
-                    HStack {
-                        Text("Head:")
-                        Slider(value: $figure.headAngle, in: -180...180, step: 1)
-                        Text("\(Int(wrapAngle(figure.headAngle)))°")
-                            .frame(width: 40)
-                    }
-                }
-                .padding()
-                .background(Color.gray.opacity(0.1))
-                .cornerRadius(8)
-            }
-            .padding()
-            
-            // Colors
-            VStack(alignment: .leading, spacing: 12) {
-                Text("Colors").font(.subheadline).fontWeight(.semibold)
-                
-                VStack(alignment: .leading, spacing: 8) {
-                    HStack {
-                        Text("Head:")
-                        Spacer()
-                        ColorPicker("", selection: $figure.headColor)
-                            .frame(width: 50)
-                    }
-                    
-                    HStack {
-                        Text("Torso:")
-                        Spacer()
-                        ColorPicker("", selection: $figure.torsoColor)
-                            .frame(width: 50)
-                    }
-                    
-                    HStack {
-                        Text("Left Arm:")
-                        Spacer()
-                        ColorPicker("", selection: $figure.leftArmColor)
-                            .frame(width: 50)
-                    }
-                    
-                    HStack {
-                        Text("Right Arm:")
-                        Spacer()
-                        ColorPicker("", selection: $figure.rightArmColor)
-                            .frame(width: 50)
-                    }
-                    
-                    HStack {
-                        Text("Hands:")
-                        Spacer()
-                        ColorPicker("", selection: $figure.handColor)
-                            .frame(width: 50)
-                    }
-                    
-                    HStack {
-                        Text("Left Leg:")
-                        Spacer()
-                        ColorPicker("", selection: $figure.leftLegColor)
-                            .frame(width: 50)
-                    }
-                    
-                    HStack {
-                        Text("Right Leg:")
-                        Spacer()
-                        ColorPicker("", selection: $figure.rightLegColor)
-                            .frame(width: 50)
-                    }
-                    
-                    HStack {
-                        Text("Feet:")
-                        Spacer()
-                        ColorPicker("", selection: $figure.footColor)
-                            .frame(width: 50)
-                    }
-                    
-                    Divider()
-                    
-                    HStack {
-                        Text("Stroke Thickness:")
-                        Slider(value: $figure.strokeThickness, in: 0.5...20, step: 0.5)
-                        Text("\(String(format: "%.1f", figure.strokeThickness))")
-                            .frame(width: 40)
-                    }
-                }
-                .padding()
-                .background(Color.gray.opacity(0.1))
-                .cornerRadius(8)
-            }
-            .padding()
-        }
-    }
-    
-    @ViewBuilder
-    private func jointDragHandle(_ name: String, position: CGPoint, color: Color) -> some View {
-        Circle()
-            .fill(draggedJoint == name ? Color.red : color)
-            .frame(width: name.contains("Foot") || name.contains("Hand") ? 8 : 10, height: name.contains("Foot") || name.contains("Hand") ? 8 : 10)
-            .position(position)
-            .gesture(DragGesture()
-                .onChanged { value in
-                    updateJoint(name, with: value.location)
-                }
-                .onEnded { _ in
-                    draggedJoint = nil
-                }
-            )
-    }
-    
-    @ViewBuilder
-    private func sliderControl(_ label: String, value: Binding<Double>) -> some View {
-        HStack {
-            Text(label)
-            Slider(value: value, in: -180...180, step: 1)
-            Text("\(Int(value.wrappedValue))°")
-                .frame(width: 40)
-        }
-    }
-    
-    @ViewBuilder
-    private func colorControl(_ label: String, color: Binding<Color>) -> some View {
-        HStack {
-            Text(label)
-            Spacer()
-            ColorPicker("", selection: color)
-                .frame(width: 50)
-        }
-    }
-    
-    private func updateJoint(_ jointName: String, with position: CGPoint) {
-        draggedJoint = jointName
-
-    // Calculate the angle from parent to this position
-    let angle = calculateAngle(from: getParentPosition(for: jointName), to: position)
-
-    switch jointName {
-    case "waist":
-        let midTorsoAngle = 270.0 + figure.midTorsoAngle
-        let targetAngle = wrapAngle(angle - midTorsoAngle)
-        // Apply very strong damping for waist testing: blend 90% old angle with 10% new angle
-        let newAngle = smoothedAngle(last: lastWaistAngle, target: targetAngle, alpha: 0.1)
-        figure.waistTorsoAngle = wrapAngle(newAngle)
-        lastWaistAngle = wrapAngle(newAngle)
-    case "midTorso":
-        let midTorsoAngle = 270.0 + figure.midTorsoAngle
-        let targetAngle = wrapAngle(angle - midTorsoAngle)
-        // Apply damping: blend 70% old angle with 30% new angle for smoother rotation
-        let newAngle = smoothedAngle(last: lastMidTorsoAngle, target: targetAngle, alpha: 0.3)
-        figure.waistTorsoAngle = wrapAngle(newAngle)
-        lastMidTorsoAngle = wrapAngle(newAngle)
-    case "neck":
-        let midTorsoAngle = 270.0 + figure.waistTorsoAngle
-        figure.midTorsoAngle = wrapAngle(angle - midTorsoAngle)
-    case "head":
-        // Head angle is stored as absolute world angle (0° = up)
-        // Convert from atan2 angle (0° = right) to our system (0° = up)
-        figure.headAngle = wrapAngle(angle + 90)
-    case "leftShoulder":
-        let parentAngle = 270.0 + figure.midTorsoAngle + figure.waistTorsoAngle
-        figure.leftShoulderAngle = wrapAngle(angle - parentAngle)
-    case "rightShoulder":
-        let parentAngle = 270.0 + figure.midTorsoAngle + figure.waistTorsoAngle
-        figure.rightShoulderAngle = wrapAngle(angle - parentAngle)
-    case "leftElbow":
-        let parentAngle = 270.0 + figure.leftShoulderAngle + figure.midTorsoAngle + figure.waistTorsoAngle
-        figure.leftElbowAngle = wrapAngle(angle - parentAngle)
-    case "rightElbow":
-        let parentAngle = 270.0 + figure.rightShoulderAngle + figure.midTorsoAngle + figure.waistTorsoAngle
-        figure.rightElbowAngle = wrapAngle(angle - parentAngle)
-    case "leftKnee":
-        let parentAngle = 270.0 + figure.waistTorsoAngle
-        figure.leftKneeAngle = wrapAngle(angle - parentAngle)
-    case "rightKnee":
-        let parentAngle = 270.0 + figure.waistTorsoAngle
-        figure.rightKneeAngle = wrapAngle(angle - parentAngle)
-    case "leftFoot":
-        let parentAngle = 270.0 + figure.leftKneeAngle + figure.waistTorsoAngle
-        figure.leftFootAngle = wrapAngle(angle - parentAngle)
-    case "rightFoot":
-        let parentAngle = 270.0 + figure.rightKneeAngle + figure.waistTorsoAngle
-        figure.rightFootAngle = wrapAngle(angle - parentAngle)
-    default:
-        break
-    }
-    
     // Save the current state after any joint update
     // saveCurrentFigureState()  -- Not needed for inline view (uses @Binding)
     }
