@@ -942,16 +942,32 @@ private struct StatCardTileView: View {
                     WeekFrequencyView(days: frequencyDays)
                 }
             } else if statType == .muscleGroupDistribution {
-                if muscleSegments.isEmpty {
-                    Text("—")
-                        .font(.caption2)
-                        .foregroundColor(.gray)
-                } else {
-                    GeometryReader { geometry in
-                        let maxHeight = geometry.size.height
-                        let maxWidth = geometry.size.width
-                        let pieSize = min(maxHeight * 0.9, maxWidth * 0.55)
-
+                GeometryReader { geometry in
+                    let maxHeight = geometry.size.height
+                    let maxWidth = geometry.size.width
+                    let pieSize = min(maxHeight * 0.9, maxWidth * 0.55)
+                    
+                    if muscleSegments.isEmpty {
+                        // Dummy pie chart when no workouts logged
+                        VStack {
+                            Spacer()
+                            HStack {
+                                Spacer()
+                                ZStack {
+                                    PieChartView(segments: [PieSegment(label: "No Data", value: 1.0, color: .gray)])
+                                    
+                                    Text("No workouts\nlogged")
+                                        .font(.caption2)
+                                        .fontWeight(.semibold)
+                                        .foregroundColor(.black)
+                                        .multilineTextAlignment(.center)
+                                }
+                                .frame(width: pieSize, height: pieSize)
+                                Spacer()
+                            }
+                            Spacer()
+                        }
+                    } else {
                         ZStack {
                             HStack(spacing: 12) {
                                 PieChartView(segments: muscleSegments)
@@ -1042,22 +1058,32 @@ private struct PieChartView: View {
                     }
                     .fill(segments[index].color)
 
-                    let midAngle = (startAngle.radians + endAngle.radians) / 2
-                    let radius = min(geometry.size.width, geometry.size.height) / 2
-                    let theta = max(endAngle.radians - startAngle.radians, 0.0001)
-                    let labelRadius = (4 * radius * sin(theta / 2)) / (3 * theta)
-                    let labelX = geometry.size.width / 2 + labelRadius * cos(midAngle)
-                    let labelY = geometry.size.height / 2 + labelRadius * sin(midAngle)
+                    // Only show percentage labels for real data (not dummy charts)
+                    if !isDummyChart {
+                        let midAngle = (startAngle.radians + endAngle.radians) / 2
+                        let radius = min(geometry.size.width, geometry.size.height) / 2
+                        let theta = max(endAngle.radians - startAngle.radians, 0.0001)
+                        let labelRadius = (4 * radius * sin(theta / 2)) / (3 * theta)
+                        let labelX = geometry.size.width / 2 + labelRadius * cos(midAngle)
+                        let labelY = geometry.size.height / 2 + labelRadius * sin(midAngle)
 
-                    Text("\(Int(segments[index].value * 100))%")
-                        .font(.caption2)
-                        .fontWeight(.semibold)
-                        .foregroundColor(.white)
-                        .position(x: labelX, y: labelY)
+                        Text("\(Int(segments[index].value * 100))%")
+                            .font(.caption2)
+                            .fontWeight(.semibold)
+                            .foregroundColor(.white)
+                            .position(x: labelX, y: labelY)
+                    }
                 }
             }
         }
     }
+
+    // Check if this is a dummy chart (single 100% gray segment)
+    private var isDummyChart: Bool {
+        segments.count == 1 && segments[0].value == 1.0 && segments[0].color == .gray
+    }
+
+    // ...existing code...
 
     private func angleStart(at index: Int) -> Angle {
         let total = segments.map { $0.value }.reduce(0, +)
