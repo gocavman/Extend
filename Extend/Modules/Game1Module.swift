@@ -109,9 +109,8 @@ struct ActionConfig: Codable {
 
 // MARK: - Level Configuration
 
-struct CatchableConfig: Codable {
+struct LevelCatchableConfig: Codable {
     let chance: Double  // Probability of spawning (0.0 to 1.0)
-    let points: Int     // Points awarded when caught
 }
 
 struct LevelConfig: Codable {
@@ -120,14 +119,13 @@ struct LevelConfig: Codable {
     let displayName: String
     let pointsToComplete: Int
     let availableActions: [String]  // Action IDs available in this level
-    let catchables: [String: CatchableConfig]  // Catchable types and their config
-    let mapX: CGFloat
-    let mapY: CGFloat
-    let width: CGFloat
-    let height: CGFloat
+    let catchables: [String: LevelCatchableConfig]  // Catchable types and their config
+    let mapX: Double
+    let mapY: Double
+    let width: Double
+    let height: Double
     let difficulty: Double
     let description: String
-    
     // Helper to check if an action is available in this level
     func isActionAvailable(_ actionId: String) -> Bool {
         return availableActions.contains(actionId)
@@ -188,11 +186,12 @@ func loadLevels() -> [LevelConfig] {
     if let url = Bundle.main.url(forResource: "levels", withExtension: "json"),
        let data = try? Data(contentsOf: url) {
         let decoder = JSONDecoder()
-        if let levels = try? decoder.decode([LevelConfig].self, from: data) {
+        do {
+            let levels = try decoder.decode([LevelConfig].self, from: data)
             print("✅ Successfully loaded \(levels.count) level configurations from JSON")
             return levels
-        } else {
-            print("⚠️ Failed to decode levels.json")
+        } catch {
+            print("⚠️ Failed to decode levels.json: \(error)")
         }
     } else {
         print("⚠️ Could not find levels.json in bundle")
@@ -246,23 +245,45 @@ struct FloatingTextItem: Identifiable {
     var isMeditation: Bool = false // Flag for meditation text
 }
 
-// MARK: - Falling Leaf
-// MARK: - Falling Item Config
+// MARK: - Catchable Configuration
 
-struct FallingItemConfig {
+struct CatchableConfig: Codable {
     let id: String
-    let iconName: String
+    let name: String
+    let assetName: String?
+    let iconName: String?
     let unlockLevel: Int
+    let direction: String  // "falls" or "vertical"
+    let spins: Bool
+    let spinSpeed: Double
+    let collisionAnimation: String?  // Optional action animation ID
+    let baseSpawnChance: Double
+    let baseVerticalSpeed: Double
+    let baseVerticalSpeedMax: Double
+    let color: String?  // Hex color for SF symbols
     let points: Int
-    let color: Color
 }
 
-let FALLING_ITEM_CONFIGS: [FallingItemConfig] = [
-    FallingItemConfig(id: "leaf", iconName: "leaf.fill", unlockLevel: 1, points: 1, color: .green),
-    FallingItemConfig(id: "heart", iconName: "heart.fill", unlockLevel: 4, points: 2, color: .red),
-    FallingItemConfig(id: "brain", iconName: "brain.fill", unlockLevel: 7, points: 3, color: .purple),
-    FallingItemConfig(id: "sun", iconName: "sun.max.fill", unlockLevel: 10, points: 4, color: .yellow),
-]
+/// Loads catchable configurations from catchables.json
+func loadCatchables() -> [CatchableConfig] {
+    if let url = Bundle.main.url(forResource: "catchables", withExtension: "json"),
+       let data = try? Data(contentsOf: url) {
+        let decoder = JSONDecoder()
+        if let configs = try? decoder.decode([CatchableConfig].self, from: data) {
+            print("✅ Successfully loaded \(configs.count) catchable configurations from JSON")
+            return configs
+        } else {
+            print("⚠️ Failed to decode catchables.json")
+        }
+    } else {
+        print("⚠️ Could not find catchables.json in bundle")
+    }
+    return []
+}
+
+// MARK: - Catchable Configurations
+
+let CATCHABLE_CONFIGS: [CatchableConfig] = loadCatchables()
 
 // MARK: - Falling Item
 
@@ -354,14 +375,32 @@ class StickFigureGameState {
     // Time tracking - unified system
     private var gameSessionStartTime: Double = 0  // When current app session started
     private var lastSavedTime: Double = 0  // Last time we saved stats
-    var totalLeavesCaught: Int = 0
-    var totalHeartsCaught: Int = 0
-    var totalBrainsCaught: Int = 0
-    var totalSunsCaught: Int = 0
-    var totalShakersCaught: Int = 0
+    var catchablesCaught: [String: Int] = [:]  // Dynamic tracking for all catchables by ID
     var totalCoinsCollected: Int = 0
     var actionTimes: [String: Double] = [:]
     var sessionActions: [String] = []
+    
+    // MARK: - Computed Properties for Backwards Compatibility
+    var totalLeavesCaught: Int {
+        get { catchablesCaught["leaf"] ?? 0 }
+        set { catchablesCaught["leaf"] = newValue }
+    }
+    var totalHeartsCaught: Int {
+        get { catchablesCaught["heart"] ?? 0 }
+        set { catchablesCaught["heart"] = newValue }
+    }
+    var totalBrainsCaught: Int {
+        get { catchablesCaught["brain"] ?? 0 }
+        set { catchablesCaught["brain"] = newValue }
+    }
+    var totalSunsCaught: Int {
+        get { catchablesCaught["sun"] ?? 0 }
+        set { catchablesCaught["sun"] = newValue }
+    }
+    var totalShakersCaught: Int {
+        get { catchablesCaught["shaker"] ?? 0 }
+        set { catchablesCaught["shaker"] = newValue }
+    }
 
     // Movement + animation
     var figurePosition: CGFloat = 0
@@ -586,11 +625,7 @@ class StickFigureGameState {
             "currentPoints": currentPoints,
             "score": score,
             "allTimeElapsed": allTimeElapsed,
-            "totalLeavesCaught": totalLeavesCaught,
-            "totalHeartsCaught": totalHeartsCaught,
-            "totalBrainsCaught": totalBrainsCaught,
-            "totalSunsCaught": totalSunsCaught,
-            "totalShakersCaught": totalShakersCaught,
+            "catchablesCaught": catchablesCaught,
             "totalCoinsCollected": totalCoinsCollected,
             "selectedAction": selectedAction,
             "actionTimes": actionTimes
@@ -624,11 +659,9 @@ class StickFigureGameState {
         currentPoints = payload["currentPoints"] as? Int ?? currentPoints
         score = payload["score"] as? Int ?? score
         allTimeElapsed = payload["allTimeElapsed"] as? Double ?? allTimeElapsed
-        totalLeavesCaught = payload["totalLeavesCaught"] as? Int ?? totalLeavesCaught
-        totalHeartsCaught = payload["totalHeartsCaught"] as? Int ?? totalHeartsCaught
-        totalBrainsCaught = payload["totalBrainsCaught"] as? Int ?? totalBrainsCaught
-        totalSunsCaught = payload["totalSunsCaught"] as? Int ?? totalSunsCaught
-        totalShakersCaught = payload["totalShakersCaught"] as? Int ?? totalShakersCaught
+        if let storedCatchables = payload["catchablesCaught"] as? [String: Int] {
+            catchablesCaught = storedCatchables
+        }
         totalCoinsCollected = payload["totalCoinsCollected"] as? Int ?? totalCoinsCollected
         selectedAction = payload["selectedAction"] as? String ?? selectedAction
         if let storedTimes = payload["actionTimes"] as? [String: Double] {
@@ -727,6 +760,20 @@ class StickFigureGameState {
                 height: 0.18
             )
         ]
+    }
+    
+    // MARK: - Helper: Convert Hex Color to SwiftUI Color
+    
+    func getColorFromHex(_ hexString: String) -> Color {
+        let hex = hexString.trimmingCharacters(in: CharacterSet(charactersIn: "#"))
+        guard hex.count == 6 else { return .gray }
+        
+        let rgbValue = UInt32(hex, radix: 16) ?? 0
+        let red = Double((rgbValue >> 16) & 0xFF) / 255.0
+        let green = Double((rgbValue >> 8) & 0xFF) / 255.0
+        let blue = Double(rgbValue & 0xFF) / 255.0
+        
+        return Color(red: red, green: green, blue: blue)
     }
 
     func resetIdleTimer() {
@@ -863,7 +910,7 @@ class StickFigureGameState {
 
     func checkFallingItemCollisions(figureX: CGFloat, figureY: CGFloat, screenWidth: CGFloat, screenHeight: CGFloat) {
         // Spawn falling items based on current level
-        let unlockedItems = FALLING_ITEM_CONFIGS.filter { $0.unlockLevel <= currentLevel }
+        let unlockedItems = CATCHABLE_CONFIGS.filter { $0.unlockLevel <= currentLevel }
         let maxItems = max(4, unlockedItems.count * 2)
         
         if fallingItems.count < maxItems && Double.random(in: 0...1) < 0.002 {
@@ -874,7 +921,7 @@ class StickFigureGameState {
                     y: 0.0,
                     rotation: Double.random(in: 0...360),
                     horizontalVelocity: CGFloat.random(in: -0.002...0.002),
-                    verticalSpeed: CGFloat.random(in: 0.0008...0.0015)
+                    verticalSpeed: CGFloat.random(in: itemConfig.baseVerticalSpeed...itemConfig.baseVerticalSpeedMax)
                 )
                 fallingItems.append(item)
             }
@@ -883,7 +930,11 @@ class StickFigureGameState {
         for i in fallingItems.indices.reversed() {
             fallingItems[i].y += fallingItems[i].verticalSpeed
             fallingItems[i].x += fallingItems[i].horizontalVelocity
-            fallingItems[i].rotation += 4
+            
+            // Get config to access spinSpeed
+            if let config = CATCHABLE_CONFIGS.first(where: { $0.id == fallingItems[i].itemType }), config.spins {
+                fallingItems[i].rotation += config.spinSpeed
+            }
             
             let itemScreenX = fallingItems[i].x * screenWidth
             let itemScreenY = fallingItems[i].y * screenHeight
@@ -893,23 +944,22 @@ class StickFigureGameState {
             
             if sqrt(dx * dx + dy * dy) < 60 {
                 // Found the config for this item
-                if let config = FALLING_ITEM_CONFIGS.first(where: { $0.id == fallingItems[i].itemType }) {
-                    // Update stats
-                    switch fallingItems[i].itemType {
-                    case "leaf":
-                        totalLeavesCaught += 1
-                    case "heart":
-                        totalHeartsCaught += 1
-                    case "brain":
-                        totalBrainsCaught += 1
-                    case "sun":
-                        totalSunsCaught += 1
-                    default:
-                        break
+                if let config = CATCHABLE_CONFIGS.first(where: { $0.id == fallingItems[i].itemType }) {
+                    // Update stats dynamically
+                    catchablesCaught[config.id, default: 0] += 1
+                    
+                    // Trigger collision animation if configured
+                    if let animationId = config.collisionAnimation {
+                        if let actionConfig = ACTION_CONFIGS.first(where: { $0.id == animationId }) {
+                            startAction(actionConfig, gameState: self)
+                        }
                     }
                     
                     addPoints(config.points, action: fallingItems[i].itemType)
-                    addFloatingText("+\(config.points)", x: fallingItems[i].x, y: fallingItems[i].y, color: config.color)
+                    
+                    // Get color from hex string in config
+                    let pointColor = getColorFromHex(config.color ?? "#808080")
+                    addFloatingText("+\(config.points)", x: fallingItems[i].x, y: fallingItems[i].y, color: pointColor)
                 }
                 fallingItems.remove(at: i)
                 continue
@@ -3664,14 +3714,26 @@ private struct GamePlayArea: View {
                 }
 
                 ForEach(gameState.fallingItems) { item in
-                    if let config = FALLING_ITEM_CONFIGS.first(where: { $0.id == item.itemType }) {
-                        Image(systemName: config.iconName)
-                            .resizable()
-                            .scaledToFit()
-                            .frame(width: 15, height: 15)
-                            .foregroundColor(config.color)
-                            .rotationEffect(.degrees(item.rotation))
-                            .position(x: item.x * geometry.size.width, y: item.y * geometry.size.height)
+                    if let config = CATCHABLE_CONFIGS.first(where: { $0.id == item.itemType }) {
+                        // Render icon (SF Symbol) if configured
+                        if let iconName = config.iconName {
+                            Image(systemName: iconName)
+                                .resizable()
+                                .scaledToFit()
+                                .frame(width: 15, height: 15)
+                                .foregroundColor(gameState.getColorFromHex(config.color ?? "#808080"))
+                                .rotationEffect(.degrees(item.rotation))
+                                .position(x: item.x * geometry.size.width, y: item.y * geometry.size.height)
+                        }
+                        // Render image asset if configured
+                        else if let assetName = config.assetName, let uiImage = UIImage(named: assetName) {
+                            Image(uiImage: uiImage)
+                                .resizable()
+                                .scaledToFit()
+                                .frame(width: 30, height: 30)
+                                .rotationEffect(.degrees(item.rotation))
+                                .position(x: item.x * geometry.size.width, y: item.y * geometry.size.height)
+                        }
                     }
                 }
 
@@ -3924,11 +3986,7 @@ private struct StatsOverlayView: View {
                         gameState.selectedAction = "Rest"
                         gameState.sessionActions.removeAll()
                         gameState.actionTimes.removeAll()
-                        gameState.totalLeavesCaught = 0
-                        gameState.totalHeartsCaught = 0
-                        gameState.totalBrainsCaught = 0
-                        gameState.totalSunsCaught = 0
-                        gameState.totalShakersCaught = 0
+                        gameState.catchablesCaught.removeAll()
                         gameState.totalCoinsCollected = 0
                         gameState.allTimeElapsed = 0
                         gameState.timeElapsed = 0

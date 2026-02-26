@@ -6,8 +6,8 @@
     "pointsToComplete": 50,
     "availableActions": ["rest"],
     "catchables": {
-      "leaves": { "chance": 0.3, "points": 1 },
-      "shakers": { "chance": 0.1, "points": 2 }
+      "leaf": { "chance": 0.3 },
+      "shaker": { "chance": 0.1 }
     },
     "mapX": 300,
     "mapY": 500,
@@ -23,9 +23,9 @@
     "pointsToComplete": 100,
     "availableActions": ["rest", "run"],
     "catchables": {
-      "leaves": { "chance": 0.4, "points": 1 },
-      "hearts": { "chance": 0.15, "points": 5 },
-      "shakers": { "chance": 0.1, "points": 2 }
+      "leaf": { "chance": 0.4 },
+      "heart": { "chance": 0.15 },
+      "shaker": { "chance": 0.1 }
     },
     "mapX": 600,
     "mapY": 500,
@@ -41,9 +41,9 @@
     "pointsToComplete": 150,
     "availableActions": ["rest", "run", "jump"],
     "catchables": {
-      "leaves": { "chance": 0.35, "points": 1 },
-      "hearts": { "chance": 0.2, "points": 5 },
-      "shakers": { "chance": 0.15, "points": 2 }
+      "leaf": { "chance": 0.35 },
+      "heart": { "chance": 0.2 },
+      "shaker": { "chance": 0.15 }
     },
     "mapX": 900,
     "mapY": 500,
@@ -59,10 +59,10 @@
     "pointsToComplete": 200,
     "availableActions": ["rest", "run", "jump", "jumpingjack"],
     "catchables": {
-      "leaves": { "chance": 0.3, "points": 1 },
-      "hearts": { "chance": 0.25, "points": 5 },
-      "brains": { "chance": 0.1, "points": 10 },
-      "shakers": { "chance": 0.15, "points": 2 }
+      "leaf": { "chance": 0.3 },
+      "heart": { "chance": 0.25 },
+      "brain": { "chance": 0.1 },
+      "shaker": { "chance": 0.15 }
     },
     "mapX": 1200,
     "mapY": 500,
@@ -78,10 +78,10 @@
     "pointsToComplete": 250,
     "availableActions": ["rest", "run", "jump", "jumpingjack", "yoga"],
     "catchables": {
-      "leaves": { "chance": 0.25, "points": 1 },
-      "hearts": { "chance": 0.3, "points": 5 },
-      "brains": { "chance": 0.15, "points": 10 },
-      "shakers": { "chance": 0.1, "points": 2 }
+      "leaf": { "chance": 0.25 },
+      "heart": { "chance": 0.3 },
+      "brain": { "chance": 0.15 },
+      "shaker": { "chance": 0.1 }
     },
     "mapX": 1500,
     "mapY": 500,
@@ -97,10 +97,10 @@
     "pointsToComplete": 300,
     "availableActions": ["rest", "run", "jump", "jumpingjack", "yoga", "curls"],
     "catchables": {
-      "leaves": { "chance": 0.2, "points": 1 },
-      "hearts": { "chance": 0.25, "points": 5 },
-      "brains": { "chance": 0.2, "points": 10 },
-      "shakers": { "chance": 0.15, "points": 2 }
+      "leaf": { "chance": 0.2 },
+      "heart": { "chance": 0.35 },
+      "brain": { "chance": 0.2 },
+      "shaker": { "chance": 0.12 }
     },
     "mapX": 1800,
     "mapY": 500,
@@ -116,11 +116,11 @@
     "pointsToComplete": 350,
     "availableActions": ["rest", "run", "jump", "jumpingjack", "yoga", "curls", "kettlebell"],
     "catchables": {
-      "leaves": { "chance": 0.15, "points": 1 },
-      "hearts": { "chance": 0.2, "points": 5 },
-      "brains": { "chance": 0.25, "points": 10 },
-      "suns": { "chance": 0.1, "points": 15 },
-      "shakers": { "chance": 0.15, "points": 2 }
+      "leaf": { "chance": 0.2 },
+      "heart": { "chance": 0.3 },
+      "brain": { "chance": 0.25 },
+      "sun": { "chance": 0.1 },
+      "shaker": { "chance": 0.15 }
     },
     "mapX": 2100,
     "mapY": 500,
@@ -136,11 +136,11 @@
     "pointsToComplete": 400,
     "availableActions": ["rest", "run", "jump", "jumpingjack", "yoga", "curls", "kettlebell", "pushup"],
     "catchables": {
-      "leaves": { "chance": 0.1, "points": 1 },
-      "hearts": { "chance": 0.15, "points": 5 },
-      "brains": { "chance": 0.3, "points": 10 },
-      "suns": { "chance": 0.15, "points": 15 },
-      "shakers": { "chance": 0.15, "points": 2 }
+      "leaf": { "chance": 0.15 },
+      "heart": { "chance": 0.35 },
+      "brain": { "chance": 0.3 },
+      "sun": { "chance": 0.15 },
+      "shaker": { "chance": 0.1 }
     },
     "mapX": 2400,
     "mapY": 500,
@@ -156,11 +156,11 @@
     "pointsToComplete": 450,
     "availableActions": ["rest", "run", "jump", "jumpingjack", "yoga", "curls", "kettlebell", "pushup", "pullup"],
     "catchables": {
-      "leaves": { "chance": 0.05, "points": 1 },
-      "hearts": { "chance": 0.1, "points": 5 },
-      "brains": { "chance": 0.35, "points": 10 },
-      "suns": { "chance": 0.2, "points": 15 },
-      "shakers": { "chance": 0.15, "points": 2 }
+      "leaf": { "chance": 0.1 },
+      "heart": { "chance": 0.4 },
+      "brain": { "chance": 0.35 },
+      "sun": { "chance": 0.2 },
+      "shaker": { "chance": 0.08 }
     },
     "mapX": 2700,
     "mapY": 500,
@@ -176,11 +176,11 @@
     "pointsToComplete": 500,
     "availableActions": ["rest", "run", "jump", "jumpingjack", "yoga", "curls", "kettlebell", "pushup", "pullup", "meditation"],
     "catchables": {
-      "leaves": { "chance": 0.0, "points": 1 },
-      "hearts": { "chance": 0.05, "points": 5 },
-      "brains": { "chance": 0.4, "points": 10 },
-      "suns": { "chance": 0.25, "points": 15 },
-      "shakers": { "chance": 0.1, "points": 2 }
+      "leaf": { "chance": 0.2 },
+      "heart": { "chance": 0.3 },
+      "brain": { "chance": 0.4 },
+      "sun": { "chance": 0.25 },
+      "shaker": { "chance": 0.05 }
     },
     "mapX": 3000,
     "mapY": 500,
