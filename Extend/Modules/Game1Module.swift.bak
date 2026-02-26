@@ -374,7 +374,6 @@ class StickFigureGameState {
     var animationTimer: Timer?
     var jumpTimer: Timer?
     var movementTimer: Timer?
-    var lastMovementUpdateTime: Double = 0  // Track when movement was last updated to detect stuck movement
 
     // Actions
     var selectedAction: String = "Rest"
@@ -765,32 +764,6 @@ class StickFigureGameState {
             } else if self.isMovingRight {
                 delta = 0.011
             }
-            
-            // Check for stuck movement - if movement has been on for more than 5 seconds without updates, force stop it
-            let now = Date().timeIntervalSince1970
-            if (self.isMovingLeft || self.isMovingRight) {
-                if self.lastMovementUpdateTime == 0 {
-                    self.lastMovementUpdateTime = now
-                } else if now - self.lastMovementUpdateTime > 5.0 {
-                    // Movement is stuck, force stop it
-                    self.isMovingLeft = false
-                    self.isMovingRight = false
-                    if self.currentAction == "move" {
-                        let duration = now * 1000 - self.actionStartTime
-                        self.recordActionTime(action: "move", duration: duration)
-                        self.currentAction = ""
-                    }
-                    self.stopAnimation(gameState: self)
-                    delta = 0
-                }
-            } else {
-                self.lastMovementUpdateTime = 0  // Reset when not moving
-            }
-            
-            if delta != 0 {
-                self.lastMovementUpdateTime = now  // Update timestamp whenever we're actively moving
-            }
-            
             if self.speedBoostTimeRemaining > 0 {
                 delta *= 1.5
             }
@@ -2451,7 +2424,7 @@ private struct Game1ModuleView: View {
                                 }
                             }
                             
-                            // Timer is managed by mapScreen.onAppear and gameplayScreen.onAppear
+                            // Timer is managed by mapScreen.onAppear and runs continuously
                         }
                         .onDisappear {
                             print("❌ TIMER CLEARED at mapScreen GeometryReader disappear")
@@ -2539,6 +2512,21 @@ private struct Game1ModuleView: View {
     
     private var gameplayScreen: some View {
         ZStack {
+            // GamePlayArea as background layer - receives all touches
+            GamePlayArea(
+                gameState: gameState,
+                mapState: mapState,
+                showGameMap: $showGameMap,
+                showDoor: $showDoor,
+                startMovingLeftAction: { gs, geo in gs.startMovingLeft(gameState: gs, geometry: geo) },
+                stopMovingLeftAction: { gs in gs.stopMovingLeft(gameState: gs) },
+                startMovingRightAction: { gs, geo in gs.startMovingRight(gameState: gs, geometry: geo) },
+                stopMovingRightAction: { gs in gs.stopMovingRight(gameState: gs) },
+                startJumpAction: { gs, geo in gs.startJump(gameState: gs, geometry: geo) },
+                startActionAction: { config, gs in gs.startAction(config, gameState: gs) }
+            )
+            
+            // UI Controls overlay - only buttons capture touches
             VStack(spacing: 0) {
                 HStack {
                     Button(action: {
@@ -2576,6 +2564,7 @@ private struct Game1ModuleView: View {
                         .background(Color.black.opacity(0.6))
                         .cornerRadius(6)
                     }
+                    .allowsHitTesting(true)  // Re-enable for this button
 
                     Spacer()
                     
@@ -2654,8 +2643,10 @@ private struct Game1ModuleView: View {
                     .padding(.vertical, 8)
                     .background(Color.black.opacity(0.6))
                     .cornerRadius(6)
+                    .allowsHitTesting(false)  // Stats display doesn't need touches
 
                     Spacer()
+                        .allowsHitTesting(false)  // Spacer passes touches through
 
                     Button(action: {
                         showStats.toggle()
@@ -2670,25 +2661,16 @@ private struct Game1ModuleView: View {
                         .background(Color.black.opacity(0.6))
                         .cornerRadius(6)
                     }
+                    .allowsHitTesting(true)  // Re-enable for this button
                 }
                 .padding(12)
                 .padding(.top, 60)
+                .background(Color.clear)
 
-                GamePlayArea(
-                    gameState: gameState,
-                    mapState: mapState,
-                    showGameMap: $showGameMap,
-                    showDoor: $showDoor,
-                    startMovingLeftAction: { gs, geo in gs.startMovingLeft(gameState: gs, geometry: geo) },
-                    stopMovingLeftAction: { gs in gs.stopMovingLeft(gameState: gs) },
-                    startMovingRightAction: { gs, geo in gs.startMovingRight(gameState: gs, geometry: geo) },
-                    stopMovingRightAction: { gs in gs.stopMovingRight(gameState: gs) },
-                    startJumpAction: { gs, geo in gs.startJump(gameState: gs, geometry: geo) },
-                    startActionAction: { config, gs in gs.startAction(config, gameState: gs) }
-                )
-                .frame(height: 500)
+                Spacer()
+                    .allowsHitTesting(false)  // Middle spacer passes touches through
                 
-                // Movement buttons with action selector in center
+                // Movement buttons with action selector in center - These NEED touch events
                 VStack(spacing: 4) {
                     HStack(spacing: 12) {
                         // Left button - only available in level 2+
@@ -2727,6 +2709,7 @@ private struct Game1ModuleView: View {
                                     }
                                 }
                             }, perform: {})
+                            .allowsHitTesting(true)  // Re-enable for this button
                         } else {
                             // Spacer in level 1 where left button would be
                             Spacer()
@@ -2755,6 +2738,7 @@ private struct Game1ModuleView: View {
                                 .background(Color(UIColor.systemGray6))
                                 .cornerRadius(6)
                             }
+                            .allowsHitTesting(true)  // Re-enable for this button
                         }
                         .frame(maxWidth: .infinity)
                         
@@ -2794,6 +2778,7 @@ private struct Game1ModuleView: View {
                                     }
                                 }
                             }, perform: {})
+                            .allowsHitTesting(true)  // Re-enable for this button
                         } else {
                             // Spacer in level 1 where right button would be
                             Spacer()
@@ -2816,12 +2801,14 @@ private struct Game1ModuleView: View {
                             .background(Color.red.opacity(0.7))
                             .cornerRadius(6)
                     }
+                    .allowsHitTesting(true)  // Re-enable for this button
                     .padding(.bottom, 8)
                 }
                 .padding(.horizontal, 12)
                 .background(Color(red: 0.95, green: 0.95, blue: 0.98))
             }
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .allowsHitTesting(false)  // Pass all touches through except for buttons which re-enable it
             
             if showActionPicker {
                 Color.black.opacity(0.3)
@@ -3050,6 +3037,11 @@ private struct GamePlayArea: View {
     @Binding var showGameMap: Bool
     @Binding var showDoor: Bool
     @State private var collisionTimer: Timer?
+    
+    // Debug: Track tap locations
+    @State private var lastTapLocation: CGPoint?
+    @State private var lastTapZone: String = ""
+    @State private var showDebug = true
 
     var startMovingLeftAction: (StickFigureGameState, GeometryProxy) -> Void
     var stopMovingLeftAction: (StickFigureGameState) -> Void
@@ -3063,6 +3055,16 @@ private struct GamePlayArea: View {
             return "curls1"
         } else {
             return "guy_stand"
+        }
+    }
+    
+    private func determineZone(tapX: CGFloat, figureX: CGFloat, screenWidth: CGFloat) -> String {
+        if tapX < figureX - 5 {
+            return "LEFT"
+        } else if tapX > figureX + 5 {
+            return "RIGHT"
+        } else {
+            return "CENTER"
         }
     }
 
@@ -3090,39 +3092,137 @@ private struct GamePlayArea: View {
     var body: some View {
         GeometryReader { geometry in
             let figureX = ((gameState.figurePosition + 1.0) / 2.0) * geometry.size.width
-            let baseY = geometry.size.height - 80
+            let baseY = geometry.size.height - 280  // Raised to clear bottom controls overlay
             let figureY = baseY - gameState.jumpHeight
             let textStartY = max(0.05, (baseY - 120) / geometry.size.height)
             let normX = figureX / geometry.size.width
             
             ZStack {
-                HStack(spacing: 0) {
-                    Rectangle()
-                        .fill(Color.clear)
-                        .contentShape(Rectangle())
-                        .onLongPressGesture(minimumDuration: 0.01, pressing: { isPressing in
-                            if gameState.currentLevel >= 2 {
-                                if isPressing {
-                                    startMovingLeftAction(gameState, geometry)
-                                } else {
-                                    stopMovingLeftAction(gameState)
-                                }
-                            }
-                        }, perform: {})
-
-                    Rectangle()
-                        .fill(Color.clear)
-                        .contentShape(Rectangle())
-                        .onLongPressGesture(minimumDuration: 0.01, pressing: { isPressing in
-                            if gameState.currentLevel >= 2 {
-                                if isPressing {
-                                    startMovingRightAction(gameState, geometry)
-                                } else {
-                                    stopMovingRightAction(gameState)
-                                }
-                            }
-                        }, perform: {})
+                // DEBUG: Show tap zones visually - simple Canvas approach
+                if showDebug {
+                    Canvas { context, size in
+                        // Left zone (red)
+                        var leftPath = Path()
+                        leftPath.addRect(CGRect(x: 0, y: 0, width: figureX - 5, height: size.height))
+                        context.fill(leftPath, with: .color(Color.red.opacity(0.15)))
+                        
+                        // Center zone (green - 10px)
+                        var centerPath = Path()
+                        centerPath.addRect(CGRect(x: figureX - 5, y: 0, width: 10, height: size.height))
+                        context.fill(centerPath, with: .color(Color.green.opacity(0.4)))
+                        
+                        // Right zone (blue)
+                        var rightPath = Path()
+                        rightPath.addRect(CGRect(x: figureX + 5, y: 0, width: size.width - (figureX + 5), height: size.height))
+                        context.fill(rightPath, with: .color(Color.blue.opacity(0.15)))
+                    }
+                    .allowsHitTesting(false)
+                    
+                    // Debug text showing zones
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("🔴 LEFT: 0...\(Int(figureX - 5))")
+                            .font(.caption)
+                            .foregroundColor(.red)
+                        Text("🟢 CENTER: \(Int(figureX - 5))...\(Int(figureX + 5))")
+                            .font(.caption)
+                            .foregroundColor(.green)
+                        Text("🔵 RIGHT: \(Int(figureX + 5))...\(Int(geometry.size.width))")
+                            .font(.caption)
+                            .foregroundColor(.blue)
+                        if !lastTapZone.isEmpty {
+                            Text("Last Tap: \(lastTapZone) @ X:\(Int(lastTapLocation?.x ?? 0))")
+                                .font(.caption)
+                                .foregroundColor(.black)
+                        }
+                    }
+                    .padding(8)
+                    .background(Color.white.opacity(0.8))
+                    .cornerRadius(4)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                    .padding(8)
                 }
+                
+                // Single overlay that interprets taps based on character position
+                Rectangle()
+                    .fill(Color.clear)
+                    .contentShape(Rectangle())
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .simultaneousGesture(
+                        TapGesture()
+                            .onEnded {
+                                // Tap is handled by the longpress below
+                            }
+                    )
+                    .simultaneousGesture(
+                        LongPressGesture(minimumDuration: 0.01)
+                            .onChanged { _ in
+                                // Nothing - wait for location
+                            }
+                            .onEnded { _ in
+                                // Nothing - location handling via DragGesture
+                            }
+                    )
+                    .gesture(
+                        DragGesture(minimumDistance: 0)
+                            .onChanged { value in
+                                print("🟢 TOUCH RECEIVED at X=\(Int(value.location.x)), Y=\(Int(value.location.y))")
+                                let tapX = value.location.x
+                                let startX = value.startLocation.x
+                                
+                                // Determine zone based on current touch location
+                                if tapX < figureX - 5 {
+                                    // LEFT zone
+                                    if gameState.currentLevel >= 2 {
+                                        startMovingLeftAction(gameState, geometry)
+                                        lastTapZone = "LEFT"
+                                    }
+                                } else if tapX > figureX + 5 {
+                                    // RIGHT zone
+                                    if gameState.currentLevel >= 2 {
+                                        startMovingRightAction(gameState, geometry)
+                                        lastTapZone = "RIGHT"
+                                    }
+                                } else {
+                                    // CENTER zone - only stop movement if we started in center
+                                    // This prevents accidentally stopping when dragging through center
+                                    if startX >= figureX - 5 && startX <= figureX + 5 {
+                                        stopMovingLeftAction(gameState)
+                                        stopMovingRightAction(gameState)
+                                    }
+                                    lastTapZone = "CENTER"
+                                }
+                                lastTapLocation = value.location
+                            }
+                            .onEnded { value in
+                                let tapX = value.location.x
+                                let startX = value.startLocation.x
+                                print("🎯 TAP Started at X=\(Int(startX)), Ended at X=\(Int(tapX)), FigureX=\(Int(figureX))")
+                                
+                                // Always stop movement on release
+                                stopMovingLeftAction(gameState)
+                                stopMovingRightAction(gameState)
+                                
+                                // Only trigger action if BOTH start AND end are in CENTER zone (10px wide)
+                                let startedInCenter = startX >= figureX - 5 && startX <= figureX + 5
+                                let endedInCenter = tapX >= figureX - 5 && tapX <= figureX + 5
+                                
+                                if startedInCenter && endedInCenter {
+                                    if gameState.selectedAction == "Jump" {
+                                        if !gameState.isJumping {
+                                            gameState.startJump(gameState: gameState, geometry: geometry)
+                                            print("🟢 TRIGGERED: Jump (started & ended in center)")
+                                        }
+                                    } else if let config = ACTION_CONFIGS.first(where: { $0.displayName == gameState.selectedAction }) {
+                                        if gameState.currentPerformingAction == nil && !gameState.isJumping {
+                                            startActionAction(config, gameState)
+                                            print("🟢 TRIGGERED: \(gameState.selectedAction) (started & ended in center)")
+                                        }
+                                    }
+                                } else {
+                                    print("🚫 NO ACTION: Started in center=\(startedInCenter), Ended in center=\(endedInCenter)")
+                                }
+                            }
+                    )
 
                 VStack {
                     Spacer()
@@ -3357,82 +3457,6 @@ private struct GamePlayArea: View {
                                     .frame(width: 150, height: 225)
                                     .scaleEffect(x: gameState.facingRight ? 1 : -1, y: 1)
                                     .position(x: figureX, y: figureY)
-                                    .onLongPressGesture(minimumDuration: 0.01, pressing: { isPressing in
-                                        if isPressing {
-                                            // Gesture started - check where user tapped
-                                            // We'll use a state variable to track if this was a valid movement tap
-                                            // For now, we just need to start movement if they tapped left/right
-                                            // But we need the tap location, which we can't get from onLongPressGesture alone
-                                            // So we'll need to combine with another gesture
-                                        } else {
-                                            // User released - stop movement
-                                            gameState.isMovingLeft = false
-                                            gameState.isMovingRight = false
-                                            if gameState.currentAction == "move" {
-                                                let duration = Date().timeIntervalSince1970 * 1000 - gameState.actionStartTime
-                                                gameState.recordActionTime(action: "move", duration: duration)
-                                                gameState.currentAction = ""
-                                            }
-                                            gameState.stopAnimation(gameState: gameState)
-                                        }
-                                    }, perform: {})
-                                    .highPriorityGesture(DragGesture(minimumDistance: 0)
-                                        .onChanged { value in
-                                            let tapX = value.location.x
-                                            let distanceFromCenter = abs(tapX - figureX)
-                                            
-                                            // 10px center area (5px on each side) triggers action via gesture end
-                                            if distanceFromCenter > 5 {
-                                                if tapX < figureX && gameState.currentLevel >= 2 {
-                                                    // Tapped left - trigger left movement
-                                                    gameState.resetIdleTimer()
-                                                    if gameState.currentAction != "move" {
-                                                        gameState.currentAction = "move"
-                                                        gameState.actionStartTime = Date().timeIntervalSince1970 * 1000
-                                                    }
-                                                    gameState.isMovingLeft = true
-                                                    gameState.isMovingRight = false
-                                                    gameState.facingRight = false
-                                                    gameState.lastMovementUpdateTime = Date().timeIntervalSince1970
-                                                    if gameState.animationFrame == 0 {
-                                                        gameState.startAnimation(gameState: gameState)
-                                                    }
-                                                } else if tapX >= figureX && gameState.currentLevel >= 2 {
-                                                    // Tapped right - trigger right movement
-                                                    gameState.resetIdleTimer()
-                                                    if gameState.currentAction != "move" {
-                                                        gameState.currentAction = "move"
-                                                        gameState.actionStartTime = Date().timeIntervalSince1970 * 1000
-                                                    }
-                                                    gameState.isMovingRight = true
-                                                    gameState.isMovingLeft = false
-                                                    gameState.facingRight = true
-                                                    gameState.lastMovementUpdateTime = Date().timeIntervalSince1970
-                                                    if gameState.animationFrame == 0 {
-                                                        gameState.startAnimation(gameState: gameState)
-                                                    }
-                                                }
-                                            }
-                                        }
-                                        .onEnded { value in
-                                            let tapX = value.location.x
-                                            let distanceFromCenter = abs(tapX - figureX)
-                                            
-                                            // Check if tap was in center 10px area
-                                            if distanceFromCenter <= 5 && gameState.isMovingLeft == false && gameState.isMovingRight == false {
-                                                // Tapped center - trigger action
-                                                if gameState.selectedAction == "Jump" {
-                                                    if !gameState.isJumping {
-                                                        gameState.startJump(gameState: gameState, geometry: geometry)
-                                                    }
-                                                } else if let config = ACTION_CONFIGS.first(where: { $0.displayName == gameState.selectedAction }) {
-                                                    if gameState.currentPerformingAction == nil && !gameState.isJumping {
-                                                        startActionAction(config, gameState)
-                                                    }
-                                                }
-                                            }
-                                        }
-                                    )
                             } else {
                                 // No Stand frame - show placeholder
                                 Text("?")
@@ -3440,71 +3464,6 @@ private struct GamePlayArea: View {
                                     .foregroundColor(.gray)
                                     .frame(width: 100, height: 150)
                                     .position(x: figureX, y: figureY)
-                                    .onLongPressGesture(minimumDuration: 0.01, pressing: { isPressing in
-                                        if !isPressing {
-                                            // User released - stop movement
-                                            gameState.isMovingLeft = false
-                                            gameState.isMovingRight = false
-                                            if gameState.currentAction == "move" {
-                                                let duration = Date().timeIntervalSince1970 * 1000 - gameState.actionStartTime
-                                                gameState.recordActionTime(action: "move", duration: duration)
-                                                gameState.currentAction = ""
-                                            }
-                                            gameState.stopAnimation(gameState: gameState)
-                                        }
-                                    }, perform: {})
-                                    .highPriorityGesture(DragGesture(minimumDistance: 0)
-                                        .onChanged { value in
-                                            let tapX = value.location.x
-                                            let distanceFromCenter = abs(tapX - figureX)
-                                            
-                                            if distanceFromCenter > 5 {
-                                                if tapX < figureX && gameState.currentLevel >= 2 {
-                                                    gameState.resetIdleTimer()
-                                                    if gameState.currentAction != "move" {
-                                                        gameState.currentAction = "move"
-                                                        gameState.actionStartTime = Date().timeIntervalSince1970 * 1000
-                                                    }
-                                                    gameState.isMovingLeft = true
-                                                    gameState.isMovingRight = false
-                                                    gameState.facingRight = false
-                                                    gameState.lastMovementUpdateTime = Date().timeIntervalSince1970
-                                                    if gameState.animationFrame == 0 {
-                                                        gameState.startAnimation(gameState: gameState)
-                                                    }
-                                                } else if tapX >= figureX && gameState.currentLevel >= 2 {
-                                                    gameState.resetIdleTimer()
-                                                    if gameState.currentAction != "move" {
-                                                        gameState.currentAction = "move"
-                                                        gameState.actionStartTime = Date().timeIntervalSince1970 * 1000
-                                                    }
-                                                    gameState.isMovingRight = true
-                                                    gameState.isMovingLeft = false
-                                                    gameState.facingRight = true
-                                                    gameState.lastMovementUpdateTime = Date().timeIntervalSince1970
-                                                    if gameState.animationFrame == 0 {
-                                                        gameState.startAnimation(gameState: gameState)
-                                                    }
-                                                }
-                                            }
-                                        }
-                                        .onEnded { value in
-                                            let tapX = value.location.x
-                                            let distanceFromCenter = abs(tapX - figureX)
-                                            
-                                            if distanceFromCenter <= 5 && gameState.isMovingLeft == false && gameState.isMovingRight == false {
-                                                if gameState.selectedAction == "Jump" {
-                                                    if !gameState.isJumping {
-                                                        gameState.startJump(gameState: gameState, geometry: geometry)
-                                                    }
-                                                } else if let config = ACTION_CONFIGS.first(where: { $0.displayName == gameState.selectedAction }) {
-                                                    if gameState.currentPerformingAction == nil && !gameState.isJumping {
-                                                        startActionAction(config, gameState)
-                                                    }
-                                                }
-                                            }
-                                        }
-                                    )
                             }
                         } else {
                             // Moving - use Move frames
@@ -3514,71 +3473,6 @@ private struct GamePlayArea: View {
                                     .frame(width: 150, height: 225)
                                     .scaleEffect(x: gameState.facingRight ? 1 : -1, y: 1)
                                     .position(x: figureX, y: figureY)
-                                    .onLongPressGesture(minimumDuration: 0.01, pressing: { isPressing in
-                                        if !isPressing {
-                                            // User released - stop movement
-                                            gameState.isMovingLeft = false
-                                            gameState.isMovingRight = false
-                                            if gameState.currentAction == "move" {
-                                                let duration = Date().timeIntervalSince1970 * 1000 - gameState.actionStartTime
-                                                gameState.recordActionTime(action: "move", duration: duration)
-                                                gameState.currentAction = ""
-                                            }
-                                            gameState.stopAnimation(gameState: gameState)
-                                        }
-                                    }, perform: {})
-                                    .highPriorityGesture(DragGesture(minimumDistance: 0)
-                                        .onChanged { value in
-                                            let tapX = value.location.x
-                                            let distanceFromCenter = abs(tapX - figureX)
-                                            
-                                            if distanceFromCenter > 5 {
-                                                if tapX < figureX && gameState.currentLevel >= 2 {
-                                                    gameState.resetIdleTimer()
-                                                    if gameState.currentAction != "move" {
-                                                        gameState.currentAction = "move"
-                                                        gameState.actionStartTime = Date().timeIntervalSince1970 * 1000
-                                                    }
-                                                    gameState.isMovingLeft = true
-                                                    gameState.isMovingRight = false
-                                                    gameState.facingRight = false
-                                                    gameState.lastMovementUpdateTime = Date().timeIntervalSince1970
-                                                    if gameState.animationFrame == 0 {
-                                                        gameState.startAnimation(gameState: gameState)
-                                                    }
-                                                } else if tapX >= figureX && gameState.currentLevel >= 2 {
-                                                    gameState.resetIdleTimer()
-                                                    if gameState.currentAction != "move" {
-                                                        gameState.currentAction = "move"
-                                                        gameState.actionStartTime = Date().timeIntervalSince1970 * 1000
-                                                    }
-                                                    gameState.isMovingRight = true
-                                                    gameState.isMovingLeft = false
-                                                    gameState.facingRight = true
-                                                    gameState.lastMovementUpdateTime = Date().timeIntervalSince1970
-                                                    if gameState.animationFrame == 0 {
-                                                        gameState.startAnimation(gameState: gameState)
-                                                    }
-                                                }
-                                            }
-                                        }
-                                        .onEnded { value in
-                                            let tapX = value.location.x
-                                            let distanceFromCenter = abs(tapX - figureX)
-                                            
-                                            if distanceFromCenter <= 5 && gameState.isMovingLeft == false && gameState.isMovingRight == false {
-                                                if gameState.selectedAction == "Jump" {
-                                                    if !gameState.isJumping {
-                                                        gameState.startJump(gameState: gameState, geometry: geometry)
-                                                    }
-                                                } else if let config = ACTION_CONFIGS.first(where: { $0.displayName == gameState.selectedAction }) {
-                                                    if gameState.currentPerformingAction == nil && !gameState.isJumping {
-                                                        startActionAction(config, gameState)
-                                                    }
-                                                }
-                                            }
-                                        }
-                                    )
                             } else {
                                 // No Move frame - show placeholder
                                 Text("?")
@@ -3586,159 +3480,98 @@ private struct GamePlayArea: View {
                                     .foregroundColor(.gray)
                                     .frame(width: 100, height: 150)
                                     .position(x: figureX, y: figureY)
-                                    .onLongPressGesture(minimumDuration: 0.01, pressing: { isPressing in
-                                        if !isPressing {
-                                            // User released - stop movement
-                                            gameState.isMovingLeft = false
-                                            gameState.isMovingRight = false
-                                            if gameState.currentAction == "move" {
-                                                let duration = Date().timeIntervalSince1970 * 1000 - gameState.actionStartTime
-                                                gameState.recordActionTime(action: "move", duration: duration)
-                                                gameState.currentAction = ""
-                                            }
-                                            gameState.stopAnimation(gameState: gameState)
-                                        }
-                                    }, perform: {})
-                                    .highPriorityGesture(DragGesture(minimumDistance: 0)
-                                        .onChanged { value in
-                                            let tapX = value.location.x
-                                            let distanceFromCenter = abs(tapX - figureX)
-                                            
-                                            if distanceFromCenter > 5 {
-                                                if tapX < figureX && gameState.currentLevel >= 2 {
-                                                    gameState.resetIdleTimer()
-                                                    if gameState.currentAction != "move" {
-                                                        gameState.currentAction = "move"
-                                                        gameState.actionStartTime = Date().timeIntervalSince1970 * 1000
-                                                    }
-                                                    gameState.isMovingLeft = true
-                                                    gameState.isMovingRight = false
-                                                    gameState.facingRight = false
-                                                    gameState.lastMovementUpdateTime = Date().timeIntervalSince1970
-                                                    if gameState.animationFrame == 0 {
-                                                        gameState.startAnimation(gameState: gameState)
-                                                    }
-                                                } else if tapX >= figureX && gameState.currentLevel >= 2 {
-                                                    gameState.resetIdleTimer()
-                                                    if gameState.currentAction != "move" {
-                                                        gameState.currentAction = "move"
-                                                        gameState.actionStartTime = Date().timeIntervalSince1970 * 1000
-                                                    }
-                                                    gameState.isMovingRight = true
-                                                    gameState.isMovingLeft = false
-                                                    gameState.facingRight = true
-                                                    gameState.lastMovementUpdateTime = Date().timeIntervalSince1970
-                                                    if gameState.animationFrame == 0 {
-                                                        gameState.startAnimation(gameState: gameState)
-                                                    }
-                                                }
-                                            }
-                                        }
-                                        .onEnded { value in
-                                            let tapX = value.location.x
-                                            let distanceFromCenter = abs(tapX - figureX)
-                                            
-                                            if distanceFromCenter <= 5 && gameState.isMovingLeft == false && gameState.isMovingRight == false {
-                                                if gameState.selectedAction == "Jump" {
-                                                    if !gameState.isJumping {
-                                                        gameState.startJump(gameState: gameState, geometry: geometry)
-                                                    }
-                                                } else if let config = ACTION_CONFIGS.first(where: { $0.displayName == gameState.selectedAction }) {
-                                                    if gameState.currentPerformingAction == nil && !gameState.isJumping {
-                                                        startActionAction(config, gameState)
-                                                    }
-                                                }
-                                            }
-                                        }
-                                    )
                             }
                         }
                     }
                 }
+                .allowsHitTesting(false)  // Let touches pass through to gesture handler below
 
-                ForEach(gameState.floatingTexts) { floatingText in
-                    Text(floatingText.text)
-                        .font(.system(size: floatingText.fontSize))
-                        .fontWeight(.semibold)
-                        .foregroundColor(floatingText.color)
-                        .opacity(1.0 - (floatingText.age / floatingText.lifespan))
-                        .lineLimit(1)
-                        .position(x: max(40, min(geometry.size.width - 40, floatingText.x * geometry.size.width)), y: floatingText.y * geometry.size.height)
-                }
+                Group {
+                    ForEach(gameState.floatingTexts) { floatingText in
+                        Text(floatingText.text)
+                            .font(.system(size: floatingText.fontSize))
+                            .fontWeight(.semibold)
+                            .foregroundColor(floatingText.color)
+                            .opacity(1.0 - (floatingText.age / floatingText.lifespan))
+                            .lineLimit(1)
+                            .position(x: max(40, min(geometry.size.width - 40, floatingText.x * geometry.size.width)), y: floatingText.y * geometry.size.height)
+                    }
 
-                ForEach(gameState.fallingItems) { item in
-                    if let config = FALLING_ITEM_CONFIGS.first(where: { $0.id == item.itemType }) {
-                        Image(systemName: config.iconName)
+                    ForEach(gameState.fallingItems) { item in
+                        if let config = FALLING_ITEM_CONFIGS.first(where: { $0.id == item.itemType }) {
+                            Image(systemName: config.iconName)
+                                .resizable()
+                                .scaledToFit()
+                                .frame(width: 15, height: 15)
+                                .foregroundColor(config.color)
+                                .rotationEffect(.degrees(item.rotation))
+                                .position(x: item.x * geometry.size.width, y: item.y * geometry.size.height)
+                        }
+                    }
+
+                    ForEach(gameState.fallingShakers) { shaker in
+                        Image("Shaker")
                             .resizable()
                             .scaledToFit()
-                            .frame(width: 15, height: 15)
-                            .foregroundColor(config.color)
-                            .rotationEffect(.degrees(item.rotation))
-                            .position(x: item.x * geometry.size.width, y: item.y * geometry.size.height)
+                            .frame(width: 30, height: 30)
+                            .rotationEffect(.degrees(shaker.rotation))
+                            .position(x: shaker.x * geometry.size.width, y: shaker.y * geometry.size.height)
                     }
-                }
-
-                ForEach(gameState.fallingShakers) { shaker in
-                    Image("Shaker")
-                        .resizable()
-                        .scaledToFit()
-                        .frame(width: 30, height: 30)
-                        .rotationEffect(.degrees(shaker.rotation))
-                        .position(x: shaker.x * geometry.size.width, y: shaker.y * geometry.size.height)
-                }
-                
-                // Rest countdown timer
-                if gameState.currentPerformingAction == "rest" && gameState.restTimeRemaining > 0 {
-                    Text(String(format: "%.1f", gameState.restTimeRemaining))
-                        .font(.system(size: 24, weight: .bold))
-                        .foregroundColor(.green)
-                        .position(x: max(50, min(geometry.size.width - 50, figureX)), y: figureY)
-                }
-
-                // Yoga countdown timer
-                if gameState.currentPerformingAction == "yoga" && gameState.yogaTimeRemaining > 0 {
-                    Text(String(format: "%.1f", gameState.yogaTimeRemaining))
-                        .font(.system(size: 24, weight: .bold))
-                        .foregroundColor(.orange)
-                        .position(x: max(50, min(geometry.size.width - 50, figureX)), y: figureY)
-                }
-                
-                // Pullup counter is now displayed as floating text in the collision timer
-
-                ForEach(gameState.fireworkParticles) { particle in
-
-                    Circle()
-                        .fill(particle.color)
-                        .frame(width: 4, height: 4)
-                        .opacity(1.0 - (particle.age / particle.lifespan))
-                        .position(x: particle.x * geometry.size.width, y: particle.y * geometry.size.height)
-                }
-                
-                // Render doors
-                if showDoor {
-                    ForEach(gameState.doors, id: \.id) { door in
-                        let doorScreenX = door.x * geometry.size.width
-                        let doorWidth = door.width * geometry.size.width
-                        let doorHeight = door.height * geometry.size.height
-                        // Use animated doorY from mapState - slides down continuously from top
-                        let doorScreenY = mapState.doorY
                     
-                    ZStack {
-                        Rectangle()
-                            .fill(Color(red: 0.6, green: 0.4, blue: 0.2)) // Brown color
-                            .frame(width: doorWidth, height: doorHeight)
-                        
-                        Rectangle()
-                            .stroke(Color(red: 0.4, green: 0.2, blue: 0.0), lineWidth: 2) // Darker brown border
-                            .frame(width: doorWidth, height: doorHeight)
-                        
-                        Text("🚪")
-                            .font(.system(size: 20))
+                    // Rest countdown timer
+                    if gameState.currentPerformingAction == "rest" && gameState.restTimeRemaining > 0 {
+                        Text(String(format: "%.1f", gameState.restTimeRemaining))
+                            .font(.system(size: 24, weight: .bold))
+                            .foregroundColor(.green)
+                            .position(x: max(50, min(geometry.size.width - 50, figureX)), y: figureY)
                     }
-                    .position(x: doorScreenX, y: doorScreenY)
-                    .transition(.move(edge: .top).combined(with: .opacity))
+
+                    // Yoga countdown timer
+                    if gameState.currentPerformingAction == "yoga" && gameState.yogaTimeRemaining > 0 {
+                        Text(String(format: "%.1f", gameState.yogaTimeRemaining))
+                            .font(.system(size: 24, weight: .bold))
+                            .foregroundColor(.orange)
+                            .position(x: max(50, min(geometry.size.width - 50, figureX)), y: figureY)
+                    }
+                    
+                    // Pullup counter is now displayed as floating text in the collision timer
+
+                    ForEach(gameState.fireworkParticles) { particle in
+
+                        Circle()
+                            .fill(particle.color)
+                            .frame(width: 4, height: 4)
+                            .opacity(1.0 - (particle.age / particle.lifespan))
+                            .position(x: particle.x * geometry.size.width, y: particle.y * geometry.size.height)
+                    }
+                    
+                    // Render doors
+                    if showDoor {
+                        ForEach(gameState.doors, id: \.id) { door in
+                            let doorScreenX = door.x * geometry.size.width
+                            let doorWidth = door.width * geometry.size.width
+                            let doorHeight = door.height * geometry.size.height
+                            // Use animated doorY from mapState - slides down continuously from top
+                            let doorScreenY = mapState.doorY
+                        
+                        ZStack {
+                            Rectangle()
+                                .fill(Color(red: 0.6, green: 0.4, blue: 0.2)) // Brown color
+                                .frame(width: doorWidth, height: doorHeight)
+                            
+                            Rectangle()
+                                .stroke(Color(red: 0.4, green: 0.2, blue: 0.0), lineWidth: 2) // Darker brown border
+                                .frame(width: doorWidth, height: doorHeight)
+                            
+                            Text("🚪")
+                                .font(.system(size: 20))
+                        }
+                        .position(x: doorScreenX, y: doorScreenY)
+                        .transition(.move(edge: .top).combined(with: .opacity))
+                        }
                     }
                 }
+                .allowsHitTesting(false)  // Let touches pass through overlay elements
             }
             .onAppear {
                 // Load stick figure frames from 2D editor
