@@ -1490,16 +1490,16 @@ struct StickFigure2DEditorView: View {
     
     var contentWithTorsoOnChanges: some View {
         GeometryReader { geometry in
-            VStack(spacing: 0) {
-                headerView
-                scrollableContent
-            }
-            .onAppear {
-                availableWidth = geometry.size.width
-            }
-            .onChange(of: geometry.size.width) { oldValue, newValue in
-                availableWidth = newValue
-            }
+            scrollableContent
+                .onAppear {
+                    availableWidth = geometry.size.width
+                }
+                .onChange(of: geometry.size.width) { oldValue, newValue in
+                    availableWidth = newValue
+                }
+                .safeAreaInset(edge: .top) {
+                    headerView
+                }
         }
     }
     
@@ -1534,9 +1534,6 @@ struct StickFigure2DEditorView: View {
     
     var headerView: some View {
         VStack(spacing: 0) {
-            Color.clear
-                .frame(height: 10)
-            
             HStack {
                 Button(action: {
                     if let onDismiss = onDismiss {
@@ -1568,11 +1565,10 @@ struct StickFigure2DEditorView: View {
                 }
                 .buttonStyle(.bordered)
             }
-            .padding(.vertical, 16)
+            .padding(.vertical, 12)
             .padding(.horizontal, 16)
         }
         .background(Color(UIColor.systemBackground))
-        .ignoresSafeArea(edges: .top)
     }
     
     var canvasView: some View {
