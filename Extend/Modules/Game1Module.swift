@@ -67,11 +67,19 @@ struct FloatingTextTracker {
     var hasCompleted: Bool = false  // Track if we've cycled through all text
 }
 
+// MARK: - Points Per Interval Configuration
+
+struct PointsPerIntervalConfig: Codable {
+    let interval: TimeInterval  // Time interval in seconds
+    let points: Int             // Points to award per interval
+}
+
 struct ActionConfig: Codable {
     let id: String
     let displayName: String
     let unlockLevel: Int
     let pointsPerCompletion: Int
+    let pointsPerInterval: PointsPerIntervalConfig?  // Optional: award points periodically (e.g., Run)
     let variableTiming: [Int: TimeInterval]? // Optional custom timing per frame
     let flipMode: FlipMode
     let supportsSpeedBoost: Bool
@@ -301,36 +309,6 @@ struct FallingItem: Identifiable, Equatable {
     }
 }
 
-// MARK: - Falling Leaf (legacy - kept for compatibility)
-
-struct FallingLeaf: Identifiable, Equatable {
-    let id = UUID()
-    var x: CGFloat
-    var y: CGFloat
-    var rotation: Double = 0
-    var horizontalVelocity: CGFloat = 0
-    var verticalSpeed: CGFloat = 0.003
-    
-    static func == (lhs: FallingLeaf, rhs: FallingLeaf) -> Bool {
-        lhs.id == rhs.id
-    }
-}
-
-// MARK: - Falling Heart (legacy - kept for compatibility)
-
-struct FallingHeart: Identifiable, Equatable {
-    let id = UUID()
-    var x: CGFloat
-    var y: CGFloat
-    var rotation: Double = 0
-    var horizontalVelocity: CGFloat = 0
-    var verticalSpeed: CGFloat = 0.003
-    
-    static func == (lhs: FallingHeart, rhs: FallingHeart) -> Bool {
-        lhs.id == rhs.id
-    }
-}
-
 // MARK: - Falling Shaker
 
 struct FallingShaker: Identifiable, Equatable {
@@ -450,8 +428,6 @@ class StickFigureGameState {
 
     // Falling items
     var fallingItems: [FallingItem] = []
-    var fallingLeaves: [FallingLeaf] = []
-    var fallingHearts: [FallingHeart] = []
     var fallingShakers: [FallingShaker] = []
 
     // Shaker action
@@ -492,8 +468,11 @@ class StickFigureGameState {
     var floatingTextTrackers: [String: FloatingTextTracker] = [:]  // Per-action tracking
     
     // Action completion tracking for floating text
-    var lastCompletedAction: String = ""
+    var lastCompletedAction: String?
     var lastCompletedActionTime: Double = 0
+    
+    // Periodic points tracking for continuous actions (e.g., Run)
+    var periodicPointsLastAwardedTime: Double = 0  // Track when last periodic points were awarded
     
     // Doors
     var doors: [Door] = []
@@ -967,89 +946,19 @@ class StickFigureGameState {
         }
     }
 
-    func checkLeafCollisions(figureX: CGFloat, figureY: CGFloat, screenWidth: CGFloat, screenHeight: CGFloat) {
-        if fallingLeaves.count < 4 && Double.random(in: 0...1) < 0.002 {
-            let leaf = FallingLeaf(
-                x: CGFloat.random(in: 0.05...0.95),
-                y: 0.0,
-                rotation: Double.random(in: 0...360),
-                horizontalVelocity: CGFloat.random(in: -0.002...0.002),
-                verticalSpeed: CGFloat.random(in: 0.0008...0.0015)
-            )
-            fallingLeaves.append(leaf)
-        }
-
-        for i in fallingLeaves.indices.reversed() {
-            fallingLeaves[i].y += fallingLeaves[i].verticalSpeed
-            fallingLeaves[i].x += fallingLeaves[i].horizontalVelocity
-            fallingLeaves[i].rotation += 4
-
-            let leafScreenX = fallingLeaves[i].x * screenWidth
-            let leafScreenY = fallingLeaves[i].y * screenHeight
-            let dx = leafScreenX - figureX
-            // Collision detection at the bottom/feet of character (60 pixels below top of collision box)
-            let characterCollisionY = figureY + 60
-            let dy = leafScreenY - characterCollisionY
-            if sqrt(dx * dx + dy * dy) < 60 {
-                totalLeavesCaught += 1
-                addPoints(1, action: "leaf")
-                addFloatingText("+1", x: fallingLeaves[i].x, y: fallingLeaves[i].y, color: .green)
-                fallingLeaves.remove(at: i)
-                continue
-            }
-
-            if fallingLeaves[i].y > 1.1 || fallingLeaves[i].x < -0.2 || fallingLeaves[i].x > 1.2 {
-                fallingLeaves.remove(at: i)
-            }
-        }
-    }
-
-    func checkHeartCollisions(figureX: CGFloat, figureY: CGFloat, screenWidth: CGFloat, screenHeight: CGFloat) {
-        if fallingHearts.count < 4 && Double.random(in: 0...1) < 0.002 {
-            let heart = FallingHeart(
-                x: CGFloat.random(in: 0.05...0.95),
-                y: 0.0,
-                rotation: Double.random(in: 0...360),
-                horizontalVelocity: CGFloat.random(in: -0.002...0.002),
-                verticalSpeed: CGFloat.random(in: 0.0008...0.0015)
-            )
-            fallingHearts.append(heart)
-        }
-
-        for i in fallingHearts.indices.reversed() {
-            fallingHearts[i].y += fallingHearts[i].verticalSpeed
-            fallingHearts[i].x += fallingHearts[i].horizontalVelocity
-            fallingHearts[i].rotation += 4
-
-            let heartScreenX = fallingHearts[i].x * screenWidth
-            let heartScreenY = fallingHearts[i].y * screenHeight
-            let dx = heartScreenX - figureX
-            // Collision detection at the bottom/feet of character (60 pixels below top of collision box)
-            let characterCollisionY = figureY + 60
-            let dy = heartScreenY - characterCollisionY
-            if sqrt(dx * dx + dy * dy) < 60 {
-                totalHeartsCaught += 1
-                addPoints(2, action: "heart")
-                addFloatingText("+2", x: fallingHearts[i].x, y: fallingHearts[i].y, color: .red)
-                fallingHearts.remove(at: i)
-                continue
-            }
-
-            if fallingHearts[i].y > 1.1 || fallingHearts[i].x < -0.2 || fallingHearts[i].x > 1.2 {
-                fallingHearts.remove(at: i)
-            }
-        }
-    }
-
     func checkShakerCollisions(figureX: CGFloat, figureY: CGFloat, screenWidth: CGFloat, screenHeight: CGFloat) {
-        if fallingShakers.count < 1 && Double.random(in: 0...1) < 0.005 {
-            let shaker = FallingShaker(
-                x: CGFloat.random(in: 0.1...0.9),
-                y: 0.0,
-                rotation: Double.random(in: 0...360),
-                verticalSpeed: CGFloat.random(in: 0.001...0.002)
-            )
-            fallingShakers.append(shaker)
+        // Use config-driven spawn chance for Shaker
+        if let shakerConfig = CATCHABLE_CONFIGS.first(where: { $0.id == "shaker" }) {
+            // Allow up to 1 Shaker on screen (same as before, but now respects low spawn chance)
+            if fallingShakers.count < 1 && Double.random(in: 0...1) < shakerConfig.baseSpawnChance {
+                let shaker = FallingShaker(
+                    x: CGFloat.random(in: 0.1...0.9),
+                    y: 0.0,
+                    rotation: Double.random(in: 0...360),
+                    verticalSpeed: shakerConfig.baseVerticalSpeed
+                )
+                fallingShakers.append(shaker)
+            }
         }
 
         for i in fallingShakers.indices.reversed() {
@@ -1170,6 +1079,16 @@ class StickFigureGameState {
         }
         
         gameState.resetIdleTimer()
+        
+        // If "Run" is selected and no action is currently performing, start Run action
+        if gameState.selectedAction == "Run" && gameState.currentPerformingAction == nil {
+            if let runConfig = ACTION_CONFIGS.first(where: { $0.id == "run" }) {
+                startAction(runConfig, gameState: gameState)
+            }
+            // Initialize periodic points tracker
+            gameState.periodicPointsLastAwardedTime = 0
+        }
+        
         if gameState.currentAction != "move" {
             gameState.currentAction = "move"
             gameState.actionStartTime = Date().timeIntervalSince1970 * 1000
@@ -1190,6 +1109,11 @@ class StickFigureGameState {
                 gameState.recordActionTime(action: "move", duration: duration)
                 gameState.currentAction = ""
             }
+            // Clear Run action when movement stops
+            if gameState.currentPerformingAction == "run" {
+                gameState.currentPerformingAction = nil
+                gameState.periodicPointsLastAwardedTime = 0
+            }
             stopAnimation(gameState: gameState)
         }
     }
@@ -1203,6 +1127,16 @@ class StickFigureGameState {
         }
         
         gameState.resetIdleTimer()
+        
+        // If "Run" is selected and no action is currently performing, start Run action
+        if gameState.selectedAction == "Run" && gameState.currentPerformingAction == nil {
+            if let runConfig = ACTION_CONFIGS.first(where: { $0.id == "run" }) {
+                startAction(runConfig, gameState: gameState)
+            }
+            // Initialize periodic points tracker
+            gameState.periodicPointsLastAwardedTime = 0
+        }
+        
         if gameState.currentAction != "move" {
             gameState.currentAction = "move"
             gameState.actionStartTime = Date().timeIntervalSince1970 * 1000
@@ -1222,6 +1156,11 @@ class StickFigureGameState {
                 let duration = Date().timeIntervalSince1970 * 1000 - gameState.actionStartTime
                 gameState.recordActionTime(action: "move", duration: duration)
                 gameState.currentAction = ""
+            }
+            // Clear Run action when movement stops
+            if gameState.currentPerformingAction == "run" {
+                gameState.currentPerformingAction = nil
+                gameState.periodicPointsLastAwardedTime = 0
             }
             stopAnimation(gameState: gameState)
         }
@@ -1922,6 +1861,89 @@ private struct StatsListContent: View {
                 .cornerRadius(8)
             }
             .padding(.top, 8)
+        }
+    }
+}
+
+// MARK: - Stats Overlay View (Unified for all screens)
+
+struct StatsOverlayView: View {
+    var gameState: StickFigureGameState
+    var mapState: GameMapState
+    var showStats: Binding<Bool>
+    var showLevelPicker: Binding<Bool>
+    var showProgrammableDemo: Binding<Bool>
+    
+    var body: some View {
+        if showStats.wrappedValue {
+            VStack(spacing: 0) {
+                HStack {
+                    Text("Statistics")
+                        .font(.headline)
+                        .fontWeight(.bold)
+
+                    Spacer()
+                    
+                    Button(action: { showStats.wrappedValue = false }) {
+                        Image(systemName: "xmark.circle.fill")
+                            .font(.system(size: 20))
+                            .foregroundColor(.gray)
+                    }
+                }
+                .padding(16)
+                .background(Color.white)
+
+                StatsListContent(
+                    gameState: gameState,
+                    showLevelPicker: showLevelPicker,
+                    onResetData: {
+                        // Reset all game data
+                        gameState.currentLevel = 1
+                        gameState.currentPoints = 0
+                        gameState.selectedAction = "Rest"
+                        gameState.sessionActions.removeAll()
+                        gameState.actionTimes.removeAll()
+                        gameState.catchablesCaught.removeAll()
+                        gameState.totalCoinsCollected = 0
+                        gameState.allTimeElapsed = 0
+                        gameState.timeElapsed = 0
+                        gameState.score = 0
+                        gameState.highScore = 0
+                        gameState.saveStats()
+                        gameState.saveHighScore()
+                        
+                        // Clear coin last collected time
+                        UserDefaults.standard.removeObject(forKey: "game1_coin_last_collected_time")
+                        
+                        // Reinitialize map level boxes after reset
+                        mapState.initializeLevelBoxes(currentLevel: 1)
+                        
+                        // Regenerate coin (will be visible since no collection time)
+                        mapState.generateCoin()
+                        
+                        // Position character next to level 1
+                        if mapState.levelBoxes.count > 0 {
+                            let level1Box = mapState.levelBoxes[0]
+                            let offset: CGFloat = 100
+                            mapState.characterX = level1Box.x - offset
+                            mapState.characterY = level1Box.y
+                            mapState.targetX = level1Box.x - offset
+                            mapState.targetY = level1Box.y
+                        }
+                    }
+                )
+
+                Spacer()
+            }
+            .frame(maxHeight: .infinity, alignment: .top)
+            .background(Color.white)
+            .cornerRadius(12)
+            .padding(.horizontal, 12)
+            .padding(.top, 50)
+            .transition(.move(edge: .bottom))
+            .onAppear {
+                print("📊 STATS OVERLAY APPEARED - Timer status: \(gameState.elapsedTimeTimer != nil)")
+            }
         }
     }
 }
@@ -3819,57 +3841,83 @@ private struct GamePlayArea: View {
                                 gameState.floatingTextTrackers[currentAction] = tracker
                             }
                         }
+                        
+                        // Handle periodic points for continuous actions (e.g., Run)
+                        if let pointsPerInterval = config.pointsPerInterval {
+                            let currentTime = Date().timeIntervalSince1970
+                            
+                            // For Run action, only award points if character is actually moving left or right
+                            let isMoving = (currentAction == "run") && (gameState.isMovingLeft || gameState.isMovingRight)
+                            
+                            if isMoving {
+                                // If this is the first time tracking, initialize
+                                if gameState.periodicPointsLastAwardedTime == 0 {
+                                    gameState.periodicPointsLastAwardedTime = currentTime
+                                    print("DEBUG: Started tracking Run periodic points. Interval: \(pointsPerInterval.interval)s, Points per interval: \(pointsPerInterval.points)")
+                                }
+                                
+                                // Check if enough time has passed
+                                let timeSinceLastAward = currentTime - gameState.periodicPointsLastAwardedTime
+                                if timeSinceLastAward >= pointsPerInterval.interval {
+                                    print("DEBUG: Awarding \(pointsPerInterval.points) points for Run (time elapsed: \(timeSinceLastAward)s)")
+                                    gameState.addPoints(pointsPerInterval.points, action: currentAction)
+                                    gameState.periodicPointsLastAwardedTime = currentTime
+                                }
+                            } else {
+                                // Not moving - reset the timer
+                                gameState.periodicPointsLastAwardedTime = 0
+                            }
+                        }
+                    } else {
+                        // No longer performing an action - reset periodic points tracker
+                        gameState.periodicPointsLastAwardedTime = 0
                     }
                     
                     // Check door collision only if door is visible
                     if showDoor {
                         if let door = gameState.checkDoorCollision(figureX: currentFigureX, screenWidth: geometry.size.width, screenHeight: geometry.size.height, isMovingRight: gameState.isMovingRight, isMovingLeft: gameState.isMovingLeft, animatedDoorY: mapState.doorY) {
-                        // Check if returning to map
-                        if door.destinationRoomId == "map" {
-                            // Mark current level as completed and unlock next level
-                            if gameState.currentLevel <= mapState.levelBoxes.count {
-                                // Create a copy of the array to trigger SwiftUI update
-                                var updatedBoxes = mapState.levelBoxes
-                                updatedBoxes[gameState.currentLevel - 1].isCompleted = true
-                                
-                                // Unlock next level
-                                if gameState.currentLevel < updatedBoxes.count {
-                                    updatedBoxes[gameState.currentLevel].isAvailable = true
+                            // Check if returning to map
+                            if door.destinationRoomId == "map" {
+                                // Mark current level as completed and unlock next level
+                                if gameState.currentLevel <= mapState.levelBoxes.count {
+                                    // Create a copy of the array to trigger SwiftUI update
+                                    var updatedBoxes = mapState.levelBoxes
+                                    updatedBoxes[gameState.currentLevel - 1].isCompleted = true
+                                    
+                                    // Unlock next level
+                                    if gameState.currentLevel < updatedBoxes.count {
+                                        updatedBoxes[gameState.currentLevel].isAvailable = true
+                                    }
+                                    
+                                    // Reassign to trigger update
+                                    mapState.levelBoxes = updatedBoxes
                                 }
                                 
-                                // Reassign to trigger update
-                                mapState.levelBoxes = updatedBoxes
+                                // Position character below the level they just exited
+                                // currentLevel is still the level we're exiting (not incremented yet)
+                                let exitedLevelNumber = gameState.currentLevel
+                                if exitedLevelNumber > 0 && exitedLevelNumber <= mapState.levelBoxes.count {
+                                    let levelBox = mapState.levelBoxes[exitedLevelNumber - 1]
+                                    // Position below the level box (outside of it)
+                                    mapState.characterX = levelBox.x
+                                    mapState.characterY = levelBox.y + 150
+                                    mapState.targetX = levelBox.x
+                                    mapState.targetY = levelBox.y + 150
+                                }
+                                // Save stats when exiting level via door
+                                gameState.saveStats()
+                                showGameMap = true
+                            } else {
+                                // Enter the door - move to center of new room
+                                gameState.initializeRoom(door.destinationRoomId)
+                                gameState.figurePosition = 0 // Center
+                                stopMovingLeftAction(gameState)
+                                stopMovingRightAction(gameState)
+                                showDoor = false // Hide door when entering new room
                             }
-                            
-                            // Position character below the level they just exited
-                            // currentLevel is still the level we're exiting (not incremented yet)
-                            let exitedLevelNumber = gameState.currentLevel
-                            if exitedLevelNumber > 0 && exitedLevelNumber <= mapState.levelBoxes.count {
-                                let levelBox = mapState.levelBoxes[exitedLevelNumber - 1]
-                                // Position below the level box (outside of it)
-                                mapState.characterX = levelBox.x
-                                mapState.characterY = levelBox.y + 150
-                                mapState.targetX = levelBox.x
-                                mapState.targetY = levelBox.y + 150
-                            }
-                            // Save stats when exiting level via door
-                            gameState.saveStats()
-                            showGameMap = true
-                        } else {
-                            // Enter the door - move to center of new room
-                            gameState.initializeRoom(door.destinationRoomId)
-                            gameState.figurePosition = 0 // Center
-                            stopMovingLeftAction(gameState)
-                            stopMovingRightAction(gameState)
-                            showDoor = false // Hide door when entering new room
                         }
                     }
-                    }
                 }
-            }
-            .onAppear {
-                print("🎮 GAMEPLAY AREA APPEARED")
-                // Timer is managed by gameplayScreen.onAppear
             }
             .onDisappear {
                 print("🎮 GAMEPLAY AREA DISAPPEARED")
@@ -3890,89 +3938,8 @@ private struct GamePlayArea: View {
                     gameState.addFloatingText(greeting, x: normX, y: textStartY, color: .blue)
                 }
             }
-        }
-    }
+        } // End of GeometryReader
+    } // End of body
 }
 
-// MARK: - Stats Overlay View (Unified for all screens)
 
-private struct StatsOverlayView: View {
-    var gameState: StickFigureGameState
-    var mapState: GameMapState
-    var showStats: Binding<Bool>
-    var showLevelPicker: Binding<Bool>
-    var showProgrammableDemo: Binding<Bool>
-    
-    var body: some View {
-        if showStats.wrappedValue {
-            VStack(spacing: 0) {
-                HStack {
-                    Text("Statistics")
-                        .font(.headline)
-                        .fontWeight(.bold)
-
-                    Spacer()
-                    
-                    Button(action: { showStats.wrappedValue = false }) {
-                        Image(systemName: "xmark.circle.fill")
-                            .font(.system(size: 20))
-                            .foregroundColor(.gray)
-                    }
-                }
-                .padding(16)
-                .background(Color.white)
-
-                StatsListContent(
-                    gameState: gameState,
-                    showLevelPicker: showLevelPicker,
-                    onResetData: {
-                        // Reset all game data
-                        gameState.currentLevel = 1
-                        gameState.currentPoints = 0
-                        gameState.selectedAction = "Rest"
-                        gameState.sessionActions.removeAll()
-                        gameState.actionTimes.removeAll()
-                        gameState.catchablesCaught.removeAll()
-                        gameState.totalCoinsCollected = 0
-                        gameState.allTimeElapsed = 0
-                        gameState.timeElapsed = 0
-                        gameState.score = 0
-                        gameState.highScore = 0
-                        gameState.saveStats()
-                        gameState.saveHighScore()
-                        
-                        // Clear coin last collected time
-                        UserDefaults.standard.removeObject(forKey: "game1_coin_last_collected_time")
-                        
-                        // Reinitialize map level boxes after reset
-                        mapState.initializeLevelBoxes(currentLevel: 1)
-                        
-                        // Regenerate coin (will be visible since no collection time)
-                        mapState.generateCoin()
-                        
-                        // Position character next to level 1
-                        if mapState.levelBoxes.count > 0 {
-                            let level1Box = mapState.levelBoxes[0]
-                            let offset: CGFloat = 100
-                            mapState.characterX = level1Box.x - offset
-                            mapState.characterY = level1Box.y
-                            mapState.targetX = level1Box.x - offset
-                            mapState.targetY = level1Box.y
-                        }
-                    }
-                )
-
-                Spacer()
-            }
-            .frame(maxHeight: .infinity, alignment: .top)
-            .background(Color.white)
-            .cornerRadius(12)
-            .padding(.horizontal, 12)
-            .padding(.top, 50)
-            .transition(.move(edge: .bottom))
-            .onAppear {
-                print("📊 STATS OVERLAY APPEARED - Timer status: \(gameState.elapsedTimeTimer != nil)")
-            }
-        }
-    }
-}

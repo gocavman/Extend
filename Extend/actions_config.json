@@ -26,7 +26,11 @@
     "id": "run",
     "displayName": "Run",
     "unlockLevel": 2,
-    "pointsPerCompletion": 2,
+    "pointsPerCompletion": 0,
+    "pointsPerInterval": {
+      "interval": 5.0,
+      "points": 1
+    },
     "variableTiming": null,
     "flipMode": "none",
     "supportsSpeedBoost": true,
@@ -68,10 +72,17 @@
     "flipMode": "none",
     "supportsSpeedBoost": true,
     "allowMovement": false,
+    "floatingText": {
+      "timing": 0.5,
+      "text": ["jump", "ing", "jacks"],
+      "random": false,
+      "loop": true,
+      "color": "red"
+    },
     "stickFigureAnimation": {
-      "animationName": "Jumping Jacks",
-      "frameNumbers": [1, 2, 3, 4],
-      "baseFrameInterval": 0.27
+      "animationName": "Jumpingjack",
+      "frameNumbers": [1,2,3,4,1,2,3,4,1,2,3,4,1,2,3,4,1,2,3,4],
+      "baseFrameInterval": 0.15
     }
   },
   {

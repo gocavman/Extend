@@ -44,7 +44,7 @@
     "baseSpawnChance": 0.002,
     "baseVerticalSpeed": 0.0008,
     "baseVerticalSpeedMax": 0.0015,
-    "color": "#A855F7",
+    "color": "#FFC0CB",
     "points": 10
   },
   {
@@ -73,7 +73,7 @@
     "spins": true,
     "spinSpeed": 6,
     "collisionAnimation": "Shaker",
-    "baseSpawnChance": 0.005,
+    "baseSpawnChance": 0.0005,
     "baseVerticalSpeed": 0.005,
     "baseVerticalSpeedMax": 0.005,
     "color": null,
