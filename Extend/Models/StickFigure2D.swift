@@ -648,52 +648,38 @@ struct GridOverlay: View {
         var regularPath = Path()
         var crosshairPath = Path()
         
-        // Calculate offset to center grid on the waist position (canvas center)
+        // Calculate center of canvas
         let canvasCenter = CGPoint(x: size.width / 2, y: size.height / 2)
-        let offset = gridSpacing / 2  // Offset to center grid on intersection point
         
-        // Draw vertical lines - centered on canvas center
-        var x: CGFloat = canvasCenter.x - offset
+        // Calculate offset so grid lines align with center crosshairs
+        // We want the center lines to be ON grid lines, not between them
+        let offsetX = canvasCenter.x.truncatingRemainder(dividingBy: gridSpacing)
+        let offsetY = canvasCenter.y.truncatingRemainder(dividingBy: gridSpacing)
+        
+        // Draw vertical lines - aligned with center
+        var x: CGFloat = offsetX - gridSpacing * CGFloat(Int(canvasCenter.x / gridSpacing))
         while x <= size.width {
-            // Skip if this would be the center line (we'll draw it separately)
-            if abs(x - canvasCenter.x) >= gridSpacing * 0.1 {
-                regularPath.move(to: CGPoint(x: x, y: 0))
-                regularPath.addLine(to: CGPoint(x: x, y: size.height))
+            if x >= 0 {
+                // Skip if this would be the center line (we'll draw it separately)
+                if abs(x - canvasCenter.x) >= gridSpacing * 0.1 {
+                    regularPath.move(to: CGPoint(x: x, y: 0))
+                    regularPath.addLine(to: CGPoint(x: x, y: size.height))
+                }
             }
             x += gridSpacing
         }
         
-        // Also draw lines to the left of center
-        x = canvasCenter.x - offset - gridSpacing
-        while x >= 0 {
-            // Skip if this would be the center line
-            if abs(x - canvasCenter.x) >= gridSpacing * 0.1 {
-                regularPath.move(to: CGPoint(x: x, y: 0))
-                regularPath.addLine(to: CGPoint(x: x, y: size.height))
-            }
-            x -= gridSpacing
-        }
-        
-        // Draw horizontal lines - centered on canvas center
-        var y: CGFloat = canvasCenter.y - offset
+        // Draw horizontal lines - aligned with center
+        var y: CGFloat = offsetY - gridSpacing * CGFloat(Int(canvasCenter.y / gridSpacing))
         while y <= size.height {
-            // Skip if this would be the center line
-            if abs(y - canvasCenter.y) >= gridSpacing * 0.1 {
-                regularPath.move(to: CGPoint(x: 0, y: y))
-                regularPath.addLine(to: CGPoint(x: size.width, y: y))
+            if y >= 0 {
+                // Skip if this would be the center line
+                if abs(y - canvasCenter.y) >= gridSpacing * 0.1 {
+                    regularPath.move(to: CGPoint(x: 0, y: y))
+                    regularPath.addLine(to: CGPoint(x: size.width, y: y))
+                }
             }
             y += gridSpacing
-        }
-        
-        // Also draw lines above center
-        y = canvasCenter.y - offset - gridSpacing
-        while y >= 0 {
-            // Skip if this would be the center line
-            if abs(y - canvasCenter.y) >= gridSpacing * 0.1 {
-                regularPath.move(to: CGPoint(x: 0, y: y))
-                regularPath.addLine(to: CGPoint(x: size.width, y: y))
-            }
-            y -= gridSpacing
         }
         
         // Explicitly draw center crosshair lines
@@ -1385,13 +1371,13 @@ struct StickFigure2DEditorView: View {
     @State private var currentFrameIndex = 0
     @State private var animationTimer: Timer? = nil
     @State private var isControlsCollapsed = true // Controls start collapsed
-    @State private var isColorsCollapsed = true // Colors start collapsed
     @State private var isAnimationPlaybackCollapsed = true // Animation Playback starts collapsed
     @State private var isFigureSizeCollapsed = true // Figure Size section collapsed
     @State private var isFramesSectionCollapsed = true // Frame section collapsed
     @State private var isAnglesCollapsed = false // Angle sliders subsection
     @State private var isStrokeThicknessCollapsed = false // Stroke thickness subsection
     @State private var isFusiformCollapsed = true // Fusiform subsection (collapsed by default)
+    @State private var isColorsCollapsed = true // Colors subsection (collapsed by default)
     @State private var canvasOffset: CGSize = .zero // Offset for panning the canvas
     @State private var lastCanvasOffset: CGSize = .zero // Last offset before new drag
     @State private var availableWidth: CGFloat = 390 // Default to iPhone width
@@ -1512,7 +1498,6 @@ struct StickFigure2DEditorView: View {
                     jointControlsView
                     framesSectionView
                     animationPlaybackView
-                    colorControlsView
                     objectsControlsView
                 }
                 .padding(.horizontal, 16)
@@ -2194,6 +2179,9 @@ struct StickFigure2DEditorView: View {
                     
                     // MARK: - Angles Subsection
                     anglesSubsectionView
+                    
+                    // MARK: - Colors Subsection
+                    colorSubsectionView
                 }
                 .padding()
                 .background(Color.gray.opacity(0.1))
@@ -2649,11 +2637,6 @@ struct StickFigure2DEditorView: View {
                             .frame(width: 35)
                     }
                     .font(.caption)
-                    
-                    Text("*Inverted: Larger at top")
-                        .font(.caption2)
-                        .foregroundColor(.gray)
-                        .italic()
                 }
                 .padding(.top, 4)
             }
@@ -2683,19 +2666,21 @@ struct StickFigure2DEditorView: View {
                 VStack(alignment: .leading, spacing: 8) {
                     HStack {
                         Text("Animation Name:")
+                            .font(.caption2)
                         TextField("e.g., Run, Jump", text: $selectedAnimationName)
                             .textFieldStyle(.roundedBorder)
                     }
                     
                     HStack {
                         Text("Frame Sequence:")
+                            .font(.caption2)
                         TextField("e.g., 1,2,3,4,3,2,1", text: $frameSequence)
                             .textFieldStyle(.roundedBorder)
                     }
                     
                     // Loop checkbox
                     Toggle("Loop animation", isOn: $loopAnimation)
-                        .font(.caption)
+                        .font(.caption2)
                     
                     HStack(spacing: 12) {
                         Button(action: playAnimation) {
@@ -2857,8 +2842,9 @@ struct StickFigure2DEditorView: View {
         currentFrameIndex = 0
     }
     
-    var colorControlsView: some View {
-        VStack(alignment: .leading, spacing: 12) {
+
+    var colorSubsectionView: some View {
+        VStack(alignment: .leading, spacing: 6) {
             Button(action: {
                 withAnimation {
                     isColorsCollapsed.toggle()
@@ -2866,77 +2852,91 @@ struct StickFigure2DEditorView: View {
             }) {
                 HStack {
                     Text("Colors")
-                        .font(.subheadline)
+                        .font(.caption2)
                         .fontWeight(.semibold)
-                        .foregroundColor(.primary)
+                        
                     Spacer()
                     Image(systemName: isColorsCollapsed ? "chevron.right" : "chevron.down")
-                        .font(.caption)
+                        .font(.caption2)
                         .foregroundColor(.gray)
                 }
             }
             
             if !isColorsCollapsed {
-                VStack(alignment: .leading, spacing: 8) {
-                    HStack {
+                VStack(alignment: .leading, spacing: 6) {
+                    HStack(spacing: 8) {
                         Text("Head:")
-                        Spacer()
+                            .font(.caption2)
+                            .frame(width: 35, alignment: .leading)
                         ColorPicker("", selection: $figure.headColor)
-                            .frame(width: 50)
+                            .labelsHidden()
+                            .frame(width: 40)
                     }
                     
-                    HStack {
+                    HStack(spacing: 8) {
                         Text("Torso:")
-                        Spacer()
+                            .font(.caption2)
+                            .frame(width: 35, alignment: .leading)
                         ColorPicker("", selection: $figure.torsoColor)
-                            .frame(width: 50)
+                            .labelsHidden()
+                            .frame(width: 40)
                     }
                     
-                    HStack {
-                        Text("Left Arm:")
-                        Spacer()
+                    HStack(spacing: 8) {
+                        Text("L Arm:")
+                            .font(.caption2)
+                            .frame(width: 35, alignment: .leading)
                         ColorPicker("", selection: $figure.leftArmColor)
-                            .frame(width: 50)
+                            .labelsHidden()
+                            .frame(width: 40)
                     }
                     
-                    HStack {
-                        Text("Right Arm:")
-                        Spacer()
+                    HStack(spacing: 8) {
+                        Text("R Arm:")
+                            .font(.caption2)
+                            .frame(width: 35, alignment: .leading)
                         ColorPicker("", selection: $figure.rightArmColor)
-                            .frame(width: 50)
+                            .labelsHidden()
+                            .frame(width: 40)
                     }
                     
-                    HStack {
-                        Text("Hands:")
-                        Spacer()
-                        ColorPicker("", selection: $figure.handColor)
-                            .frame(width: 50)
-                    }
-                    
-                    HStack {
-                        Text("Left Leg:")
-                        Spacer()
+                    HStack(spacing: 8) {
+                        Text("L Leg:")
+                            .font(.caption2)
+                            .frame(width: 35, alignment: .leading)
                         ColorPicker("", selection: $figure.leftLegColor)
-                            .frame(width: 50)
+                            .labelsHidden()
+                            .frame(width: 40)
                     }
                     
-                    HStack {
-                        Text("Right Leg:")
-                        Spacer()
+                    HStack(spacing: 8) {
+                        Text("R Leg:")
+                            .font(.caption2)
+                            .frame(width: 35, alignment: .leading)
                         ColorPicker("", selection: $figure.rightLegColor)
-                            .frame(width: 50)
+                            .labelsHidden()
+                            .frame(width: 40)
                     }
                     
-                    HStack {
-                        Text("Feet:")
-                        Spacer()
+                    HStack(spacing: 8) {
+                        Text("Hand:")
+                            .font(.caption2)
+                            .frame(width: 35, alignment: .leading)
+                        ColorPicker("", selection: $figure.handColor)
+                            .labelsHidden()
+                            .frame(width: 40)
+                    }
+                    
+                    HStack(spacing: 8) {
+                        Text("Foot:")
+                            .font(.caption2)
+                            .frame(width: 35, alignment: .leading)
                         ColorPicker("", selection: $figure.footColor)
-                            .frame(width: 50)
+                            .labelsHidden()
+                            .frame(width: 40)
                     }
                 }
-                .padding()
-                .background(Color.gray.opacity(0.1))
-                .cornerRadius(8)
+                .padding(.top, 4)
             }
         }
     }
