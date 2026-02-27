@@ -649,23 +649,16 @@ struct GridOverlay: View {
         var crosshairPath = Path()
         
         // Calculate offset to center grid on the waist position (canvas center)
-        // The waist is at the center of the canvas
         let canvasCenter = CGPoint(x: size.width / 2, y: size.height / 2)
         let offset = gridSpacing / 2  // Offset to center grid on intersection point
         
         // Draw vertical lines - centered on canvas center
         var x: CGFloat = canvasCenter.x - offset
         while x <= size.width {
-            let isCenter = abs(x - canvasCenter.x) < 0.1
-            let lineToAdd: (inout Path) -> Void = { path in
-                path.move(to: CGPoint(x: x, y: 0))
-                path.addLine(to: CGPoint(x: x, y: size.height))
-            }
-            
-            if isCenter {
-                lineToAdd(&crosshairPath)
-            } else {
-                lineToAdd(&regularPath)
+            // Skip if this would be the center line (we'll draw it separately)
+            if abs(x - canvasCenter.x) >= gridSpacing * 0.1 {
+                regularPath.move(to: CGPoint(x: x, y: 0))
+                regularPath.addLine(to: CGPoint(x: x, y: size.height))
             }
             x += gridSpacing
         }
@@ -673,16 +666,10 @@ struct GridOverlay: View {
         // Also draw lines to the left of center
         x = canvasCenter.x - offset - gridSpacing
         while x >= 0 {
-            let isCenter = abs(x - canvasCenter.x) < 0.1
-            let lineToAdd: (inout Path) -> Void = { path in
-                path.move(to: CGPoint(x: x, y: 0))
-                path.addLine(to: CGPoint(x: x, y: size.height))
-            }
-            
-            if isCenter {
-                lineToAdd(&crosshairPath)
-            } else {
-                lineToAdd(&regularPath)
+            // Skip if this would be the center line
+            if abs(x - canvasCenter.x) >= gridSpacing * 0.1 {
+                regularPath.move(to: CGPoint(x: x, y: 0))
+                regularPath.addLine(to: CGPoint(x: x, y: size.height))
             }
             x -= gridSpacing
         }
@@ -690,16 +677,10 @@ struct GridOverlay: View {
         // Draw horizontal lines - centered on canvas center
         var y: CGFloat = canvasCenter.y - offset
         while y <= size.height {
-            let isCenter = abs(y - canvasCenter.y) < 0.1
-            let lineToAdd: (inout Path) -> Void = { path in
-                path.move(to: CGPoint(x: 0, y: y))
-                path.addLine(to: CGPoint(x: size.width, y: y))
-            }
-            
-            if isCenter {
-                lineToAdd(&crosshairPath)
-            } else {
-                lineToAdd(&regularPath)
+            // Skip if this would be the center line
+            if abs(y - canvasCenter.y) >= gridSpacing * 0.1 {
+                regularPath.move(to: CGPoint(x: 0, y: y))
+                regularPath.addLine(to: CGPoint(x: size.width, y: y))
             }
             y += gridSpacing
         }
@@ -707,19 +688,22 @@ struct GridOverlay: View {
         // Also draw lines above center
         y = canvasCenter.y - offset - gridSpacing
         while y >= 0 {
-            let isCenter = abs(y - canvasCenter.y) < 0.1
-            let lineToAdd: (inout Path) -> Void = { path in
-                path.move(to: CGPoint(x: 0, y: y))
-                path.addLine(to: CGPoint(x: size.width, y: y))
-            }
-            
-            if isCenter {
-                lineToAdd(&crosshairPath)
-            } else {
-                lineToAdd(&regularPath)
+            // Skip if this would be the center line
+            if abs(y - canvasCenter.y) >= gridSpacing * 0.1 {
+                regularPath.move(to: CGPoint(x: 0, y: y))
+                regularPath.addLine(to: CGPoint(x: size.width, y: y))
             }
             y -= gridSpacing
         }
+        
+        // Explicitly draw center crosshair lines
+        // Vertical center line
+        crosshairPath.move(to: CGPoint(x: canvasCenter.x, y: 0))
+        crosshairPath.addLine(to: CGPoint(x: canvasCenter.x, y: size.height))
+        
+        // Horizontal center line
+        crosshairPath.move(to: CGPoint(x: 0, y: canvasCenter.y))
+        crosshairPath.addLine(to: CGPoint(x: size.width, y: canvasCenter.y))
         
         // Stroke regular grid with lighter color
         context.stroke(
@@ -731,8 +715,8 @@ struct GridOverlay: View {
         // Stroke crosshair (center lines) with darker color and thicker width
         context.stroke(
             crosshairPath,
-            with: .color(Color.gray.opacity(0.8)),
-            lineWidth: 2.0
+            with: .color(Color.gray.opacity(0.6)),
+            lineWidth: 1.5
         )
     }
 }
@@ -795,13 +779,14 @@ struct StickFigure2DView: View {
         
         // Draw lower body first (back)
         drawSegment(from: waistPos, to: leftUpperLegEnd, color: figure.leftLegColor, strokeThickness: figure.strokeThicknessUpperLegs, fusiform: figure.fusiformUpperLegs, inverted: false, in: context)
-        drawSegment(from: leftUpperLegEnd, to: leftFootEnd, color: figure.footColor, strokeThickness: figure.strokeThicknessLowerLegs, fusiform: figure.fusiformLowerLegs, inverted: true, in: context)
+        drawSegment(from: leftUpperLegEnd, to: leftFootEnd, color: figure.footColor, strokeThickness: figure.strokeThicknessLowerLegs, fusiform: figure.fusiformLowerLegs, inverted: false, in: context)
         drawSegment(from: waistPos, to: rightUpperLegEnd, color: figure.rightLegColor, strokeThickness: figure.strokeThicknessUpperLegs, fusiform: figure.fusiformUpperLegs, inverted: false, in: context)
-        drawSegment(from: rightUpperLegEnd, to: rightFootEnd, color: figure.footColor, strokeThickness: figure.strokeThicknessLowerLegs, fusiform: figure.fusiformLowerLegs, inverted: true, in: context)
+        drawSegment(from: rightUpperLegEnd, to: rightFootEnd, color: figure.footColor, strokeThickness: figure.strokeThicknessLowerLegs, fusiform: figure.fusiformLowerLegs, inverted: false, in: context)
         
         // Draw torso
         drawSegment(from: waistPos, to: midTorsoPos, color: figure.torsoColor, strokeThickness: figure.strokeThicknessLowerTorso, fusiform: figure.fusiformLowerTorso, inverted: false, in: context)
-        drawSegment(from: midTorsoPos, to: neckPos, color: figure.torsoColor, strokeThickness: figure.strokeThicknessUpperTorso, fusiform: figure.fusiformUpperTorso, inverted: true, in: context)
+        // Upper torso: large at neck, small at mid-torso - reverse the direction for correct taper
+        drawSegment(from: neckPos, to: midTorsoPos, color: figure.torsoColor, strokeThickness: figure.strokeThicknessUpperTorso, fusiform: figure.fusiformUpperTorso, inverted: true, in: context)
         drawSegment(from: neckPos, to: headPos, color: figure.torsoColor, strokeThickness: figure.strokeThicknessUpperTorso, fusiform: 0, inverted: false, in: context)
         
         // Draw arms (back arm first)
@@ -861,36 +846,81 @@ struct StickFigure2DView: View {
         let perpX = -dirY
         let perpY = dirX
         
-        // Calculate stroke thicknesses at each end
-        let startThickness = inverted ? (strokeThickness + (strokeThickness * fusiform)) : strokeThickness
-        let endThickness = inverted ? strokeThickness : (strokeThickness + (strokeThickness * fusiform))
-        
-        let startWidth = startThickness / 2
-        let endWidth = endThickness / 2
-        
-        // Create a tapered polygon (4 points forming a trapezoid)
+        // Create a tapered polygon with smooth width variation
         var taperedPath = Path()
+        var points: [CGPoint] = []
         
-        let p1 = CGPoint(x: from.x - perpX * startWidth, y: from.y - perpY * startWidth)
-        let p2 = CGPoint(x: from.x + perpX * startWidth, y: from.y + perpY * startWidth)
-        let p3 = CGPoint(x: to.x + perpX * endWidth, y: to.y + perpY * endWidth)
-        let p4 = CGPoint(x: to.x - perpX * endWidth, y: to.y - perpY * endWidth)
+        // Generate points along the length with varying width
+        let numSegments = 20
+        for i in 0...numSegments {
+            let t = CGFloat(i) / CGFloat(numSegments)
+            let pos = CGPoint(x: from.x + dirX * t * length, y: from.y + dirY * t * length)
+            
+            // Calculate width at this point based on taper profile
+            var widthFactor: CGFloat = 1.0
+            
+            if inverted {
+                // INVERTED: Large at START, tapers to small at END
+                // Used for: upper torso (neck to mid-torso), lower legs (knee to ankle)
+                // Width: starts high, decreases to baseline
+                widthFactor = 1.0 + (fusiform * (1.0 - t))
+            } else {
+                // NORMAL: Middle BULGE profile, small at both ends
+                // Used for: upper arms, lower arms, upper legs, lower torso
+                // Width: lowest at ends, highest in middle
+                // For lower torso: this creates slight bulge in middle but effect is subtle
+                let distFromCenter = abs(t - 0.5) * 2.0  // 0 at middle, 1 at ends
+                widthFactor = 1.0 + (fusiform * (1.0 - distFromCenter))
+            }
+            
+            let width = (strokeThickness / 2) * widthFactor
+            
+            // Top edge
+            let topPoint = CGPoint(x: pos.x + perpX * width, y: pos.y + perpY * width)
+            points.append(topPoint)
+        }
         
-        taperedPath.move(to: p1)
-        taperedPath.addLine(to: p2)
-        taperedPath.addLine(to: p3)
-        taperedPath.addLine(to: p4)
-        taperedPath.closeSubpath()
+        // Add bottom edge in reverse
+        for i in (0...numSegments).reversed() {
+            let t = CGFloat(i) / CGFloat(numSegments)
+            let pos = CGPoint(x: from.x + dirX * t * length, y: from.y + dirY * t * length)
+            
+            // Calculate width at this point
+            var widthFactor: CGFloat = 1.0
+            
+            if inverted {
+                widthFactor = 1.0 + (fusiform * (1.0 - t))
+            } else {
+                let distFromCenter = abs(t - 0.5) * 2.0
+                widthFactor = 1.0 + (fusiform * (1.0 - distFromCenter))
+            }
+            
+            let width = (strokeThickness / 2) * widthFactor
+            
+            // Bottom edge
+            let bottomPoint = CGPoint(x: pos.x - perpX * width, y: pos.y - perpY * width)
+            points.append(bottomPoint)
+        }
         
-        context.fill(taperedPath, with: .color(color))
+        // Create path from all points
+        if !points.isEmpty {
+            taperedPath.move(to: points[0])
+            for i in 1..<points.count {
+                taperedPath.addLine(to: points[i])
+            }
+            taperedPath.closeSubpath()
+            
+            context.fill(taperedPath, with: .color(color))
+        }
     }
     
     private func drawJoint(at position: CGPoint, in context: GraphicsContext) {
+        let radius = figure.strokeThicknessJoints / 2
         let circle = Circle().path(in: CGRect(
-            x: position.x - jointRadius,
-            y: position.y - jointRadius,
-            width: jointRadius * 2,
-            height: jointRadius * 2
+            x: position.x - radius,
+            y: position.y - radius,
+            width: radius * 2,
+            height: radius * 2
         ))
         context.fill(circle, with: .color(jointColor))
     }
@@ -1476,7 +1506,7 @@ struct StickFigure2DEditorView: View {
     var scrollableContent: some View {
         ScrollViewReader { proxy in
             ScrollView {
-                VStack(spacing: 16) {
+                VStack(spacing: 4) {
                     canvasView
                     jointControlsView
                     framesSectionView
@@ -1485,7 +1515,7 @@ struct StickFigure2DEditorView: View {
                     objectsControlsView
                 }
                 .padding(.horizontal, 16)
-                .padding(.vertical, 8)
+                .padding(.vertical, 0)
             }
             .onChange(of: scrollToCanvas) { oldValue, newValue in
                 if newValue {
@@ -1505,7 +1535,7 @@ struct StickFigure2DEditorView: View {
     var headerView: some View {
         VStack(spacing: 0) {
             Color.clear
-                .frame(height: 50)
+                .frame(height: 10)
             
             HStack {
                 Button(action: {
