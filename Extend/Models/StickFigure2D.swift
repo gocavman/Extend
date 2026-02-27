@@ -764,10 +764,12 @@ struct StickFigure2DView: View {
         let rightFootEnd = scalePoint(figure.rightFootEnd)
         
         // Draw lower body first (back)
-        drawSegment(from: waistPos, to: leftUpperLegEnd, color: figure.leftLegColor, strokeThickness: figure.strokeThicknessUpperLegs, fusiform: figure.fusiformUpperLegs, inverted: false, in: context)
-        drawSegment(from: leftUpperLegEnd, to: leftFootEnd, color: figure.footColor, strokeThickness: figure.strokeThicknessLowerLegs, fusiform: figure.fusiformLowerLegs, inverted: false, in: context)
-        drawSegment(from: waistPos, to: rightUpperLegEnd, color: figure.rightLegColor, strokeThickness: figure.strokeThicknessUpperLegs, fusiform: figure.fusiformUpperLegs, inverted: false, in: context)
-        drawSegment(from: rightUpperLegEnd, to: rightFootEnd, color: figure.footColor, strokeThickness: figure.strokeThicknessLowerLegs, fusiform: figure.fusiformLowerLegs, inverted: false, in: context)
+        // Upper legs: diamond shape with peak near the hip
+        drawSegment(from: waistPos, to: leftUpperLegEnd, color: figure.leftLegColor, strokeThickness: figure.strokeThicknessUpperLegs, fusiform: figure.fusiformUpperLegs, inverted: true, in: context)
+        // Lower legs: diamond shape with peak near the knee
+        drawSegment(from: leftUpperLegEnd, to: leftFootEnd, color: figure.footColor, strokeThickness: figure.strokeThicknessLowerLegs, fusiform: figure.fusiformLowerLegs, inverted: true, in: context)
+        drawSegment(from: waistPos, to: rightUpperLegEnd, color: figure.rightLegColor, strokeThickness: figure.strokeThicknessUpperLegs, fusiform: figure.fusiformUpperLegs, inverted: true, in: context)
+        drawSegment(from: rightUpperLegEnd, to: rightFootEnd, color: figure.footColor, strokeThickness: figure.strokeThicknessLowerLegs, fusiform: figure.fusiformLowerLegs, inverted: true, in: context)
         
         // Draw torso
         // Upper torso: point at neck, wide in upper area, point at waist - forms diamond shape
@@ -775,11 +777,13 @@ struct StickFigure2DView: View {
         drawSegment(from: neckPos, to: headPos, color: figure.torsoColor, strokeThickness: figure.strokeThicknessUpperTorso, fusiform: 0, inverted: false, in: context)
         
         // Draw arms (back arm first)
-        drawSegment(from: leftShoulderPos, to: leftUpperArmEnd, color: figure.leftArmColor, strokeThickness: figure.strokeThicknessUpperArms, fusiform: figure.fusiformUpperArms, inverted: false, in: context)
-        drawSegment(from: leftUpperArmEnd, to: leftForearmEnd, color: figure.leftArmColor, strokeThickness: figure.strokeThicknessLowerArms, fusiform: figure.fusiformLowerArms, inverted: false, in: context)
+        // Upper arms: diamond shape with peak at 50% (middle of bicep)
+        drawSegment(from: leftShoulderPos, to: leftUpperArmEnd, color: figure.leftArmColor, strokeThickness: figure.strokeThicknessUpperArms, fusiform: figure.fusiformUpperArms, inverted: true, peakPosition: 0.5, in: context)
+        // Lower arms: diamond shape with peak at 35% (closer to elbow)
+        drawSegment(from: leftUpperArmEnd, to: leftForearmEnd, color: figure.leftArmColor, strokeThickness: figure.strokeThicknessLowerArms, fusiform: figure.fusiformLowerArms, inverted: true, peakPosition: 0.35, in: context)
         
-        drawSegment(from: rightShoulderPos, to: rightUpperArmEnd, color: figure.rightArmColor, strokeThickness: figure.strokeThicknessUpperArms, fusiform: figure.fusiformUpperArms, inverted: false, in: context)
-        drawSegment(from: rightUpperArmEnd, to: rightForearmEnd, color: figure.rightArmColor, strokeThickness: figure.strokeThicknessLowerArms, fusiform: figure.fusiformLowerArms, inverted: false, in: context)
+        drawSegment(from: rightShoulderPos, to: rightUpperArmEnd, color: figure.rightArmColor, strokeThickness: figure.strokeThicknessUpperArms, fusiform: figure.fusiformUpperArms, inverted: true, peakPosition: 0.5, in: context)
+        drawSegment(from: rightUpperArmEnd, to: rightForearmEnd, color: figure.rightArmColor, strokeThickness: figure.strokeThicknessLowerArms, fusiform: figure.fusiformLowerArms, inverted: true, peakPosition: 0.35, in: context)
         
         // Draw head
         // Calculate canvasScale (scalePoint already applied figure.scale, so we only need canvasScale here)
@@ -806,7 +810,7 @@ struct StickFigure2DView: View {
         }
     }
     
-    private func drawSegment(from: CGPoint, to: CGPoint, color: Color, strokeThickness: CGFloat, fusiform: CGFloat, inverted: Bool, in context: GraphicsContext) {
+    private func drawSegment(from: CGPoint, to: CGPoint, color: Color, strokeThickness: CGFloat, fusiform: CGFloat, inverted: Bool, peakPosition: CGFloat = 0.2, in context: GraphicsContext) {
         // If fusiform is 0, just draw a simple line
         if fusiform == 0 {
             var path = Path()
@@ -846,23 +850,23 @@ struct StickFigure2DView: View {
             var widthFactor: CGFloat = 1.0
             
             if inverted {
-                // DIAMOND: Point at START and END, wide in MIDDLE (shifted up)
-                // Used for: upper torso (neck point → wide upper-middle → waist point)
-                // Creates a diamond shape with peak shifted upward toward neck
+                // DIAMOND: Point at START and END, wide in MIDDLE
+                // Used for: upper torso (neck point → wide upper-middle → waist point),
+                // upper arms (shoulder → wide middle → elbow), lower arms (elbow → wide → wrist)
+                // Creates a diamond shape with configurable peak position
                 
-                // Peak is at t=0.2 (very close to neck, only 20% down)
-                let peakT = 0.2
+                let peakT = peakPosition  // Use the passed-in peak position
                 var distFromPeak: CGFloat
                 
                 if t <= peakT {
-                    // Top half: from neck (t=0) to peak (t=0.2)
-                    distFromPeak = (peakT - t) / peakT  // Normalized: 1 at neck, 0 at peak
+                    // Top half: from start (t=0) to peak
+                    distFromPeak = (peakT - t) / peakT  // Normalized: 1 at start, 0 at peak
                 } else {
-                    // Bottom half: from peak (t=0.2) to waist (t=1)
-                    distFromPeak = (t - peakT) / (1.0 - peakT)  // Normalized: 0 at peak, 1 at waist
+                    // Bottom half: from peak to end (t=1)
+                    distFromPeak = (t - peakT) / (1.0 - peakT)  // Normalized: 0 at peak, 1 at end
                 }
                 
-                // Use inverted quadratic easing to create the point
+                // Use inverted quadratic easing to create the diamond point
                 let easeT = max(0, 1.0 - (distFromPeak * distFromPeak))
                 widthFactor = fusiform * easeT
             } else {
@@ -1401,6 +1405,7 @@ struct StickFigure2DEditorView: View {
     @State private var isStrokeThicknessCollapsed = true // Stroke thickness subsection (collapsed by default)
     @State private var isFusiformCollapsed = true // Fusiform subsection (collapsed by default)
     @State private var isColorsCollapsed = true // Colors subsection (collapsed by default)
+    @State private var showJointsCheckbox = false // Toggle to show/hide joints in editor
     @State private var canvasOffset: CGSize = .zero // Offset for panning the canvas
     @State private var lastCanvasOffset: CGSize = .zero // Last offset before new drag
     @State private var availableWidth: CGFloat = 390 // Default to iPhone width
@@ -1589,7 +1594,7 @@ struct StickFigure2DEditorView: View {
             // Grid overlay
             GridOverlay(canvasSize: canvasSize)
             
-            StickFigure2DView(figure: figure, canvasSize: canvasSize, showJoints: true)
+            StickFigure2DView(figure: figure, canvasSize: canvasSize, showJoints: showJointsCheckbox)
             
             // Render animation objects
             ForEach(objects) { object in
@@ -2191,6 +2196,12 @@ struct StickFigure2DEditorView: View {
             
             if !isControlsCollapsed {
                 VStack(alignment: .leading, spacing: 12) {
+                    // MARK: - Show Joints Toggle
+                    Toggle("Show Joints", isOn: $showJointsCheckbox)
+                        .font(.caption)
+                    
+                    Divider()
+                    
                     // MARK: - Figure Size Subsection
                     figureSizeSubsectionView
                     
