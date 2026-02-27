@@ -347,8 +347,14 @@ class GameplayScene: GameScene {
             character.position.x += speed
         }
         
-        // Keep character on screen
-        character.position.x = max(50, min(size.width - 50, character.position.x))
+        // Wrap character around screen edges instead of clamping
+        // When character moves off right side, appear on left
+        // When character moves off left side, appear on right
+        if character.position.x > size.width + 50 {
+            character.position.x = -50
+        } else if character.position.x < -50 {
+            character.position.x = size.width + 50
+        }
         
         // Update level label
         levelLabel?.text = "Level \(gameState.currentLevel) | Points: \(gameState.currentPoints)"

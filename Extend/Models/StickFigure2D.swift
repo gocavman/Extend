@@ -97,6 +97,23 @@ struct StickFigure2DPose: Codable {
     let scale: Double
     let headRadiusMultiplier: Double
     
+    // Individual stroke thicknesses
+    let strokeThicknessUpperArms: CGFloat
+    let strokeThicknessLowerArms: CGFloat
+    let strokeThicknessUpperLegs: CGFloat
+    let strokeThicknessLowerLegs: CGFloat
+    let strokeThicknessJoints: CGFloat
+    let strokeThicknessUpperTorso: CGFloat
+    let strokeThicknessLowerTorso: CGFloat
+    
+    // Fusiform controls
+    let fusiformUpperArms: CGFloat
+    let fusiformLowerArms: CGFloat
+    let fusiformUpperLegs: CGFloat
+    let fusiformLowerLegs: CGFloat
+    let fusiformUpperTorso: CGFloat
+    let fusiformLowerTorso: CGFloat
+    
     init(from figure: StickFigure2D) {
         self.waistPosition = figure.waistPosition  // Save waist position
         self.waistTorsoAngle = figure.waistTorsoAngle
@@ -123,6 +140,19 @@ struct StickFigure2DPose: Codable {
         self.strokeThickness = figure.strokeThickness
         self.scale = figure.scale
         self.headRadiusMultiplier = figure.headRadiusMultiplier
+        self.strokeThicknessUpperArms = figure.strokeThicknessUpperArms
+        self.strokeThicknessLowerArms = figure.strokeThicknessLowerArms
+        self.strokeThicknessUpperLegs = figure.strokeThicknessUpperLegs
+        self.strokeThicknessLowerLegs = figure.strokeThicknessLowerLegs
+        self.strokeThicknessJoints = figure.strokeThicknessJoints
+        self.strokeThicknessUpperTorso = figure.strokeThicknessUpperTorso
+        self.strokeThicknessLowerTorso = figure.strokeThicknessLowerTorso
+        self.fusiformUpperArms = figure.fusiformUpperArms
+        self.fusiformLowerArms = figure.fusiformLowerArms
+        self.fusiformUpperLegs = figure.fusiformUpperLegs
+        self.fusiformLowerLegs = figure.fusiformLowerLegs
+        self.fusiformUpperTorso = figure.fusiformUpperTorso
+        self.fusiformLowerTorso = figure.fusiformLowerTorso
     }
     
     func toStickFigure2D() -> StickFigure2D {
@@ -152,6 +182,19 @@ struct StickFigure2DPose: Codable {
         figure.strokeThickness = strokeThickness
         figure.scale = scale
         figure.headRadiusMultiplier = headRadiusMultiplier
+        figure.strokeThicknessUpperArms = strokeThicknessUpperArms
+        figure.strokeThicknessLowerArms = strokeThicknessLowerArms
+        figure.strokeThicknessUpperLegs = strokeThicknessUpperLegs
+        figure.strokeThicknessLowerLegs = strokeThicknessLowerLegs
+        figure.strokeThicknessJoints = strokeThicknessJoints
+        figure.strokeThicknessUpperTorso = strokeThicknessUpperTorso
+        figure.strokeThicknessLowerTorso = strokeThicknessLowerTorso
+        figure.fusiformUpperArms = fusiformUpperArms
+        figure.fusiformLowerArms = fusiformLowerArms
+        figure.fusiformUpperLegs = fusiformUpperLegs
+        figure.fusiformLowerLegs = fusiformLowerLegs
+        figure.fusiformUpperTorso = fusiformUpperTorso
+        figure.fusiformLowerTorso = fusiformLowerTorso
         return figure
     }
     
@@ -167,6 +210,12 @@ struct StickFigure2DPose: Codable {
         case headColor, torsoColor, leftArmColor, rightArmColor
         case leftLegColor, rightLegColor, handColor, footColor
         case strokeThickness, scale, headRadiusMultiplier
+        case strokeThicknessUpperArms, strokeThicknessLowerArms
+        case strokeThicknessUpperLegs, strokeThicknessLowerLegs
+        case strokeThicknessJoints, strokeThicknessUpperTorso, strokeThicknessLowerTorso
+        case fusiformUpperArms, fusiformLowerArms
+        case fusiformUpperLegs, fusiformLowerLegs
+        case fusiformUpperTorso, fusiformLowerTorso
     }
     
     func encode(to encoder: Encoder) throws {
@@ -197,6 +246,19 @@ struct StickFigure2DPose: Codable {
         try container.encode(strokeThickness, forKey: .strokeThickness)
         try container.encode(scale, forKey: .scale)
         try container.encode(headRadiusMultiplier, forKey: .headRadiusMultiplier)
+        try container.encode(strokeThicknessUpperArms, forKey: .strokeThicknessUpperArms)
+        try container.encode(strokeThicknessLowerArms, forKey: .strokeThicknessLowerArms)
+        try container.encode(strokeThicknessUpperLegs, forKey: .strokeThicknessUpperLegs)
+        try container.encode(strokeThicknessLowerLegs, forKey: .strokeThicknessLowerLegs)
+        try container.encode(strokeThicknessJoints, forKey: .strokeThicknessJoints)
+        try container.encode(strokeThicknessUpperTorso, forKey: .strokeThicknessUpperTorso)
+        try container.encode(strokeThicknessLowerTorso, forKey: .strokeThicknessLowerTorso)
+        try container.encode(fusiformUpperArms, forKey: .fusiformUpperArms)
+        try container.encode(fusiformLowerArms, forKey: .fusiformLowerArms)
+        try container.encode(fusiformUpperLegs, forKey: .fusiformUpperLegs)
+        try container.encode(fusiformLowerLegs, forKey: .fusiformLowerLegs)
+        try container.encode(fusiformUpperTorso, forKey: .fusiformUpperTorso)
+        try container.encode(fusiformLowerTorso, forKey: .fusiformLowerTorso)
     }
     
     init(from decoder: Decoder) throws {
@@ -229,6 +291,20 @@ struct StickFigure2DPose: Codable {
         self.strokeThickness = try container.decode(CGFloat.self, forKey: .strokeThickness)
         self.scale = try container.decode(Double.self, forKey: .scale)
         self.headRadiusMultiplier = try container.decode(Double.self, forKey: .headRadiusMultiplier)
+        // New properties with defaults for backward compatibility
+        self.strokeThicknessUpperArms = try container.decodeIfPresent(CGFloat.self, forKey: .strokeThicknessUpperArms) ?? 4.0
+        self.strokeThicknessLowerArms = try container.decodeIfPresent(CGFloat.self, forKey: .strokeThicknessLowerArms) ?? 3.5
+        self.strokeThicknessUpperLegs = try container.decodeIfPresent(CGFloat.self, forKey: .strokeThicknessUpperLegs) ?? 4.5
+        self.strokeThicknessLowerLegs = try container.decodeIfPresent(CGFloat.self, forKey: .strokeThicknessLowerLegs) ?? 3.5
+        self.strokeThicknessJoints = try container.decodeIfPresent(CGFloat.self, forKey: .strokeThicknessJoints) ?? 2.5
+        self.strokeThicknessUpperTorso = try container.decodeIfPresent(CGFloat.self, forKey: .strokeThicknessUpperTorso) ?? 5.0
+        self.strokeThicknessLowerTorso = try container.decodeIfPresent(CGFloat.self, forKey: .strokeThicknessLowerTorso) ?? 4.5
+        self.fusiformUpperArms = try container.decodeIfPresent(CGFloat.self, forKey: .fusiformUpperArms) ?? 0.0
+        self.fusiformLowerArms = try container.decodeIfPresent(CGFloat.self, forKey: .fusiformLowerArms) ?? 0.0
+        self.fusiformUpperLegs = try container.decodeIfPresent(CGFloat.self, forKey: .fusiformUpperLegs) ?? 0.0
+        self.fusiformLowerLegs = try container.decodeIfPresent(CGFloat.self, forKey: .fusiformLowerLegs) ?? 0.0
+        self.fusiformUpperTorso = try container.decodeIfPresent(CGFloat.self, forKey: .fusiformUpperTorso) ?? 0.0
+        self.fusiformLowerTorso = try container.decodeIfPresent(CGFloat.self, forKey: .fusiformLowerTorso) ?? 0.0
     }
 }
 
@@ -310,8 +386,25 @@ struct StickFigure2D {
     var handColor: Color = .black
     var footColor: Color = .black
     
-    // Stroke thickness
+    // Stroke thickness (overall - kept for backward compatibility)
     var strokeThickness: CGFloat = 4.0
+    
+    // Individual stroke thicknesses for each body part
+    var strokeThicknessUpperArms: CGFloat = 4.0
+    var strokeThicknessLowerArms: CGFloat = 3.5
+    var strokeThicknessUpperLegs: CGFloat = 4.5
+    var strokeThicknessLowerLegs: CGFloat = 3.5
+    var strokeThicknessJoints: CGFloat = 2.5  // For connection points/joints
+    var strokeThicknessUpperTorso: CGFloat = 5.0
+    var strokeThicknessLowerTorso: CGFloat = 4.5
+    
+    // Fusiform (tapered) controls for each body part (0.0 = no taper, 1.0 = full taper)
+    var fusiformUpperArms: CGFloat = 0.0  // Taper from shoulder to elbow
+    var fusiformLowerArms: CGFloat = 0.0  // Taper from elbow to wrist
+    var fusiformUpperLegs: CGFloat = 0.0  // Taper from hip to knee
+    var fusiformLowerLegs: CGFloat = 0.0  // Taper from knee to ankle (inverted - larger at top)
+    var fusiformUpperTorso: CGFloat = 0.0 // Taper from shoulders to mid-torso (inverted - larger at top)
+    var fusiformLowerTorso: CGFloat = 0.0 // Taper from mid-torso to waist
     
     // Static default Stand pose
     static func defaultStand() -> StickFigure2D {
@@ -657,22 +750,22 @@ struct StickFigure2DView: View {
         let rightFootEnd = scalePoint(figure.rightFootEnd)
         
         // Draw lower body first (back)
-        drawSegment(from: waistPos, to: leftUpperLegEnd, color: figure.leftLegColor, in: context)
-        drawSegment(from: leftUpperLegEnd, to: leftFootEnd, color: figure.footColor, in: context)
-        drawSegment(from: waistPos, to: rightUpperLegEnd, color: figure.rightLegColor, in: context)
-        drawSegment(from: rightUpperLegEnd, to: rightFootEnd, color: figure.footColor, in: context)
+        drawSegment(from: waistPos, to: leftUpperLegEnd, color: figure.leftLegColor, strokeThickness: figure.strokeThicknessUpperLegs, fusiform: figure.fusiformUpperLegs, inverted: false, in: context)
+        drawSegment(from: leftUpperLegEnd, to: leftFootEnd, color: figure.footColor, strokeThickness: figure.strokeThicknessLowerLegs, fusiform: figure.fusiformLowerLegs, inverted: true, in: context)
+        drawSegment(from: waistPos, to: rightUpperLegEnd, color: figure.rightLegColor, strokeThickness: figure.strokeThicknessUpperLegs, fusiform: figure.fusiformUpperLegs, inverted: false, in: context)
+        drawSegment(from: rightUpperLegEnd, to: rightFootEnd, color: figure.footColor, strokeThickness: figure.strokeThicknessLowerLegs, fusiform: figure.fusiformLowerLegs, inverted: true, in: context)
         
         // Draw torso
-        drawSegment(from: waistPos, to: midTorsoPos, color: figure.torsoColor, in: context)
-        drawSegment(from: midTorsoPos, to: neckPos, color: figure.torsoColor, in: context)
-        drawSegment(from: neckPos, to: headPos, color: figure.torsoColor, in: context)
+        drawSegment(from: waistPos, to: midTorsoPos, color: figure.torsoColor, strokeThickness: figure.strokeThicknessLowerTorso, fusiform: figure.fusiformLowerTorso, inverted: false, in: context)
+        drawSegment(from: midTorsoPos, to: neckPos, color: figure.torsoColor, strokeThickness: figure.strokeThicknessUpperTorso, fusiform: figure.fusiformUpperTorso, inverted: true, in: context)
+        drawSegment(from: neckPos, to: headPos, color: figure.torsoColor, strokeThickness: figure.strokeThicknessUpperTorso, fusiform: 0, inverted: false, in: context)
         
         // Draw arms (back arm first)
-        drawSegment(from: leftShoulderPos, to: leftUpperArmEnd, color: figure.leftArmColor, in: context)
-        drawSegment(from: leftUpperArmEnd, to: leftForearmEnd, color: figure.leftArmColor, in: context)
+        drawSegment(from: leftShoulderPos, to: leftUpperArmEnd, color: figure.leftArmColor, strokeThickness: figure.strokeThicknessUpperArms, fusiform: figure.fusiformUpperArms, inverted: false, in: context)
+        drawSegment(from: leftUpperArmEnd, to: leftForearmEnd, color: figure.leftArmColor, strokeThickness: figure.strokeThicknessLowerArms, fusiform: figure.fusiformLowerArms, inverted: false, in: context)
         
-        drawSegment(from: rightShoulderPos, to: rightUpperArmEnd, color: figure.rightArmColor, in: context)
-        drawSegment(from: rightUpperArmEnd, to: rightForearmEnd, color: figure.rightArmColor, in: context)
+        drawSegment(from: rightShoulderPos, to: rightUpperArmEnd, color: figure.rightArmColor, strokeThickness: figure.strokeThicknessUpperArms, fusiform: figure.fusiformUpperArms, inverted: false, in: context)
+        drawSegment(from: rightUpperArmEnd, to: rightForearmEnd, color: figure.rightArmColor, strokeThickness: figure.strokeThicknessLowerArms, fusiform: figure.fusiformLowerArms, inverted: false, in: context)
         
         // Draw head
         // Calculate canvasScale (scalePoint already applied figure.scale, so we only need canvasScale here)
@@ -699,11 +792,53 @@ struct StickFigure2DView: View {
         }
     }
     
-    private func drawSegment(from: CGPoint, to: CGPoint, color: Color, in context: GraphicsContext) {
-        var path = Path()
-        path.move(to: from)
-        path.addLine(to: to)
-        context.stroke(path, with: .color(color), lineWidth: figure.strokeThickness)
+    private func drawSegment(from: CGPoint, to: CGPoint, color: Color, strokeThickness: CGFloat, fusiform: CGFloat, inverted: Bool, in context: GraphicsContext) {
+        // If fusiform is 0, just draw a simple line
+        if fusiform == 0 {
+            var path = Path()
+            path.move(to: from)
+            path.addLine(to: to)
+            context.stroke(path, with: .color(color), lineWidth: strokeThickness)
+            return
+        }
+        
+        // Calculate the direction and length of the segment
+        let dx = to.x - from.x
+        let dy = to.y - from.y
+        let length = sqrt(dx * dx + dy * dy)
+        
+        guard length > 0 else { return }
+        
+        // Normalized direction
+        let dirX = dx / length
+        let dirY = dy / length
+        
+        // Perpendicular direction (for width)
+        let perpX = -dirY
+        let perpY = dirX
+        
+        // Calculate stroke thicknesses at each end
+        let startThickness = inverted ? (strokeThickness + (strokeThickness * fusiform)) : strokeThickness
+        let endThickness = inverted ? strokeThickness : (strokeThickness + (strokeThickness * fusiform))
+        
+        let startWidth = startThickness / 2
+        let endWidth = endThickness / 2
+        
+        // Create a tapered polygon (4 points forming a trapezoid)
+        var taperedPath = Path()
+        
+        let p1 = CGPoint(x: from.x - perpX * startWidth, y: from.y - perpY * startWidth)
+        let p2 = CGPoint(x: from.x + perpX * startWidth, y: from.y + perpY * startWidth)
+        let p3 = CGPoint(x: to.x + perpX * endWidth, y: to.y + perpY * endWidth)
+        let p4 = CGPoint(x: to.x - perpX * endWidth, y: to.y - perpY * endWidth)
+        
+        taperedPath.move(to: p1)
+        taperedPath.addLine(to: p2)
+        taperedPath.addLine(to: p3)
+        taperedPath.addLine(to: p4)
+        taperedPath.closeSubpath()
+        
+        context.fill(taperedPath, with: .color(color))
     }
     
     private func drawJoint(at position: CGPoint, in context: GraphicsContext) {
@@ -1172,12 +1307,18 @@ struct StickFigure2DEditorView: View {
     @State private var selectedAnimationName = ""
     @State private var frameSequence = "1,2,3,4,3,2,1"
     @State private var isPlayingAnimation = false
-    @State private var loopAnimation = false // Loop animation checkbox state
+    @State private var loopAnimation = true // Loop animation checkbox state (default enabled)
     @State private var currentFrameIndex = 0
     @State private var animationTimer: Timer? = nil
     @State private var isControlsCollapsed = true // Controls start collapsed
     @State private var isColorsCollapsed = true // Colors start collapsed
     @State private var isAnimationPlaybackCollapsed = true // Animation Playback starts collapsed
+    @State private var isFigureSizeCollapsed = true // Figure Size section collapsed
+    @State private var isFramesSectionCollapsed = true // Frame section collapsed
+    @State private var isAnglesCollapsed = false // Angle sliders subsection
+    @State private var isStrokeAndFusiformCollapsed = false // Stroke and fusiform controls subsection (now parent)
+    @State private var isStrokeThicknessCollapsed = false // Stroke thickness subsection
+    @State private var isFusiformCollapsed = true // Fusiform subsection (collapsed by default)
     @State private var canvasOffset: CGSize = .zero // Offset for panning the canvas
     @State private var lastCanvasOffset: CGSize = .zero // Last offset before new drag
     @State private var availableWidth: CGFloat = 390 // Default to iPhone width
@@ -1294,11 +1435,9 @@ struct StickFigure2DEditorView: View {
             ScrollView {
                 VStack(spacing: 16) {
                     canvasView
-                        .id("canvas")
-                    sizeControlView
-                    animationControlsView
-                    animationPlaybackView
                     jointControlsView
+                    framesSectionView
+                    animationPlaybackView
                     colorControlsView
                     objectsControlsView
                 }
@@ -1866,24 +2005,98 @@ struct StickFigure2DEditorView: View {
             }
             
             if !isControlsCollapsed {
+                VStack(alignment: .leading, spacing: 12) {
+                    // MARK: - Figure Size Subsection
+                    figureSizeSubsectionView
+                    
+                    // MARK: - Stroke & Fusiform Subsection
+                    strokeAndFusiformSubsectionView
+                    
+                    // MARK: - Angles Subsection
+                    anglesSubsectionView
+                }
+                .padding()
+                .background(Color.gray.opacity(0.1))
+                .cornerRadius(8)
+            }
+        }
+    }
+    
+    var figureSizeSubsectionView: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Button(action: {
+                withAnimation {
+                    isFigureSizeCollapsed.toggle()
+                }
+            }) {
+                HStack {
+                    Text("Figure Size")
+                        .font(.caption)
+                        .fontWeight(.semibold)
+                    Spacer()
+                    Image(systemName: isFigureSizeCollapsed ? "chevron.right" : "chevron.down")
+                        .font(.caption2)
+                        .foregroundColor(.gray)
+                }
+            }
+            
+            if !isFigureSizeCollapsed {
                 VStack(alignment: .leading, spacing: 8) {
                     HStack {
-                        Text("Stroke Thickness:")
-                        Button(action: { figure.strokeThickness = max(0.5, figure.strokeThickness - 0.5) }) {
+                        Text("Scale:")
+                        Button(action: { figure.scale = max(0.6, figure.scale - 0.1) }) {
                             Image(systemName: "minus.circle")
                         }
-                        Slider(value: $figure.strokeThickness, in: 0.5...20, step: 0.5)
-                        Button(action: { figure.strokeThickness = min(20, figure.strokeThickness + 0.5) }) {
+                        Slider(value: $figure.scale, in: 0.6...3.0, step: 0.1)
+                        Button(action: { figure.scale = min(3.0, figure.scale + 0.1) }) {
                             Image(systemName: "plus.circle")
                         }
-                        Text("\(String(format: "%.1f", figure.strokeThickness))")
-                            .frame(width: 40)
+                        Text("\(Int(round(figure.scale / 1.2 * 100)))%")
+                            .frame(width: 45)
                     }
-                    
-                    Divider()
+                    .font(.caption)
                     
                     HStack {
-                        Text("Waist Rotation:")
+                        Text("Head Size:")
+                        Button(action: { figure.headRadiusMultiplier = max(0.5, figure.headRadiusMultiplier - 0.1) }) {
+                            Image(systemName: "minus.circle")
+                        }
+                        Slider(value: $figure.headRadiusMultiplier, in: 0.5...2.0, step: 0.1)
+                        Button(action: { figure.headRadiusMultiplier = min(2.0, figure.headRadiusMultiplier + 0.1) }) {
+                            Image(systemName: "plus.circle")
+                        }
+                        Text("\(String(format: "%.1f", figure.headRadiusMultiplier))")
+                            .frame(width: 40)
+                    }
+                    .font(.caption)
+                }
+                .padding(.top, 4)
+            }
+        }
+    }
+    
+    var anglesSubsectionView: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Button(action: {
+                withAnimation {
+                    isAnglesCollapsed.toggle()
+                }
+            }) {
+                HStack {
+                    Text("Angle Sliders")
+                        .font(.caption)
+                        .fontWeight(.semibold)
+                    Spacer()
+                    Image(systemName: isAnglesCollapsed ? "chevron.right" : "chevron.down")
+                        .font(.caption2)
+                        .foregroundColor(.gray)
+                }
+            }
+            
+            if !isAnglesCollapsed {
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack {
+                        Text("Waist:")
                         Button(action: { figure.waistTorsoAngle = adjustAngle(figure.waistTorsoAngle, by: -1) }) {
                             Image(systemName: "minus.circle")
                         }
@@ -1892,11 +2105,12 @@ struct StickFigure2DEditorView: View {
                             Image(systemName: "plus.circle")
                         }
                         Text("\(Int(wrapAngle(figure.waistTorsoAngle)))°")
-                            .frame(width: 40)
+                            .frame(width: 35)
                     }
+                    .font(.caption)
                     
                     HStack {
-                        Text("Left Shoulder:")
+                        Text("L Shoulder:")
                         Button(action: { figure.leftShoulderAngle = adjustAngle(figure.leftShoulderAngle, by: -1) }) {
                             Image(systemName: "minus.circle")
                         }
@@ -1905,11 +2119,12 @@ struct StickFigure2DEditorView: View {
                             Image(systemName: "plus.circle")
                         }
                         Text("\(Int(wrapAngle(figure.leftShoulderAngle)))°")
-                            .frame(width: 40)
+                            .frame(width: 35)
                     }
+                    .font(.caption)
                     
                     HStack {
-                        Text("Right Shoulder:")
+                        Text("R Shoulder:")
                         Button(action: { figure.rightShoulderAngle = adjustAngle(figure.rightShoulderAngle, by: -1) }) {
                             Image(systemName: "minus.circle")
                         }
@@ -1918,11 +2133,12 @@ struct StickFigure2DEditorView: View {
                             Image(systemName: "plus.circle")
                         }
                         Text("\(Int(wrapAngle(figure.rightShoulderAngle)))°")
-                            .frame(width: 40)
+                            .frame(width: 35)
                     }
+                    .font(.caption)
                     
                     HStack {
-                        Text("Left Elbow:")
+                        Text("L Elbow:")
                         Button(action: { figure.leftElbowAngle = adjustAngle(figure.leftElbowAngle, by: -1) }) {
                             Image(systemName: "minus.circle")
                         }
@@ -1931,11 +2147,12 @@ struct StickFigure2DEditorView: View {
                             Image(systemName: "plus.circle")
                         }
                         Text("\(Int(wrapAngle(figure.leftElbowAngle)))°")
-                            .frame(width: 40)
+                            .frame(width: 35)
                     }
+                    .font(.caption)
                     
                     HStack {
-                        Text("Right Elbow:")
+                        Text("R Elbow:")
                         Button(action: { figure.rightElbowAngle = adjustAngle(figure.rightElbowAngle, by: -1) }) {
                             Image(systemName: "minus.circle")
                         }
@@ -1944,11 +2161,12 @@ struct StickFigure2DEditorView: View {
                             Image(systemName: "plus.circle")
                         }
                         Text("\(Int(wrapAngle(figure.rightElbowAngle)))°")
-                            .frame(width: 40)
+                            .frame(width: 35)
                     }
+                    .font(.caption)
                     
                     HStack {
-                        Text("Left Knee:")
+                        Text("L Knee:")
                         Button(action: { figure.leftKneeAngle = adjustAngle(figure.leftKneeAngle, by: -1) }) {
                             Image(systemName: "minus.circle")
                         }
@@ -1957,11 +2175,12 @@ struct StickFigure2DEditorView: View {
                             Image(systemName: "plus.circle")
                         }
                         Text("\(Int(wrapAngle(figure.leftKneeAngle)))°")
-                            .frame(width: 40)
+                            .frame(width: 35)
                     }
+                    .font(.caption)
                     
                     HStack {
-                        Text("Right Knee:")
+                        Text("R Knee:")
                         Button(action: { figure.rightKneeAngle = adjustAngle(figure.rightKneeAngle, by: -1) }) {
                             Image(systemName: "minus.circle")
                         }
@@ -1970,11 +2189,12 @@ struct StickFigure2DEditorView: View {
                             Image(systemName: "plus.circle")
                         }
                         Text("\(Int(wrapAngle(figure.rightKneeAngle)))°")
-                            .frame(width: 40)
+                            .frame(width: 35)
                     }
+                    .font(.caption)
                     
                     HStack {
-                        Text("Left Foot:")
+                        Text("L Foot:")
                         Button(action: { figure.leftFootAngle = adjustAngle(figure.leftFootAngle, by: -1) }) {
                             Image(systemName: "minus.circle")
                         }
@@ -1983,11 +2203,12 @@ struct StickFigure2DEditorView: View {
                             Image(systemName: "plus.circle")
                         }
                         Text("\(Int(wrapAngle(figure.leftFootAngle)))°")
-                            .frame(width: 40)
+                            .frame(width: 35)
                     }
+                    .font(.caption)
                     
                     HStack {
-                        Text("Right Foot:")
+                        Text("R Foot:")
                         Button(action: { figure.rightFootAngle = adjustAngle(figure.rightFootAngle, by: -1) }) {
                             Image(systemName: "minus.circle")
                         }
@@ -1996,8 +2217,9 @@ struct StickFigure2DEditorView: View {
                             Image(systemName: "plus.circle")
                         }
                         Text("\(Int(wrapAngle(figure.rightFootAngle)))°")
-                            .frame(width: 40)
+                            .frame(width: 35)
                     }
+                    .font(.caption)
                     
                     HStack {
                         Text("Head:")
@@ -2009,25 +2231,281 @@ struct StickFigure2DEditorView: View {
                             Image(systemName: "plus.circle")
                         }
                         Text("\(Int(wrapAngle(figure.headAngle)))°")
-                            .frame(width: 40)
+                            .frame(width: 35)
                     }
+                    .font(.caption)
+                }
+                .padding(.top, 8)
+            }
+        }
+    }
+    
+    var strokeAndFusiformSubsectionView: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Button(action: {
+                withAnimation {
+                    isStrokeAndFusiformCollapsed.toggle()
+                }
+            }) {
+                HStack {
+                    Text("Stroke & Fusiform")
+                        .font(.caption)
+                        .fontWeight(.semibold)
+                    Spacer()
+                    Image(systemName: isStrokeAndFusiformCollapsed ? "chevron.right" : "chevron.down")
+                        .font(.caption2)
+                        .foregroundColor(.gray)
+                }
+            }
+            
+            if !isStrokeAndFusiformCollapsed {
+                VStack(alignment: .leading, spacing: 8) {
+                    // MARK: - Stroke Thickness Subsection
+                    strokeThicknessSubsectionView
                     
+                    // MARK: - Fusiform Subsection
+                    fusiformSubsectionView
+                }
+                .padding(.top, 8)
+            }
+        }
+    }
+    
+    var strokeThicknessSubsectionView: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Button(action: {
+                withAnimation {
+                    isStrokeThicknessCollapsed.toggle()
+                }
+            }) {
+                HStack {
+                    Text("Stroke Thickness")
+                        .font(.caption2)
+                        .fontWeight(.semibold)
+                        .foregroundColor(.gray)
+                    Spacer()
+                    Image(systemName: isStrokeThicknessCollapsed ? "chevron.right" : "chevron.down")
+                        .font(.caption2)
+                        .foregroundColor(.gray)
+                }
+            }
+            
+            if !isStrokeThicknessCollapsed {
+                VStack(alignment: .leading, spacing: 8) {
                     HStack {
-                        Text("Head Size:")
-                        Button(action: { figure.headRadiusMultiplier = max(0.5, figure.headRadiusMultiplier - 0.1) }) {
+                        Text("Upper Arms:")
+                        Button(action: { figure.strokeThicknessUpperArms = max(0.5, figure.strokeThicknessUpperArms - 0.25) }) {
                             Image(systemName: "minus.circle")
                         }
-                        Slider(value: $figure.headRadiusMultiplier, in: 0.5...2.0, step: 0.1)
-                        Button(action: { figure.headRadiusMultiplier = min(2.0, figure.headRadiusMultiplier + 0.1) }) {
+                        Slider(value: $figure.strokeThicknessUpperArms, in: 0.5...10, step: 0.25)
+                        Button(action: { figure.strokeThicknessUpperArms = min(10, figure.strokeThicknessUpperArms + 0.25) }) {
                             Image(systemName: "plus.circle")
                         }
-                        Text("\(String(format: "%.1f", figure.headRadiusMultiplier))x")
-                            .frame(width: 40)
+                        Text("\(String(format: "%.2f", figure.strokeThicknessUpperArms))")
+                            .frame(width: 35)
                     }
+                    .font(.caption)
+                    
+                    HStack {
+                        Text("Lower Arms:")
+                        Button(action: { figure.strokeThicknessLowerArms = max(0.5, figure.strokeThicknessLowerArms - 0.25) }) {
+                            Image(systemName: "minus.circle")
+                        }
+                        Slider(value: $figure.strokeThicknessLowerArms, in: 0.5...10, step: 0.25)
+                        Button(action: { figure.strokeThicknessLowerArms = min(10, figure.strokeThicknessLowerArms + 0.25) }) {
+                            Image(systemName: "plus.circle")
+                        }
+                        Text("\(String(format: "%.2f", figure.strokeThicknessLowerArms))")
+                            .frame(width: 35)
+                    }
+                    .font(.caption)
+                    
+                    HStack {
+                        Text("Upper Legs:")
+                        Button(action: { figure.strokeThicknessUpperLegs = max(0.5, figure.strokeThicknessUpperLegs - 0.25) }) {
+                            Image(systemName: "minus.circle")
+                        }
+                        Slider(value: $figure.strokeThicknessUpperLegs, in: 0.5...10, step: 0.25)
+                        Button(action: { figure.strokeThicknessUpperLegs = min(10, figure.strokeThicknessUpperLegs + 0.25) }) {
+                            Image(systemName: "plus.circle")
+                        }
+                        Text("\(String(format: "%.2f", figure.strokeThicknessUpperLegs))")
+                            .frame(width: 35)
+                    }
+                    .font(.caption)
+                    
+                    HStack {
+                        Text("Lower Legs:")
+                        Button(action: { figure.strokeThicknessLowerLegs = max(0.5, figure.strokeThicknessLowerLegs - 0.25) }) {
+                            Image(systemName: "minus.circle")
+                        }
+                        Slider(value: $figure.strokeThicknessLowerLegs, in: 0.5...10, step: 0.25)
+                        Button(action: { figure.strokeThicknessLowerLegs = min(10, figure.strokeThicknessLowerLegs + 0.25) }) {
+                            Image(systemName: "plus.circle")
+                        }
+                        Text("\(String(format: "%.2f", figure.strokeThicknessLowerLegs))")
+                            .frame(width: 35)
+                    }
+                    .font(.caption)
+                    
+                    HStack {
+                        Text("Joints:")
+                        Button(action: { figure.strokeThicknessJoints = max(0.5, figure.strokeThicknessJoints - 0.25) }) {
+                            Image(systemName: "minus.circle")
+                        }
+                        Slider(value: $figure.strokeThicknessJoints, in: 0.5...5, step: 0.25)
+                        Button(action: { figure.strokeThicknessJoints = min(5, figure.strokeThicknessJoints + 0.25) }) {
+                            Image(systemName: "plus.circle")
+                        }
+                        Text("\(String(format: "%.2f", figure.strokeThicknessJoints))")
+                            .frame(width: 35)
+                    }
+                    .font(.caption)
+                    
+                    HStack {
+                        Text("Upper Torso:")
+                        Button(action: { figure.strokeThicknessUpperTorso = max(0.5, figure.strokeThicknessUpperTorso - 0.25) }) {
+                            Image(systemName: "minus.circle")
+                        }
+                        Slider(value: $figure.strokeThicknessUpperTorso, in: 0.5...10, step: 0.25)
+                        Button(action: { figure.strokeThicknessUpperTorso = min(10, figure.strokeThicknessUpperTorso + 0.25) }) {
+                            Image(systemName: "plus.circle")
+                        }
+                        Text("\(String(format: "%.2f", figure.strokeThicknessUpperTorso))")
+                            .frame(width: 35)
+                    }
+                    .font(.caption)
+                    
+                    HStack {
+                        Text("Lower Torso:")
+                        Button(action: { figure.strokeThicknessLowerTorso = max(0.5, figure.strokeThicknessLowerTorso - 0.25) }) {
+                            Image(systemName: "minus.circle")
+                        }
+                        Slider(value: $figure.strokeThicknessLowerTorso, in: 0.5...10, step: 0.25)
+                        Button(action: { figure.strokeThicknessLowerTorso = min(10, figure.strokeThicknessLowerTorso + 0.25) }) {
+                            Image(systemName: "plus.circle")
+                        }
+                        Text("\(String(format: "%.2f", figure.strokeThicknessLowerTorso))")
+                            .frame(width: 35)
+                    }
+                    .font(.caption)
                 }
-                .padding()
-                .background(Color.gray.opacity(0.1))
-                .cornerRadius(8)
+                .padding(.top, 4)
+            }
+        }
+    }
+    
+    var fusiformSubsectionView: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Button(action: {
+                withAnimation {
+                    isFusiformCollapsed.toggle()
+                }
+            }) {
+                HStack {
+                    Text("Fusiform (Taper)")
+                        .font(.caption2)
+                        .fontWeight(.semibold)
+                        .foregroundColor(.gray)
+                    Spacer()
+                    Image(systemName: isFusiformCollapsed ? "chevron.right" : "chevron.down")
+                        .font(.caption2)
+                        .foregroundColor(.gray)
+                }
+            }
+            
+            if !isFusiformCollapsed {
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack {
+                        Text("Upper Arms:")
+                        Button(action: { figure.fusiformUpperArms = max(0, figure.fusiformUpperArms - 0.05) }) {
+                            Image(systemName: "minus.circle")
+                        }
+                        Slider(value: $figure.fusiformUpperArms, in: 0...1, step: 0.05)
+                        Button(action: { figure.fusiformUpperArms = min(1, figure.fusiformUpperArms + 0.05) }) {
+                            Image(systemName: "plus.circle")
+                        }
+                        Text("\(Int(figure.fusiformUpperArms * 100))%")
+                            .frame(width: 35)
+                    }
+                    .font(.caption)
+                    
+                    HStack {
+                        Text("Lower Arms:")
+                        Button(action: { figure.fusiformLowerArms = max(0, figure.fusiformLowerArms - 0.05) }) {
+                            Image(systemName: "minus.circle")
+                        }
+                        Slider(value: $figure.fusiformLowerArms, in: 0...1, step: 0.05)
+                        Button(action: { figure.fusiformLowerArms = min(1, figure.fusiformLowerArms + 0.05) }) {
+                            Image(systemName: "plus.circle")
+                        }
+                        Text("\(Int(figure.fusiformLowerArms * 100))%")
+                            .frame(width: 35)
+                    }
+                    .font(.caption)
+                    
+                    HStack {
+                        Text("Upper Legs:")
+                        Button(action: { figure.fusiformUpperLegs = max(0, figure.fusiformUpperLegs - 0.05) }) {
+                            Image(systemName: "minus.circle")
+                        }
+                        Slider(value: $figure.fusiformUpperLegs, in: 0...1, step: 0.05)
+                        Button(action: { figure.fusiformUpperLegs = min(1, figure.fusiformUpperLegs + 0.05) }) {
+                            Image(systemName: "plus.circle")
+                        }
+                        Text("\(Int(figure.fusiformUpperLegs * 100))%")
+                            .frame(width: 35)
+                    }
+                    .font(.caption)
+                    
+                    HStack {
+                        Text("Lower Legs*:")
+                        Button(action: { figure.fusiformLowerLegs = max(0, figure.fusiformLowerLegs - 0.05) }) {
+                            Image(systemName: "minus.circle")
+                        }
+                        Slider(value: $figure.fusiformLowerLegs, in: 0...1, step: 0.05)
+                        Button(action: { figure.fusiformLowerLegs = min(1, figure.fusiformLowerLegs + 0.05) }) {
+                            Image(systemName: "plus.circle")
+                        }
+                        Text("\(Int(figure.fusiformLowerLegs * 100))%")
+                            .frame(width: 35)
+                    }
+                    .font(.caption)
+                    
+                    HStack {
+                        Text("Upper Torso*:")
+                        Button(action: { figure.fusiformUpperTorso = max(0, figure.fusiformUpperTorso - 0.05) }) {
+                            Image(systemName: "minus.circle")
+                        }
+                        Slider(value: $figure.fusiformUpperTorso, in: 0...1, step: 0.05)
+                        Button(action: { figure.fusiformUpperTorso = min(1, figure.fusiformUpperTorso + 0.05) }) {
+                            Image(systemName: "plus.circle")
+                        }
+                        Text("\(Int(figure.fusiformUpperTorso * 100))%")
+                            .frame(width: 35)
+                    }
+                    .font(.caption)
+                    
+                    HStack {
+                        Text("Lower Torso:")
+                        Button(action: { figure.fusiformLowerTorso = max(0, figure.fusiformLowerTorso - 0.05) }) {
+                            Image(systemName: "minus.circle")
+                        }
+                        Slider(value: $figure.fusiformLowerTorso, in: 0...1, step: 0.05)
+                        Button(action: { figure.fusiformLowerTorso = min(1, figure.fusiformLowerTorso + 0.05) }) {
+                            Image(systemName: "plus.circle")
+                        }
+                        Text("\(Int(figure.fusiformLowerTorso * 100))%")
+                            .frame(width: 35)
+                    }
+                    .font(.caption)
+                    
+                    Text("*Inverted: Larger at top")
+                        .font(.caption2)
+                        .foregroundColor(.gray)
+                        .italic()
+                }
+                .padding(.top, 4)
             }
         }
     }
@@ -2127,6 +2605,64 @@ struct StickFigure2DEditorView: View {
         .padding(8)
         .background(Color.gray.opacity(0.1))
         .cornerRadius(8)
+    }
+    
+    // MARK: - Figure Size Section (Expandable)
+    var figureSizeControlView: some View {
+        // Figure Size is now a subsection under Controls
+        EmptyView()
+    }
+    
+    // MARK: - Frame Section (Expandable)
+    var framesSectionView: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Button(action: {
+                withAnimation {
+                    isFramesSectionCollapsed.toggle()
+                }
+            }) {
+                HStack {
+                    Text("Frames")
+                        .font(.subheadline)
+                        .fontWeight(.semibold)
+                        .foregroundColor(.primary)
+                    Spacer()
+                    Image(systemName: isFramesSectionCollapsed ? "chevron.right" : "chevron.down")
+                        .font(.caption)
+                        .foregroundColor(.gray)
+                }
+            }
+            
+            if !isFramesSectionCollapsed {
+                VStack(spacing: 12) {
+                    HStack(spacing: 12) {
+                        Button(action: { showSaveFrameDialog = true }) {
+                            Label("Save Frame", systemImage: "square.and.arrow.down")
+                                .font(.caption)
+                                .frame(maxWidth: .infinity)
+                                .padding(10)
+                                .background(Color.blue)
+                                .foregroundColor(.white)
+                                .cornerRadius(6)
+                        }
+                        
+                        Button(action: { showFramesManager = true }) {
+                            Label("Open Frame", systemImage: "folder.badge.plus")
+                                .font(.caption)
+                                .frame(maxWidth: .infinity)
+                                .padding(10)
+                                .background(Color.green)
+                                .foregroundColor(.white)
+                                .cornerRadius(6)
+                        }
+                    }
+                    
+                    Text("Saved: \(savedFrames.count) frames")
+                        .font(.caption)
+                        .foregroundColor(.gray)
+                }
+            }
+        }
     }
     
     private func playAnimation() {
@@ -2321,30 +2857,7 @@ struct StickFigure2DEditorView: View {
     
     var animationControlsView: some View {
         VStack(alignment: .leading, spacing: 0) {
-            //Text("Animation").font(.subheadline).fontWeight(.semibold)
-            
-            HStack(spacing: 12) {
-                Button(action: {
-                    // Smart default: Stand is frameNumber 0, everything else starts at 1
-                    frameNumber = "0"
-                    showSaveFrameDialog = true
-                }) {
-                    Label("Save Frame", systemImage: "square.and.arrow.down")
-                        .font(.caption)
-                }
-                .buttonStyle(.bordered)
-                
-                Button(action: { showFramesManager = true }) {
-                    Label("Open Frame", systemImage: "folder.badge.gearshape")
-                        .font(.caption)
-                }
-                .buttonStyle(.bordered)
-                
-                Spacer()
-            }
-            .padding()
-            .background(Color.gray.opacity(0.1))
-            .cornerRadius(8)
+            // Animation controls are now in animationPlaybackView
         }
     }
     

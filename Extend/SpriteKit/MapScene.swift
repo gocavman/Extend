@@ -87,19 +87,26 @@ class MapScene: GameScene {
         
         print("🗺️ Setting up levels - current level: \(gameState.currentLevel)")
         
+        let boxWidth: CGFloat = 80
+        let boxHeight: CGFloat = 60
+        let spacing: CGFloat = 12
+        let cols = 4
+        
+        // Calculate grid dimensions
+        let gridWidth = CGFloat(cols) * boxWidth + CGFloat(cols - 1) * spacing
+        
+        // Center the grid horizontally (calculate the left edge) and position vertically
+        let gridStartX = (size.width - gridWidth) / 2
         let startY = size.height - 200
-        let startX: CGFloat = 40
-        let boxWidth: CGFloat = 100
-        let boxHeight: CGFloat = 70
-        let spacing: CGFloat = 15
         
         // Create level boxes based on gameState
         for i in 0..<10 {
             let levelNum = i + 1
-            let row = i / 3
-            let col = i % 3
+            let row = i / cols
+            let col = i % cols
             
-            let x = startX + CGFloat(col) * (boxWidth + spacing)
+            // Position each box: left edge of grid + column offset + half box width (to center the box)
+            let x = gridStartX + CGFloat(col) * (boxWidth + spacing) + boxWidth / 2
             let y = startY - CGFloat(row) * (boxHeight + spacing)
             
             // Check if level is available
@@ -116,8 +123,7 @@ class MapScene: GameScene {
             levelBox.name = "level_\(levelNum)"
             levelBox.zPosition = 50
             addChild(levelBox)
-            
-            // Level number label
+            levelBoxNodes.append(levelBox)
             let label = SKLabelNode(fontNamed: "Arial")
             label.text = "Level \(levelNum)"
             label.fontSize = 12
@@ -131,8 +137,6 @@ class MapScene: GameScene {
     }
     
     private func setupCharacter() {
-        guard let gameState = gameState else { return }
-        
         // Create character representation (simple blue circle for now)
         let character = SKShapeNode(circleOfRadius: 20)
         character.fillColor = SKColor.blue
@@ -184,7 +188,8 @@ class MapScene: GameScene {
         // Check level box taps
         for (index, levelBox) in levelBoxNodes.enumerated() {
             let distance = hypot(point.x - levelBox.position.x, point.y - levelBox.position.y)
-            let boxRadius = 50.0
+            // Box is 80x60, so half-diagonal is sqrt(40^2 + 30^2) ≈ 50
+            let boxRadius = sqrt(40.0 * 40.0 + 30.0 * 30.0)
             
             if distance < boxRadius {
                 let levelNum = index + 1
