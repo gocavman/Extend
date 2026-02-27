@@ -2435,8 +2435,8 @@ struct StickFigure2DEditorView: View {
                         Button(action: { figure.strokeThicknessUpperArms = max(0.5, figure.strokeThicknessUpperArms - 0.25) }) {
                             Image(systemName: "minus.circle")
                         }
-                        Slider(value: $figure.strokeThicknessUpperArms, in: 0.5...10, step: 0.25)
-                        Button(action: { figure.strokeThicknessUpperArms = min(10, figure.strokeThicknessUpperArms + 0.25) }) {
+                        Slider(value: $figure.strokeThicknessUpperArms, in: 0.5...20, step: 0.25)
+                        Button(action: { figure.strokeThicknessUpperArms = min(20, figure.strokeThicknessUpperArms + 0.25) }) {
                             Image(systemName: "plus.circle")
                         }
                         Text("\(String(format: "%.2f", figure.strokeThicknessUpperArms))")
@@ -2449,8 +2449,8 @@ struct StickFigure2DEditorView: View {
                         Button(action: { figure.strokeThicknessLowerArms = max(0.5, figure.strokeThicknessLowerArms - 0.25) }) {
                             Image(systemName: "minus.circle")
                         }
-                        Slider(value: $figure.strokeThicknessLowerArms, in: 0.5...10, step: 0.25)
-                        Button(action: { figure.strokeThicknessLowerArms = min(10, figure.strokeThicknessLowerArms + 0.25) }) {
+                        Slider(value: $figure.strokeThicknessLowerArms, in: 0.5...20, step: 0.25)
+                        Button(action: { figure.strokeThicknessLowerArms = min(20, figure.strokeThicknessLowerArms + 0.25) }) {
                             Image(systemName: "plus.circle")
                         }
                         Text("\(String(format: "%.2f", figure.strokeThicknessLowerArms))")
@@ -2463,8 +2463,8 @@ struct StickFigure2DEditorView: View {
                         Button(action: { figure.strokeThicknessUpperLegs = max(0.5, figure.strokeThicknessUpperLegs - 0.25) }) {
                             Image(systemName: "minus.circle")
                         }
-                        Slider(value: $figure.strokeThicknessUpperLegs, in: 0.5...10, step: 0.25)
-                        Button(action: { figure.strokeThicknessUpperLegs = min(10, figure.strokeThicknessUpperLegs + 0.25) }) {
+                        Slider(value: $figure.strokeThicknessUpperLegs, in: 0.5...20, step: 0.25)
+                        Button(action: { figure.strokeThicknessUpperLegs = min(20, figure.strokeThicknessUpperLegs + 0.25) }) {
                             Image(systemName: "plus.circle")
                         }
                         Text("\(String(format: "%.2f", figure.strokeThicknessUpperLegs))")
@@ -2477,8 +2477,8 @@ struct StickFigure2DEditorView: View {
                         Button(action: { figure.strokeThicknessLowerLegs = max(0.5, figure.strokeThicknessLowerLegs - 0.25) }) {
                             Image(systemName: "minus.circle")
                         }
-                        Slider(value: $figure.strokeThicknessLowerLegs, in: 0.5...10, step: 0.25)
-                        Button(action: { figure.strokeThicknessLowerLegs = min(10, figure.strokeThicknessLowerLegs + 0.25) }) {
+                        Slider(value: $figure.strokeThicknessLowerLegs, in: 0.5...20, step: 0.25)
+                        Button(action: { figure.strokeThicknessLowerLegs = min(20, figure.strokeThicknessLowerLegs + 0.25) }) {
                             Image(systemName: "plus.circle")
                         }
                         Text("\(String(format: "%.2f", figure.strokeThicknessLowerLegs))")
@@ -2491,8 +2491,8 @@ struct StickFigure2DEditorView: View {
                         Button(action: { figure.strokeThicknessJoints = max(0.5, figure.strokeThicknessJoints - 0.25) }) {
                             Image(systemName: "minus.circle")
                         }
-                        Slider(value: $figure.strokeThicknessJoints, in: 0.5...5, step: 0.25)
-                        Button(action: { figure.strokeThicknessJoints = min(5, figure.strokeThicknessJoints + 0.25) }) {
+                        Slider(value: $figure.strokeThicknessJoints, in: 0.5...20, step: 0.25)
+                        Button(action: { figure.strokeThicknessJoints = min(20, figure.strokeThicknessJoints + 0.25) }) {
                             Image(systemName: "plus.circle")
                         }
                         Text("\(String(format: "%.2f", figure.strokeThicknessJoints))")
@@ -2505,8 +2505,8 @@ struct StickFigure2DEditorView: View {
                         Button(action: { figure.strokeThicknessUpperTorso = max(0.5, figure.strokeThicknessUpperTorso - 0.25) }) {
                             Image(systemName: "minus.circle")
                         }
-                        Slider(value: $figure.strokeThicknessUpperTorso, in: 0.5...10, step: 0.25)
-                        Button(action: { figure.strokeThicknessUpperTorso = min(10, figure.strokeThicknessUpperTorso + 0.25) }) {
+                        Slider(value: $figure.strokeThicknessUpperTorso, in: 0.5...20, step: 0.25)
+                        Button(action: { figure.strokeThicknessUpperTorso = min(20, figure.strokeThicknessUpperTorso + 0.25) }) {
                             Image(systemName: "plus.circle")
                         }
                         Text("\(String(format: "%.2f", figure.strokeThicknessUpperTorso))")
@@ -2519,8 +2519,8 @@ struct StickFigure2DEditorView: View {
                         Button(action: { figure.strokeThicknessLowerTorso = max(0.5, figure.strokeThicknessLowerTorso - 0.25) }) {
                             Image(systemName: "minus.circle")
                         }
-                        Slider(value: $figure.strokeThicknessLowerTorso, in: 0.5...10, step: 0.25)
-                        Button(action: { figure.strokeThicknessLowerTorso = min(10, figure.strokeThicknessLowerTorso + 0.25) }) {
+                        Slider(value: $figure.strokeThicknessLowerTorso, in: 0.5...20, step: 0.25)
+                        Button(action: { figure.strokeThicknessLowerTorso = min(20, figure.strokeThicknessLowerTorso + 0.25) }) {
                             Image(systemName: "plus.circle")
                         }
                         Text("\(String(format: "%.2f", figure.strokeThicknessLowerTorso))")
@@ -2559,11 +2559,11 @@ struct StickFigure2DEditorView: View {
                         Button(action: { figure.fusiformUpperArms = max(0, figure.fusiformUpperArms - 0.05) }) {
                             Image(systemName: "minus.circle")
                         }
-                        Slider(value: $figure.fusiformUpperArms, in: 0...1, step: 0.05)
-                        Button(action: { figure.fusiformUpperArms = min(1, figure.fusiformUpperArms + 0.05) }) {
+                        Slider(value: $figure.fusiformUpperArms, in: 0...2, step: 0.05)
+                        Button(action: { figure.fusiformUpperArms = min(2, figure.fusiformUpperArms + 0.05) }) {
                             Image(systemName: "plus.circle")
                         }
-                        Text("\(Int(figure.fusiformUpperArms * 100))%")
+                        Text("\(Int(figure.fusiformUpperArms / 0.5 * 50))%")
                             .frame(width: 35)
                     }
                     .font(.caption)
@@ -2573,11 +2573,11 @@ struct StickFigure2DEditorView: View {
                         Button(action: { figure.fusiformLowerArms = max(0, figure.fusiformLowerArms - 0.05) }) {
                             Image(systemName: "minus.circle")
                         }
-                        Slider(value: $figure.fusiformLowerArms, in: 0...1, step: 0.05)
-                        Button(action: { figure.fusiformLowerArms = min(1, figure.fusiformLowerArms + 0.05) }) {
+                        Slider(value: $figure.fusiformLowerArms, in: 0...2, step: 0.05)
+                        Button(action: { figure.fusiformLowerArms = min(2, figure.fusiformLowerArms + 0.05) }) {
                             Image(systemName: "plus.circle")
                         }
-                        Text("\(Int(figure.fusiformLowerArms * 100))%")
+                        Text("\(Int(figure.fusiformLowerArms / 0.5 * 50))%")
                             .frame(width: 35)
                     }
                     .font(.caption)
@@ -2587,11 +2587,11 @@ struct StickFigure2DEditorView: View {
                         Button(action: { figure.fusiformUpperLegs = max(0, figure.fusiformUpperLegs - 0.05) }) {
                             Image(systemName: "minus.circle")
                         }
-                        Slider(value: $figure.fusiformUpperLegs, in: 0...1, step: 0.05)
-                        Button(action: { figure.fusiformUpperLegs = min(1, figure.fusiformUpperLegs + 0.05) }) {
+                        Slider(value: $figure.fusiformUpperLegs, in: 0...2, step: 0.05)
+                        Button(action: { figure.fusiformUpperLegs = min(2, figure.fusiformUpperLegs + 0.05) }) {
                             Image(systemName: "plus.circle")
                         }
-                        Text("\(Int(figure.fusiformUpperLegs * 100))%")
+                        Text("\(Int(figure.fusiformUpperLegs / 0.5 * 50))%")
                             .frame(width: 35)
                     }
                     .font(.caption)
@@ -2601,11 +2601,11 @@ struct StickFigure2DEditorView: View {
                         Button(action: { figure.fusiformLowerLegs = max(0, figure.fusiformLowerLegs - 0.05) }) {
                             Image(systemName: "minus.circle")
                         }
-                        Slider(value: $figure.fusiformLowerLegs, in: 0...1, step: 0.05)
-                        Button(action: { figure.fusiformLowerLegs = min(1, figure.fusiformLowerLegs + 0.05) }) {
+                        Slider(value: $figure.fusiformLowerLegs, in: 0...2, step: 0.05)
+                        Button(action: { figure.fusiformLowerLegs = min(2, figure.fusiformLowerLegs + 0.05) }) {
                             Image(systemName: "plus.circle")
                         }
-                        Text("\(Int(figure.fusiformLowerLegs * 100))%")
+                        Text("\(Int(figure.fusiformLowerLegs / 0.5 * 50))%")
                             .frame(width: 35)
                     }
                     .font(.caption)
@@ -2615,11 +2615,11 @@ struct StickFigure2DEditorView: View {
                         Button(action: { figure.fusiformUpperTorso = max(0, figure.fusiformUpperTorso - 0.05) }) {
                             Image(systemName: "minus.circle")
                         }
-                        Slider(value: $figure.fusiformUpperTorso, in: 0...1, step: 0.05)
-                        Button(action: { figure.fusiformUpperTorso = min(1, figure.fusiformUpperTorso + 0.05) }) {
+                        Slider(value: $figure.fusiformUpperTorso, in: 0...2, step: 0.05)
+                        Button(action: { figure.fusiformUpperTorso = min(2, figure.fusiformUpperTorso + 0.05) }) {
                             Image(systemName: "plus.circle")
                         }
-                        Text("\(Int(figure.fusiformUpperTorso * 100))%")
+                        Text("\(Int(figure.fusiformUpperTorso / 0.5 * 50))%")
                             .frame(width: 35)
                     }
                     .font(.caption)
@@ -2629,11 +2629,11 @@ struct StickFigure2DEditorView: View {
                         Button(action: { figure.fusiformLowerTorso = max(0, figure.fusiformLowerTorso - 0.05) }) {
                             Image(systemName: "minus.circle")
                         }
-                        Slider(value: $figure.fusiformLowerTorso, in: 0...1, step: 0.05)
-                        Button(action: { figure.fusiformLowerTorso = min(1, figure.fusiformLowerTorso + 0.05) }) {
+                        Slider(value: $figure.fusiformLowerTorso, in: 0...2, step: 0.05)
+                        Button(action: { figure.fusiformLowerTorso = min(2, figure.fusiformLowerTorso + 0.05) }) {
                             Image(systemName: "plus.circle")
                         }
-                        Text("\(Int(figure.fusiformLowerTorso * 100))%")
+                        Text("\(Int(figure.fusiformLowerTorso / 0.5 * 50))%")
                             .frame(width: 35)
                     }
                     .font(.caption)
