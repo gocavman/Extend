@@ -1080,22 +1080,15 @@ class StickFigureGameState {
         
         gameState.resetIdleTimer()
         
-        // If "Run" is selected and no action is currently performing, start Run action
-        if gameState.selectedAction == "Run" && gameState.currentPerformingAction == nil {
-            if let runConfig = ACTION_CONFIGS.first(where: { $0.id == "run" }) {
-                startAction(runConfig, gameState: gameState)
-            }
-            // Initialize periodic points tracker
-            gameState.periodicPointsLastAwardedTime = 0
-        }
+        // Set direction FIRST before starting any animations
+        gameState.isMovingLeft = true
+        gameState.isMovingRight = false
+        gameState.facingRight = false
         
         if gameState.currentAction != "move" {
             gameState.currentAction = "move"
             gameState.actionStartTime = Date().timeIntervalSince1970 * 1000
         }
-        gameState.isMovingLeft = true
-        gameState.isMovingRight = false
-        gameState.facingRight = false
         if gameState.animationFrame == 0 {
             startAnimation(gameState: gameState)
         }
@@ -1128,22 +1121,15 @@ class StickFigureGameState {
         
         gameState.resetIdleTimer()
         
-        // If "Run" is selected and no action is currently performing, start Run action
-        if gameState.selectedAction == "Run" && gameState.currentPerformingAction == nil {
-            if let runConfig = ACTION_CONFIGS.first(where: { $0.id == "run" }) {
-                startAction(runConfig, gameState: gameState)
-            }
-            // Initialize periodic points tracker
-            gameState.periodicPointsLastAwardedTime = 0
-        }
+        // Set direction FIRST before starting any animations
+        gameState.isMovingRight = true
+        gameState.isMovingLeft = false
+        gameState.facingRight = true
         
         if gameState.currentAction != "move" {
             gameState.currentAction = "move"
             gameState.actionStartTime = Date().timeIntervalSince1970 * 1000
         }
-        gameState.isMovingRight = true
-        gameState.isMovingLeft = false
-        gameState.facingRight = true
         if gameState.animationFrame == 0 {
             startAnimation(gameState: gameState)
         }
@@ -3211,11 +3197,38 @@ private struct GamePlayArea: View {
                                 }
                             }
                             .frame(width: gameCanvasSize.width, height: gameCanvasSize.height)
-                            .scaleEffect(x: gameState.actionFlip ? -1 : 1, y: 1)
+                            .scaleEffect(x: (gameState.actionFlip ? -1 : 1) * (gameState.facingRight ? 1 : -1), y: 1)
                             .position(x: figureX, y: figureY)
-                            .onTapGesture {
-                                // Ignore extra taps during animation
-                            }
+                            .onLongPressGesture(minimumDuration: 0.01, pressing: { isPressing in
+                                if !isPressing {
+                                    // User released - stop movement if moving
+                                    gameState.isMovingLeft = false
+                                    gameState.isMovingRight = false
+                                    if gameState.currentAction == "move" {
+                                        let duration = Date().timeIntervalSince1970 * 1000 - gameState.actionStartTime
+                                        gameState.recordActionTime(action: "move", duration: duration)
+                                        gameState.currentAction = ""
+                                    }
+                                    gameState.stopAnimation(gameState: gameState)
+                                }
+                            }, perform: {})
+                            .highPriorityGesture(DragGesture(minimumDistance: 0)
+                                .onChanged { value in
+                                    let tapX = value.location.x
+                                    
+                                    // When Run is active, allow clicking anywhere to move left/right
+                                    if gameState.currentLevel >= 2 {
+                                        if tapX < figureX {
+                                            startMovingLeftAction(gameState, geometry)
+                                        } else {
+                                            startMovingRightAction(gameState, geometry)
+                                        }
+                                    }
+                                }
+                                .onEnded { _ in
+                                    // No center tap action for Run - movement only
+                                }
+                            )
                         } else {
                             // No frame found - show placeholder
                             Text("?")
@@ -3394,42 +3407,38 @@ private struct GamePlayArea: View {
                                     .highPriorityGesture(DragGesture(minimumDistance: 0)
                                         .onChanged { value in
                                             let tapX = value.location.x
+                                            
+                                            // For Run action, allow clicking anywhere to move left/right
+                                            if gameState.selectedAction == "Run" {
+                                                if gameState.currentLevel >= 2 {
+                                                    if tapX < figureX {
+                                                        startMovingLeftAction(gameState, geometry)
+                                                    } else {
+                                                        startMovingRightAction(gameState, geometry)
+                                                    }
+                                                }
+                                                return
+                                            }
+                                            
                                             let distanceFromCenter = abs(tapX - figureX)
                                             
                                             // 10px center area (5px on each side) triggers action via gesture end
                                             if distanceFromCenter > 5 {
                                                 if tapX < figureX && gameState.currentLevel >= 2 {
-                                                    // Tapped left - trigger left movement
-                                                    gameState.resetIdleTimer()
-                                                    if gameState.currentAction != "move" {
-                                                        gameState.currentAction = "move"
-                                                        gameState.actionStartTime = Date().timeIntervalSince1970 * 1000
-                                                    }
-                                                    gameState.isMovingLeft = true
-                                                    gameState.isMovingRight = false
-                                                    gameState.facingRight = false
-                                                    gameState.lastMovementUpdateTime = Date().timeIntervalSince1970
-                                                    if gameState.animationFrame == 0 {
-                                                        gameState.startAnimation(gameState: gameState)
-                                                    }
+                                                    // Tapped left - trigger left movement using startMovingLeft
+                                                    startMovingLeftAction(gameState, geometry)
                                                 } else if tapX >= figureX && gameState.currentLevel >= 2 {
-                                                    // Tapped right - trigger right movement
-                                                    gameState.resetIdleTimer()
-                                                    if gameState.currentAction != "move" {
-                                                        gameState.currentAction = "move"
-                                                        gameState.actionStartTime = Date().timeIntervalSince1970 * 1000
-                                                    }
-                                                    gameState.isMovingRight = true
-                                                    gameState.isMovingLeft = false
-                                                    gameState.facingRight = true
-                                                    gameState.lastMovementUpdateTime = Date().timeIntervalSince1970
-                                                    if gameState.animationFrame == 0 {
-                                                        gameState.startAnimation(gameState: gameState)
-                                                    }
+                                                    // Tapped right - trigger right movement using startMovingRight
+                                                    startMovingRightAction(gameState, geometry)
                                                 }
                                             }
                                         }
                                         .onEnded { value in
+                                            // For Run action, no action triggering (movement only)
+                                            if gameState.selectedAction == "Run" {
+                                                return
+                                            }
+                                            
                                             let tapX = value.location.x
                                             let distanceFromCenter = abs(tapX - figureX)
                                             
@@ -3549,31 +3558,9 @@ private struct GamePlayArea: View {
                                             
                                             if distanceFromCenter > 5 {
                                                 if tapX < figureX && gameState.currentLevel >= 2 {
-                                                    gameState.resetIdleTimer()
-                                                    if gameState.currentAction != "move" {
-                                                        gameState.currentAction = "move"
-                                                        gameState.actionStartTime = Date().timeIntervalSince1970 * 1000
-                                                    }
-                                                    gameState.isMovingLeft = true
-                                                    gameState.isMovingRight = false
-                                                    gameState.facingRight = false
-                                                    gameState.lastMovementUpdateTime = Date().timeIntervalSince1970
-                                                    if gameState.animationFrame == 0 {
-                                                        gameState.startAnimation(gameState: gameState)
-                                                    }
+                                                    startMovingLeftAction(gameState, geometry)
                                                 } else if tapX >= figureX && gameState.currentLevel >= 2 {
-                                                    gameState.resetIdleTimer()
-                                                    if gameState.currentAction != "move" {
-                                                        gameState.currentAction = "move"
-                                                        gameState.actionStartTime = Date().timeIntervalSince1970 * 1000
-                                                    }
-                                                    gameState.isMovingRight = true
-                                                    gameState.isMovingLeft = false
-                                                    gameState.facingRight = true
-                                                    gameState.lastMovementUpdateTime = Date().timeIntervalSince1970
-                                                    if gameState.animationFrame == 0 {
-                                                        gameState.startAnimation(gameState: gameState)
-                                                    }
+                                                    startMovingRightAction(gameState, geometry)
                                                 }
                                             }
                                         }

@@ -28,7 +28,7 @@
     "unlockLevel": 2,
     "pointsPerCompletion": 0,
     "pointsPerInterval": {
-      "interval": 5.0,
+      "interval": 1.0,
       "points": 1
     },
     "variableTiming": null,
