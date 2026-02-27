@@ -770,9 +770,8 @@ struct StickFigure2DView: View {
         drawSegment(from: rightUpperLegEnd, to: rightFootEnd, color: figure.footColor, strokeThickness: figure.strokeThicknessLowerLegs, fusiform: figure.fusiformLowerLegs, inverted: false, in: context)
         
         // Draw torso
-        drawSegment(from: waistPos, to: midTorsoPos, color: figure.torsoColor, strokeThickness: figure.strokeThicknessLowerTorso, fusiform: figure.fusiformLowerTorso, inverted: false, in: context)
-        // Upper torso: large at neck, small at mid-torso - reverse the direction for correct taper
-        drawSegment(from: neckPos, to: midTorsoPos, color: figure.torsoColor, strokeThickness: figure.strokeThicknessUpperTorso, fusiform: figure.fusiformUpperTorso, inverted: true, in: context)
+        // Upper torso: point at neck, wide in upper area, point at waist - forms diamond shape
+        drawSegment(from: neckPos, to: waistPos, color: figure.torsoColor, strokeThickness: figure.strokeThicknessUpperTorso, fusiform: figure.fusiformUpperTorso, inverted: true, in: context)
         drawSegment(from: neckPos, to: headPos, color: figure.torsoColor, strokeThickness: figure.strokeThicknessUpperTorso, fusiform: 0, inverted: false, in: context)
         
         // Draw arms (back arm first)
@@ -834,7 +833,8 @@ struct StickFigure2DView: View {
         
         // Create a tapered polygon with smooth width variation
         var taperedPath = Path()
-        var points: [CGPoint] = []
+        var topEdgePoints: [CGPoint] = []
+        var bottomEdgePoints: [CGPoint] = []
         
         // Generate points along the length with varying width
         let numSegments = 20
@@ -846,10 +846,25 @@ struct StickFigure2DView: View {
             var widthFactor: CGFloat = 1.0
             
             if inverted {
-                // INVERTED: Large at START, tapers to small at END
-                // Used for: upper torso (neck to mid-torso), lower legs (knee to ankle)
-                // Width: starts high, decreases to baseline
-                widthFactor = 1.0 + (fusiform * (1.0 - t))
+                // DIAMOND: Point at START and END, wide in MIDDLE (shifted up)
+                // Used for: upper torso (neck point → wide upper-middle → waist point)
+                // Creates a diamond shape with peak shifted upward toward neck
+                
+                // Peak is at t=0.33 (one-third down from neck)
+                let peakT = 0.33
+                var distFromPeak: CGFloat
+                
+                if t <= peakT {
+                    // Top half: from neck (t=0) to peak (t=0.33)
+                    distFromPeak = (peakT - t) / peakT  // Normalized: 1 at neck, 0 at peak
+                } else {
+                    // Bottom half: from peak (t=0.33) to waist (t=1)
+                    distFromPeak = (t - peakT) / (1.0 - peakT)  // Normalized: 0 at peak, 1 at waist
+                }
+                
+                // Use inverted quadratic easing to create the point
+                let easeT = max(0, 1.0 - (distFromPeak * distFromPeak))
+                widthFactor = fusiform * easeT
             } else {
                 // NORMAL: Middle BULGE profile, small at both ends
                 // Used for: upper arms, lower arms, upper legs, lower torso
@@ -861,41 +876,49 @@ struct StickFigure2DView: View {
             
             let width = (strokeThickness / 2) * widthFactor
             
-            // Top edge
+            // Top and bottom edges
             let topPoint = CGPoint(x: pos.x + perpX * width, y: pos.y + perpY * width)
-            points.append(topPoint)
-        }
-        
-        // Add bottom edge in reverse
-        for i in (0...numSegments).reversed() {
-            let t = CGFloat(i) / CGFloat(numSegments)
-            let pos = CGPoint(x: from.x + dirX * t * length, y: from.y + dirY * t * length)
-            
-            // Calculate width at this point
-            var widthFactor: CGFloat = 1.0
-            
-            if inverted {
-                widthFactor = 1.0 + (fusiform * (1.0 - t))
-            } else {
-                let distFromCenter = abs(t - 0.5) * 2.0
-                widthFactor = 1.0 + (fusiform * (1.0 - distFromCenter))
-            }
-            
-            let width = (strokeThickness / 2) * widthFactor
-            
-            // Bottom edge
             let bottomPoint = CGPoint(x: pos.x - perpX * width, y: pos.y - perpY * width)
-            points.append(bottomPoint)
+            topEdgePoints.append(topPoint)
+            bottomEdgePoints.append(bottomPoint)
         }
         
-        // Create path from all points
-        if !points.isEmpty {
-            taperedPath.move(to: points[0])
-            for i in 1..<points.count {
-                taperedPath.addLine(to: points[i])
-            }
-            taperedPath.closeSubpath()
+        // Build path using curves for smooth diamond shape
+        if !topEdgePoints.isEmpty {
+            taperedPath.move(to: topEdgePoints[0])
             
+            // Draw top edge with curves
+            for i in 1..<topEdgePoints.count {
+                let prev = topEdgePoints[i - 1]
+                let curr = topEdgePoints[i]
+                let next = i + 1 < topEdgePoints.count ? topEdgePoints[i + 1] : curr
+                
+                // Use quadratic curve for smooth edges
+                let controlX = (prev.x + curr.x) / 2
+                let controlY = (prev.y + curr.y) / 2
+                let control = CGPoint(x: controlX, y: controlY)
+                
+                taperedPath.addQuadCurve(to: curr, control: control)
+            }
+            
+            // Draw bottom edge in reverse with curves
+            for i in (0..<bottomEdgePoints.count).reversed() {
+                let curr = bottomEdgePoints[i]
+                let prev = i > 0 ? bottomEdgePoints[i - 1] : curr
+                
+                // Use quadratic curve for smooth edges
+                let controlX = (curr.x + prev.x) / 2
+                let controlY = (curr.y + prev.y) / 2
+                let control = CGPoint(x: controlX, y: controlY)
+                
+                if i == bottomEdgePoints.count - 1 {
+                    taperedPath.addQuadCurve(to: curr, control: control)
+                } else {
+                    taperedPath.addQuadCurve(to: curr, control: control)
+                }
+            }
+            
+            taperedPath.closeSubpath()
             context.fill(taperedPath, with: .color(color))
         }
     }
@@ -1374,8 +1397,8 @@ struct StickFigure2DEditorView: View {
     @State private var isAnimationPlaybackCollapsed = true // Animation Playback starts collapsed
     @State private var isFigureSizeCollapsed = true // Figure Size section collapsed
     @State private var isFramesSectionCollapsed = true // Frame section collapsed
-    @State private var isAnglesCollapsed = false // Angle sliders subsection
-    @State private var isStrokeThicknessCollapsed = false // Stroke thickness subsection
+    @State private var isAnglesCollapsed = true // Angle sliders subsection (collapsed by default)
+    @State private var isStrokeThicknessCollapsed = true // Stroke thickness subsection (collapsed by default)
     @State private var isFusiformCollapsed = true // Fusiform subsection (collapsed by default)
     @State private var isColorsCollapsed = true // Colors subsection (collapsed by default)
     @State private var canvasOffset: CGSize = .zero // Offset for panning the canvas
@@ -2559,8 +2582,8 @@ struct StickFigure2DEditorView: View {
                         Button(action: { figure.fusiformUpperArms = max(0, figure.fusiformUpperArms - 0.05) }) {
                             Image(systemName: "minus.circle")
                         }
-                        Slider(value: $figure.fusiformUpperArms, in: 0...2, step: 0.05)
-                        Button(action: { figure.fusiformUpperArms = min(2, figure.fusiformUpperArms + 0.05) }) {
+                        Slider(value: $figure.fusiformUpperArms, in: 0...6, step: 0.05)
+                        Button(action: { figure.fusiformUpperArms = min(6, figure.fusiformUpperArms + 0.05) }) {
                             Image(systemName: "plus.circle")
                         }
                         Text("\(Int(figure.fusiformUpperArms / 0.5 * 50))%")
@@ -2573,8 +2596,8 @@ struct StickFigure2DEditorView: View {
                         Button(action: { figure.fusiformLowerArms = max(0, figure.fusiformLowerArms - 0.05) }) {
                             Image(systemName: "minus.circle")
                         }
-                        Slider(value: $figure.fusiformLowerArms, in: 0...2, step: 0.05)
-                        Button(action: { figure.fusiformLowerArms = min(2, figure.fusiformLowerArms + 0.05) }) {
+                        Slider(value: $figure.fusiformLowerArms, in: 0...6, step: 0.05)
+                        Button(action: { figure.fusiformLowerArms = min(6, figure.fusiformLowerArms + 0.05) }) {
                             Image(systemName: "plus.circle")
                         }
                         Text("\(Int(figure.fusiformLowerArms / 0.5 * 50))%")
@@ -2587,8 +2610,8 @@ struct StickFigure2DEditorView: View {
                         Button(action: { figure.fusiformUpperLegs = max(0, figure.fusiformUpperLegs - 0.05) }) {
                             Image(systemName: "minus.circle")
                         }
-                        Slider(value: $figure.fusiformUpperLegs, in: 0...2, step: 0.05)
-                        Button(action: { figure.fusiformUpperLegs = min(2, figure.fusiformUpperLegs + 0.05) }) {
+                        Slider(value: $figure.fusiformUpperLegs, in: 0...6, step: 0.05)
+                        Button(action: { figure.fusiformUpperLegs = min(6, figure.fusiformUpperLegs + 0.05) }) {
                             Image(systemName: "plus.circle")
                         }
                         Text("\(Int(figure.fusiformUpperLegs / 0.5 * 50))%")
@@ -2601,8 +2624,8 @@ struct StickFigure2DEditorView: View {
                         Button(action: { figure.fusiformLowerLegs = max(0, figure.fusiformLowerLegs - 0.05) }) {
                             Image(systemName: "minus.circle")
                         }
-                        Slider(value: $figure.fusiformLowerLegs, in: 0...2, step: 0.05)
-                        Button(action: { figure.fusiformLowerLegs = min(2, figure.fusiformLowerLegs + 0.05) }) {
+                        Slider(value: $figure.fusiformLowerLegs, in: 0...6, step: 0.05)
+                        Button(action: { figure.fusiformLowerLegs = min(6, figure.fusiformLowerLegs + 0.05) }) {
                             Image(systemName: "plus.circle")
                         }
                         Text("\(Int(figure.fusiformLowerLegs / 0.5 * 50))%")
@@ -2615,8 +2638,8 @@ struct StickFigure2DEditorView: View {
                         Button(action: { figure.fusiformUpperTorso = max(0, figure.fusiformUpperTorso - 0.05) }) {
                             Image(systemName: "minus.circle")
                         }
-                        Slider(value: $figure.fusiformUpperTorso, in: 0...2, step: 0.05)
-                        Button(action: { figure.fusiformUpperTorso = min(2, figure.fusiformUpperTorso + 0.05) }) {
+                        Slider(value: $figure.fusiformUpperTorso, in: 0...6, step: 0.05)
+                        Button(action: { figure.fusiformUpperTorso = min(6, figure.fusiformUpperTorso + 0.05) }) {
                             Image(systemName: "plus.circle")
                         }
                         Text("\(Int(figure.fusiformUpperTorso / 0.5 * 50))%")
@@ -2629,8 +2652,8 @@ struct StickFigure2DEditorView: View {
                         Button(action: { figure.fusiformLowerTorso = max(0, figure.fusiformLowerTorso - 0.05) }) {
                             Image(systemName: "minus.circle")
                         }
-                        Slider(value: $figure.fusiformLowerTorso, in: 0...2, step: 0.05)
-                        Button(action: { figure.fusiformLowerTorso = min(2, figure.fusiformLowerTorso + 0.05) }) {
+                        Slider(value: $figure.fusiformLowerTorso, in: 0...6, step: 0.05)
+                        Button(action: { figure.fusiformLowerTorso = min(6, figure.fusiformLowerTorso + 0.05) }) {
                             Image(systemName: "plus.circle")
                         }
                         Text("\(Int(figure.fusiformLowerTorso / 0.5 * 50))%")

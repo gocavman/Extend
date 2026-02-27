@@ -889,5 +889,55 @@
       "waistPositionY" : 362.02702702702703,
       "waistTorsoAngle" : 0
     }
+  },
+  {
+    "createdAt" : 793920718.54628,
+    "frameNumber" : 1,
+    "id" : "79990141-703E-4F30-802E-60DA7E8EA50D",
+    "name" : "Built",
+    "objects" : [
+
+    ],
+    "pose" : {
+      "footColor" : "#000000",
+      "fusiformLowerArms" : 2,
+      "fusiformLowerLegs" : 2,
+      "fusiformLowerTorso" : 0.5,
+      "fusiformUpperArms" : 2,
+      "fusiformUpperLegs" : 2,
+      "fusiformUpperTorso" : 2,
+      "handColor" : "#000000",
+      "headAngle" : 0,
+      "headColor" : "#000000",
+      "headRadiusMultiplier" : 1,
+      "leftArmColor" : "#000000",
+      "leftElbowAngle" : -37,
+      "leftFootAngle" : 0,
+      "leftHandAngle" : -45,
+      "leftKneeAngle" : -170,
+      "leftLegColor" : "#000000",
+      "leftShoulderAngle" : -133,
+      "midTorsoAngle" : 0,
+      "rightArmColor" : "#000000",
+      "rightElbowAngle" : 37,
+      "rightFootAngle" : 0,
+      "rightHandAngle" : 45,
+      "rightKneeAngle" : 170,
+      "rightLegColor" : "#000000",
+      "rightShoulderAngle" : 133,
+      "scale" : 2.4,
+      "strokeThickness" : 3,
+      "strokeThicknessJoints" : 5.75,
+      "strokeThicknessLowerArms" : 3.5,
+      "strokeThicknessLowerLegs" : 3.5,
+      "strokeThicknessLowerTorso" : 7.25,
+      "strokeThicknessUpperArms" : 6.25,
+      "strokeThicknessUpperLegs" : 4.5,
+      "strokeThicknessUpperTorso" : 9.25,
+      "torsoColor" : "#000000",
+      "waistPositionX" : 300,
+      "waistPositionY" : 360,
+      "waistTorsoAngle" : 0
+    }
   }
 ]
