@@ -1508,6 +1508,7 @@ struct StickFigure2DEditorView: View {
             ScrollView {
                 VStack(spacing: 4) {
                     canvasView
+                    coordinateDisplayView
                     jointControlsView
                     framesSectionView
                     animationPlaybackView
@@ -2052,6 +2053,113 @@ struct StickFigure2DEditorView: View {
                 }
             )
         }
+    }
+    
+    var coordinateDisplayView: some View {
+        let canvasCenter = CGPoint(x: 300, y: 360)  // Center of base canvas (600x720)
+        let offsetX = Int(figure.waistPosition.x - canvasCenter.x)
+        let offsetY = Int(figure.waistPosition.y - canvasCenter.y)
+        
+        return VStack(spacing: 8) {
+            Text("Figure Position")
+                .font(.caption)
+                .fontWeight(.semibold)
+                .foregroundColor(.gray)
+            
+            HStack(spacing: 12) {
+                // Left button (X -)
+                Button(action: {
+                    figure.waistPosition.x -= 1
+                }) {
+                    VStack(spacing: 2) {
+                        Image(systemName: "arrow.left")
+                            .font(.caption)
+                        Text("X")
+                            .font(.caption2)
+                    }
+                    .frame(width: 40, height: 40)
+                    .background(Color.gray.opacity(0.2))
+                    .cornerRadius(6)
+                }
+                .buttonStyle(.plain)
+                
+                // X coordinate display
+                VStack(spacing: 2) {
+                    Text("X")
+                        .font(.caption2)
+                        .foregroundColor(.gray)
+                    Text("\(offsetX > 0 ? "+" : "")\(offsetX)")
+                        .font(.caption)
+                        .fontWeight(.semibold)
+                        .frame(minWidth: 35)
+                }
+                
+                // Right button (X +)
+                Button(action: {
+                    figure.waistPosition.x += 1
+                }) {
+                    VStack(spacing: 2) {
+                        Image(systemName: "arrow.right")
+                            .font(.caption)
+                        Text("X")
+                            .font(.caption2)
+                    }
+                    .frame(width: 40, height: 40)
+                    .background(Color.gray.opacity(0.2))
+                    .cornerRadius(6)
+                }
+                .buttonStyle(.plain)
+                
+                Spacer()
+                
+                // Up button (Y -)
+                Button(action: {
+                    figure.waistPosition.y -= 1
+                }) {
+                    VStack(spacing: 2) {
+                        Image(systemName: "arrow.up")
+                            .font(.caption)
+                        Text("Y")
+                            .font(.caption2)
+                    }
+                    .frame(width: 40, height: 40)
+                    .background(Color.gray.opacity(0.2))
+                    .cornerRadius(6)
+                }
+                .buttonStyle(.plain)
+                
+                // Y coordinate display
+                VStack(spacing: 2) {
+                    Text("Y")
+                        .font(.caption2)
+                        .foregroundColor(.gray)
+                    Text("\(offsetY > 0 ? "+" : "")\(offsetY)")
+                        .font(.caption)
+                        .fontWeight(.semibold)
+                        .frame(minWidth: 35)
+                }
+                
+                // Down button (Y +)
+                Button(action: {
+                    figure.waistPosition.y += 1
+                }) {
+                    VStack(spacing: 2) {
+                        Image(systemName: "arrow.down")
+                            .font(.caption)
+                        Text("Y")
+                            .font(.caption2)
+                    }
+                    .frame(width: 40, height: 40)
+                    .background(Color.gray.opacity(0.2))
+                    .cornerRadius(6)
+                }
+                .buttonStyle(.plain)
+            }
+            .padding(.horizontal, 8)
+        }
+        .padding(12)
+        .background(Color.gray.opacity(0.05))
+        .cornerRadius(8)
     }
     
     var jointControlsView: some View {
