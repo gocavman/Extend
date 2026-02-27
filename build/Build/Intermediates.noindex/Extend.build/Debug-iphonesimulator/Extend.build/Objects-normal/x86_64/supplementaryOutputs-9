@@ -1,0 +1,37 @@
+{
+  "/Users/cavan/Developer/Extend/Extend/State/MuscleGroupsState.swift" : {
+    "const-values" : "/Users/cavan/Developer/Extend/build/Build/Intermediates.noindex/Extend.build/Debug-iphonesimulator/Extend.build/Objects-normal/x86_64/MuscleGroupsState.swiftconstvalues",
+    "dependencies" : "/Users/cavan/Developer/Extend/build/Build/Intermediates.noindex/Extend.build/Debug-iphonesimulator/Extend.build/Objects-normal/x86_64/MuscleGroupsState.d",
+    "diagnostics" : "/Users/cavan/Developer/Extend/build/Build/Intermediates.noindex/Extend.build/Debug-iphonesimulator/Extend.build/Objects-normal/x86_64/MuscleGroupsState.dia",
+    "object" : "/Users/cavan/Developer/Extend/build/Build/Intermediates.noindex/Extend.build/Debug-iphonesimulator/Extend.build/Objects-normal/x86_64/MuscleGroupsState.o",
+    "swift-dependencies" : "/Users/cavan/Developer/Extend/build/Build/Intermediates.noindex/Extend.build/Debug-iphonesimulator/Extend.build/Objects-normal/x86_64/MuscleGroupsState.swiftdeps"
+  },
+  "/Users/cavan/Developer/Extend/Extend/State/QuickWorkoutState.swift" : {
+    "const-values" : "/Users/cavan/Developer/Extend/build/Build/Intermediates.noindex/Extend.build/Debug-iphonesimulator/Extend.build/Objects-normal/x86_64/QuickWorkoutState.swiftconstvalues",
+    "dependencies" : "/Users/cavan/Developer/Extend/build/Build/Intermediates.noindex/Extend.build/Debug-iphonesimulator/Extend.build/Objects-normal/x86_64/QuickWorkoutState.d",
+    "diagnostics" : "/Users/cavan/Developer/Extend/build/Build/Intermediates.noindex/Extend.build/Debug-iphonesimulator/Extend.build/Objects-normal/x86_64/QuickWorkoutState.dia",
+    "object" : "/Users/cavan/Developer/Extend/build/Build/Intermediates.noindex/Extend.build/Debug-iphonesimulator/Extend.build/Objects-normal/x86_64/QuickWorkoutState.o",
+    "swift-dependencies" : "/Users/cavan/Developer/Extend/build/Build/Intermediates.noindex/Extend.build/Debug-iphonesimulator/Extend.build/Objects-normal/x86_64/QuickWorkoutState.swiftdeps"
+  },
+  "/Users/cavan/Developer/Extend/Extend/State/VoiceTrainerState.swift" : {
+    "const-values" : "/Users/cavan/Developer/Extend/build/Build/Intermediates.noindex/Extend.build/Debug-iphonesimulator/Extend.build/Objects-normal/x86_64/VoiceTrainerState.swiftconstvalues",
+    "dependencies" : "/Users/cavan/Developer/Extend/build/Build/Intermediates.noindex/Extend.build/Debug-iphonesimulator/Extend.build/Objects-normal/x86_64/VoiceTrainerState.d",
+    "diagnostics" : "/Users/cavan/Developer/Extend/build/Build/Intermediates.noindex/Extend.build/Debug-iphonesimulator/Extend.build/Objects-normal/x86_64/VoiceTrainerState.dia",
+    "object" : "/Users/cavan/Developer/Extend/build/Build/Intermediates.noindex/Extend.build/Debug-iphonesimulator/Extend.build/Objects-normal/x86_64/VoiceTrainerState.o",
+    "swift-dependencies" : "/Users/cavan/Developer/Extend/build/Build/Intermediates.noindex/Extend.build/Debug-iphonesimulator/Extend.build/Objects-normal/x86_64/VoiceTrainerState.swiftdeps"
+  },
+  "/Users/cavan/Developer/Extend/Extend/State/WorkoutLogState.swift" : {
+    "const-values" : "/Users/cavan/Developer/Extend/build/Build/Intermediates.noindex/Extend.build/Debug-iphonesimulator/Extend.build/Objects-normal/x86_64/WorkoutLogState.swiftconstvalues",
+    "dependencies" : "/Users/cavan/Developer/Extend/build/Build/Intermediates.noindex/Extend.build/Debug-iphonesimulator/Extend.build/Objects-normal/x86_64/WorkoutLogState.d",
+    "diagnostics" : "/Users/cavan/Developer/Extend/build/Build/Intermediates.noindex/Extend.build/Debug-iphonesimulator/Extend.build/Objects-normal/x86_64/WorkoutLogState.dia",
+    "object" : "/Users/cavan/Developer/Extend/build/Build/Intermediates.noindex/Extend.build/Debug-iphonesimulator/Extend.build/Objects-normal/x86_64/WorkoutLogState.o",
+    "swift-dependencies" : "/Users/cavan/Developer/Extend/build/Build/Intermediates.noindex/Extend.build/Debug-iphonesimulator/Extend.build/Objects-normal/x86_64/WorkoutLogState.swiftdeps"
+  },
+  "/Users/cavan/Developer/Extend/Extend/State/WorkoutsState.swift" : {
+    "const-values" : "/Users/cavan/Developer/Extend/build/Build/Intermediates.noindex/Extend.build/Debug-iphonesimulator/Extend.build/Objects-normal/x86_64/WorkoutsState.swiftconstvalues",
+    "dependencies" : "/Users/cavan/Developer/Extend/build/Build/Intermediates.noindex/Extend.build/Debug-iphonesimulator/Extend.build/Objects-normal/x86_64/WorkoutsState.d",
+    "diagnostics" : "/Users/cavan/Developer/Extend/build/Build/Intermediates.noindex/Extend.build/Debug-iphonesimulator/Extend.build/Objects-normal/x86_64/WorkoutsState.dia",
+    "object" : "/Users/cavan/Developer/Extend/build/Build/Intermediates.noindex/Extend.build/Debug-iphonesimulator/Extend.build/Objects-normal/x86_64/WorkoutsState.o",
+    "swift-dependencies" : "/Users/cavan/Developer/Extend/build/Build/Intermediates.noindex/Extend.build/Debug-iphonesimulator/Extend.build/Objects-normal/x86_64/WorkoutsState.swiftdeps"
+  }
+}

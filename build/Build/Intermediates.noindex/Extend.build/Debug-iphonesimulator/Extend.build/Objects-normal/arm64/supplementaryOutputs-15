@@ -1,0 +1,37 @@
+{
+  "/Users/cavan/Developer/Extend/Extend/Modules/ModuleRegistry.swift" : {
+    "const-values" : "/Users/cavan/Developer/Extend/build/Build/Intermediates.noindex/Extend.build/Debug-iphonesimulator/Extend.build/Objects-normal/arm64/ModuleRegistry.swiftconstvalues",
+    "dependencies" : "/Users/cavan/Developer/Extend/build/Build/Intermediates.noindex/Extend.build/Debug-iphonesimulator/Extend.build/Objects-normal/arm64/ModuleRegistry.d",
+    "diagnostics" : "/Users/cavan/Developer/Extend/build/Build/Intermediates.noindex/Extend.build/Debug-iphonesimulator/Extend.build/Objects-normal/arm64/ModuleRegistry.dia",
+    "object" : "/Users/cavan/Developer/Extend/build/Build/Intermediates.noindex/Extend.build/Debug-iphonesimulator/Extend.build/Objects-normal/arm64/ModuleRegistry.o",
+    "swift-dependencies" : "/Users/cavan/Developer/Extend/build/Build/Intermediates.noindex/Extend.build/Debug-iphonesimulator/Extend.build/Objects-normal/arm64/ModuleRegistry.swiftdeps"
+  },
+  "/Users/cavan/Developer/Extend/Extend/Modules/MuscleGroupsModule.swift" : {
+    "const-values" : "/Users/cavan/Developer/Extend/build/Build/Intermediates.noindex/Extend.build/Debug-iphonesimulator/Extend.build/Objects-normal/arm64/MuscleGroupsModule.swiftconstvalues",
+    "dependencies" : "/Users/cavan/Developer/Extend/build/Build/Intermediates.noindex/Extend.build/Debug-iphonesimulator/Extend.build/Objects-normal/arm64/MuscleGroupsModule.d",
+    "diagnostics" : "/Users/cavan/Developer/Extend/build/Build/Intermediates.noindex/Extend.build/Debug-iphonesimulator/Extend.build/Objects-normal/arm64/MuscleGroupsModule.dia",
+    "object" : "/Users/cavan/Developer/Extend/build/Build/Intermediates.noindex/Extend.build/Debug-iphonesimulator/Extend.build/Objects-normal/arm64/MuscleGroupsModule.o",
+    "swift-dependencies" : "/Users/cavan/Developer/Extend/build/Build/Intermediates.noindex/Extend.build/Debug-iphonesimulator/Extend.build/Objects-normal/arm64/MuscleGroupsModule.swiftdeps"
+  },
+  "/Users/cavan/Developer/Extend/Extend/Modules/ProgressModule.swift" : {
+    "const-values" : "/Users/cavan/Developer/Extend/build/Build/Intermediates.noindex/Extend.build/Debug-iphonesimulator/Extend.build/Objects-normal/arm64/ProgressModule.swiftconstvalues",
+    "dependencies" : "/Users/cavan/Developer/Extend/build/Build/Intermediates.noindex/Extend.build/Debug-iphonesimulator/Extend.build/Objects-normal/arm64/ProgressModule.d",
+    "diagnostics" : "/Users/cavan/Developer/Extend/build/Build/Intermediates.noindex/Extend.build/Debug-iphonesimulator/Extend.build/Objects-normal/arm64/ProgressModule.dia",
+    "object" : "/Users/cavan/Developer/Extend/build/Build/Intermediates.noindex/Extend.build/Debug-iphonesimulator/Extend.build/Objects-normal/arm64/ProgressModule.o",
+    "swift-dependencies" : "/Users/cavan/Developer/Extend/build/Build/Intermediates.noindex/Extend.build/Debug-iphonesimulator/Extend.build/Objects-normal/arm64/ProgressModule.swiftdeps"
+  },
+  "/Users/cavan/Developer/Extend/Extend/Modules/QuickWorkoutModule.swift" : {
+    "const-values" : "/Users/cavan/Developer/Extend/build/Build/Intermediates.noindex/Extend.build/Debug-iphonesimulator/Extend.build/Objects-normal/arm64/QuickWorkoutModule.swiftconstvalues",
+    "dependencies" : "/Users/cavan/Developer/Extend/build/Build/Intermediates.noindex/Extend.build/Debug-iphonesimulator/Extend.build/Objects-normal/arm64/QuickWorkoutModule.d",
+    "diagnostics" : "/Users/cavan/Developer/Extend/build/Build/Intermediates.noindex/Extend.build/Debug-iphonesimulator/Extend.build/Objects-normal/arm64/QuickWorkoutModule.dia",
+    "object" : "/Users/cavan/Developer/Extend/build/Build/Intermediates.noindex/Extend.build/Debug-iphonesimulator/Extend.build/Objects-normal/arm64/QuickWorkoutModule.o",
+    "swift-dependencies" : "/Users/cavan/Developer/Extend/build/Build/Intermediates.noindex/Extend.build/Debug-iphonesimulator/Extend.build/Objects-normal/arm64/QuickWorkoutModule.swiftdeps"
+  },
+  "/Users/cavan/Developer/Extend/Extend/Modules/SettingsModule.swift" : {
+    "const-values" : "/Users/cavan/Developer/Extend/build/Build/Intermediates.noindex/Extend.build/Debug-iphonesimulator/Extend.build/Objects-normal/arm64/SettingsModule.swiftconstvalues",
+    "dependencies" : "/Users/cavan/Developer/Extend/build/Build/Intermediates.noindex/Extend.build/Debug-iphonesimulator/Extend.build/Objects-normal/arm64/SettingsModule.d",
+    "diagnostics" : "/Users/cavan/Developer/Extend/build/Build/Intermediates.noindex/Extend.build/Debug-iphonesimulator/Extend.build/Objects-normal/arm64/SettingsModule.dia",
+    "object" : "/Users/cavan/Developer/Extend/build/Build/Intermediates.noindex/Extend.build/Debug-iphonesimulator/Extend.build/Objects-normal/arm64/SettingsModule.o",
+    "swift-dependencies" : "/Users/cavan/Developer/Extend/build/Build/Intermediates.noindex/Extend.build/Debug-iphonesimulator/Extend.build/Objects-normal/arm64/SettingsModule.swiftdeps"
+  }
+}

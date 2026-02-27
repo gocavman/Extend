@@ -1,0 +1,37 @@
+{
+  "/Users/cavan/Developer/Extend/Extend/Models/AnimationStorage.swift" : {
+    "const-values" : "/Users/cavan/Developer/Extend/build/Build/Intermediates.noindex/Extend.build/Debug-iphonesimulator/Extend.build/Objects-normal/arm64/AnimationStorage.swiftconstvalues",
+    "dependencies" : "/Users/cavan/Developer/Extend/build/Build/Intermediates.noindex/Extend.build/Debug-iphonesimulator/Extend.build/Objects-normal/arm64/AnimationStorage.d",
+    "diagnostics" : "/Users/cavan/Developer/Extend/build/Build/Intermediates.noindex/Extend.build/Debug-iphonesimulator/Extend.build/Objects-normal/arm64/AnimationStorage.dia",
+    "object" : "/Users/cavan/Developer/Extend/build/Build/Intermediates.noindex/Extend.build/Debug-iphonesimulator/Extend.build/Objects-normal/arm64/AnimationStorage.o",
+    "swift-dependencies" : "/Users/cavan/Developer/Extend/build/Build/Intermediates.noindex/Extend.build/Debug-iphonesimulator/Extend.build/Objects-normal/arm64/AnimationStorage.swiftdeps"
+  },
+  "/Users/cavan/Developer/Extend/Extend/Models/DashboardTile.swift" : {
+    "const-values" : "/Users/cavan/Developer/Extend/build/Build/Intermediates.noindex/Extend.build/Debug-iphonesimulator/Extend.build/Objects-normal/arm64/DashboardTile.swiftconstvalues",
+    "dependencies" : "/Users/cavan/Developer/Extend/build/Build/Intermediates.noindex/Extend.build/Debug-iphonesimulator/Extend.build/Objects-normal/arm64/DashboardTile.d",
+    "diagnostics" : "/Users/cavan/Developer/Extend/build/Build/Intermediates.noindex/Extend.build/Debug-iphonesimulator/Extend.build/Objects-normal/arm64/DashboardTile.dia",
+    "object" : "/Users/cavan/Developer/Extend/build/Build/Intermediates.noindex/Extend.build/Debug-iphonesimulator/Extend.build/Objects-normal/arm64/DashboardTile.o",
+    "swift-dependencies" : "/Users/cavan/Developer/Extend/build/Build/Intermediates.noindex/Extend.build/Debug-iphonesimulator/Extend.build/Objects-normal/arm64/DashboardTile.swiftdeps"
+  },
+  "/Users/cavan/Developer/Extend/Extend/Models/Equipment.swift" : {
+    "const-values" : "/Users/cavan/Developer/Extend/build/Build/Intermediates.noindex/Extend.build/Debug-iphonesimulator/Extend.build/Objects-normal/arm64/Equipment.swiftconstvalues",
+    "dependencies" : "/Users/cavan/Developer/Extend/build/Build/Intermediates.noindex/Extend.build/Debug-iphonesimulator/Extend.build/Objects-normal/arm64/Equipment.d",
+    "diagnostics" : "/Users/cavan/Developer/Extend/build/Build/Intermediates.noindex/Extend.build/Debug-iphonesimulator/Extend.build/Objects-normal/arm64/Equipment.dia",
+    "object" : "/Users/cavan/Developer/Extend/build/Build/Intermediates.noindex/Extend.build/Debug-iphonesimulator/Extend.build/Objects-normal/arm64/Equipment.o",
+    "swift-dependencies" : "/Users/cavan/Developer/Extend/build/Build/Intermediates.noindex/Extend.build/Debug-iphonesimulator/Extend.build/Objects-normal/arm64/Equipment.swiftdeps"
+  },
+  "/Users/cavan/Developer/Extend/Extend/Models/Exercise.swift" : {
+    "const-values" : "/Users/cavan/Developer/Extend/build/Build/Intermediates.noindex/Extend.build/Debug-iphonesimulator/Extend.build/Objects-normal/arm64/Exercise.swiftconstvalues",
+    "dependencies" : "/Users/cavan/Developer/Extend/build/Build/Intermediates.noindex/Extend.build/Debug-iphonesimulator/Extend.build/Objects-normal/arm64/Exercise.d",
+    "diagnostics" : "/Users/cavan/Developer/Extend/build/Build/Intermediates.noindex/Extend.build/Debug-iphonesimulator/Extend.build/Objects-normal/arm64/Exercise.dia",
+    "object" : "/Users/cavan/Developer/Extend/build/Build/Intermediates.noindex/Extend.build/Debug-iphonesimulator/Extend.build/Objects-normal/arm64/Exercise.o",
+    "swift-dependencies" : "/Users/cavan/Developer/Extend/build/Build/Intermediates.noindex/Extend.build/Debug-iphonesimulator/Extend.build/Objects-normal/arm64/Exercise.swiftdeps"
+  },
+  "/Users/cavan/Developer/Extend/Extend/Models/MuscleGroup.swift" : {
+    "const-values" : "/Users/cavan/Developer/Extend/build/Build/Intermediates.noindex/Extend.build/Debug-iphonesimulator/Extend.build/Objects-normal/arm64/MuscleGroup.swiftconstvalues",
+    "dependencies" : "/Users/cavan/Developer/Extend/build/Build/Intermediates.noindex/Extend.build/Debug-iphonesimulator/Extend.build/Objects-normal/arm64/MuscleGroup.d",
+    "diagnostics" : "/Users/cavan/Developer/Extend/build/Build/Intermediates.noindex/Extend.build/Debug-iphonesimulator/Extend.build/Objects-normal/arm64/MuscleGroup.dia",
+    "object" : "/Users/cavan/Developer/Extend/build/Build/Intermediates.noindex/Extend.build/Debug-iphonesimulator/Extend.build/Objects-normal/arm64/MuscleGroup.o",
+    "swift-dependencies" : "/Users/cavan/Developer/Extend/build/Build/Intermediates.noindex/Extend.build/Debug-iphonesimulator/Extend.build/Objects-normal/arm64/MuscleGroup.swiftdeps"
+  }
+}

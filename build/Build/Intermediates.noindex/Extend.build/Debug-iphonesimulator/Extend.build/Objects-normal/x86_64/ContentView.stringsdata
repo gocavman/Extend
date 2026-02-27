@@ -1,0 +1,24 @@
+{
+  "source": "/Users/cavan/Developer/Extend/Extend/ContentView.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "No Module Selected",
+        "location": {
+          "startingColumn": 18,
+          "startingLine": 221
+        }
+      },
+      {
+        "comment": "",
+        "key": "Select a module from the navbar to get started",
+        "location": {
+          "startingColumn": 18,
+          "startingLine": 224
+        }
+      }
+    ]
+  },
+  "version": 1
+}

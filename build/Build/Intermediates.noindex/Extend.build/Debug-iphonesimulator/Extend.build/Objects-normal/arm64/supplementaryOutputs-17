@@ -1,0 +1,37 @@
+{
+  "/Users/cavan/Developer/Extend/Extend/SpriteKit/GameScene.swift" : {
+    "const-values" : "/Users/cavan/Developer/Extend/build/Build/Intermediates.noindex/Extend.build/Debug-iphonesimulator/Extend.build/Objects-normal/arm64/GameScene.swiftconstvalues",
+    "dependencies" : "/Users/cavan/Developer/Extend/build/Build/Intermediates.noindex/Extend.build/Debug-iphonesimulator/Extend.build/Objects-normal/arm64/GameScene.d",
+    "diagnostics" : "/Users/cavan/Developer/Extend/build/Build/Intermediates.noindex/Extend.build/Debug-iphonesimulator/Extend.build/Objects-normal/arm64/GameScene.dia",
+    "object" : "/Users/cavan/Developer/Extend/build/Build/Intermediates.noindex/Extend.build/Debug-iphonesimulator/Extend.build/Objects-normal/arm64/GameScene.o",
+    "swift-dependencies" : "/Users/cavan/Developer/Extend/build/Build/Intermediates.noindex/Extend.build/Debug-iphonesimulator/Extend.build/Objects-normal/arm64/GameScene.swiftdeps"
+  },
+  "/Users/cavan/Developer/Extend/Extend/SpriteKit/GameViewController.swift" : {
+    "const-values" : "/Users/cavan/Developer/Extend/build/Build/Intermediates.noindex/Extend.build/Debug-iphonesimulator/Extend.build/Objects-normal/arm64/GameViewController.swiftconstvalues",
+    "dependencies" : "/Users/cavan/Developer/Extend/build/Build/Intermediates.noindex/Extend.build/Debug-iphonesimulator/Extend.build/Objects-normal/arm64/GameViewController.d",
+    "diagnostics" : "/Users/cavan/Developer/Extend/build/Build/Intermediates.noindex/Extend.build/Debug-iphonesimulator/Extend.build/Objects-normal/arm64/GameViewController.dia",
+    "object" : "/Users/cavan/Developer/Extend/build/Build/Intermediates.noindex/Extend.build/Debug-iphonesimulator/Extend.build/Objects-normal/arm64/GameViewController.o",
+    "swift-dependencies" : "/Users/cavan/Developer/Extend/build/Build/Intermediates.noindex/Extend.build/Debug-iphonesimulator/Extend.build/Objects-normal/arm64/GameViewController.swiftdeps"
+  },
+  "/Users/cavan/Developer/Extend/Extend/SpriteKit/MapScene.swift" : {
+    "const-values" : "/Users/cavan/Developer/Extend/build/Build/Intermediates.noindex/Extend.build/Debug-iphonesimulator/Extend.build/Objects-normal/arm64/MapScene.swiftconstvalues",
+    "dependencies" : "/Users/cavan/Developer/Extend/build/Build/Intermediates.noindex/Extend.build/Debug-iphonesimulator/Extend.build/Objects-normal/arm64/MapScene.d",
+    "diagnostics" : "/Users/cavan/Developer/Extend/build/Build/Intermediates.noindex/Extend.build/Debug-iphonesimulator/Extend.build/Objects-normal/arm64/MapScene.dia",
+    "object" : "/Users/cavan/Developer/Extend/build/Build/Intermediates.noindex/Extend.build/Debug-iphonesimulator/Extend.build/Objects-normal/arm64/MapScene.o",
+    "swift-dependencies" : "/Users/cavan/Developer/Extend/build/Build/Intermediates.noindex/Extend.build/Debug-iphonesimulator/Extend.build/Objects-normal/arm64/MapScene.swiftdeps"
+  },
+  "/Users/cavan/Developer/Extend/Extend/SpriteKit/SpriteKitGameView.swift" : {
+    "const-values" : "/Users/cavan/Developer/Extend/build/Build/Intermediates.noindex/Extend.build/Debug-iphonesimulator/Extend.build/Objects-normal/arm64/SpriteKitGameView.swiftconstvalues",
+    "dependencies" : "/Users/cavan/Developer/Extend/build/Build/Intermediates.noindex/Extend.build/Debug-iphonesimulator/Extend.build/Objects-normal/arm64/SpriteKitGameView.d",
+    "diagnostics" : "/Users/cavan/Developer/Extend/build/Build/Intermediates.noindex/Extend.build/Debug-iphonesimulator/Extend.build/Objects-normal/arm64/SpriteKitGameView.dia",
+    "object" : "/Users/cavan/Developer/Extend/build/Build/Intermediates.noindex/Extend.build/Debug-iphonesimulator/Extend.build/Objects-normal/arm64/SpriteKitGameView.o",
+    "swift-dependencies" : "/Users/cavan/Developer/Extend/build/Build/Intermediates.noindex/Extend.build/Debug-iphonesimulator/Extend.build/Objects-normal/arm64/SpriteKitGameView.swiftdeps"
+  },
+  "/Users/cavan/Developer/Extend/Extend/State/DashboardHeaderState.swift" : {
+    "const-values" : "/Users/cavan/Developer/Extend/build/Build/Intermediates.noindex/Extend.build/Debug-iphonesimulator/Extend.build/Objects-normal/arm64/DashboardHeaderState.swiftconstvalues",
+    "dependencies" : "/Users/cavan/Developer/Extend/build/Build/Intermediates.noindex/Extend.build/Debug-iphonesimulator/Extend.build/Objects-normal/arm64/DashboardHeaderState.d",
+    "diagnostics" : "/Users/cavan/Developer/Extend/build/Build/Intermediates.noindex/Extend.build/Debug-iphonesimulator/Extend.build/Objects-normal/arm64/DashboardHeaderState.dia",
+    "object" : "/Users/cavan/Developer/Extend/build/Build/Intermediates.noindex/Extend.build/Debug-iphonesimulator/Extend.build/Objects-normal/arm64/DashboardHeaderState.o",
+    "swift-dependencies" : "/Users/cavan/Developer/Extend/build/Build/Intermediates.noindex/Extend.build/Debug-iphonesimulator/Extend.build/Objects-normal/arm64/DashboardHeaderState.swiftdeps"
+  }
+}

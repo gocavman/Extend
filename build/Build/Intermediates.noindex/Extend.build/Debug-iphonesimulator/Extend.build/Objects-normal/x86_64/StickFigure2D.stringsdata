@@ -1,0 +1,712 @@
+{
+  "source": "/Users/cavan/Developer/Extend/Extend/Models/StickFigure2D.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "Add Object",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 811
+        }
+      },
+      {
+        "comment": "",
+        "key": "?",
+        "location": {
+          "startingColumn": 50,
+          "startingLine": 750
+        }
+      },
+      {
+        "comment": "",
+        "key": "Add",
+        "location": {
+          "startingColumn": 42,
+          "startingLine": 764
+        }
+      },
+      {
+        "comment": "",
+        "key": "Thickness",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 784
+        }
+      },
+      {
+        "comment": "",
+        "key": "Add",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 799
+        }
+      },
+      {
+        "comment": "",
+        "key": "Done",
+        "location": {
+          "startingColumn": 28,
+          "startingLine": 815
+        }
+      },
+      {
+        "comment": "",
+        "key": "Saved Frames",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 1035
+        }
+      },
+      {
+        "comment": "",
+        "key": "Delete Frame?",
+        "location": {
+          "startingColumn": 20,
+          "startingLine": 1066
+        }
+      },
+      {
+        "comment": "",
+        "key": "No saved frames yet",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 883
+        }
+      },
+      {
+        "comment": "",
+        "key": "Save frames to create animations",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 886
+        }
+      },
+      {
+        "comment": "",
+        "key": "Search frames...",
+        "location": {
+          "startingColumn": 39,
+          "startingLine": 898
+        }
+      },
+      {
+        "comment": "",
+        "key": "Frame Name",
+        "location": {
+          "startingColumn": 47,
+          "startingLine": 917
+        }
+      },
+      {
+        "comment": "",
+        "key": "Frame Number",
+        "location": {
+          "startingColumn": 47,
+          "startingLine": 920
+        }
+      },
+      {
+        "comment": "",
+        "key": "Cancel",
+        "location": {
+          "startingColumn": 48,
+          "startingLine": 925
+        }
+      },
+      {
+        "comment": "",
+        "key": "Save",
+        "location": {
+          "startingColumn": 48,
+          "startingLine": 932
+        }
+      },
+      {
+        "comment": "",
+        "key": "Frame #%lld",
+        "location": {
+          "startingColumn": 58,
+          "startingLine": 974
+        }
+      },
+      {
+        "comment": "",
+        "key": "Done",
+        "location": {
+          "startingColumn": 43,
+          "startingLine": 1055
+        }
+      },
+      {
+        "comment": "",
+        "key": "Edit",
+        "location": {
+          "startingColumn": 52,
+          "startingLine": 1055
+        }
+      },
+      {
+        "comment": "",
+        "key": "Done",
+        "location": {
+          "startingColumn": 28,
+          "startingLine": 1061
+        }
+      },
+      {
+        "comment": "",
+        "key": "Cancel",
+        "location": {
+          "startingColumn": 24,
+          "startingLine": 1067
+        }
+      },
+      {
+        "comment": "",
+        "key": "Delete",
+        "location": {
+          "startingColumn": 24,
+          "startingLine": 1068
+        }
+      },
+      {
+        "comment": "",
+        "key": "Are you sure you want to delete '%@'?",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 1076
+        }
+      },
+      {
+        "comment": "",
+        "key": "Save Animation Frame",
+        "location": {
+          "startingColumn": 18,
+          "startingLine": 1104
+        }
+      },
+      {
+        "comment": "",
+        "key": "Frame Name",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 1110
+        }
+      },
+      {
+        "comment": "",
+        "key": "e.g., Jump Start, Wave Hello",
+        "location": {
+          "startingColumn": 31,
+          "startingLine": 1113
+        }
+      },
+      {
+        "comment": "",
+        "key": "Frame Number",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 1118
+        }
+      },
+      {
+        "comment": "",
+        "key": "1",
+        "location": {
+          "startingColumn": 31,
+          "startingLine": 1121
+        }
+      },
+      {
+        "comment": "",
+        "key": "Cancel",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 1130
+        }
+      },
+      {
+        "comment": "",
+        "key": "Save",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 1137
+        }
+      },
+      {
+        "comment": "",
+        "key": "2D Stick Figure Editor",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 1346
+        }
+      },
+      {
+        "comment": "",
+        "key": "Back",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 1338
+        }
+      },
+      {
+        "comment": "",
+        "key": "Controls",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 1857
+        }
+      },
+      {
+        "comment": "",
+        "key": "Stroke Thickness:",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 1871
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 1879
+        }
+      },
+      {
+        "comment": "",
+        "key": "Waist Rotation:",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 1886
+        }
+      },
+      {
+        "comment": "",
+        "key": "%lld°",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 1894
+        }
+      },
+      {
+        "comment": "",
+        "key": "Left Shoulder:",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 1899
+        }
+      },
+      {
+        "comment": "",
+        "key": "%lld°",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 1907
+        }
+      },
+      {
+        "comment": "",
+        "key": "Right Shoulder:",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 1912
+        }
+      },
+      {
+        "comment": "",
+        "key": "%lld°",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 1920
+        }
+      },
+      {
+        "comment": "",
+        "key": "Left Elbow:",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 1925
+        }
+      },
+      {
+        "comment": "",
+        "key": "%lld°",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 1933
+        }
+      },
+      {
+        "comment": "",
+        "key": "Right Elbow:",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 1938
+        }
+      },
+      {
+        "comment": "",
+        "key": "%lld°",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 1946
+        }
+      },
+      {
+        "comment": "",
+        "key": "Left Knee:",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 1951
+        }
+      },
+      {
+        "comment": "",
+        "key": "%lld°",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 1959
+        }
+      },
+      {
+        "comment": "",
+        "key": "Right Knee:",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 1964
+        }
+      },
+      {
+        "comment": "",
+        "key": "%lld°",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 1972
+        }
+      },
+      {
+        "comment": "",
+        "key": "Left Foot:",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 1977
+        }
+      },
+      {
+        "comment": "",
+        "key": "%lld°",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 1985
+        }
+      },
+      {
+        "comment": "",
+        "key": "Right Foot:",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 1990
+        }
+      },
+      {
+        "comment": "",
+        "key": "%lld°",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 1998
+        }
+      },
+      {
+        "comment": "",
+        "key": "Head:",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 2003
+        }
+      },
+      {
+        "comment": "",
+        "key": "%lld°",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 2011
+        }
+      },
+      {
+        "comment": "",
+        "key": "Head Size:",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 2016
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@x",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 2024
+        }
+      },
+      {
+        "comment": "",
+        "key": "Animation Playback",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 2043
+        }
+      },
+      {
+        "comment": "",
+        "key": "Loop animation",
+        "location": {
+          "startingColumn": 28,
+          "startingLine": 2069
+        }
+      },
+      {
+        "comment": "",
+        "key": "Animation Name:",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 2057
+        }
+      },
+      {
+        "comment": "",
+        "key": "e.g., Run, Jump",
+        "location": {
+          "startingColumn": 35,
+          "startingLine": 2058
+        }
+      },
+      {
+        "comment": "",
+        "key": "Frame Sequence:",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 2063
+        }
+      },
+      {
+        "comment": "",
+        "key": "e.g., 1,2,3,4,3,2,1",
+        "location": {
+          "startingColumn": 35,
+          "startingLine": 2064
+        }
+      },
+      {
+        "comment": "",
+        "key": "Play",
+        "location": {
+          "startingColumn": 35,
+          "startingLine": 2074
+        }
+      },
+      {
+        "comment": "",
+        "key": "Stop",
+        "location": {
+          "startingColumn": 35,
+          "startingLine": 2085
+        }
+      },
+      {
+        "comment": "",
+        "key": "Figure Size (%lld%%)",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 2108
+        }
+      },
+      {
+        "comment": "",
+        "key": "50%",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 2114
+        }
+      },
+      {
+        "comment": "",
+        "key": "200%",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 2122
+        }
+      },
+      {
+        "comment": "",
+        "key": "Colors",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 2182
+        }
+      },
+      {
+        "comment": "",
+        "key": "Head:",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 2196
+        }
+      },
+      {
+        "comment": "",
+        "key": "",
+        "location": {
+          "startingColumn": 37,
+          "startingLine": 2198
+        }
+      },
+      {
+        "comment": "",
+        "key": "Torso:",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 2203
+        }
+      },
+      {
+        "comment": "",
+        "key": "",
+        "location": {
+          "startingColumn": 37,
+          "startingLine": 2205
+        }
+      },
+      {
+        "comment": "",
+        "key": "Left Arm:",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 2210
+        }
+      },
+      {
+        "comment": "",
+        "key": "",
+        "location": {
+          "startingColumn": 37,
+          "startingLine": 2212
+        }
+      },
+      {
+        "comment": "",
+        "key": "Right Arm:",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 2217
+        }
+      },
+      {
+        "comment": "",
+        "key": "",
+        "location": {
+          "startingColumn": 37,
+          "startingLine": 2219
+        }
+      },
+      {
+        "comment": "",
+        "key": "Hands:",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 2224
+        }
+      },
+      {
+        "comment": "",
+        "key": "",
+        "location": {
+          "startingColumn": 37,
+          "startingLine": 2226
+        }
+      },
+      {
+        "comment": "",
+        "key": "Left Leg:",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 2231
+        }
+      },
+      {
+        "comment": "",
+        "key": "",
+        "location": {
+          "startingColumn": 37,
+          "startingLine": 2233
+        }
+      },
+      {
+        "comment": "",
+        "key": "Right Leg:",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 2238
+        }
+      },
+      {
+        "comment": "",
+        "key": "",
+        "location": {
+          "startingColumn": 37,
+          "startingLine": 2240
+        }
+      },
+      {
+        "comment": "",
+        "key": "Feet:",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 2245
+        }
+      },
+      {
+        "comment": "",
+        "key": "",
+        "location": {
+          "startingColumn": 37,
+          "startingLine": 2247
+        }
+      },
+      {
+        "comment": "",
+        "key": "Add Image Object",
+        "location": {
+          "startingColumn": 23,
+          "startingLine": 2263
+        }
+      },
+      {
+        "comment": "",
+        "key": "Current Objects:",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 2274
+        }
+      },
+      {
+        "comment": "",
+        "key": "Save Frame",
+        "location": {
+          "startingColumn": 27,
+          "startingLine": 2332
+        }
+      },
+      {
+        "comment": "",
+        "key": "Open Frame",
+        "location": {
+          "startingColumn": 27,
+          "startingLine": 2338
+        }
+      }
+    ]
+  },
+  "version": 1
+}

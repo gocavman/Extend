@@ -1,0 +1,312 @@
+{
+  "source": "/Users/cavan/Developer/Extend/Extend/Modules/ProgressModule.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "Log",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 38
+        }
+      },
+      {
+        "comment": "",
+        "key": "No workouts logged",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 85
+        }
+      },
+      {
+        "comment": "",
+        "key": "for %@",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 89
+        }
+      },
+      {
+        "comment": "",
+        "key": "%lld",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 281
+        }
+      },
+      {
+        "comment": "",
+        "key": "%lld lines",
+        "location": {
+          "startingColumn": 31,
+          "startingLine": 407
+        }
+      },
+      {
+        "comment": "",
+        "key": "%lld exercises",
+        "location": {
+          "startingColumn": 31,
+          "startingLine": 411
+        }
+      },
+      {
+        "comment": "",
+        "key": "Delete Workout Log?",
+        "location": {
+          "startingColumn": 20,
+          "startingLine": 771
+        }
+      },
+      {
+        "comment": "",
+        "key": "Workout Name",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 539
+        }
+      },
+      {
+        "comment": "",
+        "key": "Workout name",
+        "location": {
+          "startingColumn": 43,
+          "startingLine": 546
+        }
+      },
+      {
+        "comment": "",
+        "key": "Done",
+        "location": {
+          "startingColumn": 48,
+          "startingLine": 558
+        }
+      },
+      {
+        "comment": "",
+        "key": "Edit",
+        "location": {
+          "startingColumn": 57,
+          "startingLine": 558
+        }
+      },
+      {
+        "comment": "",
+        "key": "Date & Time",
+        "location": {
+          "startingColumn": 40,
+          "startingLine": 579
+        }
+      },
+      {
+        "comment": "",
+        "key": "Duration: %@",
+        "location": {
+          "startingColumn": 39,
+          "startingLine": 632
+        }
+      },
+      {
+        "comment": "",
+        "key": "Duration (hh:mm:ss)",
+        "location": {
+          "startingColumn": 42,
+          "startingLine": 590
+        }
+      },
+      {
+        "comment": "",
+        "key": "Hours",
+        "location": {
+          "startingColumn": 50,
+          "startingLine": 596
+        }
+      },
+      {
+        "comment": "",
+        "key": "0",
+        "location": {
+          "startingColumn": 55,
+          "startingLine": 599
+        }
+      },
+      {
+        "comment": "",
+        "key": "Mins",
+        "location": {
+          "startingColumn": 50,
+          "startingLine": 608
+        }
+      },
+      {
+        "comment": "",
+        "key": "0",
+        "location": {
+          "startingColumn": 55,
+          "startingLine": 611
+        }
+      },
+      {
+        "comment": "",
+        "key": "Secs",
+        "location": {
+          "startingColumn": 50,
+          "startingLine": 620
+        }
+      },
+      {
+        "comment": "",
+        "key": "0",
+        "location": {
+          "startingColumn": 55,
+          "startingLine": 623
+        }
+      },
+      {
+        "comment": "",
+        "key": "Workout Notes",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 651
+        }
+      },
+      {
+        "comment": "",
+        "key": "Exercise notes",
+        "location": {
+          "startingColumn": 43,
+          "startingLine": 730
+        }
+      },
+      {
+        "comment": "",
+        "key": "Set %lld",
+        "location": {
+          "startingColumn": 46,
+          "startingLine": 688
+        }
+      },
+      {
+        "comment": "",
+        "key": "×",
+        "location": {
+          "startingColumn": 50,
+          "startingLine": 699
+        }
+      },
+      {
+        "comment": "",
+        "key": "lbs",
+        "location": {
+          "startingColumn": 50,
+          "startingLine": 709
+        }
+      },
+      {
+        "comment": "",
+        "key": "%lld reps",
+        "location": {
+          "startingColumn": 50,
+          "startingLine": 715
+        }
+      },
+      {
+        "comment": "",
+        "key": "×",
+        "location": {
+          "startingColumn": 50,
+          "startingLine": 718
+        }
+      },
+      {
+        "comment": "",
+        "key": "Reps",
+        "location": {
+          "startingColumn": 55,
+          "startingLine": 693
+        }
+      },
+      {
+        "comment": "",
+        "key": "Weight",
+        "location": {
+          "startingColumn": 55,
+          "startingLine": 703
+        }
+      },
+      {
+        "comment": "",
+        "key": "Close",
+        "location": {
+          "startingColumn": 28,
+          "startingLine": 753
+        }
+      },
+      {
+        "comment": "",
+        "key": "Cancel",
+        "location": {
+          "startingColumn": 24,
+          "startingLine": 772
+        }
+      },
+      {
+        "comment": "",
+        "key": "Delete",
+        "location": {
+          "startingColumn": 24,
+          "startingLine": 773
+        }
+      },
+      {
+        "comment": "",
+        "key": "This will permanently delete this workout log.",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 778
+        }
+      },
+      {
+        "comment": "",
+        "key": "Export Data",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 828
+        }
+      },
+      {
+        "comment": "",
+        "key": "Export Workout History",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 800
+        }
+      },
+      {
+        "comment": "",
+        "key": "Export all workout logs to CSV format",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 804
+        }
+      },
+      {
+        "comment": "",
+        "key": "Export CSV",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 815
+        }
+      },
+      {
+        "comment": "",
+        "key": "Done",
+        "location": {
+          "startingColumn": 28,
+          "startingLine": 832
+        }
+      }
+    ]
+  },
+  "version": 1
+}

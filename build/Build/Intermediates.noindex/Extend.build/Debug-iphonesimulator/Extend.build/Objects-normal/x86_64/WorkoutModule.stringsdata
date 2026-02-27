@@ -1,0 +1,312 @@
+{
+  "source": "/Users/cavan/Developer/Extend/Extend/Modules/WorkoutModule.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "Delete Workout?",
+        "location": {
+          "startingColumn": 20,
+          "startingLine": 161
+        }
+      },
+      {
+        "comment": "",
+        "key": "Workout",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 47
+        }
+      },
+      {
+        "comment": "",
+        "key": "No workouts found",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 66
+        }
+      },
+      {
+        "comment": "",
+        "key": "Exercises: %lld (%@)",
+        "location": {
+          "startingColumn": 42,
+          "startingLine": 101
+        }
+      },
+      {
+        "comment": "",
+        "key": "Cancel",
+        "location": {
+          "startingColumn": 24,
+          "startingLine": 162
+        }
+      },
+      {
+        "comment": "",
+        "key": "Delete",
+        "location": {
+          "startingColumn": 24,
+          "startingLine": 165
+        }
+      },
+      {
+        "comment": "",
+        "key": "This will permanently delete the workout.",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 172
+        }
+      },
+      {
+        "comment": "",
+        "key": "Workout Details",
+        "location": {
+          "startingColumn": 25,
+          "startingLine": 229
+        }
+      },
+      {
+        "comment": "",
+        "key": "Exercises",
+        "location": {
+          "startingColumn": 25,
+          "startingLine": 235
+        }
+      },
+      {
+        "comment": "",
+        "key": "Workout Name",
+        "location": {
+          "startingColumn": 31,
+          "startingLine": 230
+        }
+      },
+      {
+        "comment": "",
+        "key": "Notes (optional)",
+        "location": {
+          "startingColumn": 31,
+          "startingLine": 231
+        }
+      },
+      {
+        "comment": "",
+        "key": "No exercises added",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 237
+        }
+      },
+      {
+        "comment": "",
+        "key": "Muscles: %@",
+        "location": {
+          "startingColumn": 46,
+          "startingLine": 280
+        }
+      },
+      {
+        "comment": "",
+        "key": "Equipment: %@",
+        "location": {
+          "startingColumn": 46,
+          "startingLine": 290
+        }
+      },
+      {
+        "comment": "",
+        "key": "Add Exercise",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 310
+        }
+      },
+      {
+        "comment": "",
+        "key": "Cancel",
+        "location": {
+          "startingColumn": 28,
+          "startingLine": 328
+        }
+      },
+      {
+        "comment": "",
+        "key": "Save",
+        "location": {
+          "startingColumn": 28,
+          "startingLine": 331
+        }
+      },
+      {
+        "comment": "",
+        "key": "Add Exercise",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 423
+        }
+      },
+      {
+        "comment": "",
+        "key": "Muscles: %@",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 404
+        }
+      },
+      {
+        "comment": "",
+        "key": "Equipment: %@",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 414
+        }
+      },
+      {
+        "comment": "",
+        "key": "Done",
+        "location": {
+          "startingColumn": 28,
+          "startingLine": 426
+        }
+      },
+      {
+        "comment": "",
+        "key": "Added %@",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 433
+        }
+      },
+      {
+        "comment": "",
+        "key": "%lld of %lld",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 496
+        }
+      },
+      {
+        "comment": "",
+        "key": "Muscles: %@",
+        "location": {
+          "startingColumn": 46,
+          "startingLine": 544
+        }
+      },
+      {
+        "comment": "",
+        "key": "Equipment: %@",
+        "location": {
+          "startingColumn": 46,
+          "startingLine": 554
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@",
+        "location": {
+          "startingColumn": 42,
+          "startingLine": 576
+        }
+      },
+      {
+        "comment": "",
+        "key": "No sets recorded",
+        "location": {
+          "startingColumn": 42,
+          "startingLine": 610
+        }
+      },
+      {
+        "comment": "",
+        "key": "Sets",
+        "location": {
+          "startingColumn": 42,
+          "startingLine": 596
+        }
+      },
+      {
+        "comment": "",
+        "key": "Set",
+        "location": {
+          "startingColumn": 58,
+          "startingLine": 618
+        }
+      },
+      {
+        "comment": "",
+        "key": "%lld",
+        "location": {
+          "startingColumn": 58,
+          "startingLine": 621
+        }
+      },
+      {
+        "comment": "",
+        "key": "Reps",
+        "location": {
+          "startingColumn": 58,
+          "startingLine": 631
+        }
+      },
+      {
+        "comment": "",
+        "key": "0",
+        "location": {
+          "startingColumn": 63,
+          "startingLine": 634
+        }
+      },
+      {
+        "comment": "",
+        "key": "Weight",
+        "location": {
+          "startingColumn": 58,
+          "startingLine": 652
+        }
+      },
+      {
+        "comment": "",
+        "key": "0.00",
+        "location": {
+          "startingColumn": 63,
+          "startingLine": 655
+        }
+      },
+      {
+        "comment": "",
+        "key": "Notes",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 699
+        }
+      },
+      {
+        "comment": "",
+        "key": "Add notes...",
+        "location": {
+          "startingColumn": 43,
+          "startingLine": 703
+        }
+      },
+      {
+        "comment": "",
+        "key": "Complete Workout",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 722
+        }
+      },
+      {
+        "comment": "",
+        "key": "Cancel",
+        "location": {
+          "startingColumn": 28,
+          "startingLine": 740
+        }
+      }
+    ]
+  },
+  "version": 1
+}

@@ -1,0 +1,104 @@
+{
+  "source": "/Users/cavan/Developer/Extend/Extend/Modules/Game1Module.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "Unlocks at Level %lld",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 1771
+        }
+      },
+      {
+        "comment": "",
+        "key": "Catchables (Always Available)",
+        "location": {
+          "startingColumn": 18,
+          "startingLine": 1798
+        }
+      },
+      {
+        "comment": "",
+        "key": "Actions & Points",
+        "location": {
+          "startingColumn": 18,
+          "startingLine": 1808
+        }
+      },
+      {
+        "comment": "",
+        "key": "Combo Boost",
+        "location": {
+          "startingColumn": 18,
+          "startingLine": 1825
+        }
+      },
+      {
+        "comment": "",
+        "key": "Mix different level-based actions (Rest, Run, Jump, Yoga, Bicep Curls, Kettlebell Swings, Push Ups, Pull Ups, Meditation) in one session for a bonus! 2 actions = +2%, 3 actions = +3%, etc. Max combo = your current level. Leaves & shakers give points but don't count toward combo.",
+        "location": {
+          "startingColumn": 18,
+          "startingLine": 1828
+        }
+      },
+      {
+        "comment": "",
+        "key": "Developer Debug",
+        "location": {
+          "startingColumn": 18,
+          "startingLine": 1833
+        }
+      },
+      {
+        "comment": "",
+        "key": "Show Gesture Areas:",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 1838
+        }
+      },
+      {
+        "comment": "",
+        "key": "",
+        "location": {
+          "startingColumn": 24,
+          "startingLine": 1841
+        }
+      },
+      {
+        "comment": "",
+        "key": "Set Level:",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 1845
+        }
+      },
+      {
+        "comment": "",
+        "key": "Level %lld",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 1850
+        }
+      },
+      {
+        "comment": "",
+        "key": "Reset All Game Data",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 1867
+        }
+      },
+      {
+        "comment": "",
+        "key": "Statistics",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 1893
+        }
+      }
+    ]
+  },
+  "version": 1
+}

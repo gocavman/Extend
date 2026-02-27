@@ -1,0 +1,202 @@
+[
+  {
+    "id": "rest",
+    "displayName": "Rest",
+    "unlockLevel": 1,
+    "pointsPerCompletion": 1,
+    "variableTiming": null,
+    "flipMode": "none",
+    "supportsSpeedBoost": false,
+    "allowMovement": false,
+    "countdown": true,
+    "floatingText": {
+      "timing": 2.0,
+      "text": ["zzz"],
+      "random": false,
+      "loop": true,
+      "color": "gray"
+    },
+    "stickFigureAnimation": {
+      "animationName": "Rest",
+      "frameNumbers": [1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,1],
+      "baseFrameInterval": 0.5
+    }
+  },
+  {
+    "id": "run",
+    "displayName": "Run",
+    "unlockLevel": 2,
+    "pointsPerCompletion": 0,
+    "pointsPerInterval": {
+      "interval": 1.0,
+      "points": 1
+    },
+    "variableTiming": null,
+    "flipMode": "none",
+    "supportsSpeedBoost": true,
+    "allowMovement": true,
+    "stickFigureAnimation": {
+      "animationName": "Move",
+      "frameNumbers": [1, 2, 3, 4],
+      "baseFrameInterval": 0.15
+    }
+  },
+  {
+    "id": "jump",
+    "displayName": "Jump",
+    "unlockLevel": 3,
+    "pointsPerCompletion": 3,
+    "variableTiming": null,
+    "flipMode": "none",
+    "supportsSpeedBoost": true,
+    "allowMovement": false,
+    "floatingText": {
+      "timing": 0.5,
+      "text": ["jump", "whoohoo", "weee", "yay!"],
+      "random": true,
+      "loop": true,
+      "color": "red"
+    },
+    "stickFigureAnimation": {
+      "animationName": "Jump",
+      "frameNumbers": [1, 2, 3, 4, 4, 3, 2, 1],
+      "baseFrameInterval": 0.1
+    }
+  },
+  {
+    "id": "jumpingjack",
+    "displayName": "Jumping Jacks",
+    "unlockLevel": 4,
+    "pointsPerCompletion": 4,
+    "variableTiming": null,
+    "flipMode": "none",
+    "supportsSpeedBoost": true,
+    "allowMovement": false,
+    "floatingText": {
+      "timing": 0.5,
+      "text": ["jump", "ing", "jacks"],
+      "random": false,
+      "loop": true,
+      "color": "red"
+    },
+    "stickFigureAnimation": {
+      "animationName": "Jumpingjack",
+      "frameNumbers": [1,2,3,4,1,2,3,4,1,2,3,4,1,2,3,4,1,2,3,4],
+      "baseFrameInterval": 0.15
+    }
+  },
+  {
+    "id": "yoga",
+    "displayName": "Yoga",
+    "unlockLevel": 5,
+    "pointsPerCompletion": 5,
+    "variableTiming": null,
+    "flipMode": "none",
+    "supportsSpeedBoost": true,
+    "allowMovement": false,
+    "countdown": true,
+    "floatingText": {
+      "timing": 5.0,
+      "text": ["Breathe in", "Hold it", "Breathe out", "Relax"],
+      "random": false,
+      "loop": true,
+      "color": "blue"
+    },
+    "stickFigureAnimation": {
+      "animationName": "Yoga",
+      "frameNumbers": [1, 2, 3, 4],
+      "baseFrameInterval": 2.0
+    }
+  },
+  {
+    "id": "curls",
+    "displayName": "Bicep Curls",
+    "unlockLevel": 6,
+    "pointsPerCompletion": 6,
+    "variableTiming": null,
+    "flipMode": "alternating",
+    "supportsSpeedBoost": true,
+    "allowMovement": true,
+    "stickFigureAnimation": {
+      "animationName": "Bicep Curls",
+      "frameNumbers": [1, 2, 3, 4],
+      "baseFrameInterval": 0.4
+    }
+  },
+  {
+    "id": "kettlebell",
+    "displayName": "Kettlebell Swings",
+    "unlockLevel": 7,
+    "pointsPerCompletion": 7,
+    "variableTiming": null,
+    "flipMode": "random",
+    "supportsSpeedBoost": true,
+    "allowMovement": true,
+    "stickFigureAnimation": {
+      "animationName": "Kettlebell Swings",
+      "frameNumbers": [1, 2, 3, 4],
+      "baseFrameInterval": 0.27
+    }
+  },
+  {
+    "id": "pushup",
+    "displayName": "Push Ups",
+    "unlockLevel": 8,
+    "pointsPerCompletion": 8,
+    "variableTiming": null,
+    "flipMode": "random",
+    "supportsSpeedBoost": true,
+    "allowMovement": true,
+    "stickFigureAnimation": {
+      "animationName": "Push Ups",
+      "frameNumbers": [1, 2, 3, 4],
+      "baseFrameInterval": 0.4
+    }
+  },
+  {
+    "id": "pullup",
+    "displayName": "Pull Ups",
+    "unlockLevel": 9,
+    "pointsPerCompletion": 9,
+    "variableTiming": null,
+    "flipMode": "none",
+    "supportsSpeedBoost": true,
+    "allowMovement": true,
+    "floatingText": {
+      "timing": 0.4,
+      "text": ["1", "2", "3", "4", "5", "6", "97", "98", "99", "100!"],
+      "random": false,
+      "loop": false,
+      "color": "red"
+    },
+    "stickFigureAnimation": {
+      "animationName": "Pull up",
+      "frameNumbers": [1, 2, 3, 4, 3, 4, 3, 4, 3, 4, 3, 4, 3, 4, 3, 4, 3, 4, 3, 4, 3, 4, 3, 2, 1],
+      "baseFrameInterval": 0.2
+    }
+  },
+  {
+    "id": "meditation",
+    "displayName": "Meditation",
+    "unlockLevel": 10,
+    "pointsPerCompletion": 10,
+    "variableTiming": {
+      "1": 5.0
+    },
+    "flipMode": "none",
+    "supportsSpeedBoost": false,
+    "allowMovement": false,
+    "floatingText": {
+      "timing": 5.0,
+      "text": ["Breathe in", "Hold it", "Breathe out", "Relax"],
+      "random": false,
+      "loop": true,
+      "color": "blue"
+    },
+    "stickFigureAnimation": {
+      "animationName": "Meditation",
+      "frameNumbers": [1, 1, 1, 1, 1, 2, 3, 3, 3, 3, 3, 1, 1, 1, 1, 1],
+      "baseFrameInterval": 0.2
+    }
+  }
+]

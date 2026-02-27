@@ -1,0 +1,40 @@
+{
+  "source": "/Users/cavan/Developer/Extend/Extend/Modules/StickFigureAnimatorModule.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "Stick Figure Animator",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 58
+        }
+      },
+      {
+        "comment": "",
+        "key": "Animation Creator",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 33
+        }
+      },
+      {
+        "comment": "",
+        "key": "Create New Animation",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 45
+        }
+      },
+      {
+        "comment": "",
+        "key": "Design custom stick figure poses",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 47
+        }
+      }
+    ]
+  },
+  "version": 1
+}
