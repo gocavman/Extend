@@ -850,15 +850,15 @@ struct StickFigure2DView: View {
                 // Used for: upper torso (neck point → wide upper-middle → waist point)
                 // Creates a diamond shape with peak shifted upward toward neck
                 
-                // Peak is at t=0.33 (one-third down from neck)
-                let peakT = 0.33
+                // Peak is at t=0.2 (very close to neck, only 20% down)
+                let peakT = 0.2
                 var distFromPeak: CGFloat
                 
                 if t <= peakT {
-                    // Top half: from neck (t=0) to peak (t=0.33)
+                    // Top half: from neck (t=0) to peak (t=0.2)
                     distFromPeak = (peakT - t) / peakT  // Normalized: 1 at neck, 0 at peak
                 } else {
-                    // Bottom half: from peak (t=0.33) to waist (t=1)
+                    // Bottom half: from peak (t=0.2) to waist (t=1)
                     distFromPeak = (t - peakT) / (1.0 - peakT)  // Normalized: 0 at peak, 1 at waist
                 }
                 
