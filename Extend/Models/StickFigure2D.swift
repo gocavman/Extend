@@ -645,7 +645,8 @@ struct GridOverlay: View {
     }
     
     private func drawGrid(in context: GraphicsContext, size: CGSize) {
-        var path = Path()
+        var regularPath = Path()
+        var crosshairPath = Path()
         
         // Calculate offset to center grid on the waist position (canvas center)
         // The waist is at the center of the canvas
@@ -655,40 +656,83 @@ struct GridOverlay: View {
         // Draw vertical lines - centered on canvas center
         var x: CGFloat = canvasCenter.x - offset
         while x <= size.width {
-            path.move(to: CGPoint(x: x, y: 0))
-            path.addLine(to: CGPoint(x: x, y: size.height))
+            let isCenter = abs(x - canvasCenter.x) < 0.1
+            let lineToAdd: (inout Path) -> Void = { path in
+                path.move(to: CGPoint(x: x, y: 0))
+                path.addLine(to: CGPoint(x: x, y: size.height))
+            }
+            
+            if isCenter {
+                lineToAdd(&crosshairPath)
+            } else {
+                lineToAdd(&regularPath)
+            }
             x += gridSpacing
         }
         
         // Also draw lines to the left of center
         x = canvasCenter.x - offset - gridSpacing
         while x >= 0 {
-            path.move(to: CGPoint(x: x, y: 0))
-            path.addLine(to: CGPoint(x: x, y: size.height))
+            let isCenter = abs(x - canvasCenter.x) < 0.1
+            let lineToAdd: (inout Path) -> Void = { path in
+                path.move(to: CGPoint(x: x, y: 0))
+                path.addLine(to: CGPoint(x: x, y: size.height))
+            }
+            
+            if isCenter {
+                lineToAdd(&crosshairPath)
+            } else {
+                lineToAdd(&regularPath)
+            }
             x -= gridSpacing
         }
         
         // Draw horizontal lines - centered on canvas center
         var y: CGFloat = canvasCenter.y - offset
         while y <= size.height {
-            path.move(to: CGPoint(x: 0, y: y))
-            path.addLine(to: CGPoint(x: size.width, y: y))
+            let isCenter = abs(y - canvasCenter.y) < 0.1
+            let lineToAdd: (inout Path) -> Void = { path in
+                path.move(to: CGPoint(x: 0, y: y))
+                path.addLine(to: CGPoint(x: size.width, y: y))
+            }
+            
+            if isCenter {
+                lineToAdd(&crosshairPath)
+            } else {
+                lineToAdd(&regularPath)
+            }
             y += gridSpacing
         }
         
         // Also draw lines above center
         y = canvasCenter.y - offset - gridSpacing
         while y >= 0 {
-            path.move(to: CGPoint(x: 0, y: y))
-            path.addLine(to: CGPoint(x: size.width, y: y))
+            let isCenter = abs(y - canvasCenter.y) < 0.1
+            let lineToAdd: (inout Path) -> Void = { path in
+                path.move(to: CGPoint(x: 0, y: y))
+                path.addLine(to: CGPoint(x: size.width, y: y))
+            }
+            
+            if isCenter {
+                lineToAdd(&crosshairPath)
+            } else {
+                lineToAdd(&regularPath)
+            }
             y -= gridSpacing
         }
         
-        // Stroke the grid with a darker color
+        // Stroke regular grid with lighter color
         context.stroke(
-            path,
-            with: .color(Color.gray.opacity(0.3)),  // Darker (from 0.15)
+            regularPath,
+            with: .color(Color.gray.opacity(0.3)),
             lineWidth: 0.5
+        )
+        
+        // Stroke crosshair (center lines) with darker color and thicker width
+        context.stroke(
+            crosshairPath,
+            with: .color(Color.gray.opacity(0.8)),
+            lineWidth: 2.0
         )
     }
 }
@@ -1316,7 +1360,6 @@ struct StickFigure2DEditorView: View {
     @State private var isFigureSizeCollapsed = true // Figure Size section collapsed
     @State private var isFramesSectionCollapsed = true // Frame section collapsed
     @State private var isAnglesCollapsed = false // Angle sliders subsection
-    @State private var isStrokeAndFusiformCollapsed = false // Stroke and fusiform controls subsection (now parent)
     @State private var isStrokeThicknessCollapsed = false // Stroke thickness subsection
     @State private var isFusiformCollapsed = true // Fusiform subsection (collapsed by default)
     @State private var canvasOffset: CGSize = .zero // Offset for panning the canvas
@@ -2009,8 +2052,11 @@ struct StickFigure2DEditorView: View {
                     // MARK: - Figure Size Subsection
                     figureSizeSubsectionView
                     
-                    // MARK: - Stroke & Fusiform Subsection
-                    strokeAndFusiformSubsectionView
+                    // MARK: - Stroke Thickness Subsection
+                    strokeThicknessSubsectionView
+                    
+                    // MARK: - Fusiform Subsection
+                    fusiformSubsectionView
                     
                     // MARK: - Angles Subsection
                     anglesSubsectionView
@@ -2240,36 +2286,6 @@ struct StickFigure2DEditorView: View {
         }
     }
     
-    var strokeAndFusiformSubsectionView: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Button(action: {
-                withAnimation {
-                    isStrokeAndFusiformCollapsed.toggle()
-                }
-            }) {
-                HStack {
-                    Text("Stroke & Fusiform")
-                        .font(.caption)
-                        .fontWeight(.semibold)
-                    Spacer()
-                    Image(systemName: isStrokeAndFusiformCollapsed ? "chevron.right" : "chevron.down")
-                        .font(.caption2)
-                        .foregroundColor(.gray)
-                }
-            }
-            
-            if !isStrokeAndFusiformCollapsed {
-                VStack(alignment: .leading, spacing: 8) {
-                    // MARK: - Stroke Thickness Subsection
-                    strokeThicknessSubsectionView
-                    
-                    // MARK: - Fusiform Subsection
-                    fusiformSubsectionView
-                }
-                .padding(.top, 8)
-            }
-        }
-    }
     
     var strokeThicknessSubsectionView: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -2282,7 +2298,7 @@ struct StickFigure2DEditorView: View {
                     Text("Stroke Thickness")
                         .font(.caption2)
                         .fontWeight(.semibold)
-                        .foregroundColor(.gray)
+                        
                     Spacer()
                     Image(systemName: isStrokeThicknessCollapsed ? "chevron.right" : "chevron.down")
                         .font(.caption2)
@@ -2406,7 +2422,7 @@ struct StickFigure2DEditorView: View {
                     Text("Fusiform (Taper)")
                         .font(.caption2)
                         .fontWeight(.semibold)
-                        .foregroundColor(.gray)
+                        
                     Spacer()
                     Image(systemName: isFusiformCollapsed ? "chevron.right" : "chevron.down")
                         .font(.caption2)
