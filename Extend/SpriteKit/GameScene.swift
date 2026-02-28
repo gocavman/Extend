@@ -424,6 +424,21 @@ class GameScene: SKScene {
             drawSkeletonConnector(from: rightShoulderPos, to: rightUpperArmMid, color: toSKColor(mutableFigure.rightUpperArmColor))
             drawSkeletonConnector(from: rightUpperArmMid, to: rightUpperArmEnd, color: toSKColor(mutableFigure.rightUpperArmColor))
             drawSkeletonConnector(from: rightUpperArmEnd, to: rightLowerArmMid, color: toSKColor(mutableFigure.rightLowerArmColor))
+            
+            // Add joint caps at connection points to fill gaps (elbows, knees, waist, shoulders)
+            let jointCapRadius = max(jointThickness * 0.3 * scale, 1.5)
+            
+            // LEFT ARM ELBOW - blend upper and lower arm colors by using upper arm color
+            drawCircle(at: leftUpperArmEnd, radius: jointCapRadius, color: toSKColor(mutableFigure.leftUpperArmColor))
+            
+            // RIGHT ARM ELBOW
+            drawCircle(at: rightUpperArmEnd, radius: jointCapRadius, color: toSKColor(mutableFigure.rightUpperArmColor))
+            
+            // LEFT LEG KNEE - blend upper and lower leg colors by using upper leg color
+            drawCircle(at: leftUpperLegEnd, radius: jointCapRadius, color: toSKColor(mutableFigure.leftUpperLegColor))
+            
+            // RIGHT LEG KNEE
+            drawCircle(at: rightUpperLegEnd, radius: jointCapRadius, color: toSKColor(mutableFigure.rightUpperLegColor))
         }
         
         
