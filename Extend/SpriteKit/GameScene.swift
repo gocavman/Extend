@@ -108,14 +108,14 @@ class GameScene: SKScene {
         print("🎮 Waist: \(waistPos), Neck: \(neckPos), Head: \(headPos)")
         print("🎮 Left arm: shoulder->elbow->forearm = \(leftShoulderPos) -> \(leftUpperArmEnd) -> \(leftForearmEnd)")
         
-        // Helper to draw a tapered segment (respects fusiform values)
-        func drawTaperedSegment(from: CGPoint, to: CGPoint, color: SKColor, strokeThickness: CGFloat, fusiform: CGFloat, inverted: Bool) {
+        // Helper to draw a tapered segment (respects fusiform values) - matches StickFigure2D editor exactly
+        func drawTaperedSegment(from: CGPoint, to: CGPoint, color: SKColor, strokeThickness: CGFloat, fusiform: CGFloat, inverted: Bool, peakPosition: CGFloat = 0.2) {
             // Convert to relative coordinates and apply scale
             let fromRelative = CGPoint(x: (from.x - baseCenter.x) * scale, y: (baseCenter.y - from.y) * scale)
             let toRelative = CGPoint(x: (to.x - baseCenter.x) * scale, y: (baseCenter.y - to.y) * scale)
             
-            if fusiform <= 0 {
-                // No taper, just draw a line
+            // If fusiform is 0, just draw a simple line
+            if fusiform == 0 {
                 let path = UIBezierPath()
                 path.move(to: fromRelative)
                 path.addLine(to: toRelative)
@@ -124,66 +124,95 @@ class GameScene: SKScene {
                 line.lineWidth = max(strokeThickness * scale, 1.0)
                 line.zPosition = 1
                 container.addChild(line)
-            } else {
-                // Draw tapered segment
-                let dx = toRelative.x - fromRelative.x
-                let dy = toRelative.y - fromRelative.y
-                let length = sqrt(dx * dx + dy * dy)
+                return
+            }
+            
+            // Calculate the direction and length of the segment
+            let dx = toRelative.x - fromRelative.x
+            let dy = toRelative.y - fromRelative.y
+            let length = sqrt(dx * dx + dy * dy)
+            
+            guard length > 0 else { return }
+            
+            // Normalized direction
+            let dirX = dx / length
+            let dirY = dy / length
+            
+            // Perpendicular direction (for width)
+            let perpX = -dirY
+            let perpY = dirX
+            
+            // Create a tapered polygon with smooth width variation
+            var topEdgePoints: [CGPoint] = []
+            var bottomEdgePoints: [CGPoint] = []
+            
+            // Generate points along the length with varying width - use 20 segments for smooth curves
+            let numSegments = 20
+            
+            for i in 0...numSegments {
+                let t = CGFloat(i) / CGFloat(numSegments)
+                let pos = CGPoint(x: fromRelative.x + dirX * t * length, y: fromRelative.y + dirY * t * length)
                 
-                if length <= 0 {
-                    return
+                // Calculate width at this point based on taper profile
+                var widthFactor: CGFloat = 1.0
+                
+                if inverted {
+                    // DIAMOND: Point at START and END, wide in MIDDLE
+                    let peakT = peakPosition
+                    var distFromPeak: CGFloat
+                    
+                    if t <= peakT {
+                        // Top half: from start to peak
+                        distFromPeak = (peakT - t) / peakT  // Normalized: 1 at start, 0 at peak
+                    } else {
+                        // Bottom half: from peak to end
+                        distFromPeak = (t - peakT) / (1.0 - peakT)  // Normalized: 0 at peak, 1 at end
+                    }
+                    
+                    // Use inverted quadratic easing to create the diamond point
+                    let easeT = max(0, 1.0 - (distFromPeak * distFromPeak))
+                    widthFactor = fusiform * easeT  // Removed the 0.5 reduction - use full width for proper diamonds
+                } else {
+                    // NORMAL: Middle BULGE profile, small at both ends
+                    let distFromCenter = abs(t - 0.5) * 2.0  // 0 at middle, 1 at ends
+                    widthFactor = 1.0 + (fusiform * (1.0 - distFromCenter))
                 }
                 
-                let perpX = -dy / length
-                let perpY = dx / length
+                let width = (strokeThickness / 2) * widthFactor
                 
-                // Calculate width at start and end
-                // Use a more conservative multiplier - torsos were getting too large
-                // NOTE: Do NOT scale baseWidth by scale - it's a visual thickness, not a position
-                let baseWidth = strokeThickness * 1.5
+                // Top and bottom edges
+                let topPoint = CGPoint(x: pos.x + perpX * width, y: pos.y + perpY * width)
+                let bottomPoint = CGPoint(x: pos.x - perpX * width, y: pos.y - perpY * width)
                 
-                // Simple taper: always wider at start, narrower at end
-                // fusiform controls how much narrower the end gets
-                // Use a more aggressive taper factor so the reduction is more visible
-                let taperFactor = 1.0 - (fusiform * 0.18)  // Increased from 0.12 for better taper
-                let endWidth = baseWidth * max(0.15, taperFactor)  // Keep at least 15% width at narrow end
-                let startWidth = baseWidth
-                
-                // Create tapered path with curved sides
-                let path = UIBezierPath()
-                
-                // Calculate key points to break up complex expressions
-                let startLeftX = fromRelative.x + perpX * startWidth / 2
-                let startLeftY = fromRelative.y + perpY * startWidth / 2
-                let startRightX = fromRelative.x - perpX * startWidth / 2
-                let startRightY = fromRelative.y - perpY * startWidth / 2
-                let endLeftX = toRelative.x + perpX * endWidth / 2
-                let endLeftY = toRelative.y + perpY * endWidth / 2
-                let endRightX = toRelative.x - perpX * endWidth / 2
-                let endRightY = toRelative.y - perpY * endWidth / 2
-                let midX = fromRelative.x + (toRelative.x - fromRelative.x) * 0.5
-                let midY = fromRelative.y + (toRelative.y - fromRelative.y) * 0.5
-                
-                // Start point left side
-                path.move(to: CGPoint(x: startLeftX, y: startLeftY))
-                // Top side to end (use curve for smooth taper)
-                path.addQuadCurve(to: CGPoint(x: endLeftX, y: endLeftY),
-                                 controlPoint: CGPoint(x: midX + perpX * startWidth / 2, y: midY + perpY * startWidth / 2))
-                // End point right side
-                path.addLine(to: CGPoint(x: endRightX, y: endRightY))
-                // Bottom side back to start (use curve for smooth taper)
-                path.addQuadCurve(to: CGPoint(x: startRightX, y: startRightY),
-                                 controlPoint: CGPoint(x: midX - perpX * startWidth / 2, y: midY - perpY * startWidth / 2))
-                
-                path.close()
-                
-                let shape = SKShapeNode(path: path.cgPath)
-                shape.fillColor = color
-                shape.strokeColor = color
-                shape.lineWidth = 0
-                shape.zPosition = 1
-                container.addChild(shape)
+                topEdgePoints.append(topPoint)
+                bottomEdgePoints.append(bottomPoint)
             }
+            
+            // Create the path by drawing the top edge, then the bottom edge backwards
+            let path = UIBezierPath()
+            
+            if let firstPoint = topEdgePoints.first {
+                path.move(to: firstPoint)
+            }
+            
+            // Draw top edge
+            for i in 1..<topEdgePoints.count {
+                path.addLine(to: topEdgePoints[i])
+            }
+            
+            // Draw bottom edge in reverse
+            for i in stride(from: bottomEdgePoints.count - 1, through: 0, by: -1) {
+                path.addLine(to: bottomEdgePoints[i])
+            }
+            
+            path.close()
+            
+            let shape = SKShapeNode(path: path.cgPath)
+            shape.fillColor = color
+            shape.strokeColor = color
+            shape.lineWidth = 0
+            shape.zPosition = 1
+            container.addChild(shape)
         }
         
         // Helper to draw a line segment between two points
@@ -215,22 +244,24 @@ class GameScene: SKScene {
         }
         
         // Draw lower body first (back) - with fusiform
-        drawTaperedSegment(from: waistPos, to: leftUpperLegEnd, color: SKColor(cgColor: figure.leftUpperLegColor.cgColor!), strokeThickness: figure.strokeThicknessUpperLegs, fusiform: figure.fusiformUpperLegs, inverted: true)
-        drawTaperedSegment(from: leftUpperLegEnd, to: leftFootEnd, color: SKColor(cgColor: figure.leftLowerLegColor.cgColor!), strokeThickness: figure.strokeThicknessLowerLegs, fusiform: figure.fusiformLowerLegs, inverted: true)
-        drawTaperedSegment(from: waistPos, to: rightUpperLegEnd, color: SKColor(cgColor: figure.rightUpperLegColor.cgColor!), strokeThickness: figure.strokeThicknessUpperLegs, fusiform: figure.fusiformUpperLegs, inverted: true)
-        drawTaperedSegment(from: rightUpperLegEnd, to: rightFootEnd, color: SKColor(cgColor: figure.rightLowerLegColor.cgColor!), strokeThickness: figure.strokeThicknessLowerLegs, fusiform: figure.fusiformLowerLegs, inverted: true)
+        drawTaperedSegment(from: waistPos, to: leftUpperLegEnd, color: SKColor(cgColor: figure.leftUpperLegColor.cgColor!), strokeThickness: figure.strokeThicknessUpperLegs, fusiform: figure.fusiformUpperLegs, inverted: true, peakPosition: 0.2)
+        drawTaperedSegment(from: leftUpperLegEnd, to: leftFootEnd, color: SKColor(cgColor: figure.leftLowerLegColor.cgColor!), strokeThickness: figure.strokeThicknessLowerLegs, fusiform: figure.fusiformLowerLegs, inverted: true, peakPosition: 0.2)
+        drawTaperedSegment(from: waistPos, to: rightUpperLegEnd, color: SKColor(cgColor: figure.rightUpperLegColor.cgColor!), strokeThickness: figure.strokeThicknessUpperLegs, fusiform: figure.fusiformUpperLegs, inverted: true, peakPosition: 0.2)
+        drawTaperedSegment(from: rightUpperLegEnd, to: rightFootEnd, color: SKColor(cgColor: figure.rightLowerLegColor.cgColor!), strokeThickness: figure.strokeThicknessLowerLegs, fusiform: figure.fusiformLowerLegs, inverted: true, peakPosition: 0.2)
         
-        // Draw torso - with fusiform
-        drawTaperedSegment(from: waistPos, to: midTorsoPos, color: SKColor(cgColor: figure.torsoColor.cgColor!), strokeThickness: figure.strokeThicknessLowerTorso, fusiform: figure.fusiformLowerTorso, inverted: true)
-        drawTaperedSegment(from: midTorsoPos, to: neckPos, color: SKColor(cgColor: figure.torsoColor.cgColor!), strokeThickness: figure.strokeThicknessUpperTorso, fusiform: figure.fusiformUpperTorso, inverted: true)
+        // Draw torso - ONE SEGMENT from neck to waist, NOT split into upper/lower
+        // This is the critical fix - the editor draws it as one continuous piece
+        drawTaperedSegment(from: neckPos, to: waistPos, color: SKColor(cgColor: figure.torsoColor.cgColor!), strokeThickness: figure.strokeThicknessUpperTorso, fusiform: figure.fusiformUpperTorso, inverted: true, peakPosition: 0.2)
         drawLine(from: neckPos, to: headPos, color: SKColor(cgColor: figure.torsoColor.cgColor!), width: figure.strokeThickness)
         
-        // Draw arms - with fusiform
-        drawTaperedSegment(from: leftShoulderPos, to: leftUpperArmEnd, color: SKColor(cgColor: figure.leftUpperArmColor.cgColor!), strokeThickness: figure.strokeThicknessUpperArms, fusiform: figure.fusiformUpperArms, inverted: true)
-        drawTaperedSegment(from: leftUpperArmEnd, to: leftForearmEnd, color: SKColor(cgColor: figure.leftLowerArmColor.cgColor!), strokeThickness: figure.strokeThicknessLowerArms, fusiform: figure.fusiformLowerArms, inverted: true)
+        // Draw arms - with correct peak positions matching the editor
+        // Upper arms: peak at 50% (middle of bicep)
+        drawTaperedSegment(from: leftShoulderPos, to: leftUpperArmEnd, color: SKColor(cgColor: figure.leftUpperArmColor.cgColor!), strokeThickness: figure.strokeThicknessUpperArms, fusiform: figure.fusiformUpperArms, inverted: true, peakPosition: 0.5)
+        // Lower arms: peak at 35% (closer to elbow)
+        drawTaperedSegment(from: leftUpperArmEnd, to: leftForearmEnd, color: SKColor(cgColor: figure.leftLowerArmColor.cgColor!), strokeThickness: figure.strokeThicknessLowerArms, fusiform: figure.fusiformLowerArms, inverted: true, peakPosition: 0.35)
         
-        drawTaperedSegment(from: rightShoulderPos, to: rightUpperArmEnd, color: SKColor(cgColor: figure.rightUpperArmColor.cgColor!), strokeThickness: figure.strokeThicknessUpperArms, fusiform: figure.fusiformUpperArms, inverted: true)
-        drawTaperedSegment(from: rightUpperArmEnd, to: rightForearmEnd, color: SKColor(cgColor: figure.rightLowerArmColor.cgColor!), strokeThickness: figure.strokeThicknessLowerArms, fusiform: figure.fusiformLowerArms, inverted: true)
+        drawTaperedSegment(from: rightShoulderPos, to: rightUpperArmEnd, color: SKColor(cgColor: figure.rightUpperArmColor.cgColor!), strokeThickness: figure.strokeThicknessUpperArms, fusiform: figure.fusiformUpperArms, inverted: true, peakPosition: 0.5)
+        drawTaperedSegment(from: rightUpperArmEnd, to: rightForearmEnd, color: SKColor(cgColor: figure.rightLowerArmColor.cgColor!), strokeThickness: figure.strokeThicknessLowerArms, fusiform: figure.fusiformLowerArms, inverted: true, peakPosition: 0.35)
         
         // Draw hands and feet
         let handColor = SKColor(cgColor: figure.handColor.cgColor!)
@@ -247,6 +278,64 @@ class GameScene: SKScene {
         let headRadius = figure.headRadius * 1.2  // Reduced from 3.5 to 1.2 - much smaller
         print("🎮 Drawing head at \(headPos) with radius \(headRadius)")
         drawCircle(at: headPos, radius: headRadius, color: SKColor(cgColor: figure.headColor.cgColor!))
+        
+        // Draw skeleton connectors (joint lines) with proper scaling
+        // These connect body parts at joints and are controlled by the joint color and thickness sliders
+        let jointColor = SKColor(cgColor: figure.jointColor.cgColor!)
+        let jointThickness = figure.strokeThicknessJoints
+        
+        // Create a path for all skeleton connectors
+        var skeletonPath = UIBezierPath()
+        
+        // Helper to add connector lines with proper scaling
+        func addConnectorLine(from: CGPoint, to: CGPoint) {
+            let fromRelative = CGPoint(x: (from.x - baseCenter.x) * scale, y: (baseCenter.y - from.y) * scale)
+            let toRelative = CGPoint(x: (to.x - baseCenter.x) * scale, y: (baseCenter.y - to.y) * scale)
+            skeletonPath.move(to: fromRelative)
+            skeletonPath.addLine(to: toRelative)
+        }
+        
+        // Calculate midpoints for connectors
+        let leftUpperLegMid = CGPoint(x: (waistPos.x + leftUpperLegEnd.x) * 0.5, y: (waistPos.y + leftUpperLegEnd.y) * 0.5)
+        let rightUpperLegMid = CGPoint(x: (waistPos.x + rightUpperLegEnd.x) * 0.5, y: (waistPos.y + rightUpperLegEnd.y) * 0.5)
+        let leftLowerLegMid = CGPoint(x: (leftUpperLegEnd.x + leftFootEnd.x) * 0.5, y: (leftUpperLegEnd.y + leftFootEnd.y) * 0.5)
+        let rightLowerLegMid = CGPoint(x: (rightUpperLegEnd.x + rightFootEnd.x) * 0.5, y: (rightUpperLegEnd.y + rightFootEnd.y) * 0.5)
+        let leftUpperArmMid = CGPoint(x: (leftShoulderPos.x + leftUpperArmEnd.x) * 0.5, y: (leftShoulderPos.y + leftUpperArmEnd.y) * 0.5)
+        let leftLowerArmMid = CGPoint(x: (leftUpperArmEnd.x + leftForearmEnd.x) * 0.5, y: (leftUpperArmEnd.y + leftForearmEnd.y) * 0.5)
+        let rightUpperArmMid = CGPoint(x: (rightShoulderPos.x + rightUpperArmEnd.x) * 0.5, y: (rightShoulderPos.y + rightUpperArmEnd.y) * 0.5)
+        let rightLowerArmMid = CGPoint(x: (rightUpperArmEnd.x + rightForearmEnd.x) * 0.5, y: (rightUpperArmEnd.y + rightForearmEnd.y) * 0.5)
+        
+        // WAIST CONNECTORS: Pinned to neck position (follows upper body rotation)
+        addConnectorLine(from: neckPos, to: waistPos)
+        addConnectorLine(from: waistPos, to: leftUpperLegMid)
+        addConnectorLine(from: neckPos, to: waistPos)
+        addConnectorLine(from: waistPos, to: rightUpperLegMid)
+        
+        // LEFT KNEE CONNECTOR: From upper leg mid through knee joint to lower leg mid
+        addConnectorLine(from: leftUpperLegMid, to: leftUpperLegEnd)
+        addConnectorLine(from: leftUpperLegEnd, to: leftLowerLegMid)
+        
+        // RIGHT KNEE CONNECTOR: From upper leg mid through knee joint to lower leg mid
+        addConnectorLine(from: rightUpperLegMid, to: rightUpperLegEnd)
+        addConnectorLine(from: rightUpperLegEnd, to: rightLowerLegMid)
+        
+        // LEFT ELBOW CONNECTOR: From upper arm mid through elbow joint to lower arm mid
+        addConnectorLine(from: leftUpperArmMid, to: leftUpperArmEnd)
+        addConnectorLine(from: leftUpperArmEnd, to: leftLowerArmMid)
+        
+        // RIGHT ELBOW CONNECTOR: From upper arm mid through elbow joint to lower arm mid
+        addConnectorLine(from: rightUpperArmMid, to: rightUpperArmEnd)
+        addConnectorLine(from: rightUpperArmEnd, to: rightLowerArmMid)
+        
+        // Draw the skeleton connectors with proper thickness
+        if !skeletonPath.isEmpty {
+            let skeletonLine = SKShapeNode(path: skeletonPath.cgPath)
+            skeletonLine.strokeColor = jointColor
+            skeletonLine.lineWidth = max(jointThickness * scale, 0.5)
+            skeletonLine.fillColor = .clear
+            skeletonLine.zPosition = 1.5  // Between body segments and interactive joints
+            container.addChild(skeletonLine)
+        }
         
         print("🎮 Stick figure rendered with \(container.children.count) nodes!")
         return container
