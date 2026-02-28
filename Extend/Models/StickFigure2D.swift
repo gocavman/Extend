@@ -89,8 +89,16 @@ struct StickFigure2DPose: Codable {
     let torsoColor: String
     let leftArmColor: String
     let rightArmColor: String
+    let leftUpperArmColor: String
+    let rightUpperArmColor: String
+    let leftLowerArmColor: String
+    let rightLowerArmColor: String
     let leftLegColor: String
     let rightLegColor: String
+    let leftUpperLegColor: String
+    let rightUpperLegColor: String
+    let leftLowerLegColor: String
+    let rightLowerLegColor: String
     let handColor: String
     let footColor: String
     let jointColor: String
@@ -134,8 +142,16 @@ struct StickFigure2DPose: Codable {
         self.torsoColor = figure.torsoColor.toHex()
         self.leftArmColor = figure.leftArmColor.toHex()
         self.rightArmColor = figure.rightArmColor.toHex()
+        self.leftUpperArmColor = figure.leftUpperArmColor.toHex()
+        self.rightUpperArmColor = figure.rightUpperArmColor.toHex()
+        self.leftLowerArmColor = figure.leftLowerArmColor.toHex()
+        self.rightLowerArmColor = figure.rightLowerArmColor.toHex()
         self.leftLegColor = figure.leftLegColor.toHex()
         self.rightLegColor = figure.rightLegColor.toHex()
+        self.leftUpperLegColor = figure.leftUpperLegColor.toHex()
+        self.rightUpperLegColor = figure.rightUpperLegColor.toHex()
+        self.leftLowerLegColor = figure.leftLowerLegColor.toHex()
+        self.rightLowerLegColor = figure.rightLowerLegColor.toHex()
         self.handColor = figure.handColor.toHex()
         self.footColor = figure.footColor.toHex()
         self.jointColor = figure.jointColor.toHex()
@@ -177,8 +193,16 @@ struct StickFigure2DPose: Codable {
         figure.torsoColor = Color(hex: torsoColor) ?? .black
         figure.leftArmColor = Color(hex: leftArmColor) ?? .black
         figure.rightArmColor = Color(hex: rightArmColor) ?? .black
+        figure.leftUpperArmColor = Color(hex: leftUpperArmColor) ?? .black
+        figure.rightUpperArmColor = Color(hex: rightUpperArmColor) ?? .black
+        figure.leftLowerArmColor = Color(hex: leftLowerArmColor) ?? .black
+        figure.rightLowerArmColor = Color(hex: rightLowerArmColor) ?? .black
         figure.leftLegColor = Color(hex: leftLegColor) ?? .black
         figure.rightLegColor = Color(hex: rightLegColor) ?? .black
+        figure.leftUpperLegColor = Color(hex: leftUpperLegColor) ?? .black
+        figure.rightUpperLegColor = Color(hex: rightUpperLegColor) ?? .black
+        figure.leftLowerLegColor = Color(hex: leftLowerLegColor) ?? .black
+        figure.rightLowerLegColor = Color(hex: rightLowerLegColor) ?? .black
         figure.handColor = Color(hex: handColor) ?? .black
         figure.footColor = Color(hex: footColor) ?? .black
         figure.jointColor = Color(hex: jointColor) ?? .black
@@ -211,7 +235,10 @@ struct StickFigure2DPose: Codable {
         case leftKneeAngle, rightKneeAngle
         case leftFootAngle, rightFootAngle
         case headColor, torsoColor, leftArmColor, rightArmColor
-        case leftLegColor, rightLegColor, handColor, footColor, jointColor
+        case leftUpperArmColor, rightUpperArmColor, leftLowerArmColor, rightLowerArmColor
+        case leftLegColor, rightLegColor
+        case leftUpperLegColor, rightUpperLegColor, leftLowerLegColor, rightLowerLegColor
+        case handColor, footColor, jointColor
         case strokeThickness, scale, headRadiusMultiplier
         case strokeThicknessUpperArms, strokeThicknessLowerArms
         case strokeThicknessUpperLegs, strokeThicknessLowerLegs
@@ -242,8 +269,16 @@ struct StickFigure2DPose: Codable {
         try container.encode(torsoColor, forKey: .torsoColor)
         try container.encode(leftArmColor, forKey: .leftArmColor)
         try container.encode(rightArmColor, forKey: .rightArmColor)
+        try container.encode(leftUpperArmColor, forKey: .leftUpperArmColor)
+        try container.encode(rightUpperArmColor, forKey: .rightUpperArmColor)
+        try container.encode(leftLowerArmColor, forKey: .leftLowerArmColor)
+        try container.encode(rightLowerArmColor, forKey: .rightLowerArmColor)
         try container.encode(leftLegColor, forKey: .leftLegColor)
         try container.encode(rightLegColor, forKey: .rightLegColor)
+        try container.encode(leftUpperLegColor, forKey: .leftUpperLegColor)
+        try container.encode(rightUpperLegColor, forKey: .rightUpperLegColor)
+        try container.encode(leftLowerLegColor, forKey: .leftLowerLegColor)
+        try container.encode(rightLowerLegColor, forKey: .rightLowerLegColor)
         try container.encode(handColor, forKey: .handColor)
         try container.encode(footColor, forKey: .footColor)
         try container.encode(jointColor, forKey: .jointColor)
@@ -288,8 +323,16 @@ struct StickFigure2DPose: Codable {
         self.torsoColor = try container.decode(String.self, forKey: .torsoColor)
         self.leftArmColor = try container.decode(String.self, forKey: .leftArmColor)
         self.rightArmColor = try container.decode(String.self, forKey: .rightArmColor)
+        self.leftUpperArmColor = try container.decodeIfPresent(String.self, forKey: .leftUpperArmColor) ?? "#000000"
+        self.rightUpperArmColor = try container.decodeIfPresent(String.self, forKey: .rightUpperArmColor) ?? "#000000"
+        self.leftLowerArmColor = try container.decodeIfPresent(String.self, forKey: .leftLowerArmColor) ?? "#000000"
+        self.rightLowerArmColor = try container.decodeIfPresent(String.self, forKey: .rightLowerArmColor) ?? "#000000"
         self.leftLegColor = try container.decode(String.self, forKey: .leftLegColor)
         self.rightLegColor = try container.decode(String.self, forKey: .rightLegColor)
+        self.leftUpperLegColor = try container.decodeIfPresent(String.self, forKey: .leftUpperLegColor) ?? "#000000"
+        self.rightUpperLegColor = try container.decodeIfPresent(String.self, forKey: .rightUpperLegColor) ?? "#000000"
+        self.leftLowerLegColor = try container.decodeIfPresent(String.self, forKey: .leftLowerLegColor) ?? "#000000"
+        self.rightLowerLegColor = try container.decodeIfPresent(String.self, forKey: .rightLowerLegColor) ?? "#000000"
         self.handColor = try container.decode(String.self, forKey: .handColor)
         self.footColor = try container.decode(String.self, forKey: .footColor)
         self.jointColor = try container.decodeIfPresent(String.self, forKey: .jointColor) ?? "#000000"
@@ -386,8 +429,16 @@ struct StickFigure2D {
     var torsoColor: Color = .black
     var leftArmColor: Color = .black
     var rightArmColor: Color = .black
+    var leftUpperArmColor: Color = .black
+    var rightUpperArmColor: Color = .black
+    var leftLowerArmColor: Color = .black
+    var rightLowerArmColor: Color = .black
     var leftLegColor: Color = .black
     var rightLegColor: Color = .black
+    var leftUpperLegColor: Color = .black
+    var rightUpperLegColor: Color = .black
+    var leftLowerLegColor: Color = .black
+    var rightLowerLegColor: Color = .black
     var handColor: Color = .black
     var footColor: Color = .black
     var jointColor: Color = .black  // Color for visual joints/dots
@@ -770,11 +821,11 @@ struct StickFigure2DView: View {
         
         // Draw lower body first (back)
         // Upper legs: diamond shape with peak near the hip
-        drawSegment(from: waistPos, to: leftUpperLegEnd, color: figure.leftLegColor, strokeThickness: figure.strokeThicknessUpperLegs, fusiform: figure.fusiformUpperLegs, inverted: true, in: context)
+        drawSegment(from: waistPos, to: leftUpperLegEnd, color: figure.leftUpperLegColor, strokeThickness: figure.strokeThicknessUpperLegs, fusiform: figure.fusiformUpperLegs, inverted: true, in: context)
         // Lower legs: diamond shape with peak near the knee
-        drawSegment(from: leftUpperLegEnd, to: leftFootEnd, color: figure.footColor, strokeThickness: figure.strokeThicknessLowerLegs, fusiform: figure.fusiformLowerLegs, inverted: true, in: context)
-        drawSegment(from: waistPos, to: rightUpperLegEnd, color: figure.rightLegColor, strokeThickness: figure.strokeThicknessUpperLegs, fusiform: figure.fusiformUpperLegs, inverted: true, in: context)
-        drawSegment(from: rightUpperLegEnd, to: rightFootEnd, color: figure.footColor, strokeThickness: figure.strokeThicknessLowerLegs, fusiform: figure.fusiformLowerLegs, inverted: true, in: context)
+        drawSegment(from: leftUpperLegEnd, to: leftFootEnd, color: figure.leftLowerLegColor, strokeThickness: figure.strokeThicknessLowerLegs, fusiform: figure.fusiformLowerLegs, inverted: true, in: context)
+        drawSegment(from: waistPos, to: rightUpperLegEnd, color: figure.rightUpperLegColor, strokeThickness: figure.strokeThicknessUpperLegs, fusiform: figure.fusiformUpperLegs, inverted: true, in: context)
+        drawSegment(from: rightUpperLegEnd, to: rightFootEnd, color: figure.rightLowerLegColor, strokeThickness: figure.strokeThicknessLowerLegs, fusiform: figure.fusiformLowerLegs, inverted: true, in: context)
         
         // Draw skeleton
         // Upper torso: point at neck, wide in upper area, point at waist - forms diamond shape
@@ -783,12 +834,12 @@ struct StickFigure2DView: View {
         
         // Draw arms (back arm first)
         // Upper arms: diamond shape with peak at 50% (middle of bicep)
-        drawSegment(from: leftShoulderPos, to: leftUpperArmEnd, color: figure.leftArmColor, strokeThickness: figure.strokeThicknessUpperArms, fusiform: figure.fusiformUpperArms, inverted: true, peakPosition: 0.5, in: context)
+        drawSegment(from: leftShoulderPos, to: leftUpperArmEnd, color: figure.leftUpperArmColor, strokeThickness: figure.strokeThicknessUpperArms, fusiform: figure.fusiformUpperArms, inverted: true, peakPosition: 0.5, in: context)
         // Lower arms: diamond shape with peak at 35% (closer to elbow)
-        drawSegment(from: leftUpperArmEnd, to: leftForearmEnd, color: figure.leftArmColor, strokeThickness: figure.strokeThicknessLowerArms, fusiform: figure.fusiformLowerArms, inverted: true, peakPosition: 0.35, in: context)
+        drawSegment(from: leftUpperArmEnd, to: leftForearmEnd, color: figure.leftLowerArmColor, strokeThickness: figure.strokeThicknessLowerArms, fusiform: figure.fusiformLowerArms, inverted: true, peakPosition: 0.35, in: context)
         
-        drawSegment(from: rightShoulderPos, to: rightUpperArmEnd, color: figure.rightArmColor, strokeThickness: figure.strokeThicknessUpperArms, fusiform: figure.fusiformUpperArms, inverted: true, peakPosition: 0.5, in: context)
-        drawSegment(from: rightUpperArmEnd, to: rightForearmEnd, color: figure.rightArmColor, strokeThickness: figure.strokeThicknessLowerArms, fusiform: figure.fusiformLowerArms, inverted: true, peakPosition: 0.35, in: context)
+        drawSegment(from: rightShoulderPos, to: rightUpperArmEnd, color: figure.rightUpperArmColor, strokeThickness: figure.strokeThicknessUpperArms, fusiform: figure.fusiformUpperArms, inverted: true, peakPosition: 0.5, in: context)
+        drawSegment(from: rightUpperArmEnd, to: rightForearmEnd, color: figure.rightLowerArmColor, strokeThickness: figure.strokeThicknessLowerArms, fusiform: figure.fusiformLowerArms, inverted: true, peakPosition: 0.35, in: context)
         
         // Draw head
         // Calculate canvasScale (scalePoint already applied figure.scale, so we only need canvasScale here)
@@ -1010,29 +1061,48 @@ struct StickFigure2DView: View {
     
     private func drawHand(at position: CGPoint, toward upperJoint: CGPoint, color: Color, in context: GraphicsContext) {
         // Draw a rounded hand pointing toward the upper joint (elbow)
-        let handWidth: CGFloat = 8.0
+        // The interactive joint dot is at the bottom, with tapered shape for better blending
+        let handTopWidth: CGFloat = 10.0   // Wider at top (at the drag point)
+        let handBottomWidth: CGFloat = 6.0  // Narrower at bottom (blends with forearm)
         let handHeight: CGFloat = 16.0
         
         // Calculate direction from hand toward elbow
         let direction = (upperJoint - position).normalized()
         
         // Calculate rotation angle
-        let angle = atan2(direction.y, direction.x) - .pi / 2  // -pi/2 to point along direction
+        let angle = atan2(direction.y, direction.x) - .pi / 2
         
-        // Create unrotated hand rect
-        let handRect = CGRect(
-            x: position.x - handWidth / 2,
-            y: position.y - handHeight / 2,
-            width: handWidth,
-            height: handHeight
-        )
+        // Offset position so the bottom is at the joint
+        let shapeCenter = position + (direction * (handHeight / 2))
         
-        // Draw hand with rotation
-        let handPath = Path(roundedRect: handRect, cornerRadius: 3.0)
+        // Create tapered hand shape using a path
+        var handPath = Path()
+        
+        // Top part - wider (at drag point)
+        let topLeft = CGPoint(x: shapeCenter.x - handTopWidth / 2, y: shapeCenter.y - handHeight / 2)
+        let topRight = CGPoint(x: shapeCenter.x + handTopWidth / 2, y: shapeCenter.y - handHeight / 2)
+        
+        // Bottom part - narrower (blends with forearm)
+        let bottomLeft = CGPoint(x: shapeCenter.x - handBottomWidth / 2, y: shapeCenter.y + handHeight / 2)
+        let bottomRight = CGPoint(x: shapeCenter.x + handBottomWidth / 2, y: shapeCenter.y + handHeight / 2)
+        
+        // Draw tapered rectangle with rounded corners
+        let cornerRadius: CGFloat = 4.5
+        handPath.move(to: CGPoint(x: topLeft.x + cornerRadius, y: topLeft.y))
+        handPath.addLine(to: CGPoint(x: topRight.x - cornerRadius, y: topRight.y))
+        handPath.addQuadCurve(to: CGPoint(x: topRight.x, y: topRight.y + cornerRadius), control: topRight)
+        // Control point moved closer to top to keep shape wider longer
+        handPath.addQuadCurve(to: bottomRight, control: CGPoint(x: shapeCenter.x + handBottomWidth / 2, y: shapeCenter.y - handHeight * 0.15))
+        handPath.addLine(to: bottomLeft)
+        handPath.addQuadCurve(to: CGPoint(x: topLeft.x, y: topLeft.y + cornerRadius), control: CGPoint(x: shapeCenter.x - handBottomWidth / 2, y: shapeCenter.y - handHeight * 0.15))
+        handPath.addQuadCurve(to: CGPoint(x: topLeft.x + cornerRadius, y: topLeft.y), control: topLeft)
+        handPath.closeSubpath()
+        
+        // Rotate the path
         let rotatedPath = handPath
-            .applying(CGAffineTransform(translationX: -position.x, y: -position.y))
+            .applying(CGAffineTransform(translationX: -shapeCenter.x, y: -shapeCenter.y))
             .applying(CGAffineTransform(rotationAngle: angle))
-            .applying(CGAffineTransform(translationX: position.x, y: position.y))
+            .applying(CGAffineTransform(translationX: shapeCenter.x, y: shapeCenter.y))
         
         context.fill(rotatedPath, with: .color(color))
         context.stroke(rotatedPath, with: .color(color.opacity(0.8)), lineWidth: 0.5)
@@ -1040,29 +1110,88 @@ struct StickFigure2DView: View {
     
     private func drawFoot(at position: CGPoint, toward upperJoint: CGPoint, color: Color, in context: GraphicsContext) {
         // Draw a rounded foot pointing toward the upper joint (knee)
-        let footWidth: CGFloat = 8.0
+        // The interactive joint dot is at the bottom, with tapered shape for better blending
+        let footTopWidth: CGFloat = 12.0   // Wider at top (where drag point is)
+        let footBottomWidth: CGFloat = 6.0  // Narrower at bottom (blends with leg)
         let footHeight: CGFloat = 16.0
         
         // Calculate direction from foot toward knee
         let direction = (upperJoint - position).normalized()
         
         // Calculate rotation angle
-        let angle = atan2(direction.y, direction.x) - .pi / 2  // -pi/2 to point along direction
+        let angle = atan2(direction.y, direction.x) - .pi / 2
         
-        // Create unrotated foot rect
-        let footRect = CGRect(
-            x: position.x - footWidth / 2,
-            y: position.y - footHeight / 2,
-            width: footWidth,
-            height: footHeight
-        )
+        // Offset position so the bottom is at the joint
+        let shapeCenter = position + (direction * (footHeight / 2))
         
-        // Draw foot with rotation
-        let footPath = Path(roundedRect: footRect, cornerRadius: 3.0)
+        // Create tapered foot shape using a path
+        var footPath = Path()
+        
+        // Top (narrow) part - centered
+        let topLeft = CGPoint(x: shapeCenter.x - footTopWidth / 2, y: shapeCenter.y - footHeight / 2)
+        let topRight = CGPoint(x: shapeCenter.x + footTopWidth / 2, y: shapeCenter.y - footHeight / 2)
+        
+        // Bottom (wide) part - wider
+        let bottomLeft = CGPoint(x: shapeCenter.x - footBottomWidth / 2, y: shapeCenter.y + footHeight / 2)
+        let bottomRight = CGPoint(x: shapeCenter.x + footBottomWidth / 2, y: shapeCenter.y + footHeight / 2)
+        
+        // Draw tapered rectangle with rounded corners
+        let cornerRadius: CGFloat = 3.0
+        footPath.move(to: CGPoint(x: topLeft.x + cornerRadius, y: topLeft.y))
+        footPath.addLine(to: CGPoint(x: topRight.x - cornerRadius, y: topRight.y))
+        footPath.addQuadCurve(to: CGPoint(x: topRight.x, y: topRight.y + cornerRadius), control: topRight)
+        // Control point moved closer to top to keep shape wider longer
+        footPath.addQuadCurve(to: bottomRight, control: CGPoint(x: shapeCenter.x + footBottomWidth / 2, y: shapeCenter.y - footHeight * 0.15))
+        footPath.addLine(to: bottomLeft)
+        footPath.addQuadCurve(to: CGPoint(x: topLeft.x, y: topLeft.y + cornerRadius), control: CGPoint(x: shapeCenter.x - footBottomWidth / 2, y: shapeCenter.y - footHeight * 0.15))
+        footPath.addQuadCurve(to: CGPoint(x: topLeft.x + cornerRadius, y: topLeft.y), control: topLeft)
+        footPath.closeSubpath()
+        
+        // Rotate the path
+        
+        // Draw tapered rectangle with rounded corners
+        footPath.move(to: topLeft)
+        footPath.addLine(to: topRight)
+        footPath.addQuadCurve(to: bottomRight, control: CGPoint(x: shapeCenter.x + footBottomWidth / 2, y: shapeCenter.y))
+        footPath.addLine(to: bottomLeft)
+        footPath.addQuadCurve(to: topLeft, control: CGPoint(x: shapeCenter.x - footBottomWidth / 2, y: shapeCenter.y))
+        footPath.closeSubpath()
+        
+        // Rotate the path/ 2, y: shapeCenter.y + footHeight / 2)
+        
+        // Draw tapered rectangle with rounded corners
+        footPath.move(to: topLeft)
+        footPath.addLine(to: topRight)
+        footPath.addQuadCurve(to: bottomRight, control: CGPoint(x: shapeCenter.x + footBottomWidth / 2, y: shapeCenter.y))
+        footPath.addLine(to: bottomLeft)
+        footPath.addQuadCurve(to: topLeft, control: CGPoint(x: shapeCenter.x - footBottomWidth / 2, y: shapeCenter.y))
+        footPath.closeSubpath()
+        
+        // Rotate the path/ 2, y: shapeCenter.y + footHeight / 2)
+        
+        // Draw tapered rectangle with rounded corners
+        footPath.move(to: topLeft)
+        footPath.addLine(to: topRight)
+        footPath.addQuadCurve(to: bottomRight, control: CGPoint(x: shapeCenter.x + footBottomWidth / 2, y: shapeCenter.y))
+        footPath.addLine(to: bottomLeft)
+        footPath.addQuadCurve(to: topLeft, control: CGPoint(x: shapeCenter.x - footBottomWidth / 2, y: shapeCenter.y))
+        footPath.closeSubpath()
+        
+        // Rotate the path/ 2, y: shapeCenter.y + footHeight / 2)
+        
+        // Draw tapered rectangle with rounded corners
+        footPath.move(to: topLeft)
+        footPath.addLine(to: topRight)
+        footPath.addQuadCurve(to: bottomRight, control: CGPoint(x: shapeCenter.x + footBottomWidth / 2, y: shapeCenter.y))
+        footPath.addLine(to: bottomLeft)
+        footPath.addQuadCurve(to: topLeft, control: CGPoint(x: shapeCenter.x - footBottomWidth / 2, y: shapeCenter.y))
+        footPath.closeSubpath()
+        
+        // Rotate the path
         let rotatedPath = footPath
-            .applying(CGAffineTransform(translationX: -position.x, y: -position.y))
+            .applying(CGAffineTransform(translationX: -shapeCenter.x, y: -shapeCenter.y))
             .applying(CGAffineTransform(rotationAngle: angle))
-            .applying(CGAffineTransform(translationX: position.x, y: position.y))
+            .applying(CGAffineTransform(translationX: shapeCenter.x, y: shapeCenter.y))
         
         context.fill(rotatedPath, with: .color(color))
         context.stroke(rotatedPath, with: .color(color.opacity(0.8)), lineWidth: 0.5)
@@ -3049,42 +3178,6 @@ struct StickFigure2DEditorView: View {
                     }
                     
                     HStack(spacing: 8) {
-                        Text("L Arm:")
-                            .font(.caption2)
-                            .frame(width: 35, alignment: .leading)
-                        ColorPicker("", selection: $figure.leftArmColor)
-                            .labelsHidden()
-                            .frame(width: 40)
-                    }
-                    
-                    HStack(spacing: 8) {
-                        Text("R Arm:")
-                            .font(.caption2)
-                            .frame(width: 35, alignment: .leading)
-                        ColorPicker("", selection: $figure.rightArmColor)
-                            .labelsHidden()
-                            .frame(width: 40)
-                    }
-                    
-                    HStack(spacing: 8) {
-                        Text("L Leg:")
-                            .font(.caption2)
-                            .frame(width: 35, alignment: .leading)
-                        ColorPicker("", selection: $figure.leftLegColor)
-                            .labelsHidden()
-                            .frame(width: 40)
-                    }
-                    
-                    HStack(spacing: 8) {
-                        Text("R Leg:")
-                            .font(.caption2)
-                            .frame(width: 35, alignment: .leading)
-                        ColorPicker("", selection: $figure.rightLegColor)
-                            .labelsHidden()
-                            .frame(width: 40)
-                    }
-                    
-                    HStack(spacing: 8) {
                         Text("Hand:")
                             .font(.caption2)
                             .frame(width: 35, alignment: .leading)
@@ -3101,6 +3194,89 @@ struct StickFigure2DEditorView: View {
                             .labelsHidden()
                             .frame(width: 40)
                     }
+                    
+                    // Divider for additional arm/leg colors
+                    Divider()
+                        .padding(.vertical, 4)
+                    
+                    // Upper arm colors
+                    HStack(spacing: 8) {
+                        Text("L Upper Arm:")
+                            .font(.caption2)
+                            .frame(width: 80, alignment: .leading)
+                        ColorPicker("", selection: $figure.leftUpperArmColor)
+                            .labelsHidden()
+                            .frame(width: 40)
+                    }
+                    
+                    HStack(spacing: 8) {
+                        Text("R Upper Arm:")
+                            .font(.caption2)
+                            .frame(width: 80, alignment: .leading)
+                        ColorPicker("", selection: $figure.rightUpperArmColor)
+                            .labelsHidden()
+                            .frame(width: 40)
+                    }
+                    
+                    // Lower arm colors
+                    HStack(spacing: 8) {
+                        Text("L Lower Arm:")
+                            .font(.caption2)
+                            .frame(width: 80, alignment: .leading)
+                        ColorPicker("", selection: $figure.leftLowerArmColor)
+                            .labelsHidden()
+                            .frame(width: 40)
+                    }
+                    
+                    HStack(spacing: 8) {
+                        Text("R Lower Arm:")
+                            .font(.caption2)
+                            .frame(width: 80, alignment: .leading)
+                        ColorPicker("", selection: $figure.rightLowerArmColor)
+                            .labelsHidden()
+                            .frame(width: 40)
+                    }
+                    
+                    // Upper leg colors
+                    HStack(spacing: 8) {
+                        Text("L Upper Leg:")
+                            .font(.caption2)
+                            .frame(width: 80, alignment: .leading)
+                        ColorPicker("", selection: $figure.leftUpperLegColor)
+                            .labelsHidden()
+                            .frame(width: 40)
+                    }
+                    
+                    HStack(spacing: 8) {
+                        Text("R Upper Leg:")
+                            .font(.caption2)
+                            .frame(width: 80, alignment: .leading)
+                        ColorPicker("", selection: $figure.rightUpperLegColor)
+                            .labelsHidden()
+                            .frame(width: 40)
+                    }
+                    
+                    // Lower leg colors
+                    HStack(spacing: 8) {
+                        Text("L Lower Leg:")
+                            .font(.caption2)
+                            .frame(width: 80, alignment: .leading)
+                        ColorPicker("", selection: $figure.leftLowerLegColor)
+                            .labelsHidden()
+                            .frame(width: 40)
+                    }
+                    
+                    HStack(spacing: 8) {
+                        Text("R Lower Leg:")
+                            .font(.caption2)
+                            .frame(width: 80, alignment: .leading)
+                        ColorPicker("", selection: $figure.rightLowerLegColor)
+                            .labelsHidden()
+                            .frame(width: 40)
+                    }
+                    
+                    Divider()
+                        .padding(.vertical, 4)
                     
                     HStack(spacing: 8) {
                         Text("Joints:")
