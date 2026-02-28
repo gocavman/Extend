@@ -93,6 +93,7 @@ struct StickFigure2DPose: Codable {
     let rightLegColor: String
     let handColor: String
     let footColor: String
+    let jointColor: String
     let strokeThickness: CGFloat
     let scale: Double
     let headRadiusMultiplier: Double
@@ -137,6 +138,7 @@ struct StickFigure2DPose: Codable {
         self.rightLegColor = figure.rightLegColor.toHex()
         self.handColor = figure.handColor.toHex()
         self.footColor = figure.footColor.toHex()
+        self.jointColor = figure.jointColor.toHex()
         self.strokeThickness = figure.strokeThickness
         self.scale = figure.scale
         self.headRadiusMultiplier = figure.headRadiusMultiplier
@@ -179,6 +181,7 @@ struct StickFigure2DPose: Codable {
         figure.rightLegColor = Color(hex: rightLegColor) ?? .black
         figure.handColor = Color(hex: handColor) ?? .black
         figure.footColor = Color(hex: footColor) ?? .black
+        figure.jointColor = Color(hex: jointColor) ?? .black
         figure.strokeThickness = strokeThickness
         figure.scale = scale
         figure.headRadiusMultiplier = headRadiusMultiplier
@@ -208,7 +211,7 @@ struct StickFigure2DPose: Codable {
         case leftKneeAngle, rightKneeAngle
         case leftFootAngle, rightFootAngle
         case headColor, torsoColor, leftArmColor, rightArmColor
-        case leftLegColor, rightLegColor, handColor, footColor
+        case leftLegColor, rightLegColor, handColor, footColor, jointColor
         case strokeThickness, scale, headRadiusMultiplier
         case strokeThicknessUpperArms, strokeThicknessLowerArms
         case strokeThicknessUpperLegs, strokeThicknessLowerLegs
@@ -243,6 +246,7 @@ struct StickFigure2DPose: Codable {
         try container.encode(rightLegColor, forKey: .rightLegColor)
         try container.encode(handColor, forKey: .handColor)
         try container.encode(footColor, forKey: .footColor)
+        try container.encode(jointColor, forKey: .jointColor)
         try container.encode(strokeThickness, forKey: .strokeThickness)
         try container.encode(scale, forKey: .scale)
         try container.encode(headRadiusMultiplier, forKey: .headRadiusMultiplier)
@@ -288,6 +292,7 @@ struct StickFigure2DPose: Codable {
         self.rightLegColor = try container.decode(String.self, forKey: .rightLegColor)
         self.handColor = try container.decode(String.self, forKey: .handColor)
         self.footColor = try container.decode(String.self, forKey: .footColor)
+        self.jointColor = try container.decodeIfPresent(String.self, forKey: .jointColor) ?? "#000000"
         self.strokeThickness = try container.decode(CGFloat.self, forKey: .strokeThickness)
         self.scale = try container.decode(Double.self, forKey: .scale)
         self.headRadiusMultiplier = try container.decode(Double.self, forKey: .headRadiusMultiplier)
@@ -385,6 +390,7 @@ struct StickFigure2D {
     var rightLegColor: Color = .black
     var handColor: Color = .black
     var footColor: Color = .black
+    var jointColor: Color = .black  // Color for visual joints/dots
     
     // Stroke thickness (overall - kept for backward compatibility)
     var strokeThickness: CGFloat = 4.0
@@ -714,7 +720,6 @@ struct StickFigure2DView: View {
     let canvasSize: CGSize
     var showJoints: Bool = false  // Default to not showing joints (for gameplay)
     let jointRadius: CGFloat = 5
-    let jointColor: Color = .blue
     
     var body: some View {
         Canvas { context, size in
@@ -771,7 +776,7 @@ struct StickFigure2DView: View {
         drawSegment(from: waistPos, to: rightUpperLegEnd, color: figure.rightLegColor, strokeThickness: figure.strokeThicknessUpperLegs, fusiform: figure.fusiformUpperLegs, inverted: true, in: context)
         drawSegment(from: rightUpperLegEnd, to: rightFootEnd, color: figure.footColor, strokeThickness: figure.strokeThicknessLowerLegs, fusiform: figure.fusiformLowerLegs, inverted: true, in: context)
         
-        // Draw torso
+        // Draw skeleton
         // Upper torso: point at neck, wide in upper area, point at waist - forms diamond shape
         drawSegment(from: neckPos, to: waistPos, color: figure.torsoColor, strokeThickness: figure.strokeThicknessUpperTorso, fusiform: figure.fusiformUpperTorso, inverted: true, in: context)
         drawSegment(from: neckPos, to: headPos, color: figure.torsoColor, strokeThickness: figure.strokeThicknessUpperTorso, fusiform: 0, inverted: false, in: context)
@@ -798,16 +803,14 @@ struct StickFigure2DView: View {
         context.fill(headCircle, with: .color(figure.headColor))
         context.stroke(headCircle, with: .color(figure.headColor.opacity(0.8)), lineWidth: figure.strokeThickness)
         
-        // Draw joints only if showJoints is enabled (for editor mode)
-        if showJoints {
-            drawJoint(at: waistPos, in: context)
-            drawJoint(at: midTorsoPos, in: context)
-            drawJoint(at: neckPos, in: context)
-            drawJoint(at: leftUpperArmEnd, in: context)
-            drawJoint(at: rightUpperArmEnd, in: context)
-            drawJoint(at: leftUpperLegEnd, in: context)
-            drawJoint(at: rightUpperLegEnd, in: context)
-        }
+        // Draw skeleton connector lines at joints that bend with the joint angles
+        drawSkeletonConnectors(midTorsoPos: midTorsoPos, waistPos: waistPos,
+                              leftShoulderPos: leftShoulderPos, rightShoulderPos: rightShoulderPos,
+                              leftUpperArmEnd: leftUpperArmEnd, rightUpperArmEnd: rightUpperArmEnd,
+                              leftForearmEnd: leftForearmEnd, rightForearmEnd: rightForearmEnd,
+                              leftUpperLegEnd: leftUpperLegEnd, rightUpperLegEnd: rightUpperLegEnd,
+                              leftFootEnd: leftFootEnd, rightFootEnd: rightFootEnd,
+                              in: context)
     }
     
     private func drawSegment(from: CGPoint, to: CGPoint, color: Color, strokeThickness: CGFloat, fusiform: CGFloat, inverted: Bool, peakPosition: CGFloat = 0.2, in context: GraphicsContext) {
@@ -895,7 +898,6 @@ struct StickFigure2DView: View {
             for i in 1..<topEdgePoints.count {
                 let prev = topEdgePoints[i - 1]
                 let curr = topEdgePoints[i]
-                let next = i + 1 < topEdgePoints.count ? topEdgePoints[i + 1] : curr
                 
                 // Use quadratic curve for smooth edges
                 let controlX = (prev.x + curr.x) / 2
@@ -927,6 +929,67 @@ struct StickFigure2DView: View {
         }
     }
     
+    private func drawSkeletonConnectors(midTorsoPos: CGPoint, waistPos: CGPoint,
+                                        leftShoulderPos: CGPoint, rightShoulderPos: CGPoint,
+                                        leftUpperArmEnd: CGPoint, rightUpperArmEnd: CGPoint,
+                                        leftForearmEnd: CGPoint, rightForearmEnd: CGPoint,
+                                        leftUpperLegEnd: CGPoint, rightUpperLegEnd: CGPoint,
+                                        leftFootEnd: CGPoint, rightFootEnd: CGPoint,
+                                        in context: GraphicsContext) {
+        // Draw skeleton connector lines at joints attached to actual interactive joint positions
+        // These connectors automatically bend as the joints move
+        
+        var skeletonPath = Path()
+        
+        // WAIST CONNECTORS: From torso midpoint through waist joint to leg midpoint
+        let midTorsoWaistMid = (midTorsoPos + waistPos) * 0.5
+        let leftUpperLegMid = (waistPos + leftUpperLegEnd) * 0.5
+        let rightUpperLegMid = (waistPos + rightUpperLegEnd) * 0.5
+        
+        // Left leg connector: torso mid -> waist joint -> leg mid
+        skeletonPath.move(to: midTorsoWaistMid)
+        skeletonPath.addLine(to: waistPos)
+        skeletonPath.addLine(to: leftUpperLegMid)
+        
+        // Right leg connector: torso mid -> waist joint -> leg mid
+        skeletonPath.move(to: midTorsoWaistMid)
+        skeletonPath.addLine(to: waistPos)
+        skeletonPath.addLine(to: rightUpperLegMid)
+        
+        // LEFT KNEE CONNECTOR: From upper leg mid through knee joint to lower leg mid
+        let leftLowerLegMid = (leftUpperLegEnd + leftFootEnd) * 0.5
+        
+        skeletonPath.move(to: leftUpperLegMid)
+        skeletonPath.addLine(to: leftUpperLegEnd)
+        skeletonPath.addLine(to: leftLowerLegMid)
+        
+        // RIGHT KNEE CONNECTOR: From upper leg mid through knee joint to lower leg mid
+        let rightLowerLegMid = (rightUpperLegEnd + rightFootEnd) * 0.5
+        
+        skeletonPath.move(to: rightUpperLegMid)
+        skeletonPath.addLine(to: rightUpperLegEnd)
+        skeletonPath.addLine(to: rightLowerLegMid)
+        
+        // LEFT ELBOW CONNECTOR: From upper arm mid through elbow joint to lower arm mid
+        let leftUpperArmMid = (leftShoulderPos + leftUpperArmEnd) * 0.5
+        let leftLowerArmMid = (leftUpperArmEnd + leftForearmEnd) * 0.5
+        
+        skeletonPath.move(to: leftUpperArmMid)
+        skeletonPath.addLine(to: leftUpperArmEnd)
+        skeletonPath.addLine(to: leftLowerArmMid)
+        
+        // RIGHT ELBOW CONNECTOR: From upper arm mid through elbow joint to lower arm mid
+        let rightUpperArmMid = (rightShoulderPos + rightUpperArmEnd) * 0.5
+        let rightLowerArmMid = (rightUpperArmEnd + rightForearmEnd) * 0.5
+        
+        skeletonPath.move(to: rightUpperArmMid)
+        skeletonPath.addLine(to: rightUpperArmEnd)
+        skeletonPath.addLine(to: rightLowerArmMid)
+        
+        // Draw the skeleton with the joint color and stroke thickness
+        context.stroke(skeletonPath, with: .color(figure.jointColor), lineWidth: figure.strokeThicknessJoints)
+    }
+    
     private func drawJoint(at position: CGPoint, in context: GraphicsContext) {
         let radius = figure.strokeThicknessJoints / 2
         let circle = Circle().path(in: CGRect(
@@ -935,7 +998,7 @@ struct StickFigure2DView: View {
             width: radius * 2,
             height: radius * 2
         ))
-        context.fill(circle, with: .color(jointColor))
+        context.fill(circle, with: .color(figure.jointColor))
     }
 }
 
@@ -1621,9 +1684,11 @@ struct StickFigure2DEditorView: View {
                 objectControlHandles(for: object)
             }
         
-            // Draggable joint handles
-            Group {
-                jointHandles
+            // Draggable joint handles (interactive joints/dots for moving body parts)
+            if showJointsCheckbox {
+                Group {
+                    jointHandles
+                }
             }
         }
         .frame(width: canvasSize.width, height: canvasSize.height)
@@ -2969,6 +3034,15 @@ struct StickFigure2DEditorView: View {
                             .labelsHidden()
                             .frame(width: 40)
                     }
+                    
+                    HStack(spacing: 8) {
+                        Text("Joints:")
+                            .font(.caption2)
+                            .frame(width: 35, alignment: .leading)
+                        ColorPicker("", selection: $figure.jointColor)
+                            .labelsHidden()
+                            .frame(width: 40)
+                    }
                 }
                 .padding(.top, 4)
             }
@@ -3243,5 +3317,31 @@ struct StickFigure2DEditorView: View {
         let dy = to.y - from.y
         let radians = atan2(dy, dx)
         return radians * 180 / .pi
+    }
+}
+
+// MARK: - CGPoint Extensions
+
+extension CGPoint {
+    /// Returns a normalized direction vector with magnitude 1.0
+    func normalized() -> CGPoint {
+        let length = sqrt(x * x + y * y)
+        guard length > 0 else { return CGPoint.zero }
+        return CGPoint(x: x / length, y: y / length)
+    }
+    
+    /// Subtracts one point from another to create a direction vector
+    static func - (lhs: CGPoint, rhs: CGPoint) -> CGPoint {
+        return CGPoint(x: lhs.x - rhs.x, y: lhs.y - rhs.y)
+    }
+    
+    /// Multiplies a point by a scalar
+    static func * (lhs: CGPoint, rhs: CGFloat) -> CGPoint {
+        return CGPoint(x: lhs.x * rhs, y: lhs.y * rhs)
+    }
+    
+    /// Adds two points together
+    static func + (lhs: CGPoint, rhs: CGPoint) -> CGPoint {
+        return CGPoint(x: lhs.x + rhs.x, y: lhs.y + rhs.y)
     }
 }
