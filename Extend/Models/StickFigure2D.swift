@@ -804,13 +804,21 @@ struct StickFigure2DView: View {
         context.stroke(headCircle, with: .color(figure.headColor.opacity(0.8)), lineWidth: figure.strokeThickness)
         
         // Draw skeleton connector lines at joints that bend with the joint angles
-        drawSkeletonConnectors(midTorsoPos: midTorsoPos, waistPos: waistPos,
+        drawSkeletonConnectors(neckPos: neckPos, midTorsoPos: midTorsoPos, waistPos: waistPos,
                               leftShoulderPos: leftShoulderPos, rightShoulderPos: rightShoulderPos,
                               leftUpperArmEnd: leftUpperArmEnd, rightUpperArmEnd: rightUpperArmEnd,
                               leftForearmEnd: leftForearmEnd, rightForearmEnd: rightForearmEnd,
                               leftUpperLegEnd: leftUpperLegEnd, rightUpperLegEnd: rightUpperLegEnd,
                               leftFootEnd: leftFootEnd, rightFootEnd: rightFootEnd,
                               in: context)
+        
+        // Draw hands (small squares at the end of forearms, pointing toward elbows)
+        drawHand(at: leftForearmEnd, toward: leftUpperArmEnd, color: figure.handColor, in: context)
+        drawHand(at: rightForearmEnd, toward: rightUpperArmEnd, color: figure.handColor, in: context)
+        
+        // Draw feet (small squares at the end of lower legs, pointing toward knees)
+        drawFoot(at: leftFootEnd, toward: leftUpperLegEnd, color: figure.footColor, in: context)
+        drawFoot(at: rightFootEnd, toward: rightUpperLegEnd, color: figure.footColor, in: context)
     }
     
     private func drawSegment(from: CGPoint, to: CGPoint, color: Color, strokeThickness: CGFloat, fusiform: CGFloat, inverted: Bool, peakPosition: CGFloat = 0.2, in context: GraphicsContext) {
@@ -929,7 +937,7 @@ struct StickFigure2DView: View {
         }
     }
     
-    private func drawSkeletonConnectors(midTorsoPos: CGPoint, waistPos: CGPoint,
+    private func drawSkeletonConnectors(neckPos: CGPoint, midTorsoPos: CGPoint, waistPos: CGPoint,
                                         leftShoulderPos: CGPoint, rightShoulderPos: CGPoint,
                                         leftUpperArmEnd: CGPoint, rightUpperArmEnd: CGPoint,
                                         leftForearmEnd: CGPoint, rightForearmEnd: CGPoint,
@@ -941,18 +949,17 @@ struct StickFigure2DView: View {
         
         var skeletonPath = Path()
         
-        // WAIST CONNECTORS: From torso midpoint through waist joint to leg midpoint
-        let midTorsoWaistMid = (midTorsoPos + waistPos) * 0.5
+        // WAIST CONNECTORS: Pinned to neck position (follows upper body rotation)
         let leftUpperLegMid = (waistPos + leftUpperLegEnd) * 0.5
         let rightUpperLegMid = (waistPos + rightUpperLegEnd) * 0.5
         
-        // Left leg connector: torso mid -> waist joint -> leg mid
-        skeletonPath.move(to: midTorsoWaistMid)
+        // Left leg connector: neck (pinned) -> waist joint -> leg mid
+        skeletonPath.move(to: neckPos)
         skeletonPath.addLine(to: waistPos)
         skeletonPath.addLine(to: leftUpperLegMid)
         
-        // Right leg connector: torso mid -> waist joint -> leg mid
-        skeletonPath.move(to: midTorsoWaistMid)
+        // Right leg connector: neck (pinned) -> waist joint -> leg mid
+        skeletonPath.move(to: neckPos)
         skeletonPath.addLine(to: waistPos)
         skeletonPath.addLine(to: rightUpperLegMid)
         
@@ -999,6 +1006,66 @@ struct StickFigure2DView: View {
             height: radius * 2
         ))
         context.fill(circle, with: .color(figure.jointColor))
+    }
+    
+    private func drawHand(at position: CGPoint, toward upperJoint: CGPoint, color: Color, in context: GraphicsContext) {
+        // Draw a rounded hand pointing toward the upper joint (elbow)
+        let handWidth: CGFloat = 8.0
+        let handHeight: CGFloat = 16.0
+        
+        // Calculate direction from hand toward elbow
+        let direction = (upperJoint - position).normalized()
+        
+        // Calculate rotation angle
+        let angle = atan2(direction.y, direction.x) - .pi / 2  // -pi/2 to point along direction
+        
+        // Create unrotated hand rect
+        let handRect = CGRect(
+            x: position.x - handWidth / 2,
+            y: position.y - handHeight / 2,
+            width: handWidth,
+            height: handHeight
+        )
+        
+        // Draw hand with rotation
+        let handPath = Path(roundedRect: handRect, cornerRadius: 3.0)
+        let rotatedPath = handPath
+            .applying(CGAffineTransform(translationX: -position.x, y: -position.y))
+            .applying(CGAffineTransform(rotationAngle: angle))
+            .applying(CGAffineTransform(translationX: position.x, y: position.y))
+        
+        context.fill(rotatedPath, with: .color(color))
+        context.stroke(rotatedPath, with: .color(color.opacity(0.8)), lineWidth: 0.5)
+    }
+    
+    private func drawFoot(at position: CGPoint, toward upperJoint: CGPoint, color: Color, in context: GraphicsContext) {
+        // Draw a rounded foot pointing toward the upper joint (knee)
+        let footWidth: CGFloat = 8.0
+        let footHeight: CGFloat = 16.0
+        
+        // Calculate direction from foot toward knee
+        let direction = (upperJoint - position).normalized()
+        
+        // Calculate rotation angle
+        let angle = atan2(direction.y, direction.x) - .pi / 2  // -pi/2 to point along direction
+        
+        // Create unrotated foot rect
+        let footRect = CGRect(
+            x: position.x - footWidth / 2,
+            y: position.y - footHeight / 2,
+            width: footWidth,
+            height: footHeight
+        )
+        
+        // Draw foot with rotation
+        let footPath = Path(roundedRect: footRect, cornerRadius: 3.0)
+        let rotatedPath = footPath
+            .applying(CGAffineTransform(translationX: -position.x, y: -position.y))
+            .applying(CGAffineTransform(rotationAngle: angle))
+            .applying(CGAffineTransform(translationX: position.x, y: position.y))
+        
+        context.fill(rotatedPath, with: .color(color))
+        context.stroke(rotatedPath, with: .color(color.opacity(0.8)), lineWidth: 0.5)
     }
 }
 
