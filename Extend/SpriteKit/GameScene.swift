@@ -88,6 +88,29 @@ class GameScene: SKScene {
         // Apply custom appearance colors from UserDefaults
         StickFigureAppearance.shared.applyToStickFigure(&mutableFigure)
         
+        // Apply muscle development points to fusiforms
+        let musclePoints = MusclePointsManager.shared
+        let muscleGroupsState = MuscleGroupsState.shared
+        
+        // Find muscle group IDs for each body part and apply their normalized points (0.0-1.0)
+        // We'll need to match muscle groups to body parts - for now use average of relevant muscles
+        // This is a simple implementation - you can refine the mapping as needed
+        
+        // Calculate average muscle development for each limb group
+        let allMuscles = muscleGroupsState.sortedGroups
+        let avgMusclePoints = musclePoints.musclePoints.values.isEmpty ? 0 :
+            musclePoints.musclePoints.values.reduce(0, +) / CGFloat(musclePoints.musclePoints.count)
+        
+        // Apply muscle development to fusiforms (0.0 at 0% development, current values at 100%)
+        let developmentFactor = avgMusclePoints / 100.0  // Normalize to 0.0-1.0
+        
+        mutableFigure.fusiformUpperArms *= developmentFactor
+        mutableFigure.fusiformLowerArms *= developmentFactor
+        mutableFigure.fusiformUpperLegs *= developmentFactor
+        mutableFigure.fusiformLowerLegs *= developmentFactor
+        mutableFigure.fusiformUpperTorso *= developmentFactor
+        mutableFigure.fusiformLowerTorso *= developmentFactor
+        
         print("🎮 renderStickFigure: Drawing using StickFigure2D computed properties, scale: \(scale)")
         
         // Base canvas dimensions (matching StickFigure2D)
@@ -398,11 +421,12 @@ class GameScene: SKScene {
         skeletonPath.addLine(to: toRelative(rightLowerArmMid))
         
         // Draw the skeleton connectors with proper thickness
-        if !skeletonPath.isEmpty {
+        // Only show skeleton if muscles are developed (avgMusclePoints > 0)
+        if !skeletonPath.isEmpty && avgMusclePoints > 0 {
             let skeletonLine = SKShapeNode(path: skeletonPath.cgPath)
             skeletonLine.strokeColor = jointColor
-            // Make skeleton connectors more visible - .8 will use 80% of joint thickness and 1 is 100%
-            skeletonLine.lineWidth = max(jointThickness * 1.0 * scale, 1.0)
+            // Make skeleton connectors more visible - 0.8 will use 80% of joint thickness
+            skeletonLine.lineWidth = max(jointThickness * 0.8 * scale, 1.0)
             skeletonLine.fillColor = .clear
             skeletonLine.zPosition = 1.5  // Between body segments and interactive joints
             container.addChild(skeletonLine)
