@@ -60,7 +60,27 @@ class MapScene: GameScene {
         statsLabel.zPosition = 101
         addChild(statsLabel)
         
-        // Editor button - top center
+        // Appearance button - left of center (icon only, no background box)
+        // Create SF Symbol image for figure.stand and display it
+        if let sfSymbolImage = createSFSymbolImage(name: "figure.stand", size: CGSize(width: 24, height: 24), color: UIColor.white) {
+            let appearanceIcon = SKSpriteNode(texture: SKTexture(image: sfSymbolImage))
+            appearanceIcon.position = CGPoint(x: size.width / 2 - 70, y: topBarY)
+            appearanceIcon.name = "appearanceButton"
+            appearanceIcon.zPosition = 101
+            addChild(appearanceIcon)
+        } else {
+            // Fallback to emoji if SF Symbol creation fails
+            let appearanceLabel = SKLabelNode(fontNamed: "Arial")
+            appearanceLabel.text = "🧍"
+            appearanceLabel.fontSize = 16
+            appearanceLabel.fontColor = .white
+            appearanceLabel.position = CGPoint(x: size.width / 2 - 70, y: topBarY)
+            appearanceLabel.name = "appearanceButton"
+            appearanceLabel.zPosition = 101
+            addChild(appearanceLabel)
+        }
+        
+        // Editor button - center
         let editorArea = SKShapeNode(rectOf: CGSize(width: 60, height: 40))
         editorArea.position = CGPoint(x: size.width / 2, y: topBarY)
         editorArea.fillColor = SKColor(red: 0.3, green: 0.3, blue: 0.3, alpha: 0.7)
@@ -178,6 +198,12 @@ class MapScene: GameScene {
             if point.x > size.width - 70 {
                 print("🗺️ ✓ Stats button tapped!")
                 gameViewController?.showStats()
+                return
+            }
+            // Appearance button
+            if point.x > size.width / 2 - 105 && point.x < size.width / 2 - 35 {
+                print("🗺️ ✓ Appearance button tapped! - Opening appearance customization")
+                gameViewController?.showAppearance()
                 return
             }
             // Editor button

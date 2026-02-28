@@ -79,9 +79,14 @@ class GameScene: SKScene {
     
     /// Render a stick figure using the exact same logic as StickFigure2DView
     func renderStickFigure(_ figure: StickFigure2D, at position: CGPoint, scale: CGFloat = 1.0, flipped: Bool = false) -> SKNode {
+        var mutableFigure = figure
+        
         let container = SKNode()
         container.position = position
         container.xScale = flipped ? -1 : 1
+        
+        // Apply custom appearance colors from UserDefaults
+        StickFigureAppearance.shared.applyToStickFigure(&mutableFigure)
         
         print("🎮 renderStickFigure: Drawing using StickFigure2D computed properties, scale: \(scale)")
         
@@ -90,20 +95,19 @@ class GameScene: SKScene {
         let baseCenter = CGPoint(x: baseCanvasSize.width / 2, y: baseCanvasSize.height / 2)
         
         // Get all joint positions from the figure's computed properties
-        let waistPos = figure.waistPosition
-        let midTorsoPos = figure.midTorsoPosition
-        let neckPos = figure.neckPosition
-        let headPos = figure.headPosition
-        let leftShoulderPos = figure.leftShoulderPosition
-        let rightShoulderPos = figure.rightShoulderPosition
-        let leftUpperArmEnd = figure.leftUpperArmEnd
-        let rightUpperArmEnd = figure.rightUpperArmEnd
-        let leftForearmEnd = figure.leftForearmEnd
-        let rightForearmEnd = figure.rightForearmEnd
-        let leftUpperLegEnd = figure.leftUpperLegEnd
-        let rightUpperLegEnd = figure.rightUpperLegEnd
-        let leftFootEnd = figure.leftFootEnd
-        let rightFootEnd = figure.rightFootEnd
+        let waistPos = mutableFigure.waistPosition
+        let neckPos = mutableFigure.neckPosition
+        let headPos = mutableFigure.headPosition
+        let leftShoulderPos = mutableFigure.leftShoulderPosition
+        let rightShoulderPos = mutableFigure.rightShoulderPosition
+        let leftUpperArmEnd = mutableFigure.leftUpperArmEnd
+        let rightUpperArmEnd = mutableFigure.rightUpperArmEnd
+        let leftForearmEnd = mutableFigure.leftForearmEnd
+        let rightForearmEnd = mutableFigure.rightForearmEnd
+        let leftUpperLegEnd = mutableFigure.leftUpperLegEnd
+        let rightUpperLegEnd = mutableFigure.rightUpperLegEnd
+        let leftFootEnd = mutableFigure.leftFootEnd
+        let rightFootEnd = mutableFigure.rightFootEnd
         
         print("🎮 Waist: \(waistPos), Neck: \(neckPos), Head: \(headPos)")
         print("🎮 Left arm: shoulder->elbow->forearm = \(leftShoulderPos) -> \(leftUpperArmEnd) -> \(leftForearmEnd)")
@@ -146,8 +150,8 @@ class GameScene: SKScene {
             var topEdgePoints: [CGPoint] = []
             var bottomEdgePoints: [CGPoint] = []
             
-            // Generate points along the length with varying width - use 20 segments for smooth curves
-            let numSegments = 20
+            // Generate points along the length with varying width - use MORE segments for smooth curves at larger scales
+            let numSegments = 50  // Increased from 20 to 50 for smoother curves at larger scales
             
             for i in 0...numSegments {
                 let t = CGFloat(i) / CGFloat(numSegments)
@@ -169,9 +173,9 @@ class GameScene: SKScene {
                         distFromPeak = (t - peakT) / (1.0 - peakT)  // Normalized: 0 at peak, 1 at end
                     }
                     
-                    // Use inverted quadratic easing to create the diamond point
+                    // Use inverted quadratic easing to create smooth diamond shape
                     let easeT = max(0, 1.0 - (distFromPeak * distFromPeak))
-                    widthFactor = fusiform * easeT  // Removed the 0.5 reduction - use full width for proper diamonds
+                    widthFactor = fusiform * easeT
                 } else {
                     // NORMAL: Middle BULGE profile, small at both ends
                     let distFromCenter = abs(t - 0.5) * 2.0  // 0 at middle, 1 at ends
@@ -243,49 +247,62 @@ class GameScene: SKScene {
             container.addChild(circle)
         }
         
+        // Helper to draw hands/feet as simple circles at the end points
+        func drawHandOrFoot(at position: CGPoint, color: SKColor) {
+            let relativePos = CGPoint(x: (position.x - baseCenter.x) * scale, y: (baseCenter.y - position.y) * scale)
+            // Make them a bit more visible than before but still simple
+            let radius = max(3.0, 2.0 * scale)
+            let circle = SKShapeNode(circleOfRadius: radius)
+            circle.fillColor = color
+            circle.strokeColor = color
+            circle.lineWidth = 0
+            circle.position = relativePos
+            circle.zPosition = 2
+            container.addChild(circle)
+        }
+        
         // Draw lower body first (back) - with fusiform
-        drawTaperedSegment(from: waistPos, to: leftUpperLegEnd, color: SKColor(cgColor: figure.leftUpperLegColor.cgColor!), strokeThickness: figure.strokeThicknessUpperLegs, fusiform: figure.fusiformUpperLegs, inverted: true, peakPosition: 0.2)
-        drawTaperedSegment(from: leftUpperLegEnd, to: leftFootEnd, color: SKColor(cgColor: figure.leftLowerLegColor.cgColor!), strokeThickness: figure.strokeThicknessLowerLegs, fusiform: figure.fusiformLowerLegs, inverted: true, peakPosition: 0.2)
-        drawTaperedSegment(from: waistPos, to: rightUpperLegEnd, color: SKColor(cgColor: figure.rightUpperLegColor.cgColor!), strokeThickness: figure.strokeThicknessUpperLegs, fusiform: figure.fusiformUpperLegs, inverted: true, peakPosition: 0.2)
-        drawTaperedSegment(from: rightUpperLegEnd, to: rightFootEnd, color: SKColor(cgColor: figure.rightLowerLegColor.cgColor!), strokeThickness: figure.strokeThicknessLowerLegs, fusiform: figure.fusiformLowerLegs, inverted: true, peakPosition: 0.2)
+        drawTaperedSegment(from: waistPos, to: leftUpperLegEnd, color: SKColor(mutableFigure.leftUpperLegColor), strokeThickness: mutableFigure.strokeThicknessUpperLegs, fusiform: mutableFigure.fusiformUpperLegs, inverted: true, peakPosition: 0.2)
+        drawTaperedSegment(from: leftUpperLegEnd, to: leftFootEnd, color: SKColor(mutableFigure.leftLowerLegColor), strokeThickness: mutableFigure.strokeThicknessLowerLegs, fusiform: mutableFigure.fusiformLowerLegs, inverted: true, peakPosition: 0.2)
+        drawTaperedSegment(from: waistPos, to: rightUpperLegEnd, color: SKColor(mutableFigure.rightUpperLegColor), strokeThickness: mutableFigure.strokeThicknessUpperLegs, fusiform: mutableFigure.fusiformUpperLegs, inverted: true, peakPosition: 0.2)
+        drawTaperedSegment(from: rightUpperLegEnd, to: rightFootEnd, color: SKColor(mutableFigure.rightLowerLegColor), strokeThickness: mutableFigure.strokeThicknessLowerLegs, fusiform: mutableFigure.fusiformLowerLegs, inverted: true, peakPosition: 0.2)
         
         // Draw torso - ONE SEGMENT from neck to waist, NOT split into upper/lower
         // This is the critical fix - the editor draws it as one continuous piece
-        drawTaperedSegment(from: neckPos, to: waistPos, color: SKColor(cgColor: figure.torsoColor.cgColor!), strokeThickness: figure.strokeThicknessUpperTorso, fusiform: figure.fusiformUpperTorso, inverted: true, peakPosition: 0.2)
-        drawLine(from: neckPos, to: headPos, color: SKColor(cgColor: figure.torsoColor.cgColor!), width: figure.strokeThickness)
+        drawTaperedSegment(from: neckPos, to: waistPos, color: SKColor(mutableFigure.torsoColor), strokeThickness: mutableFigure.strokeThicknessUpperTorso, fusiform: mutableFigure.fusiformUpperTorso, inverted: true, peakPosition: 0.2)
+        drawLine(from: neckPos, to: headPos, color: SKColor(mutableFigure.torsoColor), width: mutableFigure.strokeThickness)
         
         // Draw arms - with correct peak positions matching the editor
         // Upper arms: peak at 50% (middle of bicep)
-        drawTaperedSegment(from: leftShoulderPos, to: leftUpperArmEnd, color: SKColor(cgColor: figure.leftUpperArmColor.cgColor!), strokeThickness: figure.strokeThicknessUpperArms, fusiform: figure.fusiformUpperArms, inverted: true, peakPosition: 0.5)
+        drawTaperedSegment(from: leftShoulderPos, to: leftUpperArmEnd, color: SKColor(mutableFigure.leftUpperArmColor), strokeThickness: mutableFigure.strokeThicknessUpperArms, fusiform: mutableFigure.fusiformUpperArms, inverted: true, peakPosition: 0.5)
         // Lower arms: peak at 35% (closer to elbow)
-        drawTaperedSegment(from: leftUpperArmEnd, to: leftForearmEnd, color: SKColor(cgColor: figure.leftLowerArmColor.cgColor!), strokeThickness: figure.strokeThicknessLowerArms, fusiform: figure.fusiformLowerArms, inverted: true, peakPosition: 0.35)
+        drawTaperedSegment(from: leftUpperArmEnd, to: leftForearmEnd, color: SKColor(mutableFigure.leftLowerArmColor), strokeThickness: mutableFigure.strokeThicknessLowerArms, fusiform: mutableFigure.fusiformLowerArms, inverted: true, peakPosition: 0.35)
         
-        drawTaperedSegment(from: rightShoulderPos, to: rightUpperArmEnd, color: SKColor(cgColor: figure.rightUpperArmColor.cgColor!), strokeThickness: figure.strokeThicknessUpperArms, fusiform: figure.fusiformUpperArms, inverted: true, peakPosition: 0.5)
-        drawTaperedSegment(from: rightUpperArmEnd, to: rightForearmEnd, color: SKColor(cgColor: figure.rightLowerArmColor.cgColor!), strokeThickness: figure.strokeThicknessLowerArms, fusiform: figure.fusiformLowerArms, inverted: true, peakPosition: 0.35)
+        drawTaperedSegment(from: rightShoulderPos, to: rightUpperArmEnd, color: SKColor(mutableFigure.rightUpperArmColor), strokeThickness: mutableFigure.strokeThicknessUpperArms, fusiform: mutableFigure.fusiformUpperArms, inverted: true, peakPosition: 0.5)
+        drawTaperedSegment(from: rightUpperArmEnd, to: rightForearmEnd, color: SKColor(mutableFigure.rightLowerArmColor), strokeThickness: mutableFigure.strokeThicknessLowerArms, fusiform: mutableFigure.fusiformLowerArms, inverted: true, peakPosition: 0.35)
+        
+        // Draw hands and feet as simple circles at the end points
+        let handColor = SKColor(mutableFigure.handColor)
+        let footColor = SKColor(mutableFigure.footColor)
         
         // Draw hands and feet
-        let handColor = SKColor(cgColor: figure.handColor.cgColor!)
-        let footColor = SKColor(cgColor: figure.footColor.cgColor!)
-        
-        // Simple hand/foot representation as small circles at the end points
-        // Don't scale the radius - these are visual indicators, not positional
-        drawCircle(at: leftForearmEnd, radius: max(1.0, figure.strokeThicknessLowerArms * 0.5), color: handColor)
-        drawCircle(at: rightForearmEnd, radius: max(1.0, figure.strokeThicknessLowerArms * 0.5), color: handColor)
-        drawCircle(at: leftFootEnd, radius: max(1.0, figure.strokeThicknessLowerLegs * 0.5), color: footColor)
-        drawCircle(at: rightFootEnd, radius: max(1.0, figure.strokeThicknessLowerLegs * 0.5), color: footColor)
+        drawHandOrFoot(at: leftForearmEnd, color: handColor)
+        drawHandOrFoot(at: rightForearmEnd, color: handColor)
+        drawHandOrFoot(at: leftFootEnd, color: footColor)
+        drawHandOrFoot(at: rightFootEnd, color: footColor)
         
         // Draw head
-        let headRadius = figure.headRadius * 1.2  // Reduced from 3.5 to 1.2 - much smaller
+        let headRadius = mutableFigure.headRadius * 1.2  // Reduced from 3.5 to 1.2 - much smaller
         print("🎮 Drawing head at \(headPos) with radius \(headRadius)")
-        drawCircle(at: headPos, radius: headRadius, color: SKColor(cgColor: figure.headColor.cgColor!))
+        drawCircle(at: headPos, radius: headRadius, color: SKColor(mutableFigure.headColor))
         
         // Draw skeleton connectors (joint lines) with proper scaling
         // These connect body parts at joints and are controlled by the joint color and thickness sliders
-        let jointColor = SKColor(cgColor: figure.jointColor.cgColor!)
-        let jointThickness = figure.strokeThicknessJoints
+        let jointColor = SKColor(mutableFigure.jointColor)
+        let jointThickness = mutableFigure.strokeThicknessJoints
         
         // Create a path for all skeleton connectors
-        var skeletonPath = UIBezierPath()
+        let skeletonPath = UIBezierPath()
         
         // Helper to add connector lines with proper scaling
         func addConnectorLine(from: CGPoint, to: CGPoint) {
@@ -331,7 +348,8 @@ class GameScene: SKScene {
         if !skeletonPath.isEmpty {
             let skeletonLine = SKShapeNode(path: skeletonPath.cgPath)
             skeletonLine.strokeColor = jointColor
-            skeletonLine.lineWidth = max(jointThickness * scale, 0.5)
+            // Make skeleton connectors more visible - use 60% of joint thickness
+            skeletonLine.lineWidth = max(jointThickness * 0.6 * scale, 1.0)
             skeletonLine.fillColor = .clear
             skeletonLine.zPosition = 1.5  // Between body segments and interactive joints
             container.addChild(skeletonLine)
@@ -346,4 +364,13 @@ class GameScene: SKScene {
         return point.x >= start.x && point.x <= start.x + width &&
                point.y >= start.y && point.y <= start.y + height
     }
+    
+    /// Create a UIImage from an SF Symbol name
+    func createSFSymbolImage(name: String, size: CGSize, color: UIColor) -> UIImage? {
+        let config = UIImage.SymbolConfiguration(pointSize: size.width, weight: .regular, scale: .large)
+        let image = UIImage(systemName: name, withConfiguration: config)?
+            .withTintColor(color, renderingMode: .alwaysTemplate)
+        return image
+    }
 }
+

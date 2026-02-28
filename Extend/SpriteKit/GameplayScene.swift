@@ -94,6 +94,26 @@ class GameplayScene: GameScene {
         statsLabel.zPosition = 101
         addChild(statsLabel)
         
+        // Appearance button - left of Stats button (icon only, no background box)
+        // Create SF Symbol image for figure.stand and display it
+        if let sfSymbolImage = createSFSymbolImage(name: "figure.stand", size: CGSize(width: 24, height: 24), color: UIColor.white) {
+            let appearanceIcon = SKSpriteNode(texture: SKTexture(image: sfSymbolImage))
+            appearanceIcon.position = CGPoint(x: size.width - 100, y: topBarY)
+            appearanceIcon.name = "appearanceButton"
+            appearanceIcon.zPosition = 101
+            addChild(appearanceIcon)
+        } else {
+            // Fallback to emoji if SF Symbol creation fails
+            let appearanceLabel = SKLabelNode(fontNamed: "Arial")
+            appearanceLabel.text = "🧍"
+            appearanceLabel.fontSize = 16
+            appearanceLabel.fontColor = .white
+            appearanceLabel.position = CGPoint(x: size.width - 100, y: topBarY)
+            appearanceLabel.name = "appearanceButton"
+            appearanceLabel.zPosition = 101
+            addChild(appearanceLabel)
+        }
+        
         // Level display - top center
         levelLabel = SKLabelNode(fontNamed: "Arial")
         levelLabel?.fontSize = 12
@@ -127,10 +147,9 @@ class GameplayScene: GameScene {
             
             // Use renderStickFigure with proper scale
             // The figure is in 600x720 base canvas
-            // We want it to fit nicely on a ~400 width screen
-            // Scale of 1.0 gives good visible size
+            // Scale 1.2 provides good visible size without rendering issues
             print("🎮 About to call renderStickFigure...")
-            let stickFigureNode = renderStickFigure(standFrame, at: CGPoint.zero, scale: 1.0, flipped: false)
+            let stickFigureNode = renderStickFigure(standFrame, at: CGPoint.zero, scale: 1.2, flipped: false)
             print("🎮 renderStickFigure returned successfully")
             characterContainer.addChild(stickFigureNode)
             
@@ -234,27 +253,33 @@ class GameplayScene: GameScene {
         print("🎮 ===== TOUCH ENDED =====")
         print("🎮 Touch point: \(point)")
         
-        // First, handle movement release (this must happen for all touches)
-        handleTouchAtLocation(point, isPress: false)
-        
-        // Check for button taps at the top
+        // First, check for button taps at the top
         let topBarY = size.height - 100
         let tapDistance = abs(point.y - topBarY)
         
-        if tapDistance < 25 { // Within the top button area
+        if tapDistance < 35 { // Within the top button area (increased from 25 to 35)
             // Exit button
             if point.x < 70 {
                 print("🎮 Exit button tapped!")
-                self.gameViewController?.showMapScene()
+                gameViewController?.dismissGame()
+                return
+            }
+            // Appearance button (left of Stats)
+            if point.x > size.width - 135 && point.x < size.width - 65 {
+                print("🎮 Appearance button tapped!")
+                gameViewController?.showAppearance()
                 return
             }
             // Stats button
             if point.x > size.width - 70 {
                 print("🎮 Stats button tapped!")
-                self.gameViewController?.showStats()
+                gameViewController?.showStats()
                 return
             }
         }
+        
+        // If no button was tapped, handle movement release
+        handleTouchAtLocation(point, isPress: false)
     }
     
     private func handleTouchAtLocation(_ point: CGPoint, isPress: Bool) {
@@ -399,7 +424,7 @@ class GameplayScene: GameScene {
                 if let characterContainer = self.characterNode {
                     characterContainer.removeAllChildren()
                     let shouldFlip = !gameState.facingRight
-                    let stickFigureNode = self.renderStickFigure(moveFrame, at: CGPoint.zero, scale: 1.0, flipped: shouldFlip)
+                    let stickFigureNode = self.renderStickFigure(moveFrame, at: CGPoint.zero, scale: 1.2, flipped: shouldFlip)
                     characterContainer.addChild(stickFigureNode)
                 }
             })
@@ -427,7 +452,36 @@ class GameplayScene: GameScene {
             if let characterContainer = characterNode {
                 characterContainer.removeAllChildren()
                 let shouldFlip = !gameState.facingRight
-                let stickFigureNode = renderStickFigure(standFrame, at: CGPoint.zero, scale: 1.0, flipped: shouldFlip)
+                let stickFigureNode = renderStickFigure(standFrame, at: CGPoint.zero, scale: 1.2, flipped: shouldFlip)
+                characterContainer.addChild(stickFigureNode)
+            }
+        }
+    }
+    
+    /// Refresh the character appearance when colors are changed in the customizer
+    func refreshCharacterAppearance() {
+        print("🎮 Refreshing character appearance after color change")
+        
+        guard let gameState = gameState, let characterContainer = characterNode else { return }
+        
+        // Clear existing character
+        characterContainer.removeAllChildren()
+        characterContainer.removeAction(forKey: "moveAnimation")
+        
+        // Re-render with current frame
+        if gameState.isMovingLeft || gameState.isMovingRight {
+            // If moving, use current animation frame
+            if animationFrameIndex < gameState.moveFrames.count {
+                let moveFrame = gameState.moveFrames[animationFrameIndex]
+                let shouldFlip = !gameState.facingRight
+                let stickFigureNode = renderStickFigure(moveFrame, at: CGPoint.zero, scale: 1.2, flipped: shouldFlip)
+                characterContainer.addChild(stickFigureNode)
+            }
+        } else {
+            // Otherwise show stand frame
+            if let standFrame = gameState.standFrame {
+                let shouldFlip = !gameState.facingRight
+                let stickFigureNode = renderStickFigure(standFrame, at: CGPoint.zero, scale: 1.2, flipped: shouldFlip)
                 characterContainer.addChild(stickFigureNode)
             }
         }

@@ -210,6 +210,31 @@ class GameViewController: UIViewController {
         }
     }
     
+    /// Show the appearance customization view
+    func showAppearance() {
+        print("🎮 Opening Appearance Customization")
+        
+        // Present the appearance view controller with a callback to refresh the game
+        let appearance = UIHostingController(rootView: StickFigureAppearanceView(
+            onDismiss: { [weak self] in
+                print("🎮 Appearance customization closed - refreshing gameplay character")
+                // Notify the current scene to refresh its character rendering
+                if let gameplayScene = self?.currentScene as? GameplayScene {
+                    gameplayScene.refreshCharacterAppearance()
+                }
+            }
+        ))
+        appearance.modalPresentationStyle = UIModalPresentationStyle.pageSheet
+        
+        // Set preferred height for the sheet (approximately 80% of screen)
+        if let sheet = appearance.sheetPresentationController {
+            sheet.detents = [.large()]
+            sheet.preferredCornerRadius = 12
+        }
+        
+        present(appearance, animated: true)
+    }
+    
     deinit {
         print("🎮 GameViewController deinit - cleaning up")
         // Clean up current scene
