@@ -247,19 +247,67 @@ class GameScene: SKScene {
             container.addChild(circle)
         }
         
-        // Helper to draw hands/feet as simple circles at the end points
-        func drawHandOrFoot(at position: CGPoint, color: SKColor) {
-            let relativePos = CGPoint(x: (position.x - baseCenter.x) * scale, y: (baseCenter.y - position.y) * scale)
-            // Make them a bit more visible than before but still simple
-            let radius = max(3.0, 2.0 * scale)
-            let circle = SKShapeNode(circleOfRadius: radius)
-            circle.fillColor = color
-            circle.strokeColor = color
-            circle.lineWidth = 0
-            circle.position = relativePos
-            circle.zPosition = 2
-            container.addChild(circle)
+        // Helper to draw hands/feet with proper tapering at top
+        func drawHandOrFoot(at position: CGPoint, from startPoint: CGPoint, color: SKColor, isHand: Bool = false) {
+            // Calculate direction from start to end (the limb direction)
+            let dx = position.x - startPoint.x
+            let dy = position.y - startPoint.y
+            let length = sqrt(dx * dx + dy * dy)
+            
+            // Position the hand/foot slightly before the endpoint to create overlap
+            let overlapAmount = 0.05  // 5% back from the endpoint
+            let offsetX = (length > 0) ? (dx / length) * length * overlapAmount : 0
+            let offsetY = (length > 0) ? (dy / length) * length * overlapAmount : 0
+            
+            let overlappedPos = CGPoint(x: position.x - offsetX, y: position.y - offsetY)
+            let relativePos = CGPoint(x: (overlappedPos.x - baseCenter.x) * scale, y: (baseCenter.y - overlappedPos.y) * scale)
+            
+            // Create a tapered shape that's narrower at top and wider at bottom
+            let radius = max(5.0, 1.0 * scale)
+            let path = UIBezierPath()
+            
+            // Top (narrow) - where it connects to forearm/ankle
+            let topLeft = CGPoint(x: -radius * 0.4, y: radius * 0.8)
+            let topRight = CGPoint(x: radius * 0.4, y: radius * 0.8)
+            
+            // Bottom (wide) - the foot/hand base
+            // For hands, make the bottom narrower (multiply by 0.6)
+            // For feet, keep it wider (multiply by 1.0)
+            let bottomWidthMultiplier: CGFloat = isHand ? 0.6 : 1.0
+            let bottomLeft = CGPoint(x: -radius * bottomWidthMultiplier, y: -radius * 0.6)
+            let bottomRight = CGPoint(x: radius * bottomWidthMultiplier, y: -radius * 0.6)
+            
+            // Draw tapered shape: start at top left, curve around bottom, back to top right
+            path.move(to: topLeft)
+            
+            // Left side - curve from top to bottom
+            path.addCurve(to: bottomLeft,
+                         controlPoint1: CGPoint(x: topLeft.x - radius * 0.3, y: topLeft.y - radius * 0.3),
+                         controlPoint2: CGPoint(x: bottomLeft.x - radius * 0.2, y: bottomLeft.y + radius * 0.2))
+            
+            // Bottom - slight curve
+            path.addCurve(to: bottomRight,
+                         controlPoint1: CGPoint(x: bottomLeft.x + radius * 0.5, y: bottomLeft.y - radius * 0.15),
+                         controlPoint2: CGPoint(x: bottomRight.x - radius * 0.5, y: bottomRight.y - radius * 0.15))
+            
+            // Right side - curve from bottom to top
+            path.addCurve(to: topRight,
+                         controlPoint1: CGPoint(x: bottomRight.x + radius * 0.2, y: bottomRight.y + radius * 0.2),
+                         controlPoint2: CGPoint(x: topRight.x + radius * 0.3, y: topRight.y - radius * 0.3))
+            
+            // Close the path
+            path.close()
+            
+            let shape = SKShapeNode(path: path.cgPath)
+            shape.fillColor = color
+            shape.strokeColor = color
+            shape.lineWidth = 0
+            shape.position = relativePos
+            shape.zPosition = 2
+            container.addChild(shape)
         }
+        
+        // ...existing code...
         
         // Draw lower body first (back) - with fusiform
         drawTaperedSegment(from: waistPos, to: leftUpperLegEnd, color: SKColor(mutableFigure.leftUpperLegColor), strokeThickness: mutableFigure.strokeThicknessUpperLegs, fusiform: mutableFigure.fusiformUpperLegs, inverted: true, peakPosition: 0.2)
@@ -281,15 +329,17 @@ class GameScene: SKScene {
         drawTaperedSegment(from: rightShoulderPos, to: rightUpperArmEnd, color: SKColor(mutableFigure.rightUpperArmColor), strokeThickness: mutableFigure.strokeThicknessUpperArms, fusiform: mutableFigure.fusiformUpperArms, inverted: true, peakPosition: 0.5)
         drawTaperedSegment(from: rightUpperArmEnd, to: rightForearmEnd, color: SKColor(mutableFigure.rightLowerArmColor), strokeThickness: mutableFigure.strokeThicknessLowerArms, fusiform: mutableFigure.fusiformLowerArms, inverted: true, peakPosition: 0.35)
         
-        // Draw hands and feet as simple circles at the end points
+        // Draw hands and feet with overlap
         let handColor = SKColor(mutableFigure.handColor)
         let footColor = SKColor(mutableFigure.footColor)
         
-        // Draw hands and feet
-        drawHandOrFoot(at: leftForearmEnd, color: handColor)
-        drawHandOrFoot(at: rightForearmEnd, color: handColor)
-        drawHandOrFoot(at: leftFootEnd, color: footColor)
-        drawHandOrFoot(at: rightFootEnd, color: footColor)
+        // Draw hands with overlap into lower arms (isHand: true makes bottom narrower)
+        drawHandOrFoot(at: leftForearmEnd, from: leftUpperArmEnd, color: handColor, isHand: true)
+        drawHandOrFoot(at: rightForearmEnd, from: rightUpperArmEnd, color: handColor, isHand: true)
+        
+        // Draw feet with overlap into lower legs (isHand: false keeps them wider)
+        drawHandOrFoot(at: leftFootEnd, from: leftUpperLegEnd, color: footColor, isHand: false)
+        drawHandOrFoot(at: rightFootEnd, from: rightUpperLegEnd, color: footColor, isHand: false)
         
         // Draw head
         let headRadius = mutableFigure.headRadius * 1.2  // Reduced from 3.5 to 1.2 - much smaller
@@ -301,15 +351,12 @@ class GameScene: SKScene {
         let jointColor = SKColor(mutableFigure.jointColor)
         let jointThickness = mutableFigure.strokeThicknessJoints
         
-        // Create a path for all skeleton connectors
+        // Create a path for all skeleton connectors - draw continuously without gaps
         let skeletonPath = UIBezierPath()
         
-        // Helper to add connector lines with proper scaling
-        func addConnectorLine(from: CGPoint, to: CGPoint) {
-            let fromRelative = CGPoint(x: (from.x - baseCenter.x) * scale, y: (baseCenter.y - from.y) * scale)
-            let toRelative = CGPoint(x: (to.x - baseCenter.x) * scale, y: (baseCenter.y - to.y) * scale)
-            skeletonPath.move(to: fromRelative)
-            skeletonPath.addLine(to: toRelative)
+        // Helper to convert coordinates to relative (scaled) space
+        func toRelative(_ point: CGPoint) -> CGPoint {
+            return CGPoint(x: (point.x - baseCenter.x) * scale, y: (baseCenter.y - point.y) * scale)
         }
         
         // Calculate midpoints for connectors
@@ -322,38 +369,45 @@ class GameScene: SKScene {
         let rightUpperArmMid = CGPoint(x: (rightShoulderPos.x + rightUpperArmEnd.x) * 0.5, y: (rightShoulderPos.y + rightUpperArmEnd.y) * 0.5)
         let rightLowerArmMid = CGPoint(x: (rightUpperArmEnd.x + rightForearmEnd.x) * 0.5, y: (rightUpperArmEnd.y + rightForearmEnd.y) * 0.5)
         
-        // WAIST CONNECTORS: Pinned to neck position (follows upper body rotation)
-        addConnectorLine(from: neckPos, to: waistPos)
-        addConnectorLine(from: waistPos, to: leftUpperLegMid)
-        addConnectorLine(from: neckPos, to: waistPos)
-        addConnectorLine(from: waistPos, to: rightUpperLegMid)
+        // SPINE: Continuous line from neck to waist
+        skeletonPath.move(to: toRelative(neckPos))
+        skeletonPath.addLine(to: toRelative(waistPos))
         
-        // LEFT KNEE CONNECTOR: From upper leg mid through knee joint to lower leg mid
-        addConnectorLine(from: leftUpperLegMid, to: leftUpperLegEnd)
-        addConnectorLine(from: leftUpperLegEnd, to: leftLowerLegMid)
+        // LEFT LEG: Continuous line from waist through upper leg mid, knee, to lower leg mid
+        skeletonPath.move(to: toRelative(waistPos))
+        skeletonPath.addLine(to: toRelative(leftUpperLegMid))
+        skeletonPath.addLine(to: toRelative(leftUpperLegEnd))
+        skeletonPath.addLine(to: toRelative(leftLowerLegMid))
         
-        // RIGHT KNEE CONNECTOR: From upper leg mid through knee joint to lower leg mid
-        addConnectorLine(from: rightUpperLegMid, to: rightUpperLegEnd)
-        addConnectorLine(from: rightUpperLegEnd, to: rightLowerLegMid)
+        // RIGHT LEG: Continuous line from waist through upper leg mid, knee, to lower leg mid
+        skeletonPath.move(to: toRelative(waistPos))
+        skeletonPath.addLine(to: toRelative(rightUpperLegMid))
+        skeletonPath.addLine(to: toRelative(rightUpperLegEnd))
+        skeletonPath.addLine(to: toRelative(rightLowerLegMid))
         
-        // LEFT ELBOW CONNECTOR: From upper arm mid through elbow joint to lower arm mid
-        addConnectorLine(from: leftUpperArmMid, to: leftUpperArmEnd)
-        addConnectorLine(from: leftUpperArmEnd, to: leftLowerArmMid)
+        // LEFT ARM: Continuous line from shoulder through upper arm mid, elbow, to lower arm mid
+        skeletonPath.move(to: toRelative(leftShoulderPos))
+        skeletonPath.addLine(to: toRelative(leftUpperArmMid))
+        skeletonPath.addLine(to: toRelative(leftUpperArmEnd))
+        skeletonPath.addLine(to: toRelative(leftLowerArmMid))
         
-        // RIGHT ELBOW CONNECTOR: From upper arm mid through elbow joint to lower arm mid
-        addConnectorLine(from: rightUpperArmMid, to: rightUpperArmEnd)
-        addConnectorLine(from: rightUpperArmEnd, to: rightLowerArmMid)
+        // RIGHT ARM: Continuous line from shoulder through upper arm mid, elbow, to lower arm mid
+        skeletonPath.move(to: toRelative(rightShoulderPos))
+        skeletonPath.addLine(to: toRelative(rightUpperArmMid))
+        skeletonPath.addLine(to: toRelative(rightUpperArmEnd))
+        skeletonPath.addLine(to: toRelative(rightLowerArmMid))
         
         // Draw the skeleton connectors with proper thickness
         if !skeletonPath.isEmpty {
             let skeletonLine = SKShapeNode(path: skeletonPath.cgPath)
             skeletonLine.strokeColor = jointColor
-            // Make skeleton connectors more visible - use 60% of joint thickness
-            skeletonLine.lineWidth = max(jointThickness * 0.6 * scale, 1.0)
+            // Make skeleton connectors more visible - .8 will use 80% of joint thickness and 1 is 100%
+            skeletonLine.lineWidth = max(jointThickness * 1.0 * scale, 1.0)
             skeletonLine.fillColor = .clear
             skeletonLine.zPosition = 1.5  // Between body segments and interactive joints
             container.addChild(skeletonLine)
         }
+        
         
         print("🎮 Stick figure rendered with \(container.children.count) nodes!")
         return container
