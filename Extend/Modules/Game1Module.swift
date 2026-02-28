@@ -675,10 +675,19 @@ class StickFigureGameState {
         
         // Load Stand frame (frameNumber 0 - as originally saved)
         if let standFrameData = allFrames.first(where: { $0.name == "Stand" && $0.frameNumber == 0 }) {
+            print("DEBUG: Found Stand frame data, converting to StickFigure2D...")
             standFrame = standFrameData.pose.toStickFigure2D()
             print("DEBUG: ✓ Loaded Stand frame (frameNumber 0)")
+            print("DEBUG: Stand frame head color: \(standFrame?.headColor ?? .clear)")
+            print("DEBUG: Stand frame torso color: \(standFrame?.torsoColor ?? .clear)")
+            print("DEBUG: Stand frame fusiform: upper=\(standFrame?.fusiformUpperTorso ?? 0), lower=\(standFrame?.fusiformLowerTorso ?? 0)")
+            print("DEBUG: Stand frame fusiform arms: upper=\(standFrame?.fusiformUpperArms ?? 0), lower=\(standFrame?.fusiformLowerArms ?? 0)")
+            print("DEBUG: Stand frame fusiform legs: upper=\(standFrame?.fusiformUpperLegs ?? 0), lower=\(standFrame?.fusiformLowerLegs ?? 0)")
         } else {
-            print("DEBUG: ✗ Stand frame 0 not found")
+            print("DEBUG: ✗ Stand frame 0 not found - available Stand frames:")
+            allFrames.filter { $0.name == "Stand" }.forEach { frame in
+                print("DEBUG:   - Frame \(frame.frameNumber)")
+            }
         }
         
         // Load Move frames 1-4
@@ -752,6 +761,12 @@ class StickFigureGameState {
         // Load the stick figure frames for this room
         loadStickFigureFrames()
         print("🎮 initializeRoom: Loaded stick figure frames - standFrame = \(standFrame != nil ? "SET" : "NIL")")
+    }
+    
+    func forceReloadFrames() {
+        print("🎮 forceReloadFrames: Reloading all animation frames...")
+        loadStickFigureFrames()
+        print("🎮 forceReloadFrames: standFrame = \(standFrame != nil ? "SET" : "NIL")")
     }
     
     // MARK: - Helper: Convert Hex Color to SwiftUI Color
@@ -1967,6 +1982,7 @@ private struct Game1ModuleView: View {
     @State private var gameState = StickFigureGameState()
     @State private var mapState = GameMapState()
     @State private var showProgrammableDemo = false
+    @State private var showGame = true  // Control whether to show the game view
     @Environment(ModuleState.self) var moduleState
     @Environment(\.scenePhase) var scenePhase
 
@@ -1981,10 +1997,26 @@ private struct Game1ModuleView: View {
                         showProgrammableDemo = false
                     })
                 }
-            } else {
+            } else if showGame {
                 // Use SpriteKit for the game
-                SpriteKitGameView(gameState: gameState, mapState: mapState)
+                SpriteKitGameView(gameState: gameState, mapState: mapState, onDismiss: {
+                    print("🎮 Game dismissed - navigating back to dashboard")
+                    // Select dashboard module to show it
+                    moduleState.selectModule(ModuleIDs.dashboard)
+                })
                     .ignoresSafeArea()
+            }
+        }
+        .onAppear {
+            // Reset showGame to true when this module appears
+            print("🎮 Game1Module appeared - ensuring showGame is true")
+            showGame = true
+        }
+        .onChange(of: showProgrammableDemo) { oldValue, newValue in
+            if oldValue == true && newValue == false {
+                // Exiting editor, reload frames
+                print("🎮 Exiting editor - Forcing frame reload")
+                gameState.forceReloadFrames()
             }
         }
         .onChange(of: scenePhase) { oldValue, newValue in

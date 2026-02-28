@@ -32,16 +32,24 @@ class GameplayScene: GameScene {
         backgroundColor = SKColor(red: 0.95, green: 0.95, blue: 0.98, alpha: 1.0)
         
         // Create UI
+        print("🎮 Setting up UI...")
         setupUI()
+        print("🎮 UI setup complete")
         
         // Create character
+        print("🎮 Setting up character...")
         setupCharacter()
+        print("🎮 Character setup complete")
         
         // Create touch zones (debug visualization)
+        print("🎮 Setting up control zones...")
         setupControlZones()
+        print("🎮 Control zones setup complete")
         
         // Start game loop
+        print("🎮 Starting game loop...")
         startGameLoop()
+        print("🎮 Game loop started")
     }
     
     private func setupUI() {
@@ -104,6 +112,8 @@ class GameplayScene: GameScene {
         
         print("🎮 setupCharacter: standFrame = \(gameState.standFrame != nil ? "SET" : "NIL")")
         print("🎮 setupCharacter: moveFrames.count = \(gameState.moveFrames.count)")
+        print("🎮 standFrame fusiform values: upper=\(gameState.standFrame?.fusiformUpperTorso ?? 0), lower=\(gameState.standFrame?.fusiformLowerTorso ?? 0)")
+        print("🎮 standFrame ALL fusiforms: upperTorso=\(gameState.standFrame?.fusiformUpperTorso ?? 0), lowerTorso=\(gameState.standFrame?.fusiformLowerTorso ?? 0), upperArms=\(gameState.standFrame?.fusiformUpperArms ?? 0), lowerArms=\(gameState.standFrame?.fusiformLowerArms ?? 0), upperLegs=\(gameState.standFrame?.fusiformUpperLegs ?? 0), lowerLegs=\(gameState.standFrame?.fusiformLowerLegs ?? 0)")
         
         // Use the Stand frame from gameState
         if let standFrame = gameState.standFrame {
@@ -115,16 +125,20 @@ class GameplayScene: GameScene {
             characterContainer.name = "character"
             characterContainer.zPosition = 10
             
-            // Use renderStickFigure with proper scale (smaller for visibility)
-            // The figure is in 600x720 base canvas, scale 2.4
-            // We want it visible on a ~400 width screen, so scale down significantly
-            let stickFigureNode = renderStickFigure(standFrame, at: CGPoint.zero, scale: 0.1, flipped: false)
+            // Use renderStickFigure with proper scale
+            // The figure is in 600x720 base canvas
+            // We want it to fit nicely on a ~400 width screen
+            // Scale of 1.0 gives good visible size
+            print("🎮 About to call renderStickFigure...")
+            let stickFigureNode = renderStickFigure(standFrame, at: CGPoint.zero, scale: 1.0, flipped: false)
+            print("🎮 renderStickFigure returned successfully")
             characterContainer.addChild(stickFigureNode)
             
             addChild(characterContainer)
             characterNode = characterContainer
             
             print("🎮 Stand frame rendered successfully with scale 0.1")
+            print("🎮 Character node added to scene with zPosition: \(characterContainer.zPosition)")
         } else {
             print("🎮 No standFrame available, using fallback blue circle")
             
@@ -385,7 +399,7 @@ class GameplayScene: GameScene {
                 if let characterContainer = self.characterNode {
                     characterContainer.removeAllChildren()
                     let shouldFlip = !gameState.facingRight
-                    let stickFigureNode = self.renderStickFigure(moveFrame, at: CGPoint.zero, scale: 0.1, flipped: shouldFlip)
+                    let stickFigureNode = self.renderStickFigure(moveFrame, at: CGPoint.zero, scale: 1.0, flipped: shouldFlip)
                     characterContainer.addChild(stickFigureNode)
                 }
             })
@@ -413,9 +427,16 @@ class GameplayScene: GameScene {
             if let characterContainer = characterNode {
                 characterContainer.removeAllChildren()
                 let shouldFlip = !gameState.facingRight
-                let stickFigureNode = renderStickFigure(standFrame, at: CGPoint.zero, scale: 0.1, flipped: shouldFlip)
+                let stickFigureNode = renderStickFigure(standFrame, at: CGPoint.zero, scale: 1.0, flipped: shouldFlip)
                 characterContainer.addChild(stickFigureNode)
             }
         }
+    }
+    
+    @MainActor
+    deinit {
+        print("🎮 GameplayScene deinit - cleaning up")
+        removeAllChildren()
+        removeAllActions()
     }
 }

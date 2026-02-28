@@ -159,12 +159,15 @@ class MapScene: GameScene {
     override func handleTouchEnded(at point: CGPoint) {
         print("🗺️ Touch ended at: \(point)")
         print("🗺️ gameViewController is: \(gameViewController != nil ? "SET" : "NIL")")
+        print("🗺️ Screen size: \(size), Safe area insets: \(view?.safeAreaInsets ?? UIEdgeInsets.zero)")
         
         let topBarY = size.height - 100
         let tapDistance = abs(point.y - topBarY)
         
+        print("🗺️ Button bar at Y=\(topBarY), tap distance=\(tapDistance), tap Y=\(point.y)")
+        
         // Check for top button taps
-        if tapDistance < 25 {
+        if tapDistance < 35 {  // Increased from 25 to 35 for better hit detection
             // Exit button
             if point.x < 70 {
                 print("🗺️ ✓ Exit button tapped! - calling dismissGame() to exit to dashboard")
@@ -209,5 +212,12 @@ class MapScene: GameScene {
         }
         
         print("🗺️ ✗ No node hit - touch at \(point)")
+    }
+    
+    @MainActor
+    deinit {
+        print("🗺️ MapScene deinit - cleaning up")
+        removeAllChildren()
+        removeAllActions()
     }
 }

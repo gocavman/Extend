@@ -250,21 +250,22 @@ struct StickFigure2DPose: Codable {
     
     func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
-        try container.encode(waistPosition.x, forKey: .waistPositionX)
-        try container.encode(waistPosition.y, forKey: .waistPositionY)
-        try container.encode(waistTorsoAngle, forKey: .waistTorsoAngle)
-        try container.encode(midTorsoAngle, forKey: .midTorsoAngle)
-        try container.encode(headAngle, forKey: .headAngle)
-        try container.encode(leftShoulderAngle, forKey: .leftShoulderAngle)
-        try container.encode(rightShoulderAngle, forKey: .rightShoulderAngle)
-        try container.encode(leftElbowAngle, forKey: .leftElbowAngle)
-        try container.encode(rightElbowAngle, forKey: .rightElbowAngle)
-        try container.encode(leftHandAngle, forKey: .leftHandAngle)
-        try container.encode(rightHandAngle, forKey: .rightHandAngle)
-        try container.encode(leftKneeAngle, forKey: .leftKneeAngle)
-        try container.encode(rightKneeAngle, forKey: .rightKneeAngle)
-        try container.encode(leftFootAngle, forKey: .leftFootAngle)
-        try container.encode(rightFootAngle, forKey: .rightFootAngle)
+        // Round positions and angles to whole numbers for cleaner JSON
+        try container.encode(round(waistPosition.x), forKey: .waistPositionX)
+        try container.encode(round(waistPosition.y), forKey: .waistPositionY)
+        try container.encode(round(waistTorsoAngle), forKey: .waistTorsoAngle)
+        try container.encode(round(midTorsoAngle), forKey: .midTorsoAngle)
+        try container.encode(round(headAngle), forKey: .headAngle)
+        try container.encode(round(leftShoulderAngle), forKey: .leftShoulderAngle)
+        try container.encode(round(rightShoulderAngle), forKey: .rightShoulderAngle)
+        try container.encode(round(leftElbowAngle), forKey: .leftElbowAngle)
+        try container.encode(round(rightElbowAngle), forKey: .rightElbowAngle)
+        try container.encode(round(leftHandAngle), forKey: .leftHandAngle)
+        try container.encode(round(rightHandAngle), forKey: .rightHandAngle)
+        try container.encode(round(leftKneeAngle), forKey: .leftKneeAngle)
+        try container.encode(round(rightKneeAngle), forKey: .rightKneeAngle)
+        try container.encode(round(leftFootAngle), forKey: .leftFootAngle)
+        try container.encode(round(rightFootAngle), forKey: .rightFootAngle)
         try container.encode(headColor, forKey: .headColor)
         try container.encode(torsoColor, forKey: .torsoColor)
         try container.encode(leftArmColor, forKey: .leftArmColor)
@@ -282,22 +283,24 @@ struct StickFigure2DPose: Codable {
         try container.encode(handColor, forKey: .handColor)
         try container.encode(footColor, forKey: .footColor)
         try container.encode(jointColor, forKey: .jointColor)
-        try container.encode(strokeThickness, forKey: .strokeThickness)
-        try container.encode(scale, forKey: .scale)
+        // Round stroke and sizing values to whole numbers
+        try container.encode(round(strokeThickness), forKey: .strokeThickness)
+        try container.encode(scale, forKey: .scale) // Keep scale as is (can be decimal like 2.4)
         try container.encode(headRadiusMultiplier, forKey: .headRadiusMultiplier)
-        try container.encode(strokeThicknessUpperArms, forKey: .strokeThicknessUpperArms)
-        try container.encode(strokeThicknessLowerArms, forKey: .strokeThicknessLowerArms)
-        try container.encode(strokeThicknessUpperLegs, forKey: .strokeThicknessUpperLegs)
-        try container.encode(strokeThicknessLowerLegs, forKey: .strokeThicknessLowerLegs)
-        try container.encode(strokeThicknessJoints, forKey: .strokeThicknessJoints)
-        try container.encode(strokeThicknessUpperTorso, forKey: .strokeThicknessUpperTorso)
-        try container.encode(strokeThicknessLowerTorso, forKey: .strokeThicknessLowerTorso)
-        try container.encode(fusiformUpperArms, forKey: .fusiformUpperArms)
-        try container.encode(fusiformLowerArms, forKey: .fusiformLowerArms)
-        try container.encode(fusiformUpperLegs, forKey: .fusiformUpperLegs)
-        try container.encode(fusiformLowerLegs, forKey: .fusiformLowerLegs)
-        try container.encode(fusiformUpperTorso, forKey: .fusiformUpperTorso)
-        try container.encode(fusiformLowerTorso, forKey: .fusiformLowerTorso)
+        try container.encode(round(strokeThicknessUpperArms), forKey: .strokeThicknessUpperArms)
+        try container.encode(round(strokeThicknessLowerArms), forKey: .strokeThicknessLowerArms)
+        try container.encode(round(strokeThicknessUpperLegs), forKey: .strokeThicknessUpperLegs)
+        try container.encode(round(strokeThicknessLowerLegs), forKey: .strokeThicknessLowerLegs)
+        try container.encode(round(strokeThicknessJoints), forKey: .strokeThicknessJoints)
+        try container.encode(round(strokeThicknessUpperTorso), forKey: .strokeThicknessUpperTorso)
+        try container.encode(round(strokeThicknessLowerTorso), forKey: .strokeThicknessLowerTorso)
+        // Round fusiform values to whole numbers
+        try container.encode(round(fusiformUpperArms), forKey: .fusiformUpperArms)
+        try container.encode(round(fusiformLowerArms), forKey: .fusiformLowerArms)
+        try container.encode(round(fusiformUpperLegs), forKey: .fusiformUpperLegs)
+        try container.encode(round(fusiformLowerLegs), forKey: .fusiformLowerLegs)
+        try container.encode(round(fusiformUpperTorso), forKey: .fusiformUpperTorso)
+        try container.encode(round(fusiformLowerTorso), forKey: .fusiformLowerTorso)
     }
     
     init(from decoder: Decoder) throws {
@@ -495,7 +498,7 @@ struct StickFigure2D {
     }
     
     // Segment lengths (these stay constant)
-    let torsoLength: CGFloat = 50
+    let torsoLength: CGFloat = 46
     let neckLength: CGFloat = 15
     let headRadius: CGFloat = 12
     let upperArmLength: CGFloat = 25

@@ -8,6 +8,8 @@ class GameViewController: UIViewController {
     var gameState: StickFigureGameState?
     var mapState: GameMapState?
     var currentScene: GameScene?
+    var onDismissGame: (() -> Void)?  // Callback for SwiftUI dismissal
+    private var hasInitializedScene = false  // Track if we've shown the initial scene
     
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -27,13 +29,27 @@ class GameViewController: UIViewController {
             mapState = GameMapState()
         }
         
-        // Show map first
+        // Show map on first load
+        print("🎮 GameViewController viewDidLoad - showing map for first time")
         showMapScene()
+        hasInitializedScene = true
+        
+        // Ensure the SKView actually has the scene
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+            print("🎮 Verifying scene is displayed: \(self.skView?.scene != nil ? "YES" : "NO")")
+        }
     }
     
     /// Show the map/level selection scene
     func showMapScene() {
         guard let skView = skView, let gameState = gameState, let mapState = mapState else { return }
+        
+        // Remove previous scene if it exists
+        if let currentScene = currentScene {
+            currentScene.removeAllChildren()
+            currentScene.removeAllActions()
+            currentScene.removeFromParent()  // Remove from view
+        }
         
         let scene = MapScene(size: skView.bounds.size)
         scene.gameState = gameState
@@ -41,7 +57,7 @@ class GameViewController: UIViewController {
         scene.gameViewController = self  // Pass reference to view controller
         scene.scaleMode = .resizeFill
         
-        skView.presentScene(scene, transition: SKTransition.fade(withDuration: 0.3))
+        skView.presentScene(scene)  // Remove transition for now to avoid conflicts
         currentScene = scene
     }
     
@@ -54,15 +70,36 @@ class GameViewController: UIViewController {
         
         print("🎮 startGameplay called - creating GameplayScene with size: \(skView.bounds.size)")
         
+        // CRITICAL: Remove the old scene completely from the SKView
+        if let oldScene = skView.scene {
+            print("🎮 SKView had existing scene: \(type(of: oldScene)) - removing it completely")
+            oldScene.removeAllChildren()
+            oldScene.removeAllActions()
+            oldScene.removeFromParent()
+        }
+        
+        // Also clean up our currentScene reference
+        if let currentScene = currentScene {
+            print("🎮 Cleaning up currentScene reference")
+            currentScene.removeAllChildren()
+            currentScene.removeAllActions()
+        }
+        
         let scene = GameplayScene(size: skView.bounds.size)
         scene.gameState = gameState
         scene.mapState = mapState
-        scene.gameViewController = self  // Pass reference to view controller
+        scene.gameViewController = self
         scene.scaleMode = .resizeFill
         scene.isUserInteractionEnabled = true
         
-        print("🎮 Presenting GameplayScene")
-        skView.presentScene(scene, transition: SKTransition.fade(withDuration: 0.3))
+        print("🎮 About to present GameplayScene to SKView")
+        print("🎮 SKView scene before presentScene: \(skView.scene != nil ? "HAS SCENE" : "NO SCENE")")
+        
+        // Present the scene directly without transition to avoid conflicts
+        skView.presentScene(scene)
+        
+        print("🎮 SKView scene after presentScene: \(skView.scene != nil ? "HAS SCENE" : "NO SCENE")")
+        print("🎮 Scene type: \(type(of: skView.scene))")
         currentScene = scene
         
         print("🎮 GameplayScene is now active")
@@ -75,10 +112,10 @@ class GameViewController: UIViewController {
         gameState?.saveStats()
         gameState?.saveMapPosition(mapState ?? GameMapState())
         
-        // Dismiss view controller on main thread
+        // Call the callback to notify SwiftUI
         DispatchQueue.main.async {
-            print("🎮 Dismissing GameViewController")
-            self.dismiss(animated: true)
+            print("🎮 Calling onDismissGame callback")
+            self.onDismissGame?()
         }
     }
     
@@ -171,5 +208,12 @@ class GameViewController: UIViewController {
         } else {
             return String(format: "%ds", secs)
         }
+    }
+    
+    deinit {
+        print("🎮 GameViewController deinit - cleaning up")
+        // Clean up current scene
+        currentScene?.removeAllChildren()
+        currentScene?.removeAllActions()
     }
 }
