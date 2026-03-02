@@ -81,6 +81,8 @@ struct StickFigure2DPose: Codable {
     let rightElbowAngle: Double
     let leftHandAngle: Double
     let rightHandAngle: Double
+    let leftHipAngle: Double
+    let rightHipAngle: Double
     let leftKneeAngle: Double
     let rightKneeAngle: Double
     let leftFootAngle: Double
@@ -134,6 +136,8 @@ struct StickFigure2DPose: Codable {
         self.rightElbowAngle = figure.rightElbowAngle
         self.leftHandAngle = figure.leftHandAngle
         self.rightHandAngle = figure.rightHandAngle
+        self.leftHipAngle = figure.leftHipAngle
+        self.rightHipAngle = figure.rightHipAngle
         self.leftKneeAngle = figure.leftKneeAngle
         self.rightKneeAngle = figure.rightKneeAngle
         self.leftFootAngle = figure.leftFootAngle
@@ -185,6 +189,8 @@ struct StickFigure2DPose: Codable {
         figure.rightElbowAngle = rightElbowAngle
         figure.leftHandAngle = leftHandAngle
         figure.rightHandAngle = rightHandAngle
+        figure.leftHipAngle = leftHipAngle
+        figure.rightHipAngle = rightHipAngle
         figure.leftKneeAngle = leftKneeAngle
         figure.rightKneeAngle = rightKneeAngle
         figure.leftFootAngle = leftFootAngle
@@ -232,6 +238,7 @@ struct StickFigure2DPose: Codable {
         case leftShoulderAngle, rightShoulderAngle
         case leftElbowAngle, rightElbowAngle
         case leftHandAngle, rightHandAngle
+        case leftHipAngle, rightHipAngle
         case leftKneeAngle, rightKneeAngle
         case leftFootAngle, rightFootAngle
         case headColor, torsoColor, leftArmColor, rightArmColor
@@ -262,6 +269,8 @@ struct StickFigure2DPose: Codable {
         try container.encode(round(rightElbowAngle), forKey: .rightElbowAngle)
         try container.encode(round(leftHandAngle), forKey: .leftHandAngle)
         try container.encode(round(rightHandAngle), forKey: .rightHandAngle)
+        try container.encode(round(leftHipAngle), forKey: .leftHipAngle)
+        try container.encode(round(rightHipAngle), forKey: .rightHipAngle)
         try container.encode(round(leftKneeAngle), forKey: .leftKneeAngle)
         try container.encode(round(rightKneeAngle), forKey: .rightKneeAngle)
         try container.encode(round(leftFootAngle), forKey: .leftFootAngle)
@@ -318,6 +327,8 @@ struct StickFigure2DPose: Codable {
         self.rightElbowAngle = try container.decode(Double.self, forKey: .rightElbowAngle)
         self.leftHandAngle = try container.decode(Double.self, forKey: .leftHandAngle)
         self.rightHandAngle = try container.decode(Double.self, forKey: .rightHandAngle)
+        self.leftHipAngle = try container.decodeIfPresent(Double.self, forKey: .leftHipAngle) ?? 0
+        self.rightHipAngle = try container.decodeIfPresent(Double.self, forKey: .rightHipAngle) ?? 0
         self.leftKneeAngle = try container.decode(Double.self, forKey: .leftKneeAngle)
         self.rightKneeAngle = try container.decode(Double.self, forKey: .rightKneeAngle)
         self.leftFootAngle = try container.decode(Double.self, forKey: .leftFootAngle)
@@ -418,6 +429,8 @@ struct StickFigure2D {
     var rightElbowAngle: Double = 45
     var leftHandAngle: Double = -45
     var rightHandAngle: Double = -45
+    var leftHipAngle: Double = 0  // Rotation of upper left leg around waist
+    var rightHipAngle: Double = 0  // Rotation of upper right leg around waist
     var leftKneeAngle: Double = 0
     var rightKneeAngle: Double = 0
     var leftFootAngle: Double = 0
@@ -657,38 +670,58 @@ struct StickFigure2D {
     
     // Left leg positions (lower body doesn't rotate with waist)
     // Legs rotate directly from waist center - no fixed X offset
+    var leftHipPosition: CGPoint {
+        // Hip position is where the upper leg attaches to the waist
+        waistPosition
+    }
+    
+    var rightHipPosition: CGPoint {
+        // Hip position is where the upper leg attaches to the waist
+        waistPosition
+    }
+    
     var leftUpperLegEnd: CGPoint {
-        let angle = 270.0 + leftKneeAngle // 270° = pointing down
+        let angle = 270.0 + leftHipAngle + leftKneeAngle // Hip rotation + knee rotation
         let radians = angle * .pi / 180
         let x = waistPosition.x + upperLegLength * cos(radians)
         let y = waistPosition.y + upperLegLength * sin(radians)
         return CGPoint(x: x, y: y)
     }
     
-    var leftFootEnd: CGPoint {
-        let angle = 270.0 + leftKneeAngle + leftFootAngle
+    var leftLowerLegEnd: CGPoint {
+        let angle = 270.0 + leftHipAngle + leftKneeAngle + leftFootAngle
         let radians = angle * .pi / 180
         let x = leftUpperLegEnd.x + lowerLegLength * cos(radians)
         let y = leftUpperLegEnd.y + lowerLegLength * sin(radians)
         return CGPoint(x: x, y: y)
     }
     
+    var leftFootEnd: CGPoint {
+        // Foot end is the same as lower leg end
+        leftLowerLegEnd
+    }
+    
     // Right leg positions
     // Legs rotate directly from waist center - no fixed X offset
     var rightUpperLegEnd: CGPoint {
-        let angle = 270.0 + rightKneeAngle
+        let angle = 270.0 + rightHipAngle + rightKneeAngle
         let radians = angle * .pi / 180
         let x = waistPosition.x + upperLegLength * cos(radians)
         let y = waistPosition.y + upperLegLength * sin(radians)
         return CGPoint(x: x, y: y)
     }
     
-    var rightFootEnd: CGPoint {
-        let angle = 270.0 + rightKneeAngle + rightFootAngle
+    var rightLowerLegEnd: CGPoint {
+        let angle = 270.0 + rightHipAngle + rightKneeAngle + rightFootAngle
         let radians = angle * .pi / 180
         let x = rightUpperLegEnd.x + lowerLegLength * cos(radians)
         let y = rightUpperLegEnd.y + lowerLegLength * sin(radians)
         return CGPoint(x: x, y: y)
+    }
+    
+    var rightFootEnd: CGPoint {
+        // Foot end is the same as lower leg end
+        rightLowerLegEnd
     }
 }
 

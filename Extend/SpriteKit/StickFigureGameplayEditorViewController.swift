@@ -3,7 +3,7 @@ import SpriteKit
 
 // MARK: - StickFigureGameplayEditorViewController
 /// Full-screen editor for stick figure customization in gameplay
-class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerViewControllerDelegate, UIImagePickerControllerDelegate, UINavigationControllerDelegate {
+class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerViewControllerDelegate, UIImagePickerControllerDelegate, UINavigationControllerDelegate, UITableViewDelegate, UITableViewDataSource, UIGestureRecognizerDelegate {
     
     // MARK: - Properties
     private var skView: SKView?
@@ -11,8 +11,7 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
     
     private let topContainer = UIView()
     private let bottomContainer = UIView()
-    private let scrollView = UIScrollView()
-    private let stackView = UIStackView()
+    private let controlsTableView = UITableView(frame: .zero, style: .insetGrouped)
     
     private var figureScale: CGFloat = 1.0  // Multiplier for display size (1.0 = normal size)
     private var strokeThicknessMultiplier: CGFloat = 1.0
@@ -41,6 +40,10 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
         "rightLowerLeg": .black
     ]
     
+    // Color picker properties
+    private var pendingColorKey: String?
+    private var pendingColorButton: UIButton?
+    
     // Angle properties for joint positioning
     var neckRotation: CGFloat = 0
     var torsoRotation: CGFloat = 0
@@ -48,12 +51,20 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
     var leftElbowAngle: CGFloat = 0
     var rightShoulderAngle: CGFloat = 0
     var rightElbowAngle: CGFloat = 0
+    var leftHandAngle: CGFloat = 0
+    var rightHandAngle: CGFloat = 0
     var leftHipAngle: CGFloat = 0
-    var leftKneeAngle: CGFloat = 0
     var rightHipAngle: CGFloat = 0
+    var leftKneeAngle: CGFloat = 0
     var rightKneeAngle: CGFloat = 0
+    var leftFootAngle: CGFloat = 0
+    var rightFootAngle: CGFloat = 0
     
     var showInteractiveJoints: Bool = true
+    var sceneZoom: CGFloat = 1.0  // Zoom level for editor view (1.0 = normal, 2.0 = 2x zoom)
+    
+    // Section expansion state
+    private var expandedSections: Set<Int> = [0, 4, 5]  // Expanded by default (sections 1, 2, 3 collapsed)
     
     var gameState: StickFigureGameState?
     
@@ -80,24 +91,20 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
         topContainer.translatesAutoresizingMaskIntoConstraints = false
         view.addSubview(topContainer)
         
-        // Bottom container - 50% of screen (scrollable)
+        // Bottom container - 50% of screen (tableView)
         bottomContainer.backgroundColor = .white
         bottomContainer.translatesAutoresizingMaskIntoConstraints = false
         view.addSubview(bottomContainer)
         
-        // ScrollView in bottom container
-        scrollView.translatesAutoresizingMaskIntoConstraints = false
-        bottomContainer.addSubview(scrollView)
-        
-        // Stack view for controls
-        stackView.axis = .vertical
-        stackView.spacing = 16  // Increased spacing for better visual separation
-        stackView.translatesAutoresizingMaskIntoConstraints = false
-        scrollView.addSubview(stackView)
+        // Table view for controls
+        controlsTableView.translatesAutoresizingMaskIntoConstraints = false
+        controlsTableView.delegate = self
+        controlsTableView.dataSource = self
+        bottomContainer.addSubview(controlsTableView)
         
         // Layout constraints
         NSLayoutConstraint.activate([
-            // Top container - starts after safe area
+            // Top container
             topContainer.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor),
             topContainer.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             topContainer.trailingAnchor.constraint(equalTo: view.trailingAnchor),
@@ -109,25 +116,15 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
             bottomContainer.trailingAnchor.constraint(equalTo: view.trailingAnchor),
             bottomContainer.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor),
             
-            // ScrollView
-            scrollView.topAnchor.constraint(equalTo: bottomContainer.topAnchor),
-            scrollView.leadingAnchor.constraint(equalTo: bottomContainer.leadingAnchor),
-            scrollView.trailingAnchor.constraint(equalTo: bottomContainer.trailingAnchor),
-            scrollView.bottomAnchor.constraint(equalTo: bottomContainer.bottomAnchor),
-            
-            // StackView
-            stackView.topAnchor.constraint(equalTo: scrollView.topAnchor, constant: 12),
-            stackView.leadingAnchor.constraint(equalTo: scrollView.leadingAnchor, constant: 12),
-            stackView.trailingAnchor.constraint(equalTo: scrollView.trailingAnchor, constant: -12),
-            stackView.bottomAnchor.constraint(equalTo: scrollView.bottomAnchor, constant: -12),
-            stackView.widthAnchor.constraint(equalTo: scrollView.widthAnchor, constant: -24)
+            // Table view
+            controlsTableView.topAnchor.constraint(equalTo: bottomContainer.topAnchor),
+            controlsTableView.leadingAnchor.constraint(equalTo: bottomContainer.leadingAnchor),
+            controlsTableView.trailingAnchor.constraint(equalTo: bottomContainer.trailingAnchor),
+            controlsTableView.bottomAnchor.constraint(equalTo: bottomContainer.bottomAnchor)
         ])
         
         // Add header
         addHeader()
-        
-        // Add controls
-        addControls()
     }
     
     private func addHeader() {
@@ -143,7 +140,6 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
         titleLabel.translatesAutoresizingMaskIntoConstraints = false
         headerView.addSubview(titleLabel)
         
-        // Refresh button
         let refreshButton = UIButton(type: .system)
         refreshButton.setTitle("↻", for: .normal)
         refreshButton.titleLabel?.font = UIFont.systemFont(ofSize: 16, weight: .bold)
@@ -164,7 +160,7 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
             headerView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor),
             headerView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             headerView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
-            headerView.heightAnchor.constraint(equalToConstant: 30),  // Reduced from 50
+            headerView.heightAnchor.constraint(equalToConstant: 30),
             
             titleLabel.leadingAnchor.constraint(equalTo: headerView.leadingAnchor, constant: 16),
             titleLabel.centerYAnchor.constraint(equalTo: headerView.centerYAnchor),
@@ -180,11 +176,10 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
     }
     
     private func setupEditor() {
-        // Create SpriteKit scene for stick figure display
         let sceneSize = CGSize(width: view.bounds.width, height: view.bounds.height * 0.5)
         editorScene = StickFigureEditorScene(size: sceneSize)
         editorScene?.gameState = gameState
-        editorScene?.viewController = self  // Set the view controller reference for joint dragging
+        editorScene?.viewController = self
         
         skView = SKView(frame: topContainer.bounds)
         skView?.presentScene(editorScene)
@@ -202,622 +197,405 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
         }
     }
     
-    private func addControls() {
-        // Interactive Joints Toggle - MOVED TO TOP
-        let jointsContainer = UIView()
-        jointsContainer.translatesAutoresizingMaskIntoConstraints = false
-        
-        let jointsToggle = UISwitch()
-        jointsToggle.isOn = showInteractiveJoints
-        jointsToggle.translatesAutoresizingMaskIntoConstraints = false
-        jointsToggle.addTarget(self, action: #selector(toggleJoints(_:)), for: .valueChanged)
-        jointsContainer.addSubview(jointsToggle)
-        
-        let jointsLabel = UILabel()
-        jointsLabel.text = "Show Interactive Joints"
-        jointsLabel.font = UIFont.systemFont(ofSize: 14, weight: .semibold)
-        jointsLabel.translatesAutoresizingMaskIntoConstraints = false
-        jointsContainer.addSubview(jointsLabel)
-        
-        NSLayoutConstraint.activate([
-            jointsLabel.leadingAnchor.constraint(equalTo: jointsContainer.leadingAnchor),
-            jointsLabel.centerYAnchor.constraint(equalTo: jointsContainer.centerYAnchor),
-            
-            jointsToggle.trailingAnchor.constraint(equalTo: jointsContainer.trailingAnchor),
-            jointsToggle.centerYAnchor.constraint(equalTo: jointsContainer.centerYAnchor),
-            
-            jointsContainer.heightAnchor.constraint(equalToConstant: 40)
-        ])
-        
-        stackView.addArrangedSubview(jointsContainer)
-        
-        // MARK: - Position Buttons (X/Y Movement) with Label
-        let positionContainer = UIStackView()
-        positionContainer.axis = .horizontal
-        positionContainer.spacing = 8
-        positionContainer.distribution = .fill
-        positionContainer.translatesAutoresizingMaskIntoConstraints = false
-        
-        // Position label
-        let positionLabel = UILabel()
-        positionLabel.text = "Position: X: 0, Y: 0"
-        positionLabel.font = UIFont.systemFont(ofSize: 11, weight: .semibold)
-        positionLabel.textColor = .darkGray
-        positionLabel.translatesAutoresizingMaskIntoConstraints = false
-        positionLabel.widthAnchor.constraint(greaterThanOrEqualToConstant: 120).isActive = true
-        positionContainer.addArrangedSubview(positionLabel)
-        
-        // X Position buttons
-        let xLeftButton = createPositionButton(title: "← X", action: { [weak self] in
-            self?.figureOffsetX -= 5
-            self?.updatePositionLabel(positionLabel)
-            self?.updateFigure()
-        })
-        let xRightButton = createPositionButton(title: "X →", action: { [weak self] in
-            self?.figureOffsetX += 5
-            self?.updatePositionLabel(positionLabel)
-            self?.updateFigure()
-        })
-        
-        // Y Position buttons
-        let yUpButton = createPositionButton(title: "↑ Y", action: { [weak self] in
-            self?.figureOffsetY += 5
-            self?.updatePositionLabel(positionLabel)
-            self?.updateFigure()
-        })
-        let yDownButton = createPositionButton(title: "Y ↓", action: { [weak self] in
-            self?.figureOffsetY -= 5
-            self?.updatePositionLabel(positionLabel)
-            self?.updateFigure()
-        })
-        
-        positionContainer.addArrangedSubview(xLeftButton)
-        positionContainer.addArrangedSubview(xRightButton)
-        positionContainer.addArrangedSubview(yUpButton)
-        positionContainer.addArrangedSubview(yDownButton)
-        
-        stackView.addArrangedSubview(positionContainer)
-        
-        // Figure Scale & Thickness Section (collapsible)
-        let scaleSection = createCollapsibleSection(title: "FIGURE SCALE & THICKNESS", isExpanded: false)
-        scaleSection.contentStackView.addArrangedSubview(createCompactSliderControl(
-            label: "Figure Scale",
-            initialValue: figureScale,
-            min: 0.5,
-            max: 2.0,
-            step: 0.1,
-            onValueChanged: { [weak self] newValue in
-                self?.figureScale = newValue
-                self?.updateFigure()
-            }
-        ))
-        scaleSection.contentStackView.addArrangedSubview(createCompactSliderControl(
-            label: "Stroke Thickness",
-            initialValue: strokeThicknessMultiplier,
-            min: 0.5,
-            max: 2.0,
-            step: 0.1,
-            onValueChanged: { [weak self] newValue in
-                self?.strokeThicknessMultiplier = newValue
-                self?.updateFigure()
-            }
-        ))
-        stackView.addArrangedSubview(scaleSection.container)
-        
-        // Fusiform Section (collapsible)
-        let fusiformSection = createCollapsibleSection(title: "FUSIFORM TAPERING", isExpanded: false)
-        fusiformSection.contentStackView.addArrangedSubview(createCompactSliderControl(
-            label: "Upper Torso",
-            initialValue: fusiformUpperTorso,
-            min: 0,
-            max: 10,
-            step: 1,
-            onValueChanged: { [weak self] newValue in
-                self?.fusiformUpperTorso = newValue
-                self?.updateFigure()
-            }
-        ))
-        fusiformSection.contentStackView.addArrangedSubview(createCompactSliderControl(
-            label: "Lower Torso",
-            initialValue: fusiformLowerTorso,
-            min: 0,
-            max: 10,
-            step: 1,
-            onValueChanged: { [weak self] newValue in
-                self?.fusiformLowerTorso = newValue
-                self?.updateFigure()
-            }
-        ))
-        fusiformSection.contentStackView.addArrangedSubview(createCompactSliderControl(
-            label: "Upper Arms",
-            initialValue: fusiformUpperArms,
-            min: 0,
-            max: 10,
-            step: 1,
-            onValueChanged: { [weak self] newValue in
-                self?.fusiformUpperArms = newValue
-                self?.updateFigure()
-            }
-        ))
-        fusiformSection.contentStackView.addArrangedSubview(createCompactSliderControl(
-            label: "Lower Arms",
-            initialValue: fusiformLowerArms,
-            min: 0,
-            max: 10,
-            step: 1,
-            onValueChanged: { [weak self] newValue in
-                self?.fusiformLowerArms = newValue
-                self?.updateFigure()
-            }
-        ))
-        fusiformSection.contentStackView.addArrangedSubview(createCompactSliderControl(
-            label: "Upper Legs",
-            initialValue: fusiformUpperLegs,
-            min: 0,
-            max: 10,
-            step: 1,
-            onValueChanged: { [weak self] newValue in
-                self?.fusiformUpperLegs = newValue
-                self?.updateFigure()
-            }
-        ))
-        fusiformSection.contentStackView.addArrangedSubview(createCompactSliderControl(
-            label: "Lower Legs",
-            initialValue: fusiformLowerLegs,
-            min: 0,
-            max: 10,
-            step: 1,
-            onValueChanged: { [weak self] newValue in
-                self?.fusiformLowerLegs = newValue
-                self?.updateFigure()
-            }
-        ))
-        stackView.addArrangedSubview(fusiformSection.container)
-        
-        let anglesSection = createCollapsibleSection(title: "JOINT ANGLES", isExpanded: false)
-        
-        // Torso angles
-        anglesSection.contentStackView.addArrangedSubview(createCompactSliderControl(
-            label: "Neck Rotation",
-            initialValue: neckRotation,
-            min: -45,
-            max: 45,
-            step: 1,
-            onValueChanged: { [weak self] newValue in
-                self?.neckRotation = newValue
-                self?.updateFigure()
-            }
-        ))
-        anglesSection.contentStackView.addArrangedSubview(createCompactSliderControl(
-            label: "Torso Rotation",
-            initialValue: torsoRotation,
-            min: -45,
-            max: 45,
-            step: 1,
-            onValueChanged: { [weak self] newValue in
-                self?.torsoRotation = newValue
-                self?.updateFigure()
-            }
-        ))
-        
-        // Left arm angles - removed label, updated slider text
-        anglesSection.contentStackView.addArrangedSubview(createCompactSliderControl(
-            label: "L Shoulder",
-            initialValue: leftShoulderAngle,
-            min: -180,
-            max: 180,
-            step: 1,
-            onValueChanged: { [weak self] newValue in
-                self?.leftShoulderAngle = newValue
-                self?.updateFigure()
-            }
-        ))
-        anglesSection.contentStackView.addArrangedSubview(createCompactSliderControl(
-            label: "L Elbow",
-            initialValue: leftElbowAngle,
-            min: -180,
-            max: 180,
-            step: 1,
-            onValueChanged: { [weak self] newValue in
-                self?.leftElbowAngle = newValue
-                self?.updateFigure()
-            }
-        ))
-        
-        // Right arm angles - removed label, updated slider text
-        anglesSection.contentStackView.addArrangedSubview(createCompactSliderControl(
-            label: "R Shoulder",
-            initialValue: rightShoulderAngle,
-            min: -180,
-            max: 180,
-            step: 1,
-            onValueChanged: { [weak self] newValue in
-                self?.rightShoulderAngle = newValue
-                self?.updateFigure()
-            }
-        ))
-        anglesSection.contentStackView.addArrangedSubview(createCompactSliderControl(
-            label: "R Elbow",
-            initialValue: rightElbowAngle,
-            min: -180,
-            max: 180,
-            step: 1,
-            onValueChanged: { [weak self] newValue in
-                self?.rightElbowAngle = newValue
-                self?.updateFigure()
-            }
-        ))
-
-        // Left leg angles - removed label, updated slider text
-        anglesSection.contentStackView.addArrangedSubview(createCompactSliderControl(
-            label: "L Knee",
-            initialValue: leftKneeAngle,
-            min: -180,
-            max: 180,
-            step: 1,
-            onValueChanged: { [weak self] newValue in
-                self?.leftKneeAngle = newValue
-                self?.updateFigure()
-            }
-        ))
-        
-        // Right leg angles - removed label, updated slider text
-        anglesSection.contentStackView.addArrangedSubview(createCompactSliderControl(
-            label: "R Knee",
-            initialValue: rightKneeAngle,
-            min: -180,
-            max: 180,
-            step: 1,
-            onValueChanged: { [weak self] newValue in
-                self?.rightKneeAngle = newValue
-                self?.updateFigure()
-            }
-        ))
-        
-        stackView.addArrangedSubview(anglesSection.container)
-        
-        // Colors Section (collapsible) - AFTER JOINT ANGLES
-        let colorsSection = createCollapsibleSection(title: "COLORS", isExpanded: false)
-        colorsSection.contentStackView.addArrangedSubview(createColorPickerRow(label: "Head", colorKey: "head"))
-        colorsSection.contentStackView.addArrangedSubview(createColorPickerRow(label: "Torso", colorKey: "torso"))
-        
-        // Left arm colors - removed label, updated slider text
-        colorsSection.contentStackView.addArrangedSubview(createColorPickerRow(label: "L Upper Arm", colorKey: "leftUpperArm"))
-        colorsSection.contentStackView.addArrangedSubview(createColorPickerRow(label: "L Lower Arm", colorKey: "leftLowerArm"))
-        
-        // Right arm colors - removed label, updated slider text
-        colorsSection.contentStackView.addArrangedSubview(createColorPickerRow(label: "R Upper Arm", colorKey: "rightUpperArm"))
-        colorsSection.contentStackView.addArrangedSubview(createColorPickerRow(label: "R Lower Arm", colorKey: "rightLowerArm"))
-        
-        // Left leg colors - removed label, updated slider text
-        colorsSection.contentStackView.addArrangedSubview(createColorPickerRow(label: "L Upper Leg", colorKey: "leftUpperLeg"))
-        colorsSection.contentStackView.addArrangedSubview(createColorPickerRow(label: "L Lower Leg", colorKey: "leftLowerLeg"))
-        
-        // Right leg colors - removed label, updated slider text
-        colorsSection.contentStackView.addArrangedSubview(createColorPickerRow(label: "R Upper Leg", colorKey: "rightUpperLeg"))
-        colorsSection.contentStackView.addArrangedSubview(createColorPickerRow(label: "R Lower Leg", colorKey: "rightLowerLeg"))
-        
-        stackView.addArrangedSubview(colorsSection.container)
-        
-        // Add spacer to push buttons to bottom
-        let spacer = UIView()
-        spacer.translatesAutoresizingMaskIntoConstraints = false
-        spacer.heightAnchor.constraint(greaterThanOrEqualToConstant: 0).isActive = true
-        spacer.setContentHuggingPriority(.defaultLow, for: .vertical)
-        stackView.addArrangedSubview(spacer)
-        
-        // Add Object button
-        let addObjectButton = UIButton(type: .system)
-        addObjectButton.setTitle("+ ADD OBJECT", for: .normal)
-        addObjectButton.backgroundColor = UIColor(red: 0.4, green: 0.5, blue: 0.6, alpha: 1.0)
-        addObjectButton.setTitleColor(.white, for: .normal)
-        addObjectButton.titleLabel?.font = UIFont.systemFont(ofSize: 12, weight: .bold)
-        addObjectButton.layer.cornerRadius = 4
-        addObjectButton.heightAnchor.constraint(equalToConstant: 44).isActive = true
-        addObjectButton.addTarget(self, action: #selector(addObjectPressed), for: .touchUpInside)
-        stackView.addArrangedSubview(addObjectButton)
-        
-        // Save/Load buttons
-        let buttonContainer = UIStackView()
-        buttonContainer.axis = .horizontal
-        buttonContainer.spacing = 8
-        buttonContainer.distribution = .fillEqually
-        
-        let saveButton = UIButton(type: .system)
-        saveButton.setTitle("SAVE FRAME", for: .normal)
-        saveButton.backgroundColor = UIColor(red: 0.2, green: 0.6, blue: 0.2, alpha: 1.0)
-        saveButton.setTitleColor(.white, for: .normal)
-        saveButton.titleLabel?.font = UIFont.systemFont(ofSize: 12, weight: .bold)
-        saveButton.layer.cornerRadius = 4
-        saveButton.heightAnchor.constraint(equalToConstant: 44).isActive = true
-        saveButton.addTarget(self, action: #selector(savePressed), for: .touchUpInside)
-        buttonContainer.addArrangedSubview(saveButton)
-        
-        let loadButton = UIButton(type: .system)
-        loadButton.setTitle("LOAD FRAME", for: .normal)
-        loadButton.backgroundColor = UIColor(red: 0.2, green: 0.4, blue: 0.6, alpha: 1.0)
-        loadButton.setTitleColor(.white, for: .normal)
-        loadButton.titleLabel?.font = UIFont.systemFont(ofSize: 12, weight: .bold)
-        loadButton.layer.cornerRadius = 4
-        loadButton.heightAnchor.constraint(equalToConstant: 44).isActive = true
-        loadButton.addTarget(self, action: #selector(loadPressed), for: .touchUpInside)
-        buttonContainer.addArrangedSubview(loadButton)
-        
-        stackView.addArrangedSubview(buttonContainer)
+    // MARK: - UITableViewDataSource & UITableViewDelegate
+    func numberOfSections(in tableView: UITableView) -> Int {
+        return 6  // Display (Show Joints, Zoom, Position), Scale, Fusiform, Joints, Save/Load, Objects
     }
     
-    // MARK: - Collapsible Section Helper
-    private func createCollapsibleSection(title: String, isExpanded: Bool) -> (container: UIView, contentStackView: UIStackView) {
-        let container = UIView()
-        container.translatesAutoresizingMaskIntoConstraints = false
+    func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
+        let isExpanded = expandedSections.contains(section)
         
-        let headerButton = UIButton(type: .system)
-        headerButton.setTitle("\(isExpanded ? "▼" : "▶") \(title)", for: .normal)
-        headerButton.titleLabel?.font = UIFont.systemFont(ofSize: 14, weight: .semibold)
-        headerButton.contentHorizontalAlignment = .left
-        headerButton.setTitleColor(.darkGray, for: .normal)
-        headerButton.translatesAutoresizingMaskIntoConstraints = false
-        headerButton.heightAnchor.constraint(equalToConstant: 32).isActive = true
-        container.addSubview(headerButton)
-        
-        let contentStackView = UIStackView()
-        contentStackView.axis = .vertical
-        contentStackView.spacing = 8
-        contentStackView.translatesAutoresizingMaskIntoConstraints = false
-        
-        // Only add contentStackView if initially expanded
-        if isExpanded {
-            container.addSubview(contentStackView)
-            // Set up constraints for expanded state
-            NSLayoutConstraint.activate([
-                contentStackView.topAnchor.constraint(equalTo: headerButton.bottomAnchor, constant: 4),
-                contentStackView.leadingAnchor.constraint(equalTo: container.leadingAnchor, constant: 8),
-                contentStackView.trailingAnchor.constraint(equalTo: container.trailingAnchor),
-                contentStackView.bottomAnchor.constraint(equalTo: container.bottomAnchor)
-            ])
+        switch section {
+        case 0: return 3  // Show Joints, Zoom, Position buttons
+        case 1: return isExpanded ? 2 : 0  // Figure Scale, Stroke Thickness (now collapsible)
+        case 2: return isExpanded ? 6 : 0  // Upper Torso, Lower Torso, Upper Arms, Lower Arms, Upper Legs, Lower Legs
+        case 3: return isExpanded ? 14 : 0  // 14 Joint sliders: neck, leftShoulder, rightShoulder, leftElbow, rightElbow, leftHand, rightHand, leftHip, rightHip, leftKnee, rightKnee, leftFoot, rightFoot, midTorso
+        case 4: return 1  // Save + Load (now on same row)
+        case 5: return 1  // Add Object
+        default: return 0
         }
-        
-        // Simple class to hold mutable state with weak reference to self
-        class StateHolder {
-            var isExpanded: Bool
-            weak var scrollView: UIScrollView?
-            init(_ initialState: Bool) {
-                self.isExpanded = initialState
-            }
-        }
-        
-        let state = StateHolder(isExpanded)
-        state.scrollView = scrollView
-        
-        headerButton.addAction(UIAction { [state, weak contentStackView, weak headerButton, weak container] _ in
-            guard let headerButton = headerButton, let container = container, let contentStackView = contentStackView else { return }
-            
-            state.isExpanded.toggle()
-            let newState = state.isExpanded
-            
-            print("🎮 Section toggle: \(title) -> \(newState ? "expanded" : "collapsed")")
-            
-            if newState {
-                // Expanding - add contentStackView back to container
-                if contentStackView.superview == nil {
-                    container.addSubview(contentStackView)
-                    contentStackView.translatesAutoresizingMaskIntoConstraints = false
-                    
-                    // Add constraints for expanded state
-                    NSLayoutConstraint.activate([
-                        contentStackView.topAnchor.constraint(equalTo: headerButton.bottomAnchor, constant: 4),
-                        contentStackView.leadingAnchor.constraint(equalTo: container.leadingAnchor, constant: 8),
-                        contentStackView.trailingAnchor.constraint(equalTo: container.trailingAnchor),
-                        contentStackView.bottomAnchor.constraint(equalTo: container.bottomAnchor)
-                    ])
-                }
-                
-                contentStackView.alpha = 0.0
-                UIView.animate(withDuration: 0.2) {
-                    contentStackView.alpha = 1.0
-                    container.layoutIfNeeded()
-                    state.scrollView?.layoutIfNeeded()
-                }
-            } else {
-                // Collapsing - remove contentStackView completely
-                UIView.animate(withDuration: 0.2, animations: {
-                    contentStackView.alpha = 0.0
-                }) { _ in
-                    contentStackView.removeFromSuperview()
-                    container.layoutIfNeeded()
-                    state.scrollView?.layoutIfNeeded()
-                }
-            }
-            
-            headerButton.setTitle("\(newState ? "▼" : "▶") \(title)", for: .normal)
-        }, for: .touchUpInside)
-        
-        NSLayoutConstraint.activate([
-            headerButton.topAnchor.constraint(equalTo: container.topAnchor),
-            headerButton.leadingAnchor.constraint(equalTo: container.leadingAnchor),
-            headerButton.trailingAnchor.constraint(equalTo: container.trailingAnchor)
-        ])
-        
-        return (container, contentStackView)
     }
     
-    private func createSubSectionLabel(_ text: String) -> UILabel {
+    func tableView(_ tableView: UITableView, titleForHeaderInSection section: Int) -> String? {
+        switch section {
+        case 0: return nil  // No header for display section
+        case 1: return "FIGURE SCALE & THICKNESS"
+        case 2: return "FUSIFORM TAPERING"
+        case 3: return "JOINT ANGLES"
+        case 4: return "FRAMES"
+        case 5: return "OBJECTS"
+        default: return nil
+        }
+    }
+    
+    func tableView(_ tableView: UITableView, viewForHeaderInSection section: Int) -> UIView? {
+        // Make sections 1, 2, and 3 collapsible
+        guard section == 1 || section == 2 || section == 3 else { return nil }
+        
+        let headerView = UIView()
+        headerView.backgroundColor = UIColor(red: 0.95, green: 0.95, blue: 0.98, alpha: 1.0)
+        
         let label = UILabel()
-        label.text = text
-        label.font = UIFont.systemFont(ofSize: 12, weight: .semibold)
-        label.textColor = UIColor(red: 0.4, green: 0.4, blue: 0.4, alpha: 1.0)
+        label.text = self.tableView(tableView, titleForHeaderInSection: section) ?? ""
+        label.font = UIFont.systemFont(ofSize: 13, weight: .semibold)
+        label.textColor = .darkGray
         label.translatesAutoresizingMaskIntoConstraints = false
-        return label
-    }
-    
-    private func createPositionButton(title: String, action: @escaping () -> Void) -> UIButton {
-        let button = UIButton(type: .system)
-        button.setTitle(title, for: .normal)
-        button.backgroundColor = UIColor(red: 0.8, green: 0.8, blue: 0.9, alpha: 1.0)
-        button.setTitleColor(.systemBlue, for: .normal)
-        button.titleLabel?.font = UIFont.systemFont(ofSize: 11, weight: .semibold)
-        button.layer.cornerRadius = 4
-        button.translatesAutoresizingMaskIntoConstraints = false
-        button.heightAnchor.constraint(equalToConstant: 32).isActive = true
-        button.addAction(UIAction { _ in action() }, for: .touchUpInside)
-        return button
-    }
-    
-    private func updatePositionLabel(_ label: UILabel) {
-        label.text = "Position: X: \(Int(figureOffsetX)), Y: \(Int(figureOffsetY))"
-    }
-    
-    private func createColorPickerRow(
-        label: String,
-        colorKey: String
-    ) -> UIView {
-        let container = UIView()
-        container.translatesAutoresizingMaskIntoConstraints = false
         
-        let labelView = UILabel()
-        labelView.text = label
-        labelView.font = UIFont.systemFont(ofSize: 11, weight: .semibold)
-        labelView.translatesAutoresizingMaskIntoConstraints = false
-        container.addSubview(labelView)
+        let arrow = UILabel()
+        let isExpanded = expandedSections.contains(section)
+        arrow.text = isExpanded ? "▼" : "▶"
+        arrow.font = UIFont.systemFont(ofSize: 11)
+        arrow.translatesAutoresizingMaskIntoConstraints = false
         
-        let colorButton = UIButton(type: .system)
-        colorButton.backgroundColor = bodyPartColors[colorKey] ?? .black
-        colorButton.layer.cornerRadius = 6
-        colorButton.layer.borderWidth = 1
-        colorButton.layer.borderColor = UIColor.gray.cgColor
-        colorButton.translatesAutoresizingMaskIntoConstraints = false
-        colorButton.widthAnchor.constraint(equalToConstant: 40).isActive = true
-        colorButton.heightAnchor.constraint(equalToConstant: 32).isActive = true
-        container.addSubview(colorButton)
-        
-        colorButton.addAction(UIAction { [weak self, weak colorButton] _ in
-            let vc = UIColorPickerViewController()
-            vc.selectedColor = self?.bodyPartColors[colorKey] ?? .black
-            vc.delegate = self
-            // Store the update closure with colorKey
-            self?.pendingColorKey = colorKey
-            self?.pendingColorButton = colorButton
-            self?.present(vc, animated: true)
-        }, for: .touchUpInside)
+        headerView.addSubview(arrow)
+        headerView.addSubview(label)
         
         NSLayoutConstraint.activate([
-            labelView.leadingAnchor.constraint(equalTo: container.leadingAnchor),
-            labelView.centerYAnchor.constraint(equalTo: container.centerYAnchor),
+            arrow.leadingAnchor.constraint(equalTo: headerView.leadingAnchor, constant: 16),
+            arrow.centerYAnchor.constraint(equalTo: headerView.centerYAnchor),
+            arrow.widthAnchor.constraint(equalToConstant: 16),
             
-            colorButton.trailingAnchor.constraint(equalTo: container.trailingAnchor),
-            colorButton.centerYAnchor.constraint(equalTo: container.centerYAnchor),
-            
-            container.heightAnchor.constraint(equalToConstant: 32)
+            label.leadingAnchor.constraint(equalTo: arrow.trailingAnchor, constant: 8),
+            label.centerYAnchor.constraint(equalTo: headerView.centerYAnchor),
+            label.trailingAnchor.constraint(equalTo: headerView.trailingAnchor, constant: -16)
         ])
         
-        return container
+        // Add tap gesture to toggle expansion
+        let tapGesture = UITapGestureRecognizer(target: self, action: #selector(toggleSectionExpansion(_:)))
+        tapGesture.delegate = self
+        headerView.addGestureRecognizer(tapGesture)
+        headerView.tag = section  // Store section number in tag
+        headerView.isUserInteractionEnabled = true
+        
+        return headerView
     }
     
-    // Store pending color update
-    private var pendingColorKey: String?
-    private weak var pendingColorButton: UIButton?
+    func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
+        let cell = UITableViewCell(style: .default, reuseIdentifier: "controlCell")
+        cell.selectionStyle = .none
+        cell.contentView.subviews.forEach { $0.removeFromSuperview() }
+        
+        switch (indexPath.section, indexPath.row) {
+        case (0, 0):
+            // Show Joints toggle
+            let container = UIStackView()
+            container.axis = .horizontal
+            container.spacing = 12
+            container.translatesAutoresizingMaskIntoConstraints = false
+            
+            let label = UILabel()
+            label.text = "Show Joints"
+            label.font = UIFont.systemFont(ofSize: 14)
+            
+            let toggle = UISwitch()
+            toggle.isOn = showInteractiveJoints
+            toggle.addTarget(self, action: #selector(toggleJoints(_:)), for: .valueChanged)
+            
+            container.addArrangedSubview(label)
+            container.addArrangedSubview(UIView())  // Spacer
+            container.addArrangedSubview(toggle)
+            
+            cell.contentView.addSubview(container)
+            NSLayoutConstraint.activate([
+                container.topAnchor.constraint(equalTo: cell.contentView.topAnchor, constant: 12),
+                container.leadingAnchor.constraint(equalTo: cell.contentView.leadingAnchor, constant: 16),
+                container.trailingAnchor.constraint(equalTo: cell.contentView.trailingAnchor, constant: -16),
+                container.bottomAnchor.constraint(equalTo: cell.contentView.bottomAnchor, constant: -12)
+            ])
+            
+        case (0, 1):
+            // Zoom slider with +/- buttons
+            let label = UILabel()
+            label.text = "Zoom"
+            label.font = UIFont.systemFont(ofSize: 12, weight: .semibold)
+            label.translatesAutoresizingMaskIntoConstraints = false
+            
+            let slider = UISlider()
+            slider.minimumValue = 0.5
+            slider.maximumValue = 3.0
+            slider.value = Float(sceneZoom)
+            slider.translatesAutoresizingMaskIntoConstraints = false
+            
+            let valueLabel = UILabel()
+            valueLabel.text = String(format: "%.1f×", sceneZoom)
+            valueLabel.font = UIFont.systemFont(ofSize: 12)
+            valueLabel.translatesAutoresizingMaskIntoConstraints = false
+            valueLabel.widthAnchor.constraint(equalToConstant: 40).isActive = true
+            
+            // Minus button for zoom
+            let minusBtn = UIButton(type: .system)
+            minusBtn.setTitle("−", for: .normal)
+            minusBtn.titleLabel?.font = UIFont.systemFont(ofSize: 14, weight: .semibold)
+            minusBtn.translatesAutoresizingMaskIntoConstraints = false
+            minusBtn.widthAnchor.constraint(equalToConstant: 28).isActive = true
+            minusBtn.addAction(UIAction { _ in
+                let currentZoom = CGFloat(slider.value)
+                let newZoom = max(0.5, currentZoom - 0.1)
+                slider.value = Float(newZoom)
+                valueLabel.text = String(format: "%.1f×", newZoom)
+                self.sceneZoom = newZoom
+                self.editorScene?.updateZoom(newZoom)
+            }, for: .touchUpInside)
+            
+            // Plus button for zoom
+            let plusBtn = UIButton(type: .system)
+            plusBtn.setTitle("+", for: .normal)
+            plusBtn.titleLabel?.font = UIFont.systemFont(ofSize: 14, weight: .semibold)
+            plusBtn.translatesAutoresizingMaskIntoConstraints = false
+            plusBtn.widthAnchor.constraint(equalToConstant: 28).isActive = true
+            plusBtn.addAction(UIAction { _ in
+                let currentZoom = CGFloat(slider.value)
+                let newZoom = min(3.0, currentZoom + 0.1)
+                slider.value = Float(newZoom)
+                valueLabel.text = String(format: "%.1f×", newZoom)
+                self.sceneZoom = newZoom
+                self.editorScene?.updateZoom(newZoom)
+            }, for: .touchUpInside)
+            
+            slider.addAction(UIAction { [weak self, weak valueLabel] _ in
+                let newZoom = CGFloat(slider.value)
+                self?.sceneZoom = newZoom
+                valueLabel?.text = String(format: "%.1f×", newZoom)
+                self?.editorScene?.updateZoom(newZoom)
+            }, for: .valueChanged)
+            
+            cell.contentView.addSubview(label)
+            cell.contentView.addSubview(minusBtn)
+            cell.contentView.addSubview(slider)
+            cell.contentView.addSubview(valueLabel)
+            cell.contentView.addSubview(plusBtn)
+            
+            NSLayoutConstraint.activate([
+                label.leadingAnchor.constraint(equalTo: cell.contentView.leadingAnchor, constant: 16),
+                label.centerYAnchor.constraint(equalTo: cell.contentView.centerYAnchor),
+                
+                minusBtn.leadingAnchor.constraint(equalTo: label.trailingAnchor, constant: 8),
+                minusBtn.centerYAnchor.constraint(equalTo: cell.contentView.centerYAnchor),
+                
+                slider.leadingAnchor.constraint(equalTo: minusBtn.trailingAnchor, constant: 4),
+                slider.trailingAnchor.constraint(equalTo: valueLabel.leadingAnchor, constant: -4),
+                slider.centerYAnchor.constraint(equalTo: cell.contentView.centerYAnchor),
+                
+                valueLabel.trailingAnchor.constraint(equalTo: plusBtn.leadingAnchor, constant: -4),
+                valueLabel.centerYAnchor.constraint(equalTo: cell.contentView.centerYAnchor),
+                
+                plusBtn.trailingAnchor.constraint(equalTo: cell.contentView.trailingAnchor, constant: -16),
+                plusBtn.centerYAnchor.constraint(equalTo: cell.contentView.centerYAnchor),
+                
+                cell.contentView.heightAnchor.constraint(greaterThanOrEqualToConstant: 50)
+            ])
+            
+        case (0, 2):
+            // Position buttons (X/Y controls) - smaller buttons
+            let container = UIStackView()
+            container.axis = .horizontal
+            container.spacing = 2
+            container.distribution = .fillEqually
+            container.translatesAutoresizingMaskIntoConstraints = false
+            
+            let buttons = [("← X", { self.figureOffsetX -= 5 }), ("X →", { self.figureOffsetX += 5 }), ("↑ Y", { self.figureOffsetY += 5 }), ("Y ↓", { self.figureOffsetY -= 5 })]
+            
+            for (title, action) in buttons {
+                let btn = UIButton(type: .system)
+                btn.setTitle(title, for: .normal)
+                btn.titleLabel?.font = UIFont.systemFont(ofSize: 11)
+                btn.addAction(UIAction { _ in action(); self.updateFigure() }, for: .touchUpInside)
+                container.addArrangedSubview(btn)
+            }
+            
+            cell.contentView.addSubview(container)
+            NSLayoutConstraint.activate([
+                container.topAnchor.constraint(equalTo: cell.contentView.topAnchor, constant: 6),
+                container.leadingAnchor.constraint(equalTo: cell.contentView.leadingAnchor, constant: 16),
+                container.trailingAnchor.constraint(equalTo: cell.contentView.trailingAnchor, constant: -16),
+                container.bottomAnchor.constraint(equalTo: cell.contentView.bottomAnchor, constant: -6),
+                cell.contentView.heightAnchor.constraint(greaterThanOrEqualToConstant: 36)
+            ])
+            
+        case (1, 0):
+            // Figure Scale slider
+            addSliderCell(cell, label: "Figure Scale", value: figureScale, min: 0.5, max: 2.0, increment: 0.1, onChange: { [weak self] val in
+                self?.figureScale = val
+                self?.updateFigure()
+            })
+            
+        case (1, 1):
+            // Stroke Thickness slider
+            addSliderCell(cell, label: "Stroke", value: strokeThicknessMultiplier, min: 0.5, max: 2.0, increment: 0.1, onChange: { [weak self] val in
+                self?.strokeThicknessMultiplier = val
+                self?.updateFigure()
+            })
+            
+        case (2, 0): addSliderCell(cell, label: "Upper Torso", value: fusiformUpperTorso, min: 0, max: 10, onChange: { [weak self] val in self?.fusiformUpperTorso = val; self?.updateFigure() })
+        case (2, 1): addSliderCell(cell, label: "Lower Torso", value: fusiformLowerTorso, min: 0, max: 10, onChange: { [weak self] val in self?.fusiformLowerTorso = val; self?.updateFigure() })
+        case (2, 2): addSliderCell(cell, label: "Upper Arms", value: fusiformUpperArms, min: 0, max: 10, onChange: { [weak self] val in self?.fusiformUpperArms = val; self?.updateFigure() })
+        case (2, 3): addSliderCell(cell, label: "Lower Arms", value: fusiformLowerArms, min: 0, max: 10, onChange: { [weak self] val in self?.fusiformLowerArms = val; self?.updateFigure() })
+        case (2, 4): addSliderCell(cell, label: "Upper Legs", value: fusiformUpperLegs, min: 0, max: 10, onChange: { [weak self] val in self?.fusiformUpperLegs = val; self?.updateFigure() })
+        case (2, 5): addSliderCell(cell, label: "Lower Legs", value: fusiformLowerLegs, min: 0, max: 10, onChange: { [weak self] val in self?.fusiformLowerLegs = val; self?.updateFigure() })
+        
+        // Joint sliders - section 3
+        case (3, 0): addSliderCell(cell, label: "Neck", value: neckRotation, min: -180, max: 180, onChange: { [weak self] val in self?.neckRotation = val; self?.updateFigure() })
+        case (3, 1): addSliderCell(cell, label: "Left Shoulder", value: leftShoulderAngle, min: -180, max: 180, onChange: { [weak self] val in self?.leftShoulderAngle = val; self?.updateFigure() })
+        case (3, 2): addSliderCell(cell, label: "Right Shoulder", value: rightShoulderAngle, min: -180, max: 180, onChange: { [weak self] val in self?.rightShoulderAngle = val; self?.updateFigure() })
+        case (3, 3): addSliderCell(cell, label: "Left Elbow", value: leftElbowAngle, min: -180, max: 180, onChange: { [weak self] val in self?.leftElbowAngle = val; self?.updateFigure() })
+        case (3, 4): addSliderCell(cell, label: "Right Elbow", value: rightElbowAngle, min: -180, max: 180, onChange: { [weak self] val in self?.rightElbowAngle = val; self?.updateFigure() })
+        case (3, 5): addSliderCell(cell, label: "Left Hand", value: leftHandAngle, min: -180, max: 180, onChange: { [weak self] val in self?.leftHandAngle = val; self?.updateFigure() })
+        case (3, 6): addSliderCell(cell, label: "Right Hand", value: rightHandAngle, min: -180, max: 180, onChange: { [weak self] val in self?.rightHandAngle = val; self?.updateFigure() })
+        case (3, 7): addSliderCell(cell, label: "Left Hip", value: leftHipAngle, min: -180, max: 180, onChange: { [weak self] val in self?.leftHipAngle = val; self?.updateFigure() })
+        case (3, 8): addSliderCell(cell, label: "Right Hip", value: rightHipAngle, min: -180, max: 180, onChange: { [weak self] val in self?.rightHipAngle = val; self?.updateFigure() })
+        case (3, 9): addSliderCell(cell, label: "Left Knee", value: leftKneeAngle, min: -180, max: 180, onChange: { [weak self] val in self?.leftKneeAngle = val; self?.updateFigure() })
+        case (3, 10): addSliderCell(cell, label: "Right Knee", value: rightKneeAngle, min: -180, max: 180, onChange: { [weak self] val in self?.rightKneeAngle = val; self?.updateFigure() })
+        case (3, 11): addSliderCell(cell, label: "Left Foot", value: leftFootAngle, min: -180, max: 180, onChange: { [weak self] val in self?.leftFootAngle = val; self?.updateFigure() })
+        case (3, 12): addSliderCell(cell, label: "Right Foot", value: rightFootAngle, min: -180, max: 180, onChange: { [weak self] val in self?.rightFootAngle = val; self?.updateFigure() })
+        case (3, 13): addSliderCell(cell, label: "Mid Torso", value: torsoRotation, min: -180, max: 180, onChange: { [weak self] val in self?.torsoRotation = val; self?.updateFigure() })
+            
+        case (4, 0):
+            // Save and Load buttons on same row, split 50/50
+            let container = UIStackView()
+            container.axis = .horizontal
+            container.spacing = 8
+            container.distribution = .fillEqually
+            container.translatesAutoresizingMaskIntoConstraints = false
+            
+            // Save button
+            let saveBtn = UIButton(type: .system)
+            saveBtn.setTitle("SAVE", for: .normal)
+            saveBtn.backgroundColor = UIColor(red: 0.2, green: 0.6, blue: 0.2, alpha: 1.0)
+            saveBtn.setTitleColor(.white, for: .normal)
+            saveBtn.layer.cornerRadius = 4
+            saveBtn.addTarget(self, action: #selector(savePressed), for: .touchUpInside)
+            
+            // Load button
+            let loadBtn = UIButton(type: .system)
+            loadBtn.setTitle("LOAD", for: .normal)
+            loadBtn.backgroundColor = UIColor(red: 0.2, green: 0.4, blue: 0.6, alpha: 1.0)
+            loadBtn.setTitleColor(.white, for: .normal)
+            loadBtn.layer.cornerRadius = 4
+            loadBtn.addTarget(self, action: #selector(loadPressed), for: .touchUpInside)
+            
+            container.addArrangedSubview(saveBtn)
+            container.addArrangedSubview(loadBtn)
+            
+            cell.contentView.addSubview(container)
+            NSLayoutConstraint.activate([
+                container.topAnchor.constraint(equalTo: cell.contentView.topAnchor, constant: 8),
+                container.leadingAnchor.constraint(equalTo: cell.contentView.leadingAnchor, constant: 16),
+                container.trailingAnchor.constraint(equalTo: cell.contentView.trailingAnchor, constant: -16),
+                container.bottomAnchor.constraint(equalTo: cell.contentView.bottomAnchor, constant: -8),
+                container.heightAnchor.constraint(greaterThanOrEqualToConstant: 44)
+            ])
+            
+        case (5, 0):
+            // Add object button
+            let btn = UIButton(type: .system)
+            btn.setTitle("+ ADD OBJECT", for: .normal)
+            btn.backgroundColor = UIColor(red: 0.4, green: 0.5, blue: 0.6, alpha: 1.0)
+            btn.setTitleColor(.white, for: .normal)
+            btn.layer.cornerRadius = 4
+            btn.translatesAutoresizingMaskIntoConstraints = false
+            btn.addTarget(self, action: #selector(addObjectPressed), for: .touchUpInside)
+            cell.contentView.addSubview(btn)
+            NSLayoutConstraint.activate([
+                btn.topAnchor.constraint(equalTo: cell.contentView.topAnchor, constant: 8),
+                btn.leadingAnchor.constraint(equalTo: cell.contentView.leadingAnchor, constant: 16),
+                btn.trailingAnchor.constraint(equalTo: cell.contentView.trailingAnchor, constant: -16),
+                btn.bottomAnchor.constraint(equalTo: cell.contentView.bottomAnchor, constant: -8),
+                btn.heightAnchor.constraint(greaterThanOrEqualToConstant: 44)
+            ])
+            
+        default:
+            break
+        }
+        
+        return cell
+    }
     
-    // MARK: - Collapsible Section Helper
-    private func createCompactSliderControl(
-        label: String,
-        initialValue: CGFloat,
-        min minValue: CGFloat,
-        max maxValue: CGFloat,
-        step: CGFloat,
-        onValueChanged: @escaping (CGFloat) -> Void
-    ) -> UIView {
-        let container = UIView()
-        container.translatesAutoresizingMaskIntoConstraints = false
+    func tableView(_ tableView: UITableView, heightForRowAt indexPath: IndexPath) -> CGFloat {
+        if indexPath.section == 0 || indexPath.section == 4 || indexPath.section == 5 {
+            return UITableView.automaticDimension
+        }
+        return UITableView.automaticDimension
+    }
+    
+    private func addSliderCell(_ cell: UITableViewCell, label: String, value: CGFloat, min minVal: CGFloat, max maxVal: CGFloat, increment: CGFloat = 1.0, onChange: @escaping (CGFloat) -> Void) {
+        cell.contentView.subviews.forEach { $0.removeFromSuperview() }
         
-        let labelView = UILabel()
-        labelView.text = label
-        labelView.font = UIFont.systemFont(ofSize: 11, weight: .semibold)
-        labelView.translatesAutoresizingMaskIntoConstraints = false
-        labelView.widthAnchor.constraint(greaterThanOrEqualToConstant: 70).isActive = true
-        container.addSubview(labelView)
-        
-        let minusButton = UIButton(type: .system)
-        minusButton.setTitle("−", for: .normal)
-        minusButton.titleLabel?.font = UIFont.systemFont(ofSize: 14, weight: .bold)
-        minusButton.backgroundColor = UIColor(red: 0.9, green: 0.9, blue: 0.9, alpha: 1.0)
-        minusButton.layer.cornerRadius = 3
-        minusButton.translatesAutoresizingMaskIntoConstraints = false
-        minusButton.widthAnchor.constraint(equalToConstant: 28).isActive = true
-        minusButton.heightAnchor.constraint(equalToConstant: 28).isActive = true
-        container.addSubview(minusButton)
+        let lbl = UILabel()
+        lbl.text = label
+        lbl.font = UIFont.systemFont(ofSize: 12, weight: .semibold)
+        lbl.translatesAutoresizingMaskIntoConstraints = false
         
         let slider = UISlider()
-        slider.minimumValue = Float(minValue)
-        slider.maximumValue = Float(maxValue)
-        slider.value = Float(initialValue)
+        slider.minimumValue = Float(minVal)
+        slider.maximumValue = Float(maxVal)
+        slider.value = Float(value)
         slider.translatesAutoresizingMaskIntoConstraints = false
-        container.addSubview(slider)
         
-        let valueLabel = UILabel()
-        valueLabel.text = String(format: step < 1 ? "%.1f" : "%.0f", initialValue)
-        valueLabel.font = UIFont.systemFont(ofSize: 11)
-        valueLabel.translatesAutoresizingMaskIntoConstraints = false
-        valueLabel.widthAnchor.constraint(equalToConstant: 32).isActive = true
-        container.addSubview(valueLabel)
+        let valLbl = UILabel()
+        valLbl.text = String(format: "%.1f", value)
+        valLbl.font = UIFont.systemFont(ofSize: 11)
+        valLbl.translatesAutoresizingMaskIntoConstraints = false
+        valLbl.widthAnchor.constraint(equalToConstant: 32).isActive = true
         
-        let plusButton = UIButton(type: .system)
-        plusButton.setTitle("+", for: .normal)
-        plusButton.titleLabel?.font = UIFont.systemFont(ofSize: 14, weight: .bold)
-        plusButton.backgroundColor = UIColor(red: 0.9, green: 0.9, blue: 0.9, alpha: 1.0)
-        plusButton.layer.cornerRadius = 3
-        plusButton.translatesAutoresizingMaskIntoConstraints = false
-        plusButton.widthAnchor.constraint(equalToConstant: 28).isActive = true
-        plusButton.heightAnchor.constraint(equalToConstant: 28).isActive = true
-        container.addSubview(plusButton)
+        // Minus button
+        let minusBtn = UIButton(type: .system)
+        minusBtn.setTitle("−", for: .normal)
+        minusBtn.titleLabel?.font = UIFont.systemFont(ofSize: 14, weight: .semibold)
+        minusBtn.translatesAutoresizingMaskIntoConstraints = false
+        minusBtn.widthAnchor.constraint(equalToConstant: 32).isActive = true
+        minusBtn.addAction(UIAction { _ in
+            let currentVal = CGFloat(slider.value)
+            let newVal = max(minVal, currentVal - increment)
+            slider.value = Float(newVal)
+            valLbl.text = String(format: "%.1f", newVal)
+            onChange(newVal)
+        }, for: .touchUpInside)
         
-        // Update value label when slider changes
-        slider.addAction(UIAction { [weak valueLabel, weak slider] _ in
-            if let sliderValue = slider?.value {
-                let newValue = CGFloat(sliderValue)
-                valueLabel?.text = String(format: step < 1 ? "%.1f" : "%.0f", newValue)
-                onValueChanged(newValue)
-            }
+        // Plus button
+        let plusBtn = UIButton(type: .system)
+        plusBtn.setTitle("+", for: .normal)
+        plusBtn.titleLabel?.font = UIFont.systemFont(ofSize: 14, weight: .semibold)
+        plusBtn.translatesAutoresizingMaskIntoConstraints = false
+        plusBtn.widthAnchor.constraint(equalToConstant: 32).isActive = true
+        plusBtn.addAction(UIAction { _ in
+            let currentVal = CGFloat(slider.value)
+            let newVal = min(maxVal, currentVal + increment)
+            slider.value = Float(newVal)
+            valLbl.text = String(format: "%.1f", newVal)
+            onChange(newVal)
+        }, for: .touchUpInside)
+        
+        slider.addAction(UIAction { _ in
+            let newVal = CGFloat(slider.value)
+            valLbl.text = String(format: "%.1f", newVal)
+            onChange(newVal)
         }, for: .valueChanged)
         
-        // Minus button decreases value
-        minusButton.addAction(UIAction { [weak slider] _ in
-            if let sliderValue = slider?.value {
-                let newValue = Swift.max(Float(minValue), sliderValue - Float(step))
-                slider?.value = newValue
-                slider?.sendActions(for: .valueChanged)
-            }
-        }, for: .touchUpInside)
-        
-        // Plus button increases value
-        plusButton.addAction(UIAction { [weak slider] _ in
-            if let sliderValue = slider?.value {
-                let newValue = Swift.min(Float(maxValue), sliderValue + Float(step))
-                slider?.value = newValue
-                slider?.sendActions(for: .valueChanged)
-            }
-        }, for: .touchUpInside)
+        cell.contentView.addSubview(lbl)
+        cell.contentView.addSubview(minusBtn)
+        cell.contentView.addSubview(slider)
+        cell.contentView.addSubview(valLbl)
+        cell.contentView.addSubview(plusBtn)
         
         NSLayoutConstraint.activate([
-            labelView.leadingAnchor.constraint(equalTo: container.leadingAnchor),
-            labelView.centerYAnchor.constraint(equalTo: container.centerYAnchor),
+            lbl.leadingAnchor.constraint(equalTo: cell.contentView.leadingAnchor, constant: 16),
+            lbl.centerYAnchor.constraint(equalTo: cell.contentView.centerYAnchor),
             
-            minusButton.leadingAnchor.constraint(equalTo: labelView.trailingAnchor, constant: 8),
-            minusButton.centerYAnchor.constraint(equalTo: container.centerYAnchor),
+            minusBtn.leadingAnchor.constraint(equalTo: lbl.trailingAnchor, constant: 8),
+            minusBtn.centerYAnchor.constraint(equalTo: cell.contentView.centerYAnchor),
             
-            slider.leadingAnchor.constraint(equalTo: minusButton.trailingAnchor, constant: 6),
-            slider.trailingAnchor.constraint(equalTo: valueLabel.leadingAnchor, constant: -6),
-            slider.centerYAnchor.constraint(equalTo: container.centerYAnchor),
+            slider.leadingAnchor.constraint(equalTo: minusBtn.trailingAnchor, constant: 4),
+            slider.trailingAnchor.constraint(equalTo: valLbl.leadingAnchor, constant: -4),
+            slider.centerYAnchor.constraint(equalTo: cell.contentView.centerYAnchor),
             
-            valueLabel.trailingAnchor.constraint(equalTo: plusButton.leadingAnchor, constant: -6),
-            valueLabel.centerYAnchor.constraint(equalTo: container.centerYAnchor),
+            valLbl.centerYAnchor.constraint(equalTo: cell.contentView.centerYAnchor),
             
-            plusButton.trailingAnchor.constraint(equalTo: container.trailingAnchor),
-            plusButton.centerYAnchor.constraint(equalTo: container.centerYAnchor),
+            plusBtn.leadingAnchor.constraint(equalTo: valLbl.trailingAnchor, constant: 4),
+            plusBtn.trailingAnchor.constraint(equalTo: cell.contentView.trailingAnchor, constant: -16),
+            plusBtn.centerYAnchor.constraint(equalTo: cell.contentView.centerYAnchor),
             
-            container.heightAnchor.constraint(equalToConstant: 32)
+            cell.contentView.heightAnchor.constraint(greaterThanOrEqualToConstant: 50)
         ])
-        
-        return container
     }
     
     // MARK: - Actions
@@ -826,105 +604,24 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
         updateFigure()
     }
     
-    func updateFigure() {
-        editorScene?.updateWithValues(
-            figureScale: figureScale,
-            strokeThicknessMultiplier: strokeThicknessMultiplier,
-            fusiformUpperTorso: fusiformUpperTorso,
-            fusiformLowerTorso: fusiformLowerTorso,
-            fusiformUpperArms: fusiformUpperArms,
-            fusiformLowerArms: fusiformLowerArms,
-            fusiformUpperLegs: fusiformUpperLegs,
-            fusiformLowerLegs: fusiformLowerLegs,
-            figureOffsetX: figureOffsetX,
-            figureOffsetY: figureOffsetY,
-            neckRotation: neckRotation,
-            torsoRotation: torsoRotation,
-            leftShoulderAngle: leftShoulderAngle,
-            leftElbowAngle: leftElbowAngle,
-            rightShoulderAngle: rightShoulderAngle,
-            rightElbowAngle: rightElbowAngle,
-            leftHipAngle: leftHipAngle,
-            leftKneeAngle: leftKneeAngle,
-            rightHipAngle: rightHipAngle,
-            rightKneeAngle: rightKneeAngle,
-            showInteractiveJoints: showInteractiveJoints
-        )
-    }
-    
-    @objc private func savePressed() {
-        print("Save frame pressed")
+    @objc private func toggleSectionExpansion(_ gesture: UITapGestureRecognizer) {
+        guard let headerView = gesture.view else { return }
+        let section = headerView.tag
         
-        let alert = UIAlertController(title: "Save Frame", message: "Enter a name for this frame", preferredStyle: .alert)
-        
-        alert.addTextField { textField in
-            textField.placeholder = "Frame name (e.g., 'Pose 1')"
+        if expandedSections.contains(section) {
+            expandedSections.remove(section)
+        } else {
+            expandedSections.insert(section)
         }
         
-        alert.addAction(UIAlertAction(title: "Save", style: .default) { _ in
-            if let frameName = alert.textFields?.first?.text, !frameName.isEmpty {
-                print("Saving frame: \(frameName)")
-                // TODO: Implement actual save logic
-                // Store the current figure state with this name
-            }
-        })
-        
-        alert.addAction(UIAlertAction(title: "Cancel", style: .cancel))
-        
-        self.present(alert, animated: true)
-    }
-    
-    @objc private func loadPressed() {
-        print("Load frame pressed")
-        
-        let alert = UIAlertController(title: "Load Frame", message: "Select a saved frame to load", preferredStyle: .actionSheet)
-        
-        // TODO: Load actual saved frames from storage
-        alert.addAction(UIAlertAction(title: "Pose 1", style: .default) { _ in
-            print("Loading: Pose 1")
-        })
-        
-        alert.addAction(UIAlertAction(title: "Pose 2", style: .default) { _ in
-            print("Loading: Pose 2")
-        })
-        
-        alert.addAction(UIAlertAction(title: "Cancel", style: .cancel))
-        
-        self.present(alert, animated: true)
-    }
-    
-    @objc private func addObjectPressed() {
-        print("Add object pressed")
-        
-        let alert = UIAlertController(title: "Add Object", message: "Select an object to add to the scene", preferredStyle: .actionSheet)
-        
-        alert.addAction(UIAlertAction(title: "Image", style: .default) { _ in
-            self.showImagePicker()
-        })
-        
-        alert.addAction(UIAlertAction(title: "Shape - Circle", style: .default) { _ in
-            print("Add circle shape")
-        })
-        
-        alert.addAction(UIAlertAction(title: "Shape - Rectangle", style: .default) { _ in
-            print("Add rectangle shape")
-        })
-        
-        alert.addAction(UIAlertAction(title: "Cancel", style: .cancel))
-        
-        self.present(alert, animated: true)
-    }
-    
-    private func showImagePicker() {
-        let imagePicker = UIImagePickerController()
-        imagePicker.delegate = self
-        imagePicker.sourceType = .photoLibrary
-        self.present(imagePicker, animated: true)
+        // Reload the entire section with animation
+        controlsTableView.reloadSections([section], with: .fade)
     }
     
     @objc private func refreshPressed() {
         print("🎮 Refreshing stick figure to default Stand frame")
         loadStandFrameValues()
+        controlsTableView.reloadData()  // Reload table to show updated values
         updateFigure()
     }
     
@@ -990,6 +687,178 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
         }
     }
     
+    // MARK: - Update Figure
+    func updateFigure() {
+        editorScene?.updateWithValues(
+            figureScale: figureScale,
+            strokeThicknessMultiplier: strokeThicknessMultiplier,
+            fusiformUpperTorso: fusiformUpperTorso,
+            fusiformLowerTorso: fusiformLowerTorso,
+            fusiformUpperArms: fusiformUpperArms,
+            fusiformLowerArms: fusiformLowerArms,
+            fusiformUpperLegs: fusiformUpperLegs,
+            fusiformLowerLegs: fusiformLowerLegs,
+            figureOffsetX: figureOffsetX,
+            figureOffsetY: figureOffsetY,
+            neckRotation: neckRotation,
+            torsoRotation: torsoRotation,
+            leftShoulderAngle: leftShoulderAngle,
+            leftElbowAngle: leftElbowAngle,
+            rightShoulderAngle: rightShoulderAngle,
+            rightElbowAngle: rightElbowAngle,
+            leftHandAngle: leftHandAngle,
+            rightHandAngle: rightHandAngle,
+            leftHipAngle: leftHipAngle,
+            leftKneeAngle: leftKneeAngle,
+            rightHipAngle: rightHipAngle,
+            rightKneeAngle: rightKneeAngle,
+            leftFootAngle: leftFootAngle,
+            rightFootAngle: rightFootAngle,
+            showInteractiveJoints: showInteractiveJoints
+        )
+    }
+    
+    // MARK: - Button Actions
+    @objc private func savePressed() {
+        print("🎮 Save button pressed")
+        let alert = UIAlertController(title: "Save Frame", message: "Enter a name for this frame", preferredStyle: .alert)
+        
+        alert.addTextField { textField in
+            textField.placeholder = "Frame name"
+        }
+        
+        alert.addAction(UIAlertAction(title: "Save", style: .default) { [weak self] _ in
+            guard let self = self, let name = alert.textFields?.first?.text, !name.isEmpty else { return }
+            
+            // Create a temporary StickFigure2D with current angles to use with SavedEditFrame initializer
+            var tempPose = self.gameState?.standFrame ?? StickFigure2D()
+            tempPose.headAngle = self.neckRotation
+            tempPose.midTorsoAngle = self.torsoRotation
+            tempPose.leftShoulderAngle = self.leftShoulderAngle
+            tempPose.leftElbowAngle = self.leftElbowAngle
+            tempPose.rightShoulderAngle = self.rightShoulderAngle
+            tempPose.rightElbowAngle = self.rightElbowAngle
+            tempPose.leftHandAngle = self.leftHandAngle
+            tempPose.rightHandAngle = self.rightHandAngle
+            tempPose.leftHipAngle = self.leftHipAngle
+            tempPose.rightHipAngle = self.rightHipAngle
+            tempPose.leftKneeAngle = self.leftKneeAngle
+            tempPose.rightKneeAngle = self.rightKneeAngle
+            tempPose.leftFootAngle = self.leftFootAngle
+            tempPose.rightFootAngle = self.rightFootAngle
+            
+            // Create EditModeValues to use with SavedEditFrame initializer
+            let editValues = EditModeValues(
+                figureScale: self.figureScale,
+                strokeThicknessMultiplier: self.strokeThicknessMultiplier,
+                fusiformUpperTorso: self.fusiformUpperTorso,
+                fusiformLowerTorso: self.fusiformLowerTorso,
+                fusiformUpperArms: self.fusiformUpperArms,
+                fusiformLowerArms: self.fusiformLowerArms,
+                fusiformUpperLegs: self.fusiformUpperLegs,
+                fusiformLowerLegs: self.fusiformLowerLegs,
+                showGrid: true,
+                showJoints: self.showInteractiveJoints,
+                positionX: self.figureOffsetX,
+                positionY: self.figureOffsetY
+            )
+            
+            let frame = SavedEditFrame(name: name, from: editValues, pose: tempPose)
+            SavedFramesManager.shared.saveFrame(frame)
+            
+            let successAlert = UIAlertController(title: "Saved!", message: "Frame '\(name)' has been saved", preferredStyle: .alert)
+            successAlert.addAction(UIAlertAction(title: "OK", style: .default))
+            self.present(successAlert, animated: true)
+        })
+        
+        alert.addAction(UIAlertAction(title: "Cancel", style: .cancel))
+        present(alert, animated: true)
+    }
+    
+    @objc private func loadPressed() {
+        print("🎮 Load button pressed")
+        let frameList = FrameListViewController()
+        frameList.onFrameSelected = { [weak self] frame in
+            self?.applyFrame(frame)
+        }
+        let navController = UINavigationController(rootViewController: frameList)
+        present(navController, animated: true)
+    }
+    
+    @objc private func addObjectPressed() {
+        print("🎮 Add object button pressed")
+        let alert = UIAlertController(title: "Add Object", message: "Select an asset", preferredStyle: .actionSheet)
+        
+        let assets = ["Apple", "Dumbbell", "Kettlebell", "Shaker"]
+        
+        for asset in assets {
+            alert.addAction(UIAlertAction(title: asset, style: .default) { [weak self] _ in
+                self?.addObject(asset: asset)
+            })
+        }
+        
+        alert.addAction(UIAlertAction(title: "Cancel", style: .cancel))
+        present(alert, animated: true)
+    }
+    
+    private func addObject(asset: String) {
+        print("🎮 Adding object: \(asset)")
+        // Add the object to the editor scene
+        guard let editorScene = editorScene else { return }
+        
+        // Load the asset image
+        let imageName: String
+        switch asset {
+        case "Apple": imageName = "Apple"
+        case "Dumbbell": imageName = "Dumbbell"
+        case "Kettlebell": imageName = "Kettlebell"
+        case "Shaker": imageName = "Shaker"
+        default: imageName = "Apple"
+        }
+        
+        // Create a sprite node for the object
+        let sprite = SKSpriteNode(imageNamed: imageName)
+        sprite.position = CGPoint(x: editorScene.size.width / 2, y: editorScene.size.height / 2)
+        sprite.zPosition = 5  // Behind the stick figure but in front of grid
+        sprite.scale(to: CGSize(width: 40, height: 40))
+        sprite.name = "object_\(asset)"
+        
+        editorScene.addChild(sprite)
+        print("🎮 Added \(asset) object to scene at position \(sprite.position)")
+    }
+    
+    private func applyFrame(_ frame: SavedEditFrame) {
+        print("🎮 Applying frame: \(frame.name)")
+        neckRotation = frame.headAngle
+        torsoRotation = frame.midTorsoAngle
+        leftShoulderAngle = frame.leftShoulderAngle
+        leftElbowAngle = frame.leftElbowAngle
+        rightShoulderAngle = frame.rightShoulderAngle
+        rightElbowAngle = frame.rightElbowAngle
+        leftHandAngle = frame.leftHandAngle
+        rightHandAngle = frame.rightHandAngle
+        leftHipAngle = frame.leftHipAngle
+        rightHipAngle = frame.rightHipAngle
+        leftKneeAngle = frame.leftKneeAngle
+        rightKneeAngle = frame.rightKneeAngle
+        leftFootAngle = frame.leftFootAngle
+        rightFootAngle = frame.rightFootAngle
+        figureScale = frame.figureScale
+        strokeThicknessMultiplier = frame.strokeThicknessMultiplier
+        fusiformUpperTorso = frame.fusiformUpperTorso
+        fusiformLowerTorso = frame.fusiformLowerTorso
+        fusiformUpperArms = frame.fusiformUpperArms
+        fusiformLowerArms = frame.fusiformLowerArms
+        fusiformUpperLegs = frame.fusiformUpperLegs
+        fusiformLowerLegs = frame.fusiformLowerLegs
+        figureOffsetX = frame.positionX
+        figureOffsetY = frame.positionY
+        
+        // Reload table view to show updated values
+        controlsTableView.reloadData()
+        updateFigure()
+    }
+    
     @objc private func closePressed() {
         dismiss(animated: true)
     }
@@ -1026,6 +895,8 @@ class StickFigureEditorScene: SKScene {
     private var dragOffset: CGPoint = .zero
     private var draggedJointName: String?
     private var lastDragPosition: CGPoint = .zero
+    private var gridNode: SKNode?
+    var currentZoom: CGFloat = 1.0
     weak var viewController: StickFigureGameplayEditorViewController?
     
     override func didMove(to view: SKView) {
@@ -1058,19 +929,18 @@ class StickFigureEditorScene: SKScene {
         guard let touch = touches.first, let draggedJoint = draggedJoint else { return }
         let location = touch.location(in: self)
         
-        // Update joint position with offset
+        // Update joint position with offset for visual feedback
         let newPos = CGPoint(x: location.x - dragOffset.x,
                             y: location.y - dragOffset.y)
         draggedJoint.position = newPos
         
-        // Calculate angle delta from movement
+        // Calculate angle delta from movement - SLOW AND CONTROLLED
         if let jointName = draggedJointName {
             let dx = location.x - lastDragPosition.x
-            let dy = location.y - lastDragPosition.y
             
-            // Convert movement to angle change
-            // More horizontal movement = more angle change
-            let angleDelta = atan2(dy, dx) * 180 / .pi
+            // Slower rotation - 0.2 degrees per pixel moved horizontally
+            // INVERTED: negative dx gives positive angle (drag right = rotate up)
+            let angleDelta = -dx * 0.2
             
             updateAngleByDelta(jointName: jointName, angleDelta: angleDelta)
             lastDragPosition = location
@@ -1084,31 +954,80 @@ class StickFigureEditorScene: SKScene {
     }
     
     private func updateAngleByDelta(jointName: String, angleDelta: CGFloat) {
-        // Get current angle and apply delta
+        // Get current angle and apply delta based on joint hierarchy
         let currentAngle: CGFloat
         
         switch jointName {
-        case "joint_leftShoulder":
-            currentAngle = viewController?.leftShoulderAngle ?? 0
-            viewController?.leftShoulderAngle = currentAngle + angleDelta
-        case "joint_leftElbow":
-            currentAngle = viewController?.leftElbowAngle ?? 0
-            viewController?.leftElbowAngle = currentAngle + angleDelta
-        case "joint_rightShoulder":
-            currentAngle = viewController?.rightShoulderAngle ?? 0
-            viewController?.rightShoulderAngle = currentAngle + angleDelta
-        case "joint_rightElbow":
-            currentAngle = viewController?.rightElbowAngle ?? 0
-            viewController?.rightElbowAngle = currentAngle + angleDelta
-        case "joint_leftKnee":
-            currentAngle = viewController?.leftKneeAngle ?? 0
-            viewController?.leftKneeAngle = currentAngle + angleDelta
-        case "joint_rightKnee":
-            currentAngle = viewController?.rightKneeAngle ?? 0
-            viewController?.rightKneeAngle = currentAngle + angleDelta
         case "joint_neck":
+            // Neck: rotates upper torso around mid torso
             currentAngle = viewController?.neckRotation ?? 0
             viewController?.neckRotation = currentAngle + angleDelta
+            
+        case "joint_leftShoulder":
+            // Left Shoulder: rotates left arm around neck
+            currentAngle = viewController?.leftShoulderAngle ?? 0
+            viewController?.leftShoulderAngle = currentAngle + angleDelta
+            
+        case "joint_rightShoulder":
+            // Right Shoulder: rotates right arm around neck
+            currentAngle = viewController?.rightShoulderAngle ?? 0
+            viewController?.rightShoulderAngle = currentAngle + angleDelta
+            
+        case "joint_leftElbow":
+            // Left Elbow: rotates lower left arm around left elbow
+            currentAngle = viewController?.leftElbowAngle ?? 0
+            viewController?.leftElbowAngle = currentAngle + angleDelta
+            
+        case "joint_rightElbow":
+            // Right Elbow: rotates lower right arm around right elbow
+            currentAngle = viewController?.rightElbowAngle ?? 0
+            viewController?.rightElbowAngle = currentAngle + angleDelta
+            
+        case "joint_leftHand":
+            // Left Hand: rotates hand around left wrist
+            currentAngle = viewController?.leftHandAngle ?? 0
+            viewController?.leftHandAngle = currentAngle + angleDelta
+            
+        case "joint_rightHand":
+            // Right Hand: rotates hand around right wrist
+            currentAngle = viewController?.rightHandAngle ?? 0
+            viewController?.rightHandAngle = currentAngle + angleDelta
+            
+        case "joint_leftHip":
+            // Left Hip: rotates upper left leg around waist
+            currentAngle = viewController?.leftHipAngle ?? 0
+            viewController?.leftHipAngle = currentAngle + angleDelta
+            
+        case "joint_rightHip":
+            // Right Hip: rotates upper right leg around waist
+            currentAngle = viewController?.rightHipAngle ?? 0
+            viewController?.rightHipAngle = currentAngle + angleDelta
+            
+        case "joint_leftKnee":
+            // Left Knee: rotates lower left leg around left knee
+            currentAngle = viewController?.leftKneeAngle ?? 0
+            viewController?.leftKneeAngle = currentAngle + angleDelta
+            
+        case "joint_rightKnee":
+            // Right Knee: rotates lower right leg around right knee
+            currentAngle = viewController?.rightKneeAngle ?? 0
+            viewController?.rightKneeAngle = currentAngle + angleDelta
+            
+        case "joint_leftFoot":
+            // Left Foot: rotates foot around left ankle
+            currentAngle = viewController?.leftFootAngle ?? 0
+            viewController?.leftFootAngle = currentAngle + angleDelta
+            
+        case "joint_rightFoot":
+            // Right Foot: rotates foot around right ankle
+            currentAngle = viewController?.rightFootAngle ?? 0
+            viewController?.rightFootAngle = currentAngle + angleDelta
+            
+        case "joint_midTorso":
+            // Mid Torso: rotates upper body around waist
+            currentAngle = viewController?.torsoRotation ?? 0
+            viewController?.torsoRotation = currentAngle + angleDelta
+            
         default:
             break
         }
@@ -1210,10 +1129,14 @@ class StickFigureEditorScene: SKScene {
         leftElbowAngle: CGFloat = 0,
         rightShoulderAngle: CGFloat = 0,
         rightElbowAngle: CGFloat = 0,
+        leftHandAngle: CGFloat = 0,
+        rightHandAngle: CGFloat = 0,
         leftHipAngle: CGFloat = 0,
         leftKneeAngle: CGFloat = 0,
         rightHipAngle: CGFloat = 0,
         rightKneeAngle: CGFloat = 0,
+        leftFootAngle: CGFloat = 0,
+        rightFootAngle: CGFloat = 0,
         showInteractiveJoints: Bool = true
     ) {
         // Update the stick figure with new values
@@ -1241,9 +1164,12 @@ class StickFigureEditorScene: SKScene {
         updatedFrame.leftElbowAngle = leftElbowAngle
         updatedFrame.rightShoulderAngle = rightShoulderAngle
         updatedFrame.rightElbowAngle = rightElbowAngle
-        // Note: Hip angles don't exist in StickFigure2D, only knee/foot angles
+        updatedFrame.leftHandAngle = leftHandAngle
+        updatedFrame.rightHandAngle = rightHandAngle
         updatedFrame.leftKneeAngle = leftKneeAngle
         updatedFrame.rightKneeAngle = rightKneeAngle
+        updatedFrame.leftFootAngle = leftFootAngle
+        updatedFrame.rightFootAngle = rightFootAngle
         
         // Apply stroke thickness multiplier
         updatedFrame.strokeThickness *= strokeThicknessMultiplier
@@ -1281,33 +1207,254 @@ class StickFigureEditorScene: SKScene {
     }
     
     private func drawInteractiveJoints(on container: SKNode, frame: StickFigure2D, scale: CGFloat) {
-        // Position joints at anatomical layout positions
-        // Using placeholder positions since StickFigure2D doesn't expose computed position properties yet
-        let jointRadius: CGFloat = 8
+        // Position joints at actual body part positions using StickFigure2D computed properties
+        let jointRadius: CGFloat = 4  // Half the previous size (was 8)
         let jointColor = SKColor.blue
         
-        // Relative positions from center - will be scaled and positioned
-        // These are approximate anatomical positions
+        // Base canvas dimensions for coordinate conversion
+        let baseCanvasSize = CGSize(width: 600, height: 720)
+        let baseCenter = CGPoint(x: baseCanvasSize.width / 2, y: baseCanvasSize.height / 2)
+        
+        // Helper function to convert from base canvas coords to scene coords
+        func toScenePos(_ pos: CGPoint) -> CGPoint {
+            return CGPoint(x: (pos.x - baseCenter.x) * scale, y: (baseCenter.y - pos.y) * scale)
+        }
+        
+        // Define joints with actual body part positions
         let jointPositions: [(CGPoint, String)] = [
-            (CGPoint(x: 0, y: 100), "neck"),           // Neck joint
-            (CGPoint(x: 0, y: 0), "waist"),             // Waist joint
-            (CGPoint(x: -50, y: 70), "leftShoulder"),   // Left shoulder
-            (CGPoint(x: 50, y: 70), "rightShoulder"),   // Right shoulder
-            (CGPoint(x: -50, y: 20), "leftElbow"),      // Left elbow
-            (CGPoint(x: 50, y: 20), "rightElbow"),      // Right elbow
-            (CGPoint(x: -40, y: -80), "leftKnee"),      // Left knee
-            (CGPoint(x: 40, y: -80), "rightKnee")       // Right knee
+            (frame.headPosition, "head"),
+            (frame.neckPosition, "neck"),
+            (frame.leftShoulderPosition, "leftShoulder"),
+            (frame.rightShoulderPosition, "rightShoulder"),
+            (frame.leftUpperArmEnd, "leftElbow"),
+            (frame.rightUpperArmEnd, "rightElbow"),
+            (frame.leftForearmEnd, "leftHand"),
+            (frame.rightForearmEnd, "rightHand"),
+            (frame.leftHipPosition, "leftHip"),
+            (frame.rightHipPosition, "rightHip"),
+            (frame.leftUpperLegEnd, "leftKnee"),
+            (frame.rightUpperLegEnd, "rightKnee"),
+            (frame.leftLowerLegEnd, "leftFoot"),
+            (frame.rightLowerLegEnd, "rightFoot")
         ]
         
         for (pos, name) in jointPositions {
+            let scenePos = toScenePos(pos)
             let joint = SKShapeNode(circleOfRadius: jointRadius)
             joint.fillColor = jointColor
             joint.strokeColor = SKColor.blue.withAlphaComponent(0.7)
             joint.lineWidth = 1
-            joint.position = CGPoint(x: pos.x * scale / 2.4, y: pos.y * scale / 2.4)
+            joint.position = scenePos
             joint.name = "joint_\(name)"
             joint.zPosition = 11
             container.addChild(joint)
         }
+    }
+    
+    func updateZoom(_ zoom: CGFloat) {
+        currentZoom = zoom
+        // Redraw grid and figure with new zoom, preserving all current values
+        removeAllChildren()
+        drawGrid()
+        
+        // Call the viewController's updateFigure to re-render with all current state
+        viewController?.updateFigure()
+    }
+}
+
+// MARK: - Frame List View Controller
+class FrameListViewController: UIViewController, UITableViewDataSource, UITableViewDelegate {
+    var frames: [SavedEditFrame] = []
+    var bundleFrameIds: Set<UUID> = []  // Track which frames are in animations.json
+    var selectedFrame: SavedEditFrame?
+    var onFrameSelected: ((SavedEditFrame) -> Void)?
+    
+    private let tableView = UITableView(frame: .zero, style: .insetGrouped)
+    
+    override func viewDidLoad() {
+        super.viewDidLoad()
+        
+        title = "Saved Frames"
+        view.backgroundColor = .white
+        
+        // Load saved frames from local storage
+        var allFrames = SavedFramesManager.shared.getAllFrames()
+        
+        // Load frames from animations.json (bundle) and track their IDs
+        let bundleFrames = AnimationStorage.shared.loadFrames()
+        
+        // Add bundle frames to the list if not already present, and track their IDs
+        for bundleFrame in bundleFrames {
+            bundleFrameIds.insert(bundleFrame.id)
+            
+            // Check if this bundle frame is already in saved frames
+            if !allFrames.contains(where: { $0.id == bundleFrame.id }) {
+                // Convert AnimationFrame to SavedEditFrame
+                let pose = bundleFrame.pose.toStickFigure2D()
+                let editValues = EditModeValues(
+                    figureScale: pose.scale,
+                    strokeThicknessMultiplier: pose.strokeThickness,
+                    fusiformUpperTorso: pose.fusiformUpperTorso,
+                    fusiformLowerTorso: pose.fusiformLowerTorso,
+                    fusiformUpperArms: pose.fusiformUpperArms,
+                    fusiformLowerArms: pose.fusiformLowerArms,
+                    fusiformUpperLegs: pose.fusiformUpperLegs,
+                    fusiformLowerLegs: pose.fusiformLowerLegs,
+                    showGrid: true,
+                    showJoints: true,
+                    positionX: 0,
+                    positionY: 0
+                )
+                var savedFrame = SavedEditFrame(id: bundleFrame.id, name: bundleFrame.name, from: editValues, pose: pose)
+                allFrames.append(savedFrame)
+            }
+        }
+        
+        // Sort by timestamp (newest first)
+        frames = allFrames.sorted { $0.timestamp > $1.timestamp }
+        
+        // Setup navigation
+        navigationItem.leftBarButtonItem = UIBarButtonItem(barButtonSystemItem: .close, target: self, action: #selector(closePressed))
+        
+        // Setup table view
+        tableView.translatesAutoresizingMaskIntoConstraints = false
+        tableView.dataSource = self
+        tableView.delegate = self
+        view.addSubview(tableView)
+        
+        NSLayoutConstraint.activate([
+            tableView.topAnchor.constraint(equalTo: view.topAnchor),
+            tableView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            tableView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            tableView.bottomAnchor.constraint(equalTo: view.bottomAnchor)
+        ])
+        
+        // Empty state message
+        if frames.isEmpty {
+            let emptyLabel = UILabel()
+            emptyLabel.text = "No saved frames yet\n\nTap \"SAVE FRAME\" to create one"
+            emptyLabel.numberOfLines = 0
+            emptyLabel.textAlignment = .center
+            emptyLabel.textColor = .gray
+            emptyLabel.font = UIFont.systemFont(ofSize: 14)
+            emptyLabel.translatesAutoresizingMaskIntoConstraints = false
+            view.addSubview(emptyLabel)
+            
+            NSLayoutConstraint.activate([
+                emptyLabel.centerXAnchor.constraint(equalTo: view.centerXAnchor),
+                emptyLabel.centerYAnchor.constraint(equalTo: view.centerYAnchor)
+            ])
+        }
+    }
+    
+    @objc private func closePressed() {
+        dismiss(animated: true)
+    }
+    
+    // MARK: - UITableViewDataSource
+    func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
+        return frames.count
+    }
+    
+    func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
+        let frame = frames[indexPath.row]
+        let cell = UITableViewCell(style: .subtitle, reuseIdentifier: "frameCell")
+        
+        // Show green checkmark if frame is in animations.json
+        let checkmark = bundleFrameIds.contains(frame.id) ? "✓" : ""
+        
+        cell.textLabel?.text = "\(checkmark) \(frame.name)".trimmingCharacters(in: .whitespaces)
+        let dateFormatter = DateFormatter()
+        dateFormatter.dateStyle = .medium
+        dateFormatter.timeStyle = .short
+        cell.detailTextLabel?.text = dateFormatter.string(from: frame.timestamp)
+        cell.detailTextLabel?.textColor = .gray
+        cell.accessoryType = .disclosureIndicator
+        cell.textLabel?.textColor = bundleFrameIds.contains(frame.id) ? .systemGreen : .black
+        
+        return cell
+    }
+    
+    func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
+        let frame = frames[indexPath.row]
+        onFrameSelected?(frame)
+        dismiss(animated: true)
+    }
+    
+    // MARK: - Context Menu (Edit, Delete, Copy)
+    func tableView(_ tableView: UITableView, contextMenuConfigurationForRowAt indexPath: IndexPath, point: CGPoint) -> UIContextMenuConfiguration? {
+        let frame = frames[indexPath.row]
+        
+        return UIContextMenuConfiguration(actionProvider: { _ in
+            let loadAction = UIAction(title: "Load", image: UIImage(systemName: "arrow.down.doc")) { _ in
+                self.onFrameSelected?(frame)
+                self.dismiss(animated: true)
+            }
+            
+            let renameAction = UIAction(title: "Rename", image: UIImage(systemName: "pencil")) { _ in
+                self.showRenameDialog(for: frame, at: indexPath)
+            }
+            
+            let copyAction = UIAction(title: "Copy JSON to Clipboard", image: UIImage(systemName: "doc.on.doc")) { _ in
+                self.copyFrameToClipboard(frame)
+            }
+            
+            let deleteAction = UIAction(title: "Delete", image: UIImage(systemName: "trash"), attributes: .destructive) { _ in
+                self.deleteFrame(frame, at: indexPath)
+            }
+            
+            return UIMenu(children: [loadAction, renameAction, copyAction, deleteAction])
+        })
+    }
+    
+    // MARK: - Helper Methods
+    private func showRenameDialog(for frame: SavedEditFrame, at indexPath: IndexPath) {
+        let alert = UIAlertController(title: "Rename Frame", message: "Enter new name", preferredStyle: .alert)
+        
+        alert.addTextField { textField in
+            textField.text = frame.name
+        }
+        
+        alert.addAction(UIAlertAction(title: "Save", style: .default) { _ in
+            if let newName = alert.textFields?.first?.text, !newName.isEmpty {
+                SavedFramesManager.shared.renameFrame(id: frame.id, newName: newName)
+                self.frames[indexPath.row].name = newName
+                self.tableView.reloadRows(at: [indexPath], with: .none)
+            }
+        })
+        
+        alert.addAction(UIAlertAction(title: "Cancel", style: .cancel))
+        
+        present(alert, animated: true)
+    }
+    
+    private func copyFrameToClipboard(_ frame: SavedEditFrame) {
+        if let jsonString = SavedFramesManager.shared.exportFrameAsJSON(id: frame.id) {
+            UIPasteboard.general.string = jsonString
+            
+            let alert = UIAlertController(title: "Copied!", message: "Frame JSON copied to clipboard. You can paste it into animations.json", preferredStyle: .alert)
+            alert.addAction(UIAlertAction(title: "OK", style: .default))
+            present(alert, animated: true)
+            
+            print("✅ Frame JSON copied: \(frame.name)")
+        }
+    }
+    
+    private func deleteFrame(_ frame: SavedEditFrame, at indexPath: IndexPath) {
+        let alert = UIAlertController(title: "Delete Frame?", message: "This cannot be undone", preferredStyle: .alert)
+        
+        alert.addAction(UIAlertAction(title: "Delete", style: .destructive) { _ in
+            SavedFramesManager.shared.deleteFrame(id: frame.id)
+            self.frames.remove(at: indexPath.row)
+            self.tableView.deleteRows(at: [indexPath], with: .fade)
+            
+            if self.frames.isEmpty {
+                self.tableView.reloadData()
+            }
+        })
+        
+        alert.addAction(UIAlertAction(title: "Cancel", style: .cancel))
+        
+        present(alert, animated: true)
     }
 }

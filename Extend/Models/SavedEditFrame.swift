@@ -2,7 +2,7 @@ import Foundation
 
 /// Represents a frame saved in the gameplay editor
 struct SavedEditFrame: Codable, Identifiable {
-    let id: UUID
+    var id: UUID
     var name: String
     let timestamp: Date
     let figureScale: CGFloat
@@ -25,12 +25,23 @@ struct SavedEditFrame: Codable, Identifiable {
     let rightShoulderAngle: CGFloat
     let leftElbowAngle: CGFloat
     let rightElbowAngle: CGFloat
+    let leftHandAngle: CGFloat
+    let rightHandAngle: CGFloat
+    let leftHipAngle: CGFloat
+    let rightHipAngle: CGFloat
     let leftKneeAngle: CGFloat
     let rightKneeAngle: CGFloat
+    let leftFootAngle: CGFloat
+    let rightFootAngle: CGFloat
     
     /// Initialize from EditModeValues with optional pose data
     init(name: String, from values: EditModeValues, pose: StickFigure2D? = nil) {
-        self.id = UUID()
+        self.init(id: UUID(), name: name, from: values, pose: pose)
+    }
+    
+    /// Initialize from EditModeValues with optional pose data and custom id
+    init(id: UUID, name: String, from values: EditModeValues, pose: StickFigure2D? = nil) {
+        self.id = id
         self.name = name
         self.timestamp = Date()
         self.figureScale = values.figureScale
@@ -54,8 +65,14 @@ struct SavedEditFrame: Codable, Identifiable {
             self.rightShoulderAngle = pose.rightShoulderAngle
             self.leftElbowAngle = pose.leftElbowAngle
             self.rightElbowAngle = pose.rightElbowAngle
+            self.leftHandAngle = pose.leftHandAngle
+            self.rightHandAngle = pose.rightHandAngle
+            self.leftHipAngle = pose.leftHipAngle
+            self.rightHipAngle = pose.rightHipAngle
             self.leftKneeAngle = pose.leftKneeAngle
             self.rightKneeAngle = pose.rightKneeAngle
+            self.leftFootAngle = pose.leftFootAngle
+            self.rightFootAngle = pose.rightFootAngle
         } else {
             // Default angles (standing position)
             self.waistTorsoAngle = 0
@@ -66,8 +83,14 @@ struct SavedEditFrame: Codable, Identifiable {
             self.rightShoulderAngle = 0
             self.leftElbowAngle = 45
             self.rightElbowAngle = 45
+            self.leftHandAngle = -45
+            self.rightHandAngle = -45
+            self.leftHipAngle = 0
+            self.rightHipAngle = 0
             self.leftKneeAngle = 0
             self.rightKneeAngle = 0
+            self.leftFootAngle = 0
+            self.rightFootAngle = 0
         }
     }
     
@@ -95,8 +118,14 @@ struct SavedEditFrame: Codable, Identifiable {
                 "rightShoulderAngle": rightShoulderAngle,
                 "leftElbowAngle": leftElbowAngle,
                 "rightElbowAngle": rightElbowAngle,
+                "leftHandAngle": leftHandAngle,
+                "rightHandAngle": rightHandAngle,
+                "leftHipAngle": leftHipAngle,
+                "rightHipAngle": rightHipAngle,
                 "leftKneeAngle": leftKneeAngle,
-                "rightKneeAngle": rightKneeAngle
+                "rightKneeAngle": rightKneeAngle,
+                "leftFootAngle": leftFootAngle,
+                "rightFootAngle": rightFootAngle
             ]
         ]
         
