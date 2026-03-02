@@ -15,6 +15,8 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
     
     private var figureScale: CGFloat = 1.0  // Multiplier for display size (1.0 = normal size)
     private var strokeThicknessMultiplier: CGFloat = 1.0
+    private var skeletonSize: CGFloat = 1.0  // Skeleton line thickness multiplier
+    private var jointShapeSize: CGFloat = 1.0  // Joint circle size multiplier
     private var fusiformUpperTorso: CGFloat = 4.0
     private var fusiformLowerTorso: CGFloat = 4.0
     private var fusiformUpperArms: CGFloat = 2.0
@@ -140,6 +142,15 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
         titleLabel.translatesAutoresizingMaskIntoConstraints = false
         headerView.addSubview(titleLabel)
         
+        // Show Joints toggle - small dot button
+        let jointsButton = UIButton(type: .system)
+        jointsButton.setTitle("●", for: .normal)
+        jointsButton.titleLabel?.font = UIFont.systemFont(ofSize: 16)
+        jointsButton.tintColor = showInteractiveJoints ? .white : UIColor.white.withAlphaComponent(0.5)
+        jointsButton.translatesAutoresizingMaskIntoConstraints = false
+        jointsButton.addTarget(self, action: #selector(toggleJointsFromHeader(_:)), for: .touchUpInside)
+        headerView.addSubview(jointsButton)
+        
         let refreshButton = UIButton(type: .system)
         refreshButton.setTitle("↻", for: .normal)
         refreshButton.titleLabel?.font = UIFont.systemFont(ofSize: 16, weight: .bold)
@@ -147,6 +158,15 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
         refreshButton.translatesAutoresizingMaskIntoConstraints = false
         refreshButton.addTarget(self, action: #selector(refreshPressed), for: .touchUpInside)
         headerView.addSubview(refreshButton)
+        
+        // MidTorso toggle - small circle button for body rotation
+        let midTorsoButton = UIButton(type: .system)
+        midTorsoButton.setTitle("○", for: .normal)
+        midTorsoButton.titleLabel?.font = UIFont.systemFont(ofSize: 16)
+        midTorsoButton.tintColor = .white
+        midTorsoButton.translatesAutoresizingMaskIntoConstraints = false
+        midTorsoButton.addTarget(self, action: #selector(toggleMidTorso(_:)), for: .touchUpInside)
+        headerView.addSubview(midTorsoButton)
         
         let closeButton = UIButton(type: .system)
         closeButton.setTitle("✕", for: .normal)
@@ -165,8 +185,18 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
             titleLabel.leadingAnchor.constraint(equalTo: headerView.leadingAnchor, constant: 16),
             titleLabel.centerYAnchor.constraint(equalTo: headerView.centerYAnchor),
             
-            refreshButton.trailingAnchor.constraint(equalTo: closeButton.leadingAnchor, constant: -12),
+            jointsButton.leadingAnchor.constraint(equalTo: titleLabel.trailingAnchor, constant: 12),
+            jointsButton.centerYAnchor.constraint(equalTo: headerView.centerYAnchor),
+            jointsButton.widthAnchor.constraint(equalToConstant: 24),
+            jointsButton.heightAnchor.constraint(equalToConstant: 24),
+            
+            refreshButton.trailingAnchor.constraint(equalTo: midTorsoButton.leadingAnchor, constant: -8),
             refreshButton.centerYAnchor.constraint(equalTo: headerView.centerYAnchor),
+            
+            midTorsoButton.trailingAnchor.constraint(equalTo: closeButton.leadingAnchor, constant: -8),
+            midTorsoButton.centerYAnchor.constraint(equalTo: headerView.centerYAnchor),
+            midTorsoButton.widthAnchor.constraint(equalToConstant: 24),
+            midTorsoButton.heightAnchor.constraint(equalToConstant: 24),
             
             closeButton.trailingAnchor.constraint(equalTo: headerView.trailingAnchor, constant: -16),
             closeButton.centerYAnchor.constraint(equalTo: headerView.centerYAnchor),
@@ -206,10 +236,10 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
         let isExpanded = expandedSections.contains(section)
         
         switch section {
-        case 0: return 3  // Show Joints, Zoom, Position buttons
-        case 1: return isExpanded ? 2 : 0  // Figure Scale, Stroke Thickness (now collapsible)
+        case 0: return 2  // Zoom, Position buttons (Show Joints moved to header)
+        case 1: return isExpanded ? 4 : 0  // Figure Scale, Stroke, Skeleton Size, Joint Shape Size
         case 2: return isExpanded ? 6 : 0  // Upper Torso, Lower Torso, Upper Arms, Lower Arms, Upper Legs, Lower Legs
-        case 3: return isExpanded ? 14 : 0  // 14 Joint sliders: neck, leftShoulder, rightShoulder, leftElbow, rightElbow, leftHand, rightHand, leftHip, rightHip, leftKnee, rightKnee, leftFoot, rightFoot, midTorso
+        case 3: return isExpanded ? 10 : 0  // 10 Joint sliders: head, leftShoulder, rightShoulder, leftElbow, rightElbow, leftKnee, rightKnee, leftCalf, rightCalf, midTorso
         case 4: return 1  // Save + Load (now on same row)
         case 5: return 1  // Add Object
         default: return 0
@@ -277,31 +307,32 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
         
         switch (indexPath.section, indexPath.row) {
         case (0, 0):
-            // Show Joints toggle
+            // Position buttons (X/Y controls) - smaller buttons - FIRST ROW
             let container = UIStackView()
             container.axis = .horizontal
-            container.spacing = 12
+            container.spacing = 2
+            container.distribution = .fillEqually
             container.translatesAutoresizingMaskIntoConstraints = false
             
-            let label = UILabel()
-            label.text = "Show Joints"
-            label.font = UIFont.systemFont(ofSize: 14)
+            let buttons = [("← X", { self.figureOffsetX -= 5 }), ("X →", { self.figureOffsetX += 5 }), ("↑ Y", { self.figureOffsetY += 5 }), ("Y ↓", { self.figureOffsetY -= 5 })]
             
-            let toggle = UISwitch()
-            toggle.isOn = showInteractiveJoints
-            toggle.addTarget(self, action: #selector(toggleJoints(_:)), for: .valueChanged)
-            
-            container.addArrangedSubview(label)
-            container.addArrangedSubview(UIView())  // Spacer
-            container.addArrangedSubview(toggle)
+            for (title, action) in buttons {
+                let btn = UIButton(type: .system)
+                btn.setTitle(title, for: .normal)
+                btn.titleLabel?.font = UIFont.systemFont(ofSize: 11)
+                btn.addAction(UIAction { _ in action(); self.updateFigure() }, for: .touchUpInside)
+                container.addArrangedSubview(btn)
+            }
             
             cell.contentView.addSubview(container)
             NSLayoutConstraint.activate([
-                container.topAnchor.constraint(equalTo: cell.contentView.topAnchor, constant: 12),
+                container.topAnchor.constraint(equalTo: cell.contentView.topAnchor, constant: 6),
                 container.leadingAnchor.constraint(equalTo: cell.contentView.leadingAnchor, constant: 16),
                 container.trailingAnchor.constraint(equalTo: cell.contentView.trailingAnchor, constant: -16),
-                container.bottomAnchor.constraint(equalTo: cell.contentView.bottomAnchor, constant: -12)
+                container.bottomAnchor.constraint(equalTo: cell.contentView.bottomAnchor, constant: -6),
+                cell.contentView.heightAnchor.constraint(greaterThanOrEqualToConstant: 36)
             ])
+            
             
         case (0, 1):
             // Zoom slider with +/- buttons
@@ -328,13 +359,13 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
             minusBtn.titleLabel?.font = UIFont.systemFont(ofSize: 14, weight: .semibold)
             minusBtn.translatesAutoresizingMaskIntoConstraints = false
             minusBtn.widthAnchor.constraint(equalToConstant: 28).isActive = true
-            minusBtn.addAction(UIAction { _ in
+            minusBtn.addAction(UIAction { [weak self] _ in
                 let currentZoom = CGFloat(slider.value)
                 let newZoom = max(0.5, currentZoom - 0.1)
                 slider.value = Float(newZoom)
                 valueLabel.text = String(format: "%.1f×", newZoom)
-                self.sceneZoom = newZoom
-                self.editorScene?.updateZoom(newZoom)
+                self?.sceneZoom = newZoom
+                self?.editorScene?.updateZoom(newZoom)
             }, for: .touchUpInside)
             
             // Plus button for zoom
@@ -343,13 +374,13 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
             plusBtn.titleLabel?.font = UIFont.systemFont(ofSize: 14, weight: .semibold)
             plusBtn.translatesAutoresizingMaskIntoConstraints = false
             plusBtn.widthAnchor.constraint(equalToConstant: 28).isActive = true
-            plusBtn.addAction(UIAction { _ in
+            plusBtn.addAction(UIAction { [weak self] _ in
                 let currentZoom = CGFloat(slider.value)
                 let newZoom = min(3.0, currentZoom + 0.1)
                 slider.value = Float(newZoom)
                 valueLabel.text = String(format: "%.1f×", newZoom)
-                self.sceneZoom = newZoom
-                self.editorScene?.updateZoom(newZoom)
+                self?.sceneZoom = newZoom
+                self?.editorScene?.updateZoom(newZoom)
             }, for: .touchUpInside)
             
             slider.addAction(UIAction { [weak self, weak valueLabel] _ in
@@ -385,32 +416,6 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
                 cell.contentView.heightAnchor.constraint(greaterThanOrEqualToConstant: 50)
             ])
             
-        case (0, 2):
-            // Position buttons (X/Y controls) - smaller buttons
-            let container = UIStackView()
-            container.axis = .horizontal
-            container.spacing = 2
-            container.distribution = .fillEqually
-            container.translatesAutoresizingMaskIntoConstraints = false
-            
-            let buttons = [("← X", { self.figureOffsetX -= 5 }), ("X →", { self.figureOffsetX += 5 }), ("↑ Y", { self.figureOffsetY += 5 }), ("Y ↓", { self.figureOffsetY -= 5 })]
-            
-            for (title, action) in buttons {
-                let btn = UIButton(type: .system)
-                btn.setTitle(title, for: .normal)
-                btn.titleLabel?.font = UIFont.systemFont(ofSize: 11)
-                btn.addAction(UIAction { _ in action(); self.updateFigure() }, for: .touchUpInside)
-                container.addArrangedSubview(btn)
-            }
-            
-            cell.contentView.addSubview(container)
-            NSLayoutConstraint.activate([
-                container.topAnchor.constraint(equalTo: cell.contentView.topAnchor, constant: 6),
-                container.leadingAnchor.constraint(equalTo: cell.contentView.leadingAnchor, constant: 16),
-                container.trailingAnchor.constraint(equalTo: cell.contentView.trailingAnchor, constant: -16),
-                container.bottomAnchor.constraint(equalTo: cell.contentView.bottomAnchor, constant: -6),
-                cell.contentView.heightAnchor.constraint(greaterThanOrEqualToConstant: 36)
-            ])
             
         case (1, 0):
             // Figure Scale slider
@@ -426,6 +431,20 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
                 self?.updateFigure()
             })
             
+        case (1, 2):
+            // Skeleton Size slider
+            addSliderCell(cell, label: "Skeleton Size", value: skeletonSize, min: 0.5, max: 2.0, increment: 0.1, onChange: { [weak self] val in
+                self?.skeletonSize = val
+                self?.updateFigure()
+            })
+            
+        case (1, 3):
+            // Joint Shape Size slider
+            addSliderCell(cell, label: "Joint Shape Size", value: jointShapeSize, min: 0.5, max: 2.0, increment: 0.1, onChange: { [weak self] val in
+                self?.jointShapeSize = val
+                self?.updateFigure()
+            })
+            
         case (2, 0): addSliderCell(cell, label: "Upper Torso", value: fusiformUpperTorso, min: 0, max: 10, onChange: { [weak self] val in self?.fusiformUpperTorso = val; self?.updateFigure() })
         case (2, 1): addSliderCell(cell, label: "Lower Torso", value: fusiformLowerTorso, min: 0, max: 10, onChange: { [weak self] val in self?.fusiformLowerTorso = val; self?.updateFigure() })
         case (2, 2): addSliderCell(cell, label: "Upper Arms", value: fusiformUpperArms, min: 0, max: 10, onChange: { [weak self] val in self?.fusiformUpperArms = val; self?.updateFigure() })
@@ -434,20 +453,16 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
         case (2, 5): addSliderCell(cell, label: "Lower Legs", value: fusiformLowerLegs, min: 0, max: 10, onChange: { [weak self] val in self?.fusiformLowerLegs = val; self?.updateFigure() })
         
         // Joint sliders - section 3
-        case (3, 0): addSliderCell(cell, label: "Neck", value: neckRotation, min: -180, max: 180, onChange: { [weak self] val in self?.neckRotation = val; self?.updateFigure() })
+        case (3, 0): addSliderCell(cell, label: "Head", value: neckRotation, min: -180, max: 180, onChange: { [weak self] val in self?.neckRotation = val; self?.updateFigure() })
         case (3, 1): addSliderCell(cell, label: "Left Shoulder", value: leftShoulderAngle, min: -180, max: 180, onChange: { [weak self] val in self?.leftShoulderAngle = val; self?.updateFigure() })
         case (3, 2): addSliderCell(cell, label: "Right Shoulder", value: rightShoulderAngle, min: -180, max: 180, onChange: { [weak self] val in self?.rightShoulderAngle = val; self?.updateFigure() })
         case (3, 3): addSliderCell(cell, label: "Left Elbow", value: leftElbowAngle, min: -180, max: 180, onChange: { [weak self] val in self?.leftElbowAngle = val; self?.updateFigure() })
         case (3, 4): addSliderCell(cell, label: "Right Elbow", value: rightElbowAngle, min: -180, max: 180, onChange: { [weak self] val in self?.rightElbowAngle = val; self?.updateFigure() })
-        case (3, 5): addSliderCell(cell, label: "Left Hand", value: leftHandAngle, min: -180, max: 180, onChange: { [weak self] val in self?.leftHandAngle = val; self?.updateFigure() })
-        case (3, 6): addSliderCell(cell, label: "Right Hand", value: rightHandAngle, min: -180, max: 180, onChange: { [weak self] val in self?.rightHandAngle = val; self?.updateFigure() })
-        case (3, 7): addSliderCell(cell, label: "Left Hip", value: leftHipAngle, min: -180, max: 180, onChange: { [weak self] val in self?.leftHipAngle = val; self?.updateFigure() })
-        case (3, 8): addSliderCell(cell, label: "Right Hip", value: rightHipAngle, min: -180, max: 180, onChange: { [weak self] val in self?.rightHipAngle = val; self?.updateFigure() })
-        case (3, 9): addSliderCell(cell, label: "Left Knee", value: leftKneeAngle, min: -180, max: 180, onChange: { [weak self] val in self?.leftKneeAngle = val; self?.updateFigure() })
-        case (3, 10): addSliderCell(cell, label: "Right Knee", value: rightKneeAngle, min: -180, max: 180, onChange: { [weak self] val in self?.rightKneeAngle = val; self?.updateFigure() })
-        case (3, 11): addSliderCell(cell, label: "Left Foot", value: leftFootAngle, min: -180, max: 180, onChange: { [weak self] val in self?.leftFootAngle = val; self?.updateFigure() })
-        case (3, 12): addSliderCell(cell, label: "Right Foot", value: rightFootAngle, min: -180, max: 180, onChange: { [weak self] val in self?.rightFootAngle = val; self?.updateFigure() })
-        case (3, 13): addSliderCell(cell, label: "Mid Torso", value: torsoRotation, min: -180, max: 180, onChange: { [weak self] val in self?.torsoRotation = val; self?.updateFigure() })
+        case (3, 5): addSliderCell(cell, label: "Left Upper Leg", value: leftKneeAngle, min: -180, max: 180, onChange: { [weak self] val in self?.leftKneeAngle = val; self?.updateFigure() })
+        case (3, 6): addSliderCell(cell, label: "Right Upper Leg", value: rightKneeAngle, min: -180, max: 180, onChange: { [weak self] val in self?.rightKneeAngle = val; self?.updateFigure() })
+        case (3, 7): addSliderCell(cell, label: "Left Calf", value: leftFootAngle, min: -180, max: 180, onChange: { [weak self] val in self?.leftFootAngle = val; self?.updateFigure() })
+        case (3, 8): addSliderCell(cell, label: "Right Calf", value: rightFootAngle, min: -180, max: 180, onChange: { [weak self] val in self?.rightFootAngle = val; self?.updateFigure() })
+        case (3, 9): addSliderCell(cell, label: "Mid Torso", value: torsoRotation, min: -180, max: 180, onChange: { [weak self] val in self?.torsoRotation = val; self?.updateFigure() })
             
         case (4, 0):
             // Save and Load buttons on same row, split 50/50
@@ -460,6 +475,7 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
             // Save button
             let saveBtn = UIButton(type: .system)
             saveBtn.setTitle("SAVE", for: .normal)
+            saveBtn.titleLabel?.font = UIFont.systemFont(ofSize: 11)
             saveBtn.backgroundColor = UIColor(red: 0.2, green: 0.6, blue: 0.2, alpha: 1.0)
             saveBtn.setTitleColor(.white, for: .normal)
             saveBtn.layer.cornerRadius = 4
@@ -468,6 +484,7 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
             // Load button
             let loadBtn = UIButton(type: .system)
             loadBtn.setTitle("LOAD", for: .normal)
+            loadBtn.titleLabel?.font = UIFont.systemFont(ofSize: 11)
             loadBtn.backgroundColor = UIColor(red: 0.2, green: 0.4, blue: 0.6, alpha: 1.0)
             loadBtn.setTitleColor(.white, for: .normal)
             loadBtn.layer.cornerRadius = 4
@@ -478,17 +495,18 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
             
             cell.contentView.addSubview(container)
             NSLayoutConstraint.activate([
-                container.topAnchor.constraint(equalTo: cell.contentView.topAnchor, constant: 8),
+                container.topAnchor.constraint(equalTo: cell.contentView.topAnchor, constant: 4),
                 container.leadingAnchor.constraint(equalTo: cell.contentView.leadingAnchor, constant: 16),
                 container.trailingAnchor.constraint(equalTo: cell.contentView.trailingAnchor, constant: -16),
-                container.bottomAnchor.constraint(equalTo: cell.contentView.bottomAnchor, constant: -8),
-                container.heightAnchor.constraint(greaterThanOrEqualToConstant: 44)
+                container.bottomAnchor.constraint(equalTo: cell.contentView.bottomAnchor, constant: -4),
+                container.heightAnchor.constraint(greaterThanOrEqualToConstant: 32)
             ])
             
         case (5, 0):
             // Add object button
             let btn = UIButton(type: .system)
             btn.setTitle("+ ADD OBJECT", for: .normal)
+            btn.titleLabel?.font = UIFont.systemFont(ofSize: 11)
             btn.backgroundColor = UIColor(red: 0.4, green: 0.5, blue: 0.6, alpha: 1.0)
             btn.setTitleColor(.white, for: .normal)
             btn.layer.cornerRadius = 4
@@ -496,11 +514,11 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
             btn.addTarget(self, action: #selector(addObjectPressed), for: .touchUpInside)
             cell.contentView.addSubview(btn)
             NSLayoutConstraint.activate([
-                btn.topAnchor.constraint(equalTo: cell.contentView.topAnchor, constant: 8),
+                btn.topAnchor.constraint(equalTo: cell.contentView.topAnchor, constant: 4),
                 btn.leadingAnchor.constraint(equalTo: cell.contentView.leadingAnchor, constant: 16),
                 btn.trailingAnchor.constraint(equalTo: cell.contentView.trailingAnchor, constant: -16),
-                btn.bottomAnchor.constraint(equalTo: cell.contentView.bottomAnchor, constant: -8),
-                btn.heightAnchor.constraint(greaterThanOrEqualToConstant: 44)
+                btn.bottomAnchor.constraint(equalTo: cell.contentView.bottomAnchor, constant: -4),
+                btn.heightAnchor.constraint(greaterThanOrEqualToConstant: 32)
             ])
             
         default:
@@ -604,6 +622,18 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
         updateFigure()
     }
     
+    @objc private func toggleJointsFromHeader(_ sender: UIButton) {
+        showInteractiveJoints = !showInteractiveJoints
+        sender.tintColor = showInteractiveJoints ? .white : UIColor.white.withAlphaComponent(0.5)
+        updateFigure()
+    }
+    
+    @objc private func toggleMidTorso(_ sender: UIButton) {
+        // Show/hide or toggle the midTorso joint visibility in the scene
+        print("🎮 MidTorso toggle pressed - currently not assigned to a specific action")
+        // This can be used for future midTorso-specific controls
+    }
+    
     @objc private func toggleSectionExpansion(_ gesture: UITapGestureRecognizer) {
         guard let headerView = gesture.view else { return }
         let section = headerView.tag
@@ -620,6 +650,7 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
     
     @objc private func refreshPressed() {
         print("🎮 Refreshing stick figure to default Stand frame")
+        figureScale = 1.0  // Reset figure scale to default
         loadStandFrameValues()
         controlsTableView.reloadData()  // Reload table to show updated values
         updateFigure()
@@ -642,10 +673,11 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
         // Load the default Stand frame from animations.json
         if let standFrame = gameState.standFrame {
             
-            // DO NOT load the scale from standFrame - keep it at gameplay's 0.1
-            // figureScale stays at 0.1 to match gameplay appearance
-            
-            strokeThicknessMultiplier = CGFloat(standFrame.strokeThickness) / 3.0  // Default appears to be 3
+            // Reset scale values
+            figureScale = 1.0
+            strokeThicknessMultiplier = CGFloat(standFrame.strokeThickness) / 3.0
+            skeletonSize = 1.0
+            jointShapeSize = 1.0
             
             // Fusiforms - these are NEW properties only in Stand frame
             fusiformUpperTorso = CGFloat(standFrame.fusiformUpperTorso)
@@ -655,15 +687,21 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
             fusiformUpperLegs = CGFloat(standFrame.fusiformUpperLegs)
             fusiformLowerLegs = CGFloat(standFrame.fusiformLowerLegs)
             
-            // Reset angles to exact Stand frame values
+            // Reset ALL angles to exact Stand frame values
             neckRotation = CGFloat(standFrame.headAngle)
             torsoRotation = CGFloat(standFrame.midTorsoAngle)
             leftShoulderAngle = CGFloat(standFrame.leftShoulderAngle)
             leftElbowAngle = CGFloat(standFrame.leftElbowAngle)
             rightShoulderAngle = CGFloat(standFrame.rightShoulderAngle)
             rightElbowAngle = CGFloat(standFrame.rightElbowAngle)
+            leftHandAngle = 0  // Reset hand angles
+            rightHandAngle = 0
+            leftHipAngle = 0  // Reset hip angles
+            rightHipAngle = 0
             leftKneeAngle = CGFloat(standFrame.leftKneeAngle)
             rightKneeAngle = CGFloat(standFrame.rightKneeAngle)
+            leftFootAngle = 0  // Reset foot angles
+            rightFootAngle = 0
             
             // Reset position to Stand frame's waist position (centered)
             figureOffsetX = 0
@@ -692,6 +730,8 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
         editorScene?.updateWithValues(
             figureScale: figureScale,
             strokeThicknessMultiplier: strokeThicknessMultiplier,
+            skeletonSize: skeletonSize,
+            jointShapeSize: jointShapeSize,
             fusiformUpperTorso: fusiformUpperTorso,
             fusiformLowerTorso: fusiformLowerTorso,
             fusiformUpperArms: fusiformUpperArms,
@@ -818,10 +858,36 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
         
         // Create a sprite node for the object
         let sprite = SKSpriteNode(imageNamed: imageName)
-        sprite.position = CGPoint(x: editorScene.size.width / 2, y: editorScene.size.height / 2)
+        // Position below the center of the figure (lower on screen)
+        sprite.position = CGPoint(x: editorScene.size.width / 2, y: editorScene.size.height / 2 - 100)
         sprite.zPosition = 5  // Behind the stick figure but in front of grid
-        sprite.scale(to: CGSize(width: 40, height: 40))
+        sprite.scale(to: CGSize(width: 50, height: 50))
         sprite.name = "object_\(asset)"
+        
+        // Make sprite interactive with physics
+        sprite.physicsBody = SKPhysicsBody(circleOfRadius: 25)
+        sprite.physicsBody?.isDynamic = false
+        sprite.physicsBody?.affectedByGravity = false
+        
+        // Add rotate dot (top-right corner of object)
+        let rotateDot = SKShapeNode(circleOfRadius: 5)
+        rotateDot.fillColor = .yellow
+        rotateDot.strokeColor = .yellow
+        rotateDot.lineWidth = 1
+        rotateDot.position = CGPoint(x: 25, y: 25)  // Top-right relative to object
+        rotateDot.name = "object_rotate_\(asset)"
+        rotateDot.zPosition = 6
+        sprite.addChild(rotateDot)
+        
+        // Add resize dot (bottom-right corner of object)
+        let resizeDot = SKShapeNode(circleOfRadius: 5)
+        resizeDot.fillColor = .cyan
+        resizeDot.strokeColor = .cyan
+        resizeDot.lineWidth = 1
+        resizeDot.position = CGPoint(x: 25, y: -25)  // Bottom-right relative to object
+        resizeDot.name = "object_resize_\(asset)"
+        resizeDot.zPosition = 6
+        sprite.addChild(resizeDot)
         
         editorScene.addChild(sprite)
         print("🎮 Added \(asset) object to scene at position \(sprite.position)")
@@ -892,6 +958,7 @@ class StickFigureEditorScene: SKScene {
     var gameState: StickFigureGameState?
     private var characterNode: SKNode?
     private var draggedJoint: SKNode?
+    private var draggedObject: SKNode?
     private var dragOffset: CGPoint = .zero
     private var draggedJointName: String?
     private var lastDragPosition: CGPoint = .zero
@@ -913,21 +980,46 @@ class StickFigureEditorScene: SKScene {
         guard let touch = touches.first else { return }
         let location = touch.location(in: self)
         
-        // Check if a joint was tapped
-        if let tappedNode = atPoint(location) as? SKShapeNode,
-           tappedNode.name?.hasPrefix("joint_") == true {
-            draggedJoint = tappedNode
-            draggedJointName = tappedNode.name
-            dragOffset = CGPoint(x: location.x - tappedNode.position.x,
-                                y: location.y - tappedNode.position.y)
+        // First check if tapping on an object
+        if let tappedObject = atPoint(location) as? SKSpriteNode,
+           tappedObject.name?.hasPrefix("object_") == true {
+            draggedObject = tappedObject
+            dragOffset = CGPoint(x: location.x - tappedObject.position.x,
+                                y: location.y - tappedObject.position.y)
             lastDragPosition = location
-            print("🎮 Started dragging joint: \(tappedNode.name ?? "unknown")")
+            print("🎮 Started dragging object: \(tappedObject.name ?? "unknown")")
+            return
+        }
+        
+        // Check if a joint was tapped - get all nodes at location
+        let nodes = self.nodes(at: location)
+        for node in nodes {
+            if let shapeNode = node as? SKShapeNode, let nodeName = shapeNode.name, nodeName.hasPrefix("joint_") {
+                draggedJoint = shapeNode
+                draggedJointName = nodeName
+                dragOffset = CGPoint(x: location.x - shapeNode.position.x,
+                                    y: location.y - shapeNode.position.y)
+                lastDragPosition = location
+                print("🎮 Started dragging joint: \(nodeName)")
+                return
+            }
         }
     }
     
     override func touchesMoved(_ touches: Set<UITouch>, with event: UIEvent?) {
-        guard let touch = touches.first, let draggedJoint = draggedJoint else { return }
+        guard let touch = touches.first else { return }
         let location = touch.location(in: self)
+        
+        // Handle object dragging
+        if let draggedObject = draggedObject {
+            let newPos = CGPoint(x: location.x - dragOffset.x,
+                                y: location.y - dragOffset.y)
+            draggedObject.position = newPos
+            return
+        }
+        
+        // Handle joint dragging
+        guard let draggedJoint = draggedJoint else { return }
         
         // Update joint position with offset for visual feedback
         let newPos = CGPoint(x: location.x - dragOffset.x,
@@ -937,20 +1029,29 @@ class StickFigureEditorScene: SKScene {
         // Calculate angle delta from movement - SLOW AND CONTROLLED
         if let jointName = draggedJointName {
             let dx = location.x - lastDragPosition.x
+            let dy = location.y - lastDragPosition.y
             
-            // Slower rotation - 0.2 degrees per pixel moved horizontally
-            // INVERTED: negative dx gives positive angle (drag right = rotate up)
-            let angleDelta = -dx * 0.2
+            // Handle center/midtorso joints specially - moves or rotates the figure
+            if jointName == "joint_center" || jointName == "joint_midTorso" {
+                viewController?.figureOffsetX += dx
+                viewController?.figureOffsetY += dy
+            } else {
+                // For other joints: increase sensitivity to 2.0 degrees per pixel
+                // INVERTED: negative dx gives positive angle (drag right = rotate up)
+                let angleDelta = -dx * 2.0
+                updateAngleByDelta(jointName: jointName, angleDelta: angleDelta)
+            }
             
-            updateAngleByDelta(jointName: jointName, angleDelta: angleDelta)
             lastDragPosition = location
+            viewController?.updateFigure()
         }
     }
     
     override func touchesEnded(_ touches: Set<UITouch>, with event: UIEvent?) {
         draggedJoint = nil
+        draggedObject = nil
         draggedJointName = nil
-        print("🎮 Finished dragging joint")
+        print("🎮 Finished dragging")
     }
     
     private func updateAngleByDelta(jointName: String, angleDelta: CGFloat) {
@@ -959,9 +1060,9 @@ class StickFigureEditorScene: SKScene {
         
         switch jointName {
         case "joint_neck":
-            // Neck: rotates upper torso around mid torso
-            currentAngle = viewController?.neckRotation ?? 0
-            viewController?.neckRotation = currentAngle + angleDelta
+            // Neck: rotates mid torso around waist
+            currentAngle = viewController?.torsoRotation ?? 0
+            viewController?.torsoRotation = currentAngle + angleDelta
             
         case "joint_leftShoulder":
             // Left Shoulder: rotates left arm around neck
@@ -974,24 +1075,24 @@ class StickFigureEditorScene: SKScene {
             viewController?.rightShoulderAngle = currentAngle + angleDelta
             
         case "joint_leftElbow":
-            // Left Elbow: rotates lower left arm around left elbow
+            // Left Elbow: rotates upper left arm
+            currentAngle = viewController?.leftShoulderAngle ?? 0
+            viewController?.leftShoulderAngle = currentAngle + angleDelta
+            
+        case "joint_rightElbow":
+            // Right Elbow: rotates upper right arm
+            currentAngle = viewController?.rightShoulderAngle ?? 0
+            viewController?.rightShoulderAngle = currentAngle + angleDelta
+            
+        case "joint_leftHand":
+            // Left Hand: rotates lower left arm (forearm)
             currentAngle = viewController?.leftElbowAngle ?? 0
             viewController?.leftElbowAngle = currentAngle + angleDelta
             
-        case "joint_rightElbow":
-            // Right Elbow: rotates lower right arm around right elbow
+        case "joint_rightHand":
+            // Right Hand: rotates lower right arm (forearm)
             currentAngle = viewController?.rightElbowAngle ?? 0
             viewController?.rightElbowAngle = currentAngle + angleDelta
-            
-        case "joint_leftHand":
-            // Left Hand: rotates hand around left wrist
-            currentAngle = viewController?.leftHandAngle ?? 0
-            viewController?.leftHandAngle = currentAngle + angleDelta
-            
-        case "joint_rightHand":
-            // Right Hand: rotates hand around right wrist
-            currentAngle = viewController?.rightHandAngle ?? 0
-            viewController?.rightHandAngle = currentAngle + angleDelta
             
         case "joint_leftHip":
             // Left Hip: rotates upper left leg around waist
@@ -1115,6 +1216,8 @@ class StickFigureEditorScene: SKScene {
     func updateWithValues(
         figureScale: CGFloat,
         strokeThicknessMultiplier: CGFloat,
+        skeletonSize: CGFloat = 1.0,
+        jointShapeSize: CGFloat = 1.0,
         fusiformUpperTorso: CGFloat,
         fusiformLowerTorso: CGFloat,
         fusiformUpperArms: CGFloat,
@@ -1210,6 +1313,8 @@ class StickFigureEditorScene: SKScene {
         // Position joints at actual body part positions using StickFigure2D computed properties
         let jointRadius: CGFloat = 4  // Half the previous size (was 8)
         let jointColor = SKColor.blue
+        let centerDotRadius: CGFloat = 6
+        let centerDotColor = SKColor.red
         
         // Base canvas dimensions for coordinate conversion
         let baseCanvasSize = CGSize(width: 600, height: 720)
@@ -1220,10 +1325,21 @@ class StickFigureEditorScene: SKScene {
             return CGPoint(x: (pos.x - baseCenter.x) * scale, y: (baseCenter.y - pos.y) * scale)
         }
         
+        // Draw center dot at waist position (for moving the entire figure)
+        let centerDot = SKShapeNode(circleOfRadius: centerDotRadius)
+        centerDot.fillColor = centerDotColor
+        centerDot.strokeColor = centerDotColor
+        centerDot.lineWidth = 1
+        centerDot.position = toScenePos(frame.waistPosition)
+        centerDot.name = "joint_center"
+        centerDot.zPosition = 11
+        container.addChild(centerDot)
+        
         // Define joints with actual body part positions
         let jointPositions: [(CGPoint, String)] = [
             (frame.headPosition, "head"),
             (frame.neckPosition, "neck"),
+            (frame.waistPosition, "midTorso"),  // Add midTorso at waist for rotating the body
             (frame.leftShoulderPosition, "leftShoulder"),
             (frame.rightShoulderPosition, "rightShoulder"),
             (frame.leftUpperArmEnd, "leftElbow"),
@@ -1253,23 +1369,24 @@ class StickFigureEditorScene: SKScene {
     
     func updateZoom(_ zoom: CGFloat) {
         currentZoom = zoom
-        // Redraw grid and figure with new zoom, preserving all current values
-        removeAllChildren()
-        drawGrid()
-        
-        // Call the viewController's updateFigure to re-render with all current state
-        viewController?.updateFigure()
+        // Apply zoom to character node directly
+        if let characterNode = characterNode {
+            characterNode.setScale(zoom)
+        }
+        print("🎮 Zoom updated to \(zoom)x")
     }
 }
 
 // MARK: - Frame List View Controller
-class FrameListViewController: UIViewController, UITableViewDataSource, UITableViewDelegate {
+class FrameListViewController: UIViewController, UITableViewDataSource, UITableViewDelegate, UISearchBarDelegate {
     var frames: [SavedEditFrame] = []
+    var filteredFrames: [SavedEditFrame] = []
     var bundleFrameIds: Set<UUID> = []  // Track which frames are in animations.json
     var selectedFrame: SavedEditFrame?
     var onFrameSelected: ((SavedEditFrame) -> Void)?
     
     private let tableView = UITableView(frame: .zero, style: .insetGrouped)
+    private let searchBar = UISearchBar()
     
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -1305,16 +1422,23 @@ class FrameListViewController: UIViewController, UITableViewDataSource, UITableV
                     positionX: 0,
                     positionY: 0
                 )
-                var savedFrame = SavedEditFrame(id: bundleFrame.id, name: bundleFrame.name, from: editValues, pose: pose)
+                let savedFrame = SavedEditFrame(id: bundleFrame.id, name: bundleFrame.name, from: editValues, pose: pose)
                 allFrames.append(savedFrame)
             }
         }
         
         // Sort by timestamp (newest first)
         frames = allFrames.sorted { $0.timestamp > $1.timestamp }
+        filteredFrames = frames
         
         // Setup navigation
         navigationItem.leftBarButtonItem = UIBarButtonItem(barButtonSystemItem: .close, target: self, action: #selector(closePressed))
+        
+        // Setup search bar
+        searchBar.placeholder = "Search frames..."
+        searchBar.delegate = self
+        searchBar.translatesAutoresizingMaskIntoConstraints = false
+        view.addSubview(searchBar)
         
         // Setup table view
         tableView.translatesAutoresizingMaskIntoConstraints = false
@@ -1323,7 +1447,11 @@ class FrameListViewController: UIViewController, UITableViewDataSource, UITableV
         view.addSubview(tableView)
         
         NSLayoutConstraint.activate([
-            tableView.topAnchor.constraint(equalTo: view.topAnchor),
+            searchBar.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor),
+            searchBar.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            searchBar.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            
+            tableView.topAnchor.constraint(equalTo: searchBar.bottomAnchor),
             tableView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             tableView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
             tableView.bottomAnchor.constraint(equalTo: view.bottomAnchor)
@@ -1353,11 +1481,11 @@ class FrameListViewController: UIViewController, UITableViewDataSource, UITableV
     
     // MARK: - UITableViewDataSource
     func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
-        return frames.count
+        return filteredFrames.count
     }
     
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
-        let frame = frames[indexPath.row]
+        let frame = filteredFrames[indexPath.row]
         let cell = UITableViewCell(style: .subtitle, reuseIdentifier: "frameCell")
         
         // Show green checkmark if frame is in animations.json
@@ -1376,14 +1504,14 @@ class FrameListViewController: UIViewController, UITableViewDataSource, UITableV
     }
     
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
-        let frame = frames[indexPath.row]
+        let frame = filteredFrames[indexPath.row]
         onFrameSelected?(frame)
         dismiss(animated: true)
     }
     
     // MARK: - Context Menu (Edit, Delete, Copy)
     func tableView(_ tableView: UITableView, contextMenuConfigurationForRowAt indexPath: IndexPath, point: CGPoint) -> UIContextMenuConfiguration? {
-        let frame = frames[indexPath.row]
+        let frame = filteredFrames[indexPath.row]
         
         return UIContextMenuConfiguration(actionProvider: { _ in
             let loadAction = UIAction(title: "Load", image: UIImage(systemName: "arrow.down.doc")) { _ in
@@ -1445,7 +1573,11 @@ class FrameListViewController: UIViewController, UITableViewDataSource, UITableV
         
         alert.addAction(UIAlertAction(title: "Delete", style: .destructive) { _ in
             SavedFramesManager.shared.deleteFrame(id: frame.id)
-            self.frames.remove(at: indexPath.row)
+            // Remove from both arrays
+            if let frameIndex = self.frames.firstIndex(where: { $0.id == frame.id }) {
+                self.frames.remove(at: frameIndex)
+            }
+            self.filterFrames()
             self.tableView.deleteRows(at: [indexPath], with: .fade)
             
             if self.frames.isEmpty {
@@ -1456,5 +1588,29 @@ class FrameListViewController: UIViewController, UITableViewDataSource, UITableV
         alert.addAction(UIAlertAction(title: "Cancel", style: .cancel))
         
         present(alert, animated: true)
+    }
+    
+    // MARK: - UISearchBarDelegate
+    func searchBar(_ searchBar: UISearchBar, textDidChange searchText: String) {
+        filterFrames()
+    }
+    
+    func searchBarCancelButtonClicked(_ searchBar: UISearchBar) {
+        searchBar.text = ""
+        filterFrames()
+    }
+    
+    private func filterFrames() {
+        let searchText = searchBar.text?.lowercased() ?? ""
+        
+        if searchText.isEmpty {
+            filteredFrames = frames
+        } else {
+            filteredFrames = frames.filter { frame in
+                frame.name.lowercased().contains(searchText)
+            }
+        }
+        
+        tableView.reloadData()
     }
 }
