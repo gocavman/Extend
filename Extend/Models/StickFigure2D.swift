@@ -1577,7 +1577,7 @@ struct FramesManagerView: View {
 
 // MARK: - Save Frame Dialog
 
-struct SaveFrameDialog: View {
+struct SaveFrameDialog2D: View {
     @Binding var frameName: String
     @Binding var frameNumber: String
     var onSave: () -> Void
@@ -3338,7 +3338,7 @@ struct StickFigure2DEditorView: View {
             ImagePickerView(objects: $objects)
         }
         .sheet(isPresented: $showSaveFrameDialog) {
-            SaveFrameDialog(
+            SaveFrameDialog2D(
                 frameName: $frameName,
                 frameNumber: $frameNumber,
                 onSave: savePose,

@@ -8,6 +8,7 @@ class GameViewController: UIViewController {
     var gameState: StickFigureGameState?
     var mapState: GameMapState?
     var currentScene: GameScene?
+    weak var gameplayScene: GameplayScene?
     var onDismissGame: (() -> Void)?  // Callback for SwiftUI dismissal
     private var hasInitializedScene = false  // Track if we've shown the initial scene
     
@@ -101,7 +102,7 @@ class GameViewController: UIViewController {
         print("🎮 SKView scene after presentScene: \(skView.scene != nil ? "HAS SCENE" : "NO SCENE")")
         print("🎮 Scene type: \(type(of: skView.scene))")
         currentScene = scene
-        
+        gameplayScene = scene  // Store reference for edit mode
         print("🎮 GameplayScene is now active")
     }
     
@@ -119,13 +120,24 @@ class GameViewController: UIViewController {
         }
     }
     
-    /// Show the 2D stick figure editor
+    /// Show the stick figure gameplay editor (new UIKit version)
     func openStickFigureEditor() {
-        print("🎮 Opening 2D Stick Figure Editor")
+        print("🎮 Opening Stick Figure Gameplay Editor (UIKit)")
         
-        // Present the editor view controller with a dismiss callback
+        let editor = StickFigureGameplayEditorViewController()
+        editor.gameState = gameState
+        editor.modalPresentationStyle = .fullScreen
+        
+        present(editor, animated: true)
+    }
+    
+    /// Show the old 2D stick figure editor (SwiftUI version)
+    func openOldStickFigureEditor() {
+        print("🎮 Opening Old 2D Stick Figure Editor (SwiftUI)")
+        
+        // Present the old SwiftUI editor view controller with a dismiss callback
         let editor = UIHostingController(rootView: StickFigure2DEditorView(onDismiss: { [weak self] in
-            print("🎮 Editor closed - dismissing modal")
+            print("🎮 Old editor closed - dismissing modal")
             self?.dismiss(animated: true)
         }))
         editor.modalPresentationStyle = UIModalPresentationStyle.fullScreen
@@ -234,6 +246,7 @@ class GameViewController: UIViewController {
         
         present(appearance, animated: true)
     }
+
     
     deinit {
         print("🎮 GameViewController deinit - cleaning up")

@@ -668,53 +668,31 @@ class StickFigureGameState {
         // Load from file-based storage
         let allFrames = AnimationStorage.shared.loadFrames()
         
-        print("DEBUG: Found \(allFrames.count) total saved frames")
-        allFrames.forEach { frame in
-            print("DEBUG: Frame - Name: '\(frame.name)', Number: \(frame.frameNumber)")
-        }
-        
         // Load Stand frame (frameNumber 0 - as originally saved)
         if let standFrameData = allFrames.first(where: { $0.name == "Stand" && $0.frameNumber == 0 }) {
-            print("DEBUG: Found Stand frame data, converting to StickFigure2D...")
             standFrame = standFrameData.pose.toStickFigure2D()
-            print("DEBUG: ✓ Loaded Stand frame (frameNumber 0)")
-            print("DEBUG: Stand frame head color: \(standFrame?.headColor ?? .clear)")
-            print("DEBUG: Stand frame torso color: \(standFrame?.torsoColor ?? .clear)")
-            print("DEBUG: Stand frame fusiform: upper=\(standFrame?.fusiformUpperTorso ?? 0), lower=\(standFrame?.fusiformLowerTorso ?? 0)")
-            print("DEBUG: Stand frame fusiform arms: upper=\(standFrame?.fusiformUpperArms ?? 0), lower=\(standFrame?.fusiformLowerArms ?? 0)")
-            print("DEBUG: Stand frame fusiform legs: upper=\(standFrame?.fusiformUpperLegs ?? 0), lower=\(standFrame?.fusiformLowerLegs ?? 0)")
+            print("🎮 ✓ Loaded Stand frame (frameNumber 0)")
         } else {
-            print("DEBUG: ✗ Stand frame 0 not found - available Stand frames:")
-            allFrames.filter { $0.name == "Stand" }.forEach { frame in
-                print("DEBUG:   - Frame \(frame.frameNumber)")
-            }
+            print("🎮 ✗ Stand frame 0 not found")
         }
         
         // Load Move frames 1-4
         moveFrames = (1...4).compactMap { frameNum in
             if let frame = allFrames.first(where: { $0.name == "Move" && $0.frameNumber == frameNum }) {
-                print("DEBUG: ✓ Loaded Move frame \(frameNum)")
                 return frame.pose.toStickFigure2D()
-            } else {
-                print("DEBUG: ✗ Move frame \(frameNum) not found")
-                return nil
             }
+            return nil
         }
-        print("DEBUG: Loaded \(moveFrames.count) Move frames total")
         
         // Load Shaker frames 1-2
         shakerFrames = []
         shakerFrameObjects = []
         for frameNum in 1...2 {
             if let frame = allFrames.first(where: { $0.name == "Shaker" && $0.frameNumber == frameNum }) {
-                print("DEBUG: ✓ Loaded Shaker frame \(frameNum) with \(frame.objects.count) objects")
                 shakerFrames.append(frame.pose.toStickFigure2D())
                 shakerFrameObjects.append(frame.objects)
-            } else {
-                print("DEBUG: ✗ Shaker frame \(frameNum) not found")
             }
         }
-        print("DEBUG: Loaded \(shakerFrames.count) Shaker frames total")
     }
 
     func saveHighScore() {

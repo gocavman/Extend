@@ -6,6 +6,22 @@ class GameplayScene: GameScene {
     var levelLabel: SKLabelNode?
     var animationFrameIndex: Int = 0
     
+    // Button areas for UI
+    private var exitButtonArea: SKShapeNode?
+    private var statsButtonArea: SKShapeNode?
+    private var appearanceButtonNode: SKNode?
+    
+    // Edit mode properties - REMOVED (now on Map Screen)
+    // private var isEditMode: Bool = false
+    // private var editButtonArea: SKShapeNode?
+    // private var figurePositionX: CGFloat = 0
+    // private var figurePositionY: CGFloat = 0
+    
+    // Interactive joint dragging for edit mode - REMOVED
+    // private var draggedJointName: String?
+    // private var dragStartPoint: CGPoint = .zero
+    // private var dragStartAngle: CGFloat = 0
+    
     override func didMove(to view: SKView) {
         super.didMove(to: view)
         
@@ -59,14 +75,14 @@ class GameplayScene: GameScene {
         let topBarY: CGFloat = size.height - 100
         
         // Exit button - top left
-        let exitArea = SKShapeNode(rectOf: CGSize(width: 60, height: 40))
-        exitArea.position = CGPoint(x: 35, y: topBarY)
-        exitArea.fillColor = SKColor(red: 0.3, green: 0.3, blue: 0.3, alpha: 0.7)
-        exitArea.strokeColor = .black
-        exitArea.lineWidth = 2
-        exitArea.name = "exitButton"
-        exitArea.zPosition = 100
-        addChild(exitArea)
+        exitButtonArea = SKShapeNode(rectOf: CGSize(width: 60, height: 40))
+        exitButtonArea?.position = CGPoint(x: 35, y: topBarY)
+        exitButtonArea?.fillColor = SKColor(red: 0.3, green: 0.3, blue: 0.3, alpha: 0.7)
+        exitButtonArea?.strokeColor = .black
+        exitButtonArea?.lineWidth = 2
+        exitButtonArea?.name = "exitButton"
+        exitButtonArea?.zPosition = 100
+        addChild(exitButtonArea!)
         
         let exitLabel = SKLabelNode(fontNamed: "Arial")
         exitLabel.text = "EXIT"
@@ -77,14 +93,14 @@ class GameplayScene: GameScene {
         addChild(exitLabel)
         
         // Stats button - top right
-        let statsArea = SKShapeNode(rectOf: CGSize(width: 60, height: 40))
-        statsArea.position = CGPoint(x: size.width - 35, y: topBarY)
-        statsArea.fillColor = SKColor(red: 0.3, green: 0.3, blue: 0.3, alpha: 0.7)
-        statsArea.strokeColor = .black
-        statsArea.lineWidth = 2
-        statsArea.name = "statsButton"
-        statsArea.zPosition = 100
-        addChild(statsArea)
+        statsButtonArea = SKShapeNode(rectOf: CGSize(width: 60, height: 40))
+        statsButtonArea?.position = CGPoint(x: size.width - 35, y: topBarY)
+        statsButtonArea?.fillColor = SKColor(red: 0.3, green: 0.3, blue: 0.3, alpha: 0.7)
+        statsButtonArea?.strokeColor = .black
+        statsButtonArea?.lineWidth = 2
+        statsButtonArea?.name = "statsButton"
+        statsButtonArea?.zPosition = 100
+        addChild(statsButtonArea!)
         
         let statsLabel = SKLabelNode(fontNamed: "Arial")
         statsLabel.text = "STATS"
@@ -95,23 +111,22 @@ class GameplayScene: GameScene {
         addChild(statsLabel)
         
         // Appearance button - left of Stats button (icon only, no background box)
-        // Create SF Symbol image for figure.stand and display it
         if let sfSymbolImage = createSFSymbolImage(name: "figure.stand", size: CGSize(width: 24, height: 24), color: UIColor.white) {
-            let appearanceIcon = SKSpriteNode(texture: SKTexture(image: sfSymbolImage))
-            appearanceIcon.position = CGPoint(x: size.width - 100, y: topBarY)
-            appearanceIcon.name = "appearanceButton"
-            appearanceIcon.zPosition = 101
-            addChild(appearanceIcon)
+            appearanceButtonNode = SKSpriteNode(texture: SKTexture(image: sfSymbolImage))
+            appearanceButtonNode?.position = CGPoint(x: size.width - 100, y: topBarY)
+            appearanceButtonNode?.name = "appearanceButton"
+            appearanceButtonNode?.zPosition = 101
+            addChild(appearanceButtonNode!)
         } else {
             // Fallback to emoji if SF Symbol creation fails
-            let appearanceLabel = SKLabelNode(fontNamed: "Arial")
-            appearanceLabel.text = "🧍"
-            appearanceLabel.fontSize = 16
-            appearanceLabel.fontColor = .white
-            appearanceLabel.position = CGPoint(x: size.width - 100, y: topBarY)
-            appearanceLabel.name = "appearanceButton"
-            appearanceLabel.zPosition = 101
-            addChild(appearanceLabel)
+            appearanceButtonNode = SKLabelNode(fontNamed: "Arial")
+            (appearanceButtonNode as? SKLabelNode)?.text = "🧍"
+            (appearanceButtonNode as? SKLabelNode)?.fontSize = 16
+            (appearanceButtonNode as? SKLabelNode)?.fontColor = .white
+            appearanceButtonNode?.position = CGPoint(x: size.width - 100, y: topBarY)
+            appearanceButtonNode?.name = "appearanceButton"
+            appearanceButtonNode?.zPosition = 101
+            addChild(appearanceButtonNode!)
         }
         
         // Level display - top center
@@ -119,7 +134,7 @@ class GameplayScene: GameScene {
         levelLabel?.fontSize = 12
         levelLabel?.fontColor = .black
         levelLabel?.position = CGPoint(x: size.width / 2, y: topBarY)
-        levelLabel?.text = "Level \(gameState?.currentLevel ?? 1) | Points: 0"
+        levelLabel?.text = "Level \(gameState?.currentLevel ?? 1) | Points: \(0)"
         levelLabel?.zPosition = 101
         if let label = levelLabel { addChild(label) }
     }
@@ -241,10 +256,6 @@ class GameplayScene: GameScene {
     override func handleTouchBegan(at point: CGPoint) {
         print("🎮 ===== TOUCH BEGAN =====")
         print("🎮 Touch point: \(point)")
-        print("🎮 Scene size: \(size)")
-        print("🎮 Zone width would be: \(size.width / 3)")
-        print("🎮 Touch in left zone? \(point.x < size.width / 3 && point.y < 100)")
-        print("🎮 Touch in right zone? \(point.x >= (size.width * 2 / 3) && point.y < 100)")
         
         handleTouchAtLocation(point, isPress: true)
     }
@@ -258,10 +269,10 @@ class GameplayScene: GameScene {
         let tapDistance = abs(point.y - topBarY)
         
         if tapDistance < 35 { // Within the top button area (increased from 25 to 35)
-            // Exit button
+            // Exit button - go back to map
             if point.x < 70 {
-                print("🎮 Exit button tapped!")
-                gameViewController?.dismissGame()
+                print("🎮 Exit button tapped! Returning to map...")
+                gameViewController?.showMapScene()
                 return
             }
             // Appearance button (left of Stats)
@@ -280,6 +291,10 @@ class GameplayScene: GameScene {
         
         // If no button was tapped, handle movement release
         handleTouchAtLocation(point, isPress: false)
+    }
+    
+    override func touchesMoved(_ touches: Set<UITouch>, with event: UIEvent?) {
+        super.touchesMoved(touches, with: event)
     }
     
     private func handleTouchAtLocation(_ point: CGPoint, isPress: Bool) {

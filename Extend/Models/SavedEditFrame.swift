@@ -1,0 +1,176 @@
+import Foundation
+
+/// Represents a frame saved in the gameplay editor
+struct SavedEditFrame: Codable, Identifiable {
+    let id: UUID
+    var name: String
+    let timestamp: Date
+    let figureScale: CGFloat
+    let strokeThicknessMultiplier: CGFloat
+    let fusiformUpperTorso: CGFloat
+    let fusiformLowerTorso: CGFloat
+    let fusiformUpperArms: CGFloat
+    let fusiformLowerArms: CGFloat
+    let fusiformUpperLegs: CGFloat
+    let fusiformLowerLegs: CGFloat
+    let positionX: CGFloat
+    let positionY: CGFloat
+    
+    // Pose data (angles) - stored as simple properties
+    let waistTorsoAngle: CGFloat
+    let midTorsoAngle: CGFloat
+    let torsoRotationAngle: CGFloat
+    let headAngle: CGFloat
+    let leftShoulderAngle: CGFloat
+    let rightShoulderAngle: CGFloat
+    let leftElbowAngle: CGFloat
+    let rightElbowAngle: CGFloat
+    let leftKneeAngle: CGFloat
+    let rightKneeAngle: CGFloat
+    
+    /// Initialize from EditModeValues with optional pose data
+    init(name: String, from values: EditModeValues, pose: StickFigure2D? = nil) {
+        self.id = UUID()
+        self.name = name
+        self.timestamp = Date()
+        self.figureScale = values.figureScale
+        self.strokeThicknessMultiplier = values.strokeThicknessMultiplier
+        self.fusiformUpperTorso = values.fusiformUpperTorso
+        self.fusiformLowerTorso = values.fusiformLowerTorso
+        self.fusiformUpperArms = values.fusiformUpperArms
+        self.fusiformLowerArms = values.fusiformLowerArms
+        self.fusiformUpperLegs = values.fusiformUpperLegs
+        self.fusiformLowerLegs = values.fusiformLowerLegs
+        self.positionX = values.positionX
+        self.positionY = values.positionY
+        
+        // Store pose angles if provided, otherwise use defaults
+        if let pose = pose {
+            self.waistTorsoAngle = pose.waistTorsoAngle
+            self.midTorsoAngle = pose.midTorsoAngle
+            self.torsoRotationAngle = pose.torsoRotationAngle
+            self.headAngle = pose.headAngle
+            self.leftShoulderAngle = pose.leftShoulderAngle
+            self.rightShoulderAngle = pose.rightShoulderAngle
+            self.leftElbowAngle = pose.leftElbowAngle
+            self.rightElbowAngle = pose.rightElbowAngle
+            self.leftKneeAngle = pose.leftKneeAngle
+            self.rightKneeAngle = pose.rightKneeAngle
+        } else {
+            // Default angles (standing position)
+            self.waistTorsoAngle = 0
+            self.midTorsoAngle = 0
+            self.torsoRotationAngle = 0
+            self.headAngle = 0
+            self.leftShoulderAngle = 0
+            self.rightShoulderAngle = 0
+            self.leftElbowAngle = 45
+            self.rightElbowAngle = 45
+            self.leftKneeAngle = 0
+            self.rightKneeAngle = 0
+        }
+    }
+    
+    /// Convert to a JSON-exportable dictionary
+    func toJSON() -> [String: Any] {
+        let json: [String: Any] = [
+            "name": name,
+            "timestamp": ISO8601DateFormatter().string(from: timestamp),
+            "figureScale": figureScale,
+            "strokeThicknessMultiplier": strokeThicknessMultiplier,
+            "fusiformUpperTorso": fusiformUpperTorso,
+            "fusiformLowerTorso": fusiformLowerTorso,
+            "fusiformUpperArms": fusiformUpperArms,
+            "fusiformLowerArms": fusiformLowerArms,
+            "fusiformUpperLegs": fusiformUpperLegs,
+            "fusiformLowerLegs": fusiformLowerLegs,
+            "positionX": positionX,
+            "positionY": positionY,
+            "pose": [
+                "waistTorsoAngle": waistTorsoAngle,
+                "midTorsoAngle": midTorsoAngle,
+                "torsoRotationAngle": torsoRotationAngle,
+                "headAngle": headAngle,
+                "leftShoulderAngle": leftShoulderAngle,
+                "rightShoulderAngle": rightShoulderAngle,
+                "leftElbowAngle": leftElbowAngle,
+                "rightElbowAngle": rightElbowAngle,
+                "leftKneeAngle": leftKneeAngle,
+                "rightKneeAngle": rightKneeAngle
+            ]
+        ]
+        
+        return json
+    }
+}
+
+/// Manager for saved frames in UserDefaults
+class SavedFramesManager {
+    static let shared = SavedFramesManager()
+    private let userDefaultsKey = "savedEditFrames"
+    
+    /// Save a new frame
+    func saveFrame(_ frame: SavedEditFrame) {
+        var frames = getAllFrames()
+        frames.append(frame)
+        saveAll(frames)
+        print("✅ Frame saved: \(frame.name)")
+    }
+    
+    /// Get all saved frames
+    func getAllFrames() -> [SavedEditFrame] {
+        guard let data = UserDefaults.standard.data(forKey: userDefaultsKey),
+              let frames = try? JSONDecoder().decode([SavedEditFrame].self, from: data) else {
+            return []
+        }
+        return frames.sorted { $0.timestamp > $1.timestamp }
+    }
+    
+    /// Get a specific frame by ID
+    func getFrame(id: UUID) -> SavedEditFrame? {
+        getAllFrames().first { $0.id == id }
+    }
+    
+    /// Delete a frame
+    func deleteFrame(id: UUID) {
+        let frames = getAllFrames().filter { $0.id != id }
+        saveAll(frames)
+        print("✅ Frame deleted")
+    }
+    
+    /// Rename a frame
+    func renameFrame(id: UUID, newName: String) {
+        var frames = getAllFrames()
+        if let index = frames.firstIndex(where: { $0.id == id }) {
+            frames[index].name = newName
+            saveAll(frames)
+            print("✅ Frame renamed to: \(newName)")
+        }
+    }
+    
+    /// Export frame as JSON string
+    func exportFrameAsJSON(id: UUID) -> String? {
+        guard let frame = getFrame(id: id) else { return nil }
+        
+        let json = frame.toJSON()
+        guard let jsonData = try? JSONSerialization.data(withJSONObject: json, options: .prettyPrinted),
+              let jsonString = String(data: jsonData, encoding: .utf8) else {
+            return nil
+        }
+        
+        return jsonString
+    }
+    
+    /// Save all frames to UserDefaults
+    private func saveAll(_ frames: [SavedEditFrame]) {
+        if let data = try? JSONEncoder().encode(frames) {
+            UserDefaults.standard.set(data, forKey: userDefaultsKey)
+        }
+    }
+    
+    /// Clear all saved frames (for testing)
+    func clearAll() {
+        UserDefaults.standard.removeObject(forKey: userDefaultsKey)
+        print("⚠️ All saved frames cleared")
+    }
+}
