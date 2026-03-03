@@ -4,6 +4,7 @@ import Foundation
 struct SavedEditFrame: Codable, Identifiable {
     var id: UUID
     var name: String
+    var frameNumber: Int = 0  // Frame number for animation playback
     let timestamp: Date
     let figureScale: CGFloat
     let strokeThicknessMultiplier: CGFloat
@@ -35,14 +36,15 @@ struct SavedEditFrame: Codable, Identifiable {
     let rightFootAngle: CGFloat
     
     /// Initialize from EditModeValues with optional pose data
-    init(name: String, from values: EditModeValues, pose: StickFigure2D? = nil) {
-        self.init(id: UUID(), name: name, from: values, pose: pose)
+    init(name: String, frameNumber: Int = 0, from values: EditModeValues, pose: StickFigure2D? = nil) {
+        self.init(id: UUID(), name: name, frameNumber: frameNumber, from: values, pose: pose)
     }
     
     /// Initialize from EditModeValues with optional pose data and custom id
-    init(id: UUID, name: String, from values: EditModeValues, pose: StickFigure2D? = nil) {
+    init(id: UUID, name: String, frameNumber: Int = 0, from values: EditModeValues, pose: StickFigure2D? = nil) {
         self.id = id
         self.name = name
+        self.frameNumber = frameNumber
         self.timestamp = Date()
         self.figureScale = values.figureScale
         self.strokeThicknessMultiplier = values.strokeThicknessMultiplier

@@ -439,6 +439,7 @@ struct StickFigure2D {
     // Scale
     var scale: Double = 2.4 // Size multiplier (2.4 = 200% - default size for editing)
     var headRadiusMultiplier: Double = 1.0 // Head size multiplier (1.0 = normal size)
+    var shoulderWidthMultiplier: CGFloat = 1.0 // Shoulder separation multiplier (1.0 = normal, >1.0 = wider)
     
     // Colors for each body part
     var headColor: Color = .black
@@ -590,13 +591,15 @@ struct StickFigure2D {
     }
     
     var leftShoulderPosition: CGPoint {
-        // Shoulders originate at the neck position
-        neckPosition
+        // Shoulders are offset from the neck position based on shoulderWidthMultiplier
+        let offsetAmount = shoulderWidth * shoulderWidthMultiplier
+        return CGPoint(x: neckPosition.x - offsetAmount, y: neckPosition.y)
     }
     
     var rightShoulderPosition: CGPoint {
-        // Shoulders originate at the neck position
-        neckPosition
+        // Shoulders are offset from the neck position based on shoulderWidthMultiplier
+        let offsetAmount = shoulderWidth * shoulderWidthMultiplier
+        return CGPoint(x: neckPosition.x + offsetAmount, y: neckPosition.y)
     }
     
     // Left arm positions (upper body rotates, so we need to apply waistTorsoAngle)
