@@ -20,7 +20,7 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
     private var jointShapeSize: CGFloat = 1.0  // Joint circle size multiplier
     private var shoulderWidthMultiplier: CGFloat = 1.0  // Controls distance between shoulders (1.0 = normal)
     private var waistWidthMultiplier: CGFloat = 1.0  // Controls distance between hips (1.0 = normal)
-    private var waistThicknessMultiplier: CGFloat = 1.0  // Controls thickness of waist connector lines (1.0 = normal)
+    private var waistThicknessMultiplier: CGFloat = 0.5  // Controls triangle point position (0.0 = top of mid-torso, 1.0 = bottom/waist)
     private var neckLength: CGFloat = 1.0  // Neck length multiplier
     private var neckWidth: CGFloat = 1.0  // Neck width multiplier
     private var handSize: CGFloat = 1.0  // Hand size multiplier
@@ -254,7 +254,7 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
         
         switch section {
         case 0: return 2  // Zoom, Position buttons (Show Joints moved to header)
-        case 1: return isExpanded ? 11 : 0  // Figure Scale, Stroke, Skeleton Size, Joint Shape Size, Shoulder Width, Waist Width, Waist Thickness, Neck Length, Neck Width, Hand Size, Foot Size
+        case 1: return isExpanded ? 11 : 0  // Figure Scale, Stroke, Skeleton Size, Joint Shape Size, Shoulder Width, Waist Width, Waist Thickness (triangle point position), Neck Length, Neck Width, Hand Size, Foot Size
         case 2: return isExpanded ? 13 : 0  // 7 fusiform + 6 peak position sliders
         case 3: return isExpanded ? 10 : 0  // 10 Joint sliders: head, leftShoulder, rightShoulder, leftElbow, rightElbow, leftKnee, rightKnee, leftCalf, rightCalf, midTorso
         case 4: return isExpanded ? 12 : 0  // Color pickers for each body part (added shoulders)
@@ -522,8 +522,8 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
             })
             
         case (1, 6):
-            // Waist Thickness slider
-            addSliderCell(cell, label: "Waist Thickness", value: waistThicknessMultiplier, min: 0.5, max: 10.0, increment: 0.1, onChange: { [weak self] val in
+            // Waist Thickness slider - now controls triangle point position
+            addSliderCell(cell, label: "Waist Point", value: waistThicknessMultiplier, min: 0.0, max: 0.9, increment: 0.1, onChange: { [weak self] val in
                 self?.waistThicknessMultiplier = val
                 self?.updateFigure()
             })
@@ -542,14 +542,14 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
                 self?.updateFigure()
             })
             
-        case (1, 9):
+        case (1, 10):
             // Hand Size slider
             addSliderCell(cell, label: "Hand Size", value: handSize, min: 0.5, max: 10.0, increment: 0.1, onChange: { [weak self] val in
                 self?.handSize = val
                 self?.updateFigure()
             })
             
-        case (1, 10):
+        case (1, 11):
             // Foot Size slider
             addSliderCell(cell, label: "Foot Size", value: footSize, min: 0.5, max: 10.0, increment: 0.1, onChange: { [weak self] val in
                 self?.footSize = val
@@ -1602,7 +1602,7 @@ class StickFigureEditorScene: SKScene {
         jointShapeSize: CGFloat = 1.0,
         shoulderWidthMultiplier: CGFloat = 1.0,
         waistWidthMultiplier: CGFloat = 1.0,
-        waistThicknessMultiplier: CGFloat = 1.0,
+        waistThicknessMultiplier: CGFloat = 0.5,
         neckLength: CGFloat = 1.0,
         neckWidth: CGFloat = 1.0,
         handSize: CGFloat = 1.0,

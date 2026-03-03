@@ -342,13 +342,127 @@ class GameScene: SKScene {
             container.addChild(shape)
         }
         
+        // Helper to draw triangle-shaped waist with rounded bottom corners
+        func drawWaistTriangle(from midTorsoPoint: CGPoint, to waistPoint: CGPoint, color: SKColor, strokeThickness: CGFloat, pointPosition: CGFloat, leftHipPos: CGPoint, rightHipPos: CGPoint) {
+            // Convert all points to relative coordinates and apply scale
+            let midTorsoRelative = CGPoint(x: (midTorsoPoint.x - baseCenter.x) * scale, y: (baseCenter.y - midTorsoPoint.y) * scale)
+            let waistRelative = CGPoint(x: (waistPoint.x - baseCenter.x) * scale, y: (baseCenter.y - waistPoint.y) * scale)
+            let leftHipRelative = CGPoint(x: (leftHipPos.x - baseCenter.x) * scale, y: (baseCenter.y - leftHipPos.y) * scale)
+            let rightHipRelative = CGPoint(x: (rightHipPos.x - baseCenter.x) * scale, y: (baseCenter.y - rightHipPos.y) * scale)
+            
+            print("🔺 TRIANGLE DEBUG:")
+            print("  midTorso: \(midTorsoPoint) -> \(midTorsoRelative)")
+            print("  waist: \(waistPoint) -> \(waistRelative)")
+            print("  leftHip: \(leftHipPos) -> \(leftHipRelative)")
+            print("  rightHip: \(rightHipPos) -> \(rightHipRelative)")
+            print("  pointPosition: \(pointPosition)")
+            
+            // BOTTOM corners are PINNED to the hip positions - they move with the figure
+            let bottomLeft = leftHipRelative
+            let bottomRight = rightHipRelative
+            
+            // Calculate rounded corner radius based on the distance between hips
+            let hipDistance = sqrt(pow(rightHipRelative.x - leftHipRelative.x, 2) + pow(rightHipRelative.y - leftHipRelative.y, 2))
+            let cornerRadius = hipDistance * 0.2  // 20% of hip distance for rounding
+            
+            // TOP point is PINNED to mid-torso and stays there
+            // pointPosition controls how "full" the triangle is (0.0 = no triangle, 1.0 = full triangle to mid-torso)
+            let pointPos = midTorsoRelative
+            
+            // When pointPosition < 1.0, we need to interpolate the sides to taper toward the waist
+            // This creates the expanding/contracting effect
+            if pointPosition >= 1.0 {
+                // Full triangle - point pinned to mid-torso, base at hips
+                let path = UIBezierPath()
+                
+                // Start at bottom-left corner
+                path.move(to: bottomLeft)
+                
+                // Draw rounded corner at bottom-left
+                let bottomLeftControl = CGPoint(x: bottomLeft.x + cornerRadius, y: bottomLeft.y)
+                path.addQuadCurve(to: bottomLeftControl, controlPoint: bottomLeft)
+                
+                // Go up the left side to the point
+                path.addLine(to: pointPos)
+                
+                // Go down the right side from point to rounded bottom-right corner start
+                let bottomRightControl = CGPoint(x: bottomRight.x - cornerRadius, y: bottomRight.y)
+                path.addLine(to: bottomRightControl)
+                
+                // Draw rounded corner at bottom-right
+                path.addQuadCurve(to: bottomRight, controlPoint: bottomRight)
+                
+                // Close back to starting point
+                path.addLine(to: bottomLeft)
+                
+                path.close()
+                
+                let shape = SKShapeNode(path: path.cgPath)
+                shape.fillColor = color
+                shape.strokeColor = color
+                shape.lineWidth = 0
+                shape.zPosition = 1
+                container.addChild(shape)
+            } else {
+                // Partial triangle - taper from hips toward waist based on pointPosition
+                let taperingFactor = pointPosition  // 0.0 to 1.0
+                
+                // Interpolate left side: from hip to waist, then toward midTorso
+                let leftTaperedX = bottomLeft.x + (waistRelative.x - bottomLeft.x) * (1.0 - taperingFactor)
+                let leftTaperedY = bottomLeft.y + (waistRelative.y - bottomLeft.y) * (1.0 - taperingFactor)
+                let leftTaperedPoint = CGPoint(x: leftTaperedX, y: leftTaperedY)
+                
+                // Interpolate right side: from hip to waist, then toward midTorso
+                let rightTaperedX = bottomRight.x + (waistRelative.x - bottomRight.x) * (1.0 - taperingFactor)
+                let rightTaperedY = bottomRight.y + (waistRelative.y - bottomRight.y) * (1.0 - taperingFactor)
+                let rightTaperedPoint = CGPoint(x: rightTaperedX, y: rightTaperedY)
+                
+                let path = UIBezierPath()
+                
+                // Start at bottom-left corner
+                path.move(to: bottomLeft)
+                
+                // Draw rounded corner at bottom-left
+                let bottomLeftControl = CGPoint(x: bottomLeft.x + cornerRadius, y: bottomLeft.y)
+                path.addQuadCurve(to: bottomLeftControl, controlPoint: bottomLeft)
+                
+                // Go up the left side to tapered point
+                path.addLine(to: leftTaperedPoint)
+                
+                // Go to the midTorso point
+                path.addLine(to: pointPos)
+                
+                // Go down the right side from midTorso to tapered point
+                path.addLine(to: rightTaperedPoint)
+                
+                // Go to bottom-right corner start
+                let bottomRightControl = CGPoint(x: bottomRight.x - cornerRadius, y: bottomRight.y)
+                path.addLine(to: bottomRightControl)
+                
+                // Draw rounded corner at bottom-right
+                path.addQuadCurve(to: bottomRight, controlPoint: bottomRight)
+                
+                // Close back to starting point
+                path.addLine(to: bottomLeft)
+                
+                path.close()
+                
+                let shape = SKShapeNode(path: path.cgPath)
+                shape.fillColor = color
+                shape.strokeColor = color
+                shape.lineWidth = 0
+                shape.zPosition = 1
+                container.addChild(shape)
+            }
+        }
+        
         // Draw lower body first (back) - with fusiform
         let leftHipPos = mutableFigure.leftHipPosition
         let rightHipPos = mutableFigure.rightHipPosition
         
-        // Draw connectors from waist to hips (with rounded corners)
-        drawRoundedLine(from: waistPos, to: leftHipPos, color: toSKColor(mutableFigure.torsoColor), width: mutableFigure.strokeThicknessLowerLegs * mutableFigure.waistThicknessMultiplier)
-        drawRoundedLine(from: waistPos, to: rightHipPos, color: toSKColor(mutableFigure.torsoColor), width: mutableFigure.strokeThicknessLowerLegs * mutableFigure.waistThicknessMultiplier)
+        // ALWAYS draw connectors from waist to hips - they're part of the triangle base when triangle is active
+        drawRoundedLine(from: waistPos, to: leftHipPos, color: toSKColor(mutableFigure.torsoColor), width: mutableFigure.strokeThicknessLowerLegs * 1.0)
+        drawRoundedLine(from: waistPos, to: rightHipPos, color: toSKColor(mutableFigure.torsoColor), width: mutableFigure.strokeThicknessLowerLegs * 1.0)
         
         drawTaperedSegment(from: leftHipPos, to: leftUpperLegEnd, color: toSKColor(mutableFigure.leftUpperLegColor), strokeThickness: mutableFigure.strokeThicknessUpperLegs, fusiform: mutableFigure.fusiformUpperLegs, inverted: true, peakPosition: mutableFigure.peakPositionUpperLegs)
         drawTaperedSegment(from: leftUpperLegEnd, to: leftFootEnd, color: toSKColor(mutableFigure.leftLowerLegColor), strokeThickness: mutableFigure.strokeThicknessLowerLegs, fusiform: mutableFigure.fusiformLowerLegs, inverted: true, peakPosition: mutableFigure.peakPositionLowerLegs)
@@ -357,7 +471,14 @@ class GameScene: SKScene {
         
         // Draw torso - LAYERED: lower torso behind, upper torso on top spanning full neck-to-waist
         // Draw lower torso first (behind)
-        drawTaperedSegment(from: midTorsoPos, to: waistPos, color: toSKColor(mutableFigure.torsoColor), strokeThickness: mutableFigure.strokeThicknessLowerTorso, fusiform: mutableFigure.fusiformLowerTorso, inverted: true, peakPosition: mutableFigure.peakPositionLowerTorso)
+        if mutableFigure.waistThicknessMultiplier > 0.0 {
+            // Draw triangle-shaped lower torso with rounded bottom corners
+            // waistThicknessMultiplier controls point position: 0.0 = at waist, 1.0 = at mid-torso
+            drawWaistTriangle(from: midTorsoPos, to: waistPos, color: toSKColor(mutableFigure.torsoColor), strokeThickness: mutableFigure.strokeThicknessLowerTorso, pointPosition: mutableFigure.waistThicknessMultiplier, leftHipPos: leftHipPos, rightHipPos: rightHipPos)
+        } else {
+            // No triangle at 0.0 - standard tapered segment
+            drawTaperedSegment(from: midTorsoPos, to: waistPos, color: toSKColor(mutableFigure.torsoColor), strokeThickness: mutableFigure.strokeThicknessLowerTorso, fusiform: mutableFigure.fusiformLowerTorso, inverted: true, peakPosition: mutableFigure.peakPositionLowerTorso)
+        }
         // Draw upper torso on top, spanning full neck-to-waist distance
         drawTaperedSegment(from: neckPos, to: waistPos, color: toSKColor(mutableFigure.torsoColor), strokeThickness: mutableFigure.strokeThicknessUpperTorso, fusiform: mutableFigure.fusiformUpperTorso, inverted: true, peakPosition: mutableFigure.peakPositionUpperTorso)
         drawLine(from: neckPos, to: headPos, color: toSKColor(mutableFigure.torsoColor), width: mutableFigure.strokeThickness * mutableFigure.neckWidth)

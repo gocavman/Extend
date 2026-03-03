@@ -95,7 +95,7 @@ struct SavedEditFrame: Codable, Identifiable {
         } else {
             self.shoulderWidthMultiplier = 1.0
             self.waistWidthMultiplier = 1.0
-            self.waistThicknessMultiplier = 1.0
+            self.waistThicknessMultiplier = 0.5
             self.skeletonSize = 1.0
             self.jointShapeSize = 1.0
             self.neckLength = 1.0

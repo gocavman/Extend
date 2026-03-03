@@ -146,7 +146,10 @@ struct StickFigure2DPose: Codable {
     let neckWidth: CGFloat
     let handSize: CGFloat
     let footSize: CGFloat
-    
+
+    // Waist shape control
+    // (removed - now using waistThicknessMultiplier for triangle point position)
+
     // Position offsets
     let figureOffsetX: CGFloat
     let figureOffsetY: CGFloat
@@ -1293,36 +1296,6 @@ struct StickFigure2DView: View {
         footPath.addLine(to: bottomLeft)
         footPath.addQuadCurve(to: CGPoint(x: topLeft.x, y: topLeft.y + cornerRadius), control: CGPoint(x: shapeCenter.x - footBottomWidth / 2, y: shapeCenter.y - footHeight * 0.15))
         footPath.addQuadCurve(to: CGPoint(x: topLeft.x + cornerRadius, y: topLeft.y), control: topLeft)
-        footPath.closeSubpath()
-        
-        // Rotate the path
-        
-        // Draw tapered rectangle with rounded corners
-        footPath.move(to: topLeft)
-        footPath.addLine(to: topRight)
-        footPath.addQuadCurve(to: bottomRight, control: CGPoint(x: shapeCenter.x + footBottomWidth / 2, y: shapeCenter.y))
-        footPath.addLine(to: bottomLeft)
-        footPath.addQuadCurve(to: topLeft, control: CGPoint(x: shapeCenter.x - footBottomWidth / 2, y: shapeCenter.y))
-        footPath.closeSubpath()
-        
-        // Rotate the path/ 2, y: shapeCenter.y + footHeight / 2)
-        
-        // Draw tapered rectangle with rounded corners
-        footPath.move(to: topLeft)
-        footPath.addLine(to: topRight)
-        footPath.addQuadCurve(to: bottomRight, control: CGPoint(x: shapeCenter.x + footBottomWidth / 2, y: shapeCenter.y))
-        footPath.addLine(to: bottomLeft)
-        footPath.addQuadCurve(to: topLeft, control: CGPoint(x: shapeCenter.x - footBottomWidth / 2, y: shapeCenter.y))
-        footPath.closeSubpath()
-        
-        // Rotate the path/ 2, y: shapeCenter.y + footHeight / 2)
-        
-        // Draw tapered rectangle with rounded corners
-        footPath.move(to: topLeft)
-        footPath.addLine(to: topRight)
-        footPath.addQuadCurve(to: bottomRight, control: CGPoint(x: shapeCenter.x + footBottomWidth / 2, y: shapeCenter.y))
-        footPath.addLine(to: bottomLeft)
-        footPath.addQuadCurve(to: topLeft, control: CGPoint(x: shapeCenter.x - footBottomWidth / 2, y: shapeCenter.y))
         footPath.closeSubpath()
         
         // Rotate the path
