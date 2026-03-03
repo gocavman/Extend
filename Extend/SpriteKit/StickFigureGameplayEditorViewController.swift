@@ -542,14 +542,14 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
                 self?.updateFigure()
             })
             
-        case (1, 10):
+        case (1, 9):
             // Hand Size slider
             addSliderCell(cell, label: "Hand Size", value: handSize, min: 0.5, max: 10.0, increment: 0.1, onChange: { [weak self] val in
                 self?.handSize = val
                 self?.updateFigure()
             })
             
-        case (1, 11):
+        case (1, 10):
             // Foot Size slider
             addSliderCell(cell, label: "Foot Size", value: footSize, min: 0.5, max: 10.0, increment: 0.1, onChange: { [weak self] val in
                 self?.footSize = val
