@@ -22,6 +22,7 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
     private var waistWidthMultiplier: CGFloat = 1.0  // Controls distance between hips (1.0 = normal)
     private var waistThicknessMultiplier: CGFloat = 1.0  // Controls thickness of waist connector lines (1.0 = normal)
     private var neckLength: CGFloat = 1.0  // Neck length multiplier
+    private var neckWidth: CGFloat = 1.0  // Neck width multiplier
     private var handSize: CGFloat = 1.0  // Hand size multiplier
     private var footSize: CGFloat = 1.0  // Foot size multiplier
     private var fusiformUpperTorso: CGFloat = 4.0
@@ -61,6 +62,9 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
     // Color picker properties
     private var pendingColorKey: String?
     private var pendingColorButton: UIButton?
+    
+    // Coordinate label reference for updating
+    weak var coordinateLabel: UILabel?
     
     // Angle properties for joint positioning
     var neckRotation: CGFloat = 0
@@ -250,7 +254,7 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
         
         switch section {
         case 0: return 2  // Zoom, Position buttons (Show Joints moved to header)
-        case 1: return isExpanded ? 10 : 0  // Figure Scale, Stroke, Skeleton Size, Joint Shape Size, Shoulder Width, Waist Width, Waist Thickness, Neck Length, Hand Size, Foot Size
+        case 1: return isExpanded ? 11 : 0  // Figure Scale, Stroke, Skeleton Size, Joint Shape Size, Shoulder Width, Waist Width, Waist Thickness, Neck Length, Neck Width, Hand Size, Foot Size
         case 2: return isExpanded ? 13 : 0  // 7 fusiform + 6 peak position sliders
         case 3: return isExpanded ? 10 : 0  // 10 Joint sliders: head, leftShoulder, rightShoulder, leftElbow, rightElbow, leftKnee, rightKnee, leftCalf, rightCalf, midTorso
         case 4: return isExpanded ? 12 : 0  // Color pickers for each body part (added shoulders)
@@ -326,18 +330,58 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
             let container = UIStackView()
             container.axis = .horizontal
             container.spacing = 2
-            container.distribution = .fillEqually
+            container.distribution = .fillEqually  // Changed to fillEqually for even spacing
             container.translatesAutoresizingMaskIntoConstraints = false
             
-            let buttons = [("← X", { self.figureOffsetX -= 5 }), ("X →", { self.figureOffsetX += 5 }), ("↑ Y", { self.figureOffsetY += 5 }), ("Y ↓", { self.figureOffsetY -= 5 })]
+            // Left X buttons
+            let leftXStack = UIStackView()
+            leftXStack.axis = .horizontal
+            leftXStack.spacing = 2
+            leftXStack.distribution = .fillEqually
             
-            for (title, action) in buttons {
-                let btn = UIButton(type: .system)
-                btn.setTitle(title, for: .normal)
-                btn.titleLabel?.font = UIFont.systemFont(ofSize: 11)
-                btn.addAction(UIAction { _ in action(); self.updateFigure() }, for: .touchUpInside)
-                container.addArrangedSubview(btn)
-            }
+            let leftBtn = UIButton(type: .system)
+            leftBtn.setTitle("← X", for: .normal)
+            leftBtn.titleLabel?.font = UIFont.systemFont(ofSize: 11)
+            leftBtn.addAction(UIAction { _ in self.figureOffsetX -= 1; self.updateFigure() }, for: .touchUpInside)
+            leftXStack.addArrangedSubview(leftBtn)
+            
+            let rightBtn = UIButton(type: .system)
+            rightBtn.setTitle("X →", for: .normal)
+            rightBtn.titleLabel?.font = UIFont.systemFont(ofSize: 11)
+            rightBtn.addAction(UIAction { _ in self.figureOffsetX += 1; self.updateFigure() }, for: .touchUpInside)
+            leftXStack.addArrangedSubview(rightBtn)
+            
+            // Center coordinate label
+            let coordLabel = UILabel()
+            coordLabel.text = String(format: "X: %.0f\nY: %.0f", figureOffsetX, figureOffsetY)
+            coordLabel.font = UIFont.systemFont(ofSize: 9, weight: .regular)
+            coordLabel.textAlignment = .center
+            coordLabel.textColor = .gray
+            coordLabel.numberOfLines = 2
+            coordLabel.translatesAutoresizingMaskIntoConstraints = false
+            
+            // Right Y buttons
+            let rightYStack = UIStackView()
+            rightYStack.axis = .horizontal
+            rightYStack.spacing = 2
+            rightYStack.distribution = .fillEqually
+            
+            let upBtn = UIButton(type: .system)
+            upBtn.setTitle("↑ Y", for: .normal)
+            upBtn.titleLabel?.font = UIFont.systemFont(ofSize: 11)
+            upBtn.addAction(UIAction { _ in self.figureOffsetY += 1; self.updateFigure() }, for: .touchUpInside)
+            rightYStack.addArrangedSubview(upBtn)
+            
+            let downBtn = UIButton(type: .system)
+            downBtn.setTitle("Y ↓", for: .normal)
+            downBtn.titleLabel?.font = UIFont.systemFont(ofSize: 11)
+            downBtn.addAction(UIAction { _ in self.figureOffsetY -= 1; self.updateFigure() }, for: .touchUpInside)
+            rightYStack.addArrangedSubview(downBtn)
+            
+            // Add all to main container with equal widths
+            container.addArrangedSubview(leftXStack)
+            container.addArrangedSubview(coordLabel)
+            container.addArrangedSubview(rightYStack)
             
             cell.contentView.addSubview(container)
             NSLayoutConstraint.activate([
@@ -345,8 +389,11 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
                 container.leadingAnchor.constraint(equalTo: cell.contentView.leadingAnchor, constant: 16),
                 container.trailingAnchor.constraint(equalTo: cell.contentView.trailingAnchor, constant: -16),
                 container.bottomAnchor.constraint(equalTo: cell.contentView.bottomAnchor, constant: -6),
-                cell.contentView.heightAnchor.constraint(greaterThanOrEqualToConstant: 36)
+                cell.contentView.heightAnchor.constraint(greaterThanOrEqualToConstant: 42)
             ])
+            
+            // Store reference to coordinate label for dynamic updates
+            self.coordinateLabel = coordLabel
             
             
         case (0, 1):
@@ -489,13 +536,20 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
             })
             
         case (1, 8):
+            // Neck Width slider
+            addSliderCell(cell, label: "Neck Width", value: neckWidth, min: 0.5, max: 10.0, increment: 0.1, onChange: { [weak self] val in
+                self?.neckWidth = val
+                self?.updateFigure()
+            })
+            
+        case (1, 9):
             // Hand Size slider
             addSliderCell(cell, label: "Hand Size", value: handSize, min: 0.5, max: 10.0, increment: 0.1, onChange: { [weak self] val in
                 self?.handSize = val
                 self?.updateFigure()
             })
             
-        case (1, 9):
+        case (1, 10):
             // Foot Size slider
             addSliderCell(cell, label: "Foot Size", value: footSize, min: 0.5, max: 10.0, increment: 0.1, onChange: { [weak self] val in
                 self?.footSize = val
@@ -895,6 +949,10 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
     // MARK: - Update Figure
     func updateFigure() {
         print("🎮 DEBUG updateFigure: skeletonSize=\(skeletonSize) jointShapeSize=\(jointShapeSize)")
+        
+        // Update coordinate label if it exists
+        coordinateLabel?.text = String(format: "X: %.0f\nY: %.0f", figureOffsetX, figureOffsetY)
+        
         editorScene?.updateWithValues(
             figureScale: figureScale,
             strokeThicknessMultiplier: strokeThicknessMultiplier,
@@ -904,6 +962,7 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
             waistWidthMultiplier: waistWidthMultiplier,
             waistThicknessMultiplier: waistThicknessMultiplier,
             neckLength: neckLength,
+            neckWidth: neckWidth,
             handSize: handSize,
             footSize: footSize,
             fusiformUpperTorso: fusiformUpperTorso,
@@ -990,6 +1049,7 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
             tempPose.waistThicknessMultiplier = self.waistThicknessMultiplier
             tempPose.skeletonSize = self.skeletonSize
             tempPose.neckLength = self.neckLength
+            tempPose.neckWidth = self.neckWidth
             tempPose.handSize = self.handSize
             tempPose.footSize = self.footSize
             
@@ -1157,6 +1217,7 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
         waistWidthMultiplier = frame.waistWidthMultiplier
         waistThicknessMultiplier = frame.waistThicknessMultiplier
         neckLength = frame.neckLength
+        neckWidth = frame.neckWidth
         handSize = frame.handSize
         footSize = frame.footSize
         fusiformShoulders = 0.0
@@ -1543,6 +1604,7 @@ class StickFigureEditorScene: SKScene {
         waistWidthMultiplier: CGFloat = 1.0,
         waistThicknessMultiplier: CGFloat = 1.0,
         neckLength: CGFloat = 1.0,
+        neckWidth: CGFloat = 1.0,
         handSize: CGFloat = 1.0,
         footSize: CGFloat = 1.0,
         fusiformUpperTorso: CGFloat,
@@ -1608,6 +1670,7 @@ class StickFigureEditorScene: SKScene {
         updatedFrame.waistThicknessMultiplier = waistThicknessMultiplier
         updatedFrame.skeletonSize = skeletonSize
         updatedFrame.neckLength = neckLength
+        updatedFrame.neckWidth = neckWidth
         updatedFrame.handSize = handSize
         updatedFrame.footSize = footSize
         print("🎮 DEBUG updateWithValues: Setting skeletonSize=\(skeletonSize) jointShapeSize=\(jointShapeSize) on updatedFrame")
