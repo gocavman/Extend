@@ -22,6 +22,8 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
     private var waistWidthMultiplier: CGFloat = 1.0  // Controls distance between hips (1.0 = normal)
     private var waistThicknessMultiplier: CGFloat = 1.0  // Controls thickness of waist connector lines (1.0 = normal)
     private var neckLength: CGFloat = 1.0  // Neck length multiplier
+    private var handSize: CGFloat = 1.0  // Hand size multiplier
+    private var footSize: CGFloat = 1.0  // Foot size multiplier
     private var fusiformUpperTorso: CGFloat = 4.0
     private var fusiformLowerTorso: CGFloat = 4.0
     private var fusiformUpperArms: CGFloat = 2.0
@@ -248,7 +250,7 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
         
         switch section {
         case 0: return 2  // Zoom, Position buttons (Show Joints moved to header)
-        case 1: return isExpanded ? 8 : 0  // Figure Scale, Stroke, Skeleton Size, Joint Shape Size, Shoulder Width, Waist Width, Waist Thickness, Neck Length
+        case 1: return isExpanded ? 10 : 0  // Figure Scale, Stroke, Skeleton Size, Joint Shape Size, Shoulder Width, Waist Width, Waist Thickness, Neck Length, Hand Size, Foot Size
         case 2: return isExpanded ? 13 : 0  // 7 fusiform + 6 peak position sliders
         case 3: return isExpanded ? 10 : 0  // 10 Joint sliders: head, leftShoulder, rightShoulder, leftElbow, rightElbow, leftKnee, rightKnee, leftCalf, rightCalf, midTorso
         case 4: return isExpanded ? 12 : 0  // Color pickers for each body part (added shoulders)
@@ -262,7 +264,7 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
         switch section {
         case 0: return nil  // No header for display section
         case 1: return "FIGURE SCALE & THICKNESS"
-        case 2: return "FUSIFORM TAPERING"
+        case 2: return "FUSIFORM"
         case 3: return "JOINT ANGLES"
         case 4: return "COLORS"
         case 5: return "FRAMES"
@@ -483,6 +485,20 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
             // Neck Length slider
             addSliderCell(cell, label: "Neck Length", value: neckLength, min: 0.5, max: 30.0, increment: 0.1, onChange: { [weak self] val in
                 self?.neckLength = val
+                self?.updateFigure()
+            })
+            
+        case (1, 8):
+            // Hand Size slider
+            addSliderCell(cell, label: "Hand Size", value: handSize, min: 0.5, max: 10.0, increment: 0.1, onChange: { [weak self] val in
+                self?.handSize = val
+                self?.updateFigure()
+            })
+            
+        case (1, 9):
+            // Foot Size slider
+            addSliderCell(cell, label: "Foot Size", value: footSize, min: 0.5, max: 10.0, increment: 0.1, onChange: { [weak self] val in
+                self?.footSize = val
                 self?.updateFigure()
             })
             
@@ -787,6 +803,8 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
     @objc private func refreshPressed() {
         print("🎮 Refreshing stick figure to default Stand frame")
         figureScale = 1.0  // Reset figure scale to default
+        sceneZoom = 1.0  // Reset zoom to default
+        editorScene?.updateZoom(1.0)  // Update editor scene zoom
         loadStandFrameValues()
         controlsTableView.reloadData()  // Reload table to show updated values
         updateFigure()
@@ -886,6 +904,8 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
             waistWidthMultiplier: waistWidthMultiplier,
             waistThicknessMultiplier: waistThicknessMultiplier,
             neckLength: neckLength,
+            handSize: handSize,
+            footSize: footSize,
             fusiformUpperTorso: fusiformUpperTorso,
             fusiformLowerTorso: fusiformLowerTorso,
             fusiformUpperArms: fusiformUpperArms,
@@ -970,6 +990,8 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
             tempPose.waistThicknessMultiplier = self.waistThicknessMultiplier
             tempPose.skeletonSize = self.skeletonSize
             tempPose.neckLength = self.neckLength
+            tempPose.handSize = self.handSize
+            tempPose.footSize = self.footSize
             
             // Create EditModeValues to use with SavedEditFrame initializer
             let editValues = EditModeValues(
@@ -1115,7 +1137,7 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
         figureScale = frame.figureScale
         strokeThicknessMultiplier = frame.strokeThicknessMultiplier
         
-        // Restore fusiform tapering
+        // Restore fusiform
         fusiformUpperTorso = frame.fusiformUpperTorso
         fusiformLowerTorso = frame.fusiformLowerTorso
         fusiformUpperArms = frame.fusiformUpperArms
@@ -1135,6 +1157,8 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
         waistWidthMultiplier = frame.waistWidthMultiplier
         waistThicknessMultiplier = frame.waistThicknessMultiplier
         neckLength = frame.neckLength
+        handSize = frame.handSize
+        footSize = frame.footSize
         fusiformShoulders = 0.0
         peakPositionUpperArms = 0.5
         peakPositionLowerArms = 0.35
@@ -1519,6 +1543,8 @@ class StickFigureEditorScene: SKScene {
         waistWidthMultiplier: CGFloat = 1.0,
         waistThicknessMultiplier: CGFloat = 1.0,
         neckLength: CGFloat = 1.0,
+        handSize: CGFloat = 1.0,
+        footSize: CGFloat = 1.0,
         fusiformUpperTorso: CGFloat,
         fusiformLowerTorso: CGFloat,
         fusiformUpperArms: CGFloat,
@@ -1582,6 +1608,8 @@ class StickFigureEditorScene: SKScene {
         updatedFrame.waistThicknessMultiplier = waistThicknessMultiplier
         updatedFrame.skeletonSize = skeletonSize
         updatedFrame.neckLength = neckLength
+        updatedFrame.handSize = handSize
+        updatedFrame.footSize = footSize
         print("🎮 DEBUG updateWithValues: Setting skeletonSize=\(skeletonSize) jointShapeSize=\(jointShapeSize) on updatedFrame")
         
         // Apply angles to the frame - map to existing properties

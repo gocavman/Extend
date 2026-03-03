@@ -283,7 +283,7 @@ class GameScene: SKScene {
         }
         
         // Helper to draw hands/feet with proper tapering at top
-        func drawHandOrFoot(at position: CGPoint, from startPoint: CGPoint, color: SKColor, isHand: Bool = false) {
+        func drawHandOrFoot(at position: CGPoint, from startPoint: CGPoint, color: SKColor, isHand: Bool = false, sizeMultiplier: CGFloat = 1.0) {
             // Calculate direction from start to end (the limb direction)
             let dx = position.x - startPoint.x
             let dy = position.y - startPoint.y
@@ -298,7 +298,7 @@ class GameScene: SKScene {
             let relativePos = CGPoint(x: (overlappedPos.x - baseCenter.x) * scale, y: (baseCenter.y - overlappedPos.y) * scale)
             
             // Create a tapered shape that's narrower at top and wider at bottom
-            let radius = max(5.0, 1.0 * scale)
+            let radius = max(5.0, 1.0 * scale * sizeMultiplier)
             let path = UIBezierPath()
             
             // Top (narrow) - where it connects to forearm/ankle
@@ -380,12 +380,12 @@ class GameScene: SKScene {
         let footColor = toSKColor(mutableFigure.footColor)
         
         // Draw hands with overlap into lower arms (isHand: true makes bottom narrower)
-        drawHandOrFoot(at: leftForearmEnd, from: leftUpperArmEnd, color: handColor, isHand: true)
-        drawHandOrFoot(at: rightForearmEnd, from: rightUpperArmEnd, color: handColor, isHand: true)
+        drawHandOrFoot(at: leftForearmEnd, from: leftUpperArmEnd, color: handColor, isHand: true, sizeMultiplier: mutableFigure.handSize)
+        drawHandOrFoot(at: rightForearmEnd, from: rightUpperArmEnd, color: handColor, isHand: true, sizeMultiplier: mutableFigure.handSize)
         
         // Draw feet with overlap into lower legs (isHand: false keeps them wider)
-        drawHandOrFoot(at: leftFootEnd, from: leftUpperLegEnd, color: footColor, isHand: false)
-        drawHandOrFoot(at: rightFootEnd, from: rightUpperLegEnd, color: footColor, isHand: false)
+        drawHandOrFoot(at: leftFootEnd, from: leftUpperLegEnd, color: footColor, isHand: false, sizeMultiplier: mutableFigure.footSize)
+        drawHandOrFoot(at: rightFootEnd, from: rightUpperLegEnd, color: footColor, isHand: false, sizeMultiplier: mutableFigure.footSize)
         
         // Draw head
         let headRadius = mutableFigure.headRadius * 1.2  // Reduced from 3.5 to 1.2 - much smaller
@@ -402,18 +402,78 @@ class GameScene: SKScene {
         }
         
         // Helper to draw a skeleton connector line with the color of its body part
+        // Helper to draw a fusiform skeleton connector (tapers small-large-small)
         func drawSkeletonConnector(from: CGPoint, to: CGPoint, color: SKColor) {
             let lineWidth = max(jointThickness * 0.8 * scale * mutableFigure.skeletonSize, 1.0)
             print("🦴 Drawing skeleton connector: lineWidth=\(lineWidth), skeletonSize=\(mutableFigure.skeletonSize), jointThickness=\(jointThickness), scale=\(scale)")
+            
+            // Convert to relative coordinates
+            let fromRelative = toRelative(from)
+            let toRelative = toRelative(to)
+            
+            // Calculate direction and length
+            let dx = toRelative.x - fromRelative.x
+            let dy = toRelative.y - fromRelative.y
+            let length = sqrt(dx * dx + dy * dy)
+            
+            guard length > 0 else { return }
+            
+            // Normalized direction
+            let dirX = dx / length
+            let dirY = dy / length
+            
+            // Perpendicular direction (for width)
+            let perpX = -dirY
+            let perpY = dirX
+            
+            // Create a tapered polygon
+            var topEdgePoints: [CGPoint] = []
+            var bottomEdgePoints: [CGPoint] = []
+            
+            let numSegments = 20
+            let maxWidth = lineWidth / 2
+            
+            for i in 0...numSegments {
+                let t = CGFloat(i) / CGFloat(numSegments)
+                let pos = CGPoint(x: fromRelative.x + dirX * t * length, y: fromRelative.y + dirY * t * length)
+                
+                // Fusiform taper: small at ends, large in middle
+                let distFromCenter = abs(t - 0.5) * 2.0  // 0 at center, 1 at ends
+                let widthFactor = max(0.2, 1.0 - (distFromCenter * distFromCenter))  // Curved taper
+                let width = maxWidth * widthFactor
+                
+                let topPoint = CGPoint(x: pos.x + perpX * width, y: pos.y + perpY * width)
+                let bottomPoint = CGPoint(x: pos.x - perpX * width, y: pos.y - perpY * width)
+                
+                topEdgePoints.append(topPoint)
+                bottomEdgePoints.append(bottomPoint)
+            }
+            
+            // Create the path
             let path = UIBezierPath()
-            path.move(to: toRelative(from))
-            path.addLine(to: toRelative(to))
-            let line = SKShapeNode(path: path.cgPath)
-            line.strokeColor = color
-            line.lineWidth = lineWidth
-            line.fillColor = .clear
-            line.zPosition = 1.5  // IN FRONT of the fusiforms (which are at z=1)
-            container.addChild(line)
+            
+            if let firstPoint = topEdgePoints.first {
+                path.move(to: firstPoint)
+            }
+            
+            // Draw top edge
+            for i in 1..<topEdgePoints.count {
+                path.addLine(to: topEdgePoints[i])
+            }
+            
+            // Draw bottom edge in reverse
+            for i in stride(from: bottomEdgePoints.count - 1, through: 0, by: -1) {
+                path.addLine(to: bottomEdgePoints[i])
+            }
+            
+            path.close()
+            
+            let shape = SKShapeNode(path: path.cgPath)
+            shape.fillColor = color
+            shape.strokeColor = color
+            shape.lineWidth = 0
+            shape.zPosition = 1.5  // IN FRONT of the fusiforms
+            container.addChild(shape)
         }
         
         // Calculate midpoints for connectors

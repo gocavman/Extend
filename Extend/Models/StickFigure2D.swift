@@ -143,6 +143,8 @@ struct StickFigure2DPose: Codable {
     let waistWidthMultiplier: CGFloat
     let waistThicknessMultiplier: CGFloat
     let neckLength: CGFloat
+    let handSize: CGFloat
+    let footSize: CGFloat
     
     // Position offsets
     let figureOffsetX: CGFloat
@@ -213,6 +215,8 @@ struct StickFigure2DPose: Codable {
         self.waistWidthMultiplier = figure.waistWidthMultiplier
         self.waistThicknessMultiplier = figure.waistThicknessMultiplier
         self.neckLength = figure.neckLength
+        self.handSize = figure.handSize
+        self.footSize = figure.footSize
         self.figureOffsetX = 0  // This would need to be tracked separately
         self.figureOffsetY = 0  // This would need to be tracked separately
     }
@@ -280,6 +284,8 @@ struct StickFigure2DPose: Codable {
         figure.waistThicknessMultiplier = waistThicknessMultiplier
         figure.skeletonSize = skeletonSize
         figure.neckLength = neckLength
+        figure.handSize = handSize
+        figure.footSize = footSize
         return figure
     }
     
@@ -308,6 +314,7 @@ struct StickFigure2DPose: Codable {
         case peakPositionUpperArms, peakPositionLowerArms, peakPositionUpperLegs, peakPositionLowerLegs, peakPositionUpperTorso, peakPositionLowerTorso
         case figureScale, strokeThicknessMultiplier, skeletonSize, jointShapeSize
         case shoulderWidthMultiplier, waistWidthMultiplier, waistThicknessMultiplier, neckLength
+        case handSize, footSize
         case figureOffsetX, figureOffsetY
     }
     
@@ -325,6 +332,8 @@ struct StickFigure2DPose: Codable {
         try container.encode(round(fusiformUpperTorso), forKey: .fusiformUpperTorso)
         try container.encode(footColor, forKey: .footColor)
         try container.encode(handColor, forKey: .handColor)
+        try container.encode(round(footSize), forKey: .footSize)
+        try container.encode(round(handSize), forKey: .handSize)
         try container.encode(round(headAngle), forKey: .headAngle)
         try container.encode(headColor, forKey: .headColor)
         try container.encode(headRadiusMultiplier, forKey: .headRadiusMultiplier)
@@ -440,6 +449,8 @@ struct StickFigure2DPose: Codable {
         self.waistWidthMultiplier = try container.decodeIfPresent(CGFloat.self, forKey: .waistWidthMultiplier) ?? 1.0
         self.waistThicknessMultiplier = try container.decodeIfPresent(CGFloat.self, forKey: .waistThicknessMultiplier) ?? 1.0
         self.neckLength = try container.decodeIfPresent(CGFloat.self, forKey: .neckLength) ?? 1.0
+        self.handSize = try container.decodeIfPresent(CGFloat.self, forKey: .handSize) ?? 1.0
+        self.footSize = try container.decodeIfPresent(CGFloat.self, forKey: .footSize) ?? 1.0
         self.figureOffsetX = try container.decodeIfPresent(CGFloat.self, forKey: .figureOffsetX) ?? 0.0
         self.figureOffsetY = try container.decodeIfPresent(CGFloat.self, forKey: .figureOffsetY) ?? 0.0
     }
@@ -519,6 +530,8 @@ struct StickFigure2D {
     var waistThicknessMultiplier: CGFloat = 1.0 // Waist connector line thickness (1.0 = normal)
     var skeletonSize: CGFloat = 1.0 // Skeleton connector thickness (1.0 = normal)
     var neckLength: CGFloat = 1.0 // Neck length multiplier (1.0 = normal)
+    var handSize: CGFloat = 1.0 // Hand size multiplier (1.0 = normal)
+    var footSize: CGFloat = 1.0 // Foot size multiplier (1.0 = normal)
     
     // Colors for each body part
     var headColor: Color = .black

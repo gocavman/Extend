@@ -29,6 +29,8 @@ struct SavedEditFrame: Codable, Identifiable {
     let skeletonSize: CGFloat
     let jointShapeSize: CGFloat
     let neckLength: CGFloat
+    let handSize: CGFloat
+    let footSize: CGFloat
     
     // Pose data (angles) - stored as simple properties
     let waistTorsoAngle: CGFloat
@@ -78,6 +80,8 @@ struct SavedEditFrame: Codable, Identifiable {
             self.skeletonSize = pose.skeletonSize
             self.jointShapeSize = 1.0  // Editor-only property, not part of pose
             self.neckLength = pose.neckLength
+            self.handSize = pose.handSize
+            self.footSize = pose.footSize
             // Set peak positions from pose
             self.fusiformShoulders = pose.fusiformShoulders
             self.peakPositionUpperArms = pose.peakPositionUpperArms
@@ -93,6 +97,8 @@ struct SavedEditFrame: Codable, Identifiable {
             self.skeletonSize = 1.0
             self.jointShapeSize = 1.0
             self.neckLength = 1.0
+            self.handSize = 1.0
+            self.footSize = 1.0
             // Default peak positions
             self.fusiformShoulders = 0.0
             self.peakPositionUpperArms = 0.5

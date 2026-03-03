@@ -65,7 +65,7 @@ struct GameplayEditModeView: View {
                         
                         // Fusiform section
                         VStack(alignment: .leading, spacing: 8) {
-                            Text("FUSIFORM TAPERING")
+                            Text("FUSIFORM")
                                 .font(.subheadline)
                                 .fontWeight(.semibold)
                             
