@@ -78,7 +78,7 @@ class GameScene: SKScene {
     // MARK: - Helper Methods
     
     /// Render a stick figure using the exact same logic as StickFigure2DView
-    func renderStickFigure(_ figure: StickFigure2D, at position: CGPoint, scale: CGFloat = 1.0, flipped: Bool = false) -> SKNode {
+    func renderStickFigure(_ figure: StickFigure2D, at position: CGPoint, scale: CGFloat = 1.0, flipped: Bool = false, jointShapeSize: CGFloat = 1.0) -> SKNode {
         var mutableFigure = figure
         
         let container = SKNode()
@@ -201,9 +201,11 @@ class GameScene: SKScene {
                     let easeT = max(0, 1.0 - (distFromPeak * distFromPeak))
                     widthFactor = fusiform * easeT
                 } else {
-                    // NORMAL: Middle BULGE profile, small at both ends
-                    let distFromCenter = abs(t - 0.5) * 2.0  // 0 at middle, 1 at ends
-                    widthFactor = 1.0 + (fusiform * (1.0 - distFromCenter))
+                    // NORMAL: Middle BULGE profile with smooth curve (not sharp)
+                    // Use sine wave for smooth curved peaks instead of quadratic
+                    let angle = (t - 0.5) * CGFloat.pi  // Range from -pi/2 to pi/2
+                    let curveShape = cos(angle)  // Creates smooth bulge from -1 to -1 through 1 at center
+                    widthFactor = 1.0 + (fusiform * max(0, curveShape))  // Only add positive bulge
                 }
                 
                 let width = (strokeThickness / 2) * widthFactor
@@ -342,6 +344,10 @@ class GameScene: SKScene {
         drawTaperedSegment(from: neckPos, to: waistPos, color: toSKColor(mutableFigure.torsoColor), strokeThickness: mutableFigure.strokeThicknessUpperTorso, fusiform: mutableFigure.fusiformUpperTorso, inverted: true, peakPosition: 0.2)
         drawLine(from: neckPos, to: headPos, color: toSKColor(mutableFigure.torsoColor), width: mutableFigure.strokeThickness)
         
+        // Draw shoulder joints with fusiformShoulders tapering
+        drawTaperedSegment(from: neckPos, to: leftShoulderPos, color: toSKColor(mutableFigure.torsoColor), strokeThickness: mutableFigure.strokeThicknessUpperTorso, fusiform: mutableFigure.fusiformShoulders, inverted: false, peakPosition: 0.5)
+        drawTaperedSegment(from: neckPos, to: rightShoulderPos, color: toSKColor(mutableFigure.torsoColor), strokeThickness: mutableFigure.strokeThicknessUpperTorso, fusiform: mutableFigure.fusiformShoulders, inverted: false, peakPosition: 0.5)
+        
         // Draw arms - with correct peak positions matching the editor
         // Upper arms: peak at 50% (middle of bicep)
         drawTaperedSegment(from: leftShoulderPos, to: leftUpperArmEnd, color: toSKColor(mutableFigure.leftUpperArmColor), strokeThickness: mutableFigure.strokeThicknessUpperArms, fusiform: mutableFigure.fusiformUpperArms, inverted: true, peakPosition: 0.5)
@@ -426,7 +432,7 @@ class GameScene: SKScene {
             drawSkeletonConnector(from: rightUpperArmEnd, to: rightLowerArmMid, color: toSKColor(mutableFigure.rightLowerArmColor))
             
             // Add joint caps at connection points to fill gaps (elbows, knees, waist, shoulders)
-            let jointCapRadius = max(jointThickness * 0.3 * scale, 1.5)
+            let jointCapRadius = max(jointThickness * 0.3 * scale * jointShapeSize, 1.5)
             
             // LEFT ARM ELBOW - blend upper and lower arm colors by using upper arm color
             drawCircle(at: leftUpperArmEnd, radius: jointCapRadius, color: toSKColor(mutableFigure.leftUpperArmColor))
@@ -439,6 +445,12 @@ class GameScene: SKScene {
             
             // RIGHT LEG KNEE
             drawCircle(at: rightUpperLegEnd, radius: jointCapRadius, color: toSKColor(mutableFigure.rightUpperLegColor))
+            
+            // LEFT SHOULDER - connect shoulders to upper arms
+            drawCircle(at: leftShoulderPos, radius: jointCapRadius, color: toSKColor(mutableFigure.torsoColor))
+            
+            // RIGHT SHOULDER
+            drawCircle(at: rightShoulderPos, radius: jointCapRadius, color: toSKColor(mutableFigure.torsoColor))
         }
         
         

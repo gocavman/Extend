@@ -1,4 +1,5 @@
 import UIKit
+import SwiftUI
 import SpriteKit
 
 // MARK: - StickFigureGameplayEditorViewController
@@ -18,6 +19,7 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
     private var skeletonSize: CGFloat = 1.0  // Skeleton line thickness multiplier
     private var jointShapeSize: CGFloat = 1.0  // Joint circle size multiplier
     private var shoulderWidthMultiplier: CGFloat = 1.0  // Controls distance between shoulders (1.0 = normal)
+    private var neckLength: CGFloat = 1.0  // Neck length multiplier
     private var fusiformUpperTorso: CGFloat = 4.0
     private var fusiformLowerTorso: CGFloat = 4.0
     private var fusiformUpperArms: CGFloat = 2.0
@@ -238,7 +240,7 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
         
         switch section {
         case 0: return 2  // Zoom, Position buttons (Show Joints moved to header)
-        case 1: return isExpanded ? 5 : 0  // Figure Scale, Stroke, Skeleton Size, Joint Shape Size, Shoulder Width
+        case 1: return isExpanded ? 6 : 0  // Figure Scale, Stroke, Skeleton Size, Joint Shape Size, Shoulder Width, Neck Length
         case 2: return isExpanded ? 7 : 0  // Upper Torso, Lower Torso, Upper Arms, Lower Arms, Upper Legs, Lower Legs, Shoulders
         case 3: return isExpanded ? 10 : 0  // 10 Joint sliders: head, leftShoulder, rightShoulder, leftElbow, rightElbow, leftKnee, rightKnee, leftCalf, rightCalf, midTorso
         case 4: return isExpanded ? 12 : 0  // Color pickers for each body part (added shoulders)
@@ -455,13 +457,20 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
                 self?.updateFigure()
             })
             
+        case (1, 5):
+            // Neck Length slider
+            addSliderCell(cell, label: "Neck Length", value: neckLength, min: 0.5, max: 2.0, increment: 0.1, onChange: { [weak self] val in
+                self?.neckLength = val
+                self?.updateFigure()
+            })
+            
         case (2, 0): addSliderCell(cell, label: "Upper Torso", value: fusiformUpperTorso, min: 0, max: 10, onChange: { [weak self] val in self?.fusiformUpperTorso = val; self?.updateFigure() })
         case (2, 1): addSliderCell(cell, label: "Lower Torso", value: fusiformLowerTorso, min: 0, max: 10, onChange: { [weak self] val in self?.fusiformLowerTorso = val; self?.updateFigure() })
         case (2, 2): addSliderCell(cell, label: "Upper Arms", value: fusiformUpperArms, min: 0, max: 10, onChange: { [weak self] val in self?.fusiformUpperArms = val; self?.updateFigure() })
         case (2, 3): addSliderCell(cell, label: "Lower Arms", value: fusiformLowerArms, min: 0, max: 10, onChange: { [weak self] val in self?.fusiformLowerArms = val; self?.updateFigure() })
         case (2, 4): addSliderCell(cell, label: "Upper Legs", value: fusiformUpperLegs, min: 0, max: 10, onChange: { [weak self] val in self?.fusiformUpperLegs = val; self?.updateFigure() })
         case (2, 5): addSliderCell(cell, label: "Lower Legs", value: fusiformLowerLegs, min: 0, max: 10, onChange: { [weak self] val in self?.fusiformLowerLegs = val; self?.updateFigure() })
-        case (2, 6): addSliderCell(cell, label: "Shoulders", value: fusiformShoulders, min: 0, max: 10, onChange: { [weak self] val in self?.fusiformShoulders = val; self?.updateFigure() })
+        case (2, 6): addSliderCell(cell, label: "Shoulders", value: fusiformShoulders, min: 0, max: 10, increment: 0.25, onChange: { [weak self] val in self?.fusiformShoulders = val; self?.updateFigure() })
         
         // Joint sliders - section 3
         case (3, 0): addSliderCell(cell, label: "Head", value: neckRotation, min: -180, max: 180, onChange: { [weak self] val in self?.neckRotation = val; self?.updateFigure() })
@@ -814,6 +823,7 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
             skeletonSize: skeletonSize,
             jointShapeSize: jointShapeSize,
             shoulderWidthMultiplier: shoulderWidthMultiplier,
+            neckLength: neckLength,
             fusiformUpperTorso: fusiformUpperTorso,
             fusiformLowerTorso: fusiformLowerTorso,
             fusiformUpperArms: fusiformUpperArms,
@@ -988,6 +998,16 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
         resizeDot.zPosition = 12
         sprite.addChild(resizeDot)
         
+        // Add delete dot (top-left corner of object) - red for delete
+        let deleteDot = SKShapeNode(circleOfRadius: 4)
+        deleteDot.fillColor = .red
+        deleteDot.strokeColor = .red
+        deleteDot.lineWidth = 1
+        deleteDot.position = CGPoint(x: -20, y: 20)  // Top-left relative to object
+        deleteDot.name = "object_delete_\(asset)"
+        deleteDot.zPosition = 12
+        sprite.addChild(deleteDot)
+        
         editorScene.addChild(sprite)
         print("🎮 Added \(asset) object to scene at position \(sprite.position)")
     }
@@ -1100,10 +1120,40 @@ class StickFigureEditorScene: SKScene {
         guard let touch = touches.first else { return }
         let location = touch.location(in: self)
         
-        // First check if tapping on an object
+        // Check for object manipulation dots first (rotate/resize/delete)
+        let nodes = self.nodes(at: location)
+        for node in nodes {
+            if let shapeNode = node as? SKShapeNode {
+                if let nodeName = shapeNode.name {
+                    if nodeName.hasPrefix("object_rotate_") {
+                        draggedObject = shapeNode.parent as? SKSpriteNode
+                        draggedJointName = nodeName  // Reuse this to track operation type
+                        lastDragPosition = location
+                        print("🎮 Started rotating object")
+                        return
+                    } else if nodeName.hasPrefix("object_resize_") {
+                        draggedObject = shapeNode.parent as? SKSpriteNode
+                        draggedJointName = nodeName  // Reuse this to track operation type
+                        lastDragPosition = location
+                        print("🎮 Started resizing object")
+                        return
+                    } else if nodeName.hasPrefix("object_delete_") {
+                        // Delete the object
+                        if let objectToDelete = shapeNode.parent {
+                            objectToDelete.removeFromParent()
+                            print("🎮 Deleted object")
+                            return
+                        }
+                    }
+                }
+            }
+        }
+        
+        // Then check if tapping on an object sprite itself
         if let tappedObject = atPoint(location) as? SKSpriteNode,
            tappedObject.name?.hasPrefix("object_") == true {
             draggedObject = tappedObject
+            draggedJointName = nil  // Not a special dot
             dragOffset = CGPoint(x: location.x - tappedObject.position.x,
                                 y: location.y - tappedObject.position.y)
             lastDragPosition = location
@@ -1112,7 +1162,6 @@ class StickFigureEditorScene: SKScene {
         }
         
         // Check if a joint was tapped - get all nodes at location
-        let nodes = self.nodes(at: location)
         for node in nodes {
             if let shapeNode = node as? SKShapeNode, let nodeName = shapeNode.name, nodeName.hasPrefix("joint_") {
                 draggedJoint = shapeNode
@@ -1130,11 +1179,30 @@ class StickFigureEditorScene: SKScene {
         guard let touch = touches.first else { return }
         let location = touch.location(in: self)
         
-        // Handle object dragging
-        if let draggedObject = draggedObject {
-            let newPos = CGPoint(x: location.x - dragOffset.x,
-                                y: location.y - dragOffset.y)
-            draggedObject.position = newPos
+        // Handle object manipulation (rotation/resizing)
+        if let draggedObject = draggedObject, let operation = draggedJointName {
+            if operation.hasPrefix("object_rotate_") {
+                // Calculate rotation based on drag
+                let dx = location.x - lastDragPosition.x
+                let rotation = CGFloat(dx) * 0.01  // Sensitivity
+                draggedObject.zRotation += rotation
+                print("🎮 Object rotated")
+            } else if operation.hasPrefix("object_resize_") {
+                // Calculate resize based on drag distance
+                let dx = location.x - lastDragPosition.x
+                let dy = location.y - lastDragPosition.y
+                let dragDistance = sqrt(dx * dx + dy * dy)
+                let scaleFactor = 1.0 + (dragDistance * 0.01)
+                draggedObject.xScale *= scaleFactor
+                draggedObject.yScale *= scaleFactor
+                print("🎮 Object resized")
+            } else {
+                // Normal object dragging
+                let newPos = CGPoint(x: location.x - dragOffset.x,
+                                    y: location.y - dragOffset.y)
+                draggedObject.position = newPos
+            }
+            lastDragPosition = location
             return
         }
         
@@ -1331,7 +1399,7 @@ class StickFigureEditorScene: SKScene {
         // We need to create a temporary GameScene with gameState to access the rendering method
         let tempScene = GameScene(size: size)
         tempScene.gameState = gameState  // PASS the gameState so rendering works correctly
-        let stickFigureNode = tempScene.renderStickFigure(standFrame, at: CGPoint.zero, scale: 1.2)
+        let stickFigureNode = tempScene.renderStickFigure(standFrame, at: CGPoint.zero, scale: 1.2, jointShapeSize: 1.0)
         container.addChild(stickFigureNode)
         
         addChild(container)
@@ -1344,6 +1412,7 @@ class StickFigureEditorScene: SKScene {
         skeletonSize: CGFloat = 1.0,
         jointShapeSize: CGFloat = 1.0,
         shoulderWidthMultiplier: CGFloat = 1.0,
+        neckLength: CGFloat = 1.0,
         fusiformUpperTorso: CGFloat,
         fusiformLowerTorso: CGFloat,
         fusiformUpperArms: CGFloat,
@@ -1387,9 +1456,11 @@ class StickFigureEditorScene: SKScene {
         updatedFrame.fusiformLowerTorso = fusiformLowerTorso
         updatedFrame.fusiformUpperArms = fusiformUpperArms
         updatedFrame.fusiformLowerArms = fusiformLowerArms
+        updatedFrame.fusiformShoulders = fusiformShoulders
         updatedFrame.fusiformUpperLegs = fusiformUpperLegs
         updatedFrame.fusiformLowerLegs = fusiformLowerLegs
         updatedFrame.shoulderWidthMultiplier = shoulderWidthMultiplier
+        updatedFrame.neckLength = neckLength
         print("🎮 Shoulder width multiplier set to: \(shoulderWidthMultiplier), leftShoulder: \(updatedFrame.leftShoulderPosition), rightShoulder: \(updatedFrame.rightShoulderPosition)")
         
         // Apply angles to the frame - map to existing properties
@@ -1425,15 +1496,29 @@ class StickFigureEditorScene: SKScene {
         container.position = CGPoint(x: size.width / 2 + figureOffsetX, y: size.height / 2 + figureOffsetY)
         container.zPosition = 10
         
+        // Apply colors from bodyPartColors to the frame before rendering
+        // Convert UIColor to SwiftUI Color by creating temporary appearance
+        let appearance = StickFigureAppearance()
+        appearance.headColor = bodyPartColors["head"].map { Color($0) } ?? .black
+        appearance.torsoColor = bodyPartColors["torso"].map { Color($0) } ?? .black
+        appearance.leftUpperArmColor = bodyPartColors["leftUpperArm"].map { Color($0) } ?? .black
+        appearance.rightUpperArmColor = bodyPartColors["rightUpperArm"].map { Color($0) } ?? .black
+        appearance.leftLowerArmColor = bodyPartColors["leftLowerArm"].map { Color($0) } ?? .black
+        appearance.rightLowerArmColor = bodyPartColors["rightLowerArm"].map { Color($0) } ?? .black
+        appearance.leftUpperLegColor = bodyPartColors["leftUpperLeg"].map { Color($0) } ?? .black
+        appearance.rightUpperLegColor = bodyPartColors["rightUpperLeg"].map { Color($0) } ?? .black
+        appearance.leftLowerLegColor = bodyPartColors["leftLowerLeg"].map { Color($0) } ?? .black
+        appearance.rightLowerLegColor = bodyPartColors["rightLowerLeg"].map { Color($0) } ?? .black
+        
+        // Apply appearance to the frame
+        appearance.applyToStickFigure(&updatedFrame)
+        
         // Render the actual stick figure with consistent scale
         let tempScene = GameScene(size: size)
         tempScene.gameState = gameState  // PASS the gameState so rendering works correctly
         // Base scale 1.2 provides good visibility, multiplied by figureScale slider for adjustment
         let renderScale = 1.2 * figureScale
-        let stickFigureNode = tempScene.renderStickFigure(updatedFrame, at: CGPoint.zero, scale: renderScale)
-        
-        // Apply colors to the rendered nodes
-        applyColorsToNode(stickFigureNode, colors: viewController?.bodyPartColors ?? [:])
+        let stickFigureNode = tempScene.renderStickFigure(updatedFrame, at: CGPoint.zero, scale: renderScale, jointShapeSize: jointShapeSize)
         
         container.addChild(stickFigureNode)
         
@@ -1446,6 +1531,10 @@ class StickFigureEditorScene: SKScene {
         }
         
         addChild(container)
+        
+        // Preserve the current zoom level when updating the figure
+        container.setScale(currentZoom)
+        
         characterNode = container
     }
     

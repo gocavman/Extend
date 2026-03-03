@@ -440,6 +440,7 @@ struct StickFigure2D {
     var scale: Double = 2.4 // Size multiplier (2.4 = 200% - default size for editing)
     var headRadiusMultiplier: Double = 1.0 // Head size multiplier (1.0 = normal size)
     var shoulderWidthMultiplier: CGFloat = 1.0 // Shoulder separation multiplier (1.0 = normal, >1.0 = wider)
+    var neckLength: CGFloat = 1.0 // Neck length multiplier (1.0 = normal)
     
     // Colors for each body part
     var headColor: Color = .black
@@ -475,6 +476,7 @@ struct StickFigure2D {
     // Fusiform (tapered) controls for each body part (0.0 = no taper, 1.0 = full taper)
     var fusiformUpperArms: CGFloat = 0.0  // Taper from shoulder to elbow
     var fusiformLowerArms: CGFloat = 0.0  // Taper from elbow to wrist
+    var fusiformShoulders: CGFloat = 0.0  // Shoulder joint taper (width variation at shoulders)
     var fusiformUpperLegs: CGFloat = 0.0  // Taper from hip to knee
     var fusiformLowerLegs: CGFloat = 0.0  // Taper from knee to ankle (inverted - larger at top)
     var fusiformUpperTorso: CGFloat = 0.0 // Taper from shoulders to mid-torso (inverted - larger at top)
@@ -513,7 +515,7 @@ struct StickFigure2D {
     
     // Segment lengths (these stay constant)
     let torsoLength: CGFloat = 46
-    let neckLength: CGFloat = 15
+    let neckBaseLength: CGFloat = 15  // Base neck length (actual length is neckLength property * this value)
     let headRadius: CGFloat = 12
     let upperArmLength: CGFloat = 25
     let forearmLength: CGFloat = 26
