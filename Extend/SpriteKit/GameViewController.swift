@@ -131,21 +131,7 @@ class GameViewController: UIViewController {
         present(editor, animated: true)
     }
     
-    /// Show the old 2D stick figure editor (SwiftUI version)
-    func openOldStickFigureEditor() {
-        print("🎮 Opening Old 2D Stick Figure Editor (SwiftUI)")
-        
-        // Present the old SwiftUI editor view controller with a dismiss callback
-        let editor = UIHostingController(rootView: StickFigure2DEditorView(onDismiss: { [weak self] in
-            print("🎮 Old editor closed - dismissing modal")
-            self?.dismiss(animated: true)
-        }))
-        editor.modalPresentationStyle = UIModalPresentationStyle.fullScreen
-        
-        present(editor, animated: true)
-    }
-    
-    /// Show the stats overlay
+    // ...existing code...
     func showStats() {
         print("🎮 Opening Stats Window")
         

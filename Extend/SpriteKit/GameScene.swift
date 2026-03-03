@@ -89,24 +89,13 @@ class GameScene: SKScene {
         StickFigureAppearance.shared.applyToStickFigure(&mutableFigure)
         print("🎨 Applied appearance colors - torso: \(mutableFigure.torsoColor), leftUpperArm: \(mutableFigure.leftUpperArmColor), leftLowerArm: \(mutableFigure.leftLowerArmColor)")
         
-        // Apply muscle development points to fusiforms
+        // Calculate average muscle development for skeleton display purposes only
+        // (Disconnected from fusiform values - those are now controlled by sliders independently)
         let musclePoints = MusclePointsManager.shared
-        
-        // Calculate average muscle development for all muscle groups
         let avgMusclePoints = musclePoints.musclePoints.values.isEmpty ? 0 :
             musclePoints.musclePoints.values.reduce(0, +) / CGFloat(musclePoints.musclePoints.count)
         
-        // Apply muscle development to fusiforms (0.0 at 0% development, current values at 100%)
-        let developmentFactor = avgMusclePoints / 100.0  // Normalize to 0.0-1.0
-        
-        mutableFigure.fusiformUpperArms *= developmentFactor
-        mutableFigure.fusiformLowerArms *= developmentFactor
-        mutableFigure.fusiformUpperLegs *= developmentFactor
-        mutableFigure.fusiformLowerLegs *= developmentFactor
-        mutableFigure.fusiformUpperTorso *= developmentFactor
-        mutableFigure.fusiformLowerTorso *= developmentFactor
-        
-        print("🎮 renderStickFigure: Drawing using StickFigure2D computed properties, scale: \(scale), developmentFactor: \(developmentFactor)")
+        print("🎮 renderStickFigure: Drawing using StickFigure2D computed properties, scale: \(scale), avgMusclePoints: \(avgMusclePoints)")
         
         // Base canvas dimensions (matching StickFigure2D)
         let baseCanvasSize = CGSize(width: 600, height: 720)
@@ -115,6 +104,7 @@ class GameScene: SKScene {
         // Get all joint positions from the figure's computed properties
         let waistPos = mutableFigure.waistPosition
         let neckPos = mutableFigure.neckPosition
+        let midTorsoPos = mutableFigure.midTorsoPosition
         let headPos = mutableFigure.headPosition
         let leftShoulderPos = mutableFigure.leftShoulderPosition
         let rightShoulderPos = mutableFigure.rightShoulderPosition
@@ -257,6 +247,25 @@ class GameScene: SKScene {
             let line = SKShapeNode(path: path.cgPath)
             line.strokeColor = color
             line.lineWidth = max(width * scale, 1.0)
+            line.lineCap = .round  // Add rounded line caps
+            line.zPosition = 1
+            container.addChild(line)
+        }
+        
+        // Helper to draw a rounded corner line (for waist connectors)
+        func drawRoundedLine(from: CGPoint, to: CGPoint, color: SKColor, width: CGFloat = 2) {
+            // Convert from base canvas coordinates to relative coordinates and apply scale
+            let fromRelative = CGPoint(x: (from.x - baseCenter.x) * scale, y: (baseCenter.y - from.y) * scale)
+            let toRelative = CGPoint(x: (to.x - baseCenter.x) * scale, y: (baseCenter.y - to.y) * scale)
+            
+            let path = UIBezierPath()
+            path.move(to: fromRelative)
+            path.addLine(to: toRelative)
+            let line = SKShapeNode(path: path.cgPath)
+            line.strokeColor = color
+            line.lineWidth = max(width * scale, 1.0)
+            line.lineCap = .round  // Rounded caps
+            line.lineJoin = .round  // Rounded joins
             line.zPosition = 1
             container.addChild(line)
         }
@@ -334,14 +343,23 @@ class GameScene: SKScene {
         }
         
         // Draw lower body first (back) - with fusiform
-        drawTaperedSegment(from: waistPos, to: leftUpperLegEnd, color: toSKColor(mutableFigure.leftUpperLegColor), strokeThickness: mutableFigure.strokeThicknessUpperLegs, fusiform: mutableFigure.fusiformUpperLegs, inverted: true, peakPosition: 0.2)
-        drawTaperedSegment(from: leftUpperLegEnd, to: leftFootEnd, color: toSKColor(mutableFigure.leftLowerLegColor), strokeThickness: mutableFigure.strokeThicknessLowerLegs, fusiform: mutableFigure.fusiformLowerLegs, inverted: true, peakPosition: 0.2)
-        drawTaperedSegment(from: waistPos, to: rightUpperLegEnd, color: toSKColor(mutableFigure.rightUpperLegColor), strokeThickness: mutableFigure.strokeThicknessUpperLegs, fusiform: mutableFigure.fusiformUpperLegs, inverted: true, peakPosition: 0.2)
-        drawTaperedSegment(from: rightUpperLegEnd, to: rightFootEnd, color: toSKColor(mutableFigure.rightLowerLegColor), strokeThickness: mutableFigure.strokeThicknessLowerLegs, fusiform: mutableFigure.fusiformLowerLegs, inverted: true, peakPosition: 0.2)
+        let leftHipPos = mutableFigure.leftHipPosition
+        let rightHipPos = mutableFigure.rightHipPosition
         
-        // Draw torso - ONE SEGMENT from neck to waist, NOT split into upper/lower
-        // This is the critical fix - the editor draws it as one continuous piece
-        drawTaperedSegment(from: neckPos, to: waistPos, color: toSKColor(mutableFigure.torsoColor), strokeThickness: mutableFigure.strokeThicknessUpperTorso, fusiform: mutableFigure.fusiformUpperTorso, inverted: true, peakPosition: 0.2)
+        // Draw connectors from waist to hips (with rounded corners)
+        drawRoundedLine(from: waistPos, to: leftHipPos, color: toSKColor(mutableFigure.torsoColor), width: mutableFigure.strokeThicknessLowerLegs * mutableFigure.waistThicknessMultiplier)
+        drawRoundedLine(from: waistPos, to: rightHipPos, color: toSKColor(mutableFigure.torsoColor), width: mutableFigure.strokeThicknessLowerLegs * mutableFigure.waistThicknessMultiplier)
+        
+        drawTaperedSegment(from: leftHipPos, to: leftUpperLegEnd, color: toSKColor(mutableFigure.leftUpperLegColor), strokeThickness: mutableFigure.strokeThicknessUpperLegs, fusiform: mutableFigure.fusiformUpperLegs, inverted: true, peakPosition: mutableFigure.peakPositionUpperLegs)
+        drawTaperedSegment(from: leftUpperLegEnd, to: leftFootEnd, color: toSKColor(mutableFigure.leftLowerLegColor), strokeThickness: mutableFigure.strokeThicknessLowerLegs, fusiform: mutableFigure.fusiformLowerLegs, inverted: true, peakPosition: mutableFigure.peakPositionLowerLegs)
+        drawTaperedSegment(from: rightHipPos, to: rightUpperLegEnd, color: toSKColor(mutableFigure.rightUpperLegColor), strokeThickness: mutableFigure.strokeThicknessUpperLegs, fusiform: mutableFigure.fusiformUpperLegs, inverted: true, peakPosition: mutableFigure.peakPositionUpperLegs)
+        drawTaperedSegment(from: rightUpperLegEnd, to: rightFootEnd, color: toSKColor(mutableFigure.rightLowerLegColor), strokeThickness: mutableFigure.strokeThicknessLowerLegs, fusiform: mutableFigure.fusiformLowerLegs, inverted: true, peakPosition: mutableFigure.peakPositionLowerLegs)
+        
+        // Draw torso - LAYERED: lower torso behind, upper torso on top spanning full neck-to-waist
+        // Draw lower torso first (behind)
+        drawTaperedSegment(from: midTorsoPos, to: waistPos, color: toSKColor(mutableFigure.torsoColor), strokeThickness: mutableFigure.strokeThicknessLowerTorso, fusiform: mutableFigure.fusiformLowerTorso, inverted: true, peakPosition: mutableFigure.peakPositionLowerTorso)
+        // Draw upper torso on top, spanning full neck-to-waist distance
+        drawTaperedSegment(from: neckPos, to: waistPos, color: toSKColor(mutableFigure.torsoColor), strokeThickness: mutableFigure.strokeThicknessUpperTorso, fusiform: mutableFigure.fusiformUpperTorso, inverted: true, peakPosition: mutableFigure.peakPositionUpperTorso)
         drawLine(from: neckPos, to: headPos, color: toSKColor(mutableFigure.torsoColor), width: mutableFigure.strokeThickness)
         
         // Draw shoulder joints with fusiformShoulders tapering
@@ -349,13 +367,13 @@ class GameScene: SKScene {
         drawTaperedSegment(from: neckPos, to: rightShoulderPos, color: toSKColor(mutableFigure.torsoColor), strokeThickness: mutableFigure.strokeThicknessUpperTorso, fusiform: mutableFigure.fusiformShoulders, inverted: false, peakPosition: 0.5)
         
         // Draw arms - with correct peak positions matching the editor
-        // Upper arms: peak at 50% (middle of bicep)
-        drawTaperedSegment(from: leftShoulderPos, to: leftUpperArmEnd, color: toSKColor(mutableFigure.leftUpperArmColor), strokeThickness: mutableFigure.strokeThicknessUpperArms, fusiform: mutableFigure.fusiformUpperArms, inverted: true, peakPosition: 0.5)
-        // Lower arms: peak at 35% (closer to elbow)
-        drawTaperedSegment(from: leftUpperArmEnd, to: leftForearmEnd, color: toSKColor(mutableFigure.leftLowerArmColor), strokeThickness: mutableFigure.strokeThicknessLowerArms, fusiform: mutableFigure.fusiformLowerArms, inverted: true, peakPosition: 0.35)
+        // Upper arms: peak position controlled by slider
+        drawTaperedSegment(from: leftShoulderPos, to: leftUpperArmEnd, color: toSKColor(mutableFigure.leftUpperArmColor), strokeThickness: mutableFigure.strokeThicknessUpperArms, fusiform: mutableFigure.fusiformUpperArms, inverted: true, peakPosition: mutableFigure.peakPositionUpperArms)
+        // Lower arms: peak position controlled by slider
+        drawTaperedSegment(from: leftUpperArmEnd, to: leftForearmEnd, color: toSKColor(mutableFigure.leftLowerArmColor), strokeThickness: mutableFigure.strokeThicknessLowerArms, fusiform: mutableFigure.fusiformLowerArms, inverted: true, peakPosition: mutableFigure.peakPositionLowerArms)
         
-        drawTaperedSegment(from: rightShoulderPos, to: rightUpperArmEnd, color: toSKColor(mutableFigure.rightUpperArmColor), strokeThickness: mutableFigure.strokeThicknessUpperArms, fusiform: mutableFigure.fusiformUpperArms, inverted: true, peakPosition: 0.5)
-        drawTaperedSegment(from: rightUpperArmEnd, to: rightForearmEnd, color: toSKColor(mutableFigure.rightLowerArmColor), strokeThickness: mutableFigure.strokeThicknessLowerArms, fusiform: mutableFigure.fusiformLowerArms, inverted: true, peakPosition: 0.35)
+        drawTaperedSegment(from: rightShoulderPos, to: rightUpperArmEnd, color: toSKColor(mutableFigure.rightUpperArmColor), strokeThickness: mutableFigure.strokeThicknessUpperArms, fusiform: mutableFigure.fusiformUpperArms, inverted: true, peakPosition: mutableFigure.peakPositionUpperArms)
+        drawTaperedSegment(from: rightUpperArmEnd, to: rightForearmEnd, color: toSKColor(mutableFigure.rightLowerArmColor), strokeThickness: mutableFigure.strokeThicknessLowerArms, fusiform: mutableFigure.fusiformLowerArms, inverted: true, peakPosition: mutableFigure.peakPositionLowerArms)
         
         // Draw hands and feet with overlap
         let handColor = toSKColor(mutableFigure.handColor)
@@ -385,20 +403,22 @@ class GameScene: SKScene {
         
         // Helper to draw a skeleton connector line with the color of its body part
         func drawSkeletonConnector(from: CGPoint, to: CGPoint, color: SKColor) {
+            let lineWidth = max(jointThickness * 0.8 * scale * mutableFigure.skeletonSize, 1.0)
+            print("🦴 Drawing skeleton connector: lineWidth=\(lineWidth), skeletonSize=\(mutableFigure.skeletonSize), jointThickness=\(jointThickness), scale=\(scale)")
             let path = UIBezierPath()
             path.move(to: toRelative(from))
             path.addLine(to: toRelative(to))
             let line = SKShapeNode(path: path.cgPath)
             line.strokeColor = color
-            line.lineWidth = max(jointThickness * 0.8 * scale, 1.0)
+            line.lineWidth = lineWidth
             line.fillColor = .clear
-            line.zPosition = 0.5  // BEHIND the fusiforms (which are at z=1)
+            line.zPosition = 1.5  // IN FRONT of the fusiforms (which are at z=1)
             container.addChild(line)
         }
         
         // Calculate midpoints for connectors
-        let leftUpperLegMid = CGPoint(x: (waistPos.x + leftUpperLegEnd.x) * 0.5, y: (waistPos.y + leftUpperLegEnd.y) * 0.5)
-        let rightUpperLegMid = CGPoint(x: (waistPos.x + rightUpperLegEnd.x) * 0.5, y: (waistPos.y + rightUpperLegEnd.y) * 0.5)
+        let leftUpperLegMid = CGPoint(x: (leftHipPos.x + leftUpperLegEnd.x) * 0.5, y: (leftHipPos.y + leftUpperLegEnd.y) * 0.5)
+        let rightUpperLegMid = CGPoint(x: (rightHipPos.x + rightUpperLegEnd.x) * 0.5, y: (rightHipPos.y + rightUpperLegEnd.y) * 0.5)
         let leftLowerLegMid = CGPoint(x: (leftUpperLegEnd.x + leftFootEnd.x) * 0.5, y: (leftUpperLegEnd.y + leftFootEnd.y) * 0.5)
         let rightLowerLegMid = CGPoint(x: (rightUpperLegEnd.x + rightFootEnd.x) * 0.5, y: (rightUpperLegEnd.y + rightFootEnd.y) * 0.5)
         let leftUpperArmMid = CGPoint(x: (leftShoulderPos.x + leftUpperArmEnd.x) * 0.5, y: (leftShoulderPos.y + leftUpperArmEnd.y) * 0.5)
@@ -406,18 +426,20 @@ class GameScene: SKScene {
         let rightUpperArmMid = CGPoint(x: (rightShoulderPos.x + rightUpperArmEnd.x) * 0.5, y: (rightShoulderPos.y + rightUpperArmEnd.y) * 0.5)
         let rightLowerArmMid = CGPoint(x: (rightUpperArmEnd.x + rightForearmEnd.x) * 0.5, y: (rightUpperArmEnd.y + rightForearmEnd.y) * 0.5)
         
-        // Only show skeleton if muscles are developed (avgMusclePoints > 0)
-        if avgMusclePoints > 0 {
+        // Only show skeleton if muscles are developed (avgMusclePoints > 0) OR in editor mode
+        // Check if this is being called from the editor by looking at the context
+        let isEditorScene = self.gameState == nil || (self.gameState?.currentLevel == nil)
+        if avgMusclePoints > 0 || isEditorScene {
             // SPINE/TORSO: Uses torso color
             drawSkeletonConnector(from: neckPos, to: waistPos, color: toSKColor(mutableFigure.torsoColor))
             
             // LEFT LEG connectors: Use their respective leg colors
-            drawSkeletonConnector(from: waistPos, to: leftUpperLegMid, color: toSKColor(mutableFigure.leftUpperLegColor))
+            drawSkeletonConnector(from: leftHipPos, to: leftUpperLegMid, color: toSKColor(mutableFigure.leftUpperLegColor))
             drawSkeletonConnector(from: leftUpperLegMid, to: leftUpperLegEnd, color: toSKColor(mutableFigure.leftUpperLegColor))
             drawSkeletonConnector(from: leftUpperLegEnd, to: leftLowerLegMid, color: toSKColor(mutableFigure.leftLowerLegColor))
             
             // RIGHT LEG connectors: Use their respective leg colors
-            drawSkeletonConnector(from: waistPos, to: rightUpperLegMid, color: toSKColor(mutableFigure.rightUpperLegColor))
+            drawSkeletonConnector(from: rightHipPos, to: rightUpperLegMid, color: toSKColor(mutableFigure.rightUpperLegColor))
             drawSkeletonConnector(from: rightUpperLegMid, to: rightUpperLegEnd, color: toSKColor(mutableFigure.rightUpperLegColor))
             drawSkeletonConnector(from: rightUpperLegEnd, to: rightLowerLegMid, color: toSKColor(mutableFigure.rightLowerLegColor))
             
@@ -472,4 +494,3 @@ class GameScene: SKScene {
         return image
     }
 }
-

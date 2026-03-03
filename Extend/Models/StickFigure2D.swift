@@ -124,6 +124,29 @@ struct StickFigure2DPose: Codable {
     let fusiformLowerLegs: CGFloat
     let fusiformUpperTorso: CGFloat
     let fusiformLowerTorso: CGFloat
+    let fusiformShoulders: CGFloat
+    
+    // Peak position controls
+    let peakPositionUpperArms: CGFloat
+    let peakPositionLowerArms: CGFloat
+    let peakPositionUpperLegs: CGFloat
+    let peakPositionLowerLegs: CGFloat
+    let peakPositionUpperTorso: CGFloat
+    let peakPositionLowerTorso: CGFloat
+    
+    // Figure scale and thickness multipliers
+    let figureScale: CGFloat
+    let strokeThicknessMultiplier: CGFloat
+    let skeletonSize: CGFloat
+    let jointShapeSize: CGFloat
+    let shoulderWidthMultiplier: CGFloat
+    let waistWidthMultiplier: CGFloat
+    let waistThicknessMultiplier: CGFloat
+    let neckLength: CGFloat
+    
+    // Position offsets
+    let figureOffsetX: CGFloat
+    let figureOffsetY: CGFloat
     
     init(from figure: StickFigure2D) {
         self.waistPosition = figure.waistPosition  // Save waist position
@@ -175,6 +198,23 @@ struct StickFigure2DPose: Codable {
         self.fusiformLowerLegs = figure.fusiformLowerLegs
         self.fusiformUpperTorso = figure.fusiformUpperTorso
         self.fusiformLowerTorso = figure.fusiformLowerTorso
+        self.fusiformShoulders = figure.fusiformShoulders
+        self.peakPositionUpperArms = figure.peakPositionUpperArms
+        self.peakPositionLowerArms = figure.peakPositionLowerArms
+        self.peakPositionUpperLegs = figure.peakPositionUpperLegs
+        self.peakPositionLowerLegs = figure.peakPositionLowerLegs
+        self.peakPositionUpperTorso = figure.peakPositionUpperTorso
+        self.peakPositionLowerTorso = figure.peakPositionLowerTorso
+        self.figureScale = figure.scale
+        self.strokeThicknessMultiplier = 1.0  // This would need to be tracked separately
+        self.skeletonSize = figure.skeletonSize
+        self.jointShapeSize = 1.0  // This would need to be tracked separately
+        self.shoulderWidthMultiplier = figure.shoulderWidthMultiplier
+        self.waistWidthMultiplier = figure.waistWidthMultiplier
+        self.waistThicknessMultiplier = figure.waistThicknessMultiplier
+        self.neckLength = figure.neckLength
+        self.figureOffsetX = 0  // This would need to be tracked separately
+        self.figureOffsetY = 0  // This would need to be tracked separately
     }
     
     func toStickFigure2D() -> StickFigure2D {
@@ -228,6 +268,18 @@ struct StickFigure2DPose: Codable {
         figure.fusiformLowerLegs = fusiformLowerLegs
         figure.fusiformUpperTorso = fusiformUpperTorso
         figure.fusiformLowerTorso = fusiformLowerTorso
+        figure.fusiformShoulders = fusiformShoulders
+        figure.peakPositionUpperArms = peakPositionUpperArms
+        figure.peakPositionLowerArms = peakPositionLowerArms
+        figure.peakPositionUpperLegs = peakPositionUpperLegs
+        figure.peakPositionLowerLegs = peakPositionLowerLegs
+        figure.peakPositionUpperTorso = peakPositionUpperTorso
+        figure.peakPositionLowerTorso = peakPositionLowerTorso
+        figure.shoulderWidthMultiplier = shoulderWidthMultiplier
+        figure.waistWidthMultiplier = waistWidthMultiplier
+        figure.waistThicknessMultiplier = waistThicknessMultiplier
+        figure.skeletonSize = skeletonSize
+        figure.neckLength = neckLength
         return figure
     }
     
@@ -252,64 +304,70 @@ struct StickFigure2DPose: Codable {
         case strokeThicknessJoints, strokeThicknessUpperTorso, strokeThicknessLowerTorso
         case fusiformUpperArms, fusiformLowerArms
         case fusiformUpperLegs, fusiformLowerLegs
-        case fusiformUpperTorso, fusiformLowerTorso
+        case fusiformUpperTorso, fusiformLowerTorso, fusiformShoulders
+        case peakPositionUpperArms, peakPositionLowerArms, peakPositionUpperLegs, peakPositionLowerLegs, peakPositionUpperTorso, peakPositionLowerTorso
+        case figureScale, strokeThicknessMultiplier, skeletonSize, jointShapeSize
+        case shoulderWidthMultiplier, waistWidthMultiplier, waistThicknessMultiplier, neckLength
+        case figureOffsetX, figureOffsetY
     }
     
     func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
-        // Round positions and angles to whole numbers for cleaner JSON
+        // Alphabetically sorted encoding of all properties
+        try container.encode(round(figureOffsetX), forKey: .figureOffsetX)
+        try container.encode(round(figureOffsetY), forKey: .figureOffsetY)
+        try container.encode(round(figureScale), forKey: .figureScale)
+        try container.encode(round(fusiformLowerArms), forKey: .fusiformLowerArms)
+        try container.encode(round(fusiformLowerLegs), forKey: .fusiformLowerLegs)
+        try container.encode(round(fusiformShoulders), forKey: .fusiformShoulders)
+        try container.encode(round(fusiformUpperArms), forKey: .fusiformUpperArms)
+        try container.encode(round(fusiformUpperLegs), forKey: .fusiformUpperLegs)
+        try container.encode(round(fusiformUpperTorso), forKey: .fusiformUpperTorso)
+        try container.encode(footColor, forKey: .footColor)
+        try container.encode(handColor, forKey: .handColor)
+        try container.encode(round(headAngle), forKey: .headAngle)
+        try container.encode(headColor, forKey: .headColor)
+        try container.encode(headRadiusMultiplier, forKey: .headRadiusMultiplier)
+        try container.encode(round(jointShapeSize), forKey: .jointShapeSize)
+        try container.encode(jointColor, forKey: .jointColor)
+        try container.encode(round(leftElbowAngle), forKey: .leftElbowAngle)
+        try container.encode(round(leftFootAngle), forKey: .leftFootAngle)
+        try container.encode(round(leftHandAngle), forKey: .leftHandAngle)
+        try container.encode(round(leftHipAngle), forKey: .leftHipAngle)
+        try container.encode(round(leftKneeAngle), forKey: .leftKneeAngle)
+        try container.encode(round(leftShoulderAngle), forKey: .leftShoulderAngle)
+        try container.encode(round(midTorsoAngle), forKey: .midTorsoAngle)
+        try container.encode(round(neckLength), forKey: .neckLength)
+        try container.encode(round(peakPositionLowerArms), forKey: .peakPositionLowerArms)
+        try container.encode(round(peakPositionLowerLegs), forKey: .peakPositionLowerLegs)
+        try container.encode(round(peakPositionLowerTorso), forKey: .peakPositionLowerTorso)
+        try container.encode(round(peakPositionUpperArms), forKey: .peakPositionUpperArms)
+        try container.encode(round(peakPositionUpperLegs), forKey: .peakPositionUpperLegs)
+        try container.encode(round(peakPositionUpperTorso), forKey: .peakPositionUpperTorso)
+        try container.encode(round(rightElbowAngle), forKey: .rightElbowAngle)
+        try container.encode(round(rightFootAngle), forKey: .rightFootAngle)
+        try container.encode(round(rightHandAngle), forKey: .rightHandAngle)
+        try container.encode(round(rightHipAngle), forKey: .rightHipAngle)
+        try container.encode(round(rightKneeAngle), forKey: .rightKneeAngle)
+        try container.encode(round(rightShoulderAngle), forKey: .rightShoulderAngle)
+        try container.encode(round(shoulderWidthMultiplier), forKey: .shoulderWidthMultiplier)
+        try container.encode(round(waistWidthMultiplier), forKey: .waistWidthMultiplier)
+        try container.encode(round(waistThicknessMultiplier), forKey: .waistThicknessMultiplier)
+        try container.encode(scale, forKey: .scale)
+        try container.encode(round(skeletonSize), forKey: .skeletonSize)
+        try container.encode(round(strokeThickness), forKey: .strokeThickness)
+        try container.encode(round(strokeThicknessJoints), forKey: .strokeThicknessJoints)
+        try container.encode(round(strokeThicknessLowerArms), forKey: .strokeThicknessLowerArms)
+        try container.encode(round(strokeThicknessLowerLegs), forKey: .strokeThicknessLowerLegs)
+        try container.encode(round(strokeThicknessLowerTorso), forKey: .strokeThicknessLowerTorso)
+        try container.encode(round(strokeThicknessMultiplier), forKey: .strokeThicknessMultiplier)
+        try container.encode(round(strokeThicknessUpperArms), forKey: .strokeThicknessUpperArms)
+        try container.encode(round(strokeThicknessUpperLegs), forKey: .strokeThicknessUpperLegs)
+        try container.encode(round(strokeThicknessUpperTorso), forKey: .strokeThicknessUpperTorso)
+        try container.encode(torsoColor, forKey: .torsoColor)
         try container.encode(round(waistPosition.x), forKey: .waistPositionX)
         try container.encode(round(waistPosition.y), forKey: .waistPositionY)
         try container.encode(round(waistTorsoAngle), forKey: .waistTorsoAngle)
-        try container.encode(round(midTorsoAngle), forKey: .midTorsoAngle)
-        try container.encode(round(headAngle), forKey: .headAngle)
-        try container.encode(round(leftShoulderAngle), forKey: .leftShoulderAngle)
-        try container.encode(round(rightShoulderAngle), forKey: .rightShoulderAngle)
-        try container.encode(round(leftElbowAngle), forKey: .leftElbowAngle)
-        try container.encode(round(rightElbowAngle), forKey: .rightElbowAngle)
-        try container.encode(round(leftHandAngle), forKey: .leftHandAngle)
-        try container.encode(round(rightHandAngle), forKey: .rightHandAngle)
-        try container.encode(round(leftHipAngle), forKey: .leftHipAngle)
-        try container.encode(round(rightHipAngle), forKey: .rightHipAngle)
-        try container.encode(round(leftKneeAngle), forKey: .leftKneeAngle)
-        try container.encode(round(rightKneeAngle), forKey: .rightKneeAngle)
-        try container.encode(round(leftFootAngle), forKey: .leftFootAngle)
-        try container.encode(round(rightFootAngle), forKey: .rightFootAngle)
-        try container.encode(headColor, forKey: .headColor)
-        try container.encode(torsoColor, forKey: .torsoColor)
-        try container.encode(leftArmColor, forKey: .leftArmColor)
-        try container.encode(rightArmColor, forKey: .rightArmColor)
-        try container.encode(leftUpperArmColor, forKey: .leftUpperArmColor)
-        try container.encode(rightUpperArmColor, forKey: .rightUpperArmColor)
-        try container.encode(leftLowerArmColor, forKey: .leftLowerArmColor)
-        try container.encode(rightLowerArmColor, forKey: .rightLowerArmColor)
-        try container.encode(leftLegColor, forKey: .leftLegColor)
-        try container.encode(rightLegColor, forKey: .rightLegColor)
-        try container.encode(leftUpperLegColor, forKey: .leftUpperLegColor)
-        try container.encode(rightUpperLegColor, forKey: .rightUpperLegColor)
-        try container.encode(leftLowerLegColor, forKey: .leftLowerLegColor)
-        try container.encode(rightLowerLegColor, forKey: .rightLowerLegColor)
-        try container.encode(handColor, forKey: .handColor)
-        try container.encode(footColor, forKey: .footColor)
-        try container.encode(jointColor, forKey: .jointColor)
-        // Round stroke and sizing values to whole numbers
-        try container.encode(round(strokeThickness), forKey: .strokeThickness)
-        try container.encode(scale, forKey: .scale) // Keep scale as is (can be decimal like 2.4)
-        try container.encode(headRadiusMultiplier, forKey: .headRadiusMultiplier)
-        try container.encode(round(strokeThicknessUpperArms), forKey: .strokeThicknessUpperArms)
-        try container.encode(round(strokeThicknessLowerArms), forKey: .strokeThicknessLowerArms)
-        try container.encode(round(strokeThicknessUpperLegs), forKey: .strokeThicknessUpperLegs)
-        try container.encode(round(strokeThicknessLowerLegs), forKey: .strokeThicknessLowerLegs)
-        try container.encode(round(strokeThicknessJoints), forKey: .strokeThicknessJoints)
-        try container.encode(round(strokeThicknessUpperTorso), forKey: .strokeThicknessUpperTorso)
-        try container.encode(round(strokeThicknessLowerTorso), forKey: .strokeThicknessLowerTorso)
-        // Round fusiform values to whole numbers
-        try container.encode(round(fusiformUpperArms), forKey: .fusiformUpperArms)
-        try container.encode(round(fusiformLowerArms), forKey: .fusiformLowerArms)
-        try container.encode(round(fusiformUpperLegs), forKey: .fusiformUpperLegs)
-        try container.encode(round(fusiformLowerLegs), forKey: .fusiformLowerLegs)
-        try container.encode(round(fusiformUpperTorso), forKey: .fusiformUpperTorso)
-        try container.encode(round(fusiformLowerTorso), forKey: .fusiformLowerTorso)
     }
     
     init(from decoder: Decoder) throws {
@@ -367,6 +425,23 @@ struct StickFigure2DPose: Codable {
         self.fusiformLowerLegs = try container.decodeIfPresent(CGFloat.self, forKey: .fusiformLowerLegs) ?? 0.0
         self.fusiformUpperTorso = try container.decodeIfPresent(CGFloat.self, forKey: .fusiformUpperTorso) ?? 0.0
         self.fusiformLowerTorso = try container.decodeIfPresent(CGFloat.self, forKey: .fusiformLowerTorso) ?? 0.0
+        self.fusiformShoulders = try container.decodeIfPresent(CGFloat.self, forKey: .fusiformShoulders) ?? 0.0
+        self.peakPositionUpperArms = try container.decodeIfPresent(CGFloat.self, forKey: .peakPositionUpperArms) ?? 0.5
+        self.peakPositionLowerArms = try container.decodeIfPresent(CGFloat.self, forKey: .peakPositionLowerArms) ?? 0.35
+        self.peakPositionUpperLegs = try container.decodeIfPresent(CGFloat.self, forKey: .peakPositionUpperLegs) ?? 0.2
+        self.peakPositionLowerLegs = try container.decodeIfPresent(CGFloat.self, forKey: .peakPositionLowerLegs) ?? 0.2
+        self.peakPositionUpperTorso = try container.decodeIfPresent(CGFloat.self, forKey: .peakPositionUpperTorso) ?? 0.5
+        self.peakPositionLowerTorso = try container.decodeIfPresent(CGFloat.self, forKey: .peakPositionLowerTorso) ?? 0.5
+        self.figureScale = try container.decodeIfPresent(CGFloat.self, forKey: .figureScale) ?? 1.0
+        self.strokeThicknessMultiplier = try container.decodeIfPresent(CGFloat.self, forKey: .strokeThicknessMultiplier) ?? 1.0
+        self.skeletonSize = try container.decodeIfPresent(CGFloat.self, forKey: .skeletonSize) ?? 1.0
+        self.jointShapeSize = try container.decodeIfPresent(CGFloat.self, forKey: .jointShapeSize) ?? 1.0
+        self.shoulderWidthMultiplier = try container.decodeIfPresent(CGFloat.self, forKey: .shoulderWidthMultiplier) ?? 1.0
+        self.waistWidthMultiplier = try container.decodeIfPresent(CGFloat.self, forKey: .waistWidthMultiplier) ?? 1.0
+        self.waistThicknessMultiplier = try container.decodeIfPresent(CGFloat.self, forKey: .waistThicknessMultiplier) ?? 1.0
+        self.neckLength = try container.decodeIfPresent(CGFloat.self, forKey: .neckLength) ?? 1.0
+        self.figureOffsetX = try container.decodeIfPresent(CGFloat.self, forKey: .figureOffsetX) ?? 0.0
+        self.figureOffsetY = try container.decodeIfPresent(CGFloat.self, forKey: .figureOffsetY) ?? 0.0
     }
 }
 
@@ -440,6 +515,9 @@ struct StickFigure2D {
     var scale: Double = 2.4 // Size multiplier (2.4 = 200% - default size for editing)
     var headRadiusMultiplier: Double = 1.0 // Head size multiplier (1.0 = normal size)
     var shoulderWidthMultiplier: CGFloat = 1.0 // Shoulder separation multiplier (1.0 = normal, >1.0 = wider)
+    var waistWidthMultiplier: CGFloat = 1.0 // Waist width multiplier (1.0 = normal, >1.0 = wider)
+    var waistThicknessMultiplier: CGFloat = 1.0 // Waist connector line thickness (1.0 = normal)
+    var skeletonSize: CGFloat = 1.0 // Skeleton connector thickness (1.0 = normal)
     var neckLength: CGFloat = 1.0 // Neck length multiplier (1.0 = normal)
     
     // Colors for each body part
@@ -481,6 +559,14 @@ struct StickFigure2D {
     var fusiformLowerLegs: CGFloat = 0.0  // Taper from knee to ankle (inverted - larger at top)
     var fusiformUpperTorso: CGFloat = 0.0 // Taper from shoulders to mid-torso (inverted - larger at top)
     var fusiformLowerTorso: CGFloat = 0.0 // Taper from mid-torso to waist
+    
+    // Peak position controls (where the widest part of tapered segments occurs)
+    var peakPositionUpperArms: CGFloat = 0.5  // Default: middle of upper arm
+    var peakPositionLowerArms: CGFloat = 0.35  // Default: closer to elbow
+    var peakPositionUpperLegs: CGFloat = 0.2  // Default: near hip
+    var peakPositionLowerLegs: CGFloat = 0.2  // Default: near knee
+    var peakPositionUpperTorso: CGFloat = 0.5  // Default: middle of upper torso
+    var peakPositionLowerTorso: CGFloat = 0.5  // Default: middle of lower torso
     
     // Static default Stand pose
     static func defaultStand() -> StickFigure2D {
@@ -524,9 +610,22 @@ struct StickFigure2D {
     let lowerLegLength: CGFloat = 30
     let footLength: CGFloat = 10
     let shoulderWidth: CGFloat = 30
+    let waistWidth: CGFloat = 20  // Width of waist/hips (similar to shoulderWidth)
     
     // Calculated positions
     var hipPosition: CGPoint { waistPosition }
+    
+    var leftHipPosition: CGPoint {
+        // Hips are offset from the waist position based on waistWidthMultiplier
+        let offsetAmount = waistWidth * waistWidthMultiplier
+        return CGPoint(x: waistPosition.x - offsetAmount, y: waistPosition.y)
+    }
+    
+    var rightHipPosition: CGPoint {
+        // Hips are offset from the waist position based on waistWidthMultiplier
+        let offsetAmount = waistWidth * waistWidthMultiplier
+        return CGPoint(x: waistPosition.x + offsetAmount, y: waistPosition.y)
+    }
     
     var shoulderMidPosition: CGPoint {
         // The torso extends upward from the waist
@@ -675,21 +774,11 @@ struct StickFigure2D {
     
     // Left leg positions (lower body doesn't rotate with waist)
     // Legs rotate directly from waist center - no fixed X offset
-    var leftHipPosition: CGPoint {
-        // Hip position is where the upper leg attaches to the waist
-        waistPosition
-    }
-    
-    var rightHipPosition: CGPoint {
-        // Hip position is where the upper leg attaches to the waist
-        waistPosition
-    }
-    
     var leftUpperLegEnd: CGPoint {
         let angle = 270.0 + leftHipAngle + leftKneeAngle // Hip rotation + knee rotation
         let radians = angle * .pi / 180
-        let x = waistPosition.x + upperLegLength * cos(radians)
-        let y = waistPosition.y + upperLegLength * sin(radians)
+        let x = leftHipPosition.x + upperLegLength * cos(radians)
+        let y = leftHipPosition.y + upperLegLength * sin(radians)
         return CGPoint(x: x, y: y)
     }
     
@@ -711,8 +800,8 @@ struct StickFigure2D {
     var rightUpperLegEnd: CGPoint {
         let angle = 270.0 + rightHipAngle + rightKneeAngle
         let radians = angle * .pi / 180
-        let x = waistPosition.x + upperLegLength * cos(radians)
-        let y = waistPosition.y + upperLegLength * sin(radians)
+        let x = rightHipPosition.x + upperLegLength * cos(radians)
+        let y = rightHipPosition.y + upperLegLength * sin(radians)
         return CGPoint(x: x, y: y)
     }
     
@@ -1218,16 +1307,6 @@ struct StickFigure2DView: View {
         footPath.addQuadCurve(to: topLeft, control: CGPoint(x: shapeCenter.x - footBottomWidth / 2, y: shapeCenter.y))
         footPath.closeSubpath()
         
-        // Rotate the path/ 2, y: shapeCenter.y + footHeight / 2)
-        
-        // Draw tapered rectangle with rounded corners
-        footPath.move(to: topLeft)
-        footPath.addLine(to: topRight)
-        footPath.addQuadCurve(to: bottomRight, control: CGPoint(x: shapeCenter.x + footBottomWidth / 2, y: shapeCenter.y))
-        footPath.addLine(to: bottomLeft)
-        footPath.addQuadCurve(to: topLeft, control: CGPoint(x: shapeCenter.x - footBottomWidth / 2, y: shapeCenter.y))
-        footPath.closeSubpath()
-        
         // Rotate the path
         let rotatedPath = footPath
             .applying(CGAffineTransform(translationX: -shapeCenter.x, y: -shapeCenter.y))
@@ -1471,7 +1550,7 @@ struct FramesManagerView: View {
                                 .padding(.vertical, 8)
                             } else {
                                 // Normal display mode
-                                HStack(spacing: 12) {
+                                HStack(spacing: 6) {
                                     Button(action: {
                                         onSelectFrame(frame)
                                     }) {
@@ -1513,9 +1592,10 @@ struct FramesManagerView: View {
                                     }) {
                                         Image(systemName: "doc.on.doc")
                                             .foregroundColor(.blue)
-                                            .font(.body)
+                                            .imageScale(.small)
                                     }
                                     .buttonStyle(.plain)
+                                    .scaleEffect(0.7)
                                     
                                     // Only show rename/delete buttons when in Edit mode
                                     if isEditMode {
@@ -1527,9 +1607,10 @@ struct FramesManagerView: View {
                                         }) {
                                             Image(systemName: "pencil.circle")
                                                 .foregroundColor(.blue)
-                                                .font(.title3)
+                                                .imageScale(.small)
                                         }
                                         .buttonStyle(.plain)
+                                        .scaleEffect(0.7)
                                         
                                         // Delete button
                                         Button(action: {
@@ -1538,9 +1619,10 @@ struct FramesManagerView: View {
                                         }) {
                                             Image(systemName: "trash.circle")
                                                 .foregroundColor(.red)
-                                                .font(.title3)
+                                                .imageScale(.small)
                                         }
                                         .buttonStyle(.plain)
+                                        .scaleEffect(0.7)
                                     }
                                 }
                             }
@@ -1586,10 +1668,13 @@ struct FramesManagerView: View {
                 }
             }
             .alert("Delete Frame?", isPresented: $showDeleteConfirmation) {
-                Button("Cancel", role: .cancel) { }
+                Button("Cancel", role: .cancel) {
+                    frameToDelete = nil
+                }
                 Button("Delete", role: .destructive) {
                     if let frame = frameToDelete {
                         savedFrames.removeAll { $0.id == frame.id }
+                        frameToDelete = nil
                         onSave()
                     }
                 }
@@ -1670,1940 +1755,6 @@ struct SaveFrameDialog2D: View {
     }
 }
 
-// MARK: - Editor View
-struct StickFigure2DEditorView: View {
-    @Environment(\.dismiss) var dismiss
-    var onDismiss: (() -> Void)? = nil
-    
-    @State private var figure = StickFigure2D()
-    @State private var draggedJoint: String? = nil
-    @State private var lastWaistAngle: Double = 0
-    @State private var lastMidTorsoAngle: Double = 0
-    @State private var showSaveFrameDialog = false
-    @State private var frameName = ""
-    @State private var frameNumber = "1"
-    @State private var savedFrames: [AnimationFrame] = []
-    @State private var showDeleteConfirmation = false
-    @State private var frameToDelete: AnimationFrame? = nil
-    @State private var isEditingFrames = false
-    @State private var showFramesManager = false // New state for frames manager sheet
-    @State private var scrollToCanvas = false
-    @State private var objects: [AnimationObject] = []
-    @State private var showImagePicker = false
-    @State private var selectedObjectId: UUID? = nil
-    @State private var selectedAnimationName = ""
-    @State private var frameSequence = "1,2,3,4,3,2,1"
-    @State private var isPlayingAnimation = false
-    @State private var loopAnimation = true // Loop animation checkbox state (default enabled)
-    @State private var currentFrameIndex = 0
-    @State private var animationTimer: Timer? = nil
-    @State private var isControlsCollapsed = true // Controls start collapsed
-    @State private var isAnimationPlaybackCollapsed = true // Animation Playback starts collapsed
-    @State private var isFigureSizeCollapsed = true // Figure Size section collapsed
-    @State private var isFramesSectionCollapsed = true // Frame section collapsed
-    @State private var isAnglesCollapsed = true // Angle sliders subsection (collapsed by default)
-    @State private var isStrokeThicknessCollapsed = true // Stroke thickness subsection (collapsed by default)
-    @State private var isFusiformCollapsed = true // Fusiform subsection (collapsed by default)
-    @State private var isColorsCollapsed = true // Colors subsection (collapsed by default)
-    @State private var showJointsCheckbox = false // Toggle to show/hide joints in editor
-    @State private var canvasOffset: CGSize = .zero // Offset for panning the canvas
-    @State private var lastCanvasOffset: CGSize = .zero // Last offset before new drag
-    @State private var availableWidth: CGFloat = 390 // Default to iPhone width
-    
-    var canvasSize: CGSize {
-        let width = availableWidth - 32 // Account for padding
-        // Scale proportionally from 600x720 base (1.2 ratio for wider canvas with extra space)
-        // This gives more horizontal space around the figure
-        let scale = width / 600.0
-        let height = 720.0 * scale // Much taller canvas for figure at all scales
-        return CGSize(width: width, height: height)
-    }
-
-    private func wrapAngle(_ angle: Double) -> Double {
-        var wrapped = angle.truncatingRemainder(dividingBy: 360)
-        if wrapped <= -180 {
-            wrapped += 360
-        } else if wrapped > 180 {
-            wrapped -= 360
-        }
-        return wrapped
-    }
-
-    private func shortestAngleDelta(from current: Double, to target: Double) -> Double {
-        wrapAngle(target - current)
-    }
-
-    private func smoothedAngle(last: Double, target: Double, alpha: Double) -> Double {
-        let delta = shortestAngleDelta(from: last, to: target)
-        return wrapAngle(last + delta * alpha)
-    }
-    
-    // Helper to adjust and wrap an angle by a delta
-    private func adjustAngle(_ currentAngle: Double, by delta: Double) -> Double {
-        wrapAngle(currentAngle + delta)
-    }
-    
-    var body: some View {
-        baseView
-            .onAppear {
-                // Load saved frames list (all animations come from Bundle only)
-                loadSavedFrames()
-                // Load the last saved figure state, or default Stand pose if none exists
-                loadLastFigureState()
-                // Always ensure scale is at 200% (2.4) when opening
-                if figure.scale != 2.4 {
-                    figure.scale = 2.4
-                }
-            }
-            .onDisappear {
-                // Save the current figure state when leaving the editor
-                saveCurrentFigureState()
-            }
-    }
-    
-    var baseView: some View {
-        contentWithScaleOnChanges
-    }
-    
-    var contentWithScaleOnChanges: some View {
-        contentWithLegOnChanges
-            .onChange(of: figure.scale) { oldValue, newValue in
-                saveCurrentFigureState()
-                // Reset canvas offset when scale returns to 100% or below
-                if newValue <= 1.2 && canvasOffset != .zero {
-                    canvasOffset = .zero
-                    lastCanvasOffset = .zero
-                }
-            }
-            .onChange(of: figure.strokeThickness) { saveCurrentFigureState() }
-            .onChange(of: savedFrames) { oldValue, newValue in
-                // Persist frames whenever they change
-                persistFramesToStorage()
-            }
-    }
-    
-    var contentWithLegOnChanges: some View {
-        contentWithArmOnChanges
-            .onChange(of: figure.leftKneeAngle) { saveCurrentFigureState() }
-            .onChange(of: figure.rightKneeAngle) { saveCurrentFigureState() }
-            .onChange(of: figure.leftFootAngle) { saveCurrentFigureState() }
-            .onChange(of: figure.rightFootAngle) { saveCurrentFigureState() }
-    }
-    
-    var contentWithArmOnChanges: some View {
-        contentWithTorsoOnChanges
-            .onChange(of: figure.leftShoulderAngle) { saveCurrentFigureState() }
-            .onChange(of: figure.rightShoulderAngle) { saveCurrentFigureState() }
-            .onChange(of: figure.leftElbowAngle) { saveCurrentFigureState() }
-            .onChange(of: figure.rightElbowAngle) { saveCurrentFigureState() }
-            .onChange(of: figure.waistTorsoAngle) { saveCurrentFigureState() }
-            .onChange(of: figure.midTorsoAngle) { saveCurrentFigureState() }
-            .onChange(of: figure.headAngle) { saveCurrentFigureState() }
-            .onChange(of: figure.headRadiusMultiplier) { saveCurrentFigureState() }
-    }
-    
-    var contentWithTorsoOnChanges: some View {
-        GeometryReader { geometry in
-            scrollableContent
-                .onAppear {
-                    availableWidth = geometry.size.width
-                }
-                .onChange(of: geometry.size.width) { oldValue, newValue in
-                    availableWidth = newValue
-                }
-                .safeAreaInset(edge: .top) {
-                    headerView
-                }
-        }
-    }
-    
-    var scrollableContent: some View {
-        ScrollViewReader { proxy in
-            ScrollView {
-                VStack(spacing: 4) {
-                    canvasView
-                    coordinateDisplayView
-                    jointControlsView
-                    framesSectionView
-                    animationPlaybackView
-                    objectsControlsView
-                }
-                .padding(.horizontal, 16)
-                .padding(.vertical, 0)
-            }
-            .onChange(of: scrollToCanvas) { oldValue, newValue in
-                if newValue {
-                    withAnimation {
-                        proxy.scrollTo("canvas", anchor: .top)
-                    }
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                        scrollToCanvas = false
-                    }
-                }
-            }
-        }
-    }
-    
-    // MARK: - Helper Views
-    
-    var headerView: some View {
-        VStack(spacing: 0) {
-            HStack {
-                Button(action: {
-                    if let onDismiss = onDismiss {
-                        onDismiss()
-                    } else {
-                        dismiss()
-                    }
-                }) {
-                    HStack(spacing: 4) {
-                        Image(systemName: "chevron.left")
-                        Text("Back")
-                    }
-                    .font(.body)
-                    .foregroundColor(.blue)
-                }
-                
-                Spacer()
-                
-                Text("2D Stick Figure Editor")
-                    .font(.headline)
-                    .lineLimit(1)
-                
-                Spacer()
-                
-                Button(action: resetFigure) {
-                    Image(systemName: "arrow.counterclockwise")
-                        .font(.system(size: 16))
-                        .foregroundColor(.blue)
-                }
-                .buttonStyle(.bordered)
-            }
-            .padding(.vertical, 12)
-            .padding(.horizontal, 16)
-        }
-        .background(Color(UIColor.systemBackground))
-    }
-    
-    var canvasView: some View {
-        ZStack {
-            // Background
-            RoundedRectangle(cornerRadius: 12)
-                .fill(Color(red: 0.95, green: 0.95, blue: 0.98))
-            
-            // Grid overlay
-            GridOverlay(canvasSize: canvasSize)
-            
-            StickFigure2DView(figure: figure, canvasSize: canvasSize, showJoints: showJointsCheckbox)
-            
-            // Render animation objects
-            ForEach(objects) { object in
-                if object.imageName == "line" {
-                    // Render line object
-                    Line()
-                        .stroke(Color.black, lineWidth: 2 + (object.scale * 3))
-                        .frame(width: 50 * object.scale, height: 2 + (object.scale * 3))
-                        .rotationEffect(.degrees(object.rotation))
-                        .position(baseToCanvasPosition(object.position))
-                } else if let uiImage = UIImage(named: object.imageName) {
-                    // Render image object
-                    Image(uiImage: uiImage)
-                        .resizable()
-                        .aspectRatio(contentMode: .fit)
-                        .frame(width: 50 * object.scale, height: 50 * object.scale)
-                        .rotationEffect(.degrees(object.rotation))
-                        .position(baseToCanvasPosition(object.position))
-                }
-            }
-            
-            // Object control handles
-            ForEach(objects) { object in
-                objectControlHandles(for: object)
-            }
-        
-            // Draggable joint handles (interactive joints/dots for moving body parts)
-            if showJointsCheckbox {
-                Group {
-                    jointHandles
-                }
-            }
-        }
-        .frame(width: canvasSize.width, height: canvasSize.height)
-        .offset(canvasOffset)
-        .contentShape(Rectangle()) // Make entire ZStack tappable/draggable
-        .simultaneousGesture(
-            // Pan gesture that works alongside other gestures
-            DragGesture(minimumDistance: 30) // Higher threshold to avoid conflicts
-                .onChanged { value in
-                    // Only allow panning when zoomed in AND not dragging a joint AND not moving an object
-                    if figure.scale > 1.2 && draggedJoint == nil && selectedObjectId == nil {
-                        canvasOffset = CGSize(
-                            width: lastCanvasOffset.width + value.translation.width,
-                            height: lastCanvasOffset.height + value.translation.height
-                        )
-                    }
-                }
-                .onEnded { _ in
-                    // Save the final offset for next drag
-                    if figure.scale > 1.2 && draggedJoint == nil && selectedObjectId == nil {
-                        lastCanvasOffset = canvasOffset
-                    }
-                }
-        )
-    }
-    
-    // Helper function to scale points for drag handles
-    private func scalePoint(_ point: CGPoint) -> CGPoint {
-        // Base canvas dimensions
-        let baseCanvasSize = CGSize(width: 600, height: 720)
-        let baseCenter = CGPoint(x: baseCanvasSize.width / 2, y: baseCanvasSize.height / 2)
-        
-        let canvasCenter = CGPoint(x: canvasSize.width / 2, y: canvasSize.height / 2)
-        let canvasScale = canvasSize.width / baseCanvasSize.width
-        
-        let dx = point.x - baseCenter.x
-        let dy = point.y - baseCenter.y
-        return CGPoint(
-            x: canvasCenter.x + dx * canvasScale * figure.scale,
-            y: canvasCenter.y + dy * canvasScale * figure.scale
-        )
-    }
-    
-    // Helper function to unscale drag positions back to figure coordinates
-    private func unscalePoint(_ point: CGPoint) -> CGPoint {
-        // Base canvas dimensions
-        let baseCanvasSize = CGSize(width: 600, height: 720)
-        let baseCenter = CGPoint(x: baseCanvasSize.width / 2, y: baseCanvasSize.height / 2)
-        
-        let canvasCenter = CGPoint(x: canvasSize.width / 2, y: canvasSize.height / 2)
-        let canvasScale = canvasSize.width / baseCanvasSize.width
-        
-        let dx = point.x - canvasCenter.x
-        let dy = point.y - canvasCenter.y
-        return CGPoint(
-            x: baseCenter.x + dx / (canvasScale * figure.scale),
-            y: baseCenter.y + dy / (canvasScale * figure.scale)
-        )
-    }
-    
-    // Helper function to convert object position from base canvas to display canvas
-    private func baseToCanvasPosition(_ basePosition: CGPoint) -> CGPoint {
-        let baseCanvasSize = CGSize(width: 600, height: 720)
-        let baseCenter = CGPoint(x: baseCanvasSize.width / 2, y: baseCanvasSize.height / 2)
-        
-        let canvasCenter = CGPoint(x: canvasSize.width / 2, y: canvasSize.height / 2)
-        let canvasScale = canvasSize.width / baseCanvasSize.width
-        
-        let dx = basePosition.x - baseCenter.x
-        let dy = basePosition.y - baseCenter.y
-        return CGPoint(
-            x: canvasCenter.x + dx * canvasScale * figure.scale,
-            y: canvasCenter.y + dy * canvasScale * figure.scale
-        )
-    }
-    
-    // Helper function to convert object position from display canvas to base canvas
-    private func canvasToBasePosition(_ canvasPosition: CGPoint) -> CGPoint {
-        let baseCanvasSize = CGSize(width: 600, height: 720)
-        let baseCenter = CGPoint(x: baseCanvasSize.width / 2, y: baseCanvasSize.height / 2)
-        
-        let canvasCenter = CGPoint(x: canvasSize.width / 2, y: canvasSize.height / 2)
-        let canvasScale = canvasSize.width / baseCanvasSize.width
-        
-        let dx = canvasPosition.x - canvasCenter.x
-        let dy = canvasPosition.y - canvasCenter.y
-        return CGPoint(
-            x: baseCenter.x + dx / (canvasScale * figure.scale),
-            y: baseCenter.y + dy / (canvasScale * figure.scale)
-        )
-    }
-    
-    // Function to create control handles for animation objects
-    @ViewBuilder
-    private func objectControlHandles(for object: AnimationObject) -> some View {
-        Group {
-            // Yellow dot: Move the object
-            ZStack {
-                Circle()
-                    .fill(Color.yellow)
-                    .frame(width: 10, height: 10)
-                
-                // Larger invisible hit area
-                Circle()
-                    .fill(Color.clear)
-                    .frame(width: 28, height: 28)
-            }
-            .position(baseToCanvasPosition(object.position))
-            .gesture(DragGesture()
-                .onChanged { value in
-                    selectedObjectId = object.id
-                    if let index = objects.firstIndex(where: { $0.id == object.id }) {
-                        // Convert drag position from canvas space to base canvas space
-                        objects[index].position = canvasToBasePosition(value.location)
-                    }
-                }
-                .onEnded { _ in }
-            )
-            
-            // Blue dot: Resize the object
-            let resizeHandleDistance: CGFloat = 40
-            let angle = object.rotation * .pi / 180
-            let resizeOffset = CGPoint(
-                x: cos(angle + .pi / 4) * resizeHandleDistance,
-                y: sin(angle + .pi / 4) * resizeHandleDistance
-            )
-            let objectCanvasPos = baseToCanvasPosition(object.position)
-            let resizePosition = CGPoint(
-                x: objectCanvasPos.x + resizeOffset.x,
-                y: objectCanvasPos.y + resizeOffset.y
-            )
-            
-            ZStack {
-                Circle()
-                    .fill(Color.blue)
-                    .frame(width: 8, height: 8)
-                
-                Circle()
-                    .fill(Color.clear)
-                    .frame(width: 24, height: 24)
-            }
-            .position(resizePosition)
-            .gesture(DragGesture()
-                .onChanged { value in
-                    selectedObjectId = object.id
-                    if let index = objects.firstIndex(where: { $0.id == object.id }) {
-                        let objectBasePos = objects[index].position
-                        let dx = canvasToBasePosition(value.location).x - objectBasePos.x
-                        let dy = canvasToBasePosition(value.location).y - objectBasePos.y
-                        let newScale = sqrt(dx * dx + dy * dy) / resizeHandleDistance
-                        objects[index].scale = max(0.1, newScale)
-                    }
-                }
-                .onEnded { _ in }
-            )
-            
-            // Red dot: Rotate the object
-            let rotateHandleDistance: CGFloat = 40
-            let rotateOffset = CGPoint(
-                x: cos(angle) * rotateHandleDistance,
-                y: sin(angle) * rotateHandleDistance
-            )
-            let rotatePosition = CGPoint(
-                x: objectCanvasPos.x + rotateOffset.x,
-                y: objectCanvasPos.y + rotateOffset.y
-            )
-            
-            ZStack {
-                Circle()
-                    .fill(Color.red)
-                    .frame(width: 8, height: 8)
-                
-                Circle()
-                    .fill(Color.clear)
-                    .frame(width: 24, height: 24)
-            }
-            .position(rotatePosition)
-            .gesture(DragGesture()
-                .onChanged { value in
-                    selectedObjectId = object.id
-                    if let index = objects.firstIndex(where: { $0.id == object.id }) {
-                        let objectBasePos = objects[index].position
-                        let dragBasePos = canvasToBasePosition(value.location)
-                        let dx = dragBasePos.x - objectBasePos.x
-                        let dy = dragBasePos.y - objectBasePos.y
-                        let newAngle = atan2(dy, dx) * 180 / .pi
-                        objects[index].rotation = newAngle
-                    }
-                }
-                .onEnded { _ in }
-            )
-        }
-    }
-    
-    var jointHandles: some View {
-        Group {
-            // Waist (root position - draggable for moving entire figure)
-            ZStack {
-                Circle()
-                    .fill(draggedJoint == "waist" ? Color.red : Color.orange)
-                    .frame(width: 8, height: 8)
-                
-                // Larger invisible hit area
-                Circle()
-                    .fill(Color.clear)
-                    .frame(width: 30, height: 30)
-            }
-            .position(scalePoint(figure.waistPosition))
-            .gesture(DragGesture()
-                .onChanged { value in
-                    draggedJoint = "waist"
-                    figure.waistPosition = unscalePoint(value.location)
-                }
-                .onEnded { _ in
-                    draggedJoint = nil
-                }
-            )
-            
-            // Mid-torso (center of rotation for upper torso and waist hinge)
-            ZStack {
-                Circle()
-                    .fill(draggedJoint == "midTorso" ? Color.red : Color.cyan)
-                    .frame(width: 6, height: 6)
-                
-                // Larger invisible hit area
-                Circle()
-                    .fill(Color.clear)
-                    .frame(width: 30, height: 30)
-            }
-            .position(scalePoint(figure.midTorsoPosition))
-            .gesture(DragGesture()
-                .onChanged { value in
-                    updateJoint("midTorso", with: unscalePoint(value.location))
-                }
-                .onEnded { _ in
-                    draggedJoint = nil
-                    lastMidTorsoAngle = figure.waistTorsoAngle
-                }
-            )
-
-            // Neck (controls upper torso rotation)
-            ZStack {
-                Circle()
-                    .fill(draggedJoint == "neck" ? Color.red : Color.purple)
-                    .frame(width: 6, height: 6)
-                
-                // Larger invisible hit area
-                Circle()
-                    .fill(Color.clear)
-                    .frame(width: 30, height: 30)
-            }
-            .position(scalePoint(figure.neckPosition))
-            .gesture(DragGesture()
-                .onChanged { value in
-                    updateJoint("neck", with: unscalePoint(value.location))
-                }
-                .onEnded { _ in
-                    draggedJoint = nil
-                    lastWaistAngle = figure.waistTorsoAngle
-                }
-            )
-
-            // Left shoulder (at elbow position)
-            ZStack {
-                Circle()
-                    .fill(draggedJoint == "leftShoulder" ? Color.red : Color.blue)
-                    .frame(width: 6, height: 6)
-                
-                Circle()
-                    .fill(Color.clear)
-                    .frame(width: 30, height: 30)
-            }
-            .position(scalePoint(figure.leftUpperArmEnd))
-            .gesture(DragGesture()
-                .onChanged { value in
-                    updateJoint("leftShoulder", with: unscalePoint(value.location))
-                }
-                .onEnded { _ in
-                    draggedJoint = nil
-                }
-            )
-
-            // Right shoulder (at elbow position)
-            ZStack {
-                Circle()
-                    .fill(draggedJoint == "rightShoulder" ? Color.red : Color.blue)
-                    .frame(width: 6, height: 6)
-                
-                Circle()
-                    .fill(Color.clear)
-                    .frame(width: 30, height: 30)
-            }
-            .position(scalePoint(figure.rightUpperArmEnd))
-            .gesture(DragGesture()
-                .onChanged { value in
-                    updateJoint("rightShoulder", with: unscalePoint(value.location))
-                }
-                .onEnded { _ in
-                    draggedJoint = nil
-                }
-            )
-
-            // Left elbow (at forearm end)
-            ZStack {
-                Circle()
-                    .fill(draggedJoint == "leftElbow" ? Color.red : Color.green)
-                    .frame(width: 6, height: 6)
-                
-                Circle()
-                    .fill(Color.clear)
-                    .frame(width: 30, height: 30)
-            }
-            .position(scalePoint(figure.leftForearmEnd))
-            .gesture(DragGesture()
-                .onChanged { value in
-                    updateJoint("leftElbow", with: unscalePoint(value.location))
-                }
-                .onEnded { _ in
-                    draggedJoint = nil
-                }
-            )
-
-            // Right elbow (at forearm end)
-            ZStack {
-                Circle()
-                    .fill(draggedJoint == "rightElbow" ? Color.red : Color.green)
-                    .frame(width: 6, height: 6)
-                
-                Circle()
-                    .fill(Color.clear)
-                    .frame(width: 30, height: 30)
-            }
-            .position(scalePoint(figure.rightForearmEnd))
-            .gesture(DragGesture()
-                .onChanged { value in
-                    updateJoint("rightElbow", with: unscalePoint(value.location))
-                }
-                .onEnded { _ in
-                    draggedJoint = nil
-                }
-            )
-
-            // Head
-            ZStack {
-                Circle()
-                    .fill(draggedJoint == "head" ? Color.red : Color.purple)
-                    .frame(width: 6, height: 6)
-                
-                Circle()
-                    .fill(Color.clear)
-                    .frame(width: 30, height: 30)
-            }
-            .position(scalePoint(figure.headPosition))
-            .gesture(DragGesture()
-                .onChanged { value in
-                    updateJoint("head", with: unscalePoint(value.location))
-                }
-                .onEnded { _ in
-                    draggedJoint = nil
-                }
-            )
-
-            // Left knee
-            ZStack {
-                Circle()
-                    .fill(draggedJoint == "leftKnee" ? Color.red : Color.yellow)
-                    .frame(width: 6, height: 6)
-                
-                Circle()
-                    .fill(Color.clear)
-                    .frame(width: 30, height: 30)
-            }
-            .position(scalePoint(figure.leftUpperLegEnd))
-            .gesture(DragGesture()
-                .onChanged { value in
-                    updateJoint("leftKnee", with: unscalePoint(value.location))
-                }
-                .onEnded { _ in
-                    draggedJoint = nil
-                }
-            )
-
-            // Right knee
-            ZStack {
-                Circle()
-                    .fill(draggedJoint == "rightKnee" ? Color.red : Color.yellow)
-                    .frame(width: 6, height: 6)
-                
-                Circle()
-                    .fill(Color.clear)
-                    .frame(width: 30, height: 30)
-            }
-            .position(scalePoint(figure.rightUpperLegEnd))
-            .gesture(DragGesture()
-                .onChanged { value in
-                    updateJoint("rightKnee", with: unscalePoint(value.location))
-                }
-                .onEnded { _ in
-                    draggedJoint = nil
-                }
-            )
-
-            // Left foot
-            ZStack {
-                Circle()
-                    .fill(draggedJoint == "leftFoot" ? Color.red : Color.pink)
-                    .frame(width: 6, height: 6)
-                
-                Circle()
-                    .fill(Color.clear)
-                    .frame(width: 30, height: 30)
-            }
-            .position(scalePoint(figure.leftFootEnd))
-            .gesture(DragGesture()
-                .onChanged { value in
-                    updateJoint("leftFoot", with: unscalePoint(value.location))
-                }
-                .onEnded { _ in
-                    draggedJoint = nil
-                }
-            )
-
-            // Right foot
-            ZStack {
-                Circle()
-                    .fill(draggedJoint == "rightFoot" ? Color.red : Color.pink)
-                    .frame(width: 6, height: 6)
-                
-                Circle()
-                    .fill(Color.clear)
-                    .frame(width: 30, height: 30)
-            }
-            .position(scalePoint(figure.rightFootEnd))
-            .gesture(DragGesture()
-                .onChanged { value in
-                    updateJoint("rightFoot", with: unscalePoint(value.location))
-                }
-                .onEnded { _ in
-                    draggedJoint = nil
-                }
-            )
-        }
-    }
-    
-    var coordinateDisplayView: some View {
-        let canvasCenter = CGPoint(x: 300, y: 360)  // Center of base canvas (600x720)
-        let offsetX = Int(figure.waistPosition.x - canvasCenter.x)
-        let offsetY = Int(figure.waistPosition.y - canvasCenter.y)
-        
-        return VStack(spacing: 8) {
-            Text("Figure Position")
-                .font(.caption)
-                .fontWeight(.semibold)
-                .foregroundColor(.gray)
-            
-            HStack(spacing: 12) {
-                // Left button (X -)
-                Button(action: {
-                    figure.waistPosition.x -= 1
-                }) {
-                    VStack(spacing: 2) {
-                        Image(systemName: "arrow.left")
-                            .font(.caption)
-                        Text("X")
-                            .font(.caption2)
-                    }
-                    .frame(width: 40, height: 40)
-                    .background(Color.gray.opacity(0.2))
-                    .cornerRadius(6)
-                }
-                .buttonStyle(.plain)
-                
-                // X coordinate display
-                VStack(spacing: 2) {
-                    Text("X")
-                        .font(.caption2)
-                        .foregroundColor(.gray)
-                    Text("\(offsetX > 0 ? "+" : "")\(offsetX)")
-                        .font(.caption)
-                        .fontWeight(.semibold)
-                        .frame(minWidth: 35)
-                }
-                
-                // Right button (X +)
-                Button(action: {
-                    figure.waistPosition.x += 1
-                }) {
-                    VStack(spacing: 2) {
-                        Image(systemName: "arrow.right")
-                            .font(.caption)
-                        Text("X")
-                            .font(.caption2)
-                    }
-                    .frame(width: 40, height: 40)
-                    .background(Color.gray.opacity(0.2))
-                    .cornerRadius(6)
-                }
-                .buttonStyle(.plain)
-                
-                Spacer()
-                
-                // Up button (Y -)
-                Button(action: {
-                    figure.waistPosition.y -= 1
-                }) {
-                    VStack(spacing: 2) {
-                        Image(systemName: "arrow.up")
-                            .font(.caption)
-                        Text("Y")
-                            .font(.caption2)
-                    }
-                    .frame(width: 40, height: 40)
-                    .background(Color.gray.opacity(0.2))
-                    .cornerRadius(6)
-                }
-                .buttonStyle(.plain)
-                
-                // Y coordinate display
-                VStack(spacing: 2) {
-                    Text("Y")
-                        .font(.caption2)
-                        .foregroundColor(.gray)
-                    Text("\(offsetY > 0 ? "+" : "")\(offsetY)")
-                        .font(.caption)
-                        .fontWeight(.semibold)
-                        .frame(minWidth: 35)
-                }
-                
-                // Down button (Y +)
-                Button(action: {
-                    figure.waistPosition.y += 1
-                }) {
-                    VStack(spacing: 2) {
-                        Image(systemName: "arrow.down")
-                            .font(.caption)
-                        Text("Y")
-                            .font(.caption2)
-                    }
-                    .frame(width: 40, height: 40)
-                    .background(Color.gray.opacity(0.2))
-                    .cornerRadius(6)
-                }
-                .buttonStyle(.plain)
-            }
-            .padding(.horizontal, 8)
-        }
-        .padding(12)
-        .background(Color.gray.opacity(0.05))
-        .cornerRadius(8)
-    }
-    
-    var jointControlsView: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Button(action: {
-                withAnimation {
-                    isControlsCollapsed.toggle()
-                }
-            }) {
-                HStack {
-                    Text("Controls")
-                        .font(.subheadline)
-                        .fontWeight(.semibold)
-                        .foregroundColor(.primary)
-                    Spacer()
-                    Image(systemName: isControlsCollapsed ? "chevron.right" : "chevron.down")
-                        .font(.caption)
-                        .foregroundColor(.gray)
-                }
-            }
-            
-            if !isControlsCollapsed {
-                VStack(alignment: .leading, spacing: 12) {
-                    // MARK: - Show Joints Toggle
-                    Toggle("Show Joints", isOn: $showJointsCheckbox)
-                        .font(.caption)
-                    
-                    Divider()
-                    
-                    // MARK: - Figure Size Subsection
-                    figureSizeSubsectionView
-                    
-                    // MARK: - Stroke Thickness Subsection
-                    strokeThicknessSubsectionView
-                    
-                    // MARK: - Fusiform Subsection
-                    fusiformSubsectionView
-                    
-                    // MARK: - Angles Subsection
-                    anglesSubsectionView
-                    
-                    // MARK: - Colors Subsection
-                    colorSubsectionView
-                }
-                .padding()
-                .background(Color.gray.opacity(0.1))
-                .cornerRadius(8)
-            }
-        }
-    }
-    
-    var figureSizeSubsectionView: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Button(action: {
-                withAnimation {
-                    isFigureSizeCollapsed.toggle()
-                }
-            }) {
-                HStack {
-                    Text("Figure Size")
-                        .font(.caption)
-                        .fontWeight(.semibold)
-                    Spacer()
-                    Image(systemName: isFigureSizeCollapsed ? "chevron.right" : "chevron.down")
-                        .font(.caption2)
-                        .foregroundColor(.gray)
-                }
-            }
-            
-            if !isFigureSizeCollapsed {
-                VStack(alignment: .leading, spacing: 8) {
-                    HStack {
-                        Text("Scale:")
-                        Button(action: { figure.scale = max(0.6, figure.scale - 0.1) }) {
-                            Image(systemName: "minus.circle")
-                        }
-                        Slider(value: $figure.scale, in: 0.6...3.0, step: 0.1)
-                        Button(action: { figure.scale = min(3.0, figure.scale + 0.1) }) {
-                            Image(systemName: "plus.circle")
-                        }
-                        Text("\(Int(round(figure.scale / 1.2 * 100)))%")
-                            .frame(width: 45)
-                    }
-                    .font(.caption)
-                    
-                    HStack {
-                        Text("Head Size:")
-                        Button(action: { figure.headRadiusMultiplier = max(0.5, figure.headRadiusMultiplier - 0.1) }) {
-                            Image(systemName: "minus.circle")
-                        }
-                        Slider(value: $figure.headRadiusMultiplier, in: 0.5...2.0, step: 0.1)
-                        Button(action: { figure.headRadiusMultiplier = min(2.0, figure.headRadiusMultiplier + 0.1) }) {
-                            Image(systemName: "plus.circle")
-                        }
-                        Text("\(String(format: "%.1f", figure.headRadiusMultiplier))")
-                            .frame(width: 40)
-                    }
-                    .font(.caption)
-                }
-                .padding(.top, 4)
-            }
-        }
-    }
-    
-    var anglesSubsectionView: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Button(action: {
-                withAnimation {
-                    isAnglesCollapsed.toggle()
-                }
-            }) {
-                HStack {
-                    Text("Angle Sliders")
-                        .font(.caption)
-                        .fontWeight(.semibold)
-                    Spacer()
-                    Image(systemName: isAnglesCollapsed ? "chevron.right" : "chevron.down")
-                        .font(.caption2)
-                        .foregroundColor(.gray)
-                }
-            }
-            
-            if !isAnglesCollapsed {
-                VStack(alignment: .leading, spacing: 8) {
-                    HStack {
-                        Text("Waist:")
-                        Button(action: { figure.waistTorsoAngle = adjustAngle(figure.waistTorsoAngle, by: -1) }) {
-                            Image(systemName: "minus.circle")
-                        }
-                        Slider(value: $figure.waistTorsoAngle, in: -180...180, step: 1)
-                        Button(action: { figure.waistTorsoAngle = adjustAngle(figure.waistTorsoAngle, by: 1) }) {
-                            Image(systemName: "plus.circle")
-                        }
-                        Text("\(Int(wrapAngle(figure.waistTorsoAngle)))°")
-                            .frame(width: 35)
-                    }
-                    .font(.caption)
-                    
-                    HStack {
-                        Text("L Shoulder:")
-                        Button(action: { figure.leftShoulderAngle = adjustAngle(figure.leftShoulderAngle, by: -1) }) {
-                            Image(systemName: "minus.circle")
-                        }
-                        Slider(value: $figure.leftShoulderAngle, in: -180...180, step: 1)
-                        Button(action: { figure.leftShoulderAngle = adjustAngle(figure.leftShoulderAngle, by: 1) }) {
-                            Image(systemName: "plus.circle")
-                        }
-                        Text("\(Int(wrapAngle(figure.leftShoulderAngle)))°")
-                            .frame(width: 35)
-                    }
-                    .font(.caption)
-                    
-                    HStack {
-                        Text("R Shoulder:")
-                        Button(action: { figure.rightShoulderAngle = adjustAngle(figure.rightShoulderAngle, by: -1) }) {
-                            Image(systemName: "minus.circle")
-                        }
-                        Slider(value: $figure.rightShoulderAngle, in: -180...180, step: 1)
-                        Button(action: { figure.rightShoulderAngle = adjustAngle(figure.rightShoulderAngle, by: 1) }) {
-                            Image(systemName: "plus.circle")
-                        }
-                        Text("\(Int(wrapAngle(figure.rightShoulderAngle)))°")
-                            .frame(width: 35)
-                    }
-                    .font(.caption)
-                    
-                    HStack {
-                        Text("L Elbow:")
-                        Button(action: { figure.leftElbowAngle = adjustAngle(figure.leftElbowAngle, by: -1) }) {
-                            Image(systemName: "minus.circle")
-                        }
-                        Slider(value: $figure.leftElbowAngle, in: -180...180, step: 1)
-                        Button(action: { figure.leftElbowAngle = adjustAngle(figure.leftElbowAngle, by: 1) }) {
-                            Image(systemName: "plus.circle")
-                        }
-                        Text("\(Int(wrapAngle(figure.leftElbowAngle)))°")
-                            .frame(width: 35)
-                    }
-                    .font(.caption)
-                    
-                    HStack {
-                        Text("R Elbow:")
-                        Button(action: { figure.rightElbowAngle = adjustAngle(figure.rightElbowAngle, by: -1) }) {
-                            Image(systemName: "minus.circle")
-                        }
-                        Slider(value: $figure.rightElbowAngle, in: -180...180, step: 1)
-                        Button(action: { figure.rightElbowAngle = adjustAngle(figure.rightElbowAngle, by: 1) }) {
-                            Image(systemName: "plus.circle")
-                        }
-                        Text("\(Int(wrapAngle(figure.rightElbowAngle)))°")
-                            .frame(width: 35)
-                    }
-                    .font(.caption)
-                    
-                    HStack {
-                        Text("L Knee:")
-                        Button(action: { figure.leftKneeAngle = adjustAngle(figure.leftKneeAngle, by: -1) }) {
-                            Image(systemName: "minus.circle")
-                        }
-                        Slider(value: $figure.leftKneeAngle, in: -180...180, step: 1)
-                        Button(action: { figure.leftKneeAngle = adjustAngle(figure.leftKneeAngle, by: 1) }) {
-                            Image(systemName: "plus.circle")
-                        }
-                        Text("\(Int(wrapAngle(figure.leftKneeAngle)))°")
-                            .frame(width: 35)
-                    }
-                    .font(.caption)
-                    
-                    HStack {
-                        Text("R Knee:")
-                        Button(action: { figure.rightKneeAngle = adjustAngle(figure.rightKneeAngle, by: -1) }) {
-                            Image(systemName: "minus.circle")
-                        }
-                        Slider(value: $figure.rightKneeAngle, in: -180...180, step: 1)
-                        Button(action: { figure.rightKneeAngle = adjustAngle(figure.rightKneeAngle, by: 1) }) {
-                            Image(systemName: "plus.circle")
-                        }
-                        Text("\(Int(wrapAngle(figure.rightKneeAngle)))°")
-                            .frame(width: 35)
-                    }
-                    .font(.caption)
-                    
-                    HStack {
-                        Text("L Foot:")
-                        Button(action: { figure.leftFootAngle = adjustAngle(figure.leftFootAngle, by: -1) }) {
-                            Image(systemName: "minus.circle")
-                        }
-                        Slider(value: $figure.leftFootAngle, in: -180...180, step: 1)
-                        Button(action: { figure.leftFootAngle = adjustAngle(figure.leftFootAngle, by: 1) }) {
-                            Image(systemName: "plus.circle")
-                        }
-                        Text("\(Int(wrapAngle(figure.leftFootAngle)))°")
-                            .frame(width: 35)
-                    }
-                    .font(.caption)
-                    
-                    HStack {
-                        Text("R Foot:")
-                        Button(action: { figure.rightFootAngle = adjustAngle(figure.rightFootAngle, by: -1) }) {
-                            Image(systemName: "minus.circle")
-                        }
-                        Slider(value: $figure.rightFootAngle, in: -180...180, step: 1)
-                        Button(action: { figure.rightFootAngle = adjustAngle(figure.rightFootAngle, by: 1) }) {
-                            Image(systemName: "plus.circle")
-                        }
-                        Text("\(Int(wrapAngle(figure.rightFootAngle)))°")
-                            .frame(width: 35)
-                    }
-                    .font(.caption)
-                    
-                    HStack {
-                        Text("Head:")
-                        Button(action: { figure.headAngle = adjustAngle(figure.headAngle, by: -1) }) {
-                            Image(systemName: "minus.circle")
-                        }
-                        Slider(value: $figure.headAngle, in: -180...180, step: 1)
-                        Button(action: { figure.headAngle = adjustAngle(figure.headAngle, by: 1) }) {
-                            Image(systemName: "plus.circle")
-                        }
-                        Text("\(Int(wrapAngle(figure.headAngle)))°")
-                            .frame(width: 35)
-                    }
-                    .font(.caption)
-                }
-                .padding(.top, 8)
-            }
-        }
-    }
-    
-    
-    var strokeThicknessSubsectionView: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Button(action: {
-                withAnimation {
-                    isStrokeThicknessCollapsed.toggle()
-                }
-            }) {
-                HStack {
-                    Text("Stroke Thickness")
-                        .font(.caption2)
-                        .fontWeight(.semibold)
-                        
-                    Spacer()
-                    Image(systemName: isStrokeThicknessCollapsed ? "chevron.right" : "chevron.down")
-                        .font(.caption2)
-                        .foregroundColor(.gray)
-                }
-            }
-            
-            if !isStrokeThicknessCollapsed {
-                VStack(alignment: .leading, spacing: 8) {
-                    HStack {
-                        Text("Upper Arms:")
-                        Button(action: { figure.strokeThicknessUpperArms = max(0.5, figure.strokeThicknessUpperArms - 0.25) }) {
-                            Image(systemName: "minus.circle")
-                        }
-                        Slider(value: $figure.strokeThicknessUpperArms, in: 0.5...20, step: 0.25)
-                        Button(action: { figure.strokeThicknessUpperArms = min(20, figure.strokeThicknessUpperArms + 0.25) }) {
-                            Image(systemName: "plus.circle")
-                        }
-                        Text("\(String(format: "%.2f", figure.strokeThicknessUpperArms))")
-                            .frame(width: 35)
-                    }
-                    .font(.caption)
-                    
-                    HStack {
-                        Text("Lower Arms:")
-                        Button(action: { figure.strokeThicknessLowerArms = max(0.5, figure.strokeThicknessLowerArms - 0.25) }) {
-                            Image(systemName: "minus.circle")
-                        }
-                        Slider(value: $figure.strokeThicknessLowerArms, in: 0.5...20, step: 0.25)
-                        Button(action: { figure.strokeThicknessLowerArms = min(20, figure.strokeThicknessLowerArms + 0.25) }) {
-                            Image(systemName: "plus.circle")
-                        }
-                        Text("\(String(format: "%.2f", figure.strokeThicknessLowerArms))")
-                            .frame(width: 35)
-                    }
-                    .font(.caption)
-                    
-                    HStack {
-                        Text("Upper Legs:")
-                        Button(action: { figure.strokeThicknessUpperLegs = max(0.5, figure.strokeThicknessUpperLegs - 0.25) }) {
-                            Image(systemName: "minus.circle")
-                        }
-                        Slider(value: $figure.strokeThicknessUpperLegs, in: 0.5...20, step: 0.25)
-                        Button(action: { figure.strokeThicknessUpperLegs = min(20, figure.strokeThicknessUpperLegs + 0.25) }) {
-                            Image(systemName: "plus.circle")
-                        }
-                        Text("\(String(format: "%.2f", figure.strokeThicknessUpperLegs))")
-                            .frame(width: 35)
-                    }
-                    .font(.caption)
-                    
-                    HStack {
-                        Text("Lower Legs:")
-                        Button(action: { figure.strokeThicknessLowerLegs = max(0.5, figure.strokeThicknessLowerLegs - 0.25) }) {
-                            Image(systemName: "minus.circle")
-                        }
-                        Slider(value: $figure.strokeThicknessLowerLegs, in: 0.5...20, step: 0.25)
-                        Button(action: { figure.strokeThicknessLowerLegs = min(20, figure.strokeThicknessLowerLegs + 0.25) }) {
-                            Image(systemName: "plus.circle")
-                        }
-                        Text("\(String(format: "%.2f", figure.strokeThicknessLowerLegs))")
-                            .frame(width: 35)
-                    }
-                    .font(.caption)
-                    
-                    HStack {
-                        Text("Joints:")
-                        Button(action: { figure.strokeThicknessJoints = max(0.5, figure.strokeThicknessJoints - 0.25) }) {
-                            Image(systemName: "minus.circle")
-                        }
-                        Slider(value: $figure.strokeThicknessJoints, in: 0.5...20, step: 0.25)
-                        Button(action: { figure.strokeThicknessJoints = min(20, figure.strokeThicknessJoints + 0.25) }) {
-                            Image(systemName: "plus.circle")
-                        }
-                        Text("\(String(format: "%.2f", figure.strokeThicknessJoints))")
-                            .frame(width: 35)
-                    }
-                    .font(.caption)
-                    
-                    HStack {
-                        Text("Upper Torso:")
-                        Button(action: { figure.strokeThicknessUpperTorso = max(0.5, figure.strokeThicknessUpperTorso - 0.25) }) {
-                            Image(systemName: "minus.circle")
-                        }
-                        Slider(value: $figure.strokeThicknessUpperTorso, in: 0.5...20, step: 0.25)
-                        Button(action: { figure.strokeThicknessUpperTorso = min(20, figure.strokeThicknessUpperTorso + 0.25) }) {
-                            Image(systemName: "plus.circle")
-                        }
-                        Text("\(String(format: "%.2f", figure.strokeThicknessUpperTorso))")
-                            .frame(width: 35)
-                    }
-                    .font(.caption)
-                    
-                    HStack {
-                        Text("Lower Torso:")
-                        Button(action: { figure.strokeThicknessLowerTorso = max(0.5, figure.strokeThicknessLowerTorso - 0.25) }) {
-                            Image(systemName: "minus.circle")
-                        }
-                        Slider(value: $figure.strokeThicknessLowerTorso, in: 0.5...20, step: 0.25)
-                        Button(action: { figure.strokeThicknessLowerTorso = min(20, figure.strokeThicknessLowerTorso + 0.25) }) {
-                            Image(systemName: "plus.circle")
-                        }
-                        Text("\(String(format: "%.2f", figure.strokeThicknessLowerTorso))")
-                            .frame(width: 35)
-                    }
-                    .font(.caption)
-                }
-                .padding(.top, 4)
-            }
-        }
-    }
-    
-    var fusiformSubsectionView: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Button(action: {
-                withAnimation {
-                    isFusiformCollapsed.toggle()
-                }
-            }) {
-                HStack {
-                    Text("Fusiform (Taper)")
-                        .font(.caption2)
-                        .fontWeight(.semibold)
-                        
-                    Spacer()
-                    Image(systemName: isFusiformCollapsed ? "chevron.right" : "chevron.down")
-                        .font(.caption2)
-                        .foregroundColor(.gray)
-                }
-            }
-            
-            if !isFusiformCollapsed {
-                VStack(alignment: .leading, spacing: 8) {
-                    HStack {
-                        Text("Upper Arms:")
-                        Button(action: { figure.fusiformUpperArms = max(0, figure.fusiformUpperArms - 0.05) }) {
-                            Image(systemName: "minus.circle")
-                        }
-                        Slider(value: $figure.fusiformUpperArms, in: 0...6, step: 0.05)
-                        Button(action: { figure.fusiformUpperArms = min(6, figure.fusiformUpperArms + 0.05) }) {
-                            Image(systemName: "plus.circle")
-                        }
-                        Text("\(Int(figure.fusiformUpperArms / 0.5 * 50))%")
-                            .frame(width: 35)
-                    }
-                    .font(.caption)
-                    
-                    HStack {
-                        Text("Lower Arms:")
-                        Button(action: { figure.fusiformLowerArms = max(0, figure.fusiformLowerArms - 0.05) }) {
-                            Image(systemName: "minus.circle")
-                        }
-                        Slider(value: $figure.fusiformLowerArms, in: 0...6, step: 0.05)
-                        Button(action: { figure.fusiformLowerArms = min(6, figure.fusiformLowerArms + 0.05) }) {
-                            Image(systemName: "plus.circle")
-                        }
-                        Text("\(Int(figure.fusiformLowerArms / 0.5 * 50))%")
-                            .frame(width: 35)
-                    }
-                    .font(.caption)
-                    
-                    HStack {
-                        Text("Upper Legs:")
-                        Button(action: { figure.fusiformUpperLegs = max(0, figure.fusiformUpperLegs - 0.05) }) {
-                            Image(systemName: "minus.circle")
-                        }
-                        Slider(value: $figure.fusiformUpperLegs, in: 0...6, step: 0.05)
-                        Button(action: { figure.fusiformUpperLegs = min(6, figure.fusiformUpperLegs + 0.05) }) {
-                            Image(systemName: "plus.circle")
-                        }
-                        Text("\(Int(figure.fusiformUpperLegs / 0.5 * 50))%")
-                            .frame(width: 35)
-                    }
-                    .font(.caption)
-                    
-                    HStack {
-                        Text("Lower Legs*:")
-                        Button(action: { figure.fusiformLowerLegs = max(0, figure.fusiformLowerLegs - 0.05) }) {
-                            Image(systemName: "minus.circle")
-                        }
-                        Slider(value: $figure.fusiformLowerLegs, in: 0...6, step: 0.05)
-                        Button(action: { figure.fusiformLowerLegs = min(6, figure.fusiformLowerLegs + 0.05) }) {
-                            Image(systemName: "plus.circle")
-                        }
-                        Text("\(Int(figure.fusiformLowerLegs / 0.5 * 50))%")
-                            .frame(width: 35)
-                    }
-                    .font(.caption)
-                    
-                    HStack {
-                        Text("Upper Torso*:")
-                        Button(action: { figure.fusiformUpperTorso = max(0, figure.fusiformUpperTorso - 0.05) }) {
-                            Image(systemName: "minus.circle")
-                        }
-                        Slider(value: $figure.fusiformUpperTorso, in: 0...6, step: 0.05)
-                        Button(action: { figure.fusiformUpperTorso = min(6, figure.fusiformUpperTorso + 0.05) }) {
-                            Image(systemName: "plus.circle")
-                        }
-                        Text("\(Int(figure.fusiformUpperTorso / 0.5 * 50))%")
-                            .frame(width: 35)
-                    }
-                    .font(.caption)
-                    
-                    HStack {
-                        Text("Lower Torso:")
-                        Button(action: { figure.fusiformLowerTorso = max(0, figure.fusiformLowerTorso - 0.05) }) {
-                            Image(systemName: "minus.circle")
-                        }
-                        Slider(value: $figure.fusiformLowerTorso, in: 0...6, step: 0.05)
-                        Button(action: { figure.fusiformLowerTorso = min(6, figure.fusiformLowerTorso + 0.05) }) {
-                            Image(systemName: "plus.circle")
-                        }
-                        Text("\(Int(figure.fusiformLowerTorso / 0.5 * 50))%")
-                            .frame(width: 35)
-                    }
-                    .font(.caption)
-                }
-                .padding(.top, 4)
-            }
-        }
-    }
-    
-    var animationPlaybackView: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Button(action: {
-                withAnimation {
-                    isAnimationPlaybackCollapsed.toggle()
-                }
-            }) {
-                HStack {
-                    Text("Animation Playback")
-                        .font(.subheadline)
-                        .fontWeight(.semibold)
-                        .foregroundColor(.primary)
-                    Spacer()
-                    Image(systemName: isAnimationPlaybackCollapsed ? "chevron.right" : "chevron.down")
-                        .font(.caption)
-                        .foregroundColor(.gray)
-                }
-            }
-            
-            if !isAnimationPlaybackCollapsed {
-                VStack(alignment: .leading, spacing: 8) {
-                    HStack {
-                        Text("Animation Name:")
-                            .font(.caption2)
-                        TextField("e.g., Run, Jump", text: $selectedAnimationName)
-                            .textFieldStyle(.roundedBorder)
-                    }
-                    
-                    HStack {
-                        Text("Frame Sequence:")
-                            .font(.caption2)
-                        TextField("e.g., 1,2,3,4,3,2,1", text: $frameSequence)
-                            .textFieldStyle(.roundedBorder)
-                    }
-                    
-                    // Loop checkbox
-                    Toggle("Loop animation", isOn: $loopAnimation)
-                        .font(.caption2)
-                    
-                    HStack(spacing: 12) {
-                        Button(action: playAnimation) {
-                            Label("Play", systemImage: "play.fill")
-                                .font(.caption)
-                                .frame(maxWidth: .infinity)
-                                .padding(8)
-                                .background(Color.green)
-                                .foregroundColor(.white)
-                                .cornerRadius(6)
-                        }
-                        .disabled(selectedAnimationName.isEmpty || frameSequence.isEmpty)
-                        
-                        Button(action: stopAnimation) {
-                            Label("Stop", systemImage: "stop.fill")
-                                .font(.caption)
-                                .frame(maxWidth: .infinity)
-                                .padding(8)
-                                .background(Color.red)
-                                .foregroundColor(.white)
-                                .cornerRadius(6)
-                        }
-                        .disabled(!isPlayingAnimation)
-                    }
-                }
-                .padding()
-                .background(Color.gray.opacity(0.1))
-                .cornerRadius(8)
-            }
-        }
-    }
-    
-    var sizeControlView: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack {
-                // Display scale: internal 1.2 = 100%, so divide by 1.2 and multiply by 100
-                // Use round() to ensure clean percentages (50%, 100%, 150%, 200%)
-                Text("Figure Size (\(Int(round(figure.scale / 1.2 * 100)))%)")
-                    .fontWeight(.semibold)
-                Spacer()
-            }
-
-            HStack(spacing: 12) {
-                Text("50%")
-                    .font(.caption)
-                    .foregroundColor(.gray)
-
-                // Internal range: 0.6 to 2.4 (maps to display 50% to 200%)
-                // 1.2 internal = 100% display (default)
-                Slider(value: $figure.scale, in: 0.6...2.4, step: 0.06)
-
-                Text("200%")
-                    .font(.caption)
-                    .foregroundColor(.gray)
-            }
-        }
-        .padding(8)
-        .background(Color.gray.opacity(0.1))
-        .cornerRadius(8)
-    }
-    
-    // MARK: - Figure Size Section (Expandable)
-    var figureSizeControlView: some View {
-        // Figure Size is now a subsection under Controls
-        EmptyView()
-    }
-    
-    // MARK: - Frame Section (Expandable)
-    var framesSectionView: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Button(action: {
-                withAnimation {
-                    isFramesSectionCollapsed.toggle()
-                }
-            }) {
-                HStack {
-                    Text("Frames")
-                        .font(.subheadline)
-                        .fontWeight(.semibold)
-                        .foregroundColor(.primary)
-                    Spacer()
-                    Image(systemName: isFramesSectionCollapsed ? "chevron.right" : "chevron.down")
-                        .font(.caption)
-                        .foregroundColor(.gray)
-                }
-            }
-            
-            if !isFramesSectionCollapsed {
-                VStack(spacing: 12) {
-                    HStack(spacing: 12) {
-                        Button(action: { showSaveFrameDialog = true }) {
-                            Label("Save Frame", systemImage: "square.and.arrow.down")
-                                .font(.caption)
-                                .frame(maxWidth: .infinity)
-                                .padding(10)
-                                .background(Color.blue)
-                                .foregroundColor(.white)
-                                .cornerRadius(6)
-                        }
-                        
-                        Button(action: { showFramesManager = true }) {
-                            Label("Open Frame", systemImage: "folder.badge.plus")
-                                .font(.caption)
-                                .frame(maxWidth: .infinity)
-                                .padding(10)
-                                .background(Color.green)
-                                .foregroundColor(.white)
-                                .cornerRadius(6)
-                        }
-                    }
-                    
-                    Text("Saved: \(savedFrames.count) frames")
-                        .font(.caption)
-                        .foregroundColor(.gray)
-                }
-            }
-        }
-    }
-    
-    private func playAnimation() {
-        // Parse frame sequence
-        let frameStrings = frameSequence.split(separator: ",").map { String($0).trimmingCharacters(in: .whitespaces) }
-        let frameNumbers = frameStrings.compactMap { Int($0) }
-        
-        guard !frameNumbers.isEmpty else { return }
-        
-        isPlayingAnimation = true
-        currentFrameIndex = 0
-        
-        // Load the first frame immediately
-        loadFrameAtIndex(0, from: frameNumbers)
-        
-        // Start timer to cycle through frames
-        animationTimer?.invalidate()
-        animationTimer = Timer.scheduledTimer(withTimeInterval: 0.2, repeats: true) { _ in
-            currentFrameIndex = (currentFrameIndex + 1) % frameNumbers.count
-            loadFrameAtIndex(currentFrameIndex, from: frameNumbers)
-            
-            // Stop animation if not looping and reached the end
-            if !loopAnimation && currentFrameIndex == frameNumbers.count - 1 {
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
-                    self.stopAnimation()
-                }
-            }
-        }
-    }
-    
-    private func loadFrameAtIndex(_ index: Int, from frameNumbers: [Int]) {
-        // Find the saved frame with the matching frame number
-        if let savedFrame = savedFrames.first(where: { $0.frameNumber == frameNumbers[index] && $0.name == selectedAnimationName }) {
-            figure = savedFrame.pose.toStickFigure2D()
-        }
-    }
-    
-    private func stopAnimation() {
-        isPlayingAnimation = false
-        animationTimer?.invalidate()
-        animationTimer = nil
-        currentFrameIndex = 0
-    }
-    
-
-    var colorSubsectionView: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Button(action: {
-                withAnimation {
-                    isColorsCollapsed.toggle()
-                }
-            }) {
-                HStack {
-                    Text("Colors")
-                        .font(.caption2)
-                        .fontWeight(.semibold)
-                        
-                    Spacer()
-                    Image(systemName: isColorsCollapsed ? "chevron.right" : "chevron.down")
-                        .font(.caption2)
-                        .foregroundColor(.gray)
-                }
-            }
-            
-            if !isColorsCollapsed {
-                VStack(alignment: .leading, spacing: 6) {
-                    HStack(spacing: 8) {
-                        Text("Head:")
-                            .font(.caption2)
-                            .frame(width: 35, alignment: .leading)
-                        ColorPicker("", selection: $figure.headColor)
-                            .labelsHidden()
-                            .frame(width: 40)
-                    }
-                    
-                    HStack(spacing: 8) {
-                        Text("Torso:")
-                            .font(.caption2)
-                            .frame(width: 35, alignment: .leading)
-                        ColorPicker("", selection: $figure.torsoColor)
-                            .labelsHidden()
-                            .frame(width: 40)
-                    }
-                    
-                    HStack(spacing: 8) {
-                        Text("Hand:")
-                            .font(.caption2)
-                            .frame(width: 35, alignment: .leading)
-                        ColorPicker("", selection: $figure.handColor)
-                            .labelsHidden()
-                            .frame(width: 40)
-                    }
-                    
-                    HStack(spacing: 8) {
-                        Text("Foot:")
-                            .font(.caption2)
-                            .frame(width: 35, alignment: .leading)
-                        ColorPicker("", selection: $figure.footColor)
-                            .labelsHidden()
-                            .frame(width: 40)
-                    }
-                    
-                    // Divider for additional arm/leg colors
-                    Divider()
-                        .padding(.vertical, 4)
-                    
-                    // Upper arm colors
-                    HStack(spacing: 8) {
-                        Text("L Upper Arm:")
-                            .font(.caption2)
-                            .frame(width: 80, alignment: .leading)
-                        ColorPicker("", selection: $figure.leftUpperArmColor)
-                            .labelsHidden()
-                            .frame(width: 40)
-                    }
-                    
-                    HStack(spacing: 8) {
-                        Text("R Upper Arm:")
-                            .font(.caption2)
-                            .frame(width: 80, alignment: .leading)
-                        ColorPicker("", selection: $figure.rightUpperArmColor)
-                            .labelsHidden()
-                            .frame(width: 40)
-                    }
-                    
-                    // Lower arm colors
-                    HStack(spacing: 8) {
-                        Text("L Lower Arm:")
-                            .font(.caption2)
-                            .frame(width: 80, alignment: .leading)
-                        ColorPicker("", selection: $figure.leftLowerArmColor)
-                            .labelsHidden()
-                            .frame(width: 40)
-                    }
-                    
-                    HStack(spacing: 8) {
-                        Text("R Lower Arm:")
-                            .font(.caption2)
-                            .frame(width: 80, alignment: .leading)
-                        ColorPicker("", selection: $figure.rightLowerArmColor)
-                            .labelsHidden()
-                            .frame(width: 40)
-                    }
-                    
-                    // Upper leg colors
-                    HStack(spacing: 8) {
-                        Text("L Upper Leg:")
-                            .font(.caption2)
-                            .frame(width: 80, alignment: .leading)
-                        ColorPicker("", selection: $figure.leftUpperLegColor)
-                            .labelsHidden()
-                            .frame(width: 40)
-                    }
-                    
-                    HStack(spacing: 8) {
-                        Text("R Upper Leg:")
-                            .font(.caption2)
-                            .frame(width: 80, alignment: .leading)
-                        ColorPicker("", selection: $figure.rightUpperLegColor)
-                            .labelsHidden()
-                            .frame(width: 40)
-                    }
-                    
-                    // Lower leg colors
-                    HStack(spacing: 8) {
-                        Text("L Lower Leg:")
-                            .font(.caption2)
-                            .frame(width: 80, alignment: .leading)
-                        ColorPicker("", selection: $figure.leftLowerLegColor)
-                            .labelsHidden()
-                            .frame(width: 40)
-                    }
-                    
-                    HStack(spacing: 8) {
-                        Text("R Lower Leg:")
-                            .font(.caption2)
-                            .frame(width: 80, alignment: .leading)
-                        ColorPicker("", selection: $figure.rightLowerLegColor)
-                            .labelsHidden()
-                            .frame(width: 40)
-                    }
-                    
-                    Divider()
-                        .padding(.vertical, 4)
-                    
-                    HStack(spacing: 8) {
-                        Text("Joints:")
-                            .font(.caption2)
-                            .frame(width: 35, alignment: .leading)
-                        ColorPicker("", selection: $figure.jointColor)
-                            .labelsHidden()
-                            .frame(width: 40)
-                    }
-                }
-                .padding(.top, 4)
-            }
-        }
-    }
-    
-    var objectsControlsView: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Button(action: {
-                showImagePicker = true
-            }) {
-                Label("Add Image Object", systemImage: "photo.badge.plus")
-                    .font(.caption)
-                    .frame(maxWidth: .infinity)
-                    .padding(8)
-                    .background(Color.blue)
-                    .foregroundColor(.white)
-                    .cornerRadius(6)
-            }
-            
-            if !objects.isEmpty {
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("Current Objects:").font(.caption2).foregroundColor(.gray)
-                    
-                    ForEach(objects) { object in
-                        HStack {
-                            Text(object.imageName)
-                                .font(.caption)
-                            Spacer()
-                            Button(action: {
-                                objects.removeAll { $0.id == object.id }
-                            }) {
-                                Image(systemName: "trash")
-                                    .foregroundColor(.red)
-                                    .font(.caption)
-                            }
-                        }
-                        .padding(.vertical, 4)
-                    }
-                }
-                .padding()
-                .background(Color.gray.opacity(0.1))
-                .cornerRadius(8)
-            }
-        }
-        .sheet(isPresented: $showImagePicker) {
-            ImagePickerView(objects: $objects)
-        }
-        .sheet(isPresented: $showSaveFrameDialog) {
-            SaveFrameDialog2D(
-                frameName: $frameName,
-                frameNumber: $frameNumber,
-                onSave: savePose,
-                onCancel: { showSaveFrameDialog = false }
-            )
-        }
-        .sheet(isPresented: $showFramesManager) {
-            FramesManagerView(
-                savedFrames: $savedFrames,
-                onSelectFrame: { frame in
-                    figure = frame.pose.toStickFigure2D()
-                    objects = frame.objects  // Load objects saved with the frame
-                    scrollToCanvas = true
-                    showFramesManager = false
-                },
-                onSave: { persistFramesToStorage() } // Save deletions and edits to UserDefaults
-            )
-        }
-    }
-    
-    var animationControlsView: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            // Animation controls are now in animationPlaybackView
-        }
-    }
-    
-    private func savePose() {
-        // Create a new AnimationFrame with the current pose, name, and frame number
-        guard let frameNum = Int(frameNumber) else {
-            // Invalid frame number, don't save
-            return
-        }
-        
-        let frame = AnimationFrame(
-            name: frameName.isEmpty ? "Unnamed" : frameName,
-            frameNumber: frameNum,
-            pose: figure,
-            objects: objects  // Save the current objects with this frame
-        )
-        
-        // Debug: print saved object positions
-        for (i, obj) in objects.enumerated() {
-            print("DEBUG SAVE: object[\(i)] name=\(obj.imageName), position=\(obj.position), scale=\(obj.scale), rotation=\(obj.rotation)")
-        }
-        
-        savedFrames.append(frame)
-        
-        // Persist frames to UserDefaults
-        persistFramesToStorage()
-        
-        // Reset the dialog
-        frameName = ""
-        frameNumber = "1"
-        showSaveFrameDialog = false
-    }
-    
-    private func persistFramesToStorage() {
-        // Save all frames to UserDefaults so they persist between app restarts
-        let encoder = JSONEncoder()
-        if let data = try? encoder.encode(savedFrames) {
-            UserDefaults.standard.set(data, forKey: "saved_animation_frames_2d")
-            print("✓ Saved \(savedFrames.count) frames to UserDefaults")
-        } else {
-            print("✗ Error saving frames to UserDefaults")
-        }
-    }
-    
-    private func loadSavedFrames() {
-        // First load from Bundle (animations.json)
-        savedFrames = AnimationStorage.shared.loadFrames()
-        
-        // Then load any user-created frames from UserDefaults
-        if let data = UserDefaults.standard.data(forKey: "saved_animation_frames_2d") {
-            let decoder = JSONDecoder()
-            if let userFrames = try? decoder.decode([AnimationFrame].self, from: data) {
-                print("✓ Loaded \(userFrames.count) user-created frames from UserDefaults")
-                // Append user frames to bundle frames (avoiding duplicates by ID)
-                let bundleIds = Set(savedFrames.map { $0.id })
-                for userFrame in userFrames {
-                    if !bundleIds.contains(userFrame.id) {
-                        savedFrames.append(userFrame)
-                    }
-                }
-            }
-        }
-    }
-    
-    private func loadLastFigureState() {
-        // Try to load the last saved figure state
-        if let data = UserDefaults.standard.data(forKey: "last_figure_state_2d"),
-           let pose = try? JSONDecoder().decode(StickFigure2DPose.self, from: data) {
-            figure = pose.toStickFigure2D()
-        } else {
-            // If no saved state, load the default Stand pose
-            figure = StickFigure2D.defaultStand()
-        }
-    }
-    
-    private func saveCurrentFigureState() {
-        // Save the current figure state to UserDefaults
-        let pose = StickFigure2DPose(from: figure)
-        if let data = try? JSONEncoder().encode(pose) {
-            UserDefaults.standard.set(data, forKey: "last_figure_state_2d")
-        }
-    }
-    
-    private func resetFigure() {
-        // Load the default Stand pose
-        figure = StickFigure2D.defaultStand()
-        // Set scale to 200% (2.4)
-        figure.scale = 2.4
-        // Reset canvas offset
-        canvasOffset = .zero
-        lastCanvasOffset = .zero
-        // Clear all objects
-        objects = []
-        // Save this as the current state
-        saveCurrentFigureState()
-    }
-    
-    private func updateJoint(_ jointName: String, with position: CGPoint) {
-        draggedJoint = jointName
-
-    // Calculate the angle from parent to this position
-    let angle = calculateAngle(from: getParentPosition(for: jointName), to: position)
-
-    switch jointName {
-    case "waist":
-        let midTorsoAngle = 270.0 + figure.midTorsoAngle
-        let targetAngle = wrapAngle(angle - midTorsoAngle)
-        // Apply very strong damping for waist testing: blend 90% old angle with 10% new angle
-        let newAngle = smoothedAngle(last: lastWaistAngle, target: targetAngle, alpha: 0.1)
-        figure.waistTorsoAngle = wrapAngle(newAngle)
-        lastWaistAngle = wrapAngle(newAngle)
-    case "midTorso":
-        let midTorsoAngle = 270.0 + figure.midTorsoAngle
-        let targetAngle = wrapAngle(angle - midTorsoAngle)
-        // Apply damping: blend 70% old angle with 30% new angle for smoother rotation
-        let newAngle = smoothedAngle(last: lastMidTorsoAngle, target: targetAngle, alpha: 0.3)
-        figure.waistTorsoAngle = wrapAngle(newAngle)
-        lastMidTorsoAngle = wrapAngle(newAngle)
-    case "neck":
-        let midTorsoAngle = 270.0 + figure.waistTorsoAngle
-        figure.midTorsoAngle = wrapAngle(angle - midTorsoAngle)
-    case "head":
-        // Head angle is stored as absolute world angle (0° = up)
-        // Convert from atan2 angle (0° = right) to our system (0° = up)
-        figure.headAngle = wrapAngle(angle + 90)
-    case "leftShoulder":
-        let parentAngle = 270.0 + figure.midTorsoAngle + figure.waistTorsoAngle
-        figure.leftShoulderAngle = wrapAngle(angle - parentAngle)
-    case "rightShoulder":
-        let parentAngle = 270.0 + figure.midTorsoAngle + figure.waistTorsoAngle
-        figure.rightShoulderAngle = wrapAngle(angle - parentAngle)
-    case "leftElbow":
-        let parentAngle = 270.0 + figure.leftShoulderAngle + figure.midTorsoAngle + figure.waistTorsoAngle
-        figure.leftElbowAngle = wrapAngle(angle - parentAngle)
-    case "rightElbow":
-        let parentAngle = 270.0 + figure.rightShoulderAngle + figure.midTorsoAngle + figure.waistTorsoAngle
-        figure.rightElbowAngle = wrapAngle(angle - parentAngle)
-    case "leftKnee":
-        // Legs rotate directly from waist center
-        let angleFromWaist = calculateAngle(from: figure.waistPosition, to: position)
-        let parentAngle = 270.0 // Legs always point down, no waist rotation applied
-        figure.leftKneeAngle = wrapAngle(angleFromWaist - parentAngle)
-    case "rightKnee":
-        // Legs rotate directly from waist center
-        let angleFromWaist = calculateAngle(from: figure.waistPosition, to: position)
-        let parentAngle = 270.0 // Legs always point down, no waist rotation applied
-        figure.rightKneeAngle = wrapAngle(angleFromWaist - parentAngle)
-    case "leftFoot":
-        // Feet are children of the knee, so calculate from the upper leg end position
-        let angleFromKnee = calculateAngle(from: figure.leftUpperLegEnd, to: position)
-        let parentAngle = 270.0 + figure.leftKneeAngle
-        figure.leftFootAngle = wrapAngle(angleFromKnee - parentAngle)
-    case "rightFoot":
-        // Feet are children of the knee, so calculate from the upper leg end position
-        let angleFromKnee = calculateAngle(from: figure.rightUpperLegEnd, to: position)
-        let parentAngle = 270.0 + figure.rightKneeAngle
-        figure.rightFootAngle = wrapAngle(angleFromKnee - parentAngle)
-    default:
-        break
-    }
-
-    // Save the current state after any joint update
-    // saveCurrentFigureState()  -- Not needed for inline view (uses @Binding)
-    }
-    
-    private func getParentPosition(for jointName: String) -> CGPoint {
-        switch jointName {
-        case "waist":
-            return figure.midTorsoPosition
-        case "midTorso":
-            return figure.midTorsoPosition
-        case "neck":
-            return figure.midTorsoPosition
-        case "head":
-            return figure.neckPosition
-        case "leftShoulder":
-            return figure.neckPosition
-        case "rightShoulder":
-            return figure.neckPosition
-        case "leftElbow":
-            return figure.leftShoulderPosition
-        case "rightElbow":
-            return figure.rightShoulderPosition
-        case "leftKnee":
-            return figure.waistPosition
-        case "rightKnee":
-            return figure.waistPosition
-        case "leftFoot":
-            return figure.leftUpperLegEnd
-        case "rightFoot":
-            return figure.rightUpperLegEnd
-        default:
-            return CGPoint.zero
-        }
-    }
-    
-    private func calculateAngle(from: CGPoint, to: CGPoint) -> Double {
-        let dx = to.x - from.x
-        let dy = to.y - from.y
-        let radians = atan2(dy, dx)
-        return radians * 180 / .pi
-    }
-}
-
 // MARK: - CGPoint Extensions
 
 extension CGPoint {
@@ -3622,6 +1773,11 @@ extension CGPoint {
     /// Multiplies a point by a scalar
     static func * (lhs: CGPoint, rhs: CGFloat) -> CGPoint {
         return CGPoint(x: lhs.x * rhs, y: lhs.y * rhs)
+    }
+    
+    /// Multiplies a scalar by a point
+    static func * (lhs: CGFloat, rhs: CGPoint) -> CGPoint {
+        return CGPoint(x: lhs * rhs.x, y: lhs * rhs.y)
     }
     
     /// Adds two points together

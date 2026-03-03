@@ -14,8 +14,21 @@ struct SavedEditFrame: Codable, Identifiable {
     let fusiformLowerArms: CGFloat
     let fusiformUpperLegs: CGFloat
     let fusiformLowerLegs: CGFloat
+    let fusiformShoulders: CGFloat
+    let peakPositionUpperArms: CGFloat
+    let peakPositionLowerArms: CGFloat
+    let peakPositionUpperLegs: CGFloat
+    let peakPositionLowerLegs: CGFloat
+    let peakPositionUpperTorso: CGFloat
+    let peakPositionLowerTorso: CGFloat
     let positionX: CGFloat
     let positionY: CGFloat
+    let shoulderWidthMultiplier: CGFloat
+    let waistWidthMultiplier: CGFloat
+    let waistThicknessMultiplier: CGFloat
+    let skeletonSize: CGFloat
+    let jointShapeSize: CGFloat
+    let neckLength: CGFloat
     
     // Pose data (angles) - stored as simple properties
     let waistTorsoAngle: CGFloat
@@ -57,6 +70,39 @@ struct SavedEditFrame: Codable, Identifiable {
         self.positionX = values.positionX
         self.positionY = values.positionY
         
+        // Save structure/layout multipliers from pose
+        if let pose = pose {
+            self.shoulderWidthMultiplier = pose.shoulderWidthMultiplier
+            self.waistWidthMultiplier = pose.waistWidthMultiplier
+            self.waistThicknessMultiplier = pose.waistThicknessMultiplier
+            self.skeletonSize = pose.skeletonSize
+            self.jointShapeSize = 1.0  // Editor-only property, not part of pose
+            self.neckLength = pose.neckLength
+            // Set peak positions from pose
+            self.fusiformShoulders = pose.fusiformShoulders
+            self.peakPositionUpperArms = pose.peakPositionUpperArms
+            self.peakPositionLowerArms = pose.peakPositionLowerArms
+            self.peakPositionUpperLegs = pose.peakPositionUpperLegs
+            self.peakPositionLowerLegs = pose.peakPositionLowerLegs
+            self.peakPositionUpperTorso = pose.peakPositionUpperTorso
+            self.peakPositionLowerTorso = pose.peakPositionLowerTorso
+        } else {
+            self.shoulderWidthMultiplier = 1.0
+            self.waistWidthMultiplier = 1.0
+            self.waistThicknessMultiplier = 1.0
+            self.skeletonSize = 1.0
+            self.jointShapeSize = 1.0
+            self.neckLength = 1.0
+            // Default peak positions
+            self.fusiformShoulders = 0.0
+            self.peakPositionUpperArms = 0.5
+            self.peakPositionLowerArms = 0.35
+            self.peakPositionUpperLegs = 0.2
+            self.peakPositionLowerLegs = 0.2
+            self.peakPositionUpperTorso = 0.5
+            self.peakPositionLowerTorso = 0.5
+        }
+        
         // Store pose angles if provided, otherwise use defaults
         if let pose = pose {
             self.waistTorsoAngle = pose.waistTorsoAngle
@@ -94,44 +140,6 @@ struct SavedEditFrame: Codable, Identifiable {
             self.leftFootAngle = 0
             self.rightFootAngle = 0
         }
-    }
-    
-    /// Convert to a JSON-exportable dictionary
-    func toJSON() -> [String: Any] {
-        let json: [String: Any] = [
-            "name": name,
-            "timestamp": ISO8601DateFormatter().string(from: timestamp),
-            "figureScale": figureScale,
-            "strokeThicknessMultiplier": strokeThicknessMultiplier,
-            "fusiformUpperTorso": fusiformUpperTorso,
-            "fusiformLowerTorso": fusiformLowerTorso,
-            "fusiformUpperArms": fusiformUpperArms,
-            "fusiformLowerArms": fusiformLowerArms,
-            "fusiformUpperLegs": fusiformUpperLegs,
-            "fusiformLowerLegs": fusiformLowerLegs,
-            "positionX": positionX,
-            "positionY": positionY,
-            "pose": [
-                "waistTorsoAngle": waistTorsoAngle,
-                "midTorsoAngle": midTorsoAngle,
-                "torsoRotationAngle": torsoRotationAngle,
-                "headAngle": headAngle,
-                "leftShoulderAngle": leftShoulderAngle,
-                "rightShoulderAngle": rightShoulderAngle,
-                "leftElbowAngle": leftElbowAngle,
-                "rightElbowAngle": rightElbowAngle,
-                "leftHandAngle": leftHandAngle,
-                "rightHandAngle": rightHandAngle,
-                "leftHipAngle": leftHipAngle,
-                "rightHipAngle": rightHipAngle,
-                "leftKneeAngle": leftKneeAngle,
-                "rightKneeAngle": rightKneeAngle,
-                "leftFootAngle": leftFootAngle,
-                "rightFootAngle": rightFootAngle
-            ]
-        ]
-        
-        return json
     }
 }
 
@@ -183,8 +191,7 @@ class SavedFramesManager {
     func exportFrameAsJSON(id: UUID) -> String? {
         guard let frame = getFrame(id: id) else { return nil }
         
-        let json = frame.toJSON()
-        guard let jsonData = try? JSONSerialization.data(withJSONObject: json, options: .prettyPrinted),
+        guard let jsonData = try? JSONEncoder().encode(frame),
               let jsonString = String(data: jsonData, encoding: .utf8) else {
             return nil
         }

@@ -97,24 +97,6 @@ class MapScene: GameScene {
         editorLabel.position = CGPoint(x: size.width / 2, y: topBarY)
         editorLabel.zPosition = 101
         addChild(editorLabel)
-        
-        // Old editor button - right of new editor (SwiftUI editor)
-        let oldEditorArea = SKShapeNode(rectOf: CGSize(width: 60, height: 40))
-        oldEditorArea.position = CGPoint(x: size.width / 2 + 65, y: topBarY)
-        oldEditorArea.fillColor = SKColor(red: 0.2, green: 0.2, blue: 0.5, alpha: 0.7)
-        oldEditorArea.strokeColor = .black
-        oldEditorArea.lineWidth = 2
-        oldEditorArea.name = "oldEditorButton"
-        oldEditorArea.zPosition = 100
-        addChild(oldEditorArea)
-        
-        let oldEditorLabel = SKLabelNode(fontNamed: "Arial")
-        oldEditorLabel.text = "OLD"
-        oldEditorLabel.fontSize = 10
-        oldEditorLabel.fontColor = .white
-        oldEditorLabel.position = CGPoint(x: size.width / 2 + 65, y: topBarY)
-        oldEditorLabel.zPosition = 101
-        addChild(oldEditorLabel)
     }
     
     private func setupLevels() {
@@ -228,12 +210,6 @@ class MapScene: GameScene {
             if point.x > size.width / 2 - 35 && point.x < size.width / 2 + 35 {
                 print("🗺️ ✓ Editor button tapped! - Opening UIKit Stick Figure Editor")
                 gameViewController?.openStickFigureEditor()
-                return
-            }
-            // Old editor button (SwiftUI editor)
-            if point.x > size.width / 2 + 30 && point.x < size.width / 2 + 100 {
-                print("🗺️ ✓ Old Editor button tapped! - Opening old SwiftUI 2D Editor")
-                gameViewController?.openOldStickFigureEditor()
                 return
             }
         }

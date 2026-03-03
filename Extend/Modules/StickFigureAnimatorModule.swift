@@ -25,8 +25,6 @@ public struct StickFigureAnimatorModule: AppModule {
 // MARK: - Stick Figure Animator View
 
 private struct StickFigureAnimatorModuleView: View {
-    @State private var showAnimationEditor = false
-    
     var body: some View {
         NavigationStack {
             VStack(spacing: 16) {
@@ -37,7 +35,7 @@ private struct StickFigureAnimatorModuleView: View {
                     .padding(.horizontal, 16)
                 
                 List {
-                    Button(action: { showAnimationEditor = true }) {
+                    Button(action: {}) {
                         HStack {
                             Image(systemName: "pencil.and.scribble")
                                 .foregroundColor(.blue)
@@ -57,9 +55,6 @@ private struct StickFigureAnimatorModuleView: View {
             }
             .navigationTitle("Stick Figure Animator")
             .navigationBarTitleDisplayMode(.inline)
-            .sheet(isPresented: $showAnimationEditor) {
-                StickFigure2DEditorView()
-            }
         }
     }
 }

@@ -19,6 +19,8 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
     private var skeletonSize: CGFloat = 1.0  // Skeleton line thickness multiplier
     private var jointShapeSize: CGFloat = 1.0  // Joint circle size multiplier
     private var shoulderWidthMultiplier: CGFloat = 1.0  // Controls distance between shoulders (1.0 = normal)
+    private var waistWidthMultiplier: CGFloat = 1.0  // Controls distance between hips (1.0 = normal)
+    private var waistThicknessMultiplier: CGFloat = 1.0  // Controls thickness of waist connector lines (1.0 = normal)
     private var neckLength: CGFloat = 1.0  // Neck length multiplier
     private var fusiformUpperTorso: CGFloat = 4.0
     private var fusiformLowerTorso: CGFloat = 4.0
@@ -27,6 +29,12 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
     private var fusiformUpperLegs: CGFloat = 4.0
     private var fusiformLowerLegs: CGFloat = 4.0
     private var fusiformShoulders: CGFloat = 0.0  // Shoulder tapering
+    private var peakPositionUpperArms: CGFloat = 0.5  // Peak position for upper arms
+    private var peakPositionLowerArms: CGFloat = 0.35  // Peak position for lower arms
+    private var peakPositionUpperLegs: CGFloat = 0.2  // Peak position for upper legs
+    private var peakPositionLowerLegs: CGFloat = 0.2  // Peak position for lower legs
+    private var peakPositionUpperTorso: CGFloat = 0.5  // Peak position for upper torso
+    private var peakPositionLowerTorso: CGFloat = 0.5  // Peak position for lower torso
     
     // Position offset
     var figureOffsetX: CGFloat = 0
@@ -240,8 +248,8 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
         
         switch section {
         case 0: return 2  // Zoom, Position buttons (Show Joints moved to header)
-        case 1: return isExpanded ? 6 : 0  // Figure Scale, Stroke, Skeleton Size, Joint Shape Size, Shoulder Width, Neck Length
-        case 2: return isExpanded ? 7 : 0  // Upper Torso, Lower Torso, Upper Arms, Lower Arms, Upper Legs, Lower Legs, Shoulders
+        case 1: return isExpanded ? 8 : 0  // Figure Scale, Stroke, Skeleton Size, Joint Shape Size, Shoulder Width, Waist Width, Waist Thickness, Neck Length
+        case 2: return isExpanded ? 13 : 0  // 7 fusiform + 6 peak position sliders
         case 3: return isExpanded ? 10 : 0  // 10 Joint sliders: head, leftShoulder, rightShoulder, leftElbow, rightElbow, leftKnee, rightKnee, leftCalf, rightCalf, midTorso
         case 4: return isExpanded ? 12 : 0  // Color pickers for each body part (added shoulders)
         case 5: return 1  // Save + Load (now on same row)
@@ -438,14 +446,14 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
             
         case (1, 2):
             // Skeleton Size slider
-            addSliderCell(cell, label: "Skeleton Size", value: skeletonSize, min: 0.5, max: 2.0, increment: 0.1, onChange: { [weak self] val in
+            addSliderCell(cell, label: "Skeleton Size", value: skeletonSize, min: 0.5, max: 10.0, increment: 0.1, onChange: { [weak self] val in
                 self?.skeletonSize = val
                 self?.updateFigure()
             })
             
         case (1, 3):
             // Joint Shape Size slider
-            addSliderCell(cell, label: "Joint Shape Size", value: jointShapeSize, min: 0.5, max: 2.0, increment: 0.1, onChange: { [weak self] val in
+            addSliderCell(cell, label: "Joint Shape Size", value: jointShapeSize, min: 0.5, max: 30.0, increment: 0.1, onChange: { [weak self] val in
                 self?.jointShapeSize = val
                 self?.updateFigure()
             })
@@ -458,31 +466,53 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
             })
             
         case (1, 5):
+            // Waist Width slider
+            addSliderCell(cell, label: "Waist Width", value: waistWidthMultiplier, min: 0.0, max: 2.0, increment: 0.1, onChange: { [weak self] val in
+                self?.waistWidthMultiplier = val
+                self?.updateFigure()
+            })
+            
+        case (1, 6):
+            // Waist Thickness slider
+            addSliderCell(cell, label: "Waist Thickness", value: waistThicknessMultiplier, min: 0.5, max: 10.0, increment: 0.1, onChange: { [weak self] val in
+                self?.waistThicknessMultiplier = val
+                self?.updateFigure()
+            })
+            
+        case (1, 7):
             // Neck Length slider
-            addSliderCell(cell, label: "Neck Length", value: neckLength, min: 0.5, max: 2.0, increment: 0.1, onChange: { [weak self] val in
+            addSliderCell(cell, label: "Neck Length", value: neckLength, min: 0.5, max: 30.0, increment: 0.1, onChange: { [weak self] val in
                 self?.neckLength = val
                 self?.updateFigure()
             })
             
-        case (2, 0): addSliderCell(cell, label: "Upper Torso", value: fusiformUpperTorso, min: 0, max: 10, onChange: { [weak self] val in self?.fusiformUpperTorso = val; self?.updateFigure() })
-        case (2, 1): addSliderCell(cell, label: "Lower Torso", value: fusiformLowerTorso, min: 0, max: 10, onChange: { [weak self] val in self?.fusiformLowerTorso = val; self?.updateFigure() })
-        case (2, 2): addSliderCell(cell, label: "Upper Arms", value: fusiformUpperArms, min: 0, max: 10, onChange: { [weak self] val in self?.fusiformUpperArms = val; self?.updateFigure() })
-        case (2, 3): addSliderCell(cell, label: "Lower Arms", value: fusiformLowerArms, min: 0, max: 10, onChange: { [weak self] val in self?.fusiformLowerArms = val; self?.updateFigure() })
-        case (2, 4): addSliderCell(cell, label: "Upper Legs", value: fusiformUpperLegs, min: 0, max: 10, onChange: { [weak self] val in self?.fusiformUpperLegs = val; self?.updateFigure() })
-        case (2, 5): addSliderCell(cell, label: "Lower Legs", value: fusiformLowerLegs, min: 0, max: 10, onChange: { [weak self] val in self?.fusiformLowerLegs = val; self?.updateFigure() })
-        case (2, 6): addSliderCell(cell, label: "Shoulders", value: fusiformShoulders, min: 0, max: 10, increment: 0.25, onChange: { [weak self] val in self?.fusiformShoulders = val; self?.updateFigure() })
+        case (2, 0): addSliderCell(cell, label: "Upper Torso", value: fusiformUpperTorso, min: 0, max: 10, increment: 0.1, onChange: { [weak self] val in self?.fusiformUpperTorso = val; self?.updateFigure() })
+        case (2, 1): addSliderCell(cell, label: "Lower Torso", value: fusiformLowerTorso, min: 0, max: 10, increment: 0.1, onChange: { [weak self] val in self?.fusiformLowerTorso = val; self?.updateFigure() })
+        case (2, 2): addSliderCell(cell, label: "Upper Arms", value: fusiformUpperArms, min: 0, max: 10, increment: 0.1, onChange: { [weak self] val in self?.fusiformUpperArms = val; self?.updateFigure() })
+        case (2, 3): addSliderCell(cell, label: "Lower Arms", value: fusiformLowerArms, min: 0, max: 10, increment: 0.1, onChange: { [weak self] val in self?.fusiformLowerArms = val; self?.updateFigure() })
+        case (2, 4): addSliderCell(cell, label: "Upper Legs", value: fusiformUpperLegs, min: 0, max: 10, increment: 0.1, onChange: { [weak self] val in self?.fusiformUpperLegs = val; self?.updateFigure() })
+        case (2, 5): addSliderCell(cell, label: "Lower Legs", value: fusiformLowerLegs, min: 0, max: 10, increment: 0.1, onChange: { [weak self] val in self?.fusiformLowerLegs = val; self?.updateFigure() })
+        case (2, 6): addSliderCell(cell, label: "Shoulders", value: fusiformShoulders, min: 0, max: 10, increment: 0.1, onChange: { [weak self] val in self?.fusiformShoulders = val; self?.updateFigure() })
+        
+        // Peak position sliders
+        case (2, 7): addSliderCell(cell, label: "Peak Upper Arm", value: peakPositionUpperArms, min: 0.1, max: 0.9, increment: 0.05, onChange: { [weak self] val in self?.peakPositionUpperArms = val; self?.updateFigure() })
+        case (2, 8): addSliderCell(cell, label: "Peak Lower Arm", value: peakPositionLowerArms, min: 0.1, max: 0.9, increment: 0.05, onChange: { [weak self] val in self?.peakPositionLowerArms = val; self?.updateFigure() })
+        case (2, 9): addSliderCell(cell, label: "Peak Upper Leg", value: peakPositionUpperLegs, min: 0.1, max: 0.9, increment: 0.05, onChange: { [weak self] val in self?.peakPositionUpperLegs = val; self?.updateFigure() })
+        case (2, 10): addSliderCell(cell, label: "Peak Lower Leg", value: peakPositionLowerLegs, min: 0.1, max: 0.9, increment: 0.05, onChange: { [weak self] val in self?.peakPositionLowerLegs = val; self?.updateFigure() })
+        case (2, 11): addSliderCell(cell, label: "Peak Upper Torso", value: peakPositionUpperTorso, min: 0.1, max: 0.9, increment: 0.05, onChange: { [weak self] val in self?.peakPositionUpperTorso = val; self?.updateFigure() })
+        case (2, 12): addSliderCell(cell, label: "Peak Lower Torso", value: peakPositionLowerTorso, min: 0.1, max: 1.0, increment: 0.05, onChange: { [weak self] val in self?.peakPositionLowerTorso = val; self?.updateFigure() })
         
         // Joint sliders - section 3
-        case (3, 0): addSliderCell(cell, label: "Head", value: neckRotation, min: -180, max: 180, onChange: { [weak self] val in self?.neckRotation = val; self?.updateFigure() })
-        case (3, 1): addSliderCell(cell, label: "Left Shoulder", value: leftShoulderAngle, min: -180, max: 180, onChange: { [weak self] val in self?.leftShoulderAngle = val; self?.updateFigure() })
-        case (3, 2): addSliderCell(cell, label: "Right Shoulder", value: rightShoulderAngle, min: -180, max: 180, onChange: { [weak self] val in self?.rightShoulderAngle = val; self?.updateFigure() })
-        case (3, 3): addSliderCell(cell, label: "Left Elbow", value: leftElbowAngle, min: -180, max: 180, onChange: { [weak self] val in self?.leftElbowAngle = val; self?.updateFigure() })
-        case (3, 4): addSliderCell(cell, label: "Right Elbow", value: rightElbowAngle, min: -180, max: 180, onChange: { [weak self] val in self?.rightElbowAngle = val; self?.updateFigure() })
-        case (3, 5): addSliderCell(cell, label: "Left Upper Leg", value: leftKneeAngle, min: -180, max: 180, onChange: { [weak self] val in self?.leftKneeAngle = val; self?.updateFigure() })
-        case (3, 6): addSliderCell(cell, label: "Right Upper Leg", value: rightKneeAngle, min: -180, max: 180, onChange: { [weak self] val in self?.rightKneeAngle = val; self?.updateFigure() })
-        case (3, 7): addSliderCell(cell, label: "Left Calf", value: leftFootAngle, min: -180, max: 180, onChange: { [weak self] val in self?.leftFootAngle = val; self?.updateFigure() })
-        case (3, 8): addSliderCell(cell, label: "Right Calf", value: rightFootAngle, min: -180, max: 180, onChange: { [weak self] val in self?.rightFootAngle = val; self?.updateFigure() })
-        case (3, 9): addSliderCell(cell, label: "Mid Torso", value: torsoRotation, min: -180, max: 180, onChange: { [weak self] val in self?.torsoRotation = val; self?.updateFigure() })
+        case (3, 0): addSliderCell(cell, label: "Head", value: neckRotation, min: -180, max: 180, increment: 1, onChange: { [weak self] val in self?.neckRotation = val; self?.updateFigure() })
+        case (3, 1): addSliderCell(cell, label: "L Shoulder", value: leftShoulderAngle, min: -180, max: 180, increment: 1, onChange: { [weak self] val in self?.leftShoulderAngle = val; self?.updateFigure() })
+        case (3, 2): addSliderCell(cell, label: "R Shoulder", value: rightShoulderAngle, min: -180, max: 180, increment: 1, onChange: { [weak self] val in self?.rightShoulderAngle = val; self?.updateFigure() })
+        case (3, 3): addSliderCell(cell, label: "L Elbow", value: leftElbowAngle, min: -180, max: 180, increment: 1, onChange: { [weak self] val in self?.leftElbowAngle = val; self?.updateFigure() })
+        case (3, 4): addSliderCell(cell, label: "R Elbow", value: rightElbowAngle, min: -180, max: 180, increment: 1, onChange: { [weak self] val in self?.rightElbowAngle = val; self?.updateFigure() })
+        case (3, 5): addSliderCell(cell, label: "L Upper Leg", value: leftKneeAngle, min: -180, max: 180, increment: 1, onChange: { [weak self] val in self?.leftKneeAngle = val; self?.updateFigure() })
+        case (3, 6): addSliderCell(cell, label: "R Upper Leg", value: rightKneeAngle, min: -180, max: 180, increment: 1, onChange: { [weak self] val in self?.rightKneeAngle = val; self?.updateFigure() })
+        case (3, 7): addSliderCell(cell, label: "L Calf", value: leftFootAngle, min: -180, max: 180, increment: 1, onChange: { [weak self] val in self?.leftFootAngle = val; self?.updateFigure() })
+        case (3, 8): addSliderCell(cell, label: "R Calf", value: rightFootAngle, min: -180, max: 180, increment: 1, onChange: { [weak self] val in self?.rightFootAngle = val; self?.updateFigure() })
+        case (3, 9): addSliderCell(cell, label: "Mid Torso", value: torsoRotation, min: -180, max: 180, increment: 1, onChange: { [weak self] val in self?.torsoRotation = val; self?.updateFigure() })
         
         // Color picker buttons - section 4
         case (4, 0):
@@ -490,25 +520,25 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
         case (4, 1):
             addColorButton(cell, label: "Torso", colorKey: "torso")
         case (4, 2):
-            addColorButton(cell, label: "Left Shoulder", colorKey: "leftShoulder")
+            addColorButton(cell, label: "L Shoulder", colorKey: "leftShoulder")
         case (4, 3):
-            addColorButton(cell, label: "Right Shoulder", colorKey: "rightShoulder")
+            addColorButton(cell, label: "R Shoulder", colorKey: "rightShoulder")
         case (4, 4):
-            addColorButton(cell, label: "Left Upper Arm", colorKey: "leftUpperArm")
+            addColorButton(cell, label: "L Upper Arm", colorKey: "leftUpperArm")
         case (4, 5):
-            addColorButton(cell, label: "Right Upper Arm", colorKey: "rightUpperArm")
+            addColorButton(cell, label: "R Upper Arm", colorKey: "rightUpperArm")
         case (4, 6):
-            addColorButton(cell, label: "Left Lower Arm", colorKey: "leftLowerArm")
+            addColorButton(cell, label: "L Lower Arm", colorKey: "leftLowerArm")
         case (4, 7):
-            addColorButton(cell, label: "Right Lower Arm", colorKey: "rightLowerArm")
+            addColorButton(cell, label: "R Lower Arm", colorKey: "rightLowerArm")
         case (4, 8):
-            addColorButton(cell, label: "Left Upper Leg", colorKey: "leftUpperLeg")
+            addColorButton(cell, label: "L Upper Leg", colorKey: "leftUpperLeg")
         case (4, 9):
-            addColorButton(cell, label: "Right Upper Leg", colorKey: "rightUpperLeg")
+            addColorButton(cell, label: "R Upper Leg", colorKey: "rightUpperLeg")
         case (4, 10):
-            addColorButton(cell, label: "Left Lower Leg", colorKey: "leftLowerLeg")
+            addColorButton(cell, label: "L Lower Leg", colorKey: "leftLowerLeg")
         case (4, 11):
-            addColorButton(cell, label: "Right Lower Leg", colorKey: "rightLowerLeg")
+            addColorButton(cell, label: "R Lower Leg", colorKey: "rightLowerLeg")
             
         case (5, 0):
             // Save and Load buttons on same row, split 50/50
@@ -588,6 +618,7 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
         lbl.text = label
         lbl.font = UIFont.systemFont(ofSize: 12, weight: .semibold)
         lbl.translatesAutoresizingMaskIntoConstraints = false
+        lbl.setContentHuggingPriority(.defaultHigh, for: .horizontal)
         
         let slider = UISlider()
         slider.minimumValue = Float(minVal)
@@ -595,11 +626,17 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
         slider.value = Float(value)
         slider.translatesAutoresizingMaskIntoConstraints = false
         
+        // Determine if we should show decimals based on increment
+        let showDecimals = increment < 1.0
         let valLbl = UILabel()
-        valLbl.text = String(format: "%.1f", value)
+        if showDecimals {
+            valLbl.text = String(format: "%.1f", value)
+        } else {
+            valLbl.text = String(format: "%.0f", value)
+        }
         valLbl.font = UIFont.systemFont(ofSize: 11)
         valLbl.translatesAutoresizingMaskIntoConstraints = false
-        valLbl.widthAnchor.constraint(equalToConstant: 32).isActive = true
+        valLbl.widthAnchor.constraint(equalToConstant: 50).isActive = true
         
         // Minus button
         let minusBtn = UIButton(type: .system)
@@ -611,7 +648,11 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
             let currentVal = CGFloat(slider.value)
             let newVal = max(minVal, currentVal - increment)
             slider.value = Float(newVal)
-            valLbl.text = String(format: "%.1f", newVal)
+            if showDecimals {
+                valLbl.text = String(format: "%.1f", newVal)
+            } else {
+                valLbl.text = String(format: "%.0f", newVal)
+            }
             onChange(newVal)
         }, for: .touchUpInside)
         
@@ -625,13 +666,21 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
             let currentVal = CGFloat(slider.value)
             let newVal = min(maxVal, currentVal + increment)
             slider.value = Float(newVal)
-            valLbl.text = String(format: "%.1f", newVal)
+            if showDecimals {
+                valLbl.text = String(format: "%.1f", newVal)
+            } else {
+                valLbl.text = String(format: "%.0f", newVal)
+            }
             onChange(newVal)
         }, for: .touchUpInside)
         
         slider.addAction(UIAction { _ in
             let newVal = CGFloat(slider.value)
-            valLbl.text = String(format: "%.1f", newVal)
+            if showDecimals {
+                valLbl.text = String(format: "%.1f", newVal)
+            } else {
+                valLbl.text = String(format: "%.0f", newVal)
+            }
             onChange(newVal)
         }, for: .valueChanged)
         
@@ -760,20 +809,30 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
         // Load the default Stand frame from animations.json
         if let standFrame = gameState.standFrame {
             
-            // Reset scale values
-            figureScale = 1.0
-            strokeThicknessMultiplier = CGFloat(standFrame.strokeThickness) / 3.0
+            // Reset scale values - use defaults if not present in standFrame
+            figureScale = standFrame.scale
+            strokeThicknessMultiplier = 1.0  // Default value
             skeletonSize = 1.0
             jointShapeSize = 1.0
-            shoulderWidthMultiplier = 1.0
+            shoulderWidthMultiplier = standFrame.shoulderWidthMultiplier
+            neckLength = standFrame.neckLength
             
             // Fusiforms - these are NEW properties only in Stand frame
-            fusiformUpperTorso = CGFloat(standFrame.fusiformUpperTorso)
-            fusiformLowerTorso = CGFloat(standFrame.fusiformLowerTorso)
-            fusiformUpperArms = CGFloat(standFrame.fusiformUpperArms)
-            fusiformLowerArms = CGFloat(standFrame.fusiformLowerArms)
-            fusiformUpperLegs = CGFloat(standFrame.fusiformUpperLegs)
-            fusiformLowerLegs = CGFloat(standFrame.fusiformLowerLegs)
+            fusiformUpperTorso = standFrame.fusiformUpperTorso
+            fusiformLowerTorso = standFrame.fusiformLowerTorso
+            fusiformUpperArms = standFrame.fusiformUpperArms
+            fusiformLowerArms = standFrame.fusiformLowerArms
+            fusiformUpperLegs = standFrame.fusiformUpperLegs
+            fusiformLowerLegs = standFrame.fusiformLowerLegs
+            fusiformShoulders = standFrame.fusiformShoulders
+            
+            // Peak positions - use defaults if not present
+            peakPositionUpperArms = standFrame.peakPositionUpperArms
+            peakPositionLowerArms = standFrame.peakPositionLowerArms
+            peakPositionUpperLegs = standFrame.peakPositionUpperLegs
+            peakPositionLowerLegs = standFrame.peakPositionLowerLegs
+            peakPositionUpperTorso = standFrame.peakPositionUpperTorso
+            peakPositionLowerTorso = standFrame.peakPositionLowerTorso
             
             // Reset ALL angles to exact Stand frame values
             neckRotation = CGFloat(standFrame.headAngle)
@@ -811,18 +870,21 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
                 "rightLowerLeg": .black
             ]
             
-            print("🎮 ✓ Loaded Stand frame - scale:\(standFrame.scale), angles: shoulder:\(standFrame.leftShoulderAngle)°, elbow:\(standFrame.leftElbowAngle)°, knee:\(standFrame.leftKneeAngle)°")
+            print("🎮 ✓ Loaded Stand frame - scale:\(standFrame.scale), fusiform: upper=\(standFrame.fusiformUpperArms), lower=\(standFrame.fusiformLowerArms), angles: shoulder:\(standFrame.leftShoulderAngle)°, elbow:\(standFrame.leftElbowAngle)°, knee:\(standFrame.leftKneeAngle)°")
         }
     }
     
     // MARK: - Update Figure
     func updateFigure() {
+        print("🎮 DEBUG updateFigure: skeletonSize=\(skeletonSize) jointShapeSize=\(jointShapeSize)")
         editorScene?.updateWithValues(
             figureScale: figureScale,
             strokeThicknessMultiplier: strokeThicknessMultiplier,
             skeletonSize: skeletonSize,
             jointShapeSize: jointShapeSize,
             shoulderWidthMultiplier: shoulderWidthMultiplier,
+            waistWidthMultiplier: waistWidthMultiplier,
+            waistThicknessMultiplier: waistThicknessMultiplier,
             neckLength: neckLength,
             fusiformUpperTorso: fusiformUpperTorso,
             fusiformLowerTorso: fusiformLowerTorso,
@@ -831,6 +893,12 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
             fusiformUpperLegs: fusiformUpperLegs,
             fusiformLowerLegs: fusiformLowerLegs,
             fusiformShoulders: fusiformShoulders,
+            peakPositionUpperArms: peakPositionUpperArms,
+            peakPositionLowerArms: peakPositionLowerArms,
+            peakPositionUpperLegs: peakPositionUpperLegs,
+            peakPositionLowerLegs: peakPositionLowerLegs,
+            peakPositionUpperTorso: peakPositionUpperTorso,
+            peakPositionLowerTorso: peakPositionLowerTorso,
             figureOffsetX: figureOffsetX,
             figureOffsetY: figureOffsetY,
             neckRotation: neckRotation,
@@ -889,6 +957,19 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
             tempPose.rightKneeAngle = self.rightKneeAngle
             tempPose.leftFootAngle = self.leftFootAngle
             tempPose.rightFootAngle = self.rightFootAngle
+            // Set all the fusiform and multiplier properties
+            tempPose.fusiformShoulders = self.fusiformShoulders
+            tempPose.peakPositionUpperArms = self.peakPositionUpperArms
+            tempPose.peakPositionLowerArms = self.peakPositionLowerArms
+            tempPose.peakPositionUpperLegs = self.peakPositionUpperLegs
+            tempPose.peakPositionLowerLegs = self.peakPositionLowerLegs
+            tempPose.peakPositionUpperTorso = self.peakPositionUpperTorso
+            tempPose.peakPositionLowerTorso = self.peakPositionLowerTorso
+            tempPose.shoulderWidthMultiplier = self.shoulderWidthMultiplier
+            tempPose.waistWidthMultiplier = self.waistWidthMultiplier
+            tempPose.waistThicknessMultiplier = self.waistThicknessMultiplier
+            tempPose.skeletonSize = self.skeletonSize
+            tempPose.neckLength = self.neckLength
             
             // Create EditModeValues to use with SavedEditFrame initializer
             let editValues = EditModeValues(
@@ -1014,6 +1095,7 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
     
     private func applyFrame(_ frame: SavedEditFrame) {
         print("🎮 Applying frame: \(frame.name)")
+        // Restore all angles
         neckRotation = frame.headAngle
         torsoRotation = frame.midTorsoAngle
         leftShoulderAngle = frame.leftShoulderAngle
@@ -1028,16 +1110,38 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
         rightKneeAngle = frame.rightKneeAngle
         leftFootAngle = frame.leftFootAngle
         rightFootAngle = frame.rightFootAngle
+        
+        // Restore figure scale and thickness
         figureScale = frame.figureScale
         strokeThicknessMultiplier = frame.strokeThicknessMultiplier
+        
+        // Restore fusiform tapering
         fusiformUpperTorso = frame.fusiformUpperTorso
         fusiformLowerTorso = frame.fusiformLowerTorso
         fusiformUpperArms = frame.fusiformUpperArms
         fusiformLowerArms = frame.fusiformLowerArms
         fusiformUpperLegs = frame.fusiformUpperLegs
         fusiformLowerLegs = frame.fusiformLowerLegs
+        
+        // Restore position offsets
         figureOffsetX = frame.positionX
         figureOffsetY = frame.positionY
+        
+        // Reset to defaults for properties not in SavedEditFrame
+        // (these should be restored from the pose if we update SavedEditFrame)
+        skeletonSize = frame.skeletonSize
+        jointShapeSize = frame.jointShapeSize
+        shoulderWidthMultiplier = frame.shoulderWidthMultiplier
+        waistWidthMultiplier = frame.waistWidthMultiplier
+        waistThicknessMultiplier = frame.waistThicknessMultiplier
+        neckLength = frame.neckLength
+        fusiformShoulders = 0.0
+        peakPositionUpperArms = 0.5
+        peakPositionLowerArms = 0.35
+        peakPositionUpperLegs = 0.2
+        peakPositionLowerLegs = 0.2
+        peakPositionUpperTorso = 0.5
+        peakPositionLowerTorso = 0.5
         
         // Reload table view to show updated values
         controlsTableView.reloadData()
@@ -1412,6 +1516,8 @@ class StickFigureEditorScene: SKScene {
         skeletonSize: CGFloat = 1.0,
         jointShapeSize: CGFloat = 1.0,
         shoulderWidthMultiplier: CGFloat = 1.0,
+        waistWidthMultiplier: CGFloat = 1.0,
+        waistThicknessMultiplier: CGFloat = 1.0,
         neckLength: CGFloat = 1.0,
         fusiformUpperTorso: CGFloat,
         fusiformLowerTorso: CGFloat,
@@ -1420,6 +1526,12 @@ class StickFigureEditorScene: SKScene {
         fusiformUpperLegs: CGFloat,
         fusiformLowerLegs: CGFloat,
         fusiformShoulders: CGFloat = 0.0,
+        peakPositionUpperArms: CGFloat = 0.5,
+        peakPositionLowerArms: CGFloat = 0.35,
+        peakPositionUpperLegs: CGFloat = 0.2,
+        peakPositionLowerLegs: CGFloat = 0.2,
+        peakPositionUpperTorso: CGFloat = 0.5,
+        peakPositionLowerTorso: CGFloat = 0.5,
         figureOffsetX: CGFloat = 0,
         figureOffsetY: CGFloat = 0,
         neckRotation: CGFloat = 0,
@@ -1459,9 +1571,18 @@ class StickFigureEditorScene: SKScene {
         updatedFrame.fusiformShoulders = fusiformShoulders
         updatedFrame.fusiformUpperLegs = fusiformUpperLegs
         updatedFrame.fusiformLowerLegs = fusiformLowerLegs
+        updatedFrame.peakPositionUpperArms = peakPositionUpperArms
+        updatedFrame.peakPositionLowerArms = peakPositionLowerArms
+        updatedFrame.peakPositionUpperLegs = peakPositionUpperLegs
+        updatedFrame.peakPositionLowerLegs = peakPositionLowerLegs
+        updatedFrame.peakPositionUpperTorso = peakPositionUpperTorso
+        updatedFrame.peakPositionLowerTorso = peakPositionLowerTorso
         updatedFrame.shoulderWidthMultiplier = shoulderWidthMultiplier
+        updatedFrame.waistWidthMultiplier = waistWidthMultiplier
+        updatedFrame.waistThicknessMultiplier = waistThicknessMultiplier
+        updatedFrame.skeletonSize = skeletonSize
         updatedFrame.neckLength = neckLength
-        print("🎮 Shoulder width multiplier set to: \(shoulderWidthMultiplier), leftShoulder: \(updatedFrame.leftShoulderPosition), rightShoulder: \(updatedFrame.rightShoulderPosition)")
+        print("🎮 DEBUG updateWithValues: Setting skeletonSize=\(skeletonSize) jointShapeSize=\(jointShapeSize) on updatedFrame")
         
         // Apply angles to the frame - map to existing properties
         updatedFrame.headAngle = neckRotation           // Maps neckRotation to headAngle
@@ -1784,9 +1905,9 @@ class FrameListViewController: UIViewController, UITableViewDataSource, UITableV
         // Show green checkmark if frame is in animations.json
         let checkmark = bundleFrameIds.contains(frame.id) ? "✓" : ""
         
-        // Add frame number to the display
-        let frameNumber = String(format: "Frame %d", indexPath.row + 1)
-        cell.textLabel?.text = "\(checkmark) \(frame.name) - \(frameNumber)".trimmingCharacters(in: .whitespaces)
+        // Add frame number to the display using actual frameNumber property
+        let frameNumberStr = String(format: "Frame %d", frame.frameNumber)
+        cell.textLabel?.text = "\(checkmark) \(frame.name) - \(frameNumberStr)".trimmingCharacters(in: .whitespaces)
         let dateFormatter = DateFormatter()
         dateFormatter.dateStyle = .medium
         dateFormatter.timeStyle = .short
@@ -1795,14 +1916,14 @@ class FrameListViewController: UIViewController, UITableViewDataSource, UITableV
         cell.textLabel?.textColor = bundleFrameIds.contains(frame.id) ? .systemGreen : .black
         cell.textLabel?.font = UIFont.systemFont(ofSize: 14)
         
-        // Add action buttons - small icon buttons
+        // Add action buttons - icon buttons on the right side
         let stackView = UIStackView()
         stackView.axis = .horizontal
-        stackView.spacing = 2
-        stackView.distribution = .fillEqually
+        stackView.spacing = 8
+        stackView.distribution = .fill
         stackView.translatesAutoresizingMaskIntoConstraints = false
         
-        // Load button - small icon
+        // Load button
         let loadBtn = UIButton(type: .system)
         loadBtn.setImage(UIImage(systemName: "arrow.down.doc"), for: .normal)
         loadBtn.tintColor = UIColor(red: 0.2, green: 0.4, blue: 0.6, alpha: 1.0)
@@ -1812,7 +1933,7 @@ class FrameListViewController: UIViewController, UITableViewDataSource, UITableV
             self.dismiss(animated: true)
         }, for: .touchUpInside)
         
-        // Rename button - small icon
+        // Rename button
         let renameBtn = UIButton(type: .system)
         renameBtn.setImage(UIImage(systemName: "pencil"), for: .normal)
         renameBtn.tintColor = .gray
@@ -1821,7 +1942,7 @@ class FrameListViewController: UIViewController, UITableViewDataSource, UITableV
             self.showRenameDialog(for: frame, at: indexPath)
         }, for: .touchUpInside)
         
-        // Copy button - small icon
+        // Copy button
         let copyBtn = UIButton(type: .system)
         copyBtn.setImage(UIImage(systemName: "doc.on.doc"), for: .normal)
         copyBtn.tintColor = UIColor(red: 0.3, green: 0.5, blue: 0.3, alpha: 1.0)
@@ -1830,7 +1951,7 @@ class FrameListViewController: UIViewController, UITableViewDataSource, UITableV
             self.copyFrameToClipboard(frame)
         }, for: .touchUpInside)
         
-        // Delete button - small icon
+        // Delete button
         let deleteBtn = UIButton(type: .system)
         deleteBtn.setImage(UIImage(systemName: "trash"), for: .normal)
         deleteBtn.tintColor = UIColor(red: 0.8, green: 0.2, blue: 0.2, alpha: 1.0)
@@ -1847,15 +1968,17 @@ class FrameListViewController: UIViewController, UITableViewDataSource, UITableV
         cell.contentView.addSubview(stackView)
         
         NSLayoutConstraint.activate([
-            loadBtn.widthAnchor.constraint(equalToConstant: 28),
-            renameBtn.widthAnchor.constraint(equalToConstant: 28),
-            copyBtn.widthAnchor.constraint(equalToConstant: 28),
-            deleteBtn.widthAnchor.constraint(equalToConstant: 28),
+            loadBtn.widthAnchor.constraint(equalToConstant: 20),
+            loadBtn.heightAnchor.constraint(equalToConstant: 20),
+            renameBtn.widthAnchor.constraint(equalToConstant: 20),
+            renameBtn.heightAnchor.constraint(equalToConstant: 20),
+            copyBtn.widthAnchor.constraint(equalToConstant: 20),
+            copyBtn.heightAnchor.constraint(equalToConstant: 20),
+            deleteBtn.widthAnchor.constraint(equalToConstant: 24),
+            deleteBtn.heightAnchor.constraint(equalToConstant: 24),
             
-            stackView.topAnchor.constraint(equalTo: cell.contentView.topAnchor, constant: 8),
-            stackView.leadingAnchor.constraint(equalTo: cell.textLabel!.trailingAnchor, constant: 12),
+            stackView.centerYAnchor.constraint(equalTo: cell.contentView.centerYAnchor),
             stackView.trailingAnchor.constraint(equalTo: cell.contentView.trailingAnchor, constant: -8),
-            stackView.bottomAnchor.constraint(equalTo: cell.contentView.bottomAnchor, constant: -8),
             cell.contentView.heightAnchor.constraint(greaterThanOrEqualToConstant: 50)
         ])
         
@@ -1904,16 +2027,30 @@ class FrameListViewController: UIViewController, UITableViewDataSource, UITableV
     private func deleteFrame(_ frame: SavedEditFrame, at indexPath: IndexPath) {
         let alert = UIAlertController(title: "Delete Frame?", message: "This cannot be undone", preferredStyle: .alert)
         
-        alert.addAction(UIAlertAction(title: "Delete", style: .destructive) { _ in
+        alert.addAction(UIAlertAction(title: "Delete", style: .destructive) { [weak self] _ in
+            guard let self = self else { return }
+            
             SavedFramesManager.shared.deleteFrame(id: frame.id)
-            // Remove from both arrays
+            
+            // Remove from main frames array
             if let frameIndex = self.frames.firstIndex(where: { $0.id == frame.id }) {
                 self.frames.remove(at: frameIndex)
             }
-            self.filterFrames()
-            self.tableView.deleteRows(at: [indexPath], with: .fade)
             
-            if self.frames.isEmpty {
+            // Update filtered frames and table in a batch
+            self.tableView.beginUpdates()
+            
+            // Remove from filtered array if it exists
+            if let filteredIndex = self.filteredFrames.firstIndex(where: { $0.id == frame.id }) {
+                self.filteredFrames.remove(at: filteredIndex)
+                // Delete the row from the table using the filtered index
+                self.tableView.deleteRows(at: [IndexPath(row: filteredIndex, section: 0)], with: .fade)
+            }
+            
+            self.tableView.endUpdates()
+            
+            // If no frames left, reload to update empty state
+            if self.filteredFrames.isEmpty {
                 self.tableView.reloadData()
             }
         })

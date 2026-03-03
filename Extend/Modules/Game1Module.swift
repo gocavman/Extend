@@ -1877,7 +1877,6 @@ struct StatsOverlayView: View {
     var mapState: GameMapState
     var showStats: Binding<Bool>
     var showLevelPicker: Binding<Bool>
-    var showProgrammableDemo: Binding<Bool>
     
     var body: some View {
         if showStats.wrappedValue {
@@ -1959,7 +1958,6 @@ private struct Game1ModuleView: View {
     let module: Game1Module
     @State private var gameState = StickFigureGameState()
     @State private var mapState = GameMapState()
-    @State private var showProgrammableDemo = false
     @State private var showGame = true  // Control whether to show the game view
     @Environment(ModuleState.self) var moduleState
     @Environment(\.scenePhase) var scenePhase
@@ -1967,15 +1965,7 @@ private struct Game1ModuleView: View {
     @ViewBuilder
     var body: some View {
         Group {
-            if showProgrammableDemo {
-                ZStack {
-                    Color.white.ignoresSafeArea()
-                    
-                    StickFigure2DEditorView(onDismiss: {
-                        showProgrammableDemo = false
-                    })
-                }
-            } else if showGame {
+            if showGame {
                 // Use SpriteKit for the game
                 SpriteKitGameView(gameState: gameState, mapState: mapState, onDismiss: {
                     print("🎮 Game dismissed - navigating back to dashboard")
@@ -1989,13 +1979,6 @@ private struct Game1ModuleView: View {
             // Reset showGame to true when this module appears
             print("🎮 Game1Module appeared - ensuring showGame is true")
             showGame = true
-        }
-        .onChange(of: showProgrammableDemo) { oldValue, newValue in
-            if oldValue == true && newValue == false {
-                // Exiting editor, reload frames
-                print("🎮 Exiting editor - Forcing frame reload")
-                gameState.forceReloadFrames()
-            }
         }
         .onChange(of: scenePhase) { oldValue, newValue in
             if newValue == .background || newValue == .inactive {
