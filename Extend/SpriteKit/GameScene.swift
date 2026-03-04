@@ -523,7 +523,7 @@ class GameScene: SKScene {
         }
         
         // Helper to draw a skeleton connector line with the color of its body part
-        // Helper to draw a fusiform skeleton connector (tapers small-large-small)
+        // Simple lines that bend around joints
         func drawSkeletonConnector(from: CGPoint, to: CGPoint, color: SKColor) {
             let lineWidth = max(jointThickness * 0.8 * scale * mutableFigure.skeletonSize, 1.0)
             print("🦴 Drawing skeleton connector: lineWidth=\(lineWidth), skeletonSize=\(mutableFigure.skeletonSize), jointThickness=\(jointThickness), scale=\(scale)")
@@ -532,69 +532,23 @@ class GameScene: SKScene {
             let fromRelative = toRelative(from)
             let toRelative = toRelative(to)
             
-            // Calculate direction and length
-            let dx = toRelative.x - fromRelative.x
-            let dy = toRelative.y - fromRelative.y
-            let length = sqrt(dx * dx + dy * dy)
-            
-            guard length > 0 else { return }
-            
-            // Normalized direction
-            let dirX = dx / length
-            let dirY = dy / length
-            
-            // Perpendicular direction (for width)
-            let perpX = -dirY
-            let perpY = dirX
-            
-            // Create a tapered polygon
-            var topEdgePoints: [CGPoint] = []
-            var bottomEdgePoints: [CGPoint] = []
-            
-            let numSegments = 20
-            let maxWidth = lineWidth / 2
-            
-            for i in 0...numSegments {
-                let t = CGFloat(i) / CGFloat(numSegments)
-                let pos = CGPoint(x: fromRelative.x + dirX * t * length, y: fromRelative.y + dirY * t * length)
-                
-                // Fusiform taper: small at ends, large in middle
-                let distFromCenter = abs(t - 0.5) * 2.0  // 0 at center, 1 at ends
-                let widthFactor = max(0.2, 1.0 - (distFromCenter * distFromCenter))  // Curved taper
-                let width = maxWidth * widthFactor
-                
-                let topPoint = CGPoint(x: pos.x + perpX * width, y: pos.y + perpY * width)
-                let bottomPoint = CGPoint(x: pos.x - perpX * width, y: pos.y - perpY * width)
-                
-                topEdgePoints.append(topPoint)
-                bottomEdgePoints.append(bottomPoint)
-            }
-            
-            // Create the path
+            // Create a simple line path with smooth curves
             let path = UIBezierPath()
+            path.move(to: fromRelative)
             
-            if let firstPoint = topEdgePoints.first {
-                path.move(to: firstPoint)
-            }
+            // Add a smooth curve to the end point (bends naturally around joints)
+            // Use quadratic curves for smooth bending
+            let midPoint = CGPoint(x: (fromRelative.x + toRelative.x) * 0.5, 
+                                 y: (fromRelative.y + toRelative.y) * 0.5)
+            path.addQuadCurve(to: toRelative, controlPoint: midPoint)
             
-            // Draw top edge
-            for i in 1..<topEdgePoints.count {
-                path.addLine(to: topEdgePoints[i])
-            }
-            
-            // Draw bottom edge in reverse
-            for i in stride(from: bottomEdgePoints.count - 1, through: 0, by: -1) {
-                path.addLine(to: bottomEdgePoints[i])
-            }
-            
-            path.close()
-            
-            let shape = SKShapeNode(path: path.cgPath)
-            shape.fillColor = color
-            shape.strokeColor = color
-            shape.lineWidth = 0
-            shape.zPosition = 1.5  // IN FRONT of the fusiforms
-            container.addChild(shape)
+            let line = SKShapeNode(path: path.cgPath)
+            line.strokeColor = color  // Use the actual body part color
+            line.lineWidth = lineWidth
+            line.lineCap = .round  // Rounded ends
+            line.lineJoin = .round  // Rounded joins
+            line.zPosition = 1.5  // Normal position (in front of body but behind other elements)
+            container.addChild(line)
         }
         
         // Calculate midpoints for connectors
