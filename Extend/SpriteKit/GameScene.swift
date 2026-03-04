@@ -538,7 +538,7 @@ class GameScene: SKScene {
             
             // Add a smooth curve to the end point (bends naturally around joints)
             // Use quadratic curves for smooth bending
-            let midPoint = CGPoint(x: (fromRelative.x + toRelative.x) * 0.5, 
+            let midPoint = CGPoint(x: (fromRelative.x + toRelative.x) * 0.5,
                                  y: (fromRelative.y + toRelative.y) * 0.5)
             path.addQuadCurve(to: toRelative, controlPoint: midPoint)
             
@@ -561,54 +561,52 @@ class GameScene: SKScene {
         let rightUpperArmMid = CGPoint(x: (rightShoulderPos.x + rightUpperArmEnd.x) * 0.5, y: (rightShoulderPos.y + rightUpperArmEnd.y) * 0.5)
         let rightLowerArmMid = CGPoint(x: (rightUpperArmEnd.x + rightForearmEnd.x) * 0.5, y: (rightUpperArmEnd.y + rightForearmEnd.y) * 0.5)
         
-        // Only show skeleton if muscles are developed (avgMusclePoints > 0) OR in editor mode
-        // Check if this is being called from the editor by looking at the context
-        let isEditorScene = self.gameState == nil || (self.gameState?.currentLevel == nil)
-        if avgMusclePoints > 0 || isEditorScene {
-            // SPINE/TORSO: Uses torso color
-            drawSkeletonConnector(from: neckPos, to: waistPos, color: toSKColor(mutableFigure.torsoColor))
-            
-            // LEFT LEG connectors: Use their respective leg colors
-            drawSkeletonConnector(from: leftHipPos, to: leftUpperLegMid, color: toSKColor(mutableFigure.leftUpperLegColor))
-            drawSkeletonConnector(from: leftUpperLegMid, to: leftUpperLegEnd, color: toSKColor(mutableFigure.leftUpperLegColor))
-            drawSkeletonConnector(from: leftUpperLegEnd, to: leftLowerLegMid, color: toSKColor(mutableFigure.leftLowerLegColor))
-            
-            // RIGHT LEG connectors: Use their respective leg colors
-            drawSkeletonConnector(from: rightHipPos, to: rightUpperLegMid, color: toSKColor(mutableFigure.rightUpperLegColor))
-            drawSkeletonConnector(from: rightUpperLegMid, to: rightUpperLegEnd, color: toSKColor(mutableFigure.rightUpperLegColor))
-            drawSkeletonConnector(from: rightUpperLegEnd, to: rightLowerLegMid, color: toSKColor(mutableFigure.rightLowerLegColor))
-            
-            // LEFT ARM connectors: Use their respective arm colors
-            drawSkeletonConnector(from: leftShoulderPos, to: leftUpperArmMid, color: toSKColor(mutableFigure.leftUpperArmColor))
-            drawSkeletonConnector(from: leftUpperArmMid, to: leftUpperArmEnd, color: toSKColor(mutableFigure.leftUpperArmColor))
-            drawSkeletonConnector(from: leftUpperArmEnd, to: leftLowerArmMid, color: toSKColor(mutableFigure.leftLowerArmColor))
-            
-            // RIGHT ARM connectors: Use their respective arm colors
-            drawSkeletonConnector(from: rightShoulderPos, to: rightUpperArmMid, color: toSKColor(mutableFigure.rightUpperArmColor))
-            drawSkeletonConnector(from: rightUpperArmMid, to: rightUpperArmEnd, color: toSKColor(mutableFigure.rightUpperArmColor))
-            drawSkeletonConnector(from: rightUpperArmEnd, to: rightLowerArmMid, color: toSKColor(mutableFigure.rightLowerArmColor))
-            
-            // Add joint caps at connection points to fill gaps (elbows, knees, waist, shoulders)
-            let jointCapRadius = max(jointThickness * 0.3 * scale * jointShapeSize, 1.5)
-            
-            // LEFT ARM ELBOW - blend upper and lower arm colors by using upper arm color
-            drawCircle(at: leftUpperArmEnd, radius: jointCapRadius, color: toSKColor(mutableFigure.leftUpperArmColor))
-            
-            // RIGHT ARM ELBOW
-            drawCircle(at: rightUpperArmEnd, radius: jointCapRadius, color: toSKColor(mutableFigure.rightUpperArmColor))
-            
-            // LEFT LEG KNEE - blend upper and lower leg colors by using upper leg color
-            drawCircle(at: leftUpperLegEnd, radius: jointCapRadius, color: toSKColor(mutableFigure.leftUpperLegColor))
-            
-            // RIGHT LEG KNEE
-            drawCircle(at: rightUpperLegEnd, radius: jointCapRadius, color: toSKColor(mutableFigure.rightUpperLegColor))
-            
-            // LEFT SHOULDER - connect shoulders to upper arms
-            drawCircle(at: leftShoulderPos, radius: jointCapRadius, color: toSKColor(mutableFigure.torsoColor))
-            
-            // RIGHT SHOULDER
-            drawCircle(at: rightShoulderPos, radius: jointCapRadius, color: toSKColor(mutableFigure.torsoColor))
-        }
+        // Always draw skeleton and joints - they're controlled by sliders in the editor
+        // In gameplay, they'll be hidden/shown based on other logic later
+        
+        // SPINE/TORSO: Uses torso color
+        drawSkeletonConnector(from: neckPos, to: waistPos, color: toSKColor(mutableFigure.torsoColor))
+        
+        // LEFT LEG connectors: Use their respective leg colors
+        drawSkeletonConnector(from: leftHipPos, to: leftUpperLegMid, color: toSKColor(mutableFigure.leftUpperLegColor))
+        drawSkeletonConnector(from: leftUpperLegMid, to: leftUpperLegEnd, color: toSKColor(mutableFigure.leftUpperLegColor))
+        drawSkeletonConnector(from: leftUpperLegEnd, to: leftLowerLegMid, color: toSKColor(mutableFigure.leftLowerLegColor))
+        
+        // RIGHT LEG connectors: Use their respective leg colors
+        drawSkeletonConnector(from: rightHipPos, to: rightUpperLegMid, color: toSKColor(mutableFigure.rightUpperLegColor))
+        drawSkeletonConnector(from: rightUpperLegMid, to: rightUpperLegEnd, color: toSKColor(mutableFigure.rightUpperLegColor))
+        drawSkeletonConnector(from: rightUpperLegEnd, to: rightLowerLegMid, color: toSKColor(mutableFigure.rightLowerLegColor))
+        
+        // LEFT ARM connectors: Use their respective arm colors
+        drawSkeletonConnector(from: leftShoulderPos, to: leftUpperArmMid, color: toSKColor(mutableFigure.leftUpperArmColor))
+        drawSkeletonConnector(from: leftUpperArmMid, to: leftUpperArmEnd, color: toSKColor(mutableFigure.leftUpperArmColor))
+        drawSkeletonConnector(from: leftUpperArmEnd, to: leftLowerArmMid, color: toSKColor(mutableFigure.leftLowerArmColor))
+        
+        // RIGHT ARM connectors: Use their respective arm colors
+        drawSkeletonConnector(from: rightShoulderPos, to: rightUpperArmMid, color: toSKColor(mutableFigure.rightUpperArmColor))
+        drawSkeletonConnector(from: rightUpperArmMid, to: rightUpperArmEnd, color: toSKColor(mutableFigure.rightUpperArmColor))
+        drawSkeletonConnector(from: rightUpperArmEnd, to: rightLowerArmMid, color: toSKColor(mutableFigure.rightLowerArmColor))
+        
+        // Add joint caps at connection points to fill gaps (elbows, knees, waist, shoulders)
+        let jointCapRadius = max(jointThickness * 0.3 * scale * jointShapeSize, 1.5)
+        
+        // LEFT ARM ELBOW - blend upper and lower arm colors by using upper arm color
+        drawCircle(at: leftUpperArmEnd, radius: jointCapRadius, color: toSKColor(mutableFigure.leftUpperArmColor))
+        
+        // RIGHT ARM ELBOW
+        drawCircle(at: rightUpperArmEnd, radius: jointCapRadius, color: toSKColor(mutableFigure.rightUpperArmColor))
+        
+        // LEFT LEG KNEE - blend upper and lower leg colors by using upper leg color
+        drawCircle(at: leftUpperLegEnd, radius: jointCapRadius, color: toSKColor(mutableFigure.leftUpperLegColor))
+        
+        // RIGHT LEG KNEE
+        drawCircle(at: rightUpperLegEnd, radius: jointCapRadius, color: toSKColor(mutableFigure.rightUpperLegColor))
+        
+        // LEFT SHOULDER - connect shoulders to upper arms
+        drawCircle(at: leftShoulderPos, radius: jointCapRadius, color: toSKColor(mutableFigure.torsoColor))
+        
+        // RIGHT SHOULDER
+        drawCircle(at: rightShoulderPos, radius: jointCapRadius, color: toSKColor(mutableFigure.torsoColor))
         
         
         print("🎮 Stick figure rendered with \(container.children.count) nodes!")
