@@ -168,6 +168,9 @@ class GameplayScene: GameScene {
             print("🎮 renderStickFigure returned successfully")
             characterContainer.addChild(stickFigureNode)
             
+            // Render stand frame objects
+            renderFrameObjects(gameState.standFrameObjects, on: characterContainer, scale: 1.2)
+            
             addChild(characterContainer)
             characterNode = characterContainer
             
@@ -499,6 +502,21 @@ class GameplayScene: GameScene {
                 let stickFigureNode = renderStickFigure(standFrame, at: CGPoint.zero, scale: 1.2, flipped: shouldFlip)
                 characterContainer.addChild(stickFigureNode)
             }
+        }
+    }
+    
+    /// Render objects associated with a frame
+    private func renderFrameObjects(_ objects: [AnimationObject], on container: SKNode, scale: CGFloat) {
+        for object in objects {
+            let sprite = SKSpriteNode(imageNamed: object.imageName)
+            sprite.position = object.position * scale
+            sprite.zRotation = CGFloat(object.rotation)
+            sprite.xScale *= object.scale
+            sprite.yScale *= object.scale
+            sprite.zPosition = 5  // Behind stick figure (which is 10+)
+            sprite.name = "object_\(object.imageName)"
+            container.addChild(sprite)
+            print("🎮 Rendered object: \(object.imageName) at \(sprite.position)")
         }
     }
     

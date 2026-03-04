@@ -411,7 +411,9 @@ class StickFigureGameState {
     
     // Stick figure animation frames
     var standFrame: StickFigure2D?  // Stand frame
+    var standFrameObjects: [AnimationObject] = []  // Objects for stand frame
     var moveFrames: [StickFigure2D] = []  // Move frames 1-4
+    var moveFrameObjects: [[AnimationObject]] = []  // Objects for move frames
     var shakerFrames: [StickFigure2D] = []  // Shaker frames 1-2
     var shakerFrameObjects: [[AnimationObject]] = []  // Objects for Shaker frames 1-2
     var actionStickFigureFrames: [StickFigure2D] = []  // Current action's stick figure frames
@@ -671,17 +673,21 @@ class StickFigureGameState {
         // Load Stand frame (frameNumber 0 - as originally saved)
         if let standFrameData = allFrames.first(where: { $0.name == "Stand" && $0.frameNumber == 0 }) {
             standFrame = standFrameData.pose.toStickFigure2D()
-            print("🎮 ✓ Loaded Stand frame (frameNumber 0)")
+            standFrameObjects = standFrameData.objects
+            print("🎮 ✓ Loaded Stand frame (frameNumber 0) with \(standFrameData.objects.count) objects")
         } else {
             print("🎮 ✗ Stand frame 0 not found")
+            standFrameObjects = []
         }
         
         // Load Move frames 1-4
-        moveFrames = (1...4).compactMap { frameNum in
+        moveFrames = []
+        moveFrameObjects = []
+        for frameNum in 1...4 {
             if let frame = allFrames.first(where: { $0.name == "Move" && $0.frameNumber == frameNum }) {
-                return frame.pose.toStickFigure2D()
+                moveFrames.append(frame.pose.toStickFigure2D())
+                moveFrameObjects.append(frame.objects)
             }
-            return nil
         }
         
         // Load Shaker frames 1-2

@@ -259,8 +259,8 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
         case 2: return isExpanded ? 13 : 0  // 7 fusiform + 6 peak position sliders
         case 3: return isExpanded ? 10 : 0  // 10 Joint sliders: head, leftShoulder, rightShoulder, leftElbow, rightElbow, leftKnee, rightKnee, leftCalf, rightCalf, midTorso
         case 4: return isExpanded ? 12 : 0  // Color pickers for each body part (added shoulders)
-        case 5: return 1  // Save + Load (now on same row)
-        case 6: return 1  // Add Object
+        case 5: return 2  // Frames label + Save + Load (now on same row), Objects label + Add Object button
+        case 6: return 0  // Objects handled in section 5 now
         default: return 0
         }
     }
@@ -272,8 +272,8 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
         case 2: return "FUSIFORM"
         case 3: return "JOINT ANGLES"
         case 4: return "COLORS"
-        case 5: return "FRAMES"
-        case 6: return "OBJECTS"
+        case 5: return nil  // Header in cell now
+        case 6: return nil  // Removed
         default: return nil
         }
     }
@@ -612,12 +612,19 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
             addColorButton(cell, label: "R Lower Leg", colorKey: "rightLowerLeg")
             
         case (5, 0):
-            // Save and Load buttons on same row, split 50/50
+            // Frames label with Save and Load buttons on same row
             let container = UIStackView()
             container.axis = .horizontal
             container.spacing = 8
-            container.distribution = .fillEqually
+            container.distribution = .fill
             container.translatesAutoresizingMaskIntoConstraints = false
+            
+            // Frames label
+            let framesLabel = UILabel()
+            framesLabel.text = "Frames:"
+            framesLabel.font = UIFont.systemFont(ofSize: 12, weight: .semibold)
+            framesLabel.textColor = .darkGray
+            framesLabel.setContentHuggingPriority(.required, for: .horizontal)
             
             // Save button
             let saveBtn = UIButton(type: .system)
@@ -637,6 +644,7 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
             loadBtn.layer.cornerRadius = 4
             loadBtn.addTarget(self, action: #selector(loadPressed), for: .touchUpInside)
             
+            container.addArrangedSubview(framesLabel)
             container.addArrangedSubview(saveBtn)
             container.addArrangedSubview(loadBtn)
             
@@ -646,26 +654,46 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
                 container.leadingAnchor.constraint(equalTo: cell.contentView.leadingAnchor, constant: 16),
                 container.trailingAnchor.constraint(equalTo: cell.contentView.trailingAnchor, constant: -16),
                 container.bottomAnchor.constraint(equalTo: cell.contentView.bottomAnchor, constant: -4),
-                container.heightAnchor.constraint(greaterThanOrEqualToConstant: 32)
+                container.heightAnchor.constraint(greaterThanOrEqualToConstant: 32),
+                saveBtn.widthAnchor.constraint(equalToConstant: 60),
+                loadBtn.widthAnchor.constraint(equalToConstant: 60)
             ])
             
-        case (6, 0):
-            // Add object button
+        case (5, 1):
+            // Objects label with Add Object button
+            let container = UIStackView()
+            container.axis = .horizontal
+            container.spacing = 8
+            container.distribution = .fill
+            container.translatesAutoresizingMaskIntoConstraints = false
+            
+            // Objects label
+            let objectsLabel = UILabel()
+            objectsLabel.text = "Objects:"
+            objectsLabel.font = UIFont.systemFont(ofSize: 12, weight: .semibold)
+            objectsLabel.textColor = .darkGray
+            objectsLabel.setContentHuggingPriority(.required, for: .horizontal)
+            
+            // Add object button - same width as SAVE/LOAD buttons
             let btn = UIButton(type: .system)
-            btn.setTitle("+ ADD OBJECT", for: .normal)
+            btn.setTitle("+ ADD", for: .normal)
             btn.titleLabel?.font = UIFont.systemFont(ofSize: 11)
             btn.backgroundColor = UIColor(red: 0.4, green: 0.5, blue: 0.6, alpha: 1.0)
             btn.setTitleColor(.white, for: .normal)
             btn.layer.cornerRadius = 4
-            btn.translatesAutoresizingMaskIntoConstraints = false
             btn.addTarget(self, action: #selector(addObjectPressed), for: .touchUpInside)
-            cell.contentView.addSubview(btn)
+            
+            container.addArrangedSubview(objectsLabel)
+            container.addArrangedSubview(btn)
+            
+            cell.contentView.addSubview(container)
             NSLayoutConstraint.activate([
-                btn.topAnchor.constraint(equalTo: cell.contentView.topAnchor, constant: 4),
-                btn.leadingAnchor.constraint(equalTo: cell.contentView.leadingAnchor, constant: 16),
-                btn.trailingAnchor.constraint(equalTo: cell.contentView.trailingAnchor, constant: -16),
-                btn.bottomAnchor.constraint(equalTo: cell.contentView.bottomAnchor, constant: -4),
-                btn.heightAnchor.constraint(greaterThanOrEqualToConstant: 32)
+                container.topAnchor.constraint(equalTo: cell.contentView.topAnchor, constant: 4),
+                container.leadingAnchor.constraint(equalTo: cell.contentView.leadingAnchor, constant: 16),
+                container.trailingAnchor.constraint(equalTo: cell.contentView.trailingAnchor, constant: -16),
+                container.bottomAnchor.constraint(equalTo: cell.contentView.bottomAnchor, constant: -4),
+                container.heightAnchor.constraint(greaterThanOrEqualToConstant: 32),
+                btn.widthAnchor.constraint(equalToConstant: 60)
             ])
             
         default:
@@ -861,6 +889,17 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
         sceneZoom = 1.0  // Reset zoom to default
         editorScene?.updateZoom(1.0)  // Update editor scene zoom
         loadStandFrameValues()
+        
+        // Remove all objects from the editor scene
+        if let editorScene = editorScene {
+            editorScene.children.forEach { node in
+                if node.name?.hasPrefix("object_") == true {
+                    node.removeFromParent()
+                }
+            }
+            print("🎮 Cleared all objects from scene")
+        }
+        
         controlsTableView.reloadData()  // Reload table to show updated values
         updateFigure()
     }
@@ -1074,10 +1113,29 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
                 positionY: self.figureOffsetY
             )
             
-            let frame = SavedEditFrame(name: name, frameNumber: frameNumber, from: editValues, pose: tempPose)
+            // Extract objects from the editor scene
+            var frameObjects: [EditorObject] = []
+            if let editorScene = self.editorScene {
+                for node in editorScene.children {
+                    if let sprite = node as? SKSpriteNode, sprite.name?.hasPrefix("object_") == true {
+                        let assetName = (sprite.userData?["assetName"] as? String) ?? "Unknown"
+                        let editorObject = EditorObject(
+                            assetName: assetName,
+                            position: sprite.position,
+                            rotation: sprite.zRotation,
+                            scaleX: sprite.xScale,
+                            scaleY: sprite.yScale
+                        )
+                        frameObjects.append(editorObject)
+                        print("🎮 Saving object: \(assetName) at \(sprite.position) scale: \(sprite.xScale)")
+                    }
+                }
+            }
+            
+            let frame = SavedEditFrame(name: name, frameNumber: frameNumber, from: editValues, pose: tempPose, objects: frameObjects)
             SavedFramesManager.shared.saveFrame(frame)
             
-            let successAlert = UIAlertController(title: "Saved!", message: "Frame '\(name)' (Frame #\(frameNumber)) has been saved", preferredStyle: .alert)
+            let successAlert = UIAlertController(title: "Saved!", message: "Frame '\(name)' (Frame #\(frameNumber)) has been saved with \(frameObjects.count) objects", preferredStyle: .alert)
             successAlert.addAction(UIAlertAction(title: "OK", style: .default))
             self.present(successAlert, animated: true)
         })
@@ -1132,7 +1190,8 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
         // Position below the center of the figure (lower on screen)
         sprite.position = CGPoint(x: editorScene.size.width / 2, y: editorScene.size.height / 2 - 100)
         sprite.zPosition = 5  // Behind the stick figure but in front of grid
-        sprite.scale(to: CGSize(width: 50, height: 50))
+        // Scale to fit in a square (50x50), maintaining aspect ratio
+        sprite.size = CGSize(width: 50, height: 50)
         sprite.name = "object_\(asset)"
         
         // Store object data for saving
@@ -1146,32 +1205,42 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
         sprite.physicsBody?.isDynamic = false
         sprite.physicsBody?.affectedByGravity = false
         
-        // Add rotate dot (top-right corner of object) - same size as joint dots
-        let rotateDot = SKShapeNode(circleOfRadius: 4)
+        // Add center dot for moving the object
+        let moveDot = SKShapeNode(circleOfRadius: 3)
+        moveDot.fillColor = .white
+        moveDot.strokeColor = .darkGray
+        moveDot.lineWidth = 1
+        moveDot.position = CGPoint(x: 0, y: 0)  // Center of object
+        moveDot.name = "object_move_\(asset)"
+        moveDot.zPosition = 12
+        sprite.addChild(moveDot)
+        
+        // Add rotate dot (top-right corner of object) - small circle for control
+        let rotateDot = SKShapeNode(circleOfRadius: 3)
         rotateDot.fillColor = .yellow
-        rotateDot.strokeColor = .yellow
+        rotateDot.strokeColor = .darkGray
         rotateDot.lineWidth = 1
-        rotateDot.position = CGPoint(x: 20, y: 20)  // Top-right relative to object
+        rotateDot.position = CGPoint(x: 25, y: 25)  // Top-right relative to object (scaled with size)
         rotateDot.name = "object_rotate_\(asset)"
         rotateDot.zPosition = 12
         sprite.addChild(rotateDot)
         
-        // Add resize dot (bottom-right corner of object) - same size as joint dots
-        let resizeDot = SKShapeNode(circleOfRadius: 4)
+        // Add resize dot (bottom-right corner of object) - small circle for control (enlarge/shrink)
+        let resizeDot = SKShapeNode(circleOfRadius: 3)
         resizeDot.fillColor = .cyan
-        resizeDot.strokeColor = .cyan
+        resizeDot.strokeColor = .darkGray
         resizeDot.lineWidth = 1
-        resizeDot.position = CGPoint(x: 20, y: -20)  // Bottom-right relative to object
+        resizeDot.position = CGPoint(x: 25, y: -25)  // Bottom-right relative to object (scaled with size)
         resizeDot.name = "object_resize_\(asset)"
         resizeDot.zPosition = 12
         sprite.addChild(resizeDot)
         
         // Add delete dot (top-left corner of object) - red for delete
-        let deleteDot = SKShapeNode(circleOfRadius: 4)
+        let deleteDot = SKShapeNode(circleOfRadius: 3)
         deleteDot.fillColor = .red
-        deleteDot.strokeColor = .red
+        deleteDot.strokeColor = .darkGray
         deleteDot.lineWidth = 1
-        deleteDot.position = CGPoint(x: -20, y: 20)  // Top-left relative to object
+        deleteDot.position = CGPoint(x: -25, y: 25)  // Top-left relative to object (scaled with size)
         deleteDot.name = "object_delete_\(asset)"
         deleteDot.zPosition = 12
         sprite.addChild(deleteDot)
@@ -1315,12 +1384,20 @@ class StickFigureEditorScene: SKScene {
         guard let touch = touches.first else { return }
         let location = touch.location(in: self)
         
-        // Check for object manipulation dots first (rotate/resize/delete)
+        // Check for object manipulation dots first (rotate/resize/delete/move)
         let nodes = self.nodes(at: location)
         for node in nodes {
             if let shapeNode = node as? SKShapeNode {
                 if let nodeName = shapeNode.name {
-                    if nodeName.hasPrefix("object_rotate_") {
+                    if nodeName.hasPrefix("object_move_") {
+                        draggedObject = shapeNode.parent as? SKSpriteNode
+                        draggedJointName = nodeName  // Track operation type
+                        lastDragPosition = location
+                        dragOffset = CGPoint(x: location.x - draggedObject!.position.x,
+                                            y: location.y - draggedObject!.position.y)
+                        print("🎮 Started moving object")
+                        return
+                    } else if nodeName.hasPrefix("object_rotate_") {
                         draggedObject = shapeNode.parent as? SKSpriteNode
                         draggedJointName = nodeName  // Reuse this to track operation type
                         lastDragPosition = location
@@ -1374,23 +1451,34 @@ class StickFigureEditorScene: SKScene {
         guard let touch = touches.first else { return }
         let location = touch.location(in: self)
         
-        // Handle object manipulation (rotation/resizing)
+        // Handle object manipulation (movement/rotation/resizing)
         if let draggedObject = draggedObject, let operation = draggedJointName {
-            if operation.hasPrefix("object_rotate_") {
-                // Calculate rotation based on drag
+            if operation.hasPrefix("object_move_") {
+                // Move the object
+                let newPos = CGPoint(x: location.x - dragOffset.x,
+                                    y: location.y - dragOffset.y)
+                draggedObject.position = newPos
+                print("🎮 Object moved")
+            } else if operation.hasPrefix("object_rotate_") {
+                // Calculate rotation based on horizontal drag - continuous smooth rotation
                 let dx = location.x - lastDragPosition.x
-                let rotation = CGFloat(dx) * 0.01  // Sensitivity
-                draggedObject.zRotation += rotation
-                print("🎮 Object rotated")
+                // Apply rotation directly and proportionally to drag distance
+                if abs(dx) > 0 {
+                    let rotation = CGFloat(-dx) * 0.02
+                    draggedObject.zRotation += rotation
+                }
             } else if operation.hasPrefix("object_resize_") {
-                // Calculate resize based on drag distance
+                // Calculate resize based on drag distance (both directions - enlarge and shrink)
                 let dx = location.x - lastDragPosition.x
                 let dy = location.y - lastDragPosition.y
-                let dragDistance = sqrt(dx * dx + dy * dy)
-                let scaleFactor = 1.0 + (dragDistance * 0.01)
-                draggedObject.xScale *= scaleFactor
-                draggedObject.yScale *= scaleFactor
-                print("🎮 Object resized")
+                
+                // Resize dot is at bottom-right, so dragging down-right enlarges, up-left shrinks
+                let dragMagnitude = (dx + dy) * 0.02
+                if abs(dragMagnitude) > 0 {
+                    let scaleFactor = 1.0 + dragMagnitude
+                    draggedObject.xScale *= scaleFactor
+                    draggedObject.yScale *= scaleFactor
+                }
             } else {
                 // Normal object dragging
                 let newPos = CGPoint(x: location.x - dragOffset.x,

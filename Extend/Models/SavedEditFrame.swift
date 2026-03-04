@@ -1,5 +1,24 @@
 import Foundation
 
+/// Represents an object placed in the editor
+struct EditorObject: Codable, Identifiable {
+    let id: UUID
+    let assetName: String  // "Apple", "Dumbbell", etc.
+    var position: CGPoint
+    var rotation: CGFloat  // in radians
+    var scaleX: CGFloat
+    var scaleY: CGFloat
+    
+    init(assetName: String, position: CGPoint, rotation: CGFloat = 0, scaleX: CGFloat = 1.0, scaleY: CGFloat = 1.0) {
+        self.id = UUID()
+        self.assetName = assetName
+        self.position = position
+        self.rotation = rotation
+        self.scaleX = scaleX
+        self.scaleY = scaleY
+    }
+}
+
 /// Represents a frame saved in the gameplay editor
 struct SavedEditFrame: Codable, Identifiable {
     var id: UUID
@@ -51,13 +70,16 @@ struct SavedEditFrame: Codable, Identifiable {
     let leftFootAngle: CGFloat
     let rightFootAngle: CGFloat
     
+    // Objects in the frame
+    var objects: [EditorObject] = []
+    
     /// Initialize from EditModeValues with optional pose data
-    init(name: String, frameNumber: Int = 0, from values: EditModeValues, pose: StickFigure2D? = nil) {
-        self.init(id: UUID(), name: name, frameNumber: frameNumber, from: values, pose: pose)
+    init(name: String, frameNumber: Int = 0, from values: EditModeValues, pose: StickFigure2D? = nil, objects: [EditorObject] = []) {
+        self.init(id: UUID(), name: name, frameNumber: frameNumber, from: values, pose: pose, objects: objects)
     }
     
     /// Initialize from EditModeValues with optional pose data and custom id
-    init(id: UUID, name: String, frameNumber: Int = 0, from values: EditModeValues, pose: StickFigure2D? = nil) {
+    init(id: UUID, name: String, frameNumber: Int = 0, from values: EditModeValues, pose: StickFigure2D? = nil, objects: [EditorObject] = []) {
         self.id = id
         self.name = name
         self.frameNumber = frameNumber
@@ -149,6 +171,84 @@ struct SavedEditFrame: Codable, Identifiable {
             self.leftFootAngle = 0
             self.rightFootAngle = 0
         }
+        
+        // Store objects
+        self.objects = objects
+    }
+    
+    // MARK: - Codable Support for Backward Compatibility
+    
+    enum CodingKeys: String, CodingKey {
+        case id, name, frameNumber, timestamp, figureScale, strokeThicknessMultiplier
+        case fusiformUpperTorso, fusiformLowerTorso, fusiformUpperArms, fusiformLowerArms
+        case fusiformUpperLegs, fusiformLowerLegs, fusiformShoulders
+        case peakPositionUpperArms, peakPositionLowerArms, peakPositionUpperLegs
+        case peakPositionLowerLegs, peakPositionUpperTorso, peakPositionLowerTorso
+        case positionX, positionY, shoulderWidthMultiplier, waistWidthMultiplier
+        case waistThicknessMultiplier, skeletonSize, jointShapeSize, neckLength, neckWidth
+        case handSize, footSize, waistTorsoAngle, midTorsoAngle, torsoRotationAngle, headAngle
+        case leftShoulderAngle, rightShoulderAngle, leftElbowAngle, rightElbowAngle
+        case leftHandAngle, rightHandAngle, leftHipAngle, rightHipAngle
+        case leftKneeAngle, rightKneeAngle, leftFootAngle, rightFootAngle
+        case objects
+    }
+    
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        
+        id = try container.decode(UUID.self, forKey: .id)
+        name = try container.decode(String.self, forKey: .name)
+        frameNumber = try container.decode(Int.self, forKey: .frameNumber)
+        timestamp = try container.decode(Date.self, forKey: .timestamp)
+        figureScale = try container.decode(CGFloat.self, forKey: .figureScale)
+        strokeThicknessMultiplier = try container.decode(CGFloat.self, forKey: .strokeThicknessMultiplier)
+        
+        // Decode all CGFloat properties
+        fusiformUpperTorso = try container.decode(CGFloat.self, forKey: .fusiformUpperTorso)
+        fusiformLowerTorso = try container.decode(CGFloat.self, forKey: .fusiformLowerTorso)
+        fusiformUpperArms = try container.decode(CGFloat.self, forKey: .fusiformUpperArms)
+        fusiformLowerArms = try container.decode(CGFloat.self, forKey: .fusiformLowerArms)
+        fusiformUpperLegs = try container.decode(CGFloat.self, forKey: .fusiformUpperLegs)
+        fusiformLowerLegs = try container.decode(CGFloat.self, forKey: .fusiformLowerLegs)
+        fusiformShoulders = try container.decode(CGFloat.self, forKey: .fusiformShoulders)
+        peakPositionUpperArms = try container.decode(CGFloat.self, forKey: .peakPositionUpperArms)
+        peakPositionLowerArms = try container.decode(CGFloat.self, forKey: .peakPositionLowerArms)
+        peakPositionUpperLegs = try container.decode(CGFloat.self, forKey: .peakPositionUpperLegs)
+        peakPositionLowerLegs = try container.decode(CGFloat.self, forKey: .peakPositionLowerLegs)
+        peakPositionUpperTorso = try container.decode(CGFloat.self, forKey: .peakPositionUpperTorso)
+        peakPositionLowerTorso = try container.decode(CGFloat.self, forKey: .peakPositionLowerTorso)
+        positionX = try container.decode(CGFloat.self, forKey: .positionX)
+        positionY = try container.decode(CGFloat.self, forKey: .positionY)
+        shoulderWidthMultiplier = try container.decode(CGFloat.self, forKey: .shoulderWidthMultiplier)
+        waistWidthMultiplier = try container.decode(CGFloat.self, forKey: .waistWidthMultiplier)
+        waistThicknessMultiplier = try container.decode(CGFloat.self, forKey: .waistThicknessMultiplier)
+        skeletonSize = try container.decode(CGFloat.self, forKey: .skeletonSize)
+        jointShapeSize = try container.decode(CGFloat.self, forKey: .jointShapeSize)
+        neckLength = try container.decode(CGFloat.self, forKey: .neckLength)
+        neckWidth = try container.decode(CGFloat.self, forKey: .neckWidth)
+        handSize = try container.decode(CGFloat.self, forKey: .handSize)
+        footSize = try container.decode(CGFloat.self, forKey: .footSize)
+        
+        // Decode angles
+        waistTorsoAngle = try container.decode(CGFloat.self, forKey: .waistTorsoAngle)
+        midTorsoAngle = try container.decode(CGFloat.self, forKey: .midTorsoAngle)
+        torsoRotationAngle = try container.decode(CGFloat.self, forKey: .torsoRotationAngle)
+        headAngle = try container.decode(CGFloat.self, forKey: .headAngle)
+        leftShoulderAngle = try container.decode(CGFloat.self, forKey: .leftShoulderAngle)
+        rightShoulderAngle = try container.decode(CGFloat.self, forKey: .rightShoulderAngle)
+        leftElbowAngle = try container.decode(CGFloat.self, forKey: .leftElbowAngle)
+        rightElbowAngle = try container.decode(CGFloat.self, forKey: .rightElbowAngle)
+        leftHandAngle = try container.decode(CGFloat.self, forKey: .leftHandAngle)
+        rightHandAngle = try container.decode(CGFloat.self, forKey: .rightHandAngle)
+        leftHipAngle = try container.decode(CGFloat.self, forKey: .leftHipAngle)
+        rightHipAngle = try container.decode(CGFloat.self, forKey: .rightHipAngle)
+        leftKneeAngle = try container.decode(CGFloat.self, forKey: .leftKneeAngle)
+        rightKneeAngle = try container.decode(CGFloat.self, forKey: .rightKneeAngle)
+        leftFootAngle = try container.decode(CGFloat.self, forKey: .leftFootAngle)
+        rightFootAngle = try container.decode(CGFloat.self, forKey: .rightFootAngle)
+        
+        // Decode objects - optional for backward compatibility with old saved frames
+        objects = try container.decodeIfPresent([EditorObject].self, forKey: .objects) ?? []
     }
 }
 
