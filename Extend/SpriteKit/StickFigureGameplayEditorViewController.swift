@@ -490,21 +490,21 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
             
         case (1, 1):
             // Stroke Thickness slider
-            addSliderCell(cell, label: "Stroke", value: strokeThicknessMultiplier, min: 0.5, max: 2.0, increment: 0.1, onChange: { [weak self] val in
+            addSliderCell(cell, label: "Stroke", value: strokeThicknessMultiplier, min: 0.0, max: 2.0, increment: 0.1, onChange: { [weak self] val in
                 self?.strokeThicknessMultiplier = val
                 self?.updateFigure()
             })
             
         case (1, 2):
             // Skeleton Size slider
-            addSliderCell(cell, label: "Skeleton Size", value: skeletonSize, min: 0.5, max: 10.0, increment: 0.1, onChange: { [weak self] val in
+            addSliderCell(cell, label: "Skeleton Size", value: skeletonSize, min: 0.0, max: 10.0, increment: 0.1, onChange: { [weak self] val in
                 self?.skeletonSize = val
                 self?.updateFigure()
             })
             
         case (1, 3):
             // Joint Shape Size slider
-            addSliderCell(cell, label: "Joint Shape Size", value: jointShapeSize, min: 0.5, max: 30.0, increment: 0.1, onChange: { [weak self] val in
+            addSliderCell(cell, label: "Joint Shape Size", value: jointShapeSize, min: 0.0, max: 30.0, increment: 0.1, onChange: { [weak self] val in
                 self?.jointShapeSize = val
                 self?.updateFigure()
             })
