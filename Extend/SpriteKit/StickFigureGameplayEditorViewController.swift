@@ -881,15 +881,19 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
         // Load the default Stand frame from animations.json
         if let standFrame = gameState.standFrame {
             
-            // Reset scale values - use defaults if not present in standFrame
+            // Load ALL scale and thickness values from standFrame
             figureScale = standFrame.scale
-            strokeThicknessMultiplier = 1.0  // Default value
-            skeletonSize = 1.0
-            jointShapeSize = 1.0
+            // Note: strokeThicknessMultiplier and jointShapeSize are editor-only properties, not in StickFigure2D
+            skeletonSize = standFrame.skeletonSize
             shoulderWidthMultiplier = standFrame.shoulderWidthMultiplier
+            waistWidthMultiplier = standFrame.waistWidthMultiplier
+            waistThicknessMultiplier = standFrame.waistThicknessMultiplier
             neckLength = standFrame.neckLength
+            neckWidth = standFrame.neckWidth
+            handSize = standFrame.handSize
+            footSize = standFrame.footSize
             
-            // Fusiforms - these are NEW properties only in Stand frame
+            // Fusiforms - load from standFrame
             fusiformUpperTorso = standFrame.fusiformUpperTorso
             fusiformLowerTorso = standFrame.fusiformLowerTorso
             fusiformUpperArms = standFrame.fusiformUpperArms
@@ -898,7 +902,7 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
             fusiformLowerLegs = standFrame.fusiformLowerLegs
             fusiformShoulders = standFrame.fusiformShoulders
             
-            // Peak positions - use defaults if not present
+            // Peak positions - load from standFrame
             peakPositionUpperArms = standFrame.peakPositionUpperArms
             peakPositionLowerArms = standFrame.peakPositionLowerArms
             peakPositionUpperLegs = standFrame.peakPositionUpperLegs
@@ -906,7 +910,7 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
             peakPositionUpperTorso = standFrame.peakPositionUpperTorso
             peakPositionLowerTorso = standFrame.peakPositionLowerTorso
             
-            // Reset ALL angles to exact Stand frame values
+            // Load ALL angles from standFrame
             neckRotation = CGFloat(standFrame.headAngle)
             upperTorsoRotation = CGFloat(standFrame.torsoRotationAngle)
             lowerTorsoRotation = CGFloat(standFrame.midTorsoAngle)
@@ -915,14 +919,14 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
             leftElbowAngle = CGFloat(standFrame.leftElbowAngle)
             rightShoulderAngle = CGFloat(standFrame.rightShoulderAngle)
             rightElbowAngle = CGFloat(standFrame.rightElbowAngle)
-            leftHandAngle = 0  // Reset hand angles
-            rightHandAngle = 0
-            leftHipAngle = 0  // Reset hip angles
-            rightHipAngle = 0
+            leftHandAngle = CGFloat(standFrame.leftHandAngle)
+            rightHandAngle = CGFloat(standFrame.rightHandAngle)
+            leftHipAngle = CGFloat(standFrame.leftHipAngle)
+            rightHipAngle = CGFloat(standFrame.rightHipAngle)
             leftKneeAngle = CGFloat(standFrame.leftKneeAngle)
             rightKneeAngle = CGFloat(standFrame.rightKneeAngle)
-            leftFootAngle = 0  // Reset foot angles
-            rightFootAngle = 0
+            leftFootAngle = CGFloat(standFrame.leftFootAngle)
+            rightFootAngle = CGFloat(standFrame.rightFootAngle)
             
             // Reset position to Stand frame's waist position (centered)
             figureOffsetX = 0
