@@ -1716,12 +1716,9 @@ struct FramesManagerView: View {
     }
     
     private func copyFrameToClipboard(_ frame: AnimationFrame) {
-        AnimationPersistence.exportFramesAsJSON([frame]) { jsonString, error in
+        AnimationPersistence.exportFramesAsJSON([frame]) { jsonString, _ in
             if let jsonString = jsonString {
                 UIPasteboard.general.string = jsonString
-                print("✓ Copied frame '\(frame.name)' to clipboard")
-            } else if let error = error {
-                print("✗ Error copying frame: \(error.localizedDescription)")
             }
         }
     }

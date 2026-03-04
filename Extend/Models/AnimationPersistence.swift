@@ -55,9 +55,7 @@ struct AnimationPersistence {
             let encoder = JSONEncoder()
             let data = try encoder.encode(Array(persistedIDs))
             UserDefaults.standard.set(data, forKey: "persisted_frame_ids")
-            print("✓ Saved persisted frame markers to local memory")
         } catch {
-            print("✗ Error saving persisted frame markers: \(error)")
         }
     }
     
@@ -70,7 +68,6 @@ struct AnimationPersistence {
         
         let decoder = JSONDecoder()
         if let uuids = try? decoder.decode([UUID].self, from: data) {
-            print("✓ Loaded persisted frame markers from local memory")
             return Set(uuids)
         }
         

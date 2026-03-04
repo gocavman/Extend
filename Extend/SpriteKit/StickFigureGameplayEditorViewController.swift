@@ -1371,9 +1371,8 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
     
     // MARK: - UIImagePickerControllerDelegate
     func imagePickerController(_ picker: UIImagePickerController, didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey : Any]) {
-        if let image = info[.originalImage] as? UIImage {
-            print("Selected image: \(image)")
-            // TODO: Add selected image to the scene
+        if info[.originalImage] is UIImage {
+            // Image selected - TODO: Add selected image to the scene
         }
         dismiss(animated: true)
     }

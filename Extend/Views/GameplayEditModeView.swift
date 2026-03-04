@@ -282,7 +282,6 @@ struct SaveFrameDialog: View {
         let savedFrame = SavedEditFrame(name: frameName, from: editValues)
         SavedFramesManager.shared.saveFrame(savedFrame)
         
-        print("✅ Frame saved: \(frameName)")
         isPresented = false
     }
 }
@@ -384,7 +383,6 @@ struct LoadFrameDialog: View {
             UIPasteboard.general.string = jsonString
             copiedFrameName = frame.name
             showCopyAlert = true
-            print("✅ Copied \(frame.name) to clipboard")
         }
     }
     

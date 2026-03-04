@@ -302,7 +302,6 @@ class SavedFramesManager {
         var frames = getAllFrames()
         frames.append(frame)
         saveAll(frames)
-        print("✅ Frame saved: \(frame.name)")
     }
     
     /// Get all saved frames
@@ -323,7 +322,6 @@ class SavedFramesManager {
     func deleteFrame(id: UUID) {
         let frames = getAllFrames().filter { $0.id != id }
         saveAll(frames)
-        print("✅ Frame deleted")
     }
     
     /// Rename a frame
@@ -332,7 +330,6 @@ class SavedFramesManager {
         if let index = frames.firstIndex(where: { $0.id == id }) {
             frames[index].name = newName
             saveAll(frames)
-            print("✅ Frame renamed to: \(newName)")
         }
     }
     
@@ -495,6 +492,5 @@ class SavedFramesManager {
     /// Clear all saved frames (for testing)
     func clearAll() {
         UserDefaults.standard.removeObject(forKey: userDefaultsKey)
-        print("⚠️ All saved frames cleared")
     }
 }

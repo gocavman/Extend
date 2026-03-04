@@ -25,51 +25,34 @@ class GameplayScene: GameScene {
     override func didMove(to view: SKView) {
         super.didMove(to: view)
         
-        print("🎮 GameplayScene didMove")
-        print("🎮 Scene size: \(size)")
-        print("🎮 View bounds: \(view.bounds)")
-        print("🎮 Safe area: \(view.safeAreaInsets)")
         
         // Initialize gameState if needed
         guard let gameState = gameState else {
-            print("🎮 ERROR: gameState is nil!")
             return
         }
         
         // Ensure the room is initialized with stick figure data
         if gameState.standFrame == nil {
-            print("🎮 standFrame is nil, initializing room for level \(gameState.currentLevel)...")
             gameState.initializeRoom("level_\(gameState.currentLevel)")
-            print("🎮 After initializeRoom: standFrame = \(gameState.standFrame != nil ? "SET" : "STILL NIL")")
         } else {
-            print("🎮 standFrame is already SET")
         }
         
         backgroundColor = SKColor(red: 0.95, green: 0.95, blue: 0.98, alpha: 1.0)
         
         // Create UI
-        print("🎮 Setting up UI...")
         setupUI()
-        print("🎮 UI setup complete")
         
         // Create character
-        print("🎮 Setting up character...")
         setupCharacter()
-        print("🎮 Character setup complete")
         
         // Create touch zones (debug visualization)
-        print("🎮 Setting up control zones...")
         setupControlZones()
-        print("🎮 Control zones setup complete")
         
         // Start game loop
-        print("🎮 Starting game loop...")
         startGameLoop()
-        print("🎮 Game loop started")
     }
     
     private func setupUI() {
-        print("🎮 Screen size: \(size)")
         
         // TOP BAR - Moved down to avoid safe area
         let topBarY: CGFloat = size.height - 100
@@ -141,18 +124,12 @@ class GameplayScene: GameScene {
     
     private func setupCharacter() {
         guard let gameState = gameState else {
-            print("🎮 ERROR: gameState is nil in setupCharacter")
             return
         }
         
-        print("🎮 setupCharacter: standFrame = \(gameState.standFrame != nil ? "SET" : "NIL")")
-        print("🎮 setupCharacter: moveFrames.count = \(gameState.moveFrames.count)")
-        print("🎮 standFrame fusiform values: upper=\(gameState.standFrame?.fusiformUpperTorso ?? 0), lower=\(gameState.standFrame?.fusiformLowerTorso ?? 0)")
-        print("🎮 standFrame ALL fusiforms: upperTorso=\(gameState.standFrame?.fusiformUpperTorso ?? 0), lowerTorso=\(gameState.standFrame?.fusiformLowerTorso ?? 0), upperArms=\(gameState.standFrame?.fusiformUpperArms ?? 0), lowerArms=\(gameState.standFrame?.fusiformLowerArms ?? 0), upperLegs=\(gameState.standFrame?.fusiformUpperLegs ?? 0), lowerLegs=\(gameState.standFrame?.fusiformLowerLegs ?? 0)")
         
         // Use the Stand frame from gameState
         if let standFrame = gameState.standFrame {
-            print("🎮 Rendering stand frame from gameState")
             
             // Create a container node
             let characterContainer = SKNode()
@@ -163,9 +140,7 @@ class GameplayScene: GameScene {
             // Use renderStickFigure with proper scale
             // The figure is in 600x720 base canvas
             // Scale 1.2 provides good visible size without rendering issues
-            print("🎮 About to call renderStickFigure...")
             let stickFigureNode = renderStickFigure(standFrame, at: CGPoint.zero, scale: 1.2, flipped: false)
-            print("🎮 renderStickFigure returned successfully")
             characterContainer.addChild(stickFigureNode)
             
             // Render stand frame objects
@@ -174,10 +149,7 @@ class GameplayScene: GameScene {
             addChild(characterContainer)
             characterNode = characterContainer
             
-            print("🎮 Stand frame rendered successfully with scale 0.1")
-            print("🎮 Character node added to scene with zPosition: \(characterContainer.zPosition)")
         } else {
-            print("🎮 No standFrame available, using fallback blue circle")
             
             // Fallback: create a placeholder circle
             let character = SKShapeNode(circleOfRadius: 30)
@@ -257,15 +229,11 @@ class GameplayScene: GameScene {
     }
     
     override func handleTouchBegan(at point: CGPoint) {
-        print("🎮 ===== TOUCH BEGAN =====")
-        print("🎮 Touch point: \(point)")
         
         handleTouchAtLocation(point, isPress: true)
     }
     
     override func handleTouchEnded(at point: CGPoint) {
-        print("🎮 ===== TOUCH ENDED =====")
-        print("🎮 Touch point: \(point)")
         
         // First, check for button taps at the top
         let topBarY = size.height - 100
@@ -274,19 +242,16 @@ class GameplayScene: GameScene {
         if tapDistance < 35 { // Within the top button area (increased from 25 to 35)
             // Exit button - go back to map
             if point.x < 70 {
-                print("🎮 Exit button tapped! Returning to map...")
                 gameViewController?.showMapScene()
                 return
             }
             // Appearance button (left of Stats)
             if point.x > size.width - 135 && point.x < size.width - 65 {
-                print("🎮 Appearance button tapped!")
                 gameViewController?.showAppearance()
                 return
             }
             // Stats button
             if point.x > size.width - 70 {
-                print("🎮 Stats button tapped!")
                 gameViewController?.showStats()
                 return
             }
@@ -302,7 +267,6 @@ class GameplayScene: GameScene {
     
     private func handleTouchAtLocation(_ point: CGPoint, isPress: Bool) {
         guard let gameState = gameState else {
-            print("🎮 ERROR: gameState is nil")
             return
         }
         
@@ -311,20 +275,16 @@ class GameplayScene: GameScene {
         // Only ignore PRESS events in top button area
         // Always allow RELEASE events to stop movement
         if isPress && point.y > topButtonY {
-            print("🎮 Touch in top button area, ignoring press")
             return
         }
         
-        print("🎮 Checking zones - point: \(point), topButtonY: \(topButtonY), isPress: \(isPress)")
         
         // Get character position
         guard let character = characterNode else {
-            print("🎮 ERROR: characterNode is nil")
             return
         }
         
         let characterX = character.position.x
-        print("🎮 Character position: \(characterX), Tap position: \(point.x)")
         
         // Smart directional movement: determine direction based on tap position relative to character
         // If tap is to the left of character, move left (regardless of zone)
@@ -333,39 +293,32 @@ class GameplayScene: GameScene {
         if point.x < characterX {
             // Tap is to the LEFT of character - move left
             if isPress {
-                print("🎮 ✓ TAP LEFT OF CHARACTER - MOVE LEFT")
                 gameState.isMovingLeft = true
                 gameState.isMovingRight = false
                 gameState.facingRight = false
             } else {
-                print("🎮 ✓ RELEASE - STOP MOVING (was moving left)")
                 gameState.isMovingLeft = false
                 gameState.isMovingRight = false
             }
         } else if point.x > characterX {
             // Tap is to the RIGHT of character - move right
             if isPress {
-                print("🎮 ✓ TAP RIGHT OF CHARACTER - MOVE RIGHT")
                 gameState.isMovingRight = true
                 gameState.isMovingLeft = false
                 gameState.facingRight = true
             } else {
-                print("🎮 ✓ RELEASE - STOP MOVING (was moving right)")
                 gameState.isMovingRight = false
                 gameState.isMovingLeft = false
             }
         } else {
             // Tap is directly on character - do nothing or trigger action
             if isPress {
-                print("🎮 Touch directly on character (center action zone)")
             } else {
-                print("🎮 ✓ RELEASE - STOP MOVING (was on character)")
                 gameState.isMovingLeft = false
                 gameState.isMovingRight = false
             }
         }
         
-        print("🎮 After handling: isMovingLeft=\(gameState.isMovingLeft), isMovingRight=\(gameState.isMovingRight)")
     }
     
     private func startGameLoop() {
@@ -418,7 +371,6 @@ class GameplayScene: GameScene {
     }
     
     private func startMovementAnimation() {
-        print("🎮 Starting movement animation")
         
         // Stop any existing animation first
         characterNode?.removeAction(forKey: "moveAnimation")
@@ -436,7 +388,6 @@ class GameplayScene: GameScene {
                 guard moveFrameIndex < gameState.moveFrames.count else { return }
                 
                 let moveFrame = gameState.moveFrames[moveFrameIndex]
-                print("🎮 Updating to move frame \(moveFrameIndex + 1)")
                 
                 // Remove old stick figure and add new one
                 if let characterContainer = self.characterNode {
@@ -465,7 +416,6 @@ class GameplayScene: GameScene {
     }
     
     private func stopMovementAnimation() {
-        print("🎮 Stopping movement animation")
         
         // Stop the animation action
         characterNode?.removeAction(forKey: "moveAnimation")
@@ -486,7 +436,6 @@ class GameplayScene: GameScene {
     
     /// Refresh the character appearance when colors are changed in the customizer
     func refreshCharacterAppearance() {
-        print("🎮 Refreshing character appearance after color change")
         
         guard let gameState = gameState, let characterContainer = characterNode else { return }
         
@@ -532,13 +481,11 @@ class GameplayScene: GameScene {
             sprite.zPosition = 5  // Behind stick figure (which is 10+)
             sprite.name = "object_\(object.imageName)"
             container.addChild(sprite)
-            print("🎮 Rendered object: \(object.imageName) at \(sprite.position)")
         }
     }
     
     @MainActor
     deinit {
-        print("🎮 GameplayScene deinit - cleaning up")
         removeAllChildren()
         removeAllActions()
     }

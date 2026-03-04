@@ -174,17 +174,13 @@ func loadActionConfigs() -> [ActionConfig] {
        let data = try? Data(contentsOf: url) {
         let decoder = JSONDecoder()
         if let configs = try? decoder.decode([ActionConfig].self, from: data) {
-            print("✅ Successfully loaded \(configs.count) action configurations from JSON")
             return configs
         } else {
-            print("⚠️ Failed to decode actions_config.json")
         }
     } else {
-        print("⚠️ Could not find actions_config.json in bundle")
     }
     
     // Fallback to empty array - should not happen if JSON is properly included
-    print("❌ No action configurations available - game will not work properly")
     return []
 }
 
@@ -196,17 +192,13 @@ func loadLevels() -> [LevelConfig] {
         let decoder = JSONDecoder()
         do {
             let levels = try decoder.decode([LevelConfig].self, from: data)
-            print("✅ Successfully loaded \(levels.count) level configurations from JSON")
             return levels
         } catch {
-            print("⚠️ Failed to decode levels.json: \(error)")
         }
     } else {
-        print("⚠️ Could not find levels.json in bundle")
     }
     
     // Fallback to empty array
-    print("❌ No level configurations available - game will not work properly")
     return []
 }
 
@@ -278,13 +270,10 @@ func loadCatchables() -> [CatchableConfig] {
        let data = try? Data(contentsOf: url) {
         let decoder = JSONDecoder()
         if let configs = try? decoder.decode([CatchableConfig].self, from: data) {
-            print("✅ Successfully loaded \(configs.count) catchable configurations from JSON")
             return configs
         } else {
-            print("⚠️ Failed to decode catchables.json")
         }
     } else {
-        print("⚠️ Could not find catchables.json in bundle")
     }
     return []
 }
@@ -674,9 +663,7 @@ class StickFigureGameState {
         if let standFrameData = allFrames.first(where: { $0.name == "Stand" && $0.frameNumber == 0 }) {
             standFrame = standFrameData.pose.toStickFigure2D()
             standFrameObjects = standFrameData.objects
-            print("🎮 ✓ Loaded Stand frame (frameNumber 0) with \(standFrameData.objects.count) objects")
         } else {
-            print("🎮 ✗ Stand frame 0 not found")
             standFrameObjects = []
         }
         
@@ -744,13 +731,10 @@ class StickFigureGameState {
         
         // Load the stick figure frames for this room
         loadStickFigureFrames()
-        print("🎮 initializeRoom: Loaded stick figure frames - standFrame = \(standFrame != nil ? "SET" : "NIL")")
     }
     
     func forceReloadFrames() {
-        print("🎮 forceReloadFrames: Reloading all animation frames...")
         loadStickFigureFrames()
-        print("🎮 forceReloadFrames: standFrame = \(standFrame != nil ? "SET" : "NIL")")
     }
     
     // MARK: - Helper: Convert Hex Color to SwiftUI Color
@@ -1952,7 +1936,6 @@ struct StatsOverlayView: View {
             .padding(.top, 50)
             .transition(.move(edge: .bottom))
             .onAppear {
-                print("📊 STATS OVERLAY APPEARED - Timer status: \(gameState.elapsedTimeTimer != nil)")
             }
         }
     }
@@ -1974,7 +1957,6 @@ private struct Game1ModuleView: View {
             if showGame {
                 // Use SpriteKit for the game
                 SpriteKitGameView(gameState: gameState, mapState: mapState, onDismiss: {
-                    print("🎮 Game dismissed - navigating back to dashboard")
                     // Select dashboard module to show it
                     moduleState.selectModule(ModuleIDs.dashboard)
                 })
@@ -1983,12 +1965,10 @@ private struct Game1ModuleView: View {
         }
         .onAppear {
             // Reset showGame to true when this module appears
-            print("🎮 Game1Module appeared - ensuring showGame is true")
             showGame = true
         }
         .onChange(of: scenePhase) { oldValue, newValue in
             if newValue == .background || newValue == .inactive {
-                print("🎮 App going to background/inactive - Saving game state")
                 gameState.saveStats()
             }
         }

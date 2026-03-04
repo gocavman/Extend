@@ -17,24 +17,8 @@ struct AnimationStorage {
                 let data = try Data(contentsOf: bundleURL)
                 let decoder = JSONDecoder()
                 let frames = try decoder.decode([AnimationFrame].self, from: data)
-                print("✓ Loaded \(frames.count) frames from Bundle (animations.json)")
                 return frames
             } catch {
-                print("✗ Error loading from Bundle: \(error)")
-                if let decodingError = error as? DecodingError {
-                    switch decodingError {
-                    case .dataCorrupted(let context):
-                        print("  Data corrupted: \(context.debugDescription)")
-                    case .keyNotFound(let key, let context):
-                        print("  Key '\(key.stringValue)' not found at \(context.debugDescription)")
-                    case .typeMismatch(let type, let context):
-                        print("  Type mismatch for \(type) at \(context.debugDescription)")
-                    case .valueNotFound(let type, let context):
-                        print("  Value of type \(type) not found at \(context.debugDescription)")
-                    @unknown default:
-                        print("  Unknown decoding error")
-                    }
-                }
                 return []
             }
         }
@@ -55,11 +39,8 @@ struct AnimationStorage {
             encoder.outputFormatting = .prettyPrinted
             let data = try encoder.encode(frames)
             try data.write(to: exportURL, options: .atomic)
-            print("✓ Exported \(frames.count) frames to Documents/exported_frames.json")
-            print("  Copy this file's contents to animations.json to persist")
             return exportURL
         } catch {
-            print("✗ Error exporting frames: \(error)")
             return nil
         }
     }
@@ -68,9 +49,6 @@ struct AnimationStorage {
     
     /// Print storage location (Bundle only)
     func printStorageLocation() {
-        if let bundleURL = Bundle.main.url(forResource: "animations", withExtension: "json") {
-            print("📁 Animation Storage Location (Bundle):")
-            print("   \(bundleURL.path)")
-        }
+        // Storage location is Bundle only
     }
 }
