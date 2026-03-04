@@ -237,7 +237,7 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
             topContainer.addSubview(skView)
             skView.translatesAutoresizingMaskIntoConstraints = false
             NSLayoutConstraint.activate([
-                skView.topAnchor.constraint(equalTo: topContainer.topAnchor, constant: 38),
+                skView.topAnchor.constraint(equalTo: topContainer.topAnchor, constant: 2),
                 skView.leadingAnchor.constraint(equalTo: topContainer.leadingAnchor),
                 skView.trailingAnchor.constraint(equalTo: topContainer.trailingAnchor),
                 skView.heightAnchor.constraint(equalTo: skView.widthAnchor)  // Keep it square!
