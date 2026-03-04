@@ -68,6 +68,44 @@ struct AnimationObject: Codable, Identifiable, Equatable {
         self.rotation = rotation
         self.scale = scale
     }
+    
+    // Custom Codable to handle position as dict with x,y keys
+    enum CodingKeys: String, CodingKey {
+        case id, imageName, position, rotation, scale
+    }
+    
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(id, forKey: .id)
+        try container.encode(imageName, forKey: .imageName)
+        
+        // Encode position as a nested object
+        var posContainer = container.nestedContainer(keyedBy: PositionKeys.self, forKey: .position)
+        try posContainer.encode(position.x, forKey: .x)
+        try posContainer.encode(position.y, forKey: .y)
+        
+        try container.encode(rotation, forKey: .rotation)
+        try container.encode(scale, forKey: .scale)
+    }
+    
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(UUID.self, forKey: .id)
+        imageName = try container.decode(String.self, forKey: .imageName)
+        
+        // Decode position from nested object
+        let posContainer = try container.nestedContainer(keyedBy: PositionKeys.self, forKey: .position)
+        let x = try posContainer.decode(CGFloat.self, forKey: .x)
+        let y = try posContainer.decode(CGFloat.self, forKey: .y)
+        position = CGPoint(x: x, y: y)
+        
+        rotation = try container.decode(Double.self, forKey: .rotation)
+        scale = try container.decode(Double.self, forKey: .scale)
+    }
+    
+    enum PositionKeys: String, CodingKey {
+        case x, y
+    }
 }
 
 struct StickFigure2DPose: Codable {

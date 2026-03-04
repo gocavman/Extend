@@ -20,7 +20,21 @@ struct AnimationStorage {
                 print("✓ Loaded \(frames.count) frames from Bundle (animations.json)")
                 return frames
             } catch {
-                print("✗ Error loading from Bundle: \(error.localizedDescription)")
+                print("✗ Error loading from Bundle: \(error)")
+                if let decodingError = error as? DecodingError {
+                    switch decodingError {
+                    case .dataCorrupted(let context):
+                        print("  Data corrupted: \(context.debugDescription)")
+                    case .keyNotFound(let key, let context):
+                        print("  Key '\(key.stringValue)' not found at \(context.debugDescription)")
+                    case .typeMismatch(let type, let context):
+                        print("  Type mismatch for \(type) at \(context.debugDescription)")
+                    case .valueNotFound(let type, let context):
+                        print("  Value of type \(type) not found at \(context.debugDescription)")
+                    @unknown default:
+                        print("  Unknown decoding error")
+                    }
+                }
                 return []
             }
         }

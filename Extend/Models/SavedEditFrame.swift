@@ -378,14 +378,13 @@ class SavedFramesManager {
         for (index, object) in frame.objects.enumerated() {
             jsonString += "      {\n"
             jsonString += "        \"id\" : \"\(object.id.uuidString)\",\n"
-            jsonString += "        \"assetName\" : \"\(object.assetName)\",\n"
+            jsonString += "        \"imageName\" : \"\(object.assetName)\",\n"
             jsonString += "        \"position\" : {\n"
             jsonString += "          \"x\" : \(roundAndFormat(object.position.x, decimals: 1)),\n"
             jsonString += "          \"y\" : \(roundAndFormat(object.position.y, decimals: 1))\n"
             jsonString += "        },\n"
             jsonString += "        \"rotation\" : \(roundAndFormat(object.rotation, decimals: 4)),\n"
-            jsonString += "        \"scaleX\" : \(roundAndFormat(object.scaleX, decimals: 4)),\n"
-            jsonString += "        \"scaleY\" : \(roundAndFormat(object.scaleY, decimals: 4))\n"
+            jsonString += "        \"scale\" : \(roundAndFormat(object.scaleX, decimals: 4))\n"
             jsonString += "      }"
             if index < frame.objects.count - 1 {
                 jsonString += ","
