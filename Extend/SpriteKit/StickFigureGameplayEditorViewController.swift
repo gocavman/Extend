@@ -85,6 +85,7 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
     var rightFootAngle: CGFloat = 0
     
     var showInteractiveJoints: Bool = true
+    var showObjectControls: Bool = true  // Show/hide object control dots (move, rotate, resize, delete)
     var sceneZoom: CGFloat = 1.0  // Zoom level for editor view (1.0 = normal, 2.0 = 2x zoom)
     
     // Section expansion state
@@ -859,14 +860,34 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
     }
     
     @objc private func toggleMidTorso(_ sender: UIButton) {
-        // Toggle joint visibility while preserving zoom
+        // Toggle joint and object control visibility while preserving zoom
         let currentZoom = sceneZoom  // Save current zoom
         showInteractiveJoints = !showInteractiveJoints
+        showObjectControls = !showObjectControls  // Toggle object controls too
         sender.tintColor = showInteractiveJoints ? .white : UIColor.white.withAlphaComponent(0.5)
         updateFigure()
+        // Update object control visibility
+        updateObjectControlVisibility()
         sceneZoom = currentZoom  // Restore zoom
         editorScene?.currentZoom = currentZoom
         editorScene?.updateZoom(currentZoom)
+    }
+    
+    /// Update the visibility of object control dots based on showObjectControls setting
+    private func updateObjectControlVisibility() {
+        guard let editorScene = editorScene else { return }
+        
+        // Find all objects and show/hide their control dots
+        editorScene.children.forEach { node in
+            if node.name?.hasPrefix("object_") == true {
+                // This is an object sprite, update its control dot visibility
+                node.children.forEach { child in
+                    if let dot = child as? SKShapeNode, child.name?.hasPrefix("object_") == true {
+                        dot.isHidden = !showObjectControls
+                    }
+                }
+            }
+        }
     }
     
     @objc private func toggleSectionExpansion(_ gesture: UITapGestureRecognizer) {
@@ -1205,45 +1226,48 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
         sprite.physicsBody?.isDynamic = false
         sprite.physicsBody?.affectedByGravity = false
         
-        // Add center dot for moving the object
-        let moveDot = SKShapeNode(circleOfRadius: 3)
-        moveDot.fillColor = .white
-        moveDot.strokeColor = .darkGray
-        moveDot.lineWidth = 1
-        moveDot.position = CGPoint(x: 0, y: 0)  // Center of object
-        moveDot.name = "object_move_\(asset)"
-        moveDot.zPosition = 12
-        sprite.addChild(moveDot)
-        
-        // Add rotate dot (top-right corner of object) - small circle for control
-        let rotateDot = SKShapeNode(circleOfRadius: 3)
-        rotateDot.fillColor = .yellow
-        rotateDot.strokeColor = .darkGray
-        rotateDot.lineWidth = 1
-        rotateDot.position = CGPoint(x: 25, y: 25)  // Top-right relative to object (scaled with size)
-        rotateDot.name = "object_rotate_\(asset)"
-        rotateDot.zPosition = 12
-        sprite.addChild(rotateDot)
-        
-        // Add resize dot (bottom-right corner of object) - small circle for control (enlarge/shrink)
-        let resizeDot = SKShapeNode(circleOfRadius: 3)
-        resizeDot.fillColor = .cyan
-        resizeDot.strokeColor = .darkGray
-        resizeDot.lineWidth = 1
-        resizeDot.position = CGPoint(x: 25, y: -25)  // Bottom-right relative to object (scaled with size)
-        resizeDot.name = "object_resize_\(asset)"
-        resizeDot.zPosition = 12
-        sprite.addChild(resizeDot)
-        
-        // Add delete dot (top-left corner of object) - red for delete
-        let deleteDot = SKShapeNode(circleOfRadius: 3)
-        deleteDot.fillColor = .red
-        deleteDot.strokeColor = .darkGray
-        deleteDot.lineWidth = 1
-        deleteDot.position = CGPoint(x: -25, y: 25)  // Top-left relative to object (scaled with size)
-        deleteDot.name = "object_delete_\(asset)"
-        deleteDot.zPosition = 12
-        sprite.addChild(deleteDot)
+        // Add control dots only if showObjectControls is true
+        if showObjectControls {
+            // Add center dot for moving the object
+            let moveDot = SKShapeNode(circleOfRadius: 3)
+            moveDot.fillColor = .white
+            moveDot.strokeColor = .darkGray
+            moveDot.lineWidth = 1
+            moveDot.position = CGPoint(x: 0, y: 0)  // Center of object
+            moveDot.name = "object_move_\(asset)"
+            moveDot.zPosition = 12
+            sprite.addChild(moveDot)
+            
+            // Add rotate dot (top-right corner of object) - small circle for control
+            let rotateDot = SKShapeNode(circleOfRadius: 3)
+            rotateDot.fillColor = .yellow
+            rotateDot.strokeColor = .darkGray
+            rotateDot.lineWidth = 1
+            rotateDot.position = CGPoint(x: 25, y: 25)  // Top-right relative to object (scaled with size)
+            rotateDot.name = "object_rotate_\(asset)"
+            rotateDot.zPosition = 12
+            sprite.addChild(rotateDot)
+            
+            // Add resize dot (bottom-right corner of object) - small circle for control (enlarge/shrink)
+            let resizeDot = SKShapeNode(circleOfRadius: 3)
+            resizeDot.fillColor = .cyan
+            resizeDot.strokeColor = .darkGray
+            resizeDot.lineWidth = 1
+            resizeDot.position = CGPoint(x: 25, y: -25)  // Bottom-right relative to object (scaled with size)
+            resizeDot.name = "object_resize_\(asset)"
+            resizeDot.zPosition = 12
+            sprite.addChild(resizeDot)
+            
+            // Add delete dot (top-left corner of object) - red for delete
+            let deleteDot = SKShapeNode(circleOfRadius: 3)
+            deleteDot.fillColor = .red
+            deleteDot.strokeColor = .darkGray
+            deleteDot.lineWidth = 1
+            deleteDot.position = CGPoint(x: -25, y: 25)  // Top-left relative to object (scaled with size)
+            deleteDot.name = "object_delete_\(asset)"
+            deleteDot.zPosition = 12
+            sprite.addChild(deleteDot)
+        }
         
         editorScene.addChild(sprite)
         print("🎮 Added \(asset) object to scene at position \(sprite.position)")
