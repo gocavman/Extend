@@ -444,6 +444,11 @@ class GameplayScene: GameScene {
                     let shouldFlip = !gameState.facingRight
                     let stickFigureNode = self.renderStickFigure(moveFrame, at: CGPoint.zero, scale: 1.2, flipped: shouldFlip)
                     characterContainer.addChild(stickFigureNode)
+                    
+                    // Render move frame objects
+                    if moveFrameIndex < gameState.moveFrameObjects.count {
+                        self.renderFrameObjects(gameState.moveFrameObjects[moveFrameIndex], on: characterContainer, scale: 1.2)
+                    }
                 }
             })
             
@@ -472,6 +477,9 @@ class GameplayScene: GameScene {
                 let shouldFlip = !gameState.facingRight
                 let stickFigureNode = renderStickFigure(standFrame, at: CGPoint.zero, scale: 1.2, flipped: shouldFlip)
                 characterContainer.addChild(stickFigureNode)
+                
+                // Render stand frame objects
+                renderFrameObjects(gameState.standFrameObjects, on: characterContainer, scale: 1.2)
             }
         }
     }
@@ -494,6 +502,11 @@ class GameplayScene: GameScene {
                 let shouldFlip = !gameState.facingRight
                 let stickFigureNode = renderStickFigure(moveFrame, at: CGPoint.zero, scale: 1.2, flipped: shouldFlip)
                 characterContainer.addChild(stickFigureNode)
+                
+                // Render move frame objects
+                if animationFrameIndex < gameState.moveFrameObjects.count {
+                    renderFrameObjects(gameState.moveFrameObjects[animationFrameIndex], on: characterContainer, scale: 1.2)
+                }
             }
         } else {
             // Otherwise show stand frame
@@ -501,6 +514,9 @@ class GameplayScene: GameScene {
                 let shouldFlip = !gameState.facingRight
                 let stickFigureNode = renderStickFigure(standFrame, at: CGPoint.zero, scale: 1.2, flipped: shouldFlip)
                 characterContainer.addChild(stickFigureNode)
+                
+                // Render stand frame objects
+                renderFrameObjects(gameState.standFrameObjects, on: characterContainer, scale: 1.2)
             }
         }
     }

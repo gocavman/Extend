@@ -52,6 +52,15 @@ struct SavedEditFrame: Codable, Identifiable {
     let handSize: CGFloat
     let footSize: CGFloat
     
+    // Additional stroke thickness properties needed for complete frame export
+    let strokeThicknessJoints: CGFloat
+    let strokeThicknessLowerArms: CGFloat
+    let strokeThicknessLowerLegs: CGFloat
+    let strokeThicknessLowerTorso: CGFloat
+    let strokeThicknessUpperArms: CGFloat
+    let strokeThicknessUpperLegs: CGFloat
+    let strokeThicknessUpperTorso: CGFloat
+    
     // Pose data (angles) - stored as simple properties
     let waistTorsoAngle: CGFloat
     let midTorsoAngle: CGFloat
@@ -172,6 +181,26 @@ struct SavedEditFrame: Codable, Identifiable {
             self.rightFootAngle = 0
         }
         
+        // Store stroke thickness properties from pose
+        if let pose = pose {
+            self.strokeThicknessJoints = pose.strokeThicknessJoints
+            self.strokeThicknessLowerArms = pose.strokeThicknessLowerArms
+            self.strokeThicknessLowerLegs = pose.strokeThicknessLowerLegs
+            self.strokeThicknessLowerTorso = pose.strokeThicknessLowerTorso
+            self.strokeThicknessUpperArms = pose.strokeThicknessUpperArms
+            self.strokeThicknessUpperLegs = pose.strokeThicknessUpperLegs
+            self.strokeThicknessUpperTorso = pose.strokeThicknessUpperTorso
+        } else {
+            // Use defaults that match the Stand frame
+            self.strokeThicknessJoints = 2.5
+            self.strokeThicknessLowerArms = 3.5
+            self.strokeThicknessLowerLegs = 3.5
+            self.strokeThicknessLowerTorso = 4.5
+            self.strokeThicknessUpperArms = 4.0
+            self.strokeThicknessUpperLegs = 4.5
+            self.strokeThicknessUpperTorso = 5.0
+        }
+        
         // Store objects
         self.objects = objects
     }
@@ -190,6 +219,8 @@ struct SavedEditFrame: Codable, Identifiable {
         case leftShoulderAngle, rightShoulderAngle, leftElbowAngle, rightElbowAngle
         case leftHandAngle, rightHandAngle, leftHipAngle, rightHipAngle
         case leftKneeAngle, rightKneeAngle, leftFootAngle, rightFootAngle
+        case strokeThicknessJoints, strokeThicknessLowerArms, strokeThicknessLowerLegs
+        case strokeThicknessLowerTorso, strokeThicknessUpperArms, strokeThicknessUpperLegs, strokeThicknessUpperTorso
         case objects
     }
     
@@ -246,6 +277,15 @@ struct SavedEditFrame: Codable, Identifiable {
         rightKneeAngle = try container.decode(CGFloat.self, forKey: .rightKneeAngle)
         leftFootAngle = try container.decode(CGFloat.self, forKey: .leftFootAngle)
         rightFootAngle = try container.decode(CGFloat.self, forKey: .rightFootAngle)
+        
+        // Decode stroke thickness properties - optional for backward compatibility
+        strokeThicknessJoints = try container.decodeIfPresent(CGFloat.self, forKey: .strokeThicknessJoints) ?? 2.5
+        strokeThicknessLowerArms = try container.decodeIfPresent(CGFloat.self, forKey: .strokeThicknessLowerArms) ?? 3.5
+        strokeThicknessLowerLegs = try container.decodeIfPresent(CGFloat.self, forKey: .strokeThicknessLowerLegs) ?? 3.5
+        strokeThicknessLowerTorso = try container.decodeIfPresent(CGFloat.self, forKey: .strokeThicknessLowerTorso) ?? 4.5
+        strokeThicknessUpperArms = try container.decodeIfPresent(CGFloat.self, forKey: .strokeThicknessUpperArms) ?? 4.0
+        strokeThicknessUpperLegs = try container.decodeIfPresent(CGFloat.self, forKey: .strokeThicknessUpperLegs) ?? 4.5
+        strokeThicknessUpperTorso = try container.decodeIfPresent(CGFloat.self, forKey: .strokeThicknessUpperTorso) ?? 5.0
         
         // Decode objects - optional for backward compatibility with old saved frames
         objects = try container.decodeIfPresent([EditorObject].self, forKey: .objects) ?? []
@@ -332,7 +372,27 @@ class SavedFramesManager {
         jsonString += "    \"frameNumber\" : \(frame.frameNumber),\n"
         jsonString += "    \"id\" : \"\(frame.id.uuidString)\",\n"
         jsonString += "    \"name\" : \"\(frame.name)\",\n"
-        jsonString += "    \"objects\" : [],\n"
+        
+        // Build objects array
+        jsonString += "    \"objects\" : [\n"
+        for (index, object) in frame.objects.enumerated() {
+            jsonString += "      {\n"
+            jsonString += "        \"id\" : \"\(object.id.uuidString)\",\n"
+            jsonString += "        \"assetName\" : \"\(object.assetName)\",\n"
+            jsonString += "        \"position\" : {\n"
+            jsonString += "          \"x\" : \(roundAndFormat(object.position.x, decimals: 1)),\n"
+            jsonString += "          \"y\" : \(roundAndFormat(object.position.y, decimals: 1))\n"
+            jsonString += "        },\n"
+            jsonString += "        \"rotation\" : \(roundAndFormat(object.rotation, decimals: 4)),\n"
+            jsonString += "        \"scaleX\" : \(roundAndFormat(object.scaleX, decimals: 4)),\n"
+            jsonString += "        \"scaleY\" : \(roundAndFormat(object.scaleY, decimals: 4))\n"
+            jsonString += "      }"
+            if index < frame.objects.count - 1 {
+                jsonString += ","
+            }
+            jsonString += "\n"
+        }
+        jsonString += "    ],\n"
         jsonString += "    \"pose\" : {\n"
         
         // Build pose dictionary - sort alphabetically
@@ -393,14 +453,14 @@ class SavedFramesManager {
             ("shoulderWidthMultiplier", roundAndFormat(frame.shoulderWidthMultiplier, decimals: 2)),
             ("skeletonSize", roundAndFormat(frame.skeletonSize, decimals: 2)),
             ("strokeThickness", roundAndFormat(frame.strokeThicknessMultiplier, decimals: 1)),
-            ("strokeThicknessJoints", "2"),
-            ("strokeThicknessLowerArms", "4"),
-            ("strokeThicknessLowerLegs", "4"),
-            ("strokeThicknessLowerTorso", "5"),
+            ("strokeThicknessJoints", roundAndFormat(frame.strokeThicknessJoints, decimals: 1)),
+            ("strokeThicknessLowerArms", roundAndFormat(frame.strokeThicknessLowerArms, decimals: 1)),
+            ("strokeThicknessLowerLegs", roundAndFormat(frame.strokeThicknessLowerLegs, decimals: 1)),
+            ("strokeThicknessLowerTorso", roundAndFormat(frame.strokeThicknessLowerTorso, decimals: 1)),
             ("strokeThicknessMultiplier", roundAndFormat(frame.strokeThicknessMultiplier, decimals: 1)),
-            ("strokeThicknessUpperArms", "4"),
-            ("strokeThicknessUpperLegs", "5"),
-            ("strokeThicknessUpperTorso", "5"),
+            ("strokeThicknessUpperArms", roundAndFormat(frame.strokeThicknessUpperArms, decimals: 1)),
+            ("strokeThicknessUpperLegs", roundAndFormat(frame.strokeThicknessUpperLegs, decimals: 1)),
+            ("strokeThicknessUpperTorso", roundAndFormat(frame.strokeThicknessUpperTorso, decimals: 1)),
             ("torsoColor", "\"#000000\""),
             ("torsoRotationAngle", "\(Int(frame.torsoRotationAngle))"),
             ("waistPositionX", "300"),

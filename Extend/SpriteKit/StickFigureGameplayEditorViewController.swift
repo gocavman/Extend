@@ -1303,6 +1303,28 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
         peakPositionUpperTorso = frame.peakPositionUpperTorso
         peakPositionLowerTorso = frame.peakPositionLowerTorso
         
+        // Clear existing objects
+        if let editorScene = editorScene {
+            editorScene.children.forEach { node in
+                if node.name?.hasPrefix("object_") == true {
+                    node.removeFromParent()
+                }
+            }
+        }
+        
+        // Load objects from frame
+        for editorObject in frame.objects {
+            addObject(asset: editorObject.assetName)
+            // Update the position, rotation, and scale of the last added object
+            if let lastObject = editorScene?.children.last(where: { $0.name?.hasPrefix("object_") == true }) as? SKSpriteNode {
+                lastObject.position = editorObject.position
+                lastObject.zRotation = editorObject.rotation
+                lastObject.xScale = editorObject.scaleX
+                lastObject.yScale = editorObject.scaleY
+                print("🎮 Loaded object: \(editorObject.assetName) at \(lastObject.position)")
+            }
+        }
+        
         // Reload table view to show updated values
         controlsTableView.reloadData()
         updateFigure()
@@ -2020,7 +2042,17 @@ class FrameListViewController: UIViewController, UITableViewDataSource, UITableV
                     positionX: 0,
                     positionY: 0
                 )
-                let savedFrame = SavedEditFrame(id: bundleFrame.id, name: bundleFrame.name, from: editValues, pose: pose)
+                // Convert AnimationObjects to EditorObjects
+                let editorObjects = bundleFrame.objects.map { animObj in
+                    EditorObject(
+                        assetName: animObj.imageName,
+                        position: animObj.position,
+                        rotation: animObj.rotation,
+                        scaleX: animObj.scale,
+                        scaleY: animObj.scale
+                    )
+                }
+                let savedFrame = SavedEditFrame(id: bundleFrame.id, name: bundleFrame.name, from: editValues, pose: pose, objects: editorObjects)
                 allFrames.append(savedFrame)
             }
         }
