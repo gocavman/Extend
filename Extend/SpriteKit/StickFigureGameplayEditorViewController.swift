@@ -88,7 +88,7 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
     var sceneZoom: CGFloat = 1.0  // Zoom level for editor view (1.0 = normal, 2.0 = 2x zoom)
     
     // Section expansion state
-    private var expandedSections: Set<Int> = [0, 1, 5, 6]  // Expanded by default (sections 0, 1, 5, 6 visible; sections 2, 3, 4 collapsed)
+    private var expandedSections: Set<Int> = [5, 6]  // Expanded by default (sections 5, 6 visible; sections 0, 1, 2, 3, 4 collapsed)
     
     var gameState: StickFigureGameState?
     
@@ -1209,8 +1209,7 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
         figureOffsetX = frame.positionX
         figureOffsetY = frame.positionY
         
-        // Reset to defaults for properties not in SavedEditFrame
-        // (these should be restored from the pose if we update SavedEditFrame)
+        // Restore all multiplier and size properties
         skeletonSize = frame.skeletonSize
         jointShapeSize = frame.jointShapeSize
         shoulderWidthMultiplier = frame.shoulderWidthMultiplier
@@ -1220,13 +1219,15 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
         neckWidth = frame.neckWidth
         handSize = frame.handSize
         footSize = frame.footSize
-        fusiformShoulders = 0.0
-        peakPositionUpperArms = 0.5
-        peakPositionLowerArms = 0.35
-        peakPositionUpperLegs = 0.2
-        peakPositionLowerLegs = 0.2
-        peakPositionUpperTorso = 0.5
-        peakPositionLowerTorso = 0.5
+        
+        // Restore peak positions and fusiform shoulders
+        fusiformShoulders = frame.fusiformShoulders
+        peakPositionUpperArms = frame.peakPositionUpperArms
+        peakPositionLowerArms = frame.peakPositionLowerArms
+        peakPositionUpperLegs = frame.peakPositionUpperLegs
+        peakPositionLowerLegs = frame.peakPositionLowerLegs
+        peakPositionUpperTorso = frame.peakPositionUpperTorso
+        peakPositionLowerTorso = frame.peakPositionLowerTorso
         
         // Reload table view to show updated values
         controlsTableView.reloadData()
