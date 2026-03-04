@@ -129,10 +129,10 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
         // Layout constraints
         NSLayoutConstraint.activate([
             // Top container
-            topContainer.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor),
+            topContainer.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 30),
             topContainer.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             topContainer.trailingAnchor.constraint(equalTo: view.trailingAnchor),
-            topContainer.heightAnchor.constraint(equalTo: view.safeAreaLayoutGuide.heightAnchor, multiplier: 0.5),
+            topContainer.heightAnchor.constraint(equalTo: topContainer.widthAnchor),
             
             // Bottom container
             bottomContainer.topAnchor.constraint(equalTo: topContainer.bottomAnchor),
@@ -223,7 +223,8 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
     }
     
     private func setupEditor() {
-        let sceneSize = CGSize(width: view.bounds.width, height: view.bounds.height * 0.5)
+        let sceneWidth = view.bounds.width
+        let sceneSize = CGSize(width: sceneWidth, height: sceneWidth)  // Perfect square!
         editorScene = StickFigureEditorScene(size: sceneSize)
         editorScene?.gameState = gameState
         editorScene?.viewController = self
@@ -236,10 +237,10 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
             topContainer.addSubview(skView)
             skView.translatesAutoresizingMaskIntoConstraints = false
             NSLayoutConstraint.activate([
-                skView.topAnchor.constraint(equalTo: topContainer.topAnchor),
+                skView.topAnchor.constraint(equalTo: topContainer.topAnchor, constant: 38),
                 skView.leadingAnchor.constraint(equalTo: topContainer.leadingAnchor),
                 skView.trailingAnchor.constraint(equalTo: topContainer.trailingAnchor),
-                skView.bottomAnchor.constraint(equalTo: topContainer.bottomAnchor)
+                skView.heightAnchor.constraint(equalTo: skView.widthAnchor)  // Keep it square!
             ])
         }
     }
