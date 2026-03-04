@@ -944,7 +944,8 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
             
             // Load ALL scale and thickness values from standFrame
             figureScale = standFrame.scale
-            // Note: strokeThicknessMultiplier and jointShapeSize are editor-only properties, not in StickFigure2D
+            strokeThicknessMultiplier = standFrame.strokeThickness
+            // Note: jointShapeSize is editor-only property, not in StickFigure2D
             skeletonSize = standFrame.skeletonSize
             shoulderWidthMultiplier = standFrame.shoulderWidthMultiplier
             waistWidthMultiplier = standFrame.waistWidthMultiplier
