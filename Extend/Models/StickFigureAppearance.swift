@@ -80,7 +80,7 @@ class StickFigureAppearance {
     }
     
     var jointColor: Color {
-        get { colorFromKey(jointColorKey, default: .blue) }
+        get { colorFromKey(jointColorKey, default: .black) }
         set { saveColor(newValue, to: jointColorKey) }
     }
     
@@ -132,7 +132,7 @@ class StickFigureAppearance {
         rightLowerLegColor = .black
         handColor = .black
         footColor = .black
-        jointColor = .blue
+        jointColor = .black
     }
 }
 

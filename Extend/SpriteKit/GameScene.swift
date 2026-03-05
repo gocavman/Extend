@@ -124,7 +124,18 @@ class GameScene: SKScene {
         }
         
         // Helper to draw a tapered segment (respects fusiform values) - matches StickFigure2D editor exactly
-        func drawTaperedSegment(from: CGPoint, to: CGPoint, color: SKColor, strokeThickness: CGFloat, fusiform: CGFloat, inverted: Bool, peakPosition: CGFloat = 0.2) {
+        func drawTaperedSegment(
+            from: CGPoint,
+            to: CGPoint,
+            color: SKColor,
+            strokeThickness: CGFloat,
+            fusiform: CGFloat,
+            inverted: Bool,
+            peakPosition: CGFloat = 0.2,
+            legAsymmetry: String = "none",  // "left", "right", or "none" - controls which side expands
+            peakPositionLeftEdge: CGFloat? = nil,  // Optional: for calves, different peak for left edge
+            peakPositionRightEdge: CGFloat? = nil  // Optional: for calves, different peak for right edge
+        ) {
             // Convert to relative coordinates and apply scale
             let fromRelative = CGPoint(x: (from.x - baseCenter.x) * scale, y: (baseCenter.y - from.y) * scale)
             let toRelative = CGPoint(x: (to.x - baseCenter.x) * scale, y: (baseCenter.y - to.y) * scale)
@@ -169,38 +180,59 @@ class GameScene: SKScene {
                 let t = CGFloat(i) / CGFloat(numSegments)
                 let pos = CGPoint(x: fromRelative.x + dirX * t * length, y: fromRelative.y + dirY * t * length)
                 
-                // Calculate width at this point based on taper profile
-                var widthFactor: CGFloat = 1.0
+                // Calculate width factors for left and right edges (for asymmetric legs)
+                var widthFactorLeft: CGFloat = 1.0
+                var widthFactorRight: CGFloat = 1.0
                 
                 if inverted {
-                    // DIAMOND: Point at START and END, wide in MIDDLE
-                    let peakT = peakPosition
-                    var distFromPeak: CGFloat
+                    // For asymmetric legs, calculate separate peak positions for each edge
+                    let peakTLeft = peakPositionLeftEdge ?? peakPosition
+                    let peakTRight = peakPositionRightEdge ?? peakPosition
                     
-                    if t <= peakT {
-                        // Top half: from start to peak
-                        distFromPeak = (peakT - t) / peakT  // Normalized: 1 at start, 0 at peak
+                    // Calculate width factor for left edge
+                    var distFromPeakLeft: CGFloat
+                    if t <= peakTLeft {
+                        distFromPeakLeft = (peakTLeft - t) / peakTLeft
                     } else {
-                        // Bottom half: from peak to end
-                        distFromPeak = (t - peakT) / (1.0 - peakT)  // Normalized: 0 at peak, 1 at end
+                        distFromPeakLeft = (t - peakTLeft) / (1.0 - peakTLeft)
                     }
+                    let easeTLeft = max(0, 1.0 - (distFromPeakLeft * distFromPeakLeft))
+                    widthFactorLeft = fusiform * easeTLeft
                     
-                    // Use inverted quadratic easing to create smooth diamond shape
-                    let easeT = max(0, 1.0 - (distFromPeak * distFromPeak))
-                    widthFactor = fusiform * easeT
+                    // Calculate width factor for right edge
+                    var distFromPeakRight: CGFloat
+                    if t <= peakTRight {
+                        distFromPeakRight = (peakTRight - t) / peakTRight
+                    } else {
+                        distFromPeakRight = (t - peakTRight) / (1.0 - peakTRight)
+                    }
+                    let easeTRight = max(0, 1.0 - (distFromPeakRight * distFromPeakRight))
+                    widthFactorRight = fusiform * easeTRight
+                    
+                    // Apply leg asymmetry: only expand outward (away from center)
+                    if legAsymmetry == "left" {
+                        // Left leg: expand only on left side, not on right
+                        widthFactorRight = 0.0
+                    } else if legAsymmetry == "right" {
+                        // Right leg: expand only on right side, not on left
+                        widthFactorLeft = 0.0
+                    }
+                    // If "none", both sides expand normally
                 } else {
                     // NORMAL: Middle BULGE profile with smooth curve (not sharp)
-                    // Use sine wave for smooth curved peaks instead of quadratic
-                    let angle = (t - 0.5) * CGFloat.pi  // Range from -pi/2 to pi/2
-                    let curveShape = cos(angle)  // Creates smooth bulge from -1 to -1 through 1 at center
-                    widthFactor = 1.0 + (fusiform * max(0, curveShape))  // Only add positive bulge
+                    let angle = (t - 0.5) * CGFloat.pi
+                    let curveShape = cos(angle)
+                    let bulge = 1.0 + (fusiform * max(0, curveShape))
+                    widthFactorLeft = bulge
+                    widthFactorRight = bulge
                 }
                 
-                let width = (strokeThickness / 2) * widthFactor
+                let widthLeft = (strokeThickness / 2) * widthFactorLeft
+                let widthRight = (strokeThickness / 2) * widthFactorRight
                 
-                // Top and bottom edges
-                let topPoint = CGPoint(x: pos.x + perpX * width, y: pos.y + perpY * width)
-                let bottomPoint = CGPoint(x: pos.x - perpX * width, y: pos.y - perpY * width)
+                // Top and bottom edges (asymmetric)
+                let topPoint = CGPoint(x: pos.x + perpX * widthLeft, y: pos.y + perpY * widthLeft)
+                let bottomPoint = CGPoint(x: pos.x - perpX * widthRight, y: pos.y - perpY * widthRight)
                 
                 topEdgePoints.append(topPoint)
                 bottomEdgePoints.append(bottomPoint)
@@ -462,10 +494,16 @@ class GameScene: SKScene {
         drawRoundedLine(from: waistPos, to: leftHipPos, color: toSKColor(mutableFigure.torsoColor), width: mutableFigure.strokeThicknessLowerLegs * 1.5)
         drawRoundedLine(from: waistPos, to: rightHipPos, color: toSKColor(mutableFigure.torsoColor), width: mutableFigure.strokeThicknessLowerLegs * 1.5)
         
-        drawTaperedSegment(from: leftHipPos, to: leftUpperLegEnd, color: toSKColor(mutableFigure.leftUpperLegColor), strokeThickness: mutableFigure.strokeThicknessUpperLegs, fusiform: mutableFigure.fusiformUpperLegs, inverted: true, peakPosition: mutableFigure.peakPositionUpperLegs)
-        drawTaperedSegment(from: leftUpperLegEnd, to: leftFootEnd, color: toSKColor(mutableFigure.leftLowerLegColor), strokeThickness: mutableFigure.strokeThicknessLowerLegs, fusiform: mutableFigure.fusiformLowerLegs, inverted: true, peakPosition: mutableFigure.peakPositionLowerLegs)
-        drawTaperedSegment(from: rightHipPos, to: rightUpperLegEnd, color: toSKColor(mutableFigure.rightUpperLegColor), strokeThickness: mutableFigure.strokeThicknessUpperLegs, fusiform: mutableFigure.fusiformUpperLegs, inverted: true, peakPosition: mutableFigure.peakPositionUpperLegs)
-        drawTaperedSegment(from: rightUpperLegEnd, to: rightFootEnd, color: toSKColor(mutableFigure.rightLowerLegColor), strokeThickness: mutableFigure.strokeThicknessLowerLegs, fusiform: mutableFigure.fusiformLowerLegs, inverted: true, peakPosition: mutableFigure.peakPositionLowerLegs)
+        // Upper legs: expand only outward (left leg to left, right leg to right)
+        drawTaperedSegment(from: leftHipPos, to: leftUpperLegEnd, color: toSKColor(mutableFigure.leftUpperLegColor), strokeThickness: mutableFigure.strokeThicknessUpperLegs, fusiform: mutableFigure.fusiformUpperLegs, inverted: true, peakPosition: mutableFigure.peakPositionUpperLegs, legAsymmetry: "right")
+        
+        // Left lower leg: peak on right side at top-right 3rd, left side normal
+        drawTaperedSegment(from: leftUpperLegEnd, to: leftFootEnd, color: toSKColor(mutableFigure.leftLowerLegColor), strokeThickness: mutableFigure.strokeThicknessLowerLegs, fusiform: mutableFigure.fusiformLowerLegs, inverted: true, peakPosition: mutableFigure.peakPositionLowerLegs, peakPositionLeftEdge: mutableFigure.peakPositionLowerLegs, peakPositionRightEdge: 0.33)
+        
+        drawTaperedSegment(from: rightHipPos, to: rightUpperLegEnd, color: toSKColor(mutableFigure.rightUpperLegColor), strokeThickness: mutableFigure.strokeThicknessUpperLegs, fusiform: mutableFigure.fusiformUpperLegs, inverted: true, peakPosition: mutableFigure.peakPositionUpperLegs, legAsymmetry: "left")
+        
+        // Right lower leg: peak on left side at top-left 3rd, right side normal
+        drawTaperedSegment(from: rightUpperLegEnd, to: rightFootEnd, color: toSKColor(mutableFigure.rightLowerLegColor), strokeThickness: mutableFigure.strokeThicknessLowerLegs, fusiform: mutableFigure.fusiformLowerLegs, inverted: true, peakPosition: mutableFigure.peakPositionLowerLegs, peakPositionLeftEdge: 0.33, peakPositionRightEdge: mutableFigure.peakPositionLowerLegs)
         
         // Draw torso - LAYERED: lower torso behind, upper torso on top spanning full neck-to-waist
         // Draw lower torso first (behind)

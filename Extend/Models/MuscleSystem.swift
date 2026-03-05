@@ -171,8 +171,38 @@ class MuscleSystem {
     var config: MuscleConfig?
     var state: MuscleState = MuscleState()
     
+    // The 5 stand frames loaded from animations.json
+    // Index: [0=ExtraSmall, 1=Small, 2=Stand, 3=Large, 4=ExtraLarge]
+    private var standFrames: [SavedEditFrame] = []
+    
     private init() {
+        loadStandFrames()
         loadMuscleConfig()
+    }
+    
+    /// Load the 5 Stand frames from animations.json
+    private func loadStandFrames() {
+        if let bundleURL = Bundle.main.url(forResource: "animations", withExtension: "json") {
+            do {
+                let data = try Data(contentsOf: bundleURL)
+                let decoder = JSONDecoder()
+                let allFrames = try decoder.decode([SavedEditFrame].self, from: data)
+                
+                // Filter Stand frames and sort by name to match order
+                let standNames = ["Extra Small Stand", "Small Stand", "Stand", "Large Stand", "Extra Large Stand"]
+                for name in standNames {
+                    if let frame = allFrames.first(where: { $0.name == name }) {
+                        standFrames.append(frame)
+                    }
+                }
+                
+                if standFrames.count != 5 {
+                    print("⚠️ WARNING: Expected 5 Stand frames, found \(standFrames.count)")
+                }
+            } catch {
+                print("❌ ERROR loading standFrames from animations.json: \(error)")
+            }
+        }
     }
     
     /// Load muscle config from bundle
@@ -184,89 +214,80 @@ class MuscleSystem {
                 config = try decoder.decode(MuscleConfig.self, from: data)
                 state.initializeMuscles(with: config?.muscles ?? [])
             } catch {
-                // Handle error silently for now
+                // Handle error silently
             }
         }
     }
     
-    /// Get muscle by ID
-    func getMuscle(id: String) -> MuscleDefinition? {
-        return config?.muscles.first { $0.id == id }
-    }
-    
-    /// Get interpolated body part value based on muscle points
-    func getBodyPartValue(for bodyPartKey: String, muscleId: String, state: MuscleState) -> Double {
-        guard let muscle = getMuscle(id: muscleId) else { return 0 }
-        guard muscle.bodyParts.contains(bodyPartKey) else { return 0 }
-        
-        let currentPoints = state.getPoints(for: muscleId)
-        return interpolateValue(for: muscleId, at: currentPoints, bodyPart: bodyPartKey)
-    }
-    
-    /// Linearly interpolate value between frame points, with extrapolation beyond 100
-    private func interpolateValue(for muscleId: String, at points: Double, bodyPart: String) -> Double {
-        guard let muscle = getMuscle(id: muscleId) else { return 0 }
-        
-        // Get frame values as doubles for this specific bodyPart
-        let framePoints = [0, 25, 50, 75, 100].map { Double($0) }
-        var frameValues: [Double] = []
-        
-        for pointStr in ["0", "25", "50", "75", "100"] {
-            if let codable = muscle.frameValues[pointStr] {
-                // Try to extract the value for this bodyPart
-                if case .dictionary(let dict) = codable {
-                    // frameValues is an object like {"fusiformUpperArms": 3.5, "strokeThicknessUpperArms": 4.0}
-                    if let bodyPartValue = dict[bodyPart],
-                       let value = bodyPartValue.doubleValue {
-                        frameValues.append(value)
-                    } else {
-                        frameValues.append(0)
-                    }
-                } else if let value = codable.doubleValue {
-                    // Legacy format: frameValues is a simple double
-                    frameValues.append(value)
-                } else {
-                    frameValues.append(0)
-                }
-            } else {
-                frameValues.append(0)
-            }
+    /// Interpolate a property value based on muscle points using 5-frame lookup
+    /// - Parameters:
+    ///   - propertyKey: The property name (e.g., "fusiformUpperTorso", "strokeThicknessJoints")
+    ///   - musclePoints: Points value 0-100
+    /// - Returns: Interpolated value
+    func interpolateProperty(_ propertyKey: String, musclePoints: Double) -> Double {
+        guard standFrames.count == 5 else {
+            return 0  // Not enough frames loaded
         }
         
-        // Find surrounding frames - allow extrapolation beyond 100
-        if points <= framePoints[0] {
-            return frameValues[0]
-        }
+        let framePoints = [0.0, 25.0, 50.0, 75.0, 100.0]
+        let clamped = max(0, min(100, musclePoints))
         
-        // If beyond 100, extrapolate using the slope between 75 and 100
-        if points > framePoints[4] {
-            let p1 = framePoints[3]  // 75
-            let p2 = framePoints[4]  // 100
-            let v1 = frameValues[3]
-            let v2 = frameValues[4]
-            
-            // Calculate slope and continue extrapolating beyond 100
-            let slope = (v2 - v1) / (p2 - p1)  // Slope per point
-            let extrapolated = v2 + slope * (points - p2)
-            
-            return extrapolated
-        }
+        // Clamp to range [0, 100]
+        if clamped <= 0 { return getPropertyValue(propertyKey, from: standFrames[0]) }
+        if clamped >= 100 { return getPropertyValue(propertyKey, from: standFrames[4]) }
         
-        // Find the two surrounding points
-        for i in 0..<framePoints.count - 1 {
-            if points >= framePoints[i] && points <= framePoints[i + 1] {
+        // Find surrounding frames
+        for i in 0..<4 {
+            if clamped >= framePoints[i] && clamped <= framePoints[i + 1] {
+                let v1 = getPropertyValue(propertyKey, from: standFrames[i])
+                let v2 = getPropertyValue(propertyKey, from: standFrames[i + 1])
+                
                 let p1 = framePoints[i]
                 let p2 = framePoints[i + 1]
-                let v1 = frameValues[i]
-                let v2 = frameValues[i + 1]
+                let ratio = (clamped - p1) / (p2 - p1)
                 
-                // Linear interpolation: v = v1 + (v2 - v1) * (points - p1) / (p2 - p1)
-                let ratio = (points - p1) / (p2 - p1)
                 return v1 + (v2 - v1) * ratio
             }
         }
         
-        return frameValues[0]
+        return getPropertyValue(propertyKey, from: standFrames[0])
+    }
+    
+    /// Helper to get a property value from a frame
+    private func getPropertyValue(_ propertyKey: String, from frame: SavedEditFrame) -> Double {
+        switch propertyKey {
+        case "fusiformShoulders": return Double(frame.fusiformShoulders)
+        case "fusiformUpperTorso": return Double(frame.fusiformUpperTorso)
+        case "fusiformLowerTorso": return Double(frame.fusiformLowerTorso)
+        case "fusiformUpperArms": return Double(frame.fusiformUpperArms)
+        case "fusiformLowerArms": return Double(frame.fusiformLowerArms)
+        case "fusiformUpperLegs": return Double(frame.fusiformUpperLegs)
+        case "fusiformLowerLegs": return Double(frame.fusiformLowerLegs)
+        case "neckWidth": return Double(frame.neckWidth)
+        case "handSize": return Double(frame.handSize)
+        case "footSize": return Double(frame.footSize)
+        case "skeletonSize": return Double(frame.skeletonSize)
+        case "waistThicknessMultiplier": return Double(frame.waistThicknessMultiplier)
+        case "strokeThicknessUpperTorso": return Double(frame.strokeThicknessUpperTorso)
+        case "strokeThicknessLowerTorso": return Double(frame.strokeThicknessLowerTorso)
+        case "strokeThicknessUpperArms": return Double(frame.strokeThicknessUpperArms)
+        case "strokeThicknessLowerArms": return Double(frame.strokeThicknessLowerArms)
+        case "strokeThicknessUpperLegs": return Double(frame.strokeThicknessUpperLegs)
+        case "strokeThicknessLowerLegs": return Double(frame.strokeThicknessLowerLegs)
+        case "strokeThicknessJoints": return Double(frame.strokeThicknessJoints)
+        default: return 0
+        }
+    }
+    
+    /// Get muscle by ID (for legacy code compatibility)
+    func getMuscle(id: String) -> MuscleDefinition? {
+        return config?.muscles.first { $0.id == id }
+    }
+    
+    /// Get interpolated body part value based on muscle points (legacy)
+    func getBodyPartValue(for bodyPartKey: String, muscleId: String, state: MuscleState) -> Double {
+        let currentPoints = state.getPoints(for: muscleId)
+        return interpolateProperty(bodyPartKey, musclePoints: currentPoints)
     }
     
     /// Calculate average muscle points across all muscles
@@ -280,63 +301,10 @@ class MuscleSystem {
         return totalPoints / Double(muscles.count)
     }
     
-    /// Get derived property value (strokeThickness, skeletonSize, waistThicknessMultiplier)
+    /// Get derived property value using 5-frame interpolation
     func getDerivedPropertyValue(for propertyKey: String, state: MuscleState) -> Double {
-        guard config?.pointsConfig != nil else { return 0 }
-        
         let avgPoints = getAverageMusclePoints(state: state)
-        
-        // Get the derived property values from the config
-        // For now, we need to decode from AnyCodable
-        // The values are stored with keys "0", "25", "50", "75", "100"
-        
-        let framePoints = [0.0, 25.0, 50.0, 75.0, 100.0]
-        
-        // Get frame values for this property from the JSON structure
-        // This is a simplified approach - in production you'd parse the JSON properly
-        let values = getDerivedPropertyFrameValues(for: propertyKey)
-        
-        guard !values.isEmpty else { return 0 }
-        
-        // Find surrounding frames and interpolate
-        if avgPoints <= framePoints[0] {
-            return values[0]
-        }
-        if avgPoints >= framePoints[4] {
-            return values[4]
-        }
-        
-        // Find the two surrounding points
-        for i in 0..<framePoints.count - 1 {
-            if avgPoints >= framePoints[i] && avgPoints <= framePoints[i + 1] {
-                let p1 = framePoints[i]
-                let p2 = framePoints[i + 1]
-                let v1 = values[i]
-                let v2 = values[i + 1]
-                
-                // Linear interpolation
-                let ratio = (avgPoints - p1) / (p2 - p1)
-                return v1 + (v2 - v1) * ratio
-            }
-        }
-        
-        return values[0]
-    }
-    
-    /// Helper to get frame values for derived properties
-    private func getDerivedPropertyFrameValues(for propertyKey: String) -> [Double] {
-        // Map property names to their frame values [0, 25, 50, 75, 100]
-        let derivedValues: [String: [Double]] = [
-            "neckWidth": [3.3, 3.3, 8.5, 8.8, 8.8],
-            "handSize": [0.5, 0.5, 1, 7, 7],
-            "footSize": [0.5, 0.5, 1, 7, 7],
-            "strokeThicknessMultiplier": [0.5, 1, 1.2, 1.4, 2],
-            "skeletonSize": [0, 3.19, 4.18, 5.11, 5.11],
-            "waistThicknessMultiplier": [0, 0.9, 0.9, 0.9, 0.9],
-            "waistWidthMultiplier": [0.26, 0.26, 0.26, 0.28, 0.28]
-        ]
-        
-        return derivedValues[propertyKey] ?? []
+        return interpolateProperty(propertyKey, musclePoints: avgPoints)
     }
 }
 

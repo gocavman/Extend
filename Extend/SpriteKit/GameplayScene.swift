@@ -696,17 +696,19 @@ class GameplayScene: GameScene {
             // For sideview frames, cap torso stroke thicknesses at 1.0
             scaledFigure.strokeThicknessUpperTorso = min(scaledFigure.strokeThicknessUpperTorso, 1.0)
             scaledFigure.strokeThicknessLowerTorso = min(scaledFigure.strokeThicknessLowerTorso, 1.0)
+            
+            // For sideview frames, cap lower leg appearance to prevent over-expansion
+            scaledFigure.strokeThicknessLowerLegs = min(scaledFigure.strokeThicknessLowerLegs, 3.0)
+            scaledFigure.fusiformLowerLegs = min(scaledFigure.fusiformLowerLegs, 3.0)
+            
+            // Scale skeleton size proportionally with lower leg fusiform to prevent it from looking oversized
+            // If lower legs are capped at 3.0, skeleton should also be proportionally limited
+            let legRatio = scaledFigure.fusiformLowerLegs / 3.0  // Normalized ratio (0-1)
+            scaledFigure.skeletonSize = min(scaledFigure.skeletonSize, max(2.0, 3.5 * legRatio))
         }
         
-        // Get and apply stroke thickness multiplier to all stroke thicknesses
-        let strokeThicknessMultiplier = MuscleSystem.shared.getDerivedPropertyValue(for: "strokeThicknessMultiplier", state: gameState.muscleState)
-        scaledFigure.strokeThicknessUpperTorso *= strokeThicknessMultiplier
-        scaledFigure.strokeThicknessLowerTorso *= strokeThicknessMultiplier
-        scaledFigure.strokeThicknessUpperArms *= strokeThicknessMultiplier
-        scaledFigure.strokeThicknessLowerArms *= strokeThicknessMultiplier
-        scaledFigure.strokeThicknessUpperLegs *= strokeThicknessMultiplier
-        scaledFigure.strokeThicknessLowerLegs *= strokeThicknessMultiplier
-        scaledFigure.strokeThicknessJoints *= strokeThicknessMultiplier
+        // NOTE: Stroke thicknesses are already interpolated from the 5-frame system above.
+        // Do NOT apply an additional multiplier - they're direct interpolations of frame values.
         
         return scaledFigure
     }
