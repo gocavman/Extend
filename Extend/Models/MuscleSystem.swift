@@ -203,7 +203,7 @@ class MuscleSystem {
         return interpolateValue(for: muscleId, at: currentPoints, bodyPart: bodyPartKey)
     }
     
-    /// Linearly interpolate value between frame points
+    /// Linearly interpolate value between frame points, with extrapolation beyond 100
     private func interpolateValue(for muscleId: String, at points: Double, bodyPart: String) -> Double {
         guard let muscle = getMuscle(id: muscleId) else { return 0 }
         
@@ -233,14 +233,23 @@ class MuscleSystem {
             }
         }
         
-        // Find surrounding frames
+        // Find surrounding frames - allow extrapolation beyond 100
         if points <= framePoints[0] {
             return frameValues[0]
         }
-        if points >= framePoints[4] {
-            let result = frameValues[4]
-            print("🦵 INTERP: \(muscle.id) \(bodyPart) at \(points) points >= 100, returning \(result) (frameValues[4])")
-            return result
+        
+        // If beyond 100, extrapolate using the slope between 75 and 100
+        if points > framePoints[4] {
+            let p1 = framePoints[3]  // 75
+            let p2 = framePoints[4]  // 100
+            let v1 = frameValues[3]
+            let v2 = frameValues[4]
+            
+            // Calculate slope and continue extrapolating beyond 100
+            let slope = (v2 - v1) / (p2 - p1)  // Slope per point
+            let extrapolated = v2 + slope * (points - p2)
+            
+            return extrapolated
         }
         
         // Find the two surrounding points

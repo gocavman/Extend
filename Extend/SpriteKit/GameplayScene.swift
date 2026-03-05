@@ -156,7 +156,9 @@ class GameplayScene: GameScene {
             print("🎮 Rendering stand frame from gameState")
             
             // Apply muscle scaling to the stand frame
+            print("🎮 DEBUG Stand Frame BEFORE scaling: shoulderWidth=\(standFrame.shoulderWidthMultiplier), waistWidth=\(standFrame.waistWidthMultiplier), skeletonSize=\(standFrame.skeletonSize)")
             let scaledFrame = applyMuscleScaling(to: standFrame)
+            print("🎮 DEBUG Stand Frame AFTER scaling: shoulderWidth=\(scaledFrame.shoulderWidthMultiplier), waistWidth=\(scaledFrame.waistWidthMultiplier), skeletonSize=\(scaledFrame.skeletonSize)")
             
             // Create a container node
             let characterContainer = SKNode()
@@ -441,12 +443,14 @@ class GameplayScene: GameScene {
                 
                 let moveFrame = gameState.moveFrames[moveFrameIndex]
                 print("🎮 Updating to move frame \(moveFrameIndex + 1)")
+                print("🎮 DEBUG Move Frame \(moveFrameIndex + 1) BEFORE scaling: shoulderWidth=\(moveFrame.shoulderWidthMultiplier), waistWidth=\(moveFrame.waistWidthMultiplier), skeletonSize=\(moveFrame.skeletonSize)")
                 
                 // Remove old stick figure and add new one
                 if let characterContainer = self.characterNode {
                     characterContainer.removeAllChildren()
                     let shouldFlip = !gameState.facingRight
                     let scaledFrame = self.applyMuscleScaling(to: moveFrame)
+                    print("🎮 DEBUG Move Frame \(moveFrameIndex + 1) AFTER scaling: shoulderWidth=\(scaledFrame.shoulderWidthMultiplier), waistWidth=\(scaledFrame.waistWidthMultiplier), skeletonSize=\(scaledFrame.skeletonSize)")
                     let stickFigureNode = self.renderStickFigure(scaledFrame, at: CGPoint.zero, scale: 1.2, flipped: shouldFlip)
                     characterContainer.addChild(stickFigureNode)
                     
@@ -610,7 +614,10 @@ class GameplayScene: GameScene {
     private func applyMuscleScaling(to figure: StickFigure2D) -> StickFigure2D {
         guard let gameState = gameState else { return figure }
         
-        let avgMusclePoints = MuscleSystem.shared.getAverageMusclePoints(state: gameState.muscleState)
+        // Store the frame's explicit shoulder and waist width multipliers
+        // These should NOT be overridden by muscle scaling (they're frame-specific for front vs side views)
+        let frameShoulderWidth = figure.shoulderWidthMultiplier
+        let frameWaistWidth = figure.waistWidthMultiplier
         
         // Start with the figure as-is (no separate base frame loading)
         var scaledFigure = figure
@@ -618,8 +625,6 @@ class GameplayScene: GameScene {
         // Apply each muscle's interpolated values to the figure
         if let muscles = MuscleSystem.shared.config?.muscles {
             for muscle in muscles {
-                let musclePoints = gameState.muscleState.getPoints(for: muscle.id)
-                
                 // Get interpolated values for each body part this muscle affects
                 for bodyPart in muscle.bodyParts {
                     let interpolatedValue = MuscleSystem.shared.getBodyPartValue(for: bodyPart, muscleId: muscle.id, state: gameState.muscleState)
@@ -628,6 +633,9 @@ class GameplayScene: GameScene {
                     switch bodyPart {
                     case "fusiformShoulders":
                         scaledFigure.fusiformShoulders = interpolatedValue
+                    case "shoulderWidthMultiplier":
+                        // Don't apply - this is frame-specific, not muscle-controlled
+                        break
                     case "neckWidth":
                         scaledFigure.neckWidth = interpolatedValue
                     case "handSize":
@@ -667,13 +675,28 @@ class GameplayScene: GameScene {
             }
         }
         
+        // Preserve frame-specific shoulder and waist width multipliers
+        scaledFigure.shoulderWidthMultiplier = frameShoulderWidth
+        scaledFigure.waistWidthMultiplier = frameWaistWidth
+        
         // Apply derived properties based on average muscle points
         scaledFigure.neckWidth = MuscleSystem.shared.getDerivedPropertyValue(for: "neckWidth", state: gameState.muscleState)
         scaledFigure.handSize = MuscleSystem.shared.getDerivedPropertyValue(for: "handSize", state: gameState.muscleState)
         scaledFigure.footSize = MuscleSystem.shared.getDerivedPropertyValue(for: "footSize", state: gameState.muscleState)
         scaledFigure.skeletonSize = MuscleSystem.shared.getDerivedPropertyValue(for: "skeletonSize", state: gameState.muscleState)
         scaledFigure.waistThicknessMultiplier = MuscleSystem.shared.getDerivedPropertyValue(for: "waistThicknessMultiplier", state: gameState.muscleState)
-        scaledFigure.waistWidthMultiplier = MuscleSystem.shared.getDerivedPropertyValue(for: "waistWidthMultiplier", state: gameState.muscleState)
+        
+        // Check if this is a sideview frame (both shoulder width and waist width are 0)
+        let isSideView = frameShoulderWidth == 0 && frameWaistWidth == 0
+        
+        if isSideView {
+            // For sideview frames, constrain Upper Torso fusiform to 0-3 range
+            scaledFigure.fusiformUpperTorso = min(scaledFigure.fusiformUpperTorso, 3.0)
+            
+            // For sideview frames, cap torso stroke thicknesses at 1.0
+            scaledFigure.strokeThicknessUpperTorso = min(scaledFigure.strokeThicknessUpperTorso, 1.0)
+            scaledFigure.strokeThicknessLowerTorso = min(scaledFigure.strokeThicknessLowerTorso, 1.0)
+        }
         
         // Get and apply stroke thickness multiplier to all stroke thicknesses
         let strokeThicknessMultiplier = MuscleSystem.shared.getDerivedPropertyValue(for: "strokeThicknessMultiplier", state: gameState.muscleState)
