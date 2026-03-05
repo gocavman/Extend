@@ -21,98 +21,105 @@
       "id": "shoulders",
       "name": "Shoulders",
       "bodyParts": [
-        "fusiformShoulders"
+        "fusiformShoulders",
+        "strokeThicknessJoints"
       ],
       "frameValues": {
-        "0": 0.3,
-        "25": 0.34,
-        "50": 1.52,
-        "75": 1.81,
-        "100": 2.1
+        "0": {"fusiformShoulders": 0, "strokeThicknessJoints": 1.0},
+        "25": {"fusiformShoulders": 0.34, "strokeThicknessJoints": 1.4},
+        "50": {"fusiformShoulders": 1.52, "strokeThicknessJoints": 1.8},
+        "75": {"fusiformShoulders": 1.81, "strokeThicknessJoints": 2.0},
+        "100": {"fusiformShoulders": 1.81, "strokeThicknessJoints": 2.0}
       }
     },
     {
       "id": "upper_torso",
-      "name": "Upper Torso",
+      "name": "Upper Body",
       "bodyParts": [
-        "fusiformUpperTorso"
+        "fusiformUpperTorso",
+        "strokeThicknessUpperTorso"
       ],
       "frameValues": {
-        "0": 1.2,
-        "25": 2.18,
-        "50": 5.85,
-        "75": 5.82,
-        "100": 6.5
+        "0": {"fusiformUpperTorso": 0, "strokeThicknessUpperTorso": 2.0},
+        "25": {"fusiformUpperTorso": 2.18, "strokeThicknessUpperTorso": 3.0},
+        "50": {"fusiformUpperTorso": 5.85, "strokeThicknessUpperTorso": 4.5},
+        "75": {"fusiformUpperTorso": 5.82, "strokeThicknessUpperTorso": 4.8},
+        "100": {"fusiformUpperTorso": 5.82, "strokeThicknessUpperTorso": 5.0}
       }
     },
     {
       "id": "lower_torso",
-      "name": "Lower Torso",
+      "name": "Abs",
       "bodyParts": [
-        "fusiformLowerTorso"
+        "fusiformLowerTorso",
+        "strokeThicknessLowerTorso"
       ],
       "frameValues": {
-        "0": 0,
-        "25": 0,
-        "50": 1,
-        "75": 0,
-        "100": 0
+        "0": {"fusiformLowerTorso": 0, "strokeThicknessLowerTorso": 2.0},
+        "25": {"fusiformLowerTorso": 0, "strokeThicknessLowerTorso": 3.0},
+        "50": {"fusiformLowerTorso": 1, "strokeThicknessLowerTorso": 4.0},
+        "75": {"fusiformLowerTorso": 0, "strokeThicknessLowerTorso": 4.5},
+        "100": {"fusiformLowerTorso": 0, "strokeThicknessLowerTorso": 5.0}
       }
     },
     {
       "id": "upper_arms",
-      "name": "Upper Arms",
+      "name": "Biceps/Triceps",
       "bodyParts": [
-        "fusiformUpperArms"
+        "fusiformUpperArms",
+        "strokeThicknessUpperArms"
       ],
       "frameValues": {
-        "0": 0.4,
-        "25": 2.1,
-        "50": 2.74,
-        "75": 3.17,
-        "100": 3.5
+        "0": {"fusiformUpperArms": 0, "strokeThicknessUpperArms": 1.5},
+        "25": {"fusiformUpperArms": 2.1, "strokeThicknessUpperArms": 2.8},
+        "50": {"fusiformUpperArms": 2.74, "strokeThicknessUpperArms": 3.5},
+        "75": {"fusiformUpperArms": 3.17, "strokeThicknessUpperArms": 3.8},
+        "100": {"fusiformUpperArms": 3.17, "strokeThicknessUpperArms": 4.0}
       }
     },
     {
       "id": "lower_arms",
-      "name": "Lower Arms",
+      "name": "Forearms",
       "bodyParts": [
-        "fusiformLowerArms"
+        "fusiformLowerArms",
+        "strokeThicknessLowerArms"
       ],
       "frameValues": {
-        "0": 0.4,
-        "25": 1.64,
-        "50": 2,
-        "75": 2.74,
-        "100": 3.0
+        "0": {"fusiformLowerArms": 0, "strokeThicknessLowerArms": 1.5},
+        "25": {"fusiformLowerArms": 1.64, "strokeThicknessLowerArms": 2.5},
+        "50": {"fusiformLowerArms": 2, "strokeThicknessLowerArms": 3.0},
+        "75": {"fusiformLowerArms": 2.74, "strokeThicknessLowerArms": 3.5},
+        "100": {"fusiformLowerArms": 2.74, "strokeThicknessLowerArms": 4.0}
       }
     },
     {
       "id": "upper_legs",
-      "name": "Upper Legs",
+      "name": "Quads/Hamstrings",
       "bodyParts": [
-        "fusiformUpperLegs"
+        "fusiformUpperLegs",
+        "strokeThicknessUpperLegs"
       ],
       "frameValues": {
-        "0": 0.5,
-        "25": 1.69,
-        "50": 2.95,
-        "75": 3.18,
-        "100": 3.5
+        "0": {"fusiformUpperLegs": 0, "strokeThicknessUpperLegs": 1.8},
+        "25": {"fusiformUpperLegs": 1.69, "strokeThicknessUpperLegs": 3.0},
+        "50": {"fusiformUpperLegs": 2.95, "strokeThicknessUpperLegs": 4.0},
+        "75": {"fusiformUpperLegs": 3.18, "strokeThicknessUpperLegs": 4.3},
+        "100": {"fusiformUpperLegs": 2.68, "strokeThicknessUpperLegs": 4.5}
       }
     },
     {
       "id": "lower_legs",
-      "name": "Lower Legs",
+      "name": "Calfs",
       "bodyParts": [
-        "fusiformLowerLegs"
+        "fusiformLowerLegs",
+        "strokeThicknessLowerLegs"
       ],
       "frameValues": {
-        "0": 0.5,
-        "25": 1.8,
-        "50": 2.48,
-        "75": 3.15,
-        "100": 3.4
+        "0": {"fusiformLowerLegs": 0, "strokeThicknessLowerLegs": 1.5},
+        "25": {"fusiformLowerLegs": 1.8, "strokeThicknessLowerLegs": 2.5},
+        "50": {"fusiformLowerLegs": 2.48, "strokeThicknessLowerLegs": 3.0},
+        "75": {"fusiformLowerLegs": 3.15, "strokeThicknessLowerLegs": 3.5},
+        "100": {"fusiformLowerLegs": 2.95, "strokeThicknessLowerLegs": 4.0}
       }
     }
   ],
@@ -141,6 +148,13 @@
     },
     "strokeThickness": {
       "0": 0,
+      "25": 1,
+      "50": 1.2,
+      "75": 1.4,
+      "100": 2
+    },
+    "strokeThicknessMultiplier": {
+      "0": 0.5,
       "25": 1,
       "50": 1.2,
       "75": 1.4,

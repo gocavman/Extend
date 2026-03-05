@@ -207,13 +207,27 @@ class MuscleSystem {
     private func interpolateValue(for muscleId: String, at points: Double, bodyPart: String) -> Double {
         guard let muscle = getMuscle(id: muscleId) else { return 0 }
         
-        // Get frame values as doubles
+        // Get frame values as doubles for this specific bodyPart
         let framePoints = [0, 25, 50, 75, 100].map { Double($0) }
         var frameValues: [Double] = []
         
         for pointStr in ["0", "25", "50", "75", "100"] {
-            if let codable = muscle.frameValues[pointStr], let value = codable.doubleValue {
-                frameValues.append(value)
+            if let codable = muscle.frameValues[pointStr] {
+                // Try to extract the value for this bodyPart
+                if case .dictionary(let dict) = codable {
+                    // frameValues is an object like {"fusiformUpperArms": 3.5, "strokeThicknessUpperArms": 4.0}
+                    if let bodyPartValue = dict[bodyPart],
+                       let value = bodyPartValue.doubleValue {
+                        frameValues.append(value)
+                    } else {
+                        frameValues.append(0)
+                    }
+                } else if let value = codable.doubleValue {
+                    // Legacy format: frameValues is a simple double
+                    frameValues.append(value)
+                } else {
+                    frameValues.append(0)
+                }
             } else {
                 frameValues.append(0)
             }
@@ -259,7 +273,7 @@ class MuscleSystem {
     
     /// Get derived property value (strokeThickness, skeletonSize, waistThicknessMultiplier)
     func getDerivedPropertyValue(for propertyKey: String, state: MuscleState) -> Double {
-        guard let derivedProps = config?.pointsConfig else { return 0 }
+        guard config?.pointsConfig != nil else { return 0 }
         
         let avgPoints = getAverageMusclePoints(state: state)
         
@@ -302,14 +316,15 @@ class MuscleSystem {
     
     /// Helper to get frame values for derived properties
     private func getDerivedPropertyFrameValues(for propertyKey: String) -> [Double] {
-        // Map property names to their frame values
+        // Map property names to their frame values [0, 25, 50, 75, 100]
         let derivedValues: [String: [Double]] = [
             "neckWidth": [3.3, 3.3, 8.5, 8.8, 8.8],
             "handSize": [0.5, 0.5, 1, 7, 7],
             "footSize": [0.5, 0.5, 1, 7, 7],
-            "strokeThickness": [0, 1, 1.2, 1.4, 2],
+            "strokeThicknessMultiplier": [0.5, 1, 1.2, 1.4, 2],
             "skeletonSize": [0, 3.19, 4.18, 5.11, 5.11],
-            "waistThicknessMultiplier": [0, 0.9, 0.9, 0.9, 0.9]
+            "waistThicknessMultiplier": [0, 0.9, 0.9, 0.9, 0.9],
+            "waistWidthMultiplier": [0.26, 0.26, 0.26, 0.28, 0.28]
         ]
         
         return derivedValues[propertyKey] ?? []

@@ -531,17 +531,95 @@ class GameplayScene: GameScene {
     
     /// Render objects associated with a frame
     
+    /// Determine which base frame to use based on average muscle points
+    private func getBaseFrameForMusclePoints(_ avgPoints: Double) -> StickFigure2D? {
+        guard gameState != nil else { return nil }
+        
+        // Map muscle points to frame progression
+        if avgPoints < 12.5 {
+            // 0-25: Use Extra Small Stand frame (0 points)
+            return loadFrameNamed("Extra Small Stand")
+        } else if avgPoints < 37.5 {
+            // 25-50: Use Small Stand frame (25 points)
+            return loadFrameNamed("Small Stand")
+        } else if avgPoints < 62.5 {
+            // 50-75: Use Stand frame (50 points)
+            return loadFrameNamed("Stand")
+        } else if avgPoints < 87.5 {
+            // 75-100: Use Large Stand frame (75 points)
+            return loadFrameNamed("Large Stand")
+        } else {
+            // 100: Use Extra Large Stand frame (100 points)
+            return loadFrameNamed("Extra Large Stand")
+        }
+    }
+    
+    /// Load a frame by name from animations.json
+    private func loadFrameNamed(_ name: String) -> StickFigure2D? {
+        let bundle = Bundle.main
+        guard let url = bundle.url(forResource: "animations", withExtension: "json"),
+              let data = try? Data(contentsOf: url) else {
+            print("🎮 ERROR: Could not find animations.json")
+            return nil
+        }
+        
+        do {
+            let frames = try JSONDecoder().decode([SavedEditFrame].self, from: data)
+            
+            for frame in frames {
+                if frame.name == name {
+                    // Convert SavedEditFrame to StickFigure2D
+                    var figure = StickFigure2D()
+                    // Copy all relevant properties from SavedEditFrame
+                    figure.fusiformShoulders = frame.fusiformShoulders
+                    figure.fusiformUpperTorso = frame.fusiformUpperTorso
+                    figure.fusiformLowerTorso = frame.fusiformLowerTorso
+                    figure.fusiformUpperArms = frame.fusiformUpperArms
+                    figure.fusiformLowerArms = frame.fusiformLowerArms
+                    figure.fusiformUpperLegs = frame.fusiformUpperLegs
+                    figure.fusiformLowerLegs = frame.fusiformLowerLegs
+                    figure.neckWidth = frame.neckWidth
+                    figure.neckLength = frame.neckLength
+                    figure.handSize = frame.handSize
+                    figure.footSize = frame.footSize
+                    // Copy all stroke thickness values
+                    figure.strokeThicknessUpperTorso = frame.strokeThicknessUpperTorso
+                    figure.strokeThicknessLowerTorso = frame.strokeThicknessLowerTorso
+                    figure.strokeThicknessUpperArms = frame.strokeThicknessUpperArms
+                    figure.strokeThicknessLowerArms = frame.strokeThicknessLowerArms
+                    figure.strokeThicknessUpperLegs = frame.strokeThicknessUpperLegs
+                    figure.strokeThicknessLowerLegs = frame.strokeThicknessLowerLegs
+                    figure.strokeThicknessJoints = frame.strokeThicknessJoints
+                    figure.skeletonSize = frame.skeletonSize
+                    figure.waistThicknessMultiplier = frame.waistThicknessMultiplier
+                    figure.waistWidthMultiplier = frame.waistWidthMultiplier
+                    print("🎮 ✓ Loaded frame '\(name)' successfully")
+                    return figure
+                }
+            }
+            
+            print("🎮 WARNING: Frame '\(name)' not found in animations.json")
+            return nil
+        } catch {
+            print("🎮 ERROR: Failed to decode animations.json: \(error)")
+            return nil
+        }
+    }
+    
     /// Apply muscle-based scaling to a stick figure based on current muscle points
     private func applyMuscleScaling(to figure: StickFigure2D) -> StickFigure2D {
         guard let gameState = gameState else { return figure }
         
-        var scaledFigure = figure
+        let avgMusclePoints = MuscleSystem.shared.getAverageMusclePoints(state: gameState.muscleState)
+        
+        // Load the appropriate base frame based on muscle points
+        var scaledFigure = getBaseFrameForMusclePoints(avgMusclePoints) ?? figure
         
         // Apply each muscle's interpolated values to the figure
         if let muscles = MuscleSystem.shared.config?.muscles {
             for muscle in muscles {
                 let musclePoints = gameState.muscleState.getPoints(for: muscle.id)
-                print("🦵 SCALE: Muscle '\(muscle.name)' has \(musclePoints) points")
+                print("🦵 SCALE: Muscle '\(muscle.name)' (id: \(muscle.id)) has \(musclePoints) points")
                 
                 // Get interpolated values for each body part this muscle affects
                 for bodyPart in muscle.bodyParts {
@@ -570,6 +648,20 @@ class GameplayScene: GameScene {
                         scaledFigure.fusiformUpperLegs = interpolatedValue
                     case "fusiformLowerLegs":
                         scaledFigure.fusiformLowerLegs = interpolatedValue
+                    case "strokeThicknessUpperTorso":
+                        scaledFigure.strokeThicknessUpperTorso = interpolatedValue
+                    case "strokeThicknessLowerTorso":
+                        scaledFigure.strokeThicknessLowerTorso = interpolatedValue
+                    case "strokeThicknessUpperArms":
+                        scaledFigure.strokeThicknessUpperArms = interpolatedValue
+                    case "strokeThicknessLowerArms":
+                        scaledFigure.strokeThicknessLowerArms = interpolatedValue
+                    case "strokeThicknessUpperLegs":
+                        scaledFigure.strokeThicknessUpperLegs = interpolatedValue
+                    case "strokeThicknessLowerLegs":
+                        scaledFigure.strokeThicknessLowerLegs = interpolatedValue
+                    case "strokeThicknessJoints":
+                        scaledFigure.strokeThicknessJoints = interpolatedValue
                     default:
                         break
                     }
@@ -578,14 +670,17 @@ class GameplayScene: GameScene {
         }
         
         // Apply derived properties based on average muscle points
-        let avgMusclePoints = MuscleSystem.shared.getAverageMusclePoints(state: gameState.muscleState)
         print("🦵 SCALE: Average muscle points = \(avgMusclePoints)")
+        print("🦵 DEBUG: Before derived properties - strokeThickness = \(scaledFigure.strokeThickness)")
         scaledFigure.neckWidth = MuscleSystem.shared.getDerivedPropertyValue(for: "neckWidth", state: gameState.muscleState)
         scaledFigure.handSize = MuscleSystem.shared.getDerivedPropertyValue(for: "handSize", state: gameState.muscleState)
         scaledFigure.footSize = MuscleSystem.shared.getDerivedPropertyValue(for: "footSize", state: gameState.muscleState)
-        scaledFigure.strokeThickness = MuscleSystem.shared.getDerivedPropertyValue(for: "strokeThickness", state: gameState.muscleState)
+        // NOTE: strokeThickness is NOT a derived property - it comes from the frame data itself
+        // Do NOT override it here - let it use the value from the loaded frame
         scaledFigure.skeletonSize = MuscleSystem.shared.getDerivedPropertyValue(for: "skeletonSize", state: gameState.muscleState)
         scaledFigure.waistThicknessMultiplier = MuscleSystem.shared.getDerivedPropertyValue(for: "waistThicknessMultiplier", state: gameState.muscleState)
+        scaledFigure.waistWidthMultiplier = MuscleSystem.shared.getDerivedPropertyValue(for: "waistWidthMultiplier", state: gameState.muscleState)
+        print("🦵 DEBUG: After derived properties - strokeThickness = \(scaledFigure.strokeThickness)")
         
         print("🦵 SCALE: Final - shoulders: \(scaledFigure.fusiformShoulders), upperTorso: \(scaledFigure.fusiformUpperTorso), upperArms: \(scaledFigure.fusiformUpperArms)")
         
