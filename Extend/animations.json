@@ -383,7 +383,7 @@
         "leftUpperLegColor" : "#000000",
         "midTorsoAngle" : 0,
         "neckLength" : 21,
-        "neckWidth" : 3.3,
+        "neckWidth" : 0,
         "peakPositionLowerArms" : 0.1,
         "peakPositionLowerLegs" : 0.1,
         "peakPositionLowerTorso" : 0.1,

@@ -612,19 +612,17 @@ class GameplayScene: GameScene {
         
         let avgMusclePoints = MuscleSystem.shared.getAverageMusclePoints(state: gameState.muscleState)
         
-        // Load the appropriate base frame based on muscle points
-        var scaledFigure = getBaseFrameForMusclePoints(avgMusclePoints) ?? figure
+        // Start with the figure as-is (no separate base frame loading)
+        var scaledFigure = figure
         
         // Apply each muscle's interpolated values to the figure
         if let muscles = MuscleSystem.shared.config?.muscles {
             for muscle in muscles {
                 let musclePoints = gameState.muscleState.getPoints(for: muscle.id)
-                print("🦵 SCALE: Muscle '\(muscle.name)' (id: \(muscle.id)) has \(musclePoints) points")
                 
                 // Get interpolated values for each body part this muscle affects
                 for bodyPart in muscle.bodyParts {
                     let interpolatedValue = MuscleSystem.shared.getBodyPartValue(for: bodyPart, muscleId: muscle.id, state: gameState.muscleState)
-                    print("🦵 SCALE: Applied \(muscle.name) → \(bodyPart) = \(interpolatedValue)")
                     
                     // Apply the interpolated value to the stick figure
                     switch bodyPart {
@@ -670,19 +668,22 @@ class GameplayScene: GameScene {
         }
         
         // Apply derived properties based on average muscle points
-        print("🦵 SCALE: Average muscle points = \(avgMusclePoints)")
-        print("🦵 DEBUG: Before derived properties - strokeThickness = \(scaledFigure.strokeThickness)")
         scaledFigure.neckWidth = MuscleSystem.shared.getDerivedPropertyValue(for: "neckWidth", state: gameState.muscleState)
         scaledFigure.handSize = MuscleSystem.shared.getDerivedPropertyValue(for: "handSize", state: gameState.muscleState)
         scaledFigure.footSize = MuscleSystem.shared.getDerivedPropertyValue(for: "footSize", state: gameState.muscleState)
-        // NOTE: strokeThickness is NOT a derived property - it comes from the frame data itself
-        // Do NOT override it here - let it use the value from the loaded frame
         scaledFigure.skeletonSize = MuscleSystem.shared.getDerivedPropertyValue(for: "skeletonSize", state: gameState.muscleState)
         scaledFigure.waistThicknessMultiplier = MuscleSystem.shared.getDerivedPropertyValue(for: "waistThicknessMultiplier", state: gameState.muscleState)
         scaledFigure.waistWidthMultiplier = MuscleSystem.shared.getDerivedPropertyValue(for: "waistWidthMultiplier", state: gameState.muscleState)
-        print("🦵 DEBUG: After derived properties - strokeThickness = \(scaledFigure.strokeThickness)")
         
-        print("🦵 SCALE: Final - shoulders: \(scaledFigure.fusiformShoulders), upperTorso: \(scaledFigure.fusiformUpperTorso), upperArms: \(scaledFigure.fusiformUpperArms)")
+        // Get and apply stroke thickness multiplier to all stroke thicknesses
+        let strokeThicknessMultiplier = MuscleSystem.shared.getDerivedPropertyValue(for: "strokeThicknessMultiplier", state: gameState.muscleState)
+        scaledFigure.strokeThicknessUpperTorso *= strokeThicknessMultiplier
+        scaledFigure.strokeThicknessLowerTorso *= strokeThicknessMultiplier
+        scaledFigure.strokeThicknessUpperArms *= strokeThicknessMultiplier
+        scaledFigure.strokeThicknessLowerArms *= strokeThicknessMultiplier
+        scaledFigure.strokeThicknessUpperLegs *= strokeThicknessMultiplier
+        scaledFigure.strokeThicknessLowerLegs *= strokeThicknessMultiplier
+        scaledFigure.strokeThicknessJoints *= strokeThicknessMultiplier
         
         return scaledFigure
     }

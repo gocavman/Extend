@@ -79,52 +79,7 @@ class GameScene: SKScene {
     
     /// Render a stick figure using the exact same logic as StickFigure2DView
     func renderStickFigure(_ figure: StickFigure2D, at position: CGPoint, scale: CGFloat = 1.0, flipped: Bool = false, jointShapeSize: CGFloat = 1.0) -> SKNode {
-        let multiplier = MuscleSystem.shared.getDerivedPropertyValue(for: "strokeThicknessMultiplier", state: MuscleSystem.shared.state)
-        print("🨂 renderStickFigure received figure with: shoulders=\(figure.fusiformShoulders), upperTorso=\(figure.fusiformUpperTorso), upperArms=\(figure.fusiformUpperArms), mult=\(multiplier)")
-        print("🨂 renderStickFigure stroke thicknesses: upperTorso=\(figure.strokeThicknessUpperTorso), lowerTorso=\(figure.strokeThicknessLowerTorso), upperArms=\(figure.strokeThicknessUpperArms), lowerArms=\(figure.strokeThicknessLowerArms)")
-        print("🨂 renderStickFigure stroke thicknesses: upperLegs=\(figure.strokeThicknessUpperLegs), lowerLegs=\(figure.strokeThicknessLowerLegs), joints=\(figure.strokeThicknessJoints)")
-        
         var mutableFigure = figure
-        print("🨂 mutableFigure after assignment: shoulders=\(mutableFigure.fusiformShoulders), upperTorso=\(mutableFigure.fusiformUpperTorso), mult=\(multiplier)")
-        
-        // Helper function to get the correct stroke thickness for a body part
-        func getStrokeThickness(for part: String) -> CGFloat {
-            let baseThickness = mutableFigure.strokeThickness
-            let multiplier = MuscleSystem.shared.getDerivedPropertyValue(for: "strokeThicknessMultiplier", state: MuscleSystem.shared.state)
-            
-            let storedValue: CGFloat
-            let finalValue: CGFloat
-            
-            switch part {
-            case "upperTorso":
-                storedValue = mutableFigure.strokeThicknessUpperTorso
-                finalValue = storedValue * multiplier
-            case "lowerTorso":
-                storedValue = mutableFigure.strokeThicknessLowerTorso
-                finalValue = storedValue * multiplier
-            case "upperArms":
-                storedValue = mutableFigure.strokeThicknessUpperArms
-                finalValue = storedValue * multiplier
-            case "lowerArms":
-                storedValue = mutableFigure.strokeThicknessLowerArms
-                finalValue = storedValue * multiplier
-            case "upperLegs":
-                storedValue = mutableFigure.strokeThicknessUpperLegs
-                finalValue = storedValue * multiplier
-            case "lowerLegs":
-                storedValue = mutableFigure.strokeThicknessLowerLegs
-                finalValue = storedValue * multiplier
-            case "joints":
-                storedValue = mutableFigure.strokeThicknessJoints
-                finalValue = storedValue * multiplier
-            default:
-                storedValue = baseThickness
-                finalValue = baseThickness * multiplier
-            }
-            
-            print("🨂 getStrokeThickness(\(part)): stored=\(storedValue) mult=\(multiplier) final=\(finalValue)")
-            return finalValue
-        }
         
         let container = SKNode()
         container.position = position
@@ -504,50 +459,40 @@ class GameScene: SKScene {
         let rightHipPos = mutableFigure.rightHipPosition
         
         // ALWAYS draw connectors from waist to hips - they're part of the triangle base when triangle is active
-        let lowerLegStroke = getStrokeThickness(for: "lowerLegs")
-        drawRoundedLine(from: waistPos, to: leftHipPos, color: toSKColor(mutableFigure.torsoColor), width: lowerLegStroke * 1.5)
-        drawRoundedLine(from: waistPos, to: rightHipPos, color: toSKColor(mutableFigure.torsoColor), width: lowerLegStroke * 1.5)
+        drawRoundedLine(from: waistPos, to: leftHipPos, color: toSKColor(mutableFigure.torsoColor), width: mutableFigure.strokeThicknessLowerLegs * 1.5)
+        drawRoundedLine(from: waistPos, to: rightHipPos, color: toSKColor(mutableFigure.torsoColor), width: mutableFigure.strokeThicknessLowerLegs * 1.5)
         
-        let upperLegStroke = getStrokeThickness(for: "upperLegs")
-        let lowerLegStroke2 = getStrokeThickness(for: "lowerLegs")
-        drawTaperedSegment(from: leftHipPos, to: leftUpperLegEnd, color: toSKColor(mutableFigure.leftUpperLegColor), strokeThickness: upperLegStroke, fusiform: mutableFigure.fusiformUpperLegs, inverted: true, peakPosition: mutableFigure.peakPositionUpperLegs)
-        drawTaperedSegment(from: leftUpperLegEnd, to: leftFootEnd, color: toSKColor(mutableFigure.leftLowerLegColor), strokeThickness: lowerLegStroke2, fusiform: mutableFigure.fusiformLowerLegs, inverted: true, peakPosition: mutableFigure.peakPositionLowerLegs)
-        drawTaperedSegment(from: rightHipPos, to: rightUpperLegEnd, color: toSKColor(mutableFigure.rightUpperLegColor), strokeThickness: upperLegStroke, fusiform: mutableFigure.fusiformUpperLegs, inverted: true, peakPosition: mutableFigure.peakPositionUpperLegs)
-        drawTaperedSegment(from: rightUpperLegEnd, to: rightFootEnd, color: toSKColor(mutableFigure.rightLowerLegColor), strokeThickness: lowerLegStroke2, fusiform: mutableFigure.fusiformLowerLegs, inverted: true, peakPosition: mutableFigure.peakPositionLowerLegs)
+        drawTaperedSegment(from: leftHipPos, to: leftUpperLegEnd, color: toSKColor(mutableFigure.leftUpperLegColor), strokeThickness: mutableFigure.strokeThicknessUpperLegs, fusiform: mutableFigure.fusiformUpperLegs, inverted: true, peakPosition: mutableFigure.peakPositionUpperLegs)
+        drawTaperedSegment(from: leftUpperLegEnd, to: leftFootEnd, color: toSKColor(mutableFigure.leftLowerLegColor), strokeThickness: mutableFigure.strokeThicknessLowerLegs, fusiform: mutableFigure.fusiformLowerLegs, inverted: true, peakPosition: mutableFigure.peakPositionLowerLegs)
+        drawTaperedSegment(from: rightHipPos, to: rightUpperLegEnd, color: toSKColor(mutableFigure.rightUpperLegColor), strokeThickness: mutableFigure.strokeThicknessUpperLegs, fusiform: mutableFigure.fusiformUpperLegs, inverted: true, peakPosition: mutableFigure.peakPositionUpperLegs)
+        drawTaperedSegment(from: rightUpperLegEnd, to: rightFootEnd, color: toSKColor(mutableFigure.rightLowerLegColor), strokeThickness: mutableFigure.strokeThicknessLowerLegs, fusiform: mutableFigure.fusiformLowerLegs, inverted: true, peakPosition: mutableFigure.peakPositionLowerLegs)
         
         // Draw torso - LAYERED: lower torso behind, upper torso on top spanning full neck-to-waist
         // Draw lower torso first (behind)
-        let lowerTorsoStroke = getStrokeThickness(for: "lowerTorso")
         if mutableFigure.waistThicknessMultiplier > 0.0 {
             // Draw triangle-shaped lower torso with rounded bottom corners
             // waistThicknessMultiplier controls point position: 0.0 = at waist, 1.0 = at mid-torso
-            drawWaistTriangle(from: midTorsoPos, to: waistPos, color: toSKColor(mutableFigure.torsoColor), strokeThickness: lowerTorsoStroke, pointPosition: mutableFigure.waistThicknessMultiplier, leftHipPos: leftHipPos, rightHipPos: rightHipPos)
+            drawWaistTriangle(from: midTorsoPos, to: waistPos, color: toSKColor(mutableFigure.torsoColor), strokeThickness: mutableFigure.strokeThicknessLowerTorso, pointPosition: mutableFigure.waistThicknessMultiplier, leftHipPos: leftHipPos, rightHipPos: rightHipPos)
         } else {
             // No triangle at 0.0 - standard tapered segment
-            drawTaperedSegment(from: midTorsoPos, to: waistPos, color: toSKColor(mutableFigure.torsoColor), strokeThickness: lowerTorsoStroke, fusiform: mutableFigure.fusiformLowerTorso, inverted: true, peakPosition: mutableFigure.peakPositionLowerTorso)
+            drawTaperedSegment(from: midTorsoPos, to: waistPos, color: toSKColor(mutableFigure.torsoColor), strokeThickness: mutableFigure.strokeThicknessLowerTorso, fusiform: mutableFigure.fusiformLowerTorso, inverted: true, peakPosition: mutableFigure.peakPositionLowerTorso)
         }
         // Draw upper torso on top, spanning full neck-to-waist distance
-        let upperTorsoStroke = getStrokeThickness(for: "upperTorso")
-        drawTaperedSegment(from: neckPos, to: waistPos, color: toSKColor(mutableFigure.torsoColor), strokeThickness: upperTorsoStroke, fusiform: mutableFigure.fusiformUpperTorso, inverted: true, peakPosition: mutableFigure.peakPositionUpperTorso)
-        
-        let neckMultiplier = MuscleSystem.shared.getDerivedPropertyValue(for: "strokeThicknessMultiplier", state: MuscleSystem.shared.state)
-        let neckStroke = mutableFigure.strokeThickness * neckMultiplier * mutableFigure.neckWidth
-        drawLine(from: neckPos, to: headPos, color: toSKColor(mutableFigure.torsoColor), width: neckStroke)
+        drawTaperedSegment(from: neckPos, to: waistPos, color: toSKColor(mutableFigure.torsoColor), strokeThickness: mutableFigure.strokeThicknessUpperTorso, fusiform: mutableFigure.fusiformUpperTorso, inverted: true, peakPosition: mutableFigure.peakPositionUpperTorso)
+        drawLine(from: neckPos, to: headPos, color: toSKColor(mutableFigure.torsoColor), width: mutableFigure.strokeThickness * mutableFigure.neckWidth)
         
         // Draw shoulder joints with fusiformShoulders tapering
-        drawTaperedSegment(from: neckPos, to: leftShoulderPos, color: toSKColor(mutableFigure.torsoColor), strokeThickness: upperTorsoStroke, fusiform: mutableFigure.fusiformShoulders, inverted: false, peakPosition: 0.5)
-        drawTaperedSegment(from: neckPos, to: rightShoulderPos, color: toSKColor(mutableFigure.torsoColor), strokeThickness: upperTorsoStroke, fusiform: mutableFigure.fusiformShoulders, inverted: false, peakPosition: 0.5)
+        drawTaperedSegment(from: neckPos, to: leftShoulderPos, color: toSKColor(mutableFigure.torsoColor), strokeThickness: mutableFigure.strokeThicknessUpperTorso, fusiform: mutableFigure.fusiformShoulders, inverted: false, peakPosition: 0.5)
+        drawTaperedSegment(from: neckPos, to: rightShoulderPos, color: toSKColor(mutableFigure.torsoColor), strokeThickness: mutableFigure.strokeThicknessUpperTorso, fusiform: mutableFigure.fusiformShoulders, inverted: false, peakPosition: 0.5)
         
         // Draw arms - with correct peak positions matching the editor
-        let upperArmsStroke = getStrokeThickness(for: "upperArms")
-        let lowerArmsStroke = getStrokeThickness(for: "lowerArms")
         // Upper arms: peak position controlled by slider
-        drawTaperedSegment(from: leftShoulderPos, to: leftUpperArmEnd, color: toSKColor(mutableFigure.leftUpperArmColor), strokeThickness: upperArmsStroke, fusiform: mutableFigure.fusiformUpperArms, inverted: true, peakPosition: mutableFigure.peakPositionUpperArms)
+        drawTaperedSegment(from: leftShoulderPos, to: leftUpperArmEnd, color: toSKColor(mutableFigure.leftUpperArmColor), strokeThickness: mutableFigure.strokeThicknessUpperArms, fusiform: mutableFigure.fusiformUpperArms, inverted: true, peakPosition: mutableFigure.peakPositionUpperArms)
         // Lower arms: peak position controlled by slider
-        drawTaperedSegment(from: leftUpperArmEnd, to: leftForearmEnd, color: toSKColor(mutableFigure.leftLowerArmColor), strokeThickness: lowerArmsStroke, fusiform: mutableFigure.fusiformLowerArms, inverted: true, peakPosition: mutableFigure.peakPositionLowerArms)
+        drawTaperedSegment(from: leftUpperArmEnd, to: leftForearmEnd, color: toSKColor(mutableFigure.leftLowerArmColor), strokeThickness: mutableFigure.strokeThicknessLowerArms, fusiform: mutableFigure.fusiformLowerArms, inverted: true, peakPosition: mutableFigure.peakPositionLowerArms)
         
-        drawTaperedSegment(from: rightShoulderPos, to: rightUpperArmEnd, color: toSKColor(mutableFigure.rightUpperArmColor), strokeThickness: upperArmsStroke, fusiform: mutableFigure.fusiformUpperArms, inverted: true, peakPosition: mutableFigure.peakPositionUpperArms)
-        drawTaperedSegment(from: rightUpperArmEnd, to: rightForearmEnd, color: toSKColor(mutableFigure.rightLowerArmColor), strokeThickness: lowerArmsStroke, fusiform: mutableFigure.fusiformLowerArms, inverted: true, peakPosition: mutableFigure.peakPositionLowerArms)
+        drawTaperedSegment(from: rightShoulderPos, to: rightUpperArmEnd, color: toSKColor(mutableFigure.rightUpperArmColor), strokeThickness: mutableFigure.strokeThicknessUpperArms, fusiform: mutableFigure.fusiformUpperArms, inverted: true, peakPosition: mutableFigure.peakPositionUpperArms)
+        drawTaperedSegment(from: rightUpperArmEnd, to: rightForearmEnd, color: toSKColor(mutableFigure.rightLowerArmColor), strokeThickness: mutableFigure.strokeThicknessLowerArms, fusiform: mutableFigure.fusiformLowerArms, inverted: true, peakPosition: mutableFigure.peakPositionLowerArms)
         
         // Draw hands and feet with overlap
         let handColor = toSKColor(mutableFigure.handColor)
@@ -568,7 +513,6 @@ class GameScene: SKScene {
         
         // NOW DRAW THE SKELETON CONNECTORS LAST (on top of everything else)
         // Each skeleton piece uses the color of its corresponding body part
-        let jointStroke = getStrokeThickness(for: "joints")
         
         // Helper to convert coordinates to relative (scaled) space
         func toRelative(_ point: CGPoint) -> CGPoint {
@@ -578,8 +522,8 @@ class GameScene: SKScene {
         // Helper to draw a skeleton connector line with the color of its body part
         // Simple lines that bend around joints
         func drawSkeletonConnector(from: CGPoint, to: CGPoint, color: SKColor) {
-            let lineWidth = max(jointStroke * 0.8 * scale * mutableFigure.skeletonSize, 1.0)
-            print("🦴 Drawing skeleton connector: lineWidth=\(lineWidth), skeletonSize=\(mutableFigure.skeletonSize), jointThickness=\(jointStroke), scale=\(scale)")
+            let lineWidth = max(mutableFigure.strokeThicknessJoints * 0.8 * scale * mutableFigure.skeletonSize, 1.0)
+            print("🦴 Drawing skeleton connector: lineWidth=\(lineWidth), skeletonSize=\(mutableFigure.skeletonSize), jointThickness=\(mutableFigure.strokeThicknessJoints), scale=\(scale)")
             
             // Convert to relative coordinates
             let fromRelative = toRelative(from)
@@ -641,7 +585,7 @@ class GameScene: SKScene {
         drawSkeletonConnector(from: rightUpperArmEnd, to: rightLowerArmMid, color: toSKColor(mutableFigure.rightLowerArmColor))
         
         // Add joint caps at connection points to fill gaps (elbows, knees, waist, shoulders)
-        let jointCapRadius = max(jointStroke * 0.3 * scale * jointShapeSize, 1.0)
+        let jointCapRadius = max(mutableFigure.strokeThicknessJoints * 0.3 * scale * jointShapeSize, 1.0)
         
         // LEFT ARM ELBOW - blend upper and lower arm colors by using upper arm color
         drawCircle(at: leftUpperArmEnd, radius: jointCapRadius, color: toSKColor(mutableFigure.leftUpperArmColor))

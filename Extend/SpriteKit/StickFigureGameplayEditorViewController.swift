@@ -490,7 +490,7 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
             
         case (1, 1):
             // Stroke Thickness slider
-            addSliderCell(cell, label: "Stroke", value: strokeThicknessMultiplier, min: 0.0, max: 2.0, increment: 0.1, onChange: { [weak self] val in
+            addSliderCell(cell, label: "Stroke", value: strokeThicknessMultiplier, min: 0.0, max: 10.0, increment: 0.1, onChange: { [weak self] val in
                 self?.strokeThicknessMultiplier = val
                 self?.updateFigure()
             })
