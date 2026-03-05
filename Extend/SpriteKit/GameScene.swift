@@ -79,7 +79,10 @@ class GameScene: SKScene {
     
     /// Render a stick figure using the exact same logic as StickFigure2DView
     func renderStickFigure(_ figure: StickFigure2D, at position: CGPoint, scale: CGFloat = 1.0, flipped: Bool = false, jointShapeSize: CGFloat = 1.0) -> SKNode {
+        print("🨂 renderStickFigure received figure with: shoulders=\(figure.fusiformShoulders), upperTorso=\(figure.fusiformUpperTorso), upperArms=\(figure.fusiformUpperArms), lowerArms=\(figure.fusiformLowerArms), upperLegs=\(figure.fusiformUpperLegs), lowerLegs=\(figure.fusiformLowerLegs)")
+        
         var mutableFigure = figure
+        print("🨂 mutableFigure after assignment: shoulders=\(mutableFigure.fusiformShoulders), upperTorso=\(mutableFigure.fusiformUpperTorso), upperArms=\(mutableFigure.fusiformUpperArms)")
         
         let container = SKNode()
         container.position = position

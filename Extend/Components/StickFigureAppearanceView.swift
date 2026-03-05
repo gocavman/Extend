@@ -3,13 +3,19 @@ import SwiftUI
 /// View for customizing stick figure appearance colors and muscle development
 struct StickFigureAppearanceView: View {
     @State private var appearance = StickFigureAppearance.shared
-    @State private var musclePoints = MusclePointsManager.shared
+    @State private var muscleSystem = MuscleSystem.shared
+    @State private var gameState: StickFigureGameState?
     @State private var colorSectionExpanded = false
     @State private var musclesSectionExpanded = true  // Can be minimized
     @Environment(\.dismiss) var dismiss
     var onDismiss: (() -> Void)?  // Callback when appearance changes are complete
     
     @State private var refreshTrigger = UUID()  // Force refresh when muscles change
+    
+    init(gameState: StickFigureGameState? = nil, onDismiss: (() -> Void)? = nil) {
+        _gameState = State(initialValue: gameState)
+        self.onDismiss = onDismiss
+    }
     
     var body: some View {
         ZStack {
@@ -153,43 +159,82 @@ struct StickFigureAppearanceView: View {
                             isExpanded: $musclesSectionExpanded,
                             content: {
                                 VStack(spacing: 10) {
-                                    Text("(0 = thin, 100 = fully developed)")
+                                    Text("(0 = Extra Small, 25 = Small, 50 = Stand, 75 = Large, 100 = Extra Large)")
                                         .font(.caption)
                                         .foregroundColor(.gray)
                                         .padding(.bottom, 8)
                                     
-                                    ForEach(musclePoints.allMuscles, id: \.id) { muscle in
-                                        HStack(spacing: 12) {
-                                            Text(muscle.displayName)
+                                    ForEach(muscleSystem.config?.muscles ?? [], id: \.id) { muscle in
+                                        HStack(spacing: 8) {
+                                            Text(muscle.name)
                                                 .font(.subheadline)
                                                 .lineLimit(1)
+                                                .frame(maxWidth: 80, alignment: .leading)
                                             
                                             Spacer()
                                             
-                                            // Minus button (debug only)
+                                            // Minus 5 button
                                             Button(action: {
-                                                musclePoints.updatePoints(muscle.id, delta: -1)
-                                                refreshTrigger = UUID()
+                                                if let gameState = gameState {
+                                                    gameState.muscleState.addPoints(-5, to: muscle.id)
+                                                    gameState.saveMuscleState()
+                                                    refreshTrigger = UUID()
+                                                }
+                                            }) {
+                                                Text("-5")
+                                                    .font(.caption2)
+                                                    .foregroundColor(.white)
+                                                    .frame(width: 28, height: 24)
+                                                    .background(Color.red.opacity(0.7))
+                                                    .cornerRadius(4)
+                                            }
+                                            
+                                            // Minus 1 button
+                                            Button(action: {
+                                                if let gameState = gameState {
+                                                    gameState.muscleState.addPoints(-1, to: muscle.id)
+                                                    gameState.saveMuscleState()
+                                                    refreshTrigger = UUID()
+                                                }
                                             }) {
                                                 Image(systemName: "minus.circle.fill")
-                                                    .font(.system(size: 16))
+                                                    .font(.system(size: 14))
                                                     .foregroundColor(.red)
                                             }
                                             
                                             // Points display
-                                            Text("\(Int(musclePoints.getPoints(muscle.id)))")
+                                            Text("\(Int(gameState?.muscleState.getPoints(for: muscle.id) ?? 0))")
                                                 .font(.caption)
                                                 .fontWeight(.semibold)
                                                 .frame(width: 35, alignment: .center)
                                             
-                                            // Plus button (debug only)
+                                            // Plus 1 button
                                             Button(action: {
-                                                musclePoints.updatePoints(muscle.id, delta: 1)
-                                                refreshTrigger = UUID()
+                                                if let gameState = gameState {
+                                                    gameState.muscleState.addPoints(1, to: muscle.id)
+                                                    gameState.saveMuscleState()
+                                                    refreshTrigger = UUID()
+                                                }
                                             }) {
                                                 Image(systemName: "plus.circle.fill")
-                                                    .font(.system(size: 16))
+                                                    .font(.system(size: 14))
                                                     .foregroundColor(.green)
+                                            }
+                                            
+                                            // Plus 5 button
+                                            Button(action: {
+                                                if let gameState = gameState {
+                                                    gameState.muscleState.addPoints(5, to: muscle.id)
+                                                    gameState.saveMuscleState()
+                                                    refreshTrigger = UUID()
+                                                }
+                                            }) {
+                                                Text("+5")
+                                                    .font(.caption2)
+                                                    .foregroundColor(.white)
+                                                    .frame(width: 28, height: 24)
+                                                    .background(Color.green.opacity(0.7))
+                                                    .cornerRadius(4)
                                             }
                                         }
                                         .padding(.vertical, 4)
@@ -201,8 +246,16 @@ struct StickFigureAppearanceView: View {
                                     // Quick action buttons
                                     HStack(spacing: 8) {
                                         Button(action: {
-                                            musclePoints.resetAllPoints()
-                                            refreshTrigger = UUID()
+                                            if let gameState = gameState {
+                                                // Reset all muscles to 0
+                                                if let muscles = muscleSystem.config?.muscles {
+                                                    for muscle in muscles {
+                                                        gameState.muscleState.setPoints(0, for: muscle.id)
+                                                    }
+                                                    gameState.saveMuscleState()
+                                                    refreshTrigger = UUID()
+                                                }
+                                            }
                                         }) {
                                             Text("Reset All")
                                                 .font(.caption)
@@ -214,8 +267,16 @@ struct StickFigureAppearanceView: View {
                                         }
                                         
                                         Button(action: {
-                                            musclePoints.maxAllPoints()
-                                            refreshTrigger = UUID()
+                                            if let gameState = gameState {
+                                                // Max all muscles to 100
+                                                if let muscles = muscleSystem.config?.muscles {
+                                                    for muscle in muscles {
+                                                        gameState.muscleState.setPoints(100, for: muscle.id)
+                                                    }
+                                                    gameState.saveMuscleState()
+                                                    refreshTrigger = UUID()
+                                                }
+                                            }
                                         }) {
                                             Text("Max All")
                                                 .font(.caption)

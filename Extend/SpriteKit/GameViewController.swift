@@ -212,8 +212,15 @@ class GameViewController: UIViewController {
     func showAppearance() {
         print("🎮 Opening Appearance Customization")
         
+        // Get the game state from the gameplay scene if available
+        var gameState: StickFigureGameState? = nil
+        if let gameplayScene = currentScene as? GameplayScene {
+            gameState = gameplayScene.gameState
+        }
+        
         // Present the appearance view controller with a callback to refresh the game
         let appearance = UIHostingController(rootView: StickFigureAppearanceView(
+            gameState: gameState,
             onDismiss: { [weak self] in
                 print("🎮 Appearance customization closed - refreshing gameplay character")
                 // Notify the current scene to refresh its character rendering
