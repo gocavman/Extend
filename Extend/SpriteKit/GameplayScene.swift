@@ -610,105 +610,92 @@ class GameplayScene: GameScene {
         }
     }
     
-    /// Apply muscle-based scaling to a stick figure based on current muscle points
     private func applyMuscleScaling(to figure: StickFigure2D) -> StickFigure2D {
         guard let gameState = gameState else { return figure }
+        
+        // Ensure frames are loaded before attempting interpolation
+        MuscleSystem.shared.ensureStandFramesLoaded()
+        
+        print("🎮 applyMuscleScaling called")
+        print("🎮 DEBUG: MuscleSystem has \(MuscleSystem.shared.config?.muscles.count ?? 0) muscles configured")
         
         // Store the frame's explicit shoulder and waist width multipliers
         // These should NOT be overridden by muscle scaling (they're frame-specific for front vs side views)
         let frameShoulderWidth = figure.shoulderWidthMultiplier
         let frameWaistWidth = figure.waistWidthMultiplier
-        
-        // Start with the figure as-is (no separate base frame loading)
         var scaledFigure = figure
         
         // Apply each muscle's interpolated values to the figure
         if let muscles = MuscleSystem.shared.config?.muscles {
             for muscle in muscles {
-                // Get interpolated values for each body part this muscle affects
+                let musclePoints = gameState.muscleState.getPoints(for: muscle.id)
+                print("🎮 DEBUG applyMuscleScaling: Processing muscle '\(muscle.name)' (id: \(muscle.id)) with \(musclePoints) points, \(muscle.bodyParts.count) body parts")
+                
                 for bodyPart in muscle.bodyParts {
                     let interpolatedValue = MuscleSystem.shared.getBodyPartValue(for: bodyPart, muscleId: muscle.id, state: gameState.muscleState)
+                    print("🎮 DEBUG   -> \(bodyPart): \(interpolatedValue)")
                     
-                    // Apply the interpolated value to the stick figure
                     switch bodyPart {
-                    case "fusiformShoulders":
-                        scaledFigure.fusiformShoulders = interpolatedValue
-                    case "shoulderWidthMultiplier":
-                        // Don't apply - this is frame-specific, not muscle-controlled
-                        break
-                    case "neckWidth":
-                        scaledFigure.neckWidth = interpolatedValue
-                    case "handSize":
-                        scaledFigure.handSize = interpolatedValue
-                    case "footSize":
-                        scaledFigure.footSize = interpolatedValue
-                    case "fusiformUpperTorso":
-                        scaledFigure.fusiformUpperTorso = interpolatedValue
-                    case "fusiformLowerTorso":
-                        scaledFigure.fusiformLowerTorso = interpolatedValue
-                    case "fusiformUpperArms":
-                        scaledFigure.fusiformUpperArms = interpolatedValue
-                    case "fusiformLowerArms":
-                        scaledFigure.fusiformLowerArms = interpolatedValue
-                    case "fusiformUpperLegs":
-                        scaledFigure.fusiformUpperLegs = interpolatedValue
-                    case "fusiformLowerLegs":
-                        scaledFigure.fusiformLowerLegs = interpolatedValue
-                    case "strokeThicknessUpperTorso":
-                        scaledFigure.strokeThicknessUpperTorso = interpolatedValue
-                    case "strokeThicknessLowerTorso":
-                        scaledFigure.strokeThicknessLowerTorso = interpolatedValue
-                    case "strokeThicknessUpperArms":
-                        scaledFigure.strokeThicknessUpperArms = interpolatedValue
-                    case "strokeThicknessLowerArms":
-                        scaledFigure.strokeThicknessLowerArms = interpolatedValue
-                    case "strokeThicknessUpperLegs":
-                        scaledFigure.strokeThicknessUpperLegs = interpolatedValue
-                    case "strokeThicknessLowerLegs":
-                        scaledFigure.strokeThicknessLowerLegs = interpolatedValue
-                    case "strokeThicknessJoints":
-                        scaledFigure.strokeThicknessJoints = interpolatedValue
-                    default:
-                        break
+                    case "fusiformShoulders": scaledFigure.fusiformShoulders = interpolatedValue
+                    case "shoulderWidthMultiplier": break
+                    case "neckWidth": scaledFigure.neckWidth = interpolatedValue
+                    case "handSize": scaledFigure.handSize = interpolatedValue
+                    case "footSize": scaledFigure.footSize = interpolatedValue
+                    case "fusiformUpperTorso": scaledFigure.fusiformUpperTorso = interpolatedValue
+                    case "fusiformLowerTorso": scaledFigure.fusiformLowerTorso = interpolatedValue
+                    case "fusiformUpperArms": scaledFigure.fusiformUpperArms = interpolatedValue
+                    case "fusiformLowerArms": scaledFigure.fusiformLowerArms = interpolatedValue
+                    case "fusiformUpperLegs": scaledFigure.fusiformUpperLegs = interpolatedValue
+                    case "fusiformLowerLegs": scaledFigure.fusiformLowerLegs = interpolatedValue
+                    case "strokeThicknessUpperTorso": scaledFigure.strokeThicknessUpperTorso = interpolatedValue
+                    case "strokeThicknessLowerTorso": scaledFigure.strokeThicknessLowerTorso = interpolatedValue
+                    case "strokeThicknessUpperArms": scaledFigure.strokeThicknessUpperArms = interpolatedValue
+                    case "strokeThicknessLowerArms": scaledFigure.strokeThicknessLowerArms = interpolatedValue
+                    case "strokeThicknessUpperLegs": scaledFigure.strokeThicknessUpperLegs = interpolatedValue
+                    case "strokeThicknessLowerLegs": scaledFigure.strokeThicknessLowerLegs = interpolatedValue
+                    case "strokeThicknessJoints": scaledFigure.strokeThicknessJoints = interpolatedValue
+                    default: break
                     }
                 }
             }
+        } else {
+            print("🎮 ERROR applyMuscleScaling: No muscles configured!")
         }
         
-        // Preserve frame-specific shoulder and waist width multipliers
         scaledFigure.shoulderWidthMultiplier = frameShoulderWidth
         scaledFigure.waistWidthMultiplier = frameWaistWidth
         
-        // Apply derived properties based on average muscle points
-        scaledFigure.neckWidth = MuscleSystem.shared.getDerivedPropertyValue(for: "neckWidth", state: gameState.muscleState)
-        scaledFigure.handSize = MuscleSystem.shared.getDerivedPropertyValue(for: "handSize", state: gameState.muscleState)
-        scaledFigure.footSize = MuscleSystem.shared.getDerivedPropertyValue(for: "footSize", state: gameState.muscleState)
-        scaledFigure.skeletonSize = MuscleSystem.shared.getDerivedPropertyValue(for: "skeletonSize", state: gameState.muscleState)
-        scaledFigure.waistThicknessMultiplier = MuscleSystem.shared.getDerivedPropertyValue(for: "waistThicknessMultiplier", state: gameState.muscleState)
+        // Apply derived properties
+        print("🎮 DEBUG applyMuscleScaling: Getting derived properties...")
+        let neckWidth = MuscleSystem.shared.getDerivedPropertyValue(for: "neckWidth", state: gameState.muscleState)
+        let handSize = MuscleSystem.shared.getDerivedPropertyValue(for: "handSize", state: gameState.muscleState)
+        let footSize = MuscleSystem.shared.getDerivedPropertyValue(for: "footSize", state: gameState.muscleState)
+        let skeletonSize = MuscleSystem.shared.getDerivedPropertyValue(for: "skeletonSize", state: gameState.muscleState)
+        let waistThicknessMultiplier = MuscleSystem.shared.getDerivedPropertyValue(for: "waistThicknessMultiplier", state: gameState.muscleState)
         
-        // Check if this is a sideview frame (both shoulder width and waist width are 0)
+        print("🎮 DEBUG applyMuscleScaling derived: neckWidth=\(neckWidth), handSize=\(handSize), footSize=\(footSize), skeletonSize=\(skeletonSize), waistThicknessMultiplier=\(waistThicknessMultiplier)")
+        
+        scaledFigure.neckWidth = neckWidth
+        scaledFigure.handSize = handSize
+        scaledFigure.footSize = footSize
+        scaledFigure.skeletonSize = skeletonSize
+        scaledFigure.waistThicknessMultiplier = waistThicknessMultiplier
+        
         let isSideView = frameShoulderWidth == 0 && frameWaistWidth == 0
+        print("🎮 DEBUG applyMuscleScaling isSideView=\(isSideView)")
         
         if isSideView {
-            // For sideview frames, constrain Upper Torso fusiform to 0-3 range
             scaledFigure.fusiformUpperTorso = min(scaledFigure.fusiformUpperTorso, 3.0)
-            
-            // For sideview frames, cap torso stroke thicknesses at 1.0
             scaledFigure.strokeThicknessUpperTorso = min(scaledFigure.strokeThicknessUpperTorso, 1.0)
             scaledFigure.strokeThicknessLowerTorso = min(scaledFigure.strokeThicknessLowerTorso, 1.0)
-            
-            // For sideview frames, cap lower leg appearance to prevent over-expansion
             scaledFigure.strokeThicknessLowerLegs = min(scaledFigure.strokeThicknessLowerLegs, 3.0)
             scaledFigure.fusiformLowerLegs = min(scaledFigure.fusiformLowerLegs, 3.0)
             
-            // Scale skeleton size proportionally with lower leg fusiform to prevent it from looking oversized
-            // If lower legs are capped at 3.0, skeleton should also be proportionally limited
-            let legRatio = scaledFigure.fusiformLowerLegs / 3.0  // Normalized ratio (0-1)
+            let legRatio = scaledFigure.fusiformLowerLegs / 3.0
             scaledFigure.skeletonSize = min(scaledFigure.skeletonSize, max(2.0, 3.5 * legRatio))
         }
         
-        // NOTE: Stroke thicknesses are already interpolated from the 5-frame system above.
-        // Do NOT apply an additional multiplier - they're direct interpolations of frame values.
+        print("🎮 DEBUG applyMuscleScaling FINAL: skeletonSize=\(scaledFigure.skeletonSize), fusiformUpperTorso=\(scaledFigure.fusiformUpperTorso), fusiformUpperArms=\(scaledFigure.fusiformUpperArms)")
         
         return scaledFigure
     }

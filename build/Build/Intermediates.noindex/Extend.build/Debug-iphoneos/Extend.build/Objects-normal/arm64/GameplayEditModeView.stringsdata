@@ -1,0 +1,192 @@
+{
+  "source": "/Users/cavan/Developer/Extend/Extend/Views/GameplayEditModeView.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "EDIT MODE",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 32
+        }
+      },
+      {
+        "comment": "",
+        "key": "✕",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 37
+        }
+      },
+      {
+        "comment": "",
+        "key": "FUSIFORM",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 68
+        }
+      },
+      {
+        "comment": "",
+        "key": "DISPLAY OPTIONS",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 85
+        }
+      },
+      {
+        "comment": "",
+        "key": "Show Grid",
+        "location": {
+          "startingColumn": 36,
+          "startingLine": 89
+        }
+      },
+      {
+        "comment": "",
+        "key": "Show Interactive Joints",
+        "location": {
+          "startingColumn": 36,
+          "startingLine": 92
+        }
+      },
+      {
+        "comment": "",
+        "key": "SAVE FRAME",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 102
+        }
+      },
+      {
+        "comment": "",
+        "key": "LOAD FRAME",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 111
+        }
+      },
+      {
+        "comment": "",
+        "key": "−",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 153
+        }
+      },
+      {
+        "comment": "",
+        "key": "+",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 174
+        }
+      },
+      {
+        "comment": "",
+        "key": "Save Frame",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 233
+        }
+      },
+      {
+        "comment": "",
+        "key": "Frame name",
+        "location": {
+          "startingColumn": 27,
+          "startingLine": 237
+        }
+      },
+      {
+        "comment": "",
+        "key": "Cancel",
+        "location": {
+          "startingColumn": 28,
+          "startingLine": 249
+        }
+      },
+      {
+        "comment": "",
+        "key": "Save",
+        "location": {
+          "startingColumn": 28,
+          "startingLine": 258
+        }
+      },
+      {
+        "comment": "",
+        "key": "Copied to Clipboard",
+        "location": {
+          "startingColumn": 20,
+          "startingLine": 354
+        }
+      },
+      {
+        "comment": "",
+        "key": "Load Frame",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 300
+        }
+      },
+      {
+        "comment": "",
+        "key": "No saved frames",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 309
+        }
+      },
+      {
+        "comment": "",
+        "key": "Delete",
+        "location": {
+          "startingColumn": 43,
+          "startingLine": 329
+        }
+      },
+      {
+        "comment": "",
+        "key": "Copy",
+        "location": {
+          "startingColumn": 43,
+          "startingLine": 335
+        }
+      },
+      {
+        "comment": "",
+        "key": "Close",
+        "location": {
+          "startingColumn": 28,
+          "startingLine": 343
+        }
+      },
+      {
+        "comment": "",
+        "key": "OK",
+        "location": {
+          "startingColumn": 24,
+          "startingLine": 355
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@ JSON has been copied to your clipboard",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 357
+        }
+      },
+      {
+        "comment": "",
+        "key": "Search frames",
+        "location": {
+          "startingColumn": 23,
+          "startingLine": 406
+        }
+      }
+    ]
+  },
+  "version": 1
+}

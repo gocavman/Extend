@@ -1,0 +1,232 @@
+{
+  "source": "/Users/cavan/Developer/Extend/Extend/Modules/DashboardModule.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "Blank Tile",
+        "location": {
+          "startingColumn": 16,
+          "startingLine": 68
+        }
+      },
+      {
+        "comment": "",
+        "key": "OK",
+        "location": {
+          "startingColumn": 20,
+          "startingLine": 69
+        }
+      },
+      {
+        "comment": "",
+        "key": "No tiles yet",
+        "location": {
+          "startingColumn": 18,
+          "startingLine": 81
+        }
+      },
+      {
+        "comment": "",
+        "key": "Add tiles from Settings",
+        "location": {
+          "startingColumn": 18,
+          "startingLine": 84
+        }
+      },
+      {
+        "comment": "",
+        "key": "Level %lld",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 189
+        }
+      },
+      {
+        "comment": "",
+        "key": "%lld",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 195
+        }
+      },
+      {
+        "comment": "",
+        "key": "Add Tile",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 741
+        }
+      },
+      {
+        "comment": "",
+        "key": "Option",
+        "location": {
+          "startingColumn": 25,
+          "startingLine": 604
+        }
+      },
+      {
+        "comment": "",
+        "key": "Modules",
+        "location": {
+          "startingColumn": 25,
+          "startingLine": 612
+        }
+      },
+      {
+        "comment": "",
+        "key": "Stat Cards",
+        "location": {
+          "startingColumn": 25,
+          "startingLine": 637
+        }
+      },
+      {
+        "comment": "",
+        "key": "Mini Games",
+        "location": {
+          "startingColumn": 25,
+          "startingLine": 668
+        }
+      },
+      {
+        "comment": "",
+        "key": "Blank Tile",
+        "location": {
+          "startingColumn": 25,
+          "startingLine": 693
+        }
+      },
+      {
+        "comment": "",
+        "key": "Pick modules or stat cards",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 606
+        }
+      },
+      {
+        "comment": "",
+        "key": "All stat cards are already added",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 639
+        }
+      },
+      {
+        "comment": "",
+        "key": "Game 1",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 679
+        }
+      },
+      {
+        "comment": "",
+        "key": "Select Icon",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 717
+        }
+      },
+      {
+        "comment": "",
+        "key": "Add",
+        "location": {
+          "startingColumn": 28,
+          "startingLine": 745
+        }
+      },
+      {
+        "comment": "",
+        "key": "Cancel",
+        "location": {
+          "startingColumn": 28,
+          "startingLine": 793
+        }
+      },
+      {
+        "comment": "",
+        "key": "Edit Tile",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 874
+        }
+      },
+      {
+        "comment": "",
+        "key": "Tile Details",
+        "location": {
+          "startingColumn": 25,
+          "startingLine": 840
+        }
+      },
+      {
+        "comment": "",
+        "key": "Tile Size",
+        "location": {
+          "startingColumn": 25,
+          "startingLine": 844
+        }
+      },
+      {
+        "comment": "",
+        "key": "Icon",
+        "location": {
+          "startingColumn": 25,
+          "startingLine": 853
+        }
+      },
+      {
+        "comment": "",
+        "key": "Title",
+        "location": {
+          "startingColumn": 31,
+          "startingLine": 841
+        }
+      },
+      {
+        "comment": "",
+        "key": "Size",
+        "location": {
+          "startingColumn": 28,
+          "startingLine": 845
+        }
+      },
+      {
+        "comment": "",
+        "key": "Save",
+        "location": {
+          "startingColumn": 28,
+          "startingLine": 883
+        }
+      },
+      {
+        "comment": "",
+        "key": "Cancel",
+        "location": {
+          "startingColumn": 28,
+          "startingLine": 895
+        }
+      },
+      {
+        "comment": "",
+        "key": "No workouts\nlogged",
+        "location": {
+          "startingColumn": 42,
+          "startingLine": 959
+        }
+      },
+      {
+        "comment": "",
+        "key": "%lld%%",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 1070
+        }
+      }
+    ]
+  },
+  "version": 1
+}

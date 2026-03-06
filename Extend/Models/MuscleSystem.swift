@@ -180,28 +180,55 @@ class MuscleSystem {
         loadMuscleConfig()
     }
     
+    /// Explicitly reload the 5 Stand frames (useful after app launch)
+    func ensureStandFramesLoaded() {
+        // If frames are already loaded, skip
+        if standFrames.count == 5 {
+            return
+        }
+        
+        // Otherwise, attempt to load them
+        loadStandFrames()
+    }
+    
     /// Load the 5 Stand frames from animations.json
     private func loadStandFrames() {
-        if let bundleURL = Bundle.main.url(forResource: "animations", withExtension: "json") {
-            do {
-                let data = try Data(contentsOf: bundleURL)
-                let decoder = JSONDecoder()
-                let allFrames = try decoder.decode([SavedEditFrame].self, from: data)
-                
-                // Filter Stand frames and sort by name to match order
-                let standNames = ["Extra Small Stand", "Small Stand", "Stand", "Large Stand", "Extra Large Stand"]
-                for name in standNames {
-                    if let frame = allFrames.first(where: { $0.name == name }) {
-                        standFrames.append(frame)
-                    }
+        guard let bundleURL = Bundle.main.url(forResource: "animations", withExtension: "json") else {
+            return
+        }
+        
+        do {
+            let data = try Data(contentsOf: bundleURL)
+            let decoder = JSONDecoder()
+            decoder.dateDecodingStrategy = .secondsSince1970
+            
+            let allFrames = try decoder.decode([SavedEditFrame].self, from: data)
+            print("🦵 MuscleSystem.loadStandFrames: Decoded \(allFrames.count) total frames")
+            print("🦵 Frame names: \(allFrames.map { $0.name }.joined(separator: ", "))")
+            
+            // Explicitly load the 5 Stand frames in the required order
+            let standNames = ["Extra Small Stand", "Small Stand", "Stand", "Large Stand", "Extra Large Stand"]
+            var loadedFrames: [SavedEditFrame] = []
+            
+            for name in standNames {
+                if let frame = allFrames.first(where: { $0.name == name }) {
+                    loadedFrames.append(frame)
+                    print("🦵 Loaded: \(name) - stroke=\(frame.strokeThicknessUpperTorso)")
+                } else {
+                    print("🦵 NOT FOUND: \(name)")
                 }
-                
-                if standFrames.count != 5 {
-                    print("⚠️ WARNING: Expected 5 Stand frames, found \(standFrames.count)")
-                }
-            } catch {
-                print("❌ ERROR loading standFrames from animations.json: \(error)")
             }
+            
+            // Only set if we got all 5 frames
+            if loadedFrames.count == 5 {
+                standFrames = loadedFrames
+                print("🦵 ✅ Successfully loaded all 5 stand frames")
+            } else {
+                print("🦵 ❌ Only loaded \(loadedFrames.count) frames, need 5")
+            }
+            
+        } catch {
+            print("🦵 ❌ Failed to decode animations.json: \(error)")
         }
     }
     
@@ -225,16 +252,23 @@ class MuscleSystem {
     ///   - musclePoints: Points value 0-100
     /// - Returns: Interpolated value
     func interpolateProperty(_ propertyKey: String, musclePoints: Double) -> Double {
-        guard standFrames.count == 5 else {
-            return 0  // Not enough frames loaded
+        if standFrames.count != 5 {
+            print("🦵 INTERP ERROR: standFrames.count=\(standFrames.count), need 5 for \(propertyKey)")
+            return 0
         }
         
         let framePoints = [0.0, 25.0, 50.0, 75.0, 100.0]
         let clamped = max(0, min(100, musclePoints))
         
         // Clamp to range [0, 100]
-        if clamped <= 0 { return getPropertyValue(propertyKey, from: standFrames[0]) }
-        if clamped >= 100 { return getPropertyValue(propertyKey, from: standFrames[4]) }
+        if clamped <= 0 { 
+            let val = getPropertyValue(propertyKey, from: standFrames[0])
+            return val
+        }
+        if clamped >= 100 { 
+            let val = getPropertyValue(propertyKey, from: standFrames[4])
+            return val
+        }
         
         // Find surrounding frames
         for i in 0..<4 {
@@ -287,7 +321,65 @@ class MuscleSystem {
     /// Get interpolated body part value based on muscle points (legacy)
     func getBodyPartValue(for bodyPartKey: String, muscleId: String, state: MuscleState) -> Double {
         let currentPoints = state.getPoints(for: muscleId)
-        return interpolateProperty(bodyPartKey, musclePoints: currentPoints)
+        
+        // Find the muscle definition with this ID
+        guard let muscle = config?.muscles.first(where: { $0.id == muscleId }) else {
+            return 0
+        }
+        
+        // Use the frameValues from the muscle definition
+        return interpolateFromMuscleFrameValues(bodyPartKey, musclePoints: currentPoints, muscle: muscle)
+    }
+    
+    /// Interpolate from a muscle's frameValues (new method)
+    private func interpolateFromMuscleFrameValues(_ bodyPartKey: String, musclePoints: Double, muscle: MuscleDefinition) -> Double {
+        let framePoints = [0.0, 25.0, 50.0, 75.0, 100.0]
+        let clamped = max(0, min(100, musclePoints))
+        
+        // Get the value at exact frame points
+        if clamped <= 0 {
+            if let value = getFrameValue(bodyPartKey, fromFrameValues: muscle.frameValues, atPoint: 0) {
+                return value
+            }
+        }
+        if clamped >= 100 {
+            if let value = getFrameValue(bodyPartKey, fromFrameValues: muscle.frameValues, atPoint: 100) {
+                return value
+            }
+        }
+        
+        // Interpolate between two frame points
+        for i in 0..<4 {
+            if clamped >= framePoints[i] && clamped <= framePoints[i + 1] {
+                let p1 = framePoints[i]
+                let p2 = framePoints[i + 1]
+                
+                if let v1 = getFrameValue(bodyPartKey, fromFrameValues: muscle.frameValues, atPoint: Int(p1)),
+                   let v2 = getFrameValue(bodyPartKey, fromFrameValues: muscle.frameValues, atPoint: Int(p2)) {
+                    let ratio = (clamped - p1) / (p2 - p1)
+                    return v1 + (v2 - v1) * ratio
+                }
+            }
+        }
+        
+        // Fallback to 0 frame
+        if let value = getFrameValue(bodyPartKey, fromFrameValues: muscle.frameValues, atPoint: 0) {
+            return value
+        }
+        return 0
+    }
+    
+    /// Helper to get a body part value from frameValues
+    private func getFrameValue(_ bodyPartKey: String, fromFrameValues: [String: AnyCodable], atPoint: Int) -> Double? {
+        let pointKey = String(atPoint)
+        guard let frameData = fromFrameValues[pointKey] else { return nil }
+        
+        if case .dictionary(let dict) = frameData,
+           let valueData = dict[bodyPartKey],
+           let doubleValue = valueData.doubleValue {
+            return doubleValue
+        }
+        return nil
     }
     
     /// Calculate average muscle points across all muscles
