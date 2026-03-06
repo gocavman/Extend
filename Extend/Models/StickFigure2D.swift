@@ -752,14 +752,38 @@ struct StickFigure2D {
     
     var leftShoulderPosition: CGPoint {
         // Shoulders are offset from the neck position based on shoulderWidthMultiplier
+        // When the waist rotates, shoulders rotate with it (they're part of the upper body)
         let offsetAmount = shoulderWidth * shoulderWidthMultiplier
-        return CGPoint(x: neckPosition.x - offsetAmount, y: neckPosition.y)
+        
+        // Base offset (pointing left relative to neck)
+        let baseX = -offsetAmount
+        let baseY = 0.0
+        
+        // Rotate by torso angle so shoulders rotate with the body
+        let totalTorsoRotation = waistTorsoAngle + midTorsoAngle
+        let radians = totalTorsoRotation * .pi / 180
+        let rotatedX = baseX * cos(radians) - baseY * sin(radians)
+        let rotatedY = baseX * sin(radians) + baseY * cos(radians)
+        
+        return CGPoint(x: neckPosition.x + rotatedX, y: neckPosition.y + rotatedY)
     }
     
     var rightShoulderPosition: CGPoint {
         // Shoulders are offset from the neck position based on shoulderWidthMultiplier
+        // When the waist rotates, shoulders rotate with it (they're part of the upper body)
         let offsetAmount = shoulderWidth * shoulderWidthMultiplier
-        return CGPoint(x: neckPosition.x + offsetAmount, y: neckPosition.y)
+        
+        // Base offset (pointing right relative to neck)
+        let baseX = offsetAmount
+        let baseY = 0.0
+        
+        // Rotate by torso angle so shoulders rotate with the body
+        let totalTorsoRotation = waistTorsoAngle + midTorsoAngle
+        let radians = totalTorsoRotation * .pi / 180
+        let rotatedX = baseX * cos(radians) - baseY * sin(radians)
+        let rotatedY = baseX * sin(radians) + baseY * cos(radians)
+        
+        return CGPoint(x: neckPosition.x + rotatedX, y: neckPosition.y + rotatedY)
     }
     
     // Left arm positions (upper body rotates, so we need to apply waistTorsoAngle)
