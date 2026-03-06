@@ -1017,8 +1017,10 @@ struct StickFigure2DView: View {
         drawSegment(from: rightUpperLegEnd, to: rightFootEnd, color: figure.rightLowerLegColor, strokeThickness: figure.strokeThicknessLowerLegs, fusiform: figure.fusiformLowerLegs, inverted: true, in: context)
         
         // Draw skeleton
-        // Upper torso: point at neck, wide in upper area, point at waist - forms diamond shape
-        drawSegment(from: neckPos, to: waistPos, color: figure.torsoColor, strokeThickness: figure.strokeThicknessUpperTorso, fusiform: figure.fusiformUpperTorso, inverted: true, in: context)
+        // Upper torso: point at neck, wide in middle, point at midTorso
+        drawSegment(from: neckPos, to: midTorsoPos, color: figure.torsoColor, strokeThickness: figure.strokeThicknessUpperTorso, fusiform: figure.fusiformUpperTorso, inverted: true, in: context)
+        // Lower torso: point at midTorso, wide in middle, point at waist
+        drawSegment(from: midTorsoPos, to: waistPos, color: figure.torsoColor, strokeThickness: figure.strokeThicknessLowerTorso, fusiform: figure.fusiformLowerTorso, inverted: true, in: context)
         drawSegment(from: neckPos, to: headPos, color: figure.torsoColor, strokeThickness: figure.strokeThicknessUpperTorso, fusiform: 0, inverted: false, in: context)
         
         // Draw arms (back arm first)

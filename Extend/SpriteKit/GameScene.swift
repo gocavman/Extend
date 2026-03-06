@@ -373,7 +373,7 @@ class GameScene: SKScene {
         }
         
         // Helper to draw triangle-shaped waist with rounded bottom corners
-        func drawWaistTriangle(from midTorsoPoint: CGPoint, to waistPoint: CGPoint, color: SKColor, strokeThickness: CGFloat, pointPosition: CGFloat, leftHipPos: CGPoint, rightHipPos: CGPoint) {
+        func drawWaistTriangle(from midTorsoPoint: CGPoint, to waistPoint: CGPoint, color: SKColor, strokeThickness: CGFloat, fusiform: CGFloat = 0, pointPosition: CGFloat, leftHipPos: CGPoint, rightHipPos: CGPoint) {
             // Convert all points to relative coordinates and apply scale
             let midTorsoRelative = CGPoint(x: (midTorsoPoint.x - baseCenter.x) * scale, y: (baseCenter.y - midTorsoPoint.y) * scale)
             let waistRelative = CGPoint(x: (waistPoint.x - baseCenter.x) * scale, y: (baseCenter.y - waistPoint.y) * scale)
@@ -386,18 +386,25 @@ class GameScene: SKScene {
             print("  leftHip: \(leftHipPos) -> \(leftHipRelative)")
             print("  rightHip: \(rightHipPos) -> \(rightHipRelative)")
             print("  pointPosition: \(pointPosition)")
+            print("  fusiform: \(fusiform), strokeThickness: \(strokeThickness)")
             
-            // BOTTOM corners are PINNED to the hip positions - they move with the figure
-            let bottomLeft = leftHipRelative
-            let bottomRight = rightHipRelative
+            // Apply fusiform to hip width - fusiform expands the hips
+            let hipDistance = sqrt(pow(rightHipRelative.x - leftHipRelative.x, 2) + pow(rightHipRelative.y - leftHipRelative.y, 2))
+            let hipExpansion = hipDistance * (fusiform * 0.1)  // Scale fusiform effect proportionally
+            
+            // BOTTOM corners - apply fusiform expansion to hip width
+            let bottomLeft = CGPoint(x: leftHipRelative.x - hipExpansion, y: leftHipRelative.y)
+            let bottomRight = CGPoint(x: rightHipRelative.x + hipExpansion, y: rightHipRelative.y)
             
             // Calculate rounded corner radius based on the distance between hips
-            let hipDistance = sqrt(pow(rightHipRelative.x - leftHipRelative.x, 2) + pow(rightHipRelative.y - leftHipRelative.y, 2))
             let cornerRadius = hipDistance * 0.2  // 20% of hip distance for rounding
             
             // TOP point is PINNED to mid-torso and stays there
             // pointPosition controls how "full" the triangle is (0.0 = no triangle, 1.0 = full triangle to mid-torso)
             let pointPos = midTorsoRelative
+            
+            // Scale the stroke thickness with the figure scale
+            let appliedStrokeThickness = max(strokeThickness * scale, 1.0)
             
             // When pointPosition < 1.0, we need to interpolate the sides to taper toward the waist
             // This creates the expanding/contracting effect
@@ -430,7 +437,7 @@ class GameScene: SKScene {
                 let shape = SKShapeNode(path: path.cgPath)
                 shape.fillColor = color
                 shape.strokeColor = color
-                shape.lineWidth = 0
+                shape.lineWidth = appliedStrokeThickness
                 shape.zPosition = 1
                 container.addChild(shape)
             } else {
@@ -480,7 +487,7 @@ class GameScene: SKScene {
                 let shape = SKShapeNode(path: path.cgPath)
                 shape.fillColor = color
                 shape.strokeColor = color
-                shape.lineWidth = 0
+                shape.lineWidth = appliedStrokeThickness
                 shape.zPosition = 1
                 container.addChild(shape)
             }
@@ -491,8 +498,8 @@ class GameScene: SKScene {
         let rightHipPos = mutableFigure.rightHipPosition
         
         // ALWAYS draw connectors from waist to hips - they're part of the triangle base when triangle is active
-        drawRoundedLine(from: waistPos, to: leftHipPos, color: toSKColor(mutableFigure.torsoColor), width: mutableFigure.strokeThicknessLowerLegs * 1.5)
-        drawRoundedLine(from: waistPos, to: rightHipPos, color: toSKColor(mutableFigure.torsoColor), width: mutableFigure.strokeThicknessLowerLegs * 1.5)
+        drawRoundedLine(from: waistPos, to: leftHipPos, color: toSKColor(mutableFigure.torsoColor), width: mutableFigure.strokeThicknessUpperLegs * 1.5)
+        drawRoundedLine(from: waistPos, to: rightHipPos, color: toSKColor(mutableFigure.torsoColor), width: mutableFigure.strokeThicknessUpperLegs * 1.5)
         
         // Upper legs: expand only outward (left leg to left, right leg to right)
         drawTaperedSegment(from: leftHipPos, to: leftUpperLegEnd, color: toSKColor(mutableFigure.leftUpperLegColor), strokeThickness: mutableFigure.strokeThicknessUpperLegs, fusiform: mutableFigure.fusiformUpperLegs, inverted: true, peakPosition: mutableFigure.peakPositionUpperLegs, legAsymmetry: "right")
@@ -505,18 +512,24 @@ class GameScene: SKScene {
         // Right lower leg: peak on left side at top-left 3rd, right side normal
         drawTaperedSegment(from: rightUpperLegEnd, to: rightFootEnd, color: toSKColor(mutableFigure.rightLowerLegColor), strokeThickness: mutableFigure.strokeThicknessLowerLegs, fusiform: mutableFigure.fusiformLowerLegs, inverted: true, peakPosition: mutableFigure.peakPositionLowerLegs, peakPositionLeftEdge: 0.33, peakPositionRightEdge: mutableFigure.peakPositionLowerLegs)
         
-        // Draw torso - LAYERED: lower torso behind, upper torso on top spanning full neck-to-waist
-        // Draw lower torso first (behind)
+        // Draw torso - SPLIT INTO TWO SEGMENTS: upper and lower
+        // IMPORTANT: Draw upper torso FIRST, then lower torso, so lower torso appears on top
+        // Upper torso only goes from neck to mid-torso
+        print("🎮 DEBUG TORSO: neckPos=\(neckPos), midTorsoPos=\(midTorsoPos), waistPos=\(waistPos)")
+        drawTaperedSegment(from: neckPos, to: midTorsoPos, color: toSKColor(mutableFigure.torsoColor), strokeThickness: mutableFigure.strokeThicknessUpperTorso, fusiform: mutableFigure.fusiformUpperTorso, inverted: true, peakPosition: mutableFigure.peakPositionUpperTorso)
+
+        // Lower torso from mid-torso to waist - will be visible and affected by stroke/fusiform sliders
+        // DRAWN AFTER upper torso so it appears on top and is visible
+        print("🎮 DEBUG: Drawing lower torso - strokeThicknessLowerTorso=\(mutableFigure.strokeThicknessLowerTorso), fusiformLowerTorso=\(mutableFigure.fusiformLowerTorso), waistThicknessMultiplier=\(mutableFigure.waistThicknessMultiplier)")
         if mutableFigure.waistThicknessMultiplier > 0.0 {
             // Draw triangle-shaped lower torso with rounded bottom corners
             // waistThicknessMultiplier controls point position: 0.0 = at waist, 1.0 = at mid-torso
-            drawWaistTriangle(from: midTorsoPos, to: waistPos, color: toSKColor(mutableFigure.torsoColor), strokeThickness: mutableFigure.strokeThicknessLowerTorso, pointPosition: mutableFigure.waistThicknessMultiplier, leftHipPos: leftHipPos, rightHipPos: rightHipPos)
+            // fusiformLowerTorso controls the hip width expansion
+            drawWaistTriangle(from: midTorsoPos, to: waistPos, color: toSKColor(mutableFigure.torsoColor), strokeThickness: mutableFigure.strokeThicknessLowerTorso, fusiform: mutableFigure.fusiformLowerTorso, pointPosition: mutableFigure.waistThicknessMultiplier, leftHipPos: leftHipPos, rightHipPos: rightHipPos)
         } else {
             // No triangle at 0.0 - standard tapered segment
             drawTaperedSegment(from: midTorsoPos, to: waistPos, color: toSKColor(mutableFigure.torsoColor), strokeThickness: mutableFigure.strokeThicknessLowerTorso, fusiform: mutableFigure.fusiformLowerTorso, inverted: true, peakPosition: mutableFigure.peakPositionLowerTorso)
         }
-        // Draw upper torso on top, spanning full neck-to-waist distance
-        drawTaperedSegment(from: neckPos, to: waistPos, color: toSKColor(mutableFigure.torsoColor), strokeThickness: mutableFigure.strokeThicknessUpperTorso, fusiform: mutableFigure.fusiformUpperTorso, inverted: true, peakPosition: mutableFigure.peakPositionUpperTorso)
         drawLine(from: neckPos, to: headPos, color: toSKColor(mutableFigure.torsoColor), width: mutableFigure.strokeThickness * mutableFigure.neckWidth)
         
         // Draw shoulder joints with fusiformShoulders tapering
