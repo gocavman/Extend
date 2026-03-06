@@ -102,6 +102,7 @@ struct SavedEditFrame: Codable, Identifiable {
     let strokeThicknessUpperArms: CGFloat
     let strokeThicknessUpperLegs: CGFloat
     let strokeThicknessUpperTorso: CGFloat
+    let strokeThicknessFullTorso: CGFloat
     
     // Pose data (angles) - stored as simple properties
     let waistTorsoAngle: CGFloat
@@ -231,6 +232,7 @@ struct SavedEditFrame: Codable, Identifiable {
             self.strokeThicknessUpperArms = pose.strokeThicknessUpperArms
             self.strokeThicknessUpperLegs = pose.strokeThicknessUpperLegs
             self.strokeThicknessUpperTorso = pose.strokeThicknessUpperTorso
+            self.strokeThicknessFullTorso = 1.0
         } else {
             // Use defaults that match the Stand frame
             self.strokeThicknessJoints = 2.5
@@ -240,6 +242,7 @@ struct SavedEditFrame: Codable, Identifiable {
             self.strokeThicknessUpperArms = 4.0
             self.strokeThicknessUpperLegs = 4.5
             self.strokeThicknessUpperTorso = 5.0
+            self.strokeThicknessFullTorso = 1.0
         }
         
         // Store objects
@@ -263,7 +266,7 @@ struct SavedEditFrame: Codable, Identifiable {
         case leftHandAngle, rightHandAngle, leftHipAngle, rightHipAngle
         case leftKneeAngle, rightKneeAngle, leftFootAngle, rightFootAngle
         case strokeThicknessJoints, strokeThicknessLowerArms, strokeThicknessLowerLegs
-        case strokeThicknessLowerTorso, strokeThicknessUpperArms, strokeThicknessUpperLegs, strokeThicknessUpperTorso
+        case strokeThicknessLowerTorso, strokeThicknessUpperArms, strokeThicknessUpperLegs, strokeThicknessUpperTorso, strokeThicknessFullTorso
         case headRadiusMultiplier, shoulderWidthMultiplier_
         case footColor, handColor, headColor, torsoColor, leftArmColor, rightArmColor
         case leftLegColor, rightLegColor, leftUpperArmColor, leftLowerArmColor
@@ -345,6 +348,7 @@ struct SavedEditFrame: Codable, Identifiable {
         strokeThicknessUpperArms = try poseContainer.decodeIfPresent(CGFloat.self, forKey: .strokeThicknessUpperArms) ?? 4.0
         strokeThicknessUpperLegs = try poseContainer.decodeIfPresent(CGFloat.self, forKey: .strokeThicknessUpperLegs) ?? 4.5
         strokeThicknessUpperTorso = try poseContainer.decodeIfPresent(CGFloat.self, forKey: .strokeThicknessUpperTorso) ?? 5.0
+        strokeThicknessFullTorso = try poseContainer.decodeIfPresent(CGFloat.self, forKey: .strokeThicknessFullTorso) ?? 1.0
         
         // Decode objects - optional for backward compatibility with old saved frames
         objects = try container.decodeIfPresent([EditorObject].self, forKey: .objects) ?? []
@@ -414,6 +418,7 @@ struct SavedEditFrame: Codable, Identifiable {
         try poseContainer.encode(strokeThicknessUpperArms, forKey: .strokeThicknessUpperArms)
         try poseContainer.encode(strokeThicknessUpperLegs, forKey: .strokeThicknessUpperLegs)
         try poseContainer.encode(strokeThicknessUpperTorso, forKey: .strokeThicknessUpperTorso)
+        try poseContainer.encode(strokeThicknessFullTorso, forKey: .strokeThicknessFullTorso)
     }
 }
 
@@ -585,6 +590,7 @@ class SavedFramesManager {
             ("scale", roundAndFormat(frame.figureScale, decimals: 1)),
             ("shoulderWidthMultiplier", roundAndFormat(frame.shoulderWidthMultiplier, decimals: 2)),
             ("skeletonSize", roundAndFormat(frame.skeletonSize, decimals: 2)),
+            ("strokeThicknessFullTorso", roundAndFormat(frame.strokeThicknessFullTorso, decimals: 1)),
             ("strokeThicknessJoints", roundAndFormat(frame.strokeThicknessJoints, decimals: 1)),
             ("strokeThicknessLowerArms", roundAndFormat(frame.strokeThicknessLowerArms, decimals: 1)),
             ("strokeThicknessLowerLegs", roundAndFormat(frame.strokeThicknessLowerLegs, decimals: 1)),

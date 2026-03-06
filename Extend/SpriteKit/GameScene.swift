@@ -612,8 +612,25 @@ class GameScene: SKScene {
         // Always draw skeleton and joints - they're controlled by sliders in the editor
         // In gameplay, they'll be hidden/shown based on other logic later
         
-        // SPINE/TORSO: Uses torso color
-        drawSkeletonConnector(from: neckPos, to: waistPos, color: toSKColor(mutableFigure.torsoColor))
+        // NOTE: SPINE/TORSO is now drawn separately using strokeThicknessFullTorso
+        // It is NOT part of strokeThicknessJoints rendering
+        
+        // SPINE/TORSO CONNECTOR: Uses strokeThicknessFullTorso instead of strokeThicknessJoints
+        let torsoLineWidth = max(mutableFigure.strokeThicknessFullTorso * 0.8 * scale * mutableFigure.skeletonSize, 1.0)
+        let neckRelative = toRelative(neckPos)
+        let waistRelative = toRelative(waistPos)
+        let torsoPath = UIBezierPath()
+        torsoPath.move(to: neckRelative)
+        let torsoMidPoint = CGPoint(x: (neckRelative.x + waistRelative.x) * 0.5,
+                                    y: (neckRelative.y + waistRelative.y) * 0.5)
+        torsoPath.addQuadCurve(to: waistRelative, controlPoint: torsoMidPoint)
+        let torsoLine = SKShapeNode(path: torsoPath.cgPath)
+        torsoLine.strokeColor = toSKColor(mutableFigure.torsoColor)
+        torsoLine.lineWidth = torsoLineWidth
+        torsoLine.lineCap = .round
+        torsoLine.lineJoin = .round
+        torsoLine.zPosition = 1.5
+        container.addChild(torsoLine)
         
         // LEFT LEG connectors: Use their respective leg colors
         drawSkeletonConnector(from: leftHipPos, to: leftUpperLegMid, color: toSKColor(mutableFigure.leftUpperLegColor))

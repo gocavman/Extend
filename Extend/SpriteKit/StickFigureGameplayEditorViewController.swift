@@ -46,6 +46,7 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
     private var strokeThicknessLowerArms: CGFloat = 4.0
     private var strokeThicknessUpperLegs: CGFloat = 5.0
     private var strokeThicknessLowerLegs: CGFloat = 4.0
+    private var strokeThicknessFullTorso: CGFloat = 1.0
     
     // Position offset
     var figureOffsetX: CGFloat = 0
@@ -266,7 +267,7 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
         switch section {
         case 0: return 2  // Zoom, Position buttons (Show Joints moved to header)
         case 1: return isExpanded ? 10 : 0  // Figure Scale, Skeleton Size, Joint Shape Size, Shoulder Width, Waist Width, Waist Thickness, Neck Length, Neck Width, Hand Size, Foot Size
-        case 2: return isExpanded ? 7 : 0  // Stroke Joints, Upper Torso, Lower Torso, Upper Arms, Lower Arms, Upper Legs, Lower Legs
+        case 2: return isExpanded ? 8 : 0  // Stroke Joints, Upper Torso, Lower Torso, Upper Arms, Lower Arms, Upper Legs, Lower Legs, Full Torso
         case 3: return isExpanded ? 13 : 0  // 7 fusiform + 6 peak position sliders
         case 4: return isExpanded ? 10 : 0  // 10 Joint sliders: head, leftShoulder, rightShoulder, leftElbow, rightElbow, leftKnee, rightKnee, leftCalf, rightCalf, midTorso
         case 5: return isExpanded ? 12 : 0  // Color pickers for each body part (added shoulders)
@@ -609,6 +610,13 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
             // Stroke - Lower Legs
             addSliderCell(cell, label: "Lower Legs", value: strokeThicknessLowerLegs, min: 0.0, max: 10.0, increment: 0.1, onChange: { [weak self] val in
                 self?.strokeThicknessLowerLegs = val
+                self?.updateFigure()
+            })
+            
+        case (2, 7):
+            // Stroke - Full Torso
+            addSliderCell(cell, label: "Full Torso", value: strokeThicknessFullTorso, min: 0.0, max: 5.0, increment: 0.1, onChange: { [weak self] val in
+                self?.strokeThicknessFullTorso = val
                 self?.updateFigure()
             })
             
@@ -1131,6 +1139,7 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
             strokeThicknessLowerArms: strokeThicknessLowerArms,
             strokeThicknessUpperLegs: strokeThicknessUpperLegs,
             strokeThicknessLowerLegs: strokeThicknessLowerLegs,
+            strokeThicknessFullTorso: strokeThicknessFullTorso,
             bodyPartColors: bodyPartColors,
             showInteractiveJoints: showInteractiveJoints
         )
@@ -1378,6 +1387,7 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
         strokeThicknessLowerArms = frame.strokeThicknessLowerArms
         strokeThicknessUpperLegs = frame.strokeThicknessUpperLegs
         strokeThicknessLowerLegs = frame.strokeThicknessLowerLegs
+        strokeThicknessFullTorso = frame.strokeThicknessFullTorso
         
         // Restore fusiform
         fusiformUpperTorso = frame.fusiformUpperTorso
@@ -1870,6 +1880,7 @@ class StickFigureEditorScene: SKScene {
         strokeThicknessLowerArms: CGFloat = 3.5,
         strokeThicknessUpperLegs: CGFloat = 4.5,
         strokeThicknessLowerLegs: CGFloat = 3.5,
+        strokeThicknessFullTorso: CGFloat = 1.0,
         bodyPartColors: [String: UIColor] = [:],
         showInteractiveJoints: Bool = true
     ) {
@@ -1914,6 +1925,7 @@ class StickFigureEditorScene: SKScene {
         updatedFrame.strokeThicknessLowerArms = strokeThicknessLowerArms
         updatedFrame.strokeThicknessUpperLegs = strokeThicknessUpperLegs
         updatedFrame.strokeThicknessLowerLegs = strokeThicknessLowerLegs
+        updatedFrame.strokeThicknessFullTorso = strokeThicknessFullTorso
         
         print("🎮 DEBUG updateWithValues: Setting skeletonSize=\(skeletonSize) jointShapeSize=\(jointShapeSize) on updatedFrame")
         
