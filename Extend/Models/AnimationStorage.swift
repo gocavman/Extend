@@ -19,6 +19,7 @@ struct AnimationStorage {
                 let frames = try decoder.decode([AnimationFrame].self, from: data)
                 return frames
             } catch {
+                print("🎮 ERROR: Failed to decode animations.json: \(error)")
                 return []
             }
         }

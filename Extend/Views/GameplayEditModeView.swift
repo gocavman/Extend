@@ -188,7 +188,6 @@ struct GameplayEditModeView: View {
     private func getCurrentEditValues() -> EditModeValues {
         return EditModeValues(
             figureScale: figureScale,
-            strokeThicknessMultiplier: strokeThicknessMultiplier,
             fusiformUpperTorso: fusiformUpperTorso,
             fusiformLowerTorso: fusiformLowerTorso,
             fusiformUpperArms: fusiformUpperArms,
@@ -206,7 +205,6 @@ struct GameplayEditModeView: View {
 /// Data structure for edit mode values
 struct EditModeValues {
     let figureScale: CGFloat
-    let strokeThicknessMultiplier: CGFloat
     let fusiformUpperTorso: CGFloat
     let fusiformLowerTorso: CGFloat
     let fusiformUpperArms: CGFloat
@@ -314,25 +312,32 @@ struct LoadFrameDialog: View {
                 } else {
                     List {
                         ForEach(filteredFrames, id: \.id) { frame in
-                            VStack(alignment: .leading, spacing: 4) {
-                                Text(frame.name)
-                                    .font(.body)
-                                    .fontWeight(.semibold)
-                                Text(formatDate(frame.timestamp))
-                                    .font(.caption)
-                                    .foregroundColor(.gray)
+                            HStack {
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Text(frame.name)
+                                        .font(.body)
+                                        .fontWeight(.semibold)
+                                    Text(formatDate(frame.timestamp))
+                                        .font(.caption)
+                                        .foregroundColor(.gray)
+                                }
+                                Spacer()
+                                
+                                // Copy button - visible and clickable
+                                Button(action: {
+                                    copyFrameToClipboard(frame)
+                                }) {
+                                    Image(systemName: "doc.on.doc")
+                                        .foregroundColor(.blue)
+                                        .padding(8)
+                                }
+                                .buttonStyle(.plain)
                             }
                             .swipeActions(edge: .trailing) {
                                 Button(role: .destructive) {
                                     deleteFrame(frame.id)
                                 } label: {
                                     Label("Delete", systemImage: "trash")
-                                }
-                                
-                                Button {
-                                    copyFrameToClipboard(frame)
-                                } label: {
-                                    Label("Copy", systemImage: "doc.on.doc")
                                 }
                             }
                         }
@@ -379,7 +384,7 @@ struct LoadFrameDialog: View {
     }
     
     private func copyFrameToClipboard(_ frame: SavedEditFrame) {
-        if let jsonString = SavedFramesManager.shared.exportFrameAsJSON(id: frame.id) {
+        if let jsonString = SavedFramesManager.shared.exportFrameAsJSON(frame: frame) {
             UIPasteboard.general.string = jsonString
             copiedFrameName = frame.name
             showCopyAlert = true

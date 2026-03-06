@@ -15,7 +15,6 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
     private let controlsTableView = UITableView(frame: .zero, style: .insetGrouped)
     
     private var figureScale: CGFloat = 1.0  // Multiplier for display size (1.0 = normal size)
-    private var strokeThicknessMultiplier: CGFloat = 1.0
     private var skeletonSize: CGFloat = 1.0  // Skeleton line thickness multiplier
     private var jointShapeSize: CGFloat = 1.0  // Joint circle size multiplier
     private var shoulderWidthMultiplier: CGFloat = 1.0  // Controls distance between shoulders (1.0 = normal)
@@ -38,6 +37,15 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
     private var peakPositionLowerLegs: CGFloat = 0.2  // Peak position for lower legs
     private var peakPositionUpperTorso: CGFloat = 0.5  // Peak position for upper torso
     private var peakPositionLowerTorso: CGFloat = 0.5  // Peak position for lower torso
+    
+    // Individual stroke thickness properties for each body part
+    private var strokeThicknessJoints: CGFloat = 2.0
+    private var strokeThicknessUpperTorso: CGFloat = 5.0
+    private var strokeThicknessLowerTorso: CGFloat = 5.0
+    private var strokeThicknessUpperArms: CGFloat = 4.0
+    private var strokeThicknessLowerArms: CGFloat = 4.0
+    private var strokeThicknessUpperLegs: CGFloat = 5.0
+    private var strokeThicknessLowerLegs: CGFloat = 4.0
     
     // Position offset
     var figureOffsetX: CGFloat = 0
@@ -256,7 +264,7 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
         
         switch section {
         case 0: return 2  // Zoom, Position buttons (Show Joints moved to header)
-        case 1: return isExpanded ? 11 : 0  // Figure Scale, Stroke, Skeleton Size, Joint Shape Size, Shoulder Width, Waist Width, Waist Thickness (triangle point position), Neck Length, Neck Width, Hand Size, Foot Size
+        case 1: return isExpanded ? 17 : 0  // Figure Scale, Skeleton Size, Joint Shape Size, Shoulder Width, Waist Width, Waist Thickness, Neck Length, Neck Width, Hand Size, Foot Size, + 7 stroke sliders
         case 2: return isExpanded ? 13 : 0  // 7 fusiform + 6 peak position sliders
         case 3: return isExpanded ? 10 : 0  // 10 Joint sliders: head, leftShoulder, rightShoulder, leftElbow, rightElbow, leftKnee, rightKnee, leftCalf, rightCalf, midTorso
         case 4: return isExpanded ? 12 : 0  // Color pickers for each body part (added shoulders)
@@ -489,72 +497,114 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
             })
             
         case (1, 1):
-            // Stroke Thickness slider
-            addSliderCell(cell, label: "Stroke", value: strokeThicknessMultiplier, min: 0.0, max: 10.0, increment: 0.1, onChange: { [weak self] val in
-                self?.strokeThicknessMultiplier = val
-                self?.updateFigure()
-            })
-            
-        case (1, 2):
-            // Skeleton Size slider
+            // Skeleton Size slider (moved from case 1,2)
             addSliderCell(cell, label: "Skeleton Size", value: skeletonSize, min: 0.0, max: 10.0, increment: 0.1, onChange: { [weak self] val in
                 self?.skeletonSize = val
                 self?.updateFigure()
             })
             
-        case (1, 3):
+        case (1, 2):
             // Joint Shape Size slider
             addSliderCell(cell, label: "Joint Shape Size", value: jointShapeSize, min: 0.0, max: 30.0, increment: 0.1, onChange: { [weak self] val in
                 self?.jointShapeSize = val
                 self?.updateFigure()
             })
             
-        case (1, 4):
+        case (1, 3):
             // Shoulder Width slider
             addSliderCell(cell, label: "Shoulder Width", value: shoulderWidthMultiplier, min: 0.0, max: 2.0, increment: 0.1, onChange: { [weak self] val in
                 self?.shoulderWidthMultiplier = val
                 self?.updateFigure()
             })
             
-        case (1, 5):
+        case (1, 4):
             // Waist Width slider
             addSliderCell(cell, label: "Waist Width", value: waistWidthMultiplier, min: 0.0, max: 2.0, increment: 0.1, onChange: { [weak self] val in
                 self?.waistWidthMultiplier = val
                 self?.updateFigure()
             })
             
-        case (1, 6):
+        case (1, 5):
             // Waist Thickness slider - now controls triangle point position
             addSliderCell(cell, label: "Waist Point", value: waistThicknessMultiplier, min: 0.0, max: 0.9, increment: 0.1, onChange: { [weak self] val in
                 self?.waistThicknessMultiplier = val
                 self?.updateFigure()
             })
             
-        case (1, 7):
+        case (1, 6):
             // Neck Length slider
             addSliderCell(cell, label: "Neck Length", value: neckLength, min: 0.5, max: 30.0, increment: 0.1, onChange: { [weak self] val in
                 self?.neckLength = val
                 self?.updateFigure()
             })
             
-        case (1, 8):
+        case (1, 7):
             // Neck Width slider
             addSliderCell(cell, label: "Neck Width", value: neckWidth, min: 0.5, max: 10.0, increment: 0.1, onChange: { [weak self] val in
                 self?.neckWidth = val
                 self?.updateFigure()
             })
             
-        case (1, 9):
+        case (1, 8):
             // Hand Size slider
             addSliderCell(cell, label: "Hand Size", value: handSize, min: 0.5, max: 10.0, increment: 0.1, onChange: { [weak self] val in
                 self?.handSize = val
                 self?.updateFigure()
             })
             
-        case (1, 10):
+        case (1, 9):
             // Foot Size slider
             addSliderCell(cell, label: "Foot Size", value: footSize, min: 0.5, max: 10.0, increment: 0.1, onChange: { [weak self] val in
                 self?.footSize = val
+                self?.updateFigure()
+            })
+            
+        case (1, 10):
+            // Stroke - Joints
+            addSliderCell(cell, label: "Stroke Joints", value: strokeThicknessJoints, min: 0.0, max: 10.0, increment: 0.1, onChange: { [weak self] val in
+                self?.strokeThicknessJoints = val
+                self?.updateFigure()
+            })
+            
+        case (1, 11):
+            // Stroke - Upper Torso
+            addSliderCell(cell, label: "Stroke Upper Torso", value: strokeThicknessUpperTorso, min: 0.0, max: 10.0, increment: 0.1, onChange: { [weak self] val in
+                self?.strokeThicknessUpperTorso = val
+                self?.updateFigure()
+            })
+            
+        case (1, 12):
+            // Stroke - Lower Torso
+            addSliderCell(cell, label: "Stroke Lower Torso", value: strokeThicknessLowerTorso, min: 0.0, max: 10.0, increment: 0.1, onChange: { [weak self] val in
+                self?.strokeThicknessLowerTorso = val
+                self?.updateFigure()
+            })
+            
+        case (1, 13):
+            // Stroke - Upper Arms
+            addSliderCell(cell, label: "Stroke Upper Arms", value: strokeThicknessUpperArms, min: 0.0, max: 10.0, increment: 0.1, onChange: { [weak self] val in
+                self?.strokeThicknessUpperArms = val
+                self?.updateFigure()
+            })
+            
+        case (1, 14):
+            // Stroke - Lower Arms
+            addSliderCell(cell, label: "Stroke Lower Arms", value: strokeThicknessLowerArms, min: 0.0, max: 10.0, increment: 0.1, onChange: { [weak self] val in
+                self?.strokeThicknessLowerArms = val
+                self?.updateFigure()
+            })
+            
+        case (1, 15):
+            // Stroke - Upper Legs
+            addSliderCell(cell, label: "Stroke Upper Legs", value: strokeThicknessUpperLegs, min: 0.0, max: 10.0, increment: 0.1, onChange: { [weak self] val in
+                self?.strokeThicknessUpperLegs = val
+                self?.updateFigure()
+            })
+            
+        case (1, 16):
+            // Stroke - Lower Legs
+            addSliderCell(cell, label: "Stroke Lower Legs", value: strokeThicknessLowerLegs, min: 0.0, max: 10.0, increment: 0.1, onChange: { [weak self] val in
+                self?.strokeThicknessLowerLegs = val
                 self?.updateFigure()
             })
             
@@ -944,7 +994,14 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
             
             // Load ALL scale and thickness values from standFrame
             figureScale = standFrame.scale
-            strokeThicknessMultiplier = standFrame.strokeThickness
+            // Load individual stroke thickness values from standFrame
+            strokeThicknessJoints = standFrame.strokeThicknessJoints
+            strokeThicknessUpperTorso = standFrame.strokeThicknessUpperTorso
+            strokeThicknessLowerTorso = standFrame.strokeThicknessLowerTorso
+            strokeThicknessUpperArms = standFrame.strokeThicknessUpperArms
+            strokeThicknessLowerArms = standFrame.strokeThicknessLowerArms
+            strokeThicknessUpperLegs = standFrame.strokeThicknessUpperLegs
+            strokeThicknessLowerLegs = standFrame.strokeThicknessLowerLegs
             // Note: jointShapeSize is editor-only property, not in StickFigure2D
             skeletonSize = standFrame.skeletonSize
             shoulderWidthMultiplier = standFrame.shoulderWidthMultiplier
@@ -1021,7 +1078,6 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
         
         editorScene?.updateWithValues(
             figureScale: figureScale,
-            strokeThicknessMultiplier: strokeThicknessMultiplier,
             skeletonSize: skeletonSize,
             jointShapeSize: jointShapeSize,
             shoulderWidthMultiplier: shoulderWidthMultiplier,
@@ -1062,6 +1118,13 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
             rightKneeAngle: rightKneeAngle,
             leftFootAngle: leftFootAngle,
             rightFootAngle: rightFootAngle,
+            strokeThicknessJoints: strokeThicknessJoints,
+            strokeThicknessUpperTorso: strokeThicknessUpperTorso,
+            strokeThicknessLowerTorso: strokeThicknessLowerTorso,
+            strokeThicknessUpperArms: strokeThicknessUpperArms,
+            strokeThicknessLowerArms: strokeThicknessLowerArms,
+            strokeThicknessUpperLegs: strokeThicknessUpperLegs,
+            strokeThicknessLowerLegs: strokeThicknessLowerLegs,
             bodyPartColors: bodyPartColors,
             showInteractiveJoints: showInteractiveJoints
         )
@@ -1118,11 +1181,18 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
             tempPose.neckWidth = self.neckWidth
             tempPose.handSize = self.handSize
             tempPose.footSize = self.footSize
+            // Set individual stroke thickness values
+            tempPose.strokeThicknessJoints = self.strokeThicknessJoints
+            tempPose.strokeThicknessUpperTorso = self.strokeThicknessUpperTorso
+            tempPose.strokeThicknessLowerTorso = self.strokeThicknessLowerTorso
+            tempPose.strokeThicknessUpperArms = self.strokeThicknessUpperArms
+            tempPose.strokeThicknessLowerArms = self.strokeThicknessLowerArms
+            tempPose.strokeThicknessUpperLegs = self.strokeThicknessUpperLegs
+            tempPose.strokeThicknessLowerLegs = self.strokeThicknessLowerLegs
             
             // Create EditModeValues to use with SavedEditFrame initializer
             let editValues = EditModeValues(
                 figureScale: self.figureScale,
-                strokeThicknessMultiplier: self.strokeThicknessMultiplier,
                 fusiformUpperTorso: self.fusiformUpperTorso,
                 fusiformLowerTorso: self.fusiformLowerTorso,
                 fusiformUpperArms: self.fusiformUpperArms,
@@ -1294,7 +1364,14 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
         
         // Restore figure scale and thickness
         figureScale = frame.figureScale
-        strokeThicknessMultiplier = frame.strokeThicknessMultiplier
+        // Restore individual stroke thickness values
+        strokeThicknessJoints = frame.strokeThicknessJoints
+        strokeThicknessUpperTorso = frame.strokeThicknessUpperTorso
+        strokeThicknessLowerTorso = frame.strokeThicknessLowerTorso
+        strokeThicknessUpperArms = frame.strokeThicknessUpperArms
+        strokeThicknessLowerArms = frame.strokeThicknessLowerArms
+        strokeThicknessUpperLegs = frame.strokeThicknessUpperLegs
+        strokeThicknessLowerLegs = frame.strokeThicknessLowerLegs
         
         // Restore fusiform
         fusiformUpperTorso = frame.fusiformUpperTorso
@@ -1737,7 +1814,6 @@ class StickFigureEditorScene: SKScene {
     
     func updateWithValues(
         figureScale: CGFloat,
-        strokeThicknessMultiplier: CGFloat,
         skeletonSize: CGFloat = 1.0,
         jointShapeSize: CGFloat = 1.0,
         shoulderWidthMultiplier: CGFloat = 1.0,
@@ -1778,6 +1854,13 @@ class StickFigureEditorScene: SKScene {
         rightKneeAngle: CGFloat = 0,
         leftFootAngle: CGFloat = 0,
         rightFootAngle: CGFloat = 0,
+        strokeThicknessJoints: CGFloat = 2.0,
+        strokeThicknessUpperTorso: CGFloat = 5.0,
+        strokeThicknessLowerTorso: CGFloat = 4.5,
+        strokeThicknessUpperArms: CGFloat = 4.0,
+        strokeThicknessLowerArms: CGFloat = 3.5,
+        strokeThicknessUpperLegs: CGFloat = 4.5,
+        strokeThicknessLowerLegs: CGFloat = 3.5,
         bodyPartColors: [String: UIColor] = [:],
         showInteractiveJoints: Bool = true
     ) {
@@ -1813,6 +1896,16 @@ class StickFigureEditorScene: SKScene {
         updatedFrame.neckWidth = neckWidth
         updatedFrame.handSize = handSize
         updatedFrame.footSize = footSize
+        
+        // Set stroke thickness values
+        updatedFrame.strokeThicknessJoints = strokeThicknessJoints
+        updatedFrame.strokeThicknessUpperTorso = strokeThicknessUpperTorso
+        updatedFrame.strokeThicknessLowerTorso = strokeThicknessLowerTorso
+        updatedFrame.strokeThicknessUpperArms = strokeThicknessUpperArms
+        updatedFrame.strokeThicknessLowerArms = strokeThicknessLowerArms
+        updatedFrame.strokeThicknessUpperLegs = strokeThicknessUpperLegs
+        updatedFrame.strokeThicknessLowerLegs = strokeThicknessLowerLegs
+        
         print("🎮 DEBUG updateWithValues: Setting skeletonSize=\(skeletonSize) jointShapeSize=\(jointShapeSize) on updatedFrame")
         
         // Apply angles to the frame - map to existing properties
@@ -1832,16 +1925,6 @@ class StickFigureEditorScene: SKScene {
         
         // Note: Colors are stored in bodyPartColors but rendering happens in GameScene
         // The colors will be applied through the rendering pipeline
-        
-        // Apply stroke thickness multiplier
-        updatedFrame.strokeThickness *= strokeThicknessMultiplier
-        updatedFrame.strokeThicknessJoints *= strokeThicknessMultiplier
-        updatedFrame.strokeThicknessUpperTorso *= strokeThicknessMultiplier
-        updatedFrame.strokeThicknessLowerTorso *= strokeThicknessMultiplier
-        updatedFrame.strokeThicknessUpperArms *= strokeThicknessMultiplier
-        updatedFrame.strokeThicknessLowerArms *= strokeThicknessMultiplier
-        updatedFrame.strokeThicknessUpperLegs *= strokeThicknessMultiplier
-        updatedFrame.strokeThicknessLowerLegs *= strokeThicknessMultiplier
         
         // Create character node centered vertically with offset
         let container = SKNode()
@@ -2054,7 +2137,6 @@ class FrameListViewController: UIViewController, UITableViewDataSource, UITableV
                 let pose = bundleFrame.pose.toStickFigure2D()
                 let editValues = EditModeValues(
                     figureScale: pose.scale,
-                    strokeThicknessMultiplier: pose.strokeThickness,
                     fusiformUpperTorso: pose.fusiformUpperTorso,
                     fusiformLowerTorso: pose.fusiformLowerTorso,
                     fusiformUpperArms: pose.fusiformUpperArms,
@@ -2254,7 +2336,7 @@ class FrameListViewController: UIViewController, UITableViewDataSource, UITableV
     }
     
     private func copyFrameToClipboard(_ frame: SavedEditFrame) {
-        if let jsonString = SavedFramesManager.shared.exportFrameAsJSON(id: frame.id) {
+        if let jsonString = SavedFramesManager.shared.exportFrameAsJSON(frame: frame) {
             UIPasteboard.general.string = jsonString
             
             let alert = UIAlertController(title: "Copied!", message: "Frame JSON copied to clipboard. You can paste it into animations.json", preferredStyle: .alert)

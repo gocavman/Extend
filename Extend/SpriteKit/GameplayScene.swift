@@ -632,29 +632,40 @@ class GameplayScene: GameScene {
                 print("🎮 DEBUG applyMuscleScaling: Processing muscle '\(muscle.name)' (id: \(muscle.id)) with \(musclePoints) points, \(muscle.bodyParts.count) body parts")
                 
                 for bodyPart in muscle.bodyParts {
-                    let interpolatedValue = MuscleSystem.shared.getBodyPartValue(for: bodyPart, muscleId: muscle.id, state: gameState.muscleState)
-                    print("🎮 DEBUG   -> \(bodyPart): \(interpolatedValue)")
-                    
-                    switch bodyPart {
-                    case "fusiformShoulders": scaledFigure.fusiformShoulders = interpolatedValue
-                    case "shoulderWidthMultiplier": break
-                    case "neckWidth": scaledFigure.neckWidth = interpolatedValue
-                    case "handSize": scaledFigure.handSize = interpolatedValue
-                    case "footSize": scaledFigure.footSize = interpolatedValue
-                    case "fusiformUpperTorso": scaledFigure.fusiformUpperTorso = interpolatedValue
-                    case "fusiformLowerTorso": scaledFigure.fusiformLowerTorso = interpolatedValue
-                    case "fusiformUpperArms": scaledFigure.fusiformUpperArms = interpolatedValue
-                    case "fusiformLowerArms": scaledFigure.fusiformLowerArms = interpolatedValue
-                    case "fusiformUpperLegs": scaledFigure.fusiformUpperLegs = interpolatedValue
-                    case "fusiformLowerLegs": scaledFigure.fusiformLowerLegs = interpolatedValue
-                    case "strokeThicknessUpperTorso": scaledFigure.strokeThicknessUpperTorso = interpolatedValue
-                    case "strokeThicknessLowerTorso": scaledFigure.strokeThicknessLowerTorso = interpolatedValue
-                    case "strokeThicknessUpperArms": scaledFigure.strokeThicknessUpperArms = interpolatedValue
-                    case "strokeThicknessLowerArms": scaledFigure.strokeThicknessLowerArms = interpolatedValue
-                    case "strokeThicknessUpperLegs": scaledFigure.strokeThicknessUpperLegs = interpolatedValue
-                    case "strokeThicknessLowerLegs": scaledFigure.strokeThicknessLowerLegs = interpolatedValue
-                    case "strokeThicknessJoints": scaledFigure.strokeThicknessJoints = interpolatedValue
-                    default: break
+                    // Stroke thicknesses come from the 5 Stand frames, not from muscle frameValues
+                    if bodyPart.hasPrefix("strokeThickness") {
+                        let interpolatedValue = MuscleSystem.shared.interpolateProperty(bodyPart, musclePoints: musclePoints)
+                        print("🎮 DEBUG   -> \(bodyPart): \(interpolatedValue) (from Stand frames)")
+                        
+                        switch bodyPart {
+                        case "strokeThicknessUpperTorso": scaledFigure.strokeThicknessUpperTorso = interpolatedValue
+                        case "strokeThicknessLowerTorso": scaledFigure.strokeThicknessLowerTorso = interpolatedValue
+                        case "strokeThicknessUpperArms": scaledFigure.strokeThicknessUpperArms = interpolatedValue
+                        case "strokeThicknessLowerArms": scaledFigure.strokeThicknessLowerArms = interpolatedValue
+                        case "strokeThicknessUpperLegs": scaledFigure.strokeThicknessUpperLegs = interpolatedValue
+                        case "strokeThicknessLowerLegs": scaledFigure.strokeThicknessLowerLegs = interpolatedValue
+                        case "strokeThicknessJoints": scaledFigure.strokeThicknessJoints = interpolatedValue
+                        default: break
+                        }
+                    } else {
+                        // Fusiform values come from the muscle definition
+                        let interpolatedValue = MuscleSystem.shared.getBodyPartValue(for: bodyPart, muscleId: muscle.id, state: gameState.muscleState)
+                        print("🎮 DEBUG   -> \(bodyPart): \(interpolatedValue)")
+                        
+                        switch bodyPart {
+                        case "fusiformShoulders": scaledFigure.fusiformShoulders = interpolatedValue
+                        case "shoulderWidthMultiplier": break
+                        case "neckWidth": scaledFigure.neckWidth = interpolatedValue
+                        case "handSize": scaledFigure.handSize = interpolatedValue
+                        case "footSize": scaledFigure.footSize = interpolatedValue
+                        case "fusiformUpperTorso": scaledFigure.fusiformUpperTorso = interpolatedValue
+                        case "fusiformLowerTorso": scaledFigure.fusiformLowerTorso = interpolatedValue
+                        case "fusiformUpperArms": scaledFigure.fusiformUpperArms = interpolatedValue
+                        case "fusiformLowerArms": scaledFigure.fusiformLowerArms = interpolatedValue
+                        case "fusiformUpperLegs": scaledFigure.fusiformUpperLegs = interpolatedValue
+                        case "fusiformLowerLegs": scaledFigure.fusiformLowerLegs = interpolatedValue
+                        default: break
+                        }
                     }
                 }
             }

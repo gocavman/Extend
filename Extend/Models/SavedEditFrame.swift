@@ -69,7 +69,6 @@ struct SavedEditFrame: Codable, Identifiable {
     var frameNumber: Int = 0  // Frame number for animation playback
     let timestamp: Date
     let figureScale: CGFloat
-    let strokeThicknessMultiplier: CGFloat
     let fusiformUpperTorso: CGFloat
     let fusiformLowerTorso: CGFloat
     let fusiformUpperArms: CGFloat
@@ -94,9 +93,8 @@ struct SavedEditFrame: Codable, Identifiable {
     let neckWidth: CGFloat
     let handSize: CGFloat
     let footSize: CGFloat
-    let strokeThickness: CGFloat  // Base stroke thickness - MUST have this for muscle scaling!
     
-    // Additional stroke thickness properties needed for complete frame export
+    // Stroke thickness properties for each body part
     let strokeThicknessJoints: CGFloat
     let strokeThicknessLowerArms: CGFloat
     let strokeThicknessLowerLegs: CGFloat
@@ -138,7 +136,6 @@ struct SavedEditFrame: Codable, Identifiable {
         self.frameNumber = frameNumber
         self.timestamp = Date()
         self.figureScale = values.figureScale
-        self.strokeThicknessMultiplier = values.strokeThicknessMultiplier
         self.fusiformUpperTorso = values.fusiformUpperTorso
         self.fusiformLowerTorso = values.fusiformLowerTorso
         self.fusiformUpperArms = values.fusiformUpperArms
@@ -159,7 +156,6 @@ struct SavedEditFrame: Codable, Identifiable {
             self.neckWidth = pose.neckWidth
             self.handSize = pose.handSize
             self.footSize = pose.footSize
-            self.strokeThickness = pose.strokeThickness  // Base stroke thickness from pose
             // Set peak positions from pose
             self.fusiformShoulders = pose.fusiformShoulders
             self.peakPositionUpperArms = pose.peakPositionUpperArms
@@ -178,7 +174,6 @@ struct SavedEditFrame: Codable, Identifiable {
             self.neckWidth = 1.0
             self.handSize = 1.0
             self.footSize = 1.0
-            self.strokeThickness = 1.2  // Default base stroke thickness
             // Default peak positions
             self.fusiformShoulders = 0.0
             self.peakPositionUpperArms = 0.5
@@ -255,7 +250,7 @@ struct SavedEditFrame: Codable, Identifiable {
     
     enum CodingKeys: String, CodingKey {
         case id, name, frameNumber, createdAt, objects, pose
-        case figureScale, strokeThicknessMultiplier
+        case figureScale
         case fusiformUpperTorso, fusiformLowerTorso, fusiformUpperArms, fusiformLowerArms
         case fusiformUpperLegs, fusiformLowerLegs, fusiformShoulders
         case peakPositionUpperArms, peakPositionLowerArms, peakPositionUpperLegs
@@ -263,7 +258,7 @@ struct SavedEditFrame: Codable, Identifiable {
         case figureOffsetX, figureOffsetY, waistPositionX, waistPositionY
         case shoulderWidthMultiplier, waistWidthMultiplier
         case waistThicknessMultiplier, skeletonSize, jointShapeSize, neckLength, neckWidth
-        case handSize, footSize, strokeThickness, waistTorsoAngle, midTorsoAngle, torsoRotationAngle, headAngle
+        case handSize, footSize, waistTorsoAngle, midTorsoAngle, torsoRotationAngle, headAngle
         case leftShoulderAngle, rightShoulderAngle, leftElbowAngle, rightElbowAngle
         case leftHandAngle, rightHandAngle, leftHipAngle, rightHipAngle
         case leftKneeAngle, rightKneeAngle, leftFootAngle, rightFootAngle
@@ -299,7 +294,6 @@ struct SavedEditFrame: Codable, Identifiable {
         
         // Decode all CGFloat properties from pose container
         figureScale = try poseContainer.decodeIfPresent(CGFloat.self, forKey: .figureScale) ?? 1.0
-        strokeThicknessMultiplier = try poseContainer.decodeIfPresent(CGFloat.self, forKey: .strokeThicknessMultiplier) ?? 1.2
         fusiformUpperTorso = try poseContainer.decodeIfPresent(CGFloat.self, forKey: .fusiformUpperTorso) ?? 0.0
         fusiformLowerTorso = try poseContainer.decodeIfPresent(CGFloat.self, forKey: .fusiformLowerTorso) ?? 0.0
         fusiformUpperArms = try poseContainer.decodeIfPresent(CGFloat.self, forKey: .fusiformUpperArms) ?? 0.0
@@ -344,7 +338,6 @@ struct SavedEditFrame: Codable, Identifiable {
         rightFootAngle = try poseContainer.decodeIfPresent(CGFloat.self, forKey: .rightFootAngle) ?? 0.0
         
         // Decode stroke thickness properties from pose container - optional for backward compatibility
-        strokeThickness = try poseContainer.decodeIfPresent(CGFloat.self, forKey: .strokeThickness) ?? 1.2
         strokeThicknessJoints = try poseContainer.decodeIfPresent(CGFloat.self, forKey: .strokeThicknessJoints) ?? 2.5
         strokeThicknessLowerArms = try poseContainer.decodeIfPresent(CGFloat.self, forKey: .strokeThicknessLowerArms) ?? 3.5
         strokeThicknessLowerLegs = try poseContainer.decodeIfPresent(CGFloat.self, forKey: .strokeThicknessLowerLegs) ?? 3.5
@@ -374,7 +367,6 @@ struct SavedEditFrame: Codable, Identifiable {
         
         // Encode all properties into pose container
         try poseContainer.encode(figureScale, forKey: .figureScale)
-        try poseContainer.encode(strokeThicknessMultiplier, forKey: .strokeThicknessMultiplier)
         try poseContainer.encode(fusiformUpperTorso, forKey: .fusiformUpperTorso)
         try poseContainer.encode(fusiformLowerTorso, forKey: .fusiformLowerTorso)
         try poseContainer.encode(fusiformUpperArms, forKey: .fusiformUpperArms)
@@ -399,7 +391,6 @@ struct SavedEditFrame: Codable, Identifiable {
         try poseContainer.encode(neckWidth, forKey: .neckWidth)
         try poseContainer.encode(handSize, forKey: .handSize)
         try poseContainer.encode(footSize, forKey: .footSize)
-        try poseContainer.encode(strokeThickness, forKey: .strokeThickness)
         try poseContainer.encode(waistTorsoAngle, forKey: .waistTorsoAngle)
         try poseContainer.encode(midTorsoAngle, forKey: .midTorsoAngle)
         try poseContainer.encode(torsoRotationAngle, forKey: .torsoRotationAngle)
@@ -471,9 +462,18 @@ class SavedFramesManager {
     }
     
     /// Export frame as JSON string
-    /// Export frame as JSON string
+    /// Export frame as JSON string (by ID - for backwards compatibility)
     func exportFrameAsJSON(id: UUID) -> String? {
-        guard let frame = getFrame(id: id) else { return nil }
+        guard let frame = getFrame(id: id) else {
+            print("❌ exportFrameAsJSON: Could not find frame with id \(id)")
+            return nil
+        }
+        return exportFrameAsJSON(frame: frame)
+    }
+    
+    /// Export frame as JSON string (direct frame object)
+    func exportFrameAsJSON(frame: SavedEditFrame) -> String? {
+        print("✅ exportFrameAsJSON: Exporting frame '\(frame.name)'")
         
         // Helper to format number with specific decimal places
         func formatNumber(_ value: Double, decimals: Int) -> String {
@@ -585,12 +585,10 @@ class SavedFramesManager {
             ("scale", roundAndFormat(frame.figureScale, decimals: 1)),
             ("shoulderWidthMultiplier", roundAndFormat(frame.shoulderWidthMultiplier, decimals: 2)),
             ("skeletonSize", roundAndFormat(frame.skeletonSize, decimals: 2)),
-            ("strokeThickness", roundAndFormat(frame.strokeThicknessMultiplier, decimals: 1)),
             ("strokeThicknessJoints", roundAndFormat(frame.strokeThicknessJoints, decimals: 1)),
             ("strokeThicknessLowerArms", roundAndFormat(frame.strokeThicknessLowerArms, decimals: 1)),
             ("strokeThicknessLowerLegs", roundAndFormat(frame.strokeThicknessLowerLegs, decimals: 1)),
             ("strokeThicknessLowerTorso", roundAndFormat(frame.strokeThicknessLowerTorso, decimals: 1)),
-            ("strokeThicknessMultiplier", roundAndFormat(frame.strokeThicknessMultiplier, decimals: 1)),
             ("strokeThicknessUpperArms", roundAndFormat(frame.strokeThicknessUpperArms, decimals: 1)),
             ("strokeThicknessUpperLegs", roundAndFormat(frame.strokeThicknessUpperLegs, decimals: 1)),
             ("strokeThicknessUpperTorso", roundAndFormat(frame.strokeThicknessUpperTorso, decimals: 1)),

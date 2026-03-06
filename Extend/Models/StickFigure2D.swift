@@ -408,7 +408,6 @@ struct StickFigure2DPose: Codable {
         try container.encode(round(waistThicknessMultiplier), forKey: .waistThicknessMultiplier)
         try container.encode(scale, forKey: .scale)
         try container.encode(round(skeletonSize), forKey: .skeletonSize)
-        try container.encode(round(strokeThickness), forKey: .strokeThickness)
         try container.encode(round(strokeThicknessJoints), forKey: .strokeThicknessJoints)
         try container.encode(round(strokeThicknessLowerArms), forKey: .strokeThicknessLowerArms)
         try container.encode(round(strokeThicknessLowerLegs), forKey: .strokeThicknessLowerLegs)
@@ -461,7 +460,8 @@ struct StickFigure2DPose: Codable {
         self.handColor = try container.decode(String.self, forKey: .handColor)
         self.footColor = try container.decode(String.self, forKey: .footColor)
         self.jointColor = try container.decodeIfPresent(String.self, forKey: .jointColor) ?? "#000000"
-        self.strokeThickness = try container.decode(CGFloat.self, forKey: .strokeThickness)
+        // strokeThickness is optional - derive from average of other strokes if missing
+        self.strokeThickness = try container.decodeIfPresent(CGFloat.self, forKey: .strokeThickness) ?? 1.0
         self.scale = try container.decode(Double.self, forKey: .scale)
         self.headRadiusMultiplier = try container.decode(Double.self, forKey: .headRadiusMultiplier)
         // New properties with defaults for backward compatibility
