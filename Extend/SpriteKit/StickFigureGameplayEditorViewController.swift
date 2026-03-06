@@ -1205,6 +1205,7 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
             tempPose.strokeThicknessLowerArms = self.strokeThicknessLowerArms
             tempPose.strokeThicknessUpperLegs = self.strokeThicknessUpperLegs
             tempPose.strokeThicknessLowerLegs = self.strokeThicknessLowerLegs
+            tempPose.strokeThicknessFullTorso = self.strokeThicknessFullTorso
             
             // Create EditModeValues to use with SavedEditFrame initializer
             let editValues = EditModeValues(
