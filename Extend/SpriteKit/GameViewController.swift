@@ -212,10 +212,19 @@ class GameViewController: UIViewController {
     func showAppearance() {
         print("🎮 Opening Appearance Customization")
         
-        // Get the game state from the gameplay scene if available
-        var gameState: StickFigureGameState? = nil
-        if let gameplayScene = currentScene as? GameplayScene {
-            gameState = gameplayScene.gameState
+        // IMPORTANT: Always use the main gameState, not just from gameplay scene
+        // This ensures muscle points changes work from both map and gameplay
+        var gameState: StickFigureGameState? = self.gameState
+        if gameState == nil && currentScene is GameplayScene {
+            if let gameplayScene = currentScene as? GameplayScene {
+                gameState = gameplayScene.gameState
+            }
+        }
+        
+        // If still no gameState, create one (shouldn't normally happen)
+        if gameState == nil {
+            gameState = StickFigureGameState()
+            self.gameState = gameState
         }
         
         // Present the appearance view controller with callbacks to refresh the game

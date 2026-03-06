@@ -352,11 +352,17 @@ class StickFigureAppearanceViewController: UIViewController, UITableViewDelegate
             cell.contentView.heightAnchor.constraint(equalToConstant: 48).isActive = true
             
         } else if indexPath.row == muscles.count + 1 {  // Buttons row (only row after muscles)
+            let mainStack = UIStackView()
+            mainStack.axis = .vertical
+            mainStack.spacing = 8
+            mainStack.distribution = .fill
+            mainStack.translatesAutoresizingMaskIntoConstraints = false
+            
+            // First row: Reset All and Max All buttons
             let buttonsStack = UIStackView()
             buttonsStack.axis = .horizontal
             buttonsStack.spacing = 8
             buttonsStack.distribution = .fillEqually
-            buttonsStack.translatesAutoresizingMaskIntoConstraints = false
             
             let resetButton = UIButton(type: .system)
             resetButton.setTitle("Reset All", for: .normal)
@@ -374,16 +380,54 @@ class StickFigureAppearanceViewController: UIViewController, UITableViewDelegate
             
             buttonsStack.addArrangedSubview(resetButton)
             buttonsStack.addArrangedSubview(maxButton)
+            buttonsStack.heightAnchor.constraint(equalToConstant: 32).isActive = true
             
-            cell.contentView.addSubview(buttonsStack)
+            // Second row: Set to custom value
+            let customStack = UIStackView()
+            customStack.axis = .horizontal
+            customStack.spacing = 8
+            customStack.alignment = .center
+            customStack.distribution = .fill
+            
+            let customLabel = UILabel()
+            customLabel.text = "Set All To:"
+            customLabel.font = UIFont.systemFont(ofSize: 12)
+            customLabel.setContentCompressionResistancePriority(.required, for: .horizontal)
+            
+            let customTextField = UITextField()
+            customTextField.placeholder = "0-100"
+            customTextField.keyboardType = .numberPad
+            customTextField.borderStyle = .roundedRect
+            customTextField.textAlignment = .center
+            customTextField.font = UIFont.systemFont(ofSize: 12)
+            customTextField.tag = 999  // Tag to identify this field later
+            
+            let customButton = UIButton(type: .system)
+            customButton.setTitle("Apply", for: .normal)
+            customButton.backgroundColor = UIColor.systemBlue.withAlphaComponent(0.7)
+            customButton.setTitleColor(.white, for: .normal)
+            customButton.layer.cornerRadius = 4
+            customButton.addTarget(self, action: #selector(customValueButtonTapped(_:)), for: .touchUpInside)
+            customButton.tag = 999  // Same tag to pair with text field
+            
+            customStack.addArrangedSubview(customLabel)
+            customStack.addArrangedSubview(customTextField)
+            customStack.addArrangedSubview(customButton)
+            customTextField.widthAnchor.constraint(equalToConstant: 60).isActive = true
+            customButton.widthAnchor.constraint(equalToConstant: 60).isActive = true
+            customStack.heightAnchor.constraint(equalToConstant: 32).isActive = true
+            
+            mainStack.addArrangedSubview(buttonsStack)
+            mainStack.addArrangedSubview(customStack)
+            
+            cell.contentView.addSubview(mainStack)
             NSLayoutConstraint.activate([
-                buttonsStack.topAnchor.constraint(equalTo: cell.contentView.topAnchor, constant: 8),
-                buttonsStack.leadingAnchor.constraint(equalTo: cell.contentView.leadingAnchor, constant: 16),
-                buttonsStack.trailingAnchor.constraint(equalTo: cell.contentView.trailingAnchor, constant: -16),
-                buttonsStack.bottomAnchor.constraint(equalTo: cell.contentView.bottomAnchor, constant: -8),
-                buttonsStack.heightAnchor.constraint(equalToConstant: 32)
+                mainStack.topAnchor.constraint(equalTo: cell.contentView.topAnchor, constant: 8),
+                mainStack.leadingAnchor.constraint(equalTo: cell.contentView.leadingAnchor, constant: 16),
+                mainStack.trailingAnchor.constraint(equalTo: cell.contentView.trailingAnchor, constant: -16),
+                mainStack.bottomAnchor.constraint(equalTo: cell.contentView.bottomAnchor, constant: -8)
             ])
-            cell.contentView.heightAnchor.constraint(equalToConstant: 48).isActive = true
+            cell.contentView.heightAnchor.constraint(equalToConstant: 80).isActive = true
         }
         
         return cell
@@ -506,6 +550,7 @@ class StickFigureAppearanceViewController: UIViewController, UITableViewDelegate
         pointsLabel.textAlignment = .center
         pointsLabel.translatesAutoresizingMaskIntoConstraints = false
         pointsLabel.widthAnchor.constraint(equalToConstant: 35).isActive = true
+        pointsLabel.tag = muscle.id.hashValue  // Tag for easy updates
         
         let plus1 = createIconButton(systemName: "plus.circle.fill", color: .systemGreen) { [weak self] in
             self?.adjustMusclePoints(muscleId: muscle.id, delta: 1)
@@ -579,30 +624,6 @@ class StickFigureAppearanceViewController: UIViewController, UITableViewDelegate
         onMusclePointsChanged?()
     }
     
-    @objc private func resetAllMusclesTapped() {
-        guard let gameState = gameState else { return }
-        if let muscles = muscleSystem.config?.muscles {
-            for muscle in muscles {
-                gameState.muscleState.setPoints(0.0, for: muscle.id)
-            }
-            gameState.saveMuscleState()
-            onMusclePointsChanged?()
-            tableView.reloadSections([1], with: .fade)
-        }
-    }
-    
-    @objc private func maxAllMusclesTapped() {
-        guard let gameState = gameState else { return }
-        if let muscles = muscleSystem.config?.muscles {
-            for muscle in muscles {
-                gameState.muscleState.setPoints(100.0, for: muscle.id)
-            }
-            gameState.saveMuscleState()
-            onMusclePointsChanged?()
-            tableView.reloadSections([1], with: .fade)
-        }
-    }
-    
     private func presentColorPicker(initialColor: UIColor, completion: @escaping (UIColor) -> Void) {
         let colorPicker = UIColorPickerViewController()
         colorPicker.selectedColor = initialColor
@@ -618,6 +639,58 @@ class StickFigureAppearanceViewController: UIViewController, UITableViewDelegate
         pendingColorCallback = nil
         saveAppearanceToGameState()
         onMusclePointsChanged?()
+    }
+    
+    @objc private func resetAllMusclesTapped() {
+        guard let gameState = gameState else {
+            print("❌ No gameState available for resetAllMuscles")
+            return
+        }
+        guard let muscles = muscleSystem.config?.muscles else { return }
+        for muscle in muscles {
+            gameState.muscleState.setPoints(0, for: muscle.id)
+        }
+        gameState.saveMuscleState()
+        tableView.reloadSections([0], with: .fade)
+        onMusclePointsChanged?()
+        print("✓ Reset all muscles to 0")
+    }
+    
+    @objc private func maxAllMusclesTapped() {
+        guard let gameState = gameState else {
+            print("❌ No gameState available for maxAllMuscles")
+            return
+        }
+        guard let muscles = muscleSystem.config?.muscles else { return }
+        for muscle in muscles {
+            gameState.muscleState.setPoints(100, for: muscle.id)
+        }
+        gameState.saveMuscleState()
+        tableView.reloadSections([0], with: .fade)
+        onMusclePointsChanged?()
+        print("✓ Maxed all muscles to 100")
+    }
+    
+    @objc private func customValueButtonTapped(_ sender: UIButton) {
+        // Find the text field with tag 999
+        guard let textField = tableView.viewWithTag(999) as? UITextField,
+              let valueText = textField.text, !valueText.isEmpty,
+              let value = Double(valueText),
+              value >= 0 && value <= 100,
+              let gameState = gameState,
+              let muscles = muscleSystem.config?.muscles else {
+            print("❌ Invalid input or missing gameState for custom value")
+            return
+        }
+        
+        for muscle in muscles {
+            gameState.muscleState.setPoints(value, for: muscle.id)
+        }
+        gameState.saveMuscleState()
+        textField.text = ""
+        tableView.reloadSections([0], with: .fade)
+        onMusclePointsChanged?()
+        print("✓ Set all muscles to \(value)")
     }
 }
 
