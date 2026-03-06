@@ -232,7 +232,7 @@ struct SavedEditFrame: Codable, Identifiable {
             self.strokeThicknessUpperArms = pose.strokeThicknessUpperArms
             self.strokeThicknessUpperLegs = pose.strokeThicknessUpperLegs
             self.strokeThicknessUpperTorso = pose.strokeThicknessUpperTorso
-            self.strokeThicknessFullTorso = 1.0
+            self.strokeThicknessFullTorso = pose.strokeThicknessFullTorso
         } else {
             // Use defaults that match the Stand frame
             self.strokeThicknessJoints = 2.5

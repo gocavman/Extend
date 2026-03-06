@@ -1015,6 +1015,7 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
             strokeThicknessLowerArms = standFrame.strokeThicknessLowerArms
             strokeThicknessUpperLegs = standFrame.strokeThicknessUpperLegs
             strokeThicknessLowerLegs = standFrame.strokeThicknessLowerLegs
+            strokeThicknessFullTorso = standFrame.strokeThicknessFullTorso
             // Note: jointShapeSize is editor-only property, not in StickFigure2D
             skeletonSize = standFrame.skeletonSize
             shoulderWidthMultiplier = standFrame.shoulderWidthMultiplier

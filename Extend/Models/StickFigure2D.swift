@@ -411,6 +411,7 @@ struct StickFigure2DPose: Codable {
         try container.encode(round(waistThicknessMultiplier), forKey: .waistThicknessMultiplier)
         try container.encode(scale, forKey: .scale)
         try container.encode(round(skeletonSize), forKey: .skeletonSize)
+        try container.encode(round(strokeThicknessFullTorso), forKey: .strokeThicknessFullTorso)
         try container.encode(round(strokeThicknessJoints), forKey: .strokeThicknessJoints)
         try container.encode(round(strokeThicknessLowerArms), forKey: .strokeThicknessLowerArms)
         try container.encode(round(strokeThicknessLowerLegs), forKey: .strokeThicknessLowerLegs)
