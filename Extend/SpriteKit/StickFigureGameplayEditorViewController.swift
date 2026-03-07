@@ -192,14 +192,14 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
         refreshButton.addTarget(self, action: #selector(refreshPressed), for: .touchUpInside)
         headerView.addSubview(refreshButton)
         
-        // MidTorso toggle - small circle button for body rotation
-        let midTorsoButton = UIButton(type: .system)
-        midTorsoButton.setTitle("○", for: .normal)
-        midTorsoButton.titleLabel?.font = UIFont.systemFont(ofSize: 16)
-        midTorsoButton.tintColor = .white
-        midTorsoButton.translatesAutoresizingMaskIntoConstraints = false
-        midTorsoButton.addTarget(self, action: #selector(toggleMidTorso(_:)), for: .touchUpInside)
-        headerView.addSubview(midTorsoButton)
+        // Interactive Controls toggle - small circle button to show/hide interactive joint dots and object controls
+        let interactiveControlsButton = UIButton(type: .system)
+        interactiveControlsButton.setTitle("○", for: .normal)
+        interactiveControlsButton.titleLabel?.font = UIFont.systemFont(ofSize: 16)
+        interactiveControlsButton.tintColor = .white
+        interactiveControlsButton.translatesAutoresizingMaskIntoConstraints = false
+        interactiveControlsButton.addTarget(self, action: #selector(toggleInteractiveControls(_:)), for: .touchUpInside)
+        headerView.addSubview(interactiveControlsButton)
         
         let closeButton = UIButton(type: .system)
         closeButton.setTitle("✕", for: .normal)
@@ -218,13 +218,13 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
             titleLabel.leadingAnchor.constraint(equalTo: headerView.leadingAnchor, constant: 16),
             titleLabel.centerYAnchor.constraint(equalTo: headerView.centerYAnchor),
             
-            refreshButton.trailingAnchor.constraint(equalTo: midTorsoButton.leadingAnchor, constant: -8),
+            refreshButton.trailingAnchor.constraint(equalTo: interactiveControlsButton.leadingAnchor, constant: -8),
             refreshButton.centerYAnchor.constraint(equalTo: headerView.centerYAnchor),
             
-            midTorsoButton.trailingAnchor.constraint(equalTo: closeButton.leadingAnchor, constant: -8),
-            midTorsoButton.centerYAnchor.constraint(equalTo: headerView.centerYAnchor),
-            midTorsoButton.widthAnchor.constraint(equalToConstant: 24),
-            midTorsoButton.heightAnchor.constraint(equalToConstant: 24),
+            interactiveControlsButton.trailingAnchor.constraint(equalTo: closeButton.leadingAnchor, constant: -8),
+            interactiveControlsButton.centerYAnchor.constraint(equalTo: headerView.centerYAnchor),
+            interactiveControlsButton.widthAnchor.constraint(equalToConstant: 24),
+            interactiveControlsButton.heightAnchor.constraint(equalToConstant: 24),
             
             closeButton.trailingAnchor.constraint(equalTo: headerView.trailingAnchor, constant: -16),
             closeButton.centerYAnchor.constraint(equalTo: headerView.centerYAnchor),
@@ -269,7 +269,7 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
         case 1: return isExpanded ? 10 : 0  // Figure Scale, Skeleton Size, Joint Shape Size, Shoulder Width, Waist Width, Waist Thickness, Neck Length, Neck Width, Hand Size, Foot Size
         case 2: return isExpanded ? 8 : 0  // Stroke Joints, Upper Torso, Lower Torso, Upper Arms, Lower Arms, Upper Legs, Lower Legs, Full Torso
         case 3: return isExpanded ? 13 : 0  // 7 fusiform + 6 peak position sliders
-        case 4: return isExpanded ? 10 : 0  // 10 Joint sliders: head, leftShoulder, rightShoulder, leftElbow, rightElbow, leftKnee, rightKnee, leftCalf, rightCalf, midTorso
+        case 4: return isExpanded ? 11 : 0  // 11 Joint sliders: head, leftShoulder, rightShoulder, leftElbow, rightElbow, leftKnee, rightKnee, leftCalf, rightCalf, waistRotation, neckRotation
         case 5: return isExpanded ? 12 : 0  // Color pickers for each body part (added shoulders)
         case 6: return 2  // Frames label + Save + Load (now on same row), Objects label + Add Object button
         case 7: return 0  // Objects handled in section 6 now
@@ -647,7 +647,8 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
         case (4, 6): addSliderCell(cell, label: "R Upper Leg", value: rightKneeAngle, min: -180, max: 180, increment: 1, onChange: { [weak self] val in self?.rightKneeAngle = val; self?.updateFigure() })
         case (4, 7): addSliderCell(cell, label: "L Calf", value: leftFootAngle, min: -180, max: 180, increment: 1, onChange: { [weak self] val in self?.leftFootAngle = val; self?.updateFigure() })
         case (4, 8): addSliderCell(cell, label: "R Calf", value: rightFootAngle, min: -180, max: 180, increment: 1, onChange: { [weak self] val in self?.rightFootAngle = val; self?.updateFigure() })
-        case (4, 9): addSliderCell(cell, label: "Mid Torso", value: torsoRotation, min: -180, max: 180, increment: 1, onChange: { [weak self] val in self?.torsoRotation = val; self?.updateFigure() })
+        case (4, 9): addSliderCell(cell, label: "Waist Rotation", value: waistTorsoAngle, min: -180, max: 180, increment: 1, onChange: { [weak self] val in self?.waistTorsoAngle = val; self?.updateFigure() })
+        case (4, 10): addSliderCell(cell, label: "Mid Torso Rotation", value: lowerTorsoRotation, min: -180, max: 180, increment: 1, onChange: { [weak self] val in self?.lowerTorsoRotation = val; self?.updateFigure() })
         
         // Color picker buttons - NOW SECTION 5
         case (5, 0):
@@ -922,7 +923,7 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
         updateFigure()
     }
     
-    @objc private func toggleMidTorso(_ sender: UIButton) {
+    @objc private func toggleInteractiveControls(_ sender: UIButton) {
         // Toggle joint and object control visibility while preserving zoom
         let currentZoom = sceneZoom  // Save current zoom
         showInteractiveJoints = !showInteractiveJoints
@@ -1047,7 +1048,8 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
             neckRotation = CGFloat(standFrame.headAngle)
             upperTorsoRotation = CGFloat(standFrame.torsoRotationAngle)
             lowerTorsoRotation = CGFloat(standFrame.midTorsoAngle)
-            torsoRotation = CGFloat(standFrame.midTorsoAngle)
+            waistTorsoAngle = CGFloat(standFrame.waistTorsoAngle)  // Load waist rotation
+            torsoRotation = CGFloat(standFrame.waistTorsoAngle)  // Also update torsoRotation for compatibility
             leftShoulderAngle = CGFloat(standFrame.leftShoulderAngle)
             leftElbowAngle = CGFloat(standFrame.leftElbowAngle)
             rightShoulderAngle = CGFloat(standFrame.rightShoulderAngle)
@@ -1365,7 +1367,10 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
         print("🎮 Applying frame: \(frame.name)")
         // Restore all angles
         neckRotation = frame.headAngle
-        torsoRotation = frame.midTorsoAngle
+        upperTorsoRotation = frame.torsoRotationAngle
+        lowerTorsoRotation = frame.midTorsoAngle  // Upper torso rotation around midTorso
+        waistTorsoAngle = frame.waistTorsoAngle  // Upper body rotation around waist
+        torsoRotation = frame.waistTorsoAngle  // Compatibility: also set torsoRotation
         leftShoulderAngle = frame.leftShoulderAngle
         leftElbowAngle = frame.leftElbowAngle
         rightShoulderAngle = frame.rightShoulderAngle
@@ -1677,9 +1682,9 @@ class StickFigureEditorScene: SKScene {
             viewController?.neckRotation = currentAngle + angleDelta
             
         case "joint_neck":
-            // Neck dot: rotates the upper torso (neck to midTorso) around midTorso
-            currentAngle = viewController?.upperTorsoRotation ?? 0
-            viewController?.upperTorsoRotation = currentAngle + angleDelta
+            // Neck dot: rotates everything ABOVE the midTorso (upper torso, shoulders, arms, head, neck) around the midTorso
+            currentAngle = viewController?.lowerTorsoRotation ?? 0
+            viewController?.lowerTorsoRotation = currentAngle + angleDelta
             
         case "joint_midTorso":
             // MidTorso dot: rotates the ENTIRE UPPER BODY around the waist

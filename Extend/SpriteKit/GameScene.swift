@@ -616,14 +616,25 @@ class GameScene: SKScene {
         // It is NOT part of strokeThicknessJoints rendering
         
         // SPINE/TORSO CONNECTOR: Uses strokeThicknessFullTorso instead of strokeThicknessJoints
+        // Draws as two segments that bend at midtorso: neck->midtorso and midtorso->waist
         let torsoLineWidth = max(mutableFigure.strokeThicknessFullTorso * 0.8 * scale * mutableFigure.skeletonSize, 1.0)
         let neckRelative = toRelative(neckPos)
+        let midTorsoRelative = toRelative(midTorsoPos)
         let waistRelative = toRelative(waistPos)
+        
         let torsoPath = UIBezierPath()
+        
+        // Upper torso segment: neck to midtorso
         torsoPath.move(to: neckRelative)
-        let torsoMidPoint = CGPoint(x: (neckRelative.x + waistRelative.x) * 0.5,
-                                    y: (neckRelative.y + waistRelative.y) * 0.5)
-        torsoPath.addQuadCurve(to: waistRelative, controlPoint: torsoMidPoint)
+        let upperTorsoMidPoint = CGPoint(x: (neckRelative.x + midTorsoRelative.x) * 0.5,
+                                         y: (neckRelative.y + midTorsoRelative.y) * 0.5)
+        torsoPath.addQuadCurve(to: midTorsoRelative, controlPoint: upperTorsoMidPoint)
+        
+        // Lower torso segment: midtorso to waist
+        let lowerTorsoMidPoint = CGPoint(x: (midTorsoRelative.x + waistRelative.x) * 0.5,
+                                         y: (midTorsoRelative.y + waistRelative.y) * 0.5)
+        torsoPath.addQuadCurve(to: waistRelative, controlPoint: lowerTorsoMidPoint)
+        
         let torsoLine = SKShapeNode(path: torsoPath.cgPath)
         torsoLine.strokeColor = toSKColor(mutableFigure.torsoColor)
         torsoLine.lineWidth = torsoLineWidth
