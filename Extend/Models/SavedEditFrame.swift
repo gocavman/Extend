@@ -121,6 +121,7 @@ struct SavedEditFrame: Codable, Identifiable {
     let rightKneeAngle: CGFloat
     let leftFootAngle: CGFloat
     let rightFootAngle: CGFloat
+    let midTorsoYOffset: CGFloat  // Y-axis offset for upper torso bottom pin position
     
     // Objects in the frame
     var objects: [EditorObject] = []
@@ -203,6 +204,7 @@ struct SavedEditFrame: Codable, Identifiable {
             self.rightKneeAngle = pose.rightKneeAngle
             self.leftFootAngle = pose.leftFootAngle
             self.rightFootAngle = pose.rightFootAngle
+            self.midTorsoYOffset = pose.midTorsoYOffset
         } else {
             // Default angles (standing position)
             self.waistTorsoAngle = 0
@@ -221,6 +223,7 @@ struct SavedEditFrame: Codable, Identifiable {
             self.rightKneeAngle = 0
             self.leftFootAngle = 0
             self.rightFootAngle = 0
+            self.midTorsoYOffset = 0.0
         }
         
         // Store stroke thickness properties from pose
@@ -264,7 +267,7 @@ struct SavedEditFrame: Codable, Identifiable {
         case handSize, footSize, waistTorsoAngle, midTorsoAngle, torsoRotationAngle, headAngle
         case leftShoulderAngle, rightShoulderAngle, leftElbowAngle, rightElbowAngle
         case leftHandAngle, rightHandAngle, leftHipAngle, rightHipAngle
-        case leftKneeAngle, rightKneeAngle, leftFootAngle, rightFootAngle
+        case leftKneeAngle, rightKneeAngle, leftFootAngle, rightFootAngle, midTorsoYOffset
         case strokeThicknessJoints, strokeThicknessLowerArms, strokeThicknessLowerLegs
         case strokeThicknessLowerTorso, strokeThicknessUpperArms, strokeThicknessUpperLegs, strokeThicknessUpperTorso, strokeThicknessFullTorso
         case headRadiusMultiplier, shoulderWidthMultiplier_
@@ -339,6 +342,7 @@ struct SavedEditFrame: Codable, Identifiable {
         rightKneeAngle = try poseContainer.decodeIfPresent(CGFloat.self, forKey: .rightKneeAngle) ?? 0.0
         leftFootAngle = try poseContainer.decodeIfPresent(CGFloat.self, forKey: .leftFootAngle) ?? 0.0
         rightFootAngle = try poseContainer.decodeIfPresent(CGFloat.self, forKey: .rightFootAngle) ?? 0.0
+        midTorsoYOffset = try poseContainer.decodeIfPresent(CGFloat.self, forKey: .midTorsoYOffset) ?? 0.0
         
         // Decode stroke thickness properties from pose container - optional for backward compatibility
         strokeThicknessJoints = try poseContainer.decodeIfPresent(CGFloat.self, forKey: .strokeThicknessJoints) ?? 2.5
@@ -411,6 +415,7 @@ struct SavedEditFrame: Codable, Identifiable {
         try poseContainer.encode(rightKneeAngle, forKey: .rightKneeAngle)
         try poseContainer.encode(leftFootAngle, forKey: .leftFootAngle)
         try poseContainer.encode(rightFootAngle, forKey: .rightFootAngle)
+        try poseContainer.encode(midTorsoYOffset, forKey: .midTorsoYOffset)
         try poseContainer.encode(strokeThicknessJoints, forKey: .strokeThicknessJoints)
         try poseContainer.encode(strokeThicknessLowerArms, forKey: .strokeThicknessLowerArms)
         try poseContainer.encode(strokeThicknessLowerLegs, forKey: .strokeThicknessLowerLegs)

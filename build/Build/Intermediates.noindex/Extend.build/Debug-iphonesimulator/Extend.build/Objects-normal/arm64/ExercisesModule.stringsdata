@@ -1,0 +1,168 @@
+{
+  "source": "/Users/cavan/Developer/Extend/Extend/Modules/ExercisesModule.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "Exercises",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 49
+        }
+      },
+      {
+        "comment": "",
+        "key": "No exercises found",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 69
+        }
+      },
+      {
+        "comment": "",
+        "key": "Muscles:",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 90
+        }
+      },
+      {
+        "comment": "",
+        "key": "Equipment:",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 103
+        }
+      },
+      {
+        "comment": "",
+        "key": "Notes:",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 116
+        }
+      },
+      {
+        "comment": "",
+        "key": "Edit",
+        "location": {
+          "startingColumn": 39,
+          "startingLine": 139
+        }
+      },
+      {
+        "comment": "",
+        "key": "Delete",
+        "location": {
+          "startingColumn": 39,
+          "startingLine": 148
+        }
+      },
+      {
+        "comment": "",
+        "key": "Exercise Details",
+        "location": {
+          "startingColumn": 25,
+          "startingLine": 249
+        }
+      },
+      {
+        "comment": "",
+        "key": "Primary Muscle Groups",
+        "location": {
+          "startingColumn": 25,
+          "startingLine": 255
+        }
+      },
+      {
+        "comment": "",
+        "key": "Secondary Muscle Groups (Optional)",
+        "location": {
+          "startingColumn": 25,
+          "startingLine": 281
+        }
+      },
+      {
+        "comment": "",
+        "key": "Equipment",
+        "location": {
+          "startingColumn": 25,
+          "startingLine": 308
+        }
+      },
+      {
+        "comment": "",
+        "key": "Exercise Name",
+        "location": {
+          "startingColumn": 31,
+          "startingLine": 250
+        }
+      },
+      {
+        "comment": "",
+        "key": "Notes (optional)",
+        "location": {
+          "startingColumn": 31,
+          "startingLine": 251
+        }
+      },
+      {
+        "comment": "",
+        "key": "Main muscles worked by this exercise",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 256
+        }
+      },
+      {
+        "comment": "",
+        "key": "No muscle groups available",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 262
+        }
+      },
+      {
+        "comment": "",
+        "key": "No muscle groups available",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 284
+        }
+      },
+      {
+        "comment": "",
+        "key": "Additional muscles engaged during this exercise",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 302
+        }
+      },
+      {
+        "comment": "",
+        "key": "No equipment available",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 310
+        }
+      },
+      {
+        "comment": "",
+        "key": "Cancel",
+        "location": {
+          "startingColumn": 28,
+          "startingLine": 332
+        }
+      },
+      {
+        "comment": "",
+        "key": "Save",
+        "location": {
+          "startingColumn": 28,
+          "startingLine": 335
+        }
+      }
+    ]
+  },
+  "version": 1
+}

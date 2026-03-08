@@ -123,6 +123,113 @@ class GameScene: SKScene {
             return UIColor(color)
         }
         
+        // Helper to draw a tapered segment with custom taper direction
+        // This allows the width perpendicular to point toward a specific direction (e.g., toward waist)
+        func drawTaperedSegmentWithCustomTaper(
+            from: CGPoint,
+            to: CGPoint,
+            color: SKColor,
+            strokeThickness: CGFloat,
+            fusiform: CGFloat,
+            inverted: Bool,
+            peakPosition: CGFloat = 0.2,
+            customTaperDirection: CGPoint,  // Custom direction for width perpendicular
+            in container: SKNode,
+            baseCenter: CGPoint,
+            scale: CGFloat
+        ) {
+            let fromRelative = CGPoint(x: (from.x - baseCenter.x) * scale, y: (baseCenter.y - from.y) * scale)
+            let toRelative = CGPoint(x: (to.x - baseCenter.x) * scale, y: (baseCenter.y - to.y) * scale)
+            
+            // If fusiform is 0, just draw a simple line
+            if fusiform == 0 {
+                let path = UIBezierPath()
+                path.move(to: fromRelative)
+                path.addLine(to: toRelative)
+                let line = SKShapeNode(path: path.cgPath)
+                line.strokeColor = color
+                line.lineWidth = max(2.0 * scale, 1.0)
+                line.zPosition = 1
+                container.addChild(line)
+                return
+            }
+            
+            // Calculate the direction and length of the segment
+            let dx = toRelative.x - fromRelative.x
+            let dy = toRelative.y - fromRelative.y
+            let length = sqrt(dx * dx + dy * dy)
+            
+            guard length > 0 else { return }
+            
+            // Normalized direction along the segment
+            let dirX = dx / length
+            let dirY = dy / length
+            
+            // Use the custom taper direction (pointing toward waist) instead of perpendicular
+            let perpX = customTaperDirection.x
+            let perpY = customTaperDirection.y
+            
+            // Create a tapered polygon with smooth width variation
+            var topEdgePoints: [CGPoint] = []
+            var bottomEdgePoints: [CGPoint] = []
+            
+            let numSegments = 50
+            
+            for i in 0...numSegments {
+                let t = CGFloat(i) / CGFloat(numSegments)
+                let pos = CGPoint(x: fromRelative.x + dirX * t * length, y: fromRelative.y + dirY * t * length)
+                
+                // Calculate width factor for this point along the segment
+                var widthFactor: CGFloat = 1.0
+                
+                if inverted {
+                    // NORMAL: Middle BULGE profile
+                    let angle = (t - 0.5) * CGFloat.pi
+                    let curveShape = cos(angle)
+                    let bulge = 1.0 + (fusiform * max(0, curveShape))
+                    widthFactor = bulge
+                } else {
+                    // Standard taper
+                    widthFactor = 1.0
+                }
+                
+                let width = (strokeThickness / 2) * widthFactor
+                
+                // Top and bottom edges using custom taper direction
+                let topPoint = CGPoint(x: pos.x + perpX * width, y: pos.y + perpY * width)
+                let bottomPoint = CGPoint(x: pos.x - perpX * width, y: pos.y - perpY * width)
+                
+                topEdgePoints.append(topPoint)
+                bottomEdgePoints.append(bottomPoint)
+            }
+            
+            // Create the path
+            let path = UIBezierPath()
+            
+            if let firstPoint = topEdgePoints.first {
+                path.move(to: firstPoint)
+            }
+            
+            // Draw top edge
+            for i in 1..<topEdgePoints.count {
+                path.addLine(to: topEdgePoints[i])
+            }
+            
+            // Draw bottom edge in reverse
+            for i in stride(from: bottomEdgePoints.count - 1, through: 0, by: -1) {
+                path.addLine(to: bottomEdgePoints[i])
+            }
+            
+            path.close()
+            
+            let shape = SKShapeNode(path: path.cgPath)
+            shape.fillColor = color
+            shape.strokeColor = color
+            shape.lineWidth = 0
+            shape.zPosition = 1
+            container.addChild(shape)
+        }
+        
         // Helper to draw a tapered segment (respects fusiform values) - matches StickFigure2D editor exactly
         func drawTaperedSegment(
             from: CGPoint,
@@ -375,13 +482,14 @@ class GameScene: SKScene {
         // Helper to draw triangle-shaped waist with rounded bottom corners
         func drawWaistTriangle(from midTorsoPoint: CGPoint, to waistPoint: CGPoint, color: SKColor, strokeThickness: CGFloat, fusiform: CGFloat = 0, pointPosition: CGFloat, leftHipPos: CGPoint, rightHipPos: CGPoint) {
             // Convert all points to relative coordinates and apply scale
-            let midTorsoRelative = CGPoint(x: (midTorsoPoint.x - baseCenter.x) * scale, y: (baseCenter.y - midTorsoPoint.y) * scale)
+            // IMPORTANT: The top point is PINNED to midTorsoPoint (which already includes the offset)
+            let topPointRelative = CGPoint(x: (midTorsoPoint.x - baseCenter.x) * scale, y: (baseCenter.y - midTorsoPoint.y) * scale)
             let waistRelative = CGPoint(x: (waistPoint.x - baseCenter.x) * scale, y: (baseCenter.y - waistPoint.y) * scale)
             let leftHipRelative = CGPoint(x: (leftHipPos.x - baseCenter.x) * scale, y: (baseCenter.y - leftHipPos.y) * scale)
             let rightHipRelative = CGPoint(x: (rightHipPos.x - baseCenter.x) * scale, y: (baseCenter.y - rightHipPos.y) * scale)
             
             print("🔺 TRIANGLE DEBUG:")
-            print("  midTorso: \(midTorsoPoint) -> \(midTorsoRelative)")
+            print("  topPoint: \(midTorsoPoint) -> \(topPointRelative)")
             print("  waist: \(waistPoint) -> \(waistRelative)")
             print("  leftHip: \(leftHipPos) -> \(leftHipRelative)")
             print("  rightHip: \(rightHipPos) -> \(rightHipRelative)")
@@ -399,9 +507,9 @@ class GameScene: SKScene {
             // Calculate rounded corner radius based on the distance between hips
             let cornerRadius = hipDistance * 0.2  // 20% of hip distance for rounding
             
-            // TOP point is PINNED to mid-torso and stays there
-            // pointPosition controls how "full" the triangle is (0.0 = no triangle, 1.0 = full triangle to mid-torso)
-            let pointPos = midTorsoRelative
+            // TOP point is PINNED to topPoint (which is midTorsoPoint including offset) and stays there
+            // pointPosition controls how "full" the triangle is (0.0 = no triangle, 1.0 = full triangle to midTorso)
+            let pointPos = topPointRelative
             
             // Scale the stroke thickness with the figure scale
             let appliedStrokeThickness = max(strokeThickness * scale, 1.0)
@@ -514,13 +622,25 @@ class GameScene: SKScene {
         
         // Draw torso - SPLIT INTO TWO SEGMENTS: upper and lower
         // IMPORTANT: Draw upper torso FIRST, then lower torso, so lower torso appears on top
-        // Upper torso only goes from neck to mid-torso
-        print("🎮 DEBUG TORSO: neckPos=\(neckPos), midTorsoPos=\(midTorsoPos), waistPos=\(waistPos)")
-        drawTaperedSegment(from: neckPos, to: midTorsoPos, color: toSKColor(mutableFigure.torsoColor), strokeThickness: mutableFigure.strokeThicknessUpperTorso, fusiform: mutableFigure.fusiformUpperTorso, inverted: true, peakPosition: mutableFigure.peakPositionUpperTorso)
+        
+        // Apply mid-torso Y offset to adjust where upper torso bottom pins to mid-torso
+        // The offset rotates with the UPPER TORSO's local coordinate system
+        // The upper torso rotates by BOTH waistTorsoAngle AND midTorsoAngle combined
+        let totalTorsoRotationRadians = (mutableFigure.waistTorsoAngle + mutableFigure.midTorsoAngle) * .pi / 180
+        let offsetInTorsoSpace = CGPoint(x: 0, y: mutableFigure.midTorsoYOffset)
+        let rotatedOffset = CGPoint(
+            x: offsetInTorsoSpace.x * cos(CGFloat(totalTorsoRotationRadians)) - offsetInTorsoSpace.y * sin(CGFloat(totalTorsoRotationRadians)),
+            y: offsetInTorsoSpace.x * sin(CGFloat(totalTorsoRotationRadians)) + offsetInTorsoSpace.y * cos(CGFloat(totalTorsoRotationRadians))
+        )
+        let midTorsoWithOffset = CGPoint(x: midTorsoPos.x + rotatedOffset.x, y: midTorsoPos.y + rotatedOffset.y)
+        
+        // Upper torso: neck to mid-torso (with offset applied to match editor)
+        drawTaperedSegment(from: neckPos, to: midTorsoWithOffset, color: toSKColor(mutableFigure.torsoColor), strokeThickness: mutableFigure.strokeThicknessUpperTorso, fusiform: mutableFigure.fusiformUpperTorso, inverted: true, peakPosition: mutableFigure.peakPositionUpperTorso)
 
-        // Lower torso from mid-torso to waist - will be visible and affected by stroke/fusiform sliders
-        // DRAWN AFTER upper torso so it appears on top and is visible
-        print("🎮 DEBUG: Drawing lower torso - strokeThicknessLowerTorso=\(mutableFigure.strokeThicknessLowerTorso), fusiformLowerTorso=\(mutableFigure.fusiformLowerTorso), waistThicknessMultiplier=\(mutableFigure.waistThicknessMultiplier)")
+        // Lower torso from mid-torso (PINNED, no offset) to waist
+        // The lower torso stays pinned to midTorsoPos (without offset)
+        // Only the upper torso's bottom point moves with the offset
+        
         if mutableFigure.waistThicknessMultiplier > 0.0 {
             // Draw triangle-shaped lower torso with rounded bottom corners
             // waistThicknessMultiplier controls point position: 0.0 = at waist, 1.0 = at mid-torso
@@ -619,18 +739,19 @@ class GameScene: SKScene {
         // Draws as two segments that bend at midtorso: neck->midtorso and midtorso->waist
         let torsoLineWidth = max(mutableFigure.strokeThicknessFullTorso * 0.8 * scale * mutableFigure.skeletonSize, 1.0)
         let neckRelative = toRelative(neckPos)
-        let midTorsoRelative = toRelative(midTorsoPos)
+        let midTorsoOffsetRelative = toRelative(midTorsoWithOffset)  // Use offset position for upper torso
+        let midTorsoRelative = toRelative(midTorsoPos)  // Keep lower torso pinned to unoffset midtorso
         let waistRelative = toRelative(waistPos)
-        
+
         let torsoPath = UIBezierPath()
         
-        // Upper torso segment: neck to midtorso
+        // Upper torso segment: neck to midtorso (with offset applied)
         torsoPath.move(to: neckRelative)
-        let upperTorsoMidPoint = CGPoint(x: (neckRelative.x + midTorsoRelative.x) * 0.5,
-                                         y: (neckRelative.y + midTorsoRelative.y) * 0.5)
-        torsoPath.addQuadCurve(to: midTorsoRelative, controlPoint: upperTorsoMidPoint)
+        let upperTorsoMidPoint = CGPoint(x: (neckRelative.x + midTorsoOffsetRelative.x) * 0.5,
+                                         y: (neckRelative.y + midTorsoOffsetRelative.y) * 0.5)
+        torsoPath.addQuadCurve(to: midTorsoOffsetRelative, controlPoint: upperTorsoMidPoint)
         
-        // Lower torso segment: midtorso to waist
+        // Lower torso segment: midtorso (PINNED, no offset) to waist
         let lowerTorsoMidPoint = CGPoint(x: (midTorsoRelative.x + waistRelative.x) * 0.5,
                                          y: (midTorsoRelative.y + waistRelative.y) * 0.5)
         torsoPath.addQuadCurve(to: waistRelative, controlPoint: lowerTorsoMidPoint)
