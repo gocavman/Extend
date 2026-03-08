@@ -102,7 +102,7 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
     var sceneZoom: CGFloat = 1.0  // Zoom level for editor view (1.0 = normal, 2.0 = 2x zoom)
     
     // Section expansion state
-    private var expandedSections: Set<Int> = [6]  // Expanded by default (section 6 visible; others collapsed including section 1)
+    private var expandedSections: Set<Int> = [7]  // Expanded by default (section 7 Frames visible; others collapsed including colors)
     
     var gameState: StickFigureGameState?
     
