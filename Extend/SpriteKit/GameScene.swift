@@ -623,16 +623,25 @@ class GameScene: SKScene {
         // Draw torso - SPLIT INTO TWO SEGMENTS: upper and lower
         // IMPORTANT: Draw upper torso FIRST, then lower torso, so lower torso appears on top
         
-        // Apply mid-torso Y offset to adjust where upper torso bottom pins to mid-torso
-        // The offset rotates with the UPPER TORSO's local coordinate system
-        // The upper torso rotates by BOTH waistTorsoAngle AND midTorsoAngle combined
+        // Apply mid-torso Y offset as a pinning constraint
+        // The offset is defined in the upper torso's LOCAL coordinate system
+        // where Y points downward along the upper torso segment
+        // We rotate this offset by the total torso rotation to get world space
         let totalTorsoRotationRadians = (mutableFigure.waistTorsoAngle + mutableFigure.midTorsoAngle) * .pi / 180
-        let offsetInTorsoSpace = CGPoint(x: 0, y: mutableFigure.midTorsoYOffset)
-        let rotatedOffset = CGPoint(
-            x: offsetInTorsoSpace.x * cos(CGFloat(totalTorsoRotationRadians)) - offsetInTorsoSpace.y * sin(CGFloat(totalTorsoRotationRadians)),
-            y: offsetInTorsoSpace.x * sin(CGFloat(totalTorsoRotationRadians)) + offsetInTorsoSpace.y * cos(CGFloat(totalTorsoRotationRadians))
+        
+        // In upper torso's local space: offset is purely in Y direction (down the torso)
+        let offsetLocalX = CGFloat(0)
+        let offsetLocalY = mutableFigure.midTorsoYOffset
+        
+        // Rotate offset into world space using the upper torso's rotation
+        let rotatedOffsetX = offsetLocalX * cos(CGFloat(totalTorsoRotationRadians)) - offsetLocalY * sin(CGFloat(totalTorsoRotationRadians))
+        let rotatedOffsetY = offsetLocalX * sin(CGFloat(totalTorsoRotationRadians)) + offsetLocalY * cos(CGFloat(totalTorsoRotationRadians))
+        
+        // Apply offset from midTorso
+        let midTorsoWithOffset = CGPoint(
+            x: midTorsoPos.x + rotatedOffsetX,
+            y: midTorsoPos.y + rotatedOffsetY
         )
-        let midTorsoWithOffset = CGPoint(x: midTorsoPos.x + rotatedOffset.x, y: midTorsoPos.y + rotatedOffset.y)
         
         // Upper torso: neck to mid-torso (with offset applied to match editor)
         drawTaperedSegment(from: neckPos, to: midTorsoWithOffset, color: toSKColor(mutableFigure.torsoColor), strokeThickness: mutableFigure.strokeThicknessUpperTorso, fusiform: mutableFigure.fusiformUpperTorso, inverted: true, peakPosition: mutableFigure.peakPositionUpperTorso)

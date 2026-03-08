@@ -1051,14 +1051,25 @@ struct StickFigure2DView: View {
         drawSegment(from: rightUpperLegEnd, to: rightFootEnd, color: figure.rightLowerLegColor, strokeThickness: figure.strokeThicknessLowerLegs, fusiform: figure.fusiformLowerLegs, inverted: true, in: context)
         
         // Draw skeleton
-        // Apply mid-torso Y offset to adjust where upper torso bottom pins to mid-torso
-        // The offset rotates with the upper torso's local coordinate system
-        // The upper torso rotates by BOTH waistTorsoAngle AND midTorsoAngle combined
+        // Apply mid-torso Y offset as a pinning constraint
+        // The offset is defined in the upper torso's LOCAL coordinate system
+        // where Y points downward along the upper torso segment
+        // We rotate this offset by the total torso rotation to get world space
         let totalTorsoRotationRadians = CGFloat((figure.waistTorsoAngle + figure.midTorsoAngle) * .pi / 180)
-        let offsetInTorsoSpace = CGPoint(x: 0, y: figure.midTorsoYOffset)
-        let rotatedOffsetX = offsetInTorsoSpace.x * cos(totalTorsoRotationRadians) - offsetInTorsoSpace.y * sin(totalTorsoRotationRadians)
-        let rotatedOffsetY = offsetInTorsoSpace.x * sin(totalTorsoRotationRadians) + offsetInTorsoSpace.y * cos(totalTorsoRotationRadians)
-        let midTorsoWithOffset = CGPoint(x: midTorsoPos.x + rotatedOffsetX, y: midTorsoPos.y + rotatedOffsetY)
+        
+        // In upper torso's local space: offset is purely in Y direction (down the torso)
+        let offsetLocalX = CGFloat(0)
+        let offsetLocalY = figure.midTorsoYOffset
+        
+        // Rotate offset into world space using the upper torso's rotation
+        let rotatedOffsetX = offsetLocalX * cos(totalTorsoRotationRadians) - offsetLocalY * sin(totalTorsoRotationRadians)
+        let rotatedOffsetY = offsetLocalX * sin(totalTorsoRotationRadians) + offsetLocalY * cos(totalTorsoRotationRadians)
+        
+        // Apply offset from midTorso
+        let midTorsoWithOffset = CGPoint(
+            x: midTorsoPos.x + rotatedOffsetX,
+            y: midTorsoPos.y + rotatedOffsetY
+        )
         
         // Upper torso: point at neck, wide in middle, point at midTorso (with offset applied)
         drawSegment(from: neckPos, to: midTorsoWithOffset, color: figure.torsoColor, strokeThickness: figure.strokeThicknessUpperTorso, fusiform: figure.fusiformUpperTorso, inverted: true, in: context)
