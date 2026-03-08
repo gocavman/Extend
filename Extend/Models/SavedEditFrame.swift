@@ -635,6 +635,63 @@ class SavedFramesManager {
         }
     }
     
+    /// Sync frames from Bundle (animations.json) to UserDefaults
+    /// This is a safe operation that replaces local storage with bundle versions
+    func syncFromBundle() -> (success: Bool, message: String) {
+        let bundleFrames = AnimationStorage.shared.loadFrames()
+        
+        guard !bundleFrames.isEmpty else {
+            return (false, "No frames found in animations.json")
+        }
+        
+        // Convert AnimationFrames to SavedEditFrames
+        var savedFrames: [SavedEditFrame] = []
+        
+        for animFrame in bundleFrames {
+            let pose = animFrame.pose.toStickFigure2D()
+            let editValues = EditModeValues(
+                figureScale: pose.scale,
+                fusiformUpperTorso: pose.fusiformUpperTorso,
+                fusiformLowerTorso: pose.fusiformLowerTorso,
+                fusiformUpperArms: pose.fusiformUpperArms,
+                fusiformLowerArms: pose.fusiformLowerArms,
+                fusiformUpperLegs: pose.fusiformUpperLegs,
+                fusiformLowerLegs: pose.fusiformLowerLegs,
+                showGrid: true,
+                showJoints: true,
+                positionX: 0,
+                positionY: 0
+            )
+            
+            let editorObjects = animFrame.objects.map { animObj in
+                EditorObject(
+                    assetName: animObj.imageName,
+                    position: animObj.position,
+                    rotation: animObj.rotation,
+                    scaleX: animObj.scale,
+                    scaleY: animObj.scale
+                )
+            }
+            
+            let savedFrame = SavedEditFrame(
+                id: animFrame.id,
+                name: animFrame.name,
+                frameNumber: animFrame.frameNumber,
+                from: editValues,
+                pose: pose,
+                objects: editorObjects
+            )
+            savedFrames.append(savedFrame)
+        }
+        
+        // Save to UserDefaults
+        saveAll(savedFrames)
+        
+        let message = "✅ Synced \(savedFrames.count) frame(s) from Bundle"
+        print(message)
+        return (true, message)
+    }
+    
     /// Clear all saved frames (for testing)
     func clearAll() {
         UserDefaults.standard.removeObject(forKey: userDefaultsKey)

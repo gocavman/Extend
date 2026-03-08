@@ -616,7 +616,7 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
             
         case (2, 7):
             // Stroke - Full Torso
-            addSliderCell(cell, label: "Full Torso", value: strokeThicknessFullTorso, min: 0.0, max: 5.0, increment: 0.1, onChange: { [weak self] val in
+            addSliderCell(cell, label: "Full Torso", value: strokeThicknessFullTorso, min: 0.0, max: 10.0, increment: 0.1, onChange: { [weak self] val in
                 self?.strokeThicknessFullTorso = val
                 self?.updateFigure()
             })
@@ -1200,6 +1200,7 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
             tempPose.peakPositionLowerLegs = self.peakPositionLowerLegs
             tempPose.peakPositionUpperTorso = self.peakPositionUpperTorso
             tempPose.peakPositionLowerTorso = self.peakPositionLowerTorso
+            tempPose.midTorsoYOffset = self.midTorsoYOffset
             tempPose.shoulderWidthMultiplier = self.shoulderWidthMultiplier
             tempPose.waistWidthMultiplier = self.waistWidthMultiplier
             tempPose.waistThicknessMultiplier = self.waistThicknessMultiplier
@@ -2210,6 +2211,7 @@ class FrameListViewController: UIViewController, UITableViewDataSource, UITableV
         
         // Setup navigation
         navigationItem.leftBarButtonItem = UIBarButtonItem(barButtonSystemItem: .close, target: self, action: #selector(closePressed))
+        navigationItem.rightBarButtonItem = UIBarButtonItem(title: "Sync", style: .plain, target: self, action: #selector(syncFromBundlePressed))
         
         // Setup search bar
         searchBar.placeholder = "Search frames..."
@@ -2446,5 +2448,47 @@ class FrameListViewController: UIViewController, UITableViewDataSource, UITableV
         }
         
         tableView.reloadData()
+    }
+    
+    // MARK: - Sync from Bundle
+    @objc private func syncFromBundlePressed() {
+        let alert = UIAlertController(
+            title: "Sync from Bundle?",
+            message: "This will replace your local frames with the ones from animations.json. This cannot be undone.",
+            preferredStyle: .alert
+        )
+        
+        alert.addAction(UIAlertAction(title: "Cancel", style: .cancel))
+        
+        alert.addAction(UIAlertAction(title: "Sync", style: .destructive) { [weak self] _ in
+            let result = SavedFramesManager.shared.syncFromBundle()
+            
+            if result.success {
+                // Reload frames from UserDefaults
+                self?.frames = SavedFramesManager.shared.getAllFrames()
+                self?.filteredFrames = self?.frames ?? []
+                self?.tableView.reloadData()
+                
+                // Show success alert
+                let successAlert = UIAlertController(
+                    title: "Sync Complete",
+                    message: result.message,
+                    preferredStyle: .alert
+                )
+                successAlert.addAction(UIAlertAction(title: "OK", style: .default))
+                self?.present(successAlert, animated: true)
+            } else {
+                // Show error alert
+                let errorAlert = UIAlertController(
+                    title: "Sync Failed",
+                    message: result.message,
+                    preferredStyle: .alert
+                )
+                errorAlert.addAction(UIAlertAction(title: "OK", style: .default))
+                self?.present(errorAlert, animated: true)
+            }
+        })
+        
+        present(alert, animated: true)
     }
 }

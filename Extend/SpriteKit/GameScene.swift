@@ -316,13 +316,13 @@ class GameScene: SKScene {
                     let easeTRight = max(0, 1.0 - (distFromPeakRight * distFromPeakRight))
                     widthFactorRight = fusiform * easeTRight
                     
-                    // Apply leg asymmetry: only expand outward (away from center)
+                    // Apply leg asymmetry: primary side expands outward, secondary side at 1/4 size
                     if legAsymmetry == "left" {
-                        // Left leg: expand only on left side, not on right
-                        widthFactorRight = 0.0
+                        // Left leg: expand more on left side, 1/4 on right side
+                        widthFactorRight = widthFactorRight * 0.45
                     } else if legAsymmetry == "right" {
-                        // Right leg: expand only on right side, not on left
-                        widthFactorLeft = 0.0
+                        // Right leg: expand more on right side, 1/4 on left side
+                        widthFactorLeft = widthFactorLeft * 0.45
                     }
                     // If "none", both sides expand normally
                 } else {
@@ -387,6 +387,126 @@ class GameScene: SKScene {
             line.lineCap = .round  // Add rounded line caps
             line.zPosition = 1
             container.addChild(line)
+        }
+        
+        // Helper to draw a curved tapered segment that bulges through a point
+        func drawCurvedTaperedSegment(
+            from: CGPoint,
+            to: CGPoint,
+            bulgePoint: CGPoint,
+            color: SKColor,
+            strokeThickness: CGFloat,
+            fusiform: CGFloat,
+            inverted: Bool,
+            peakPosition: CGFloat = 0.2,
+            in container: SKNode,
+            baseCenter: CGPoint,
+            scale: CGFloat
+        ) {
+            // Convert all points to relative coordinates
+            let fromRelative = CGPoint(x: (from.x - baseCenter.x) * scale, y: (baseCenter.y - from.y) * scale)
+            let toRelative = CGPoint(x: (to.x - baseCenter.x) * scale, y: (baseCenter.y - to.y) * scale)
+            let bulgeRelative = CGPoint(x: (bulgePoint.x - baseCenter.x) * scale, y: (baseCenter.y - bulgePoint.y) * scale)
+            
+            if fusiform == 0 {
+                // No tapered - just draw a curved line
+                let path = UIBezierPath()
+                path.move(to: fromRelative)
+                path.addQuadCurve(to: toRelative, controlPoint: bulgeRelative)
+                let line = SKShapeNode(path: path.cgPath)
+                line.strokeColor = color
+                line.lineWidth = max(strokeThickness * scale, 1.0)
+                line.lineCap = .round
+                line.zPosition = 1
+                container.addChild(line)
+                return
+            }
+            
+            // Generate points along the quadratic bezier curve
+            let numSegments = 20
+            var pathPoints: [CGPoint] = []
+            
+            for i in 0...numSegments {
+                let t = CGFloat(i) / CGFloat(numSegments)
+                
+                // Quadratic bezier: P(t) = (1-t)²*P0 + 2(1-t)t*P1 + t²*P2
+                let mt = 1.0 - t
+                let x = mt * mt * fromRelative.x + 2 * mt * t * bulgeRelative.x + t * t * toRelative.x
+                let y = mt * mt * fromRelative.y + 2 * mt * t * bulgeRelative.y + t * t * toRelative.y
+                pathPoints.append(CGPoint(x: x, y: y))
+            }
+            
+            // Create tapered shape along the curve
+            var topEdgePoints: [CGPoint] = []
+            var bottomEdgePoints: [CGPoint] = []
+            
+            for i in 0..<pathPoints.count {
+                let curr = pathPoints[i]
+                let t = CGFloat(i) / CGFloat(numSegments)
+                
+                // Calculate direction at this point on the curve
+                let mt = 1.0 - t
+                let dxdt = 2 * mt * (bulgeRelative.x - fromRelative.x) + 2 * t * (toRelative.x - bulgeRelative.x)
+                let dydt = 2 * mt * (bulgeRelative.y - fromRelative.y) + 2 * t * (toRelative.y - bulgeRelative.y)
+                
+                let dirLength = sqrt(dxdt * dxdt + dydt * dydt)
+                guard dirLength > 0 else { continue }
+                
+                // Normalized direction and perpendicular
+                let dirX = dxdt / dirLength
+                let dirY = dydt / dirLength
+                let perpX = -dirY
+                let perpY = dirX
+                
+                // Calculate width at this point (inverted diamond taper)
+                var widthFactor: CGFloat = 1.0
+                
+                if inverted {
+                    let peakT = peakPosition
+                    var distFromPeak: CGFloat
+                    
+                    if t <= peakT {
+                        distFromPeak = (peakT - t) / peakT
+                    } else {
+                        distFromPeak = (t - peakT) / (1.0 - peakT)
+                    }
+                    
+                    let easeT = max(0, 1.0 - (distFromPeak * distFromPeak))
+                    widthFactor = fusiform * easeT
+                } else {
+                    let distFromCenter = abs(t - 0.5) * 2.0
+                    widthFactor = 1.0 + (fusiform * (1.0 - distFromCenter))
+                }
+                
+                let halfWidth = (strokeThickness / 2) * (1 + widthFactor)
+                
+                // Create edge points
+                topEdgePoints.append(CGPoint(x: curr.x + perpX * halfWidth, y: curr.y + perpY * halfWidth))
+                bottomEdgePoints.append(CGPoint(x: curr.x - perpX * halfWidth, y: curr.y - perpY * halfWidth))
+            }
+            
+            // Draw the curved tapered shape
+            if !topEdgePoints.isEmpty {
+                let path = UIBezierPath()
+                path.move(to: topEdgePoints[0])
+                
+                for i in 1..<topEdgePoints.count {
+                    path.addLine(to: topEdgePoints[i])
+                }
+                
+                for i in (0..<bottomEdgePoints.count).reversed() {
+                    path.addLine(to: bottomEdgePoints[i])
+                }
+                
+                path.close()
+                
+                let shape = SKShapeNode(path: path.cgPath)
+                shape.fillColor = color
+                shape.strokeColor = color
+                shape.lineWidth = 0
+                shape.zPosition = 1
+                container.addChild(shape)
+            }
         }
         
         // Helper to draw a rounded corner line (for waist connectors)
@@ -643,12 +763,20 @@ class GameScene: SKScene {
             y: midTorsoPos.y + rotatedOffsetY
         )
         
-        // Upper torso: neck to mid-torso (with offset applied to match editor)
-        drawTaperedSegment(from: neckPos, to: midTorsoWithOffset, color: toSKColor(mutableFigure.torsoColor), strokeThickness: mutableFigure.strokeThicknessUpperTorso, fusiform: mutableFigure.fusiformUpperTorso, inverted: true, peakPosition: mutableFigure.peakPositionUpperTorso)
+        // Upper torso: curved segment when offset is significant, straight when minimal
+        // The upper torso draws to the offset point (not curved, just straight to that endpoint)
+        let midTorsoOffsetDistance = sqrt(pow(midTorsoWithOffset.x - midTorsoPos.x, 2) + pow(midTorsoWithOffset.y - midTorsoPos.y, 2))
+        if midTorsoOffsetDistance > 0.1 {
+            // Offset is significant - draw straight to offset point
+            drawTaperedSegment(from: neckPos, to: midTorsoWithOffset, color: toSKColor(mutableFigure.torsoColor), strokeThickness: mutableFigure.strokeThicknessUpperTorso, fusiform: mutableFigure.fusiformUpperTorso, inverted: true, peakPosition: mutableFigure.peakPositionUpperTorso)
+        } else {
+            // Offset is negligible - draw straight segment to midTorso
+            drawTaperedSegment(from: neckPos, to: midTorsoPos, color: toSKColor(mutableFigure.torsoColor), strokeThickness: mutableFigure.strokeThicknessUpperTorso, fusiform: mutableFigure.fusiformUpperTorso, inverted: true, peakPosition: mutableFigure.peakPositionUpperTorso)
+        }
 
-        // Lower torso from mid-torso (PINNED, no offset) to waist
-        // The lower torso stays pinned to midTorsoPos (without offset)
-        // Only the upper torso's bottom point moves with the offset
+        // Lower torso from mid-torso (PINNED to original midTorsoPos, not the offset)
+        // This keeps the lower torso connected to the visual mid-torso dot
+        // The upper torso overlaps by extending to midTorsoWithOffset
         
         if mutableFigure.waistThicknessMultiplier > 0.0 {
             // Draw triangle-shaped lower torso with rounded bottom corners
@@ -754,16 +882,13 @@ class GameScene: SKScene {
 
         let torsoPath = UIBezierPath()
         
-        // Upper torso segment: neck to midtorso (with offset applied)
+        // Upper torso segment: neck to offset point
         torsoPath.move(to: neckRelative)
-        let upperTorsoMidPoint = CGPoint(x: (neckRelative.x + midTorsoOffsetRelative.x) * 0.5,
-                                         y: (neckRelative.y + midTorsoOffsetRelative.y) * 0.5)
-        torsoPath.addQuadCurve(to: midTorsoOffsetRelative, controlPoint: upperTorsoMidPoint)
+        torsoPath.addLine(to: midTorsoOffsetRelative)
         
         // Lower torso segment: midtorso (PINNED, no offset) to waist
-        let lowerTorsoMidPoint = CGPoint(x: (midTorsoRelative.x + waistRelative.x) * 0.5,
-                                         y: (midTorsoRelative.y + waistRelative.y) * 0.5)
-        torsoPath.addQuadCurve(to: waistRelative, controlPoint: lowerTorsoMidPoint)
+        torsoPath.addLine(to: midTorsoRelative)
+        torsoPath.addLine(to: waistRelative)
         
         let torsoLine = SKShapeNode(path: torsoPath.cgPath)
         torsoLine.strokeColor = toSKColor(mutableFigure.torsoColor)

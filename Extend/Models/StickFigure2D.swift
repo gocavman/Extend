@@ -172,6 +172,7 @@ struct StickFigure2DPose: Codable {
     let peakPositionLowerLegs: CGFloat
     let peakPositionUpperTorso: CGFloat
     let peakPositionLowerTorso: CGFloat
+    let midTorsoYOffset: CGFloat
     
     // Figure scale and thickness multipliers
     let figureScale: CGFloat
@@ -251,6 +252,7 @@ struct StickFigure2DPose: Codable {
         self.peakPositionLowerLegs = figure.peakPositionLowerLegs
         self.peakPositionUpperTorso = figure.peakPositionUpperTorso
         self.peakPositionLowerTorso = figure.peakPositionLowerTorso
+        self.midTorsoYOffset = figure.midTorsoYOffset
         self.figureScale = figure.scale
         self.strokeThicknessMultiplier = 1.0  // This would need to be tracked separately
         self.skeletonSize = figure.skeletonSize
@@ -325,6 +327,7 @@ struct StickFigure2DPose: Codable {
         figure.peakPositionLowerLegs = peakPositionLowerLegs
         figure.peakPositionUpperTorso = peakPositionUpperTorso
         figure.peakPositionLowerTorso = peakPositionLowerTorso
+        figure.midTorsoYOffset = midTorsoYOffset
         figure.shoulderWidthMultiplier = shoulderWidthMultiplier
         figure.waistWidthMultiplier = waistWidthMultiplier
         figure.waistThicknessMultiplier = waistThicknessMultiplier
@@ -358,7 +361,7 @@ struct StickFigure2DPose: Codable {
         case fusiformUpperArms, fusiformLowerArms
         case fusiformUpperLegs, fusiformLowerLegs
         case fusiformUpperTorso, fusiformLowerTorso, fusiformShoulders
-        case peakPositionUpperArms, peakPositionLowerArms, peakPositionUpperLegs, peakPositionLowerLegs, peakPositionUpperTorso, peakPositionLowerTorso
+        case peakPositionUpperArms, peakPositionLowerArms, peakPositionUpperLegs, peakPositionLowerLegs, peakPositionUpperTorso, peakPositionLowerTorso, midTorsoYOffset
         case figureScale, strokeThicknessMultiplier, skeletonSize, jointShapeSize
         case shoulderWidthMultiplier, waistWidthMultiplier, waistThicknessMultiplier, neckLength, neckWidth
         case handSize, footSize
@@ -400,6 +403,7 @@ struct StickFigure2DPose: Codable {
         try container.encode(round(peakPositionUpperArms), forKey: .peakPositionUpperArms)
         try container.encode(round(peakPositionUpperLegs), forKey: .peakPositionUpperLegs)
         try container.encode(round(peakPositionUpperTorso), forKey: .peakPositionUpperTorso)
+        try container.encode(round(midTorsoYOffset), forKey: .midTorsoYOffset)
         try container.encode(round(rightElbowAngle), forKey: .rightElbowAngle)
         try container.encode(round(rightFootAngle), forKey: .rightFootAngle)
         try container.encode(round(rightHandAngle), forKey: .rightHandAngle)
@@ -490,6 +494,7 @@ struct StickFigure2DPose: Codable {
         self.peakPositionLowerLegs = try container.decodeIfPresent(CGFloat.self, forKey: .peakPositionLowerLegs) ?? 0.2
         self.peakPositionUpperTorso = try container.decodeIfPresent(CGFloat.self, forKey: .peakPositionUpperTorso) ?? 0.5
         self.peakPositionLowerTorso = try container.decodeIfPresent(CGFloat.self, forKey: .peakPositionLowerTorso) ?? 0.5
+        self.midTorsoYOffset = try container.decodeIfPresent(CGFloat.self, forKey: .midTorsoYOffset) ?? 0.0
         self.figureScale = try container.decodeIfPresent(CGFloat.self, forKey: .figureScale) ?? 1.0
         self.strokeThicknessMultiplier = try container.decodeIfPresent(CGFloat.self, forKey: .strokeThicknessMultiplier) ?? 1.0
         self.skeletonSize = try container.decodeIfPresent(CGFloat.self, forKey: .skeletonSize) ?? 1.0
@@ -1071,9 +1076,17 @@ struct StickFigure2DView: View {
             y: midTorsoPos.y + rotatedOffsetY
         )
         
-        // Upper torso: point at neck, wide in middle, point at midTorso (with offset applied)
-        drawSegment(from: neckPos, to: midTorsoWithOffset, color: figure.torsoColor, strokeThickness: figure.strokeThicknessUpperTorso, fusiform: figure.fusiformUpperTorso, inverted: true, in: context)
-        // Lower torso: point at midTorso (PINNED, no offset), wide in middle, point at waist
+        // Upper torso: draws to the offset point
+        let midTorsoOffsetDistance = sqrt(pow(midTorsoWithOffset.x - midTorsoPos.x, 2) + pow(midTorsoWithOffset.y - midTorsoPos.y, 2))
+        if midTorsoOffsetDistance > 0.1 {
+            // Offset is significant - draw straight from neck to offset point
+            drawSegment(from: neckPos, to: midTorsoWithOffset, color: figure.torsoColor, strokeThickness: figure.strokeThicknessUpperTorso, fusiform: figure.fusiformUpperTorso, inverted: true, in: context)
+        } else {
+            // Offset is negligible - draw straight segment
+            drawSegment(from: neckPos, to: midTorsoPos, color: figure.torsoColor, strokeThickness: figure.strokeThicknessUpperTorso, fusiform: figure.fusiformUpperTorso, inverted: true, in: context)
+        }
+        // Lower torso: pinned to the ORIGINAL midTorsoPos (the visual mid-torso dot)
+        // The upper torso overlaps by extending to midTorsoWithOffset
         drawSegment(from: midTorsoPos, to: waistPos, color: figure.torsoColor, strokeThickness: figure.strokeThicknessLowerTorso, fusiform: figure.fusiformLowerTorso, inverted: true, in: context)
         drawSegment(from: neckPos, to: headPos, color: figure.torsoColor, strokeThickness: figure.strokeThicknessUpperTorso, fusiform: 0, inverted: false, in: context)
         
@@ -1100,7 +1113,7 @@ struct StickFigure2DView: View {
         context.stroke(headCircle, with: .color(figure.headColor.opacity(0.8)), lineWidth: figure.strokeThickness)
         
         // Draw skeleton connector lines at joints that bend with the joint angles
-        drawSkeletonConnectors(neckPos: neckPos, midTorsoPos: midTorsoPos, waistPos: waistPos,
+        drawSkeletonConnectors(neckPos: neckPos, midTorsoPos: midTorsoPos, midTorsoWithOffset: midTorsoWithOffset, waistPos: waistPos,
                               leftShoulderPos: leftShoulderPos, rightShoulderPos: rightShoulderPos,
                               leftUpperArmEnd: leftUpperArmEnd, rightUpperArmEnd: rightUpperArmEnd,
                               leftForearmEnd: leftForearmEnd, rightForearmEnd: rightForearmEnd,
@@ -1233,7 +1246,93 @@ struct StickFigure2DView: View {
         }
     }
     
-    private func drawSkeletonConnectors(neckPos: CGPoint, midTorsoPos: CGPoint, waistPos: CGPoint,
+    private func drawCurvedSegment(from: CGPoint, to: CGPoint, bulgePoint: CGPoint, color: Color, strokeThickness: CGFloat, fusiform: CGFloat, in context: GraphicsContext) {
+        // Draw a tapered segment that curves through the bulgePoint
+        // This creates the bending effect as the offset rotates
+        
+        if fusiform == 0 {
+            var path = Path()
+            path.move(to: from)
+            path.addQuadCurve(to: to, control: bulgePoint)
+            context.stroke(path, with: .color(color), lineWidth: strokeThickness)
+            return
+        }
+        
+        // For fusiform segments, we need to create a tapered shape that follows the curve
+        // We'll approximate this by generating points along the quadratic bezier curve
+        let numSegments = 20
+        var pathPoints: [CGPoint] = []
+        
+        // Generate points along the quadratic bezier curve from→bulgePoint→to
+        for i in 0...numSegments {
+            let t = CGFloat(i) / CGFloat(numSegments)
+            
+            // Quadratic bezier: P(t) = (1-t)²*P0 + 2(1-t)t*P1 + t²*P2
+            let mt = 1.0 - t
+            let x = mt * mt * from.x + 2 * mt * t * bulgePoint.x + t * t * to.x
+            let y = mt * mt * from.y + 2 * mt * t * bulgePoint.y + t * t * to.y
+            pathPoints.append(CGPoint(x: x, y: y))
+        }
+        
+        // Now create a tapered shape along these curve points
+        var topEdgePoints: [CGPoint] = []
+        var bottomEdgePoints: [CGPoint] = []
+        
+        for i in 0..<pathPoints.count {
+            let curr = pathPoints[i]
+            let t = CGFloat(i) / CGFloat(numSegments)
+            
+            // Calculate the direction at this point on the curve
+            // For quadratic bezier: dP/dt = 2(1-t)(P1-P0) + 2t(P2-P1)
+            let mt = 1.0 - t
+            let dxdt = 2 * mt * (bulgePoint.x - from.x) + 2 * t * (to.x - bulgePoint.x)
+            let dydt = 2 * mt * (bulgePoint.y - from.y) + 2 * t * (to.y - bulgePoint.y)
+            
+            let dirLength = sqrt(dxdt * dxdt + dydt * dydt)
+            guard dirLength > 0 else { continue }
+            
+            // Normalized direction and perpendicular
+            let dirX = dxdt / dirLength
+            let dirY = dydt / dirLength
+            let perpX = -dirY
+            let perpY = dirX
+            
+            // Calculate width at this point (diamond taper)
+            let peakT: CGFloat = 0.5  // Peak width at middle of curve
+            var distFromPeak: CGFloat
+            
+            if t <= peakT {
+                distFromPeak = (peakT - t) / peakT
+            } else {
+                distFromPeak = (t - peakT) / (1.0 - peakT)
+            }
+            
+            let easeT = max(0, 1.0 - (distFromPeak * distFromPeak))
+            let widthFactor = fusiform * easeT
+            let halfWidth = (strokeThickness / 2) * (1 + widthFactor)
+            
+            // Create top and bottom edge points
+            topEdgePoints.append(CGPoint(x: curr.x + perpX * halfWidth, y: curr.y + perpY * halfWidth))
+            bottomEdgePoints.append(CGPoint(x: curr.x - perpX * halfWidth, y: curr.y - perpY * halfWidth))
+        }
+        
+        // Draw the tapered curve
+        var taperedPath = Path()
+        taperedPath.move(to: topEdgePoints[0])
+        
+        for i in 1..<topEdgePoints.count {
+            taperedPath.addLine(to: topEdgePoints[i])
+        }
+        
+        for i in (0..<bottomEdgePoints.count).reversed() {
+            taperedPath.addLine(to: bottomEdgePoints[i])
+        }
+        
+        taperedPath.closeSubpath()
+        context.fill(taperedPath, with: .color(color))
+    }
+    
+    private func drawSkeletonConnectors(neckPos: CGPoint, midTorsoPos: CGPoint, midTorsoWithOffset: CGPoint, waistPos: CGPoint,
                                         leftShoulderPos: CGPoint, rightShoulderPos: CGPoint,
                                         leftUpperArmEnd: CGPoint, rightUpperArmEnd: CGPoint,
                                         leftForearmEnd: CGPoint, rightForearmEnd: CGPoint,
@@ -1244,6 +1343,14 @@ struct StickFigure2DView: View {
         // These connectors automatically bend as the joints move
         
         var skeletonPath = Path()
+        
+        // SPINE/TORSO CONNECTOR: Draws spine with bend at mid-torso offset point
+        // Upper spine: neck to offset point
+        skeletonPath.move(to: neckPos)
+        skeletonPath.addLine(to: midTorsoWithOffset)
+        // Lower spine: offset point to original mid-torso to waist
+        skeletonPath.addLine(to: midTorsoPos)
+        skeletonPath.addLine(to: waistPos)
         
         // WAIST CONNECTORS: Pinned to neck position (follows upper body rotation)
         let leftUpperLegMid = (waistPos + leftUpperLegEnd) * 0.5
