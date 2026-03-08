@@ -87,7 +87,9 @@ struct SavedEditFrame: Codable, Identifiable {
     let shoulderWidthMultiplier: CGFloat
     let waistWidthMultiplier: CGFloat
     let waistThicknessMultiplier: CGFloat
-    let skeletonSize: CGFloat
+    let skeletonSizeTorso: CGFloat
+    let skeletonSizeArm: CGFloat
+    let skeletonSizeLeg: CGFloat
     let jointShapeSize: CGFloat
     let neckLength: CGFloat
     let neckWidth: CGFloat
@@ -152,7 +154,9 @@ struct SavedEditFrame: Codable, Identifiable {
             self.shoulderWidthMultiplier = pose.shoulderWidthMultiplier
             self.waistWidthMultiplier = pose.waistWidthMultiplier
             self.waistThicknessMultiplier = pose.waistThicknessMultiplier
-            self.skeletonSize = pose.skeletonSize
+            self.skeletonSizeTorso = pose.skeletonSizeTorso
+            self.skeletonSizeArm = pose.skeletonSizeArm
+            self.skeletonSizeLeg = pose.skeletonSizeLeg
             self.jointShapeSize = 1.0  // Editor-only property, not part of pose
             self.neckLength = pose.neckLength
             self.neckWidth = pose.neckWidth
@@ -170,7 +174,9 @@ struct SavedEditFrame: Codable, Identifiable {
             self.shoulderWidthMultiplier = 1.0
             self.waistWidthMultiplier = 1.0
             self.waistThicknessMultiplier = 0.5
-            self.skeletonSize = 1.0
+            self.skeletonSizeTorso = 1.0
+            self.skeletonSizeArm = 1.0
+            self.skeletonSizeLeg = 1.0
             self.jointShapeSize = 1.0
             self.neckLength = 1.0
             self.neckWidth = 1.0
@@ -263,7 +269,7 @@ struct SavedEditFrame: Codable, Identifiable {
         case peakPositionLowerLegs, peakPositionUpperTorso, peakPositionLowerTorso
         case figureOffsetX, figureOffsetY, waistPositionX, waistPositionY
         case shoulderWidthMultiplier, waistWidthMultiplier
-        case waistThicknessMultiplier, skeletonSize, jointShapeSize, neckLength, neckWidth
+        case waistThicknessMultiplier, skeletonSizeTorso, skeletonSizeArm, skeletonSizeLeg, jointShapeSize, neckLength, neckWidth
         case handSize, footSize, waistTorsoAngle, midTorsoAngle, torsoRotationAngle, headAngle
         case leftShoulderAngle, rightShoulderAngle, leftElbowAngle, rightElbowAngle
         case leftHandAngle, rightHandAngle, leftHipAngle, rightHipAngle
@@ -318,7 +324,9 @@ struct SavedEditFrame: Codable, Identifiable {
         shoulderWidthMultiplier = try poseContainer.decodeIfPresent(CGFloat.self, forKey: .shoulderWidthMultiplier) ?? 0.5
         waistWidthMultiplier = try poseContainer.decodeIfPresent(CGFloat.self, forKey: .waistWidthMultiplier) ?? 0.5
         waistThicknessMultiplier = try poseContainer.decodeIfPresent(CGFloat.self, forKey: .waistThicknessMultiplier) ?? 0.5
-        skeletonSize = try poseContainer.decodeIfPresent(CGFloat.self, forKey: .skeletonSize) ?? 4.0
+        skeletonSizeTorso = try poseContainer.decodeIfPresent(CGFloat.self, forKey: .skeletonSizeTorso) ?? 1.0
+        skeletonSizeArm = try poseContainer.decodeIfPresent(CGFloat.self, forKey: .skeletonSizeArm) ?? 1.0
+        skeletonSizeLeg = try poseContainer.decodeIfPresent(CGFloat.self, forKey: .skeletonSizeLeg) ?? 1.0
         jointShapeSize = try poseContainer.decodeIfPresent(CGFloat.self, forKey: .jointShapeSize) ?? 1.0
         neckLength = try poseContainer.decodeIfPresent(CGFloat.self, forKey: .neckLength) ?? 20.0
         neckWidth = try poseContainer.decodeIfPresent(CGFloat.self, forKey: .neckWidth) ?? 8.0
@@ -393,7 +401,9 @@ struct SavedEditFrame: Codable, Identifiable {
         try poseContainer.encode(shoulderWidthMultiplier, forKey: .shoulderWidthMultiplier)
         try poseContainer.encode(waistWidthMultiplier, forKey: .waistWidthMultiplier)
         try poseContainer.encode(waistThicknessMultiplier, forKey: .waistThicknessMultiplier)
-        try poseContainer.encode(skeletonSize, forKey: .skeletonSize)
+        try poseContainer.encode(skeletonSizeTorso, forKey: .skeletonSizeTorso)
+        try poseContainer.encode(skeletonSizeArm, forKey: .skeletonSizeArm)
+        try poseContainer.encode(skeletonSizeLeg, forKey: .skeletonSizeLeg)
         try poseContainer.encode(jointShapeSize, forKey: .jointShapeSize)
         try poseContainer.encode(neckLength, forKey: .neckLength)
         try poseContainer.encode(neckWidth, forKey: .neckWidth)
@@ -594,7 +604,9 @@ class SavedFramesManager {
             ("rightUpperLegColor", "\"#000000\""),
             ("scale", roundAndFormat(frame.figureScale, decimals: 1)),
             ("shoulderWidthMultiplier", roundAndFormat(frame.shoulderWidthMultiplier, decimals: 2)),
-            ("skeletonSize", roundAndFormat(frame.skeletonSize, decimals: 2)),
+            ("skeletonSizeArm", roundAndFormat(frame.skeletonSizeArm, decimals: 2)),
+            ("skeletonSizeLeg", roundAndFormat(frame.skeletonSizeLeg, decimals: 2)),
+            ("skeletonSizeTorso", roundAndFormat(frame.skeletonSizeTorso, decimals: 2)),
             ("strokeThicknessFullTorso", roundAndFormat(frame.strokeThicknessFullTorso, decimals: 1)),
             ("strokeThicknessJoints", roundAndFormat(frame.strokeThicknessJoints, decimals: 1)),
             ("strokeThicknessLowerArms", roundAndFormat(frame.strokeThicknessLowerArms, decimals: 1)),

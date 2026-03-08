@@ -15,7 +15,9 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
     private let controlsTableView = UITableView(frame: .zero, style: .insetGrouped)
     
     private var figureScale: CGFloat = 1.0  // Multiplier for display size (1.0 = normal size)
-    private var skeletonSize: CGFloat = 1.0  // Skeleton line thickness multiplier
+    private var skeletonSizeTorso: CGFloat = 1.0   // Spine/torso connector thickness multiplier
+    private var skeletonSizeArm: CGFloat = 1.0     // Arm connector thickness multiplier
+    private var skeletonSizeLeg: CGFloat = 1.0     // Leg connector thickness multiplier
     private var jointShapeSize: CGFloat = 1.0  // Joint circle size multiplier
     private var shoulderWidthMultiplier: CGFloat = 1.0  // Controls distance between shoulders (1.0 = normal)
     private var waistWidthMultiplier: CGFloat = 1.0  // Controls distance between hips (1.0 = normal)
@@ -267,13 +269,14 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
         
         switch section {
         case 0: return 2  // Zoom, Position buttons (Show Joints moved to header)
-        case 1: return isExpanded ? 10 : 0  // Figure Scale, Skeleton Size, Joint Shape Size, Shoulder Width, Waist Width, Waist Thickness, Neck Length, Neck Width, Hand Size, Foot Size
+        case 1: return isExpanded ? 9 : 0  // Figure Scale, Joint Shape Size, Shoulder Width, Waist Width, Waist Thickness, Neck Length, Neck Width, Hand Size, Foot Size (Skeleton Size removed)
         case 2: return isExpanded ? 8 : 0  // Stroke Joints, Upper Torso, Lower Torso, Upper Arms, Lower Arms, Upper Legs, Lower Legs, Full Torso
         case 3: return isExpanded ? 14 : 0  // 7 fusiform + 6 peak position sliders + 1 mid torso Y offset
-        case 4: return isExpanded ? 11 : 0  // 11 Joint sliders: head, leftShoulder, rightShoulder, leftElbow, rightElbow, leftKnee, rightKnee, leftCalf, rightCalf, waistRotation, neckRotation
-        case 5: return isExpanded ? 12 : 0  // Color pickers for each body part (added shoulders)
-        case 6: return 2  // Frames label + Save + Load (now on same row), Objects label + Add Object button
-        case 7: return 0  // Objects handled in section 6 now
+        case 4: return isExpanded ? 3 : 0  // 3 Skeleton Size sliders: Torso, Arm, Leg
+        case 5: return isExpanded ? 11 : 0  // 11 Joint sliders: head, leftShoulder, rightShoulder, leftElbow, rightElbow, leftKnee, rightKnee, leftCalf, rightCalf, waistRotation, neckRotation
+        case 6: return isExpanded ? 12 : 0  // Color pickers for each body part (added shoulders)
+        case 7: return 2  // Frames label + Save + Load (now on same row), Objects label + Add Object button
+        case 8: return 0  // Objects handled in section 7 now
         default: return 0
         }
     }
@@ -284,17 +287,18 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
         case 1: return "FIGURE SCALE & THICKNESS"
         case 2: return "STROKE THICKNESS"
         case 3: return "FUSIFORM"
-        case 4: return "JOINT ANGLES"
-        case 5: return "COLORS"
-        case 6: return nil  // Header in cell now
-        case 7: return nil  // Removed
+        case 4: return "SKELETON"
+        case 5: return "JOINT ANGLES"
+        case 6: return "COLORS"
+        case 7: return nil  // Header in cell now
+        case 8: return nil  // Removed
         default: return nil
         }
     }
     
     func tableView(_ tableView: UITableView, viewForHeaderInSection section: Int) -> UIView? {
-        // Make sections 1, 2, 3, 4, and 5 collapsible
-        guard section == 1 || section == 2 || section == 3 || section == 4 || section == 5 else { return nil }
+        // Make sections 1, 2, 3, 4, 5, and 6 collapsible
+        guard section == 1 || section == 2 || section == 3 || section == 4 || section == 5 || section == 6 else { return nil }
         
         let headerView = UIView()
         headerView.backgroundColor = UIColor(red: 0.95, green: 0.95, blue: 0.98, alpha: 1.0)
@@ -502,69 +506,81 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
             })
             
         case (1, 1):
-            // Skeleton Size slider
-            addSliderCell(cell, label: "Skeleton Size", value: skeletonSize, min: 0.0, max: 10.0, increment: 0.1, onChange: { [weak self] val in
-                self?.skeletonSize = val
-                self?.updateFigure()
-            })
-            
-        case (1, 2):
-            // Joint Shape Size slider
+            // Joint Shape Size slider (was previously at 1, 2)
             addSliderCell(cell, label: "Joint Shape Size", value: jointShapeSize, min: 0.0, max: 30.0, increment: 0.1, onChange: { [weak self] val in
                 self?.jointShapeSize = val
                 self?.updateFigure()
             })
             
-        case (1, 3):
-            // Shoulder Width slider
+        case (1, 2):
+            // Shoulder Width slider (was previously at 1, 3)
             addSliderCell(cell, label: "Shoulder Width", value: shoulderWidthMultiplier, min: 0.0, max: 2.0, increment: 0.1, onChange: { [weak self] val in
                 self?.shoulderWidthMultiplier = val
                 self?.updateFigure()
             })
             
-        case (1, 4):
-            // Waist Width slider
+        case (1, 3):
+            // Waist Width slider (was previously at 1, 4)
             addSliderCell(cell, label: "Waist Width", value: waistWidthMultiplier, min: 0.0, max: 2.0, increment: 0.1, onChange: { [weak self] val in
                 self?.waistWidthMultiplier = val
                 self?.updateFigure()
             })
             
-        case (1, 5):
-            // Waist Thickness slider - now controls triangle point position
+        case (1, 4):
+            // Waist Thickness slider - now controls triangle point position (was previously at 1, 5)
             addSliderCell(cell, label: "Waist Point", value: waistThicknessMultiplier, min: 0.0, max: 0.9, increment: 0.1, onChange: { [weak self] val in
                 self?.waistThicknessMultiplier = val
                 self?.updateFigure()
             })
             
-        case (1, 6):
-            // Neck Length slider
+        case (1, 5):
+            // Neck Length slider (was previously at 1, 6)
             addSliderCell(cell, label: "Neck Length", value: neckLength, min: 0.5, max: 30.0, increment: 0.1, onChange: { [weak self] val in
                 self?.neckLength = val
                 self?.updateFigure()
             })
             
-        case (1, 7):
-            // Neck Width slider
+        case (1, 6):
+            // Neck Width slider (was previously at 1, 7)
             addSliderCell(cell, label: "Neck Width", value: neckWidth, min: 0.5, max: 10.0, increment: 0.1, onChange: { [weak self] val in
                 self?.neckWidth = val
                 self?.updateFigure()
             })
             
-        case (1, 8):
-            // Hand Size slider
+        case (1, 7):
+            // Hand Size slider (was previously at 1, 8)
             addSliderCell(cell, label: "Hand Size", value: handSize, min: 0.5, max: 10.0, increment: 0.1, onChange: { [weak self] val in
                 self?.handSize = val
                 self?.updateFigure()
             })
             
-        case (1, 9):
-            // Foot Size slider
+        case (1, 8):
+            // Foot Size slider (was previously at 1, 9)
             addSliderCell(cell, label: "Foot Size", value: footSize, min: 0.5, max: 10.0, increment: 0.1, onChange: { [weak self] val in
                 self?.footSize = val
                 self?.updateFigure()
             })
             
-        // Stroke sliders - NEW SECTION 2
+        // Skeleton size sliders - NEW SECTION 4
+        case (4, 0):
+            addSliderCell(cell, label: "Torso Skeleton", value: skeletonSizeTorso, min: 0.0, max: 5.0, increment: 0.1, onChange: { [weak self] val in
+                self?.skeletonSizeTorso = val
+                self?.updateFigure()
+            })
+            
+        case (4, 1):
+            addSliderCell(cell, label: "Arm Skeleton", value: skeletonSizeArm, min: 0.0, max: 5.0, increment: 0.1, onChange: { [weak self] val in
+                self?.skeletonSizeArm = val
+                self?.updateFigure()
+            })
+            
+        case (4, 2):
+            addSliderCell(cell, label: "Leg Skeleton", value: skeletonSizeLeg, min: 0.0, max: 5.0, increment: 0.1, onChange: { [weak self] val in
+                self?.skeletonSizeLeg = val
+                self?.updateFigure()
+            })
+            
+        // Stroke sliders - SECTION 2
         case (2, 0):
             // Stroke - Joints
             addSliderCell(cell, label: "Joints", value: strokeThicknessJoints, min: 0.0, max: 10.0, increment: 0.1, onChange: { [weak self] val in
@@ -642,46 +658,46 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
         // Option 2: min: -30.0, max: 30.0, increment: 0.5 (3x range, 5x increment for better visibility)
         case (3, 13): addSliderCell(cell, label: "Mid Torso Y Offset", value: midTorsoYOffset, min: -30.0, max: 30.0, increment: 0.5, onChange: { [weak self] val in self?.midTorsoYOffset = val; self?.updateFigure() })
         
-        // Joint sliders - NOW SECTION 4
-        case (4, 0): addSliderCell(cell, label: "Head", value: neckRotation, min: -180, max: 180, increment: 1, onChange: { [weak self] val in self?.neckRotation = val; self?.updateFigure() })
-        case (4, 1): addSliderCell(cell, label: "L Shoulder", value: leftShoulderAngle, min: -180, max: 180, increment: 1, onChange: { [weak self] val in self?.leftShoulderAngle = val; self?.updateFigure() })
-        case (4, 2): addSliderCell(cell, label: "R Shoulder", value: rightShoulderAngle, min: -180, max: 180, increment: 1, onChange: { [weak self] val in self?.rightShoulderAngle = val; self?.updateFigure() })
-        case (4, 3): addSliderCell(cell, label: "L Elbow", value: leftElbowAngle, min: -180, max: 180, increment: 1, onChange: { [weak self] val in self?.leftElbowAngle = val; self?.updateFigure() })
-        case (4, 4): addSliderCell(cell, label: "R Elbow", value: rightElbowAngle, min: -180, max: 180, increment: 1, onChange: { [weak self] val in self?.rightElbowAngle = val; self?.updateFigure() })
-        case (4, 5): addSliderCell(cell, label: "L Upper Leg", value: leftKneeAngle, min: -180, max: 180, increment: 1, onChange: { [weak self] val in self?.leftKneeAngle = val; self?.updateFigure() })
-        case (4, 6): addSliderCell(cell, label: "R Upper Leg", value: rightKneeAngle, min: -180, max: 180, increment: 1, onChange: { [weak self] val in self?.rightKneeAngle = val; self?.updateFigure() })
-        case (4, 7): addSliderCell(cell, label: "L Calf", value: leftFootAngle, min: -180, max: 180, increment: 1, onChange: { [weak self] val in self?.leftFootAngle = val; self?.updateFigure() })
-        case (4, 8): addSliderCell(cell, label: "R Calf", value: rightFootAngle, min: -180, max: 180, increment: 1, onChange: { [weak self] val in self?.rightFootAngle = val; self?.updateFigure() })
-        case (4, 9): addSliderCell(cell, label: "Waist Rotation", value: waistTorsoAngle, min: -180, max: 180, increment: 1, onChange: { [weak self] val in self?.waistTorsoAngle = val; self?.updateFigure() })
-        case (4, 10): addSliderCell(cell, label: "Mid Torso Rotation", value: lowerTorsoRotation, min: -180, max: 180, increment: 1, onChange: { [weak self] val in self?.lowerTorsoRotation = val; self?.updateFigure() })
+        // Joint sliders - SECTION 5 (was previously section 4)
+        case (5, 0): addSliderCell(cell, label: "Head", value: neckRotation, min: -180, max: 180, increment: 1, onChange: { [weak self] val in self?.neckRotation = val; self?.updateFigure() })
+        case (5, 1): addSliderCell(cell, label: "L Shoulder", value: leftShoulderAngle, min: -180, max: 180, increment: 1, onChange: { [weak self] val in self?.leftShoulderAngle = val; self?.updateFigure() })
+        case (5, 2): addSliderCell(cell, label: "R Shoulder", value: rightShoulderAngle, min: -180, max: 180, increment: 1, onChange: { [weak self] val in self?.rightShoulderAngle = val; self?.updateFigure() })
+        case (5, 3): addSliderCell(cell, label: "L Elbow", value: leftElbowAngle, min: -180, max: 180, increment: 1, onChange: { [weak self] val in self?.leftElbowAngle = val; self?.updateFigure() })
+        case (5, 4): addSliderCell(cell, label: "R Elbow", value: rightElbowAngle, min: -180, max: 180, increment: 1, onChange: { [weak self] val in self?.rightElbowAngle = val; self?.updateFigure() })
+        case (5, 5): addSliderCell(cell, label: "L Upper Leg", value: leftKneeAngle, min: -180, max: 180, increment: 1, onChange: { [weak self] val in self?.leftKneeAngle = val; self?.updateFigure() })
+        case (5, 6): addSliderCell(cell, label: "R Upper Leg", value: rightKneeAngle, min: -180, max: 180, increment: 1, onChange: { [weak self] val in self?.rightKneeAngle = val; self?.updateFigure() })
+        case (5, 7): addSliderCell(cell, label: "L Calf", value: leftFootAngle, min: -180, max: 180, increment: 1, onChange: { [weak self] val in self?.leftFootAngle = val; self?.updateFigure() })
+        case (5, 8): addSliderCell(cell, label: "R Calf", value: rightFootAngle, min: -180, max: 180, increment: 1, onChange: { [weak self] val in self?.rightFootAngle = val; self?.updateFigure() })
+        case (5, 9): addSliderCell(cell, label: "Waist Rotation", value: waistTorsoAngle, min: -180, max: 180, increment: 1, onChange: { [weak self] val in self?.waistTorsoAngle = val; self?.updateFigure() })
+        case (5, 10): addSliderCell(cell, label: "Mid Torso Rotation", value: lowerTorsoRotation, min: -180, max: 180, increment: 1, onChange: { [weak self] val in self?.lowerTorsoRotation = val; self?.updateFigure() })
         
-        // Color picker buttons - NOW SECTION 5
-        case (5, 0):
+        // Color picker buttons - SECTION 6 (was previously section 5)
+        case (6, 0):
             addColorButton(cell, label: "Head", colorKey: "head")
-        case (5, 1):
+        case (6, 1):
             addColorButton(cell, label: "Torso", colorKey: "torso")
-        case (5, 2):
+        case (6, 2):
             addColorButton(cell, label: "L Shoulder", colorKey: "leftShoulder")
-        case (5, 3):
+        case (6, 3):
             addColorButton(cell, label: "R Shoulder", colorKey: "rightShoulder")
-        case (5, 4):
+        case (6, 4):
             addColorButton(cell, label: "L Upper Arm", colorKey: "leftUpperArm")
-        case (5, 5):
+        case (6, 5):
             addColorButton(cell, label: "R Upper Arm", colorKey: "rightUpperArm")
-        case (5, 6):
+        case (6, 6):
             addColorButton(cell, label: "L Lower Arm", colorKey: "leftLowerArm")
-        case (5, 7):
+        case (6, 7):
             addColorButton(cell, label: "R Lower Arm", colorKey: "rightLowerArm")
-        case (5, 8):
+        case (6, 8):
             addColorButton(cell, label: "L Upper Leg", colorKey: "leftUpperLeg")
-        case (5, 9):
+        case (6, 9):
             addColorButton(cell, label: "R Upper Leg", colorKey: "rightUpperLeg")
-        case (5, 10):
+        case (6, 10):
             addColorButton(cell, label: "L Lower Leg", colorKey: "leftLowerLeg")
-        case (5, 11):
+        case (6, 11):
             addColorButton(cell, label: "R Lower Leg", colorKey: "rightLowerLeg")
             
-        case (6, 0):
+        case (7, 0):
             // Frames label with Save and Load buttons on same row
             let container = UIStackView()
             container.axis = .horizontal
@@ -729,8 +745,8 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
                 loadBtn.widthAnchor.constraint(equalToConstant: 60)
             ])
             
-        case (6, 1):
-            // Objects label with Add Object button
+        case (7, 1):
+            // Objects label with Add Object button (was previously 6, 1)
             let container = UIStackView()
             container.axis = .horizontal
             container.spacing = 8
@@ -774,7 +790,7 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
     }
     
     func tableView(_ tableView: UITableView, heightForRowAt indexPath: IndexPath) -> CGFloat {
-        if indexPath.section == 0 || indexPath.section == 5 || indexPath.section == 6 {
+        if indexPath.section == 0 || indexPath.section == 6 || indexPath.section == 7 {
             return UITableView.automaticDimension
         }
         return UITableView.automaticDimension
@@ -1023,7 +1039,9 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
             strokeThicknessLowerLegs = standFrame.strokeThicknessLowerLegs
             strokeThicknessFullTorso = standFrame.strokeThicknessFullTorso
             // Note: jointShapeSize is editor-only property, not in StickFigure2D
-            skeletonSize = standFrame.skeletonSize
+            skeletonSizeTorso = standFrame.skeletonSizeTorso
+            skeletonSizeArm = standFrame.skeletonSizeArm
+            skeletonSizeLeg = standFrame.skeletonSizeLeg
             shoulderWidthMultiplier = standFrame.shoulderWidthMultiplier
             waistWidthMultiplier = standFrame.waistWidthMultiplier
             waistThicknessMultiplier = standFrame.waistThicknessMultiplier
@@ -1095,14 +1113,16 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
     
     // MARK: - Update Figure
     func updateFigure() {
-        print("🎮 DEBUG updateFigure: skeletonSize=\(skeletonSize) jointShapeSize=\(jointShapeSize)")
+        print("🎮 DEBUG updateFigure: skeletonSizeTorso=\(skeletonSizeTorso) skeletonSizeArm=\(skeletonSizeArm) skeletonSizeLeg=\(skeletonSizeLeg) jointShapeSize=\(jointShapeSize)")
         
         // Update coordinate label if it exists
         coordinateLabel?.text = String(format: "X: %.0f\nY: %.0f", figureOffsetX, figureOffsetY)
         
         editorScene?.updateWithValues(
             figureScale: figureScale,
-            skeletonSize: skeletonSize,
+            skeletonSizeTorso: skeletonSizeTorso,
+            skeletonSizeArm: skeletonSizeArm,
+            skeletonSizeLeg: skeletonSizeLeg,
             jointShapeSize: jointShapeSize,
             shoulderWidthMultiplier: shoulderWidthMultiplier,
             waistWidthMultiplier: waistWidthMultiplier,
@@ -1204,7 +1224,9 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
             tempPose.shoulderWidthMultiplier = self.shoulderWidthMultiplier
             tempPose.waistWidthMultiplier = self.waistWidthMultiplier
             tempPose.waistThicknessMultiplier = self.waistThicknessMultiplier
-            tempPose.skeletonSize = self.skeletonSize
+            tempPose.skeletonSizeTorso = self.skeletonSizeTorso
+            tempPose.skeletonSizeArm = self.skeletonSizeArm
+            tempPose.skeletonSizeLeg = self.skeletonSizeLeg
             tempPose.neckLength = self.neckLength
             tempPose.neckWidth = self.neckWidth
             tempPose.handSize = self.handSize
@@ -1419,7 +1441,9 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
         figureOffsetY = frame.positionY
         
         // Restore all multiplier and size properties
-        skeletonSize = frame.skeletonSize
+        skeletonSizeTorso = frame.skeletonSizeTorso
+        skeletonSizeArm = frame.skeletonSizeArm
+        skeletonSizeLeg = frame.skeletonSizeLeg
         jointShapeSize = frame.jointShapeSize
         shoulderWidthMultiplier = frame.shoulderWidthMultiplier
         waistWidthMultiplier = frame.waistWidthMultiplier
@@ -1850,7 +1874,9 @@ class StickFigureEditorScene: SKScene {
     
     func updateWithValues(
         figureScale: CGFloat,
-        skeletonSize: CGFloat = 1.0,
+        skeletonSizeTorso: CGFloat = 1.0,
+        skeletonSizeArm: CGFloat = 1.0,
+        skeletonSizeLeg: CGFloat = 1.0,
         jointShapeSize: CGFloat = 1.0,
         shoulderWidthMultiplier: CGFloat = 1.0,
         waistWidthMultiplier: CGFloat = 1.0,
@@ -1931,7 +1957,9 @@ class StickFigureEditorScene: SKScene {
         updatedFrame.shoulderWidthMultiplier = shoulderWidthMultiplier
         updatedFrame.waistWidthMultiplier = waistWidthMultiplier
         updatedFrame.waistThicknessMultiplier = waistThicknessMultiplier
-        updatedFrame.skeletonSize = skeletonSize
+        updatedFrame.skeletonSizeTorso = skeletonSizeTorso
+        updatedFrame.skeletonSizeArm = skeletonSizeArm
+        updatedFrame.skeletonSizeLeg = skeletonSizeLeg
         updatedFrame.neckLength = neckLength
         updatedFrame.neckWidth = neckWidth
         updatedFrame.handSize = handSize
@@ -1947,7 +1975,7 @@ class StickFigureEditorScene: SKScene {
         updatedFrame.strokeThicknessLowerLegs = strokeThicknessLowerLegs
         updatedFrame.strokeThicknessFullTorso = strokeThicknessFullTorso
         
-        print("🎮 DEBUG updateWithValues: Setting skeletonSize=\(skeletonSize) jointShapeSize=\(jointShapeSize) on updatedFrame")
+        print("🎮 DEBUG updateWithValues: Setting skeletonSizeTorso=\(skeletonSizeTorso) skeletonSizeArm=\(skeletonSizeArm) skeletonSizeLeg=\(skeletonSizeLeg) jointShapeSize=\(jointShapeSize) on updatedFrame")
         
         // Apply angles to the frame - map to existing properties
         updatedFrame.headAngle = neckRotation           // Maps neckRotation to headAngle

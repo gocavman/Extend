@@ -261,11 +261,11 @@ class MuscleSystem {
         let clamped = max(0, min(100, musclePoints))
         
         // Clamp to range [0, 100]
-        if clamped <= 0 { 
+        if clamped <= 0 {
             let val = getPropertyValue(propertyKey, from: standFrames[0])
             return val
         }
-        if clamped >= 100 { 
+        if clamped >= 100 {
             let val = getPropertyValue(propertyKey, from: standFrames[4])
             return val
         }
@@ -300,7 +300,9 @@ class MuscleSystem {
         case "neckWidth": return Double(frame.neckWidth)
         case "handSize": return Double(frame.handSize)
         case "footSize": return Double(frame.footSize)
-        case "skeletonSize": return Double(frame.skeletonSize)
+        case "skeletonSizeTorso": return Double(frame.skeletonSizeTorso)
+        case "skeletonSizeArm": return Double(frame.skeletonSizeArm)
+        case "skeletonSizeLeg": return Double(frame.skeletonSizeLeg)
         case "waistThicknessMultiplier": return Double(frame.waistThicknessMultiplier)
         case "strokeThicknessUpperTorso": return Double(frame.strokeThicknessUpperTorso)
         case "strokeThicknessLowerTorso": return Double(frame.strokeThicknessLowerTorso)

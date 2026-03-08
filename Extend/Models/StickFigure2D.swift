@@ -177,7 +177,9 @@ struct StickFigure2DPose: Codable {
     // Figure scale and thickness multipliers
     let figureScale: CGFloat
     let strokeThicknessMultiplier: CGFloat
-    let skeletonSize: CGFloat
+    let skeletonSizeTorso: CGFloat
+    let skeletonSizeArm: CGFloat
+    let skeletonSizeLeg: CGFloat
     let jointShapeSize: CGFloat
     let shoulderWidthMultiplier: CGFloat
     let waistWidthMultiplier: CGFloat
@@ -255,7 +257,9 @@ struct StickFigure2DPose: Codable {
         self.midTorsoYOffset = figure.midTorsoYOffset
         self.figureScale = figure.scale
         self.strokeThicknessMultiplier = 1.0  // This would need to be tracked separately
-        self.skeletonSize = figure.skeletonSize
+        self.skeletonSizeTorso = figure.skeletonSizeTorso
+        self.skeletonSizeArm = figure.skeletonSizeArm
+        self.skeletonSizeLeg = figure.skeletonSizeLeg
         self.jointShapeSize = 1.0  // This would need to be tracked separately
         self.shoulderWidthMultiplier = figure.shoulderWidthMultiplier
         self.waistWidthMultiplier = figure.waistWidthMultiplier
@@ -331,7 +335,9 @@ struct StickFigure2DPose: Codable {
         figure.shoulderWidthMultiplier = shoulderWidthMultiplier
         figure.waistWidthMultiplier = waistWidthMultiplier
         figure.waistThicknessMultiplier = waistThicknessMultiplier
-        figure.skeletonSize = skeletonSize
+        figure.skeletonSizeTorso = skeletonSizeTorso
+        figure.skeletonSizeArm = skeletonSizeArm
+        figure.skeletonSizeLeg = skeletonSizeLeg
         figure.neckLength = neckLength
         figure.neckWidth = neckWidth
         figure.handSize = handSize
@@ -362,7 +368,7 @@ struct StickFigure2DPose: Codable {
         case fusiformUpperLegs, fusiformLowerLegs
         case fusiformUpperTorso, fusiformLowerTorso, fusiformShoulders
         case peakPositionUpperArms, peakPositionLowerArms, peakPositionUpperLegs, peakPositionLowerLegs, peakPositionUpperTorso, peakPositionLowerTorso, midTorsoYOffset
-        case figureScale, strokeThicknessMultiplier, skeletonSize, jointShapeSize
+        case figureScale, strokeThicknessMultiplier, skeletonSizeTorso, skeletonSizeArm, skeletonSizeLeg, jointShapeSize
         case shoulderWidthMultiplier, waistWidthMultiplier, waistThicknessMultiplier, neckLength, neckWidth
         case handSize, footSize
         case figureOffsetX, figureOffsetY
@@ -414,7 +420,9 @@ struct StickFigure2DPose: Codable {
         try container.encode(round(waistWidthMultiplier), forKey: .waistWidthMultiplier)
         try container.encode(round(waistThicknessMultiplier), forKey: .waistThicknessMultiplier)
         try container.encode(scale, forKey: .scale)
-        try container.encode(round(skeletonSize), forKey: .skeletonSize)
+        try container.encode(round(skeletonSizeTorso), forKey: .skeletonSizeTorso)
+        try container.encode(round(skeletonSizeArm), forKey: .skeletonSizeArm)
+        try container.encode(round(skeletonSizeLeg), forKey: .skeletonSizeLeg)
         try container.encode(round(strokeThicknessFullTorso), forKey: .strokeThicknessFullTorso)
         try container.encode(round(strokeThicknessJoints), forKey: .strokeThicknessJoints)
         try container.encode(round(strokeThicknessLowerArms), forKey: .strokeThicknessLowerArms)
@@ -497,7 +505,9 @@ struct StickFigure2DPose: Codable {
         self.midTorsoYOffset = try container.decodeIfPresent(CGFloat.self, forKey: .midTorsoYOffset) ?? 0.0
         self.figureScale = try container.decodeIfPresent(CGFloat.self, forKey: .figureScale) ?? 1.0
         self.strokeThicknessMultiplier = try container.decodeIfPresent(CGFloat.self, forKey: .strokeThicknessMultiplier) ?? 1.0
-        self.skeletonSize = try container.decodeIfPresent(CGFloat.self, forKey: .skeletonSize) ?? 1.0
+        self.skeletonSizeTorso = try container.decodeIfPresent(CGFloat.self, forKey: .skeletonSizeTorso) ?? 1.0
+        self.skeletonSizeArm = try container.decodeIfPresent(CGFloat.self, forKey: .skeletonSizeArm) ?? 1.0
+        self.skeletonSizeLeg = try container.decodeIfPresent(CGFloat.self, forKey: .skeletonSizeLeg) ?? 1.0
         self.jointShapeSize = try container.decodeIfPresent(CGFloat.self, forKey: .jointShapeSize) ?? 1.0
         self.shoulderWidthMultiplier = try container.decodeIfPresent(CGFloat.self, forKey: .shoulderWidthMultiplier) ?? 1.0
         self.waistWidthMultiplier = try container.decodeIfPresent(CGFloat.self, forKey: .waistWidthMultiplier) ?? 1.0
@@ -583,7 +593,9 @@ struct StickFigure2D {
     var shoulderWidthMultiplier: CGFloat = 1.0 // Shoulder separation multiplier (1.0 = normal, >1.0 = wider)
     var waistWidthMultiplier: CGFloat = 1.0 // Waist width multiplier (1.0 = normal, >1.0 = wider)
     var waistThicknessMultiplier: CGFloat = 1.0 // Waist connector line thickness (1.0 = normal)
-    var skeletonSize: CGFloat = 1.0 // Skeleton connector thickness (1.0 = normal)
+    var skeletonSizeTorso: CGFloat = 1.0 // Spine/torso connector thickness multiplier (1.0 = normal)
+    var skeletonSizeArm: CGFloat = 1.0 // Arm connector thickness multiplier (1.0 = normal)
+    var skeletonSizeLeg: CGFloat = 1.0 // Leg connector thickness multiplier (1.0 = normal)
     var neckLength: CGFloat = 1.0 // Neck length multiplier (1.0 = normal)
     var neckWidth: CGFloat = 1.0 // Neck connector width multiplier (1.0 = normal)
     var handSize: CGFloat = 1.0 // Hand size multiplier (1.0 = normal)

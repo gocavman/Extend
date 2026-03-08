@@ -1,0 +1,5 @@
+---
+triple:          'arm64-apple-darwin'
+binary-path:     '/Users/cavan/Developer/Extend/build/Release-iphoneos/Extend.app/Extend'
+relocations:     []
+...

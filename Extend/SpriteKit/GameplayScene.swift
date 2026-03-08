@@ -156,9 +156,9 @@ class GameplayScene: GameScene {
             print("🎮 Rendering stand frame from gameState")
             
             // Apply muscle scaling to the stand frame
-            print("🎮 DEBUG Stand Frame BEFORE scaling: shoulderWidth=\(standFrame.shoulderWidthMultiplier), waistWidth=\(standFrame.waistWidthMultiplier), skeletonSize=\(standFrame.skeletonSize)")
+            print("🎮 DEBUG Stand Frame BEFORE scaling: shoulderWidth=\(standFrame.shoulderWidthMultiplier), waistWidth=\(standFrame.waistWidthMultiplier), skeletonSizeTorso=\(standFrame.skeletonSizeTorso), skeletonSizeArm=\(standFrame.skeletonSizeArm), skeletonSizeLeg=\(standFrame.skeletonSizeLeg)")
             let scaledFrame = applyMuscleScaling(to: standFrame)
-            print("🎮 DEBUG Stand Frame AFTER scaling: shoulderWidth=\(scaledFrame.shoulderWidthMultiplier), waistWidth=\(scaledFrame.waistWidthMultiplier), skeletonSize=\(scaledFrame.skeletonSize)")
+            print("🎮 DEBUG Stand Frame AFTER scaling: shoulderWidth=\(scaledFrame.shoulderWidthMultiplier), waistWidth=\(scaledFrame.waistWidthMultiplier), skeletonSizeTorso=\(scaledFrame.skeletonSizeTorso), skeletonSizeArm=\(scaledFrame.skeletonSizeArm), skeletonSizeLeg=\(scaledFrame.skeletonSizeLeg)")
             
             // Create a container node
             let characterContainer = SKNode()
@@ -443,14 +443,14 @@ class GameplayScene: GameScene {
                 
                 let moveFrame = gameState.moveFrames[moveFrameIndex]
                 print("🎮 Updating to move frame \(moveFrameIndex + 1)")
-                print("🎮 DEBUG Move Frame \(moveFrameIndex + 1) BEFORE scaling: shoulderWidth=\(moveFrame.shoulderWidthMultiplier), waistWidth=\(moveFrame.waistWidthMultiplier), skeletonSize=\(moveFrame.skeletonSize)")
+                print("🎮 DEBUG Move Frame \(moveFrameIndex + 1) BEFORE scaling: shoulderWidth=\(moveFrame.shoulderWidthMultiplier), waistWidth=\(moveFrame.waistWidthMultiplier), skeletonSizeTorso=\(moveFrame.skeletonSizeTorso), skeletonSizeArm=\(moveFrame.skeletonSizeArm), skeletonSizeLeg=\(moveFrame.skeletonSizeLeg)")
                 
                 // Remove old stick figure and add new one
                 if let characterContainer = self.characterNode {
                     characterContainer.removeAllChildren()
                     let shouldFlip = !gameState.facingRight
                     let scaledFrame = self.applyMuscleScaling(to: moveFrame)
-                    print("🎮 DEBUG Move Frame \(moveFrameIndex + 1) AFTER scaling: shoulderWidth=\(scaledFrame.shoulderWidthMultiplier), waistWidth=\(scaledFrame.waistWidthMultiplier), skeletonSize=\(scaledFrame.skeletonSize)")
+                    print("🎮 DEBUG Move Frame \(moveFrameIndex + 1) AFTER scaling: shoulderWidth=\(scaledFrame.shoulderWidthMultiplier), waistWidth=\(scaledFrame.waistWidthMultiplier), skeletonSizeTorso=\(scaledFrame.skeletonSizeTorso), skeletonSizeArm=\(scaledFrame.skeletonSizeArm), skeletonSizeLeg=\(scaledFrame.skeletonSizeLeg)")
                     let stickFigureNode = self.renderStickFigure(scaledFrame, at: CGPoint.zero, scale: 1.2, flipped: shouldFlip)
                     characterContainer.addChild(stickFigureNode)
                     
@@ -594,7 +594,9 @@ class GameplayScene: GameScene {
                     figure.strokeThicknessUpperLegs = frame.strokeThicknessUpperLegs
                     figure.strokeThicknessLowerLegs = frame.strokeThicknessLowerLegs
                     figure.strokeThicknessJoints = frame.strokeThicknessJoints
-                    figure.skeletonSize = frame.skeletonSize
+                    figure.skeletonSizeTorso = frame.skeletonSizeTorso
+                    figure.skeletonSizeArm = frame.skeletonSizeArm
+                    figure.skeletonSizeLeg = frame.skeletonSizeLeg
                     figure.waistThicknessMultiplier = frame.waistThicknessMultiplier
                     figure.waistWidthMultiplier = frame.waistWidthMultiplier
                     print("🎮 ✓ Loaded frame '\(name)' successfully")
@@ -683,15 +685,19 @@ class GameplayScene: GameScene {
         let neckWidth = MuscleSystem.shared.getDerivedPropertyValue(for: "neckWidth", state: gameState.muscleState)
         let handSize = MuscleSystem.shared.getDerivedPropertyValue(for: "handSize", state: gameState.muscleState)
         let footSize = MuscleSystem.shared.getDerivedPropertyValue(for: "footSize", state: gameState.muscleState)
-        let skeletonSize = MuscleSystem.shared.getDerivedPropertyValue(for: "skeletonSize", state: gameState.muscleState)
+        let skeletonSizeTorso = MuscleSystem.shared.getDerivedPropertyValue(for: "skeletonSizeTorso", state: gameState.muscleState)
+        let skeletonSizeArm = MuscleSystem.shared.getDerivedPropertyValue(for: "skeletonSizeArm", state: gameState.muscleState)
+        let skeletonSizeLeg = MuscleSystem.shared.getDerivedPropertyValue(for: "skeletonSizeLeg", state: gameState.muscleState)
         let waistThicknessMultiplier = MuscleSystem.shared.getDerivedPropertyValue(for: "waistThicknessMultiplier", state: gameState.muscleState)
         
-        print("🎮 DEBUG applyMuscleScaling derived: neckWidth=\(neckWidth), handSize=\(handSize), footSize=\(footSize), skeletonSize=\(skeletonSize), waistThicknessMultiplier=\(waistThicknessMultiplier)")
+        print("🎮 DEBUG applyMuscleScaling derived: neckWidth=\(neckWidth), handSize=\(handSize), footSize=\(footSize), skeletonSizeTorso=\(skeletonSizeTorso), skeletonSizeArm=\(skeletonSizeArm), skeletonSizeLeg=\(skeletonSizeLeg), waistThicknessMultiplier=\(waistThicknessMultiplier)")
         
         scaledFigure.neckWidth = neckWidth
         scaledFigure.handSize = handSize
         scaledFigure.footSize = footSize
-        scaledFigure.skeletonSize = skeletonSize
+        scaledFigure.skeletonSizeTorso = skeletonSizeTorso
+        scaledFigure.skeletonSizeArm = skeletonSizeArm
+        scaledFigure.skeletonSizeLeg = skeletonSizeLeg
         scaledFigure.waistThicknessMultiplier = waistThicknessMultiplier
         
         let isSideView = frameShoulderWidth == 0 && frameWaistWidth == 0
@@ -705,10 +711,12 @@ class GameplayScene: GameScene {
             scaledFigure.fusiformLowerLegs = min(scaledFigure.fusiformLowerLegs, 3.0)
             
             let legRatio = scaledFigure.fusiformLowerLegs / 3.0
-            scaledFigure.skeletonSize = min(scaledFigure.skeletonSize, max(2.0, 3.5 * legRatio))
+            scaledFigure.skeletonSizeTorso = min(scaledFigure.skeletonSizeTorso, max(2.0, 3.5 * legRatio))
+            scaledFigure.skeletonSizeArm = min(scaledFigure.skeletonSizeArm, max(2.0, 3.5 * legRatio))
+            scaledFigure.skeletonSizeLeg = min(scaledFigure.skeletonSizeLeg, max(2.0, 3.5 * legRatio))
         }
         
-        print("🎮 DEBUG applyMuscleScaling FINAL: skeletonSize=\(scaledFigure.skeletonSize), fusiformUpperTorso=\(scaledFigure.fusiformUpperTorso), fusiformUpperArms=\(scaledFigure.fusiformUpperArms)")
+        print("🎮 DEBUG applyMuscleScaling FINAL: skeletonSizeTorso=\(scaledFigure.skeletonSizeTorso) skeletonSizeArm=\(scaledFigure.skeletonSizeArm) skeletonSizeLeg=\(scaledFigure.skeletonSizeLeg), fusiformUpperTorso=\(scaledFigure.fusiformUpperTorso), fusiformUpperArms=\(scaledFigure.fusiformUpperArms)")
         
         return scaledFigure
     }

@@ -829,9 +829,9 @@ class GameScene: SKScene {
         
         // Helper to draw a skeleton connector line with the color of its body part
         // Simple lines that bend around joints
-        func drawSkeletonConnector(from: CGPoint, to: CGPoint, color: SKColor) {
-            let lineWidth = max(mutableFigure.strokeThicknessJoints * 0.8 * scale * mutableFigure.skeletonSize, 1.0)
-            print("🦴 Drawing skeleton connector: lineWidth=\(lineWidth), skeletonSize=\(mutableFigure.skeletonSize), jointThickness=\(mutableFigure.strokeThicknessJoints), scale=\(scale)")
+        func drawSkeletonConnector(from: CGPoint, to: CGPoint, color: SKColor, skeletonSizeMultiplier: CGFloat) {
+            let lineWidth = max(mutableFigure.strokeThicknessJoints * 0.8 * scale * skeletonSizeMultiplier, 1.0)
+            print("🦴 Drawing skeleton connector: lineWidth=\(lineWidth), skeletonSize=\(skeletonSizeMultiplier), jointThickness=\(mutableFigure.strokeThicknessJoints), scale=\(scale)")
             
             // Convert to relative coordinates
             let fromRelative = toRelative(from)
@@ -874,7 +874,7 @@ class GameScene: SKScene {
         
         // SPINE/TORSO CONNECTOR: Uses strokeThicknessFullTorso instead of strokeThicknessJoints
         // Draws as two segments that bend at midtorso: neck->midtorso and midtorso->waist
-        let torsoLineWidth = max(mutableFigure.strokeThicknessFullTorso * 0.8 * scale * mutableFigure.skeletonSize, 1.0)
+        let torsoLineWidth = max(mutableFigure.strokeThicknessFullTorso * 0.8 * scale * mutableFigure.skeletonSizeTorso, 1.0)
         let neckRelative = toRelative(neckPos)
         let midTorsoOffsetRelative = toRelative(midTorsoWithOffset)  // Use offset position for upper torso
         let midTorsoRelative = toRelative(midTorsoPos)  // Keep lower torso pinned to unoffset midtorso
@@ -898,25 +898,25 @@ class GameScene: SKScene {
         torsoLine.zPosition = 1.5
         container.addChild(torsoLine)
         
-        // LEFT LEG connectors: Use their respective leg colors
-        drawSkeletonConnector(from: leftHipPos, to: leftUpperLegMid, color: toSKColor(mutableFigure.leftUpperLegColor))
-        drawSkeletonConnector(from: leftUpperLegMid, to: leftUpperLegEnd, color: toSKColor(mutableFigure.leftUpperLegColor))
-        drawSkeletonConnector(from: leftUpperLegEnd, to: leftLowerLegMid, color: toSKColor(mutableFigure.leftLowerLegColor))
+        // LEFT LEG connectors: Use their respective leg colors and skeletonSizeLeg
+        drawSkeletonConnector(from: leftHipPos, to: leftUpperLegMid, color: toSKColor(mutableFigure.leftUpperLegColor), skeletonSizeMultiplier: mutableFigure.skeletonSizeLeg)
+        drawSkeletonConnector(from: leftUpperLegMid, to: leftUpperLegEnd, color: toSKColor(mutableFigure.leftUpperLegColor), skeletonSizeMultiplier: mutableFigure.skeletonSizeLeg)
+        drawSkeletonConnector(from: leftUpperLegEnd, to: leftLowerLegMid, color: toSKColor(mutableFigure.leftLowerLegColor), skeletonSizeMultiplier: mutableFigure.skeletonSizeLeg)
         
-        // RIGHT LEG connectors: Use their respective leg colors
-        drawSkeletonConnector(from: rightHipPos, to: rightUpperLegMid, color: toSKColor(mutableFigure.rightUpperLegColor))
-        drawSkeletonConnector(from: rightUpperLegMid, to: rightUpperLegEnd, color: toSKColor(mutableFigure.rightUpperLegColor))
-        drawSkeletonConnector(from: rightUpperLegEnd, to: rightLowerLegMid, color: toSKColor(mutableFigure.rightLowerLegColor))
+        // RIGHT LEG connectors: Use their respective leg colors and skeletonSizeLeg
+        drawSkeletonConnector(from: rightHipPos, to: rightUpperLegMid, color: toSKColor(mutableFigure.rightUpperLegColor), skeletonSizeMultiplier: mutableFigure.skeletonSizeLeg)
+        drawSkeletonConnector(from: rightUpperLegMid, to: rightUpperLegEnd, color: toSKColor(mutableFigure.rightUpperLegColor), skeletonSizeMultiplier: mutableFigure.skeletonSizeLeg)
+        drawSkeletonConnector(from: rightUpperLegEnd, to: rightLowerLegMid, color: toSKColor(mutableFigure.rightLowerLegColor), skeletonSizeMultiplier: mutableFigure.skeletonSizeLeg)
         
-        // LEFT ARM connectors: Use their respective arm colors
-        drawSkeletonConnector(from: leftShoulderPos, to: leftUpperArmMid, color: toSKColor(mutableFigure.leftUpperArmColor))
-        drawSkeletonConnector(from: leftUpperArmMid, to: leftUpperArmEnd, color: toSKColor(mutableFigure.leftUpperArmColor))
-        drawSkeletonConnector(from: leftUpperArmEnd, to: leftLowerArmMid, color: toSKColor(mutableFigure.leftLowerArmColor))
+        // LEFT ARM connectors: Use their respective arm colors and skeletonSizeArm
+        drawSkeletonConnector(from: leftShoulderPos, to: leftUpperArmMid, color: toSKColor(mutableFigure.leftUpperArmColor), skeletonSizeMultiplier: mutableFigure.skeletonSizeArm)
+        drawSkeletonConnector(from: leftUpperArmMid, to: leftUpperArmEnd, color: toSKColor(mutableFigure.leftUpperArmColor), skeletonSizeMultiplier: mutableFigure.skeletonSizeArm)
+        drawSkeletonConnector(from: leftUpperArmEnd, to: leftLowerArmMid, color: toSKColor(mutableFigure.leftLowerArmColor), skeletonSizeMultiplier: mutableFigure.skeletonSizeArm)
         
-        // RIGHT ARM connectors: Use their respective arm colors
-        drawSkeletonConnector(from: rightShoulderPos, to: rightUpperArmMid, color: toSKColor(mutableFigure.rightUpperArmColor))
-        drawSkeletonConnector(from: rightUpperArmMid, to: rightUpperArmEnd, color: toSKColor(mutableFigure.rightUpperArmColor))
-        drawSkeletonConnector(from: rightUpperArmEnd, to: rightLowerArmMid, color: toSKColor(mutableFigure.rightLowerArmColor))
+        // RIGHT ARM connectors: Use their respective arm colors and skeletonSizeArm
+        drawSkeletonConnector(from: rightShoulderPos, to: rightUpperArmMid, color: toSKColor(mutableFigure.rightUpperArmColor), skeletonSizeMultiplier: mutableFigure.skeletonSizeArm)
+        drawSkeletonConnector(from: rightUpperArmMid, to: rightUpperArmEnd, color: toSKColor(mutableFigure.rightUpperArmColor), skeletonSizeMultiplier: mutableFigure.skeletonSizeArm)
+        drawSkeletonConnector(from: rightUpperArmEnd, to: rightLowerArmMid, color: toSKColor(mutableFigure.rightLowerArmColor), skeletonSizeMultiplier: mutableFigure.skeletonSizeArm)
         
         // Add joint caps at connection points to fill gaps (elbows, knees, waist, shoulders)
         let jointCapRadius = max(mutableFigure.strokeThicknessJoints * 0.3 * scale * jointShapeSize, 1.0)
