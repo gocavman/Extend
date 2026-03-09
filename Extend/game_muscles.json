@@ -99,7 +99,7 @@
     {
       "id": "strokeThicknessJoints",
       "name": "Joint Thickness",
-      "muscleGroups": ["Derived"],
+      "muscleGroups": ["Shoulders"],
       "progression": {
         "0": 2.0,
         "25": 3.8,
@@ -159,7 +159,7 @@
     {
       "id": "fusiformUpperArms",
       "name": "Upper Arm Bulge",
-      "muscleGroups": ["Biceps", "Triceps", "Shoulders"],
+      "muscleGroups": ["Biceps"],
       "progression": {
         "0": 0,
         "25": 2.74,
@@ -171,7 +171,7 @@
     {
       "id": "strokeThicknessUpperArms",
       "name": "Upper Arm Thickness",
-      "muscleGroups": ["Biceps", "Triceps", "Shoulders"],
+      "muscleGroups": ["Biceps"],
       "progression": {
         "0": 4.0,
         "25": 2.8,
@@ -291,7 +291,7 @@
     {
       "id": "skeletonSizeTorso",
       "name": "Skeleton Size - Torso",
-      "muscleGroups": ["Abs"],
+      "muscleGroups": ["Derived"],
       "progression": {
         "0": 0.0,
         "25": 0.97,
@@ -327,7 +327,7 @@
     {
       "id": "waistThicknessMultiplier",
       "name": "Waist Thickness",
-      "muscleGroups": ["Abs"],
+      "muscleGroups": ["Derived"],
       "progression": {
         "0": 0.0,
         "25": 0.9,
