@@ -105,6 +105,7 @@ struct SavedEditFrame: Codable, Identifiable {
     let strokeThicknessUpperLegs: CGFloat
     let strokeThicknessUpperTorso: CGFloat
     let strokeThicknessFullTorso: CGFloat
+    let strokeThicknessDeltoids: CGFloat
     
     // Pose data (angles) - stored as simple properties
     let waistTorsoAngle: CGFloat
@@ -242,6 +243,7 @@ struct SavedEditFrame: Codable, Identifiable {
             self.strokeThicknessUpperLegs = pose.strokeThicknessUpperLegs
             self.strokeThicknessUpperTorso = pose.strokeThicknessUpperTorso
             self.strokeThicknessFullTorso = pose.strokeThicknessFullTorso
+            self.strokeThicknessDeltoids = pose.strokeThicknessDeltoids
         } else {
             // Use defaults that match the Stand frame
             self.strokeThicknessJoints = 2.5
@@ -252,6 +254,7 @@ struct SavedEditFrame: Codable, Identifiable {
             self.strokeThicknessUpperLegs = 4.5
             self.strokeThicknessUpperTorso = 5.0
             self.strokeThicknessFullTorso = 1.0
+            self.strokeThicknessDeltoids = 4.0
         }
         
         // Store objects
@@ -275,7 +278,7 @@ struct SavedEditFrame: Codable, Identifiable {
         case leftHandAngle, rightHandAngle, leftHipAngle, rightHipAngle
         case leftKneeAngle, rightKneeAngle, leftFootAngle, rightFootAngle, midTorsoYOffset
         case strokeThicknessJoints, strokeThicknessLowerArms, strokeThicknessLowerLegs
-        case strokeThicknessLowerTorso, strokeThicknessUpperArms, strokeThicknessUpperLegs, strokeThicknessUpperTorso, strokeThicknessFullTorso
+        case strokeThicknessLowerTorso, strokeThicknessUpperArms, strokeThicknessUpperLegs, strokeThicknessUpperTorso, strokeThicknessFullTorso, strokeThicknessDeltoids
         case headRadiusMultiplier, shoulderWidthMultiplier_
         case footColor, handColor, headColor, torsoColor, leftArmColor, rightArmColor
         case leftLegColor, rightLegColor, leftUpperArmColor, leftLowerArmColor
@@ -361,6 +364,7 @@ struct SavedEditFrame: Codable, Identifiable {
         strokeThicknessUpperLegs = try poseContainer.decodeIfPresent(CGFloat.self, forKey: .strokeThicknessUpperLegs) ?? 4.5
         strokeThicknessUpperTorso = try poseContainer.decodeIfPresent(CGFloat.self, forKey: .strokeThicknessUpperTorso) ?? 5.0
         strokeThicknessFullTorso = try poseContainer.decodeIfPresent(CGFloat.self, forKey: .strokeThicknessFullTorso) ?? 1.0
+        strokeThicknessDeltoids = try poseContainer.decodeIfPresent(CGFloat.self, forKey: .strokeThicknessDeltoids) ?? 4.0
         
         // Decode objects - optional for backward compatibility with old saved frames
         objects = try container.decodeIfPresent([EditorObject].self, forKey: .objects) ?? []
@@ -434,6 +438,7 @@ struct SavedEditFrame: Codable, Identifiable {
         try poseContainer.encode(strokeThicknessUpperLegs, forKey: .strokeThicknessUpperLegs)
         try poseContainer.encode(strokeThicknessUpperTorso, forKey: .strokeThicknessUpperTorso)
         try poseContainer.encode(strokeThicknessFullTorso, forKey: .strokeThicknessFullTorso)
+        try poseContainer.encode(strokeThicknessDeltoids, forKey: .strokeThicknessDeltoids)
     }
 }
 
@@ -669,10 +674,41 @@ class SavedFramesManager {
                 fusiformLowerArms: pose.fusiformLowerArms,
                 fusiformUpperLegs: pose.fusiformUpperLegs,
                 fusiformLowerLegs: pose.fusiformLowerLegs,
+                fusiformShoulders: pose.fusiformShoulders,
+                fusiformDeltoids: pose.fusiformDeltoids,
+                peakPositionUpperArms: pose.peakPositionUpperArms,
+                peakPositionLowerArms: pose.peakPositionLowerArms,
+                peakPositionUpperLegs: pose.peakPositionUpperLegs,
+                peakPositionLowerLegs: pose.peakPositionLowerLegs,
+                peakPositionUpperTorso: pose.peakPositionUpperTorso,
+                peakPositionLowerTorso: pose.peakPositionLowerTorso,
+                peakPositionDeltoids: pose.peakPositionDeltoids,
+                skeletonSizeTorso: pose.skeletonSizeTorso,
+                skeletonSizeArm: pose.skeletonSizeArm,
+                skeletonSizeLeg: pose.skeletonSizeLeg,
+                jointShapeSize: nil,
+                shoulderWidthMultiplier: pose.shoulderWidthMultiplier,
+                waistWidthMultiplier: pose.waistWidthMultiplier,
+                waistThicknessMultiplier: pose.waistThicknessMultiplier,
+                neckLength: pose.neckLength,
+                neckWidth: pose.neckWidth,
+                handSize: pose.handSize,
+                footSize: pose.footSize,
+                strokeThicknessJoints: pose.strokeThicknessJoints,
+                strokeThicknessUpperTorso: pose.strokeThicknessUpperTorso,
+                strokeThicknessLowerTorso: pose.strokeThicknessLowerTorso,
+                strokeThicknessUpperArms: pose.strokeThicknessUpperArms,
+                strokeThicknessLowerArms: pose.strokeThicknessLowerArms,
+                strokeThicknessUpperLegs: pose.strokeThicknessUpperLegs,
+                strokeThicknessLowerLegs: pose.strokeThicknessLowerLegs,
+                strokeThicknessFullTorso: pose.strokeThicknessFullTorso,
+                strokeThicknessDeltoids: pose.strokeThicknessDeltoids,
                 showGrid: true,
                 showJoints: true,
                 positionX: 0,
-                positionY: 0
+                positionY: 0,
+                bodyPartColors: nil,
+                showInteractiveJoints: nil
             )
             
             let editorObjects = animFrame.objects.map { animObj in

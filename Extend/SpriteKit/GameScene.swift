@@ -247,15 +247,15 @@ class GameScene: SKScene {
             let fromRelative = CGPoint(x: (from.x - baseCenter.x) * scale, y: (baseCenter.y - from.y) * scale)
             let toRelative = CGPoint(x: (to.x - baseCenter.x) * scale, y: (baseCenter.y - to.y) * scale)
             
-            // If fusiform is 0, just draw a simple line with minimal/consistent stroke thickness
+            // If fusiform is 0, just draw a simple line with the provided strokeThickness
             if fusiform == 0 {
                 let path = UIBezierPath()
                 path.move(to: fromRelative)
                 path.addLine(to: toRelative)
                 let line = SKShapeNode(path: path.cgPath)
                 line.strokeColor = color
-                // Use a minimal, consistent thickness at 0% development (all segments same size)
-                line.lineWidth = max(2.0 * scale, 1.0)
+                // Use the strokeThickness parameter so sliders actually control visibility
+                line.lineWidth = max(strokeThickness * scale, 0.5)
                 line.zPosition = 1
                 container.addChild(line)
                 return
@@ -283,6 +283,10 @@ class GameScene: SKScene {
             // Generate points along the length with varying width - use MORE segments for smooth curves at larger scales
             let numSegments = 50  // Increased from 20 to 50 for smoother curves at larger scales
             
+            var minWidth = CGFloat.infinity
+            var maxWidth = -CGFloat.infinity
+            var debugFirstPass = true
+            
             for i in 0...numSegments {
                 let t = CGFloat(i) / CGFloat(numSegments)
                 let pos = CGPoint(x: fromRelative.x + dirX * t * length, y: fromRelative.y + dirY * t * length)
@@ -304,7 +308,8 @@ class GameScene: SKScene {
                         distFromPeakLeft = (t - peakTLeft) / (1.0 - peakTLeft)
                     }
                     let easeTLeft = max(0, 1.0 - (distFromPeakLeft * distFromPeakLeft))
-                    widthFactorLeft = fusiform * easeTLeft
+                    // Add minimum width of 0.3 so it doesn't taper to zero at the endpoints
+                    widthFactorLeft = 0.3 + (fusiform * 0.7 * easeTLeft)
                     
                     // Calculate width factor for right edge
                     var distFromPeakRight: CGFloat
@@ -314,7 +319,8 @@ class GameScene: SKScene {
                         distFromPeakRight = (t - peakTRight) / (1.0 - peakTRight)
                     }
                     let easeTRight = max(0, 1.0 - (distFromPeakRight * distFromPeakRight))
-                    widthFactorRight = fusiform * easeTRight
+                    // Add minimum width of 0.3 so it doesn't taper to zero at the endpoints
+                    widthFactorRight = 0.3 + (fusiform * 0.7 * easeTRight)
                     
                     // Apply leg asymmetry: primary side expands outward, secondary side at 1/4 size
                     if legAsymmetry == "left" {
@@ -325,9 +331,17 @@ class GameScene: SKScene {
                         widthFactorLeft = widthFactorLeft * 0.45
                     }
                     // If "none", both sides expand normally
+                    
+                    // DEBUG: Log first deltoid pass
+                    if debugFirstPass && i == 0 {
+                        print("🎨 DELTOID DEBUG START: fusiform=\(fusiform), peakTLeft=\(peakTLeft), peakTRight=\(peakTRight), legAsymmetry='\(legAsymmetry)'")
+                    }
+                    if debugFirstPass && (i == 0 || i == numSegments/2 || i == numSegments) {
+                        print("🎨 DELTOID DEBUG: i=\(i), t=\(t), distFromPeakLeft=\(distFromPeakLeft), easeTLeft=\(easeTLeft), widthFactorLeft=\(widthFactorLeft)")
+                    }
                 } else {
-                    // NORMAL: Middle BULGE profile with smooth curve (not sharp)
-                    let angle = (t - 0.5) * CGFloat.pi
+                    // NORMAL: Middle BULGE profile with smooth curve (not sharp) - uses peakPosition
+                    let angle = (t - peakPosition) * CGFloat.pi
                     let curveShape = cos(angle)
                     let bulge = 1.0 + (fusiform * max(0, curveShape))
                     widthFactorLeft = bulge
@@ -337,12 +351,22 @@ class GameScene: SKScene {
                 let widthLeft = (strokeThickness / 2) * widthFactorLeft
                 let widthRight = (strokeThickness / 2) * widthFactorRight
                 
+                if debugFirstPass {
+                    minWidth = min(minWidth, widthLeft, widthRight)
+                    maxWidth = max(maxWidth, widthLeft, widthRight)
+                }
+                
                 // Top and bottom edges (asymmetric)
                 let topPoint = CGPoint(x: pos.x + perpX * widthLeft, y: pos.y + perpY * widthLeft)
                 let bottomPoint = CGPoint(x: pos.x - perpX * widthRight, y: pos.y - perpY * widthRight)
                 
                 topEdgePoints.append(topPoint)
                 bottomEdgePoints.append(bottomPoint)
+            }
+            
+            if debugFirstPass {
+                print("🎨 DELTOID DEBUG SUMMARY: minWidth=\(minWidth), maxWidth=\(maxWidth), ratio=\(maxWidth/minWidth)")
+                debugFirstPass = false
             }
             
             // Create the path by drawing the top edge, then the bottom edge backwards
@@ -352,12 +376,12 @@ class GameScene: SKScene {
                 path.move(to: firstPoint)
             }
             
-            // Draw top edge
+            // Draw top edge with straight lines (enough segments make it look smooth)
             for i in 1..<topEdgePoints.count {
                 path.addLine(to: topEdgePoints[i])
             }
             
-            // Draw bottom edge in reverse
+            // Draw bottom edge in reverse with straight lines
             for i in stride(from: bottomEdgePoints.count - 1, through: 0, by: -1) {
                 path.addLine(to: bottomEdgePoints[i])
             }
@@ -792,6 +816,25 @@ class GameScene: SKScene {
         // Draw shoulder joints with fusiformShoulders tapering
         drawTaperedSegment(from: neckPos, to: leftShoulderPos, color: toSKColor(mutableFigure.torsoColor), strokeThickness: mutableFigure.strokeThicknessUpperTorso, fusiform: mutableFigure.fusiformShoulders, inverted: false, peakPosition: 0.5)
         drawTaperedSegment(from: neckPos, to: rightShoulderPos, color: toSKColor(mutableFigure.torsoColor), strokeThickness: mutableFigure.strokeThicknessUpperTorso, fusiform: mutableFigure.fusiformShoulders, inverted: false, peakPosition: 0.5)
+        
+        // Draw deltoids (shoulder caps) - render BEFORE upper arms so they appear behind
+        // Left deltoid: from shoulder joint, extending down ~1/2 of upper arm, following shoulder rotation (longer for visible taper)
+        let leftArmVector = CGPoint(x: leftUpperArmEnd.x - leftShoulderPos.x, y: leftUpperArmEnd.y - leftShoulderPos.y)
+        let leftArmLength = sqrt(leftArmVector.x * leftArmVector.x + leftArmVector.y * leftArmVector.y)
+        let leftDeltoidLength = leftArmLength * 0.5  // ~1/2 of upper arm length (increased for taper visibility)
+        let leftDeltoidDir = CGPoint(x: leftArmVector.x / leftArmLength, y: leftArmVector.y / leftArmLength)
+        let leftDeltoidEnd = CGPoint(x: leftShoulderPos.x + leftDeltoidDir.x * leftDeltoidLength, y: leftShoulderPos.y + leftDeltoidDir.y * leftDeltoidLength)
+        // Deltoid peak is 3/4 of the upper arm's peak position
+        let deltoidPeakPos = mutableFigure.peakPositionUpperArms * 0.75
+        drawTaperedSegment(from: leftShoulderPos, to: leftDeltoidEnd, color: toSKColor(mutableFigure.leftUpperArmColor), strokeThickness: mutableFigure.strokeThicknessDeltoids, fusiform: mutableFigure.fusiformDeltoids, inverted: true, peakPosition: deltoidPeakPos)
+        
+        // Right deltoid: from shoulder joint, extending down ~1/2 of upper arm, following shoulder rotation (longer for visible taper)
+        let rightArmVector = CGPoint(x: rightUpperArmEnd.x - rightShoulderPos.x, y: rightUpperArmEnd.y - rightShoulderPos.y)
+        let rightArmLength = sqrt(rightArmVector.x * rightArmVector.x + rightArmVector.y * rightArmVector.y)
+        let rightDeltoidLength = rightArmLength * 0.5  // ~1/2 of upper arm length (increased for taper visibility)
+        let rightDeltoidDir = CGPoint(x: rightArmVector.x / rightArmLength, y: rightArmVector.y / rightArmLength)
+        let rightDeltoidEnd = CGPoint(x: rightShoulderPos.x + rightDeltoidDir.x * rightDeltoidLength, y: rightShoulderPos.y + rightDeltoidDir.y * rightDeltoidLength)
+        drawTaperedSegment(from: rightShoulderPos, to: rightDeltoidEnd, color: toSKColor(mutableFigure.rightUpperArmColor), strokeThickness: mutableFigure.strokeThicknessDeltoids, fusiform: mutableFigure.fusiformDeltoids, inverted: true, peakPosition: deltoidPeakPos)
         
         // Draw arms - with correct peak positions matching the editor
         // Upper arms: peak position controlled by slider

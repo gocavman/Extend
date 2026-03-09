@@ -33,12 +33,14 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
     private var fusiformUpperLegs: CGFloat = 4.0
     private var fusiformLowerLegs: CGFloat = 4.0
     private var fusiformShoulders: CGFloat = 0.0  // Shoulder tapering
+    private var fusiformDeltoids: CGFloat = 0.0  // Deltoid (shoulder cap) tapering
     private var peakPositionUpperArms: CGFloat = 0.5  // Peak position for upper arms
     private var peakPositionLowerArms: CGFloat = 0.35  // Peak position for lower arms
     private var peakPositionUpperLegs: CGFloat = 0.2  // Peak position for upper legs
     private var peakPositionLowerLegs: CGFloat = 0.2  // Peak position for lower legs
     private var peakPositionUpperTorso: CGFloat = 0.5  // Peak position for upper torso
     private var peakPositionLowerTorso: CGFloat = 0.5  // Peak position for lower torso
+    private var peakPositionDeltoids: CGFloat = 0.3  // Peak position for deltoids
     private var midTorsoYOffset: CGFloat = 0.0  // Y-axis offset for upper torso bottom pin position
     
     // Individual stroke thickness properties for each body part
@@ -50,6 +52,7 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
     private var strokeThicknessUpperLegs: CGFloat = 5.0
     private var strokeThicknessLowerLegs: CGFloat = 4.0
     private var strokeThicknessFullTorso: CGFloat = 1.0
+    private var strokeThicknessDeltoids: CGFloat = 4.0
     
     // Position offset
     var figureOffsetX: CGFloat = 0
@@ -270,8 +273,8 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
         switch section {
         case 0: return 2  // Zoom, Position buttons (Show Joints moved to header)
         case 1: return isExpanded ? 9 : 0  // Figure Scale, Joint Shape Size, Shoulder Width, Waist Width, Waist Thickness, Neck Length, Neck Width, Hand Size, Foot Size (Skeleton Size removed)
-        case 2: return isExpanded ? 8 : 0  // Stroke Joints, Upper Torso, Lower Torso, Upper Arms, Lower Arms, Upper Legs, Lower Legs, Full Torso
-        case 3: return isExpanded ? 14 : 0  // 7 fusiform + 6 peak position sliders + 1 mid torso Y offset
+        case 2: return isExpanded ? 9 : 0  // Stroke Joints, Upper Torso, Lower Torso, Upper Arms, Lower Arms, Upper Legs, Lower Legs, Full Torso, Deltoids
+        case 3: return isExpanded ? 16 : 0  // 8 fusiform + 7 peak position sliders + 1 mid torso Y offset
         case 4: return isExpanded ? 3 : 0  // 3 Skeleton Size sliders: Torso, Arm, Leg
         case 5: return isExpanded ? 11 : 0  // 11 Joint sliders: head, leftShoulder, rightShoulder, leftElbow, rightElbow, leftKnee, rightKnee, leftCalf, rightCalf, waistRotation, neckRotation
         case 6: return isExpanded ? 12 : 0  // Color pickers for each body part (added shoulders)
@@ -637,6 +640,13 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
                 self?.updateFigure()
             })
             
+        case (2, 8):
+            // Stroke - Deltoids
+            addSliderCell(cell, label: "Deltoids", value: strokeThicknessDeltoids, min: 0.0, max: 10.0, increment: 0.1, onChange: { [weak self] val in
+                self?.strokeThicknessDeltoids = val
+                self?.updateFigure()
+            })
+            
         // Fusiform sliders - NOW SECTION 3
         case (3, 0): addSliderCell(cell, label: "Upper Torso", value: fusiformUpperTorso, min: 0, max: 10, increment: 0.1, onChange: { [weak self] val in self?.fusiformUpperTorso = val; self?.updateFigure() })
         case (3, 1): addSliderCell(cell, label: "Lower Torso", value: fusiformLowerTorso, min: 0, max: 10, increment: 0.1, onChange: { [weak self] val in self?.fusiformLowerTorso = val; self?.updateFigure() })
@@ -645,18 +655,17 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
         case (3, 4): addSliderCell(cell, label: "Upper Legs", value: fusiformUpperLegs, min: 0, max: 10, increment: 0.1, onChange: { [weak self] val in self?.fusiformUpperLegs = val; self?.updateFigure() })
         case (3, 5): addSliderCell(cell, label: "Lower Legs", value: fusiformLowerLegs, min: 0, max: 10, increment: 0.1, onChange: { [weak self] val in self?.fusiformLowerLegs = val; self?.updateFigure() })
         case (3, 6): addSliderCell(cell, label: "Shoulders", value: fusiformShoulders, min: 0, max: 10, increment: 0.1, onChange: { [weak self] val in self?.fusiformShoulders = val; self?.updateFigure() })
+        case (3, 7): addSliderCell(cell, label: "Deltoids", value: fusiformDeltoids, min: 0, max: 10, increment: 0.1, onChange: { [weak self] val in self?.fusiformDeltoids = val; self?.updateFigure() })
         
         // Peak position sliders
-        case (3, 7): addSliderCell(cell, label: "Peak Upper Arm", value: peakPositionUpperArms, min: 0.1, max: 0.9, increment: 0.05, onChange: { [weak self] val in self?.peakPositionUpperArms = val; self?.updateFigure() })
-        case (3, 8): addSliderCell(cell, label: "Peak Lower Arm", value: peakPositionLowerArms, min: 0.1, max: 0.9, increment: 0.05, onChange: { [weak self] val in self?.peakPositionLowerArms = val; self?.updateFigure() })
-        case (3, 9): addSliderCell(cell, label: "Peak Upper Leg", value: peakPositionUpperLegs, min: 0.1, max: 0.9, increment: 0.05, onChange: { [weak self] val in self?.peakPositionUpperLegs = val; self?.updateFigure() })
-        case (3, 10): addSliderCell(cell, label: "Peak Lower Leg", value: peakPositionLowerLegs, min: 0.1, max: 0.9, increment: 0.05, onChange: { [weak self] val in self?.peakPositionLowerLegs = val; self?.updateFigure() })
-        case (3, 11): addSliderCell(cell, label: "Peak Upper Torso", value: peakPositionUpperTorso, min: 0.1, max: 0.9, increment: 0.05, onChange: { [weak self] val in self?.peakPositionUpperTorso = val; self?.updateFigure() })
-        case (3, 12): addSliderCell(cell, label: "Peak Lower Torso", value: peakPositionLowerTorso, min: 0.1, max: 1.0, increment: 0.05, onChange: { [weak self] val in self?.peakPositionLowerTorso = val; self?.updateFigure() })
-        // OPTION 2: Increased range and increment for more visible midTorsoYOffset changes
-        // Original: min: -10.0, max: 10.0, increment: 0.1
-        // Option 2: min: -30.0, max: 30.0, increment: 0.5 (3x range, 5x increment for better visibility)
-        case (3, 13): addSliderCell(cell, label: "Mid Torso Y Offset", value: midTorsoYOffset, min: -30.0, max: 30.0, increment: 0.5, onChange: { [weak self] val in self?.midTorsoYOffset = val; self?.updateFigure() })
+        case (3, 8): addSliderCell(cell, label: "Peak Upper Arm", value: peakPositionUpperArms, min: 0.1, max: 0.9, increment: 0.05, onChange: { [weak self] val in self?.peakPositionUpperArms = val; self?.updateFigure() })
+        case (3, 9): addSliderCell(cell, label: "Peak Lower Arm", value: peakPositionLowerArms, min: 0.1, max: 0.9, increment: 0.05, onChange: { [weak self] val in self?.peakPositionLowerArms = val; self?.updateFigure() })
+        case (3, 10): addSliderCell(cell, label: "Peak Upper Leg", value: peakPositionUpperLegs, min: 0.1, max: 0.9, increment: 0.05, onChange: { [weak self] val in self?.peakPositionUpperLegs = val; self?.updateFigure() })
+        case (3, 11): addSliderCell(cell, label: "Peak Lower Leg", value: peakPositionLowerLegs, min: 0.1, max: 0.9, increment: 0.05, onChange: { [weak self] val in self?.peakPositionLowerLegs = val; self?.updateFigure() })
+        case (3, 12): addSliderCell(cell, label: "Peak Upper Torso", value: peakPositionUpperTorso, min: 0.1, max: 0.9, increment: 0.05, onChange: { [weak self] val in self?.peakPositionUpperTorso = val; self?.updateFigure() })
+        case (3, 13): addSliderCell(cell, label: "Peak Lower Torso", value: peakPositionLowerTorso, min: 0.1, max: 1.0, increment: 0.05, onChange: { [weak self] val in self?.peakPositionLowerTorso = val; self?.updateFigure() })
+        case (3, 14): addSliderCell(cell, label: "Peak Deltoids", value: peakPositionDeltoids, min: 0.1, max: 0.9, increment: 0.05, onChange: { [weak self] val in self?.peakPositionDeltoids = val; self?.updateFigure() })
+        case (3, 15): addSliderCell(cell, label: "Mid Torso Y Offset", value: midTorsoYOffset, min: -30.0, max: 30.0, increment: 0.5, onChange: { [weak self] val in self?.midTorsoYOffset = val; self?.updateFigure() })
         
         // Joint sliders - SECTION 5 (was previously section 4)
         case (5, 0): addSliderCell(cell, label: "Head", value: neckRotation, min: -180, max: 180, increment: 1, onChange: { [weak self] val in self?.neckRotation = val; self?.updateFigure() })
@@ -1038,6 +1047,7 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
             strokeThicknessUpperLegs = standFrame.strokeThicknessUpperLegs
             strokeThicknessLowerLegs = standFrame.strokeThicknessLowerLegs
             strokeThicknessFullTorso = standFrame.strokeThicknessFullTorso
+            strokeThicknessDeltoids = standFrame.strokeThicknessDeltoids
             // Note: jointShapeSize is editor-only property, not in StickFigure2D
             skeletonSizeTorso = standFrame.skeletonSizeTorso
             skeletonSizeArm = standFrame.skeletonSizeArm
@@ -1138,12 +1148,14 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
             fusiformUpperLegs: fusiformUpperLegs,
             fusiformLowerLegs: fusiformLowerLegs,
             fusiformShoulders: fusiformShoulders,
+            fusiformDeltoids: fusiformDeltoids,
             peakPositionUpperArms: peakPositionUpperArms,
             peakPositionLowerArms: peakPositionLowerArms,
             peakPositionUpperLegs: peakPositionUpperLegs,
             peakPositionLowerLegs: peakPositionLowerLegs,
             peakPositionUpperTorso: peakPositionUpperTorso,
             peakPositionLowerTorso: peakPositionLowerTorso,
+            peakPositionDeltoids: peakPositionDeltoids,
             midTorsoYOffset: midTorsoYOffset,
             figureOffsetX: figureOffsetX,
             figureOffsetY: figureOffsetY,
@@ -1172,6 +1184,7 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
             strokeThicknessUpperLegs: strokeThicknessUpperLegs,
             strokeThicknessLowerLegs: strokeThicknessLowerLegs,
             strokeThicknessFullTorso: strokeThicknessFullTorso,
+            strokeThicknessDeltoids: strokeThicknessDeltoids,
             bodyPartColors: bodyPartColors,
             showInteractiveJoints: showInteractiveJoints
         )
@@ -1240,6 +1253,7 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
             tempPose.strokeThicknessUpperLegs = self.strokeThicknessUpperLegs
             tempPose.strokeThicknessLowerLegs = self.strokeThicknessLowerLegs
             tempPose.strokeThicknessFullTorso = self.strokeThicknessFullTorso
+            tempPose.strokeThicknessDeltoids = self.strokeThicknessDeltoids
             
             // Create EditModeValues to use with SavedEditFrame initializer
             let editValues = EditModeValues(
@@ -1250,10 +1264,41 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
                 fusiformLowerArms: self.fusiformLowerArms,
                 fusiformUpperLegs: self.fusiformUpperLegs,
                 fusiformLowerLegs: self.fusiformLowerLegs,
+                fusiformShoulders: self.fusiformShoulders,
+                fusiformDeltoids: self.fusiformDeltoids,
+                peakPositionUpperArms: self.peakPositionUpperArms,
+                peakPositionLowerArms: self.peakPositionLowerArms,
+                peakPositionUpperLegs: self.peakPositionUpperLegs,
+                peakPositionLowerLegs: self.peakPositionLowerLegs,
+                peakPositionUpperTorso: self.peakPositionUpperTorso,
+                peakPositionLowerTorso: self.peakPositionLowerTorso,
+                peakPositionDeltoids: self.peakPositionDeltoids,
+                skeletonSizeTorso: self.skeletonSizeTorso,
+                skeletonSizeArm: self.skeletonSizeArm,
+                skeletonSizeLeg: self.skeletonSizeLeg,
+                jointShapeSize: self.jointShapeSize,
+                shoulderWidthMultiplier: self.shoulderWidthMultiplier,
+                waistWidthMultiplier: self.waistWidthMultiplier,
+                waistThicknessMultiplier: self.waistThicknessMultiplier,
+                neckLength: self.neckLength,
+                neckWidth: self.neckWidth,
+                handSize: self.handSize,
+                footSize: self.footSize,
+                strokeThicknessJoints: self.strokeThicknessJoints,
+                strokeThicknessUpperTorso: self.strokeThicknessUpperTorso,
+                strokeThicknessLowerTorso: self.strokeThicknessLowerTorso,
+                strokeThicknessUpperArms: self.strokeThicknessUpperArms,
+                strokeThicknessLowerArms: self.strokeThicknessLowerArms,
+                strokeThicknessUpperLegs: self.strokeThicknessUpperLegs,
+                strokeThicknessLowerLegs: self.strokeThicknessLowerLegs,
+                strokeThicknessFullTorso: self.strokeThicknessFullTorso,
+                strokeThicknessDeltoids: self.strokeThicknessDeltoids,
                 showGrid: true,
                 showJoints: self.showInteractiveJoints,
                 positionX: self.figureOffsetX,
-                positionY: self.figureOffsetY
+                positionY: self.figureOffsetY,
+                bodyPartColors: self.bodyPartColors,
+                showInteractiveJoints: self.showInteractiveJoints
             )
             
             // Extract objects from the editor scene
@@ -1427,6 +1472,7 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
         strokeThicknessUpperLegs = frame.strokeThicknessUpperLegs
         strokeThicknessLowerLegs = frame.strokeThicknessLowerLegs
         strokeThicknessFullTorso = frame.strokeThicknessFullTorso
+        strokeThicknessDeltoids = frame.strokeThicknessDeltoids
         
         // Restore fusiform
         fusiformUpperTorso = frame.fusiformUpperTorso
@@ -1892,12 +1938,14 @@ class StickFigureEditorScene: SKScene {
         fusiformUpperLegs: CGFloat,
         fusiformLowerLegs: CGFloat,
         fusiformShoulders: CGFloat = 0.0,
+        fusiformDeltoids: CGFloat = 0.0,
         peakPositionUpperArms: CGFloat = 0.5,
         peakPositionLowerArms: CGFloat = 0.35,
         peakPositionUpperLegs: CGFloat = 0.2,
         peakPositionLowerLegs: CGFloat = 0.2,
         peakPositionUpperTorso: CGFloat = 0.5,
         peakPositionLowerTorso: CGFloat = 0.5,
+        peakPositionDeltoids: CGFloat = 0.3,
         midTorsoYOffset: CGFloat = 0.0,
         figureOffsetX: CGFloat = 0,
         figureOffsetY: CGFloat = 0,
@@ -1926,6 +1974,7 @@ class StickFigureEditorScene: SKScene {
         strokeThicknessUpperLegs: CGFloat = 4.5,
         strokeThicknessLowerLegs: CGFloat = 3.5,
         strokeThicknessFullTorso: CGFloat = 1.0,
+        strokeThicknessDeltoids: CGFloat = 4.0,
         bodyPartColors: [String: UIColor] = [:],
         showInteractiveJoints: Bool = true
     ) {
@@ -1945,6 +1994,7 @@ class StickFigureEditorScene: SKScene {
         updatedFrame.fusiformUpperArms = fusiformUpperArms
         updatedFrame.fusiformLowerArms = fusiformLowerArms
         updatedFrame.fusiformShoulders = fusiformShoulders
+        updatedFrame.fusiformDeltoids = fusiformDeltoids
         updatedFrame.fusiformUpperLegs = fusiformUpperLegs
         updatedFrame.fusiformLowerLegs = fusiformLowerLegs
         updatedFrame.peakPositionUpperArms = peakPositionUpperArms
@@ -1953,6 +2003,7 @@ class StickFigureEditorScene: SKScene {
         updatedFrame.peakPositionLowerLegs = peakPositionLowerLegs
         updatedFrame.peakPositionUpperTorso = peakPositionUpperTorso
         updatedFrame.peakPositionLowerTorso = peakPositionLowerTorso
+        updatedFrame.peakPositionDeltoids = peakPositionDeltoids
         updatedFrame.midTorsoYOffset = midTorsoYOffset
         updatedFrame.shoulderWidthMultiplier = shoulderWidthMultiplier
         updatedFrame.waistWidthMultiplier = waistWidthMultiplier
@@ -1974,6 +2025,7 @@ class StickFigureEditorScene: SKScene {
         updatedFrame.strokeThicknessUpperLegs = strokeThicknessUpperLegs
         updatedFrame.strokeThicknessLowerLegs = strokeThicknessLowerLegs
         updatedFrame.strokeThicknessFullTorso = strokeThicknessFullTorso
+        updatedFrame.strokeThicknessDeltoids = strokeThicknessDeltoids
         
         print("🎮 DEBUG updateWithValues: Setting skeletonSizeTorso=\(skeletonSizeTorso) skeletonSizeArm=\(skeletonSizeArm) skeletonSizeLeg=\(skeletonSizeLeg) jointShapeSize=\(jointShapeSize) on updatedFrame")
         
@@ -2213,10 +2265,41 @@ class FrameListViewController: UIViewController, UITableViewDataSource, UITableV
                     fusiformLowerArms: pose.fusiformLowerArms,
                     fusiformUpperLegs: pose.fusiformUpperLegs,
                     fusiformLowerLegs: pose.fusiformLowerLegs,
+                    fusiformShoulders: pose.fusiformShoulders,
+                    fusiformDeltoids: pose.fusiformDeltoids,
+                    peakPositionUpperArms: pose.peakPositionUpperArms,
+                    peakPositionLowerArms: pose.peakPositionLowerArms,
+                    peakPositionUpperLegs: pose.peakPositionUpperLegs,
+                    peakPositionLowerLegs: pose.peakPositionLowerLegs,
+                    peakPositionUpperTorso: pose.peakPositionUpperTorso,
+                    peakPositionLowerTorso: pose.peakPositionLowerTorso,
+                    peakPositionDeltoids: pose.peakPositionDeltoids,
+                    skeletonSizeTorso: pose.skeletonSizeTorso,
+                    skeletonSizeArm: pose.skeletonSizeArm,
+                    skeletonSizeLeg: pose.skeletonSizeLeg,
+                    jointShapeSize: nil,
+                    shoulderWidthMultiplier: pose.shoulderWidthMultiplier,
+                    waistWidthMultiplier: pose.waistWidthMultiplier,
+                    waistThicknessMultiplier: pose.waistThicknessMultiplier,
+                    neckLength: pose.neckLength,
+                    neckWidth: pose.neckWidth,
+                    handSize: pose.handSize,
+                    footSize: pose.footSize,
+                    strokeThicknessJoints: pose.strokeThicknessJoints,
+                    strokeThicknessUpperTorso: pose.strokeThicknessUpperTorso,
+                    strokeThicknessLowerTorso: pose.strokeThicknessLowerTorso,
+                    strokeThicknessUpperArms: pose.strokeThicknessUpperArms,
+                    strokeThicknessLowerArms: pose.strokeThicknessLowerArms,
+                    strokeThicknessUpperLegs: pose.strokeThicknessUpperLegs,
+                    strokeThicknessLowerLegs: pose.strokeThicknessLowerLegs,
+                    strokeThicknessFullTorso: pose.strokeThicknessFullTorso,
+                    strokeThicknessDeltoids: pose.strokeThicknessDeltoids,
                     showGrid: true,
                     showJoints: true,
                     positionX: 0,
-                    positionY: 0
+                    positionY: 0,
+                    bodyPartColors: nil,
+                    showInteractiveJoints: nil
                 )
                 // Convert AnimationObjects to EditorObjects
                 let editorObjects = bundleFrame.objects.map { animObj in

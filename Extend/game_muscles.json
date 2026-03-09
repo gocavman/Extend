@@ -109,6 +109,18 @@
       }
     },
     {
+      "id": "fusiformDeltoids",
+      "name": "Deltoid (Shoulder Cap)",
+      "muscleGroups": ["Shoulders"],
+      "progression": {
+        "0": 0,
+        "25": 1.5,
+        "50": 2.2,
+        "75": 2.8,
+        "100": 3.5
+      }
+    },
+    {
       "id": "fusiformUpperTorso",
       "name": "Upper Torso Bulge",
       "muscleGroups": ["Chest", "Back"],

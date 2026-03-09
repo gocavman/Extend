@@ -194,10 +194,41 @@ struct GameplayEditModeView: View {
             fusiformLowerArms: fusiformLowerArms,
             fusiformUpperLegs: fusiformUpperLegs,
             fusiformLowerLegs: fusiformLowerLegs,
+            fusiformShoulders: nil,
+            fusiformDeltoids: nil,
+            peakPositionUpperArms: nil,
+            peakPositionLowerArms: nil,
+            peakPositionUpperLegs: nil,
+            peakPositionLowerLegs: nil,
+            peakPositionUpperTorso: nil,
+            peakPositionLowerTorso: nil,
+            peakPositionDeltoids: nil,
+            skeletonSizeTorso: nil,
+            skeletonSizeArm: nil,
+            skeletonSizeLeg: nil,
+            jointShapeSize: nil,
+            shoulderWidthMultiplier: nil,
+            waistWidthMultiplier: nil,
+            waistThicknessMultiplier: nil,
+            neckLength: nil,
+            neckWidth: nil,
+            handSize: nil,
+            footSize: nil,
+            strokeThicknessJoints: nil,
+            strokeThicknessUpperTorso: nil,
+            strokeThicknessLowerTorso: nil,
+            strokeThicknessUpperArms: nil,
+            strokeThicknessLowerArms: nil,
+            strokeThicknessUpperLegs: nil,
+            strokeThicknessLowerLegs: nil,
+            strokeThicknessFullTorso: nil,
+            strokeThicknessDeltoids: nil,
             showGrid: showGrid,
             showJoints: showJoints,
             positionX: positionX,
-            positionY: positionY
+            positionY: positionY,
+            bodyPartColors: nil,
+            showInteractiveJoints: nil
         )
     }
 }
@@ -211,10 +242,41 @@ struct EditModeValues {
     let fusiformLowerArms: CGFloat
     let fusiformUpperLegs: CGFloat
     let fusiformLowerLegs: CGFloat
+    let fusiformShoulders: CGFloat?
+    let fusiformDeltoids: CGFloat?
+    let peakPositionUpperArms: CGFloat?
+    let peakPositionLowerArms: CGFloat?
+    let peakPositionUpperLegs: CGFloat?
+    let peakPositionLowerLegs: CGFloat?
+    let peakPositionUpperTorso: CGFloat?
+    let peakPositionLowerTorso: CGFloat?
+    let peakPositionDeltoids: CGFloat?
+    let skeletonSizeTorso: CGFloat?
+    let skeletonSizeArm: CGFloat?
+    let skeletonSizeLeg: CGFloat?
+    let jointShapeSize: CGFloat?
+    let shoulderWidthMultiplier: CGFloat?
+    let waistWidthMultiplier: CGFloat?
+    let waistThicknessMultiplier: CGFloat?
+    let neckLength: CGFloat?
+    let neckWidth: CGFloat?
+    let handSize: CGFloat?
+    let footSize: CGFloat?
+    let strokeThicknessJoints: CGFloat?
+    let strokeThicknessUpperTorso: CGFloat?
+    let strokeThicknessLowerTorso: CGFloat?
+    let strokeThicknessUpperArms: CGFloat?
+    let strokeThicknessLowerArms: CGFloat?
+    let strokeThicknessUpperLegs: CGFloat?
+    let strokeThicknessLowerLegs: CGFloat?
+    let strokeThicknessFullTorso: CGFloat?
+    let strokeThicknessDeltoids: CGFloat?
     let showGrid: Bool
     let showJoints: Bool
     let positionX: CGFloat
     let positionY: CGFloat
+    let bodyPartColors: [String: UIColor]?
+    let showInteractiveJoints: Bool?
 }
 
 /// Save frame dialog

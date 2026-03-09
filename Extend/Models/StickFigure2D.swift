@@ -155,6 +155,7 @@ struct StickFigure2DPose: Codable {
     let strokeThicknessUpperTorso: CGFloat
     let strokeThicknessLowerTorso: CGFloat
     let strokeThicknessFullTorso: CGFloat
+    let strokeThicknessDeltoids: CGFloat
     
     // Fusiform controls
     let fusiformUpperArms: CGFloat
@@ -164,6 +165,7 @@ struct StickFigure2DPose: Codable {
     let fusiformUpperTorso: CGFloat
     let fusiformLowerTorso: CGFloat
     let fusiformShoulders: CGFloat
+    let fusiformDeltoids: CGFloat
     
     // Peak position controls
     let peakPositionUpperArms: CGFloat
@@ -172,6 +174,7 @@ struct StickFigure2DPose: Codable {
     let peakPositionLowerLegs: CGFloat
     let peakPositionUpperTorso: CGFloat
     let peakPositionLowerTorso: CGFloat
+    let peakPositionDeltoids: CGFloat
     let midTorsoYOffset: CGFloat
     
     // Figure scale and thickness multipliers
@@ -241,6 +244,7 @@ struct StickFigure2DPose: Codable {
         self.strokeThicknessUpperTorso = figure.strokeThicknessUpperTorso
         self.strokeThicknessLowerTorso = figure.strokeThicknessLowerTorso
         self.strokeThicknessFullTorso = figure.strokeThicknessFullTorso
+        self.strokeThicknessDeltoids = figure.strokeThicknessDeltoids
         self.fusiformUpperArms = figure.fusiformUpperArms
         self.fusiformLowerArms = figure.fusiformLowerArms
         self.fusiformUpperLegs = figure.fusiformUpperLegs
@@ -248,12 +252,14 @@ struct StickFigure2DPose: Codable {
         self.fusiformUpperTorso = figure.fusiformUpperTorso
         self.fusiformLowerTorso = figure.fusiformLowerTorso
         self.fusiformShoulders = figure.fusiformShoulders
+        self.fusiformDeltoids = figure.fusiformDeltoids
         self.peakPositionUpperArms = figure.peakPositionUpperArms
         self.peakPositionLowerArms = figure.peakPositionLowerArms
         self.peakPositionUpperLegs = figure.peakPositionUpperLegs
         self.peakPositionLowerLegs = figure.peakPositionLowerLegs
         self.peakPositionUpperTorso = figure.peakPositionUpperTorso
         self.peakPositionLowerTorso = figure.peakPositionLowerTorso
+        self.peakPositionDeltoids = figure.peakPositionDeltoids
         self.midTorsoYOffset = figure.midTorsoYOffset
         self.figureScale = figure.scale
         self.strokeThicknessMultiplier = 1.0  // This would need to be tracked separately
@@ -318,6 +324,7 @@ struct StickFigure2DPose: Codable {
         figure.strokeThicknessUpperTorso = strokeThicknessUpperTorso
         figure.strokeThicknessLowerTorso = strokeThicknessLowerTorso
         figure.strokeThicknessFullTorso = strokeThicknessFullTorso
+        figure.strokeThicknessDeltoids = strokeThicknessDeltoids
         figure.fusiformUpperArms = fusiformUpperArms
         figure.fusiformLowerArms = fusiformLowerArms
         figure.fusiformUpperLegs = fusiformUpperLegs
@@ -325,12 +332,14 @@ struct StickFigure2DPose: Codable {
         figure.fusiformUpperTorso = fusiformUpperTorso
         figure.fusiformLowerTorso = fusiformLowerTorso
         figure.fusiformShoulders = fusiformShoulders
+        figure.fusiformDeltoids = fusiformDeltoids
         figure.peakPositionUpperArms = peakPositionUpperArms
         figure.peakPositionLowerArms = peakPositionLowerArms
         figure.peakPositionUpperLegs = peakPositionUpperLegs
         figure.peakPositionLowerLegs = peakPositionLowerLegs
         figure.peakPositionUpperTorso = peakPositionUpperTorso
         figure.peakPositionLowerTorso = peakPositionLowerTorso
+        figure.peakPositionDeltoids = peakPositionDeltoids
         figure.midTorsoYOffset = midTorsoYOffset
         figure.shoulderWidthMultiplier = shoulderWidthMultiplier
         figure.waistWidthMultiplier = waistWidthMultiplier
@@ -363,11 +372,11 @@ struct StickFigure2DPose: Codable {
         case strokeThickness, scale, headRadiusMultiplier
         case strokeThicknessUpperArms, strokeThicknessLowerArms
         case strokeThicknessUpperLegs, strokeThicknessLowerLegs
-        case strokeThicknessJoints, strokeThicknessUpperTorso, strokeThicknessLowerTorso, strokeThicknessFullTorso
+        case strokeThicknessJoints, strokeThicknessUpperTorso, strokeThicknessLowerTorso, strokeThicknessFullTorso, strokeThicknessDeltoids
         case fusiformUpperArms, fusiformLowerArms
         case fusiformUpperLegs, fusiformLowerLegs
-        case fusiformUpperTorso, fusiformLowerTorso, fusiformShoulders
-        case peakPositionUpperArms, peakPositionLowerArms, peakPositionUpperLegs, peakPositionLowerLegs, peakPositionUpperTorso, peakPositionLowerTorso, midTorsoYOffset
+        case fusiformUpperTorso, fusiformLowerTorso, fusiformShoulders, fusiformDeltoids
+        case peakPositionUpperArms, peakPositionLowerArms, peakPositionUpperLegs, peakPositionLowerLegs, peakPositionUpperTorso, peakPositionLowerTorso, peakPositionDeltoids, midTorsoYOffset
         case figureScale, strokeThicknessMultiplier, skeletonSizeTorso, skeletonSizeArm, skeletonSizeLeg, jointShapeSize
         case shoulderWidthMultiplier, waistWidthMultiplier, waistThicknessMultiplier, neckLength, neckWidth
         case handSize, footSize
@@ -383,6 +392,7 @@ struct StickFigure2DPose: Codable {
         try container.encode(round(fusiformLowerArms), forKey: .fusiformLowerArms)
         try container.encode(round(fusiformLowerLegs), forKey: .fusiformLowerLegs)
         try container.encode(round(fusiformShoulders), forKey: .fusiformShoulders)
+        try container.encode(round(fusiformDeltoids), forKey: .fusiformDeltoids)
         try container.encode(round(fusiformUpperArms), forKey: .fusiformUpperArms)
         try container.encode(round(fusiformUpperLegs), forKey: .fusiformUpperLegs)
         try container.encode(round(fusiformUpperTorso), forKey: .fusiformUpperTorso)
@@ -406,6 +416,7 @@ struct StickFigure2DPose: Codable {
         try container.encode(round(peakPositionLowerArms), forKey: .peakPositionLowerArms)
         try container.encode(round(peakPositionLowerLegs), forKey: .peakPositionLowerLegs)
         try container.encode(round(peakPositionLowerTorso), forKey: .peakPositionLowerTorso)
+        try container.encode(round(peakPositionDeltoids), forKey: .peakPositionDeltoids)
         try container.encode(round(peakPositionUpperArms), forKey: .peakPositionUpperArms)
         try container.encode(round(peakPositionUpperLegs), forKey: .peakPositionUpperLegs)
         try container.encode(round(peakPositionUpperTorso), forKey: .peakPositionUpperTorso)
@@ -424,6 +435,7 @@ struct StickFigure2DPose: Codable {
         try container.encode(round(skeletonSizeArm), forKey: .skeletonSizeArm)
         try container.encode(round(skeletonSizeLeg), forKey: .skeletonSizeLeg)
         try container.encode(round(strokeThicknessFullTorso), forKey: .strokeThicknessFullTorso)
+        try container.encode(round(strokeThicknessDeltoids), forKey: .strokeThicknessDeltoids)
         try container.encode(round(strokeThicknessJoints), forKey: .strokeThicknessJoints)
         try container.encode(round(strokeThicknessLowerArms), forKey: .strokeThicknessLowerArms)
         try container.encode(round(strokeThicknessLowerLegs), forKey: .strokeThicknessLowerLegs)
@@ -489,6 +501,7 @@ struct StickFigure2DPose: Codable {
         self.strokeThicknessUpperTorso = try container.decodeIfPresent(CGFloat.self, forKey: .strokeThicknessUpperTorso) ?? 5.0
         self.strokeThicknessLowerTorso = try container.decodeIfPresent(CGFloat.self, forKey: .strokeThicknessLowerTorso) ?? 4.5
         self.strokeThicknessFullTorso = try container.decodeIfPresent(CGFloat.self, forKey: .strokeThicknessFullTorso) ?? 1.0
+        self.strokeThicknessDeltoids = try container.decodeIfPresent(CGFloat.self, forKey: .strokeThicknessDeltoids) ?? 4.0
         self.fusiformUpperArms = try container.decodeIfPresent(CGFloat.self, forKey: .fusiformUpperArms) ?? 0.0
         self.fusiformLowerArms = try container.decodeIfPresent(CGFloat.self, forKey: .fusiformLowerArms) ?? 0.0
         self.fusiformUpperLegs = try container.decodeIfPresent(CGFloat.self, forKey: .fusiformUpperLegs) ?? 0.0
@@ -496,12 +509,14 @@ struct StickFigure2DPose: Codable {
         self.fusiformUpperTorso = try container.decodeIfPresent(CGFloat.self, forKey: .fusiformUpperTorso) ?? 0.0
         self.fusiformLowerTorso = try container.decodeIfPresent(CGFloat.self, forKey: .fusiformLowerTorso) ?? 0.0
         self.fusiformShoulders = try container.decodeIfPresent(CGFloat.self, forKey: .fusiformShoulders) ?? 0.0
+        self.fusiformDeltoids = try container.decodeIfPresent(CGFloat.self, forKey: .fusiformDeltoids) ?? 0.0
         self.peakPositionUpperArms = try container.decodeIfPresent(CGFloat.self, forKey: .peakPositionUpperArms) ?? 0.5
         self.peakPositionLowerArms = try container.decodeIfPresent(CGFloat.self, forKey: .peakPositionLowerArms) ?? 0.35
         self.peakPositionUpperLegs = try container.decodeIfPresent(CGFloat.self, forKey: .peakPositionUpperLegs) ?? 0.2
         self.peakPositionLowerLegs = try container.decodeIfPresent(CGFloat.self, forKey: .peakPositionLowerLegs) ?? 0.2
         self.peakPositionUpperTorso = try container.decodeIfPresent(CGFloat.self, forKey: .peakPositionUpperTorso) ?? 0.5
         self.peakPositionLowerTorso = try container.decodeIfPresent(CGFloat.self, forKey: .peakPositionLowerTorso) ?? 0.5
+        self.peakPositionDeltoids = try container.decodeIfPresent(CGFloat.self, forKey: .peakPositionDeltoids) ?? 0.3
         self.midTorsoYOffset = try container.decodeIfPresent(CGFloat.self, forKey: .midTorsoYOffset) ?? 0.0
         self.figureScale = try container.decodeIfPresent(CGFloat.self, forKey: .figureScale) ?? 1.0
         self.strokeThicknessMultiplier = try container.decodeIfPresent(CGFloat.self, forKey: .strokeThicknessMultiplier) ?? 1.0
@@ -632,11 +647,13 @@ struct StickFigure2D {
     var strokeThicknessUpperTorso: CGFloat = 5.0
     var strokeThicknessLowerTorso: CGFloat = 4.5
     var strokeThicknessFullTorso: CGFloat = 1.0  // Overall torso thickness multiplier
+    var strokeThicknessDeltoids: CGFloat = 4.0  // Deltoid (shoulder cap) thickness
     
     // Fusiform (tapered) controls for each body part (0.0 = no taper, 1.0 = full taper)
     var fusiformUpperArms: CGFloat = 0.0  // Taper from shoulder to elbow
     var fusiformLowerArms: CGFloat = 0.0  // Taper from elbow to wrist
     var fusiformShoulders: CGFloat = 0.0  // Shoulder joint taper (width variation at shoulders)
+    var fusiformDeltoids: CGFloat = 8.0  // Shoulder cap (deltoid muscle taper) - very high taper for shoulder caps
     var fusiformUpperLegs: CGFloat = 0.0  // Taper from hip to knee
     var fusiformLowerLegs: CGFloat = 0.0  // Taper from knee to ankle (inverted - larger at top)
     var fusiformUpperTorso: CGFloat = 0.0 // Taper from shoulders to mid-torso (inverted - larger at top)
@@ -649,6 +666,7 @@ struct StickFigure2D {
     var peakPositionLowerLegs: CGFloat = 0.2  // Default: near knee
     var peakPositionUpperTorso: CGFloat = 0.5  // Default: middle of upper torso
     var peakPositionLowerTorso: CGFloat = 0.5  // Default: middle of lower torso
+    var peakPositionDeltoids: CGFloat = 0.3  // Default: closer to shoulder joint for cap effect
     
     // Mid-torso offset (Y-axis offset to adjust where upper torso bottom pins to mid-torso)
     // 0.0 = default position, positive = moves down, negative = moves up
