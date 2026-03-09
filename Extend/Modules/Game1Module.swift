@@ -518,7 +518,7 @@ class StickFigureGameState {
         // Initialize muscle system
         MuscleSystem.shared.loadMuscleConfig()
         muscleState = MuscleState()
-        muscleState.initializeMuscles(with: MuscleSystem.shared.config?.muscles ?? [])
+        muscleState.initializeProperties(with: MuscleSystem.shared.config?.properties ?? [])
         loadMuscleState()
         
         // Initialize time tracking
@@ -597,27 +597,22 @@ class StickFigureGameState {
     
     /// Award muscle points based on action completion
     func awardMuscleLevelPoints(for actionName: String) {
-        // Find the action mapping in muscle config
-        guard let actionMapping = MuscleSystem.shared.config?.actions.first(where: { $0.name == actionName }) else {
-            return  // Action not configured for muscle awards
+        // Find the action in muscle config
+        guard let action = MuscleSystem.shared.config?.actions.first(where: { $0.name == actionName }) else {
+            return  // Action not configured for property awards
         }
         
-        let targetMuscleId = actionMapping.targetMuscle
-        let pointsConfig = MuscleSystem.shared.config?.pointsConfig
-        
-        // Check if enough time has passed since last award
-        guard let config = pointsConfig,
-              muscleState.canAwardPoints(to: targetMuscleId, pointsConfig: config) else {
+        // Check if enough time has passed since last award for this action
+        guard muscleState.canAwardPoints(to: action.id, frequency: action.frequency) else {
             return  // Not enough time has passed
         }
         
-        // Calculate points: config.count * (actionPercentage / 100)
-        let percentage = actionMapping.percentage / 100.0
-        let pointsToAward = Double(config.count) * percentage
-        
-        // Award the points
-        muscleState.addPoints(pointsToAward, to: targetMuscleId)
-        muscleState.recordPointAward(for: targetMuscleId)
+        // Distribute points to all target properties based on percentages
+        for distribution in action.propertyDistribution {
+            let pointsForThisProperty = Double(action.pointsAwarded) * (distribution.percentage / 100.0)
+            muscleState.addPoints(pointsForThisProperty, to: distribution.propertyId)
+            muscleState.recordPointAward(for: distribution.propertyId)
+        }
         
         // Save muscle state
         saveMuscleState()

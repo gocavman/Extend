@@ -91,7 +91,7 @@ class StickFigureAppearanceViewController: UIViewController, UITableViewDelegate
     
     func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
         switch section {
-        case 0: return expandedSections.contains(0) ? ((muscleSystem.config?.muscles.count ?? 0) + 2) : 0  // Muscles section (info + muscles + buttons, no extra empty row)
+        case 0: return expandedSections.contains(0) ? ((muscleSystem.config?.properties.count ?? 0) + 2) : 0  // Properties section (info + properties + buttons, no extra empty row)
         case 1: return expandedSections.contains(1) ? 6 : 0  // Colors section (6 rows: Head, Torso, Arms, Legs, Accessories, Reset)
         default: return 0
         }
@@ -320,7 +320,7 @@ class StickFigureAppearanceViewController: UIViewController, UITableViewDelegate
         cell.selectionStyle = .none
         cell.contentView.subviews.forEach { $0.removeFromSuperview() }
         
-        guard let muscles = muscleSystem.config?.muscles else { return cell }
+        guard let properties = muscleSystem.config?.properties else { return cell }
         
         if indexPath.row < 1 {  // Info label
             let label = UILabel()
@@ -338,9 +338,9 @@ class StickFigureAppearanceViewController: UIViewController, UITableViewDelegate
             ])
             cell.contentView.heightAnchor.constraint(greaterThanOrEqualToConstant: 40).isActive = true
             
-        } else if indexPath.row <= muscles.count {  // Muscle rows
-            let muscle = muscles[indexPath.row - 1]
-            let row = createMuscleControlRow(muscle: muscle)
+        } else if indexPath.row <= properties.count {  // Property rows
+            let property = properties[indexPath.row - 1]
+            let row = createPropertyControlRow(property: property)
             cell.contentView.addSubview(row)
             NSLayoutConstraint.activate([
                 row.topAnchor.constraint(equalTo: cell.contentView.topAnchor, constant: 8),
@@ -351,7 +351,7 @@ class StickFigureAppearanceViewController: UIViewController, UITableViewDelegate
             ])
             cell.contentView.heightAnchor.constraint(equalToConstant: 48).isActive = true
             
-        } else if indexPath.row == muscles.count + 1 {  // Buttons row (only row after muscles)
+        } else if indexPath.row == properties.count + 1 {  // Buttons row (only row after properties)
             let mainStack = UIStackView()
             mainStack.axis = .vertical
             mainStack.spacing = 8
@@ -369,14 +369,14 @@ class StickFigureAppearanceViewController: UIViewController, UITableViewDelegate
             resetButton.backgroundColor = UIColor.orange.withAlphaComponent(0.7)
             resetButton.setTitleColor(.white, for: .normal)
             resetButton.layer.cornerRadius = 4
-            resetButton.addTarget(self, action: #selector(resetAllMusclesTapped), for: .touchUpInside)
+            resetButton.addTarget(self, action: #selector(resetAllPropertiesTapped), for: .touchUpInside)
             
             let maxButton = UIButton(type: .system)
             maxButton.setTitle("Max All", for: .normal)
             maxButton.backgroundColor = UIColor.green.withAlphaComponent(0.7)
             maxButton.setTitleColor(.white, for: .normal)
             maxButton.layer.cornerRadius = 4
-            maxButton.addTarget(self, action: #selector(maxAllMusclesTapped), for: .touchUpInside)
+            maxButton.addTarget(self, action: #selector(maxAllPropertiesTapped), for: .touchUpInside)
             
             buttonsStack.addArrangedSubview(resetButton)
             buttonsStack.addArrangedSubview(maxButton)
@@ -520,7 +520,7 @@ class StickFigureAppearanceViewController: UIViewController, UITableViewDelegate
         return grid
     }
     
-    private func createMuscleControlRow(muscle: MuscleDefinition) -> UIStackView {
+    private func createPropertyControlRow(property: PropertyDefinition) -> UIStackView {
         let row = UIStackView()
         row.axis = .horizontal
         row.spacing = 8
@@ -529,36 +529,36 @@ class StickFigureAppearanceViewController: UIViewController, UITableViewDelegate
         row.heightAnchor.constraint(equalToConstant: 32).isActive = true
         
         let nameLabel = UILabel()
-        nameLabel.text = muscle.name
+        nameLabel.text = property.name
         nameLabel.font = UIFont.systemFont(ofSize: 13)
         nameLabel.setContentCompressionResistancePriority(.required, for: .horizontal)
         nameLabel.translatesAutoresizingMaskIntoConstraints = false
         
         let minus5 = createSmallButton(title: "-5", color: .systemRed) { [weak self] in
-            self?.adjustMusclePoints(muscleId: muscle.id, delta: -5)
+            self?.adjustPropertyPoints(propertyId: property.id, delta: -5)
             self?.tableView.reloadData()
         }
         
         let minus1 = createIconButton(systemName: "minus.circle.fill", color: .systemRed) { [weak self] in
-            self?.adjustMusclePoints(muscleId: muscle.id, delta: -1)
+            self?.adjustPropertyPoints(propertyId: property.id, delta: -1)
             self?.tableView.reloadData()
         }
         
         let pointsLabel = UILabel()
-        pointsLabel.text = "\(Int(gameState?.muscleState.getPoints(for: muscle.id) ?? 0))"
+        pointsLabel.text = "\(Int(gameState?.muscleState.getPoints(for: property.id) ?? 0))"
         pointsLabel.font = UIFont.systemFont(ofSize: 12, weight: .semibold)
         pointsLabel.textAlignment = .center
         pointsLabel.translatesAutoresizingMaskIntoConstraints = false
         pointsLabel.widthAnchor.constraint(equalToConstant: 35).isActive = true
-        pointsLabel.tag = muscle.id.hashValue  // Tag for easy updates
+        pointsLabel.tag = property.id.hashValue  // Tag for easy updates
         
         let plus1 = createIconButton(systemName: "plus.circle.fill", color: .systemGreen) { [weak self] in
-            self?.adjustMusclePoints(muscleId: muscle.id, delta: 1)
+            self?.adjustPropertyPoints(propertyId: property.id, delta: 1)
             self?.tableView.reloadData()
         }
         
         let plus5 = createSmallButton(title: "+5", color: .systemGreen) { [weak self] in
-            self?.adjustMusclePoints(muscleId: muscle.id, delta: 5)
+            self?.adjustPropertyPoints(propertyId: property.id, delta: 5)
             self?.tableView.reloadData()
         }
         
@@ -596,9 +596,9 @@ class StickFigureAppearanceViewController: UIViewController, UITableViewDelegate
         return button
     }
     
-    private func adjustMusclePoints(muscleId: String, delta: Int) {
+    private func adjustPropertyPoints(propertyId: String, delta: Int) {
         guard let gameState = gameState else { return }
-        gameState.muscleState.addPoints(Double(delta), to: muscleId)
+        gameState.muscleState.addPoints(Double(delta), to: propertyId)
         gameState.saveMuscleState()
         onMusclePointsChanged?()
     }
@@ -641,34 +641,28 @@ class StickFigureAppearanceViewController: UIViewController, UITableViewDelegate
         onMusclePointsChanged?()
     }
     
-    @objc private func resetAllMusclesTapped() {
-        guard let gameState = gameState else {
-            print("❌ No gameState available for resetAllMuscles")
-            return
-        }
-        guard let muscles = muscleSystem.config?.muscles else { return }
-        for muscle in muscles {
-            gameState.muscleState.setPoints(0, for: muscle.id)
+    @objc private func resetAllPropertiesTapped() {
+        guard let gameState = gameState,
+              let properties = muscleSystem.config?.properties else { return }
+        
+        for property in properties {
+            gameState.muscleState.setPoints(0, for: property.id)
         }
         gameState.saveMuscleState()
-        tableView.reloadSections([0], with: .fade)
+        tableView.reloadData()
         onMusclePointsChanged?()
-        print("✓ Reset all muscles to 0")
     }
     
-    @objc private func maxAllMusclesTapped() {
-        guard let gameState = gameState else {
-            print("❌ No gameState available for maxAllMuscles")
-            return
-        }
-        guard let muscles = muscleSystem.config?.muscles else { return }
-        for muscle in muscles {
-            gameState.muscleState.setPoints(100, for: muscle.id)
+    @objc private func maxAllPropertiesTapped() {
+        guard let gameState = gameState,
+              let properties = muscleSystem.config?.properties else { return }
+        
+        for property in properties {
+            gameState.muscleState.setPoints(100, for: property.id)
         }
         gameState.saveMuscleState()
-        tableView.reloadSections([0], with: .fade)
+        tableView.reloadData()
         onMusclePointsChanged?()
-        print("✓ Maxed all muscles to 100")
     }
     
     @objc private func customValueButtonTapped(_ sender: UIButton) {
@@ -678,19 +672,19 @@ class StickFigureAppearanceViewController: UIViewController, UITableViewDelegate
               let value = Double(valueText),
               value >= 0 && value <= 100,
               let gameState = gameState,
-              let muscles = muscleSystem.config?.muscles else {
+              let properties = muscleSystem.config?.properties else {
             print("❌ Invalid input or missing gameState for custom value")
             return
         }
         
-        for muscle in muscles {
-            gameState.muscleState.setPoints(value, for: muscle.id)
+        for property in properties {
+            gameState.muscleState.setPoints(value, for: property.id)
         }
         gameState.saveMuscleState()
         textField.text = ""
         tableView.reloadSections([0], with: .fade)
         onMusclePointsChanged?()
-        print("✓ Set all muscles to \(value)")
+        print("✓ Set all properties to \(value)")
     }
 }
 

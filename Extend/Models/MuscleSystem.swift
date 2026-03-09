@@ -3,28 +3,55 @@ import Foundation
 // MARK: - Muscle System Data Structures
 
 struct MuscleConfig: Codable {
-    let actions: [MuscleActionMapping]
-    let pointsConfig: PointsConfig
-    let muscles: [MuscleDefinition]
+    let config: ConfigSettings
+    let actions: [GameAction]
+    let properties: [PropertyDefinition]
+    
+    enum CodingKeys: String, CodingKey {
+        case config, actions, properties
+    }
 }
 
-struct MuscleActionMapping: Codable {
+struct ConfigSettings: Codable {
+    let description: String?
+    let pointsPerCompletion: Int
+    let timeframeUnit: String
+    let tiers: [String]
+    let tierGating: Bool
+}
+
+struct GameAction: Codable {
+    let id: String
     let name: String
-    let targetMuscle: String
+    let description: String?
+    let pointsAwarded: Int
+    let frequency: Frequency?
+    let propertyDistribution: [PropertyDistribution]
+    
+    enum CodingKeys: String, CodingKey {
+        case id, name, description, pointsAwarded, frequency, propertyDistribution
+    }
+}
+
+struct Frequency: Codable {
+    let count: Int
+    let unit: String
+}
+
+struct PropertyDistribution: Codable {
+    let propertyId: String
     let percentage: Double
 }
 
-struct PointsConfig: Codable {
-    let count: Int          // Points to award
-    let timeframe: String   // "minutes", "hours", or "days"
-    let value: Int          // Timeframe value (e.g., 5 minutes)
-}
-
-struct MuscleDefinition: Codable {
+struct PropertyDefinition: Codable {
     let id: String
     let name: String
-    let bodyParts: [String]
-    let frameValues: [String: AnyCodable]  // Points (0, 25, 50, 75, 100) -> values
+    let category: String?
+    let progression: [String: Double]
+    
+    enum CodingKeys: String, CodingKey {
+        case id, name, category, progression
+    }
 }
 
 // MARK: - Muscle State (Runtime)
@@ -51,11 +78,11 @@ class MuscleState: Codable {
         try container.encode(lastPointAwardTime, forKey: .lastPointAwardTime)
     }
     
-    /// Initialize muscle points to 0 for all muscles
-    func initializeMuscles(with muscles: [MuscleDefinition]) {
-        for muscle in muscles {
-            if musclePoints[muscle.id] == nil {
-                musclePoints[muscle.id] = 0
+    /// Initialize property points to 0 for all properties
+    func initializeProperties(with properties: [PropertyDefinition]) {
+        for property in properties {
+            if musclePoints[property.id] == nil {
+                musclePoints[property.id] = 0
             }
         }
     }
@@ -77,21 +104,25 @@ class MuscleState: Codable {
     }
     
     /// Check if enough time has passed to award points
-    func canAwardPoints(to muscleId: String, pointsConfig: PointsConfig) -> Bool {
-        guard let lastTime = lastPointAwardTime[muscleId] else {
+    func canAwardPoints(to propertyId: String, frequency: Frequency?) -> Bool {
+        guard let lastTime = lastPointAwardTime[propertyId] else {
             return true  // Never awarded before
         }
         
+        guard let frequency = frequency else {
+            return true  // If no frequency specified, always allow
+        }
+        
         let timeInterval: TimeInterval
-        switch pointsConfig.timeframe {
+        switch frequency.unit {
         case "minutes":
-            timeInterval = TimeInterval(pointsConfig.value * 60)
+            timeInterval = TimeInterval(frequency.count * 60)
         case "hours":
-            timeInterval = TimeInterval(pointsConfig.value * 3600)
+            timeInterval = TimeInterval(frequency.count * 3600)
         case "days":
-            timeInterval = TimeInterval(pointsConfig.value * 86400)
+            timeInterval = TimeInterval(frequency.count * 86400)
         default:
-            timeInterval = TimeInterval(pointsConfig.value * 60)  // Default to minutes
+            timeInterval = TimeInterval(frequency.count * 60)  // Default to minutes
         }
         
         return Date().timeIntervalSince(lastTime) >= timeInterval
@@ -239,9 +270,9 @@ class MuscleSystem {
                 let data = try Data(contentsOf: bundleURL)
                 let decoder = JSONDecoder()
                 config = try decoder.decode(MuscleConfig.self, from: data)
-                state.initializeMuscles(with: config?.muscles ?? [])
+                state.initializeProperties(with: config?.properties ?? [])
             } catch {
-                // Handle error silently
+                print("🦵 ❌ Failed to load game_muscles.json: \(error)")
             }
         }
     }
@@ -315,89 +346,25 @@ class MuscleSystem {
         }
     }
     
-    /// Get muscle by ID (for legacy code compatibility)
-    func getMuscle(id: String) -> MuscleDefinition? {
-        return config?.muscles.first { $0.id == id }
+    /// Get property by ID
+    func getProperty(id: String) -> PropertyDefinition? {
+        return config?.properties.first { $0.id == id }
     }
     
-    /// Get interpolated body part value based on muscle points (legacy)
-    func getBodyPartValue(for bodyPartKey: String, muscleId: String, state: MuscleState) -> Double {
-        let currentPoints = state.getPoints(for: muscleId)
+    /// Calculate average property points across all properties
+    func getAveragePropertyPoints(state: MuscleState) -> Double {
+        guard let properties = config?.properties, !properties.isEmpty else { return 0 }
         
-        // Find the muscle definition with this ID
-        guard let muscle = config?.muscles.first(where: { $0.id == muscleId }) else {
-            return 0
+        let totalPoints = properties.reduce(0.0) { sum, property in
+            sum + state.getPoints(for: property.id)
         }
         
-        // Use the frameValues from the muscle definition
-        return interpolateFromMuscleFrameValues(bodyPartKey, musclePoints: currentPoints, muscle: muscle)
-    }
-    
-    /// Interpolate from a muscle's frameValues (new method)
-    private func interpolateFromMuscleFrameValues(_ bodyPartKey: String, musclePoints: Double, muscle: MuscleDefinition) -> Double {
-        let framePoints = [0.0, 25.0, 50.0, 75.0, 100.0]
-        let clamped = max(0, min(100, musclePoints))
-        
-        // Get the value at exact frame points
-        if clamped <= 0 {
-            if let value = getFrameValue(bodyPartKey, fromFrameValues: muscle.frameValues, atPoint: 0) {
-                return value
-            }
-        }
-        if clamped >= 100 {
-            if let value = getFrameValue(bodyPartKey, fromFrameValues: muscle.frameValues, atPoint: 100) {
-                return value
-            }
-        }
-        
-        // Interpolate between two frame points
-        for i in 0..<4 {
-            if clamped >= framePoints[i] && clamped <= framePoints[i + 1] {
-                let p1 = framePoints[i]
-                let p2 = framePoints[i + 1]
-                
-                if let v1 = getFrameValue(bodyPartKey, fromFrameValues: muscle.frameValues, atPoint: Int(p1)),
-                   let v2 = getFrameValue(bodyPartKey, fromFrameValues: muscle.frameValues, atPoint: Int(p2)) {
-                    let ratio = (clamped - p1) / (p2 - p1)
-                    return v1 + (v2 - v1) * ratio
-                }
-            }
-        }
-        
-        // Fallback to 0 frame
-        if let value = getFrameValue(bodyPartKey, fromFrameValues: muscle.frameValues, atPoint: 0) {
-            return value
-        }
-        return 0
-    }
-    
-    /// Helper to get a body part value from frameValues
-    private func getFrameValue(_ bodyPartKey: String, fromFrameValues: [String: AnyCodable], atPoint: Int) -> Double? {
-        let pointKey = String(atPoint)
-        guard let frameData = fromFrameValues[pointKey] else { return nil }
-        
-        if case .dictionary(let dict) = frameData,
-           let valueData = dict[bodyPartKey],
-           let doubleValue = valueData.doubleValue {
-            return doubleValue
-        }
-        return nil
-    }
-    
-    /// Calculate average muscle points across all muscles
-    func getAverageMusclePoints(state: MuscleState) -> Double {
-        guard let muscles = config?.muscles, !muscles.isEmpty else { return 0 }
-        
-        let totalPoints = muscles.reduce(0.0) { sum, muscle in
-            sum + state.getPoints(for: muscle.id)
-        }
-        
-        return totalPoints / Double(muscles.count)
+        return totalPoints / Double(properties.count)
     }
     
     /// Get derived property value using 5-frame interpolation
     func getDerivedPropertyValue(for propertyKey: String, state: MuscleState) -> Double {
-        let avgPoints = getAverageMusclePoints(state: state)
+        let avgPoints = getAveragePropertyPoints(state: state)
         return interpolateProperty(propertyKey, musclePoints: avgPoints)
     }
 }
