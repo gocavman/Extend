@@ -16,10 +16,10 @@
         "count": 1,
         "unit": "day"
       },
-      "propertyDistribution": [
-        {"propertyId": "fusiformUpperLegs", "percentage": 33.33},
-        {"propertyId": "fusiformLowerLegs", "percentage": 33.33},
-        {"propertyId": "strokeThicknessUpperLegs", "percentage": 33.33}
+      "targetMuscleGroups": [
+        {"muscleGroup": "Quads", "percentage": 33},
+        {"muscleGroup": "Calfs", "percentage": 34},
+        {"muscleGroup": "Hamstrings", "percentage": 33}
       ]
     },
     {
@@ -31,10 +31,8 @@
         "count": 1,
         "unit": "day"
       },
-      "propertyDistribution": [
-        {"propertyId": "fusiformUpperArms", "percentage": 40},
-        {"propertyId": "strokeThicknessUpperArms", "percentage": 40},
-        {"propertyId": "fusiformLowerArms", "percentage": 20}
+      "targetMuscleGroups": [
+        {"muscleGroup": "Biceps", "percentage": 100}
       ]
     },
     {
@@ -46,9 +44,13 @@
         "count": 1,
         "unit": "day"
       },
-      "propertyDistribution": [
-        {"propertyId": "fusiformUpperTorso", "percentage": 50},
-        {"propertyId": "strokeThicknessUpperTorso", "percentage": 50}
+      "targetMuscleGroups": [
+        {"muscleGroup": "Chest", "percentage": 85},
+        {"muscleGroup": "Shoulders", "percentage": 2},
+        {"muscleGroup": "Biceps", "percentage": 2},
+        {"muscleGroup": "Triceps", "percentage": 2},
+        {"muscleGroup": "Forearms", "percentage": 2},
+        {"muscleGroup": "Back", "percentage": 2}
       ]
     },
     {
@@ -60,9 +62,24 @@
         "count": 1,
         "unit": "day"
       },
-      "propertyDistribution": [
-        {"propertyId": "fusiformLowerTorso", "percentage": 60},
-        {"propertyId": "strokeThicknessLowerTorso", "percentage": 40}
+      "targetMuscleGroups": [
+        {"muscleGroup": "Abs", "percentage": 100}
+      ]
+    },
+    {
+      "id": "pullUps",
+      "name": "Pull Ups",
+      "description": "Pull exercise",
+      "pointsAwarded": 5,
+      "frequency": {
+        "count": 1,
+        "unit": "day"
+      },
+      "targetMuscleGroups": [
+        {"muscleGroup": "Shoulders", "percentage": 40},
+        {"muscleGroup": "Back", "percentage": 40},
+        {"muscleGroup": "Biceps", "percentage": 10},
+        {"muscleGroup": "Triceps", "percentage": 10}
       ]
     }
   ],
@@ -70,7 +87,7 @@
     {
       "id": "fusiformShoulders",
       "name": "Shoulder Width",
-      "category": "derived",
+      "muscleGroups": ["Shoulders"],
       "progression": {
         "0": 0,
         "25": 1.02,
@@ -82,7 +99,7 @@
     {
       "id": "strokeThicknessJoints",
       "name": "Joint Thickness",
-      "category": "derived",
+      "muscleGroups": ["Derived"],
       "progression": {
         "0": 2.0,
         "25": 3.8,
@@ -94,7 +111,7 @@
     {
       "id": "fusiformUpperTorso",
       "name": "Upper Torso Bulge",
-      "category": "upper_torso",
+      "muscleGroups": ["Chest", "Back"],
       "progression": {
         "0": 0,
         "25": 5.85,
@@ -106,7 +123,7 @@
     {
       "id": "strokeThicknessUpperTorso",
       "name": "Upper Torso Thickness",
-      "category": "upper_torso",
+      "muscleGroups": ["Chest", "Back"],
       "progression": {
         "0": 5.0,
         "25": 3.2,
@@ -118,7 +135,7 @@
     {
       "id": "fusiformLowerTorso",
       "name": "Lower Torso Bulge",
-      "category": "lower_torso",
+      "muscleGroups": ["Abs"],
       "progression": {
         "0": 0,
         "25": 3.76,
@@ -130,7 +147,7 @@
     {
       "id": "strokeThicknessLowerTorso",
       "name": "Lower Torso Thickness",
-      "category": "lower_torso",
+      "muscleGroups": ["Abs"],
       "progression": {
         "0": 5.0,
         "25": 0.0,
@@ -142,7 +159,7 @@
     {
       "id": "fusiformUpperArms",
       "name": "Upper Arm Bulge",
-      "category": "upper_arms",
+      "muscleGroups": ["Biceps", "Triceps", "Shoulders"],
       "progression": {
         "0": 0,
         "25": 2.74,
@@ -154,7 +171,7 @@
     {
       "id": "strokeThicknessUpperArms",
       "name": "Upper Arm Thickness",
-      "category": "upper_arms",
+      "muscleGroups": ["Biceps", "Triceps", "Shoulders"],
       "progression": {
         "0": 4.0,
         "25": 2.8,
@@ -166,7 +183,7 @@
     {
       "id": "fusiformLowerArms",
       "name": "Lower Arm Bulge",
-      "category": "lower_arms",
+      "muscleGroups": ["Forearms"],
       "progression": {
         "0": 0,
         "25": 2.0,
@@ -178,7 +195,7 @@
     {
       "id": "strokeThicknessLowerArms",
       "name": "Lower Arm Thickness",
-      "category": "lower_arms",
+      "muscleGroups": ["Forearms"],
       "progression": {
         "0": 4.0,
         "25": 3.0,
@@ -190,7 +207,7 @@
     {
       "id": "fusiformUpperLegs",
       "name": "Upper Leg Bulge",
-      "category": "upper_legs",
+      "muscleGroups": ["Quads", "Hamstrings"],
       "progression": {
         "0": 0,
         "25": 2.95,
@@ -202,7 +219,7 @@
     {
       "id": "strokeThicknessUpperLegs",
       "name": "Upper Leg Thickness",
-      "category": "upper_legs",
+      "muscleGroups": ["Quads", "Hamstrings"],
       "progression": {
         "0": 1.5,
         "25": 4.0,
@@ -214,7 +231,7 @@
     {
       "id": "fusiformLowerLegs",
       "name": "Lower Leg Bulge",
-      "category": "lower_legs",
+      "muscleGroups": ["Calfs"],
       "progression": {
         "0": 0,
         "25": 2.48,
@@ -226,7 +243,7 @@
     {
       "id": "strokeThicknessLowerLegs",
       "name": "Lower Leg Thickness",
-      "category": "lower_legs",
+      "muscleGroups": ["Calfs"],
       "progression": {
         "0": 4.0,
         "25": 2.8,
@@ -238,7 +255,7 @@
     {
       "id": "neckWidth",
       "name": "Neck Width",
-      "category": "derived",
+      "muscleGroups": ["Shoulders"],
       "progression": {
         "0": 2.3,
         "25": 8.5,
@@ -250,7 +267,7 @@
     {
       "id": "handSize",
       "name": "Hand Size",
-      "category": "derived",
+      "muscleGroups": ["Derived"],
       "progression": {
         "0": 0.5,
         "25": 1.0,
@@ -262,7 +279,7 @@
     {
       "id": "footSize",
       "name": "Foot Size",
-      "category": "derived",
+      "muscleGroups": ["Derived"],
       "progression": {
         "0": 0.5,
         "25": 1.0,
@@ -274,7 +291,7 @@
     {
       "id": "skeletonSizeTorso",
       "name": "Skeleton Size - Torso",
-      "category": "derived",
+      "muscleGroups": ["Abs"],
       "progression": {
         "0": 0.0,
         "25": 0.97,
@@ -286,7 +303,7 @@
     {
       "id": "skeletonSizeArm",
       "name": "Skeleton Size - Arm",
-      "category": "derived",
+      "muscleGroups": ["Derived"],
       "progression": {
         "0": 0.0,
         "25": 0.97,
@@ -298,7 +315,7 @@
     {
       "id": "skeletonSizeLeg",
       "name": "Skeleton Size - Leg",
-      "category": "derived",
+      "muscleGroups": ["Derived"],
       "progression": {
         "0": 0.0,
         "25": 0.97,
@@ -310,7 +327,7 @@
     {
       "id": "waistThicknessMultiplier",
       "name": "Waist Thickness",
-      "category": "derived",
+      "muscleGroups": ["Abs"],
       "progression": {
         "0": 0.0,
         "25": 0.9,

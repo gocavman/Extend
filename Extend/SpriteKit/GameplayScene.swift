@@ -669,9 +669,8 @@ class GameplayScene: GameScene {
         scaledFigure.waistWidthMultiplier = frameWaistWidth
         scaledFigure.midTorsoYOffset = frameMidTorsoYOffset  // Restore the offset for proper torso overlap
         
-        // Apply derived properties
-        print("🎮 DEBUG applyMuscleScaling: Getting derived properties...")
-        let neckWidth = MuscleSystem.shared.getDerivedPropertyValue(for: "neckWidth", state: gameState.muscleState)
+        // Apply properties from the muscle system (both regular and derived)
+        print("🎮 DEBUG applyMuscleScaling: Getting property values...")
         let handSize = MuscleSystem.shared.getDerivedPropertyValue(for: "handSize", state: gameState.muscleState)
         let footSize = MuscleSystem.shared.getDerivedPropertyValue(for: "footSize", state: gameState.muscleState)
         let skeletonSizeTorso = MuscleSystem.shared.getDerivedPropertyValue(for: "skeletonSizeTorso", state: gameState.muscleState)
@@ -679,6 +678,10 @@ class GameplayScene: GameScene {
         let skeletonSizeLeg = MuscleSystem.shared.getDerivedPropertyValue(for: "skeletonSizeLeg", state: gameState.muscleState)
         let waistThicknessMultiplier = MuscleSystem.shared.getDerivedPropertyValue(for: "waistThicknessMultiplier", state: gameState.muscleState)
         let strokeThicknessFullTorso = MuscleSystem.shared.getDerivedPropertyValue(for: "strokeThicknessFullTorso", state: gameState.muscleState)
+        
+        // neckWidth is now a regular property (belongs to Shoulders), not derived
+        let neckWidthPoints = gameState.muscleState.getPoints(for: "neckWidth")
+        let neckWidth = MuscleSystem.shared.interpolateProperty("neckWidth", musclePoints: neckWidthPoints)
         
         print("🎮 DEBUG applyMuscleScaling derived: neckWidth=\(neckWidth), handSize=\(handSize), footSize=\(footSize), skeletonSizeTorso=\(skeletonSizeTorso), skeletonSizeArm=\(skeletonSizeArm), skeletonSizeLeg=\(skeletonSizeLeg), waistThicknessMultiplier=\(waistThicknessMultiplier), strokeThicknessFullTorso=\(strokeThicknessFullTorso)")
         

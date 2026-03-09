@@ -85,10 +85,24 @@ class StickFigureAppearanceViewController: UIViewController, UITableViewDelegate
     
     // MARK: - UITableViewDataSource & UITableViewDelegate
     
-    /// Get only the regular (non-derived) properties for display
-    private func getRegularProperties() -> [PropertyDefinition] {
+    /// Get unique muscle groups (non-derived) for display
+    private func getMuscleGroups() -> [String] {
         guard let properties = muscleSystem.config?.properties else { return [] }
-        return properties.filter { $0.category != "derived" }
+        var muscleGroups = Set<String>()
+        for property in properties {
+            for group in property.muscleGroups {
+                if group != "Derived" {
+                    muscleGroups.insert(group)
+                }
+            }
+        }
+        return Array(muscleGroups).sorted()
+    }
+    
+    /// Map muscle groups to their underlying properties
+    private func getPropertiesForMuscleGroup(_ muscleGroup: String) -> [PropertyDefinition] {
+        guard let allProperties = muscleSystem.config?.properties else { return [] }
+        return allProperties.filter { $0.muscleGroups.contains(muscleGroup) }
     }
     
     func numberOfSections(in tableView: UITableView) -> Int {
@@ -97,7 +111,7 @@ class StickFigureAppearanceViewController: UIViewController, UITableViewDelegate
     
     func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
         switch section {
-        case 0: return expandedSections.contains(0) ? (getRegularProperties().count + 2) : 0  // Properties section (info + properties + buttons, no extra empty row)
+        case 0: return expandedSections.contains(0) ? (getMuscleGroups().count + 2) : 0  // Muscle groups section (info + muscle groups + buttons)
         case 1: return expandedSections.contains(1) ? 6 : 0  // Colors section (6 rows: Head, Torso, Arms, Legs, Accessories, Reset)
         default: return 0
         }
@@ -321,16 +335,69 @@ class StickFigureAppearanceViewController: UIViewController, UITableViewDelegate
         return cell
     }
     
+    private func createMuscleGroupControlRow(muscleGroup: String) -> UIStackView {
+        let row = UIStackView()
+        row.axis = .horizontal
+        row.spacing = 8
+        row.alignment = .center
+        row.translatesAutoresizingMaskIntoConstraints = false
+        row.heightAnchor.constraint(equalToConstant: 32).isActive = true
+        
+        let nameLabel = UILabel()
+        nameLabel.text = muscleGroup
+        nameLabel.font = UIFont.systemFont(ofSize: 13)
+        nameLabel.setContentCompressionResistancePriority(.required, for: .horizontal)
+        nameLabel.translatesAutoresizingMaskIntoConstraints = false
+        
+        let minus5 = createSmallButton(title: "-5", color: .systemRed) { [weak self] in
+            self?.adjustMuscleGroupPoints(muscleGroup: muscleGroup, delta: -5)
+            self?.tableView.reloadData()
+        }
+        
+        let minus1 = createIconButton(systemName: "minus.circle.fill", color: .systemRed) { [weak self] in
+            self?.adjustMuscleGroupPoints(muscleGroup: muscleGroup, delta: -1)
+            self?.tableView.reloadData()
+        }
+        
+        let pointsLabel = UILabel()
+        pointsLabel.text = "\(Int(getMuscleGroupPoints(muscleGroup)))"
+        pointsLabel.font = UIFont.systemFont(ofSize: 12, weight: .semibold)
+        pointsLabel.textAlignment = .center
+        pointsLabel.translatesAutoresizingMaskIntoConstraints = false
+        pointsLabel.widthAnchor.constraint(equalToConstant: 35).isActive = true
+        pointsLabel.tag = muscleGroup.hashValue
+        
+        let plus1 = createIconButton(systemName: "plus.circle.fill", color: .systemGreen) { [weak self] in
+            self?.adjustMuscleGroupPoints(muscleGroup: muscleGroup, delta: 1)
+            self?.tableView.reloadData()
+        }
+        
+        let plus5 = createSmallButton(title: "+5", color: .systemGreen) { [weak self] in
+            self?.adjustMuscleGroupPoints(muscleGroup: muscleGroup, delta: 5)
+            self?.tableView.reloadData()
+        }
+        
+        row.addArrangedSubview(nameLabel)
+        row.addArrangedSubview(UIView())
+        row.addArrangedSubview(minus5)
+        row.addArrangedSubview(minus1)
+        row.addArrangedSubview(pointsLabel)
+        row.addArrangedSubview(plus1)
+        row.addArrangedSubview(plus5)
+        
+        return row
+    }
+    
     private func createMuscleCell(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         let cell = UITableViewCell(style: .default, reuseIdentifier: "muscleCell")
         cell.selectionStyle = .none
         cell.contentView.subviews.forEach { $0.removeFromSuperview() }
         
-        let properties = getRegularProperties()  // Only regular properties, not derived
+        let muscleGroups = getMuscleGroups()  // Only non-derived muscle groups
         
         if indexPath.row < 1 {  // Info label
             let label = UILabel()
-            label.text = "(0 = Extra Small, 25 = Small, 50 = Stand, 75 = Large, 100 = Extra Large)"
+            label.text = "Muscle Point Distribution (0-100 per muscle group)"
             label.font = UIFont.systemFont(ofSize: 10)
             label.textColor = .gray
             label.numberOfLines = 0
@@ -344,9 +411,9 @@ class StickFigureAppearanceViewController: UIViewController, UITableViewDelegate
             ])
             cell.contentView.heightAnchor.constraint(greaterThanOrEqualToConstant: 40).isActive = true
             
-        } else if indexPath.row <= properties.count {  // Property rows
-            let property = properties[indexPath.row - 1]
-            let row = createPropertyControlRow(property: property)
+        } else if indexPath.row <= muscleGroups.count {  // Muscle group rows
+            let muscleGroup = muscleGroups[indexPath.row - 1]
+            let row = createMuscleGroupControlRow(muscleGroup: muscleGroup)
             cell.contentView.addSubview(row)
             NSLayoutConstraint.activate([
                 row.topAnchor.constraint(equalTo: cell.contentView.topAnchor, constant: 8),
@@ -357,7 +424,7 @@ class StickFigureAppearanceViewController: UIViewController, UITableViewDelegate
             ])
             cell.contentView.heightAnchor.constraint(equalToConstant: 48).isActive = true
             
-        } else if indexPath.row == properties.count + 1 {  // Buttons row (only row after properties)
+        } else if indexPath.row == muscleGroups.count + 1 {  // Buttons row (only row after muscle groups)
             let mainStack = UIStackView()
             mainStack.axis = .vertical
             mainStack.spacing = 8
@@ -607,6 +674,27 @@ class StickFigureAppearanceViewController: UIViewController, UITableViewDelegate
         gameState.muscleState.addPoints(Double(delta), to: propertyId)
         gameState.saveMuscleState()
         onMusclePointsChanged?()
+    }
+    
+    private func adjustMuscleGroupPoints(muscleGroup: String, delta: Int) {
+        guard let gameState = gameState else { return }
+        let properties = getPropertiesForMuscleGroup(muscleGroup)
+        for property in properties {
+            gameState.muscleState.addPoints(Double(delta), to: property.id)
+        }
+        gameState.saveMuscleState()
+        onMusclePointsChanged?()
+    }
+    
+    private func getMuscleGroupPoints(_ muscleGroup: String) -> Double {
+        guard let gameState = gameState else { return 0 }
+        let properties = getPropertiesForMuscleGroup(muscleGroup)
+        guard !properties.isEmpty else { return 0 }
+        
+        // Always return the average of properties in the group
+        // This ensures each muscle group displays 0-100, not 0-200
+        let totalPoints = properties.reduce(0) { $0 + gameState.muscleState.getPoints(for: $1.id) }
+        return totalPoints / Double(properties.count)
     }
     
     private func saveAppearanceToGameState() {

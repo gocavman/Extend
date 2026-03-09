@@ -26,11 +26,16 @@ struct GameAction: Codable {
     let description: String?
     let pointsAwarded: Int
     let frequency: Frequency?
-    let propertyDistribution: [PropertyDistribution]
+    let targetMuscleGroups: [MuscleGroupDistribution]
     
     enum CodingKeys: String, CodingKey {
-        case id, name, description, pointsAwarded, frequency, propertyDistribution
+        case id, name, description, pointsAwarded, frequency, targetMuscleGroups
     }
+}
+
+struct MuscleGroupDistribution: Codable {
+    let muscleGroup: String
+    let percentage: Double
 }
 
 struct Frequency: Codable {
@@ -38,19 +43,14 @@ struct Frequency: Codable {
     let unit: String
 }
 
-struct PropertyDistribution: Codable {
-    let propertyId: String
-    let percentage: Double
-}
-
 struct PropertyDefinition: Codable {
     let id: String
     let name: String
-    let category: String?
+    let muscleGroups: [String]  // Now supports multiple muscle groups
     let progression: [String: Double]
     
     enum CodingKeys: String, CodingKey {
-        case id, name, category, progression
+        case id, name, muscleGroups, progression
     }
 }
 

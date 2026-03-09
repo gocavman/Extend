@@ -599,7 +599,7 @@ class StickFigureGameState {
     func awardMuscleLevelPoints(for actionName: String) {
         // Find the action in muscle config
         guard let action = MuscleSystem.shared.config?.actions.first(where: { $0.name == actionName }) else {
-            return  // Action not configured for property awards
+            return  // Action not configured for muscle awards
         }
         
         // Check if enough time has passed since last award for this action
@@ -607,11 +607,23 @@ class StickFigureGameState {
             return  // Not enough time has passed
         }
         
-        // Distribute points to all target properties based on percentages
-        for distribution in action.propertyDistribution {
-            let pointsForThisProperty = Double(action.pointsAwarded) * (distribution.percentage / 100.0)
-            muscleState.addPoints(pointsForThisProperty, to: distribution.propertyId)
-            muscleState.recordPointAward(for: distribution.propertyId)
+        // Get all properties for distribution
+        guard let allProperties = MuscleSystem.shared.config?.properties else { return }
+        
+        // Distribute points to properties based on target muscle groups
+        for muscleDistribution in action.targetMuscleGroups {
+            // Find all properties that belong to this muscle group
+            let propertiesInGroup = allProperties.filter { $0.muscleGroups.contains(muscleDistribution.muscleGroup) }
+            
+            // Divide the percentage equally among all properties in the group
+            let percentagePerProperty = muscleDistribution.percentage / Double(max(1, propertiesInGroup.count))
+            
+            // Award points to each property
+            for property in propertiesInGroup {
+                let pointsForThisProperty = Double(action.pointsAwarded) * (percentagePerProperty / 100.0)
+                muscleState.addPoints(pointsForThisProperty, to: property.id)
+                muscleState.recordPointAward(for: property.id)
+            }
         }
         
         // Save muscle state
