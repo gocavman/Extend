@@ -85,13 +85,19 @@ class StickFigureAppearanceViewController: UIViewController, UITableViewDelegate
     
     // MARK: - UITableViewDataSource & UITableViewDelegate
     
+    /// Get only the regular (non-derived) properties for display
+    private func getRegularProperties() -> [PropertyDefinition] {
+        guard let properties = muscleSystem.config?.properties else { return [] }
+        return properties.filter { $0.category != "derived" }
+    }
+    
     func numberOfSections(in tableView: UITableView) -> Int {
         return 2  // Muscles and Colors
     }
     
     func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
         switch section {
-        case 0: return expandedSections.contains(0) ? ((muscleSystem.config?.properties.count ?? 0) + 2) : 0  // Properties section (info + properties + buttons, no extra empty row)
+        case 0: return expandedSections.contains(0) ? (getRegularProperties().count + 2) : 0  // Properties section (info + properties + buttons, no extra empty row)
         case 1: return expandedSections.contains(1) ? 6 : 0  // Colors section (6 rows: Head, Torso, Arms, Legs, Accessories, Reset)
         default: return 0
         }
@@ -320,7 +326,7 @@ class StickFigureAppearanceViewController: UIViewController, UITableViewDelegate
         cell.selectionStyle = .none
         cell.contentView.subviews.forEach { $0.removeFromSuperview() }
         
-        guard let properties = muscleSystem.config?.properties else { return cell }
+        let properties = getRegularProperties()  // Only regular properties, not derived
         
         if indexPath.row < 1 {  // Info label
             let label = UILabel()

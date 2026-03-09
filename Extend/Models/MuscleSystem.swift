@@ -244,7 +244,7 @@ class MuscleSystem {
             for name in standNames {
                 if let frame = allFrames.first(where: { $0.name == name }) {
                     loadedFrames.append(frame)
-                    print("🦵 Loaded: \(name) - stroke=\(frame.strokeThicknessUpperTorso)")
+                    print("🦵 Loaded: \(name) - strokeThicknessFullTorso=\(frame.strokeThicknessFullTorso), strokeThicknessUpperTorso=\(frame.strokeThicknessUpperTorso)")
                 } else {
                     print("🦵 NOT FOUND: \(name)")
                 }
@@ -291,13 +291,23 @@ class MuscleSystem {
         let framePoints = [0.0, 25.0, 50.0, 75.0, 100.0]
         let clamped = max(0, min(100, musclePoints))
         
+        if propertyKey == "strokeThicknessFullTorso" {
+            print("🦵 interpolateProperty strokeThicknessFullTorso: musclePoints=\(musclePoints), clamped=\(clamped)")
+        }
+        
         // Clamp to range [0, 100]
         if clamped <= 0 {
             let val = getPropertyValue(propertyKey, from: standFrames[0])
+            if propertyKey == "strokeThicknessFullTorso" {
+                print("🦵   -> at 0 points: \(val)")
+            }
             return val
         }
         if clamped >= 100 {
             let val = getPropertyValue(propertyKey, from: standFrames[4])
+            if propertyKey == "strokeThicknessFullTorso" {
+                print("🦵   -> at 100 points: \(val)")
+            }
             return val
         }
         
@@ -310,8 +320,13 @@ class MuscleSystem {
                 let p1 = framePoints[i]
                 let p2 = framePoints[i + 1]
                 let ratio = (clamped - p1) / (p2 - p1)
+                let interpolated = v1 + (v2 - v1) * ratio
                 
-                return v1 + (v2 - v1) * ratio
+                if propertyKey == "strokeThicknessFullTorso" {
+                    print("🦵   -> between frames \(i) and \(i+1): v1=\(v1), v2=\(v2), ratio=\(ratio), result=\(interpolated)")
+                }
+                
+                return interpolated
             }
         }
         
@@ -320,30 +335,37 @@ class MuscleSystem {
     
     /// Helper to get a property value from a frame
     private func getPropertyValue(_ propertyKey: String, from frame: SavedEditFrame) -> Double {
+        let value: Double
         switch propertyKey {
-        case "fusiformShoulders": return Double(frame.fusiformShoulders)
-        case "fusiformUpperTorso": return Double(frame.fusiformUpperTorso)
-        case "fusiformLowerTorso": return Double(frame.fusiformLowerTorso)
-        case "fusiformUpperArms": return Double(frame.fusiformUpperArms)
-        case "fusiformLowerArms": return Double(frame.fusiformLowerArms)
-        case "fusiformUpperLegs": return Double(frame.fusiformUpperLegs)
-        case "fusiformLowerLegs": return Double(frame.fusiformLowerLegs)
-        case "neckWidth": return Double(frame.neckWidth)
-        case "handSize": return Double(frame.handSize)
-        case "footSize": return Double(frame.footSize)
-        case "skeletonSizeTorso": return Double(frame.skeletonSizeTorso)
-        case "skeletonSizeArm": return Double(frame.skeletonSizeArm)
-        case "skeletonSizeLeg": return Double(frame.skeletonSizeLeg)
-        case "waistThicknessMultiplier": return Double(frame.waistThicknessMultiplier)
-        case "strokeThicknessUpperTorso": return Double(frame.strokeThicknessUpperTorso)
-        case "strokeThicknessLowerTorso": return Double(frame.strokeThicknessLowerTorso)
-        case "strokeThicknessUpperArms": return Double(frame.strokeThicknessUpperArms)
-        case "strokeThicknessLowerArms": return Double(frame.strokeThicknessLowerArms)
-        case "strokeThicknessUpperLegs": return Double(frame.strokeThicknessUpperLegs)
-        case "strokeThicknessLowerLegs": return Double(frame.strokeThicknessLowerLegs)
-        case "strokeThicknessJoints": return Double(frame.strokeThicknessJoints)
-        default: return 0
+        case "fusiformShoulders": value = Double(frame.fusiformShoulders)
+        case "fusiformUpperTorso": value = Double(frame.fusiformUpperTorso)
+        case "fusiformLowerTorso": value = Double(frame.fusiformLowerTorso)
+        case "fusiformUpperArms": value = Double(frame.fusiformUpperArms)
+        case "fusiformLowerArms": value = Double(frame.fusiformLowerArms)
+        case "fusiformUpperLegs": value = Double(frame.fusiformUpperLegs)
+        case "fusiformLowerLegs": value = Double(frame.fusiformLowerLegs)
+        case "neckWidth": value = Double(frame.neckWidth)
+        case "handSize": value = Double(frame.handSize)
+        case "footSize": value = Double(frame.footSize)
+        case "skeletonSizeTorso": value = Double(frame.skeletonSizeTorso)
+        case "skeletonSizeArm": value = Double(frame.skeletonSizeArm)
+        case "skeletonSizeLeg": value = Double(frame.skeletonSizeLeg)
+        case "waistThicknessMultiplier": value = Double(frame.waistThicknessMultiplier)
+        case "strokeThicknessUpperTorso": value = Double(frame.strokeThicknessUpperTorso)
+        case "strokeThicknessLowerTorso": value = Double(frame.strokeThicknessLowerTorso)
+        case "strokeThicknessUpperArms": value = Double(frame.strokeThicknessUpperArms)
+        case "strokeThicknessLowerArms": value = Double(frame.strokeThicknessLowerArms)
+        case "strokeThicknessUpperLegs": value = Double(frame.strokeThicknessUpperLegs)
+        case "strokeThicknessLowerLegs": value = Double(frame.strokeThicknessLowerLegs)
+        case "strokeThicknessJoints": value = Double(frame.strokeThicknessJoints)
+        case "strokeThicknessFullTorso":
+            value = Double(frame.strokeThicknessFullTorso)
+            print("🦵 getPropertyValue strokeThicknessFullTorso: frame=\(frame.name), value=\(value)")
+        default:
+            value = 0
+            print("🦵 getPropertyValue UNKNOWN: propertyKey=\(propertyKey)")
         }
+        return value
     }
     
     /// Get property by ID

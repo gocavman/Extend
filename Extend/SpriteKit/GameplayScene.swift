@@ -678,8 +678,9 @@ class GameplayScene: GameScene {
         let skeletonSizeArm = MuscleSystem.shared.getDerivedPropertyValue(for: "skeletonSizeArm", state: gameState.muscleState)
         let skeletonSizeLeg = MuscleSystem.shared.getDerivedPropertyValue(for: "skeletonSizeLeg", state: gameState.muscleState)
         let waistThicknessMultiplier = MuscleSystem.shared.getDerivedPropertyValue(for: "waistThicknessMultiplier", state: gameState.muscleState)
+        let strokeThicknessFullTorso = MuscleSystem.shared.getDerivedPropertyValue(for: "strokeThicknessFullTorso", state: gameState.muscleState)
         
-        print("🎮 DEBUG applyMuscleScaling derived: neckWidth=\(neckWidth), handSize=\(handSize), footSize=\(footSize), skeletonSizeTorso=\(skeletonSizeTorso), skeletonSizeArm=\(skeletonSizeArm), skeletonSizeLeg=\(skeletonSizeLeg), waistThicknessMultiplier=\(waistThicknessMultiplier)")
+        print("🎮 DEBUG applyMuscleScaling derived: neckWidth=\(neckWidth), handSize=\(handSize), footSize=\(footSize), skeletonSizeTorso=\(skeletonSizeTorso), skeletonSizeArm=\(skeletonSizeArm), skeletonSizeLeg=\(skeletonSizeLeg), waistThicknessMultiplier=\(waistThicknessMultiplier), strokeThicknessFullTorso=\(strokeThicknessFullTorso)")
         
         scaledFigure.neckWidth = neckWidth
         scaledFigure.handSize = handSize
@@ -688,6 +689,7 @@ class GameplayScene: GameScene {
         scaledFigure.skeletonSizeArm = skeletonSizeArm
         scaledFigure.skeletonSizeLeg = skeletonSizeLeg
         scaledFigure.waistThicknessMultiplier = waistThicknessMultiplier
+        scaledFigure.strokeThicknessFullTorso = strokeThicknessFullTorso
         
         let isSideView = frameShoulderWidth == 0 && frameWaistWidth == 0
         print("🎮 DEBUG applyMuscleScaling isSideView=\(isSideView)")

@@ -70,7 +70,7 @@
     {
       "id": "fusiformShoulders",
       "name": "Shoulder Width",
-      "category": "shoulders",
+      "category": "derived",
       "progression": {
         "0": 0,
         "25": 1.02,
@@ -82,7 +82,7 @@
     {
       "id": "strokeThicknessJoints",
       "name": "Joint Thickness",
-      "category": "shoulders",
+      "category": "derived",
       "progression": {
         "0": 2.0,
         "25": 3.8,
