@@ -1054,6 +1054,7 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
             strokeThicknessLowerLegs = standFrame.strokeThicknessLowerLegs
             strokeThicknessFullTorso = standFrame.strokeThicknessFullTorso
             strokeThicknessDeltoids = standFrame.strokeThicknessDeltoids
+            strokeThicknessTrapezius = standFrame.strokeThicknessTrapezius
             // Note: jointShapeSize is editor-only property, not in StickFigure2D
             skeletonSizeTorso = standFrame.skeletonSizeTorso
             skeletonSizeArm = standFrame.skeletonSizeArm
@@ -1297,6 +1298,7 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
                 strokeThicknessLowerLegs: self.strokeThicknessLowerLegs,
                 strokeThicknessFullTorso: self.strokeThicknessFullTorso,
                 strokeThicknessDeltoids: self.strokeThicknessDeltoids,
+                strokeThicknessTrapezius: self.strokeThicknessTrapezius,
                 showGrid: true,
                 showJoints: self.showInteractiveJoints,
                 positionX: self.figureOffsetX,
@@ -2297,6 +2299,7 @@ class FrameListViewController: UIViewController, UITableViewDataSource, UITableV
                     strokeThicknessLowerLegs: pose.strokeThicknessLowerLegs,
                     strokeThicknessFullTorso: pose.strokeThicknessFullTorso,
                     strokeThicknessDeltoids: pose.strokeThicknessDeltoids,
+                    strokeThicknessTrapezius: pose.strokeThicknessTrapezius,
                     showGrid: true,
                     showJoints: true,
                     positionX: 0,

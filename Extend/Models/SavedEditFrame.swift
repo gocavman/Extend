@@ -108,6 +108,7 @@ struct SavedEditFrame: Codable, Identifiable {
     let strokeThicknessUpperTorso: CGFloat
     let strokeThicknessFullTorso: CGFloat
     let strokeThicknessDeltoids: CGFloat
+    let strokeThicknessTrapezius: CGFloat
     
     // Pose data (angles) - stored as simple properties
     let waistTorsoAngle: CGFloat
@@ -247,6 +248,7 @@ struct SavedEditFrame: Codable, Identifiable {
             self.strokeThicknessUpperTorso = pose.strokeThicknessUpperTorso
             self.strokeThicknessFullTorso = pose.strokeThicknessFullTorso
             self.strokeThicknessDeltoids = pose.strokeThicknessDeltoids
+            self.strokeThicknessTrapezius = pose.strokeThicknessTrapezius
         } else {
             // Use defaults that match the Stand frame
             self.strokeThicknessJoints = 2.5
@@ -258,6 +260,7 @@ struct SavedEditFrame: Codable, Identifiable {
             self.strokeThicknessUpperTorso = 5.0
             self.strokeThicknessFullTorso = 1.0
             self.strokeThicknessDeltoids = 4.0
+            self.strokeThicknessTrapezius = 4.0
         }
         
         // Store objects
@@ -281,7 +284,7 @@ struct SavedEditFrame: Codable, Identifiable {
         case leftHandAngle, rightHandAngle, leftHipAngle, rightHipAngle
         case leftKneeAngle, rightKneeAngle, leftFootAngle, rightFootAngle
         case strokeThicknessJoints, strokeThicknessLowerArms, strokeThicknessLowerLegs
-        case strokeThicknessLowerTorso, strokeThicknessUpperArms, strokeThicknessUpperLegs, strokeThicknessUpperTorso, strokeThicknessFullTorso, strokeThicknessDeltoids
+        case strokeThicknessLowerTorso, strokeThicknessUpperArms, strokeThicknessUpperLegs, strokeThicknessUpperTorso, strokeThicknessFullTorso, strokeThicknessDeltoids, strokeThicknessTrapezius
         case headRadiusMultiplier, shoulderWidthMultiplier_
         case footColor, handColor, headColor, torsoColor, leftArmColor, rightArmColor
         case leftLegColor, rightLegColor, leftUpperArmColor, leftLowerArmColor
@@ -369,6 +372,7 @@ struct SavedEditFrame: Codable, Identifiable {
         strokeThicknessUpperTorso = try poseContainer.decodeIfPresent(CGFloat.self, forKey: .strokeThicknessUpperTorso) ?? 5.0
         strokeThicknessFullTorso = try poseContainer.decodeIfPresent(CGFloat.self, forKey: .strokeThicknessFullTorso) ?? 1.0
         strokeThicknessDeltoids = try poseContainer.decodeIfPresent(CGFloat.self, forKey: .strokeThicknessDeltoids) ?? 4.0
+        strokeThicknessTrapezius = try poseContainer.decodeIfPresent(CGFloat.self, forKey: .strokeThicknessTrapezius) ?? 4.0
         
         // Decode objects - optional for backward compatibility with old saved frames
         objects = try container.decodeIfPresent([EditorObject].self, forKey: .objects) ?? []
@@ -444,6 +448,7 @@ struct SavedEditFrame: Codable, Identifiable {
         try poseContainer.encode(strokeThicknessUpperTorso, forKey: .strokeThicknessUpperTorso)
         try poseContainer.encode(strokeThicknessFullTorso, forKey: .strokeThicknessFullTorso)
         try poseContainer.encode(strokeThicknessDeltoids, forKey: .strokeThicknessDeltoids)
+        try poseContainer.encode(strokeThicknessTrapezius, forKey: .strokeThicknessTrapezius)
     }
 }
 
@@ -621,6 +626,7 @@ class SavedFramesManager {
             ("skeletonSizeTorso", roundAndFormat(frame.skeletonSizeTorso, decimals: 2)),
             ("strokeThicknessFullTorso", roundAndFormat(frame.strokeThicknessFullTorso, decimals: 1)),
             ("strokeThicknessDeltoids", roundAndFormat(frame.strokeThicknessDeltoids, decimals: 1)),
+            ("strokeThicknessTrapezius", roundAndFormat(frame.strokeThicknessTrapezius, decimals: 1)),
             ("strokeThicknessJoints", roundAndFormat(frame.strokeThicknessJoints, decimals: 1)),
             ("strokeThicknessLowerArms", roundAndFormat(frame.strokeThicknessLowerArms, decimals: 1)),
             ("strokeThicknessLowerLegs", roundAndFormat(frame.strokeThicknessLowerLegs, decimals: 1)),
@@ -711,6 +717,7 @@ class SavedFramesManager {
                 strokeThicknessLowerLegs: pose.strokeThicknessLowerLegs,
                 strokeThicknessFullTorso: pose.strokeThicknessFullTorso,
                 strokeThicknessDeltoids: pose.strokeThicknessDeltoids,
+                strokeThicknessTrapezius: pose.strokeThicknessTrapezius,
                 showGrid: true,
                 showJoints: true,
                 positionX: 0,
