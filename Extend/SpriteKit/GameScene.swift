@@ -841,11 +841,8 @@ class GameScene: SKScene {
         let leftDeltoidLength = leftArmLength * 0.5  // ~1/2 of upper arm length (increased for taper visibility)
         let leftDeltoidDir = CGPoint(x: leftArmVector.x / leftArmLength, y: leftArmVector.y / leftArmLength)
         let leftDeltoidEnd = CGPoint(x: leftShoulderPos.x + leftDeltoidDir.x * leftDeltoidLength, y: leftShoulderPos.y + leftDeltoidDir.y * leftDeltoidLength)
-        // Deltoid start point: 1/4 of the way from shoulder towards neck (back up the arm vector slightly)
-        let neckToShoulderVec = CGPoint(x: leftShoulderPos.x - neckPos.x, y: leftShoulderPos.y - neckPos.y)
-        let neckToShoulderLen = sqrt(neckToShoulderVec.x * neckToShoulderVec.x + neckToShoulderVec.y * neckToShoulderVec.y)
-        let neckToShoulderDir = CGPoint(x: neckToShoulderVec.x / neckToShoulderLen, y: neckToShoulderVec.y / neckToShoulderLen)
-        let leftDeltoidStart = CGPoint(x: leftShoulderPos.x + neckToShoulderDir.x * neckToShoulderLen * 0.25, y: leftShoulderPos.y + neckToShoulderDir.y * neckToShoulderLen * 0.25)
+        // Deltoid start point: on the shoulder line, 1/3 of the way towards the neck (towards RIGHT/center for left shoulder)
+        let leftDeltoidStart = CGPoint(x: leftShoulderPos.x + (neckPos.x - leftShoulderPos.x) * 0.33, y: leftShoulderPos.y)
         // Deltoid peak controlled by peakPositionDeltoids slider
         drawTaperedSegment(from: leftDeltoidStart, to: leftDeltoidEnd, color: toSKColor(mutableFigure.leftUpperArmColor), strokeThickness: mutableFigure.strokeThicknessDeltoids, fusiform: mutableFigure.fusiformDeltoids, inverted: true, peakPosition: mutableFigure.peakPositionDeltoids)
         
@@ -855,11 +852,8 @@ class GameScene: SKScene {
         let rightDeltoidLength = rightArmLength * 0.5  // ~1/2 of upper arm length (increased for taper visibility)
         let rightDeltoidDir = CGPoint(x: rightArmVector.x / rightArmLength, y: rightArmVector.y / rightArmLength)
         let rightDeltoidEnd = CGPoint(x: rightShoulderPos.x + rightDeltoidDir.x * rightDeltoidLength, y: rightShoulderPos.y + rightDeltoidDir.y * rightDeltoidLength)
-        // Deltoid start point: 1/4 of the way from shoulder towards neck (back up the arm vector slightly)
-        let neckToRightShoulderVec = CGPoint(x: rightShoulderPos.x - neckPos.x, y: rightShoulderPos.y - neckPos.y)
-        let neckToRightShoulderLen = sqrt(neckToRightShoulderVec.x * neckToRightShoulderVec.x + neckToRightShoulderVec.y * neckToRightShoulderVec.y)
-        let neckToRightShoulderDir = CGPoint(x: neckToRightShoulderVec.x / neckToRightShoulderLen, y: neckToRightShoulderVec.y / neckToRightShoulderLen)
-        let rightDeltoidStart = CGPoint(x: rightShoulderPos.x + neckToRightShoulderDir.x * neckToRightShoulderLen * 0.25, y: rightShoulderPos.y + neckToRightShoulderDir.y * neckToRightShoulderLen * 0.25)
+        // Deltoid start point: on the shoulder line, 1/3 of the way towards the neck (towards LEFT/center for right shoulder)
+        let rightDeltoidStart = CGPoint(x: rightShoulderPos.x - (rightShoulderPos.x - neckPos.x) * 0.33, y: rightShoulderPos.y)
         // Deltoid peak controlled by peakPositionDeltoids slider
         drawTaperedSegment(from: rightDeltoidStart, to: rightDeltoidEnd, color: toSKColor(mutableFigure.rightUpperArmColor), strokeThickness: mutableFigure.strokeThicknessDeltoids, fusiform: mutableFigure.fusiformDeltoids, inverted: true, peakPosition: mutableFigure.peakPositionDeltoids)
         
