@@ -389,5 +389,127 @@ class MuscleSystem {
         let avgPoints = getAveragePropertyPoints(state: state)
         return interpolateProperty(propertyKey, musclePoints: avgPoints)
     }
+    
+    /// Regenerate interpolation values in game_muscles.json based on current Stand frames
+    func regenerateInterpolationFromStandFrames(standFrames: [AnimationFrame]) -> Bool {
+        // Load current game_muscles.json config
+        guard let currentConfig = config else { return false }
+        
+        // Sort stand frames by scale (smallest to largest)
+        let sortedFrames = standFrames.sorted { $0.pose.scale < $1.pose.scale }
+        
+        // Map scales to tier names
+        let tiers = ["0", "25", "50", "75", "100"]
+        let interpolationMap: [String: AnimationFrame] = Dictionary(uniqueKeysWithValues:
+            zip(tiers, sortedFrames.prefix(5)).map { ($0, $1) }
+        )
+        
+        // Update progression values for each property by creating new PropertyDefinition objects
+        var updatedProperties: [PropertyDefinition] = []
+        for property in currentConfig.properties {
+            var newProgression: [String: Double] = [:]
+            
+            // For each tier, extract the property value from corresponding Stand frame
+            for (tier, frame) in interpolationMap {
+                let value = extractPropertyValueFromFrame(frame: frame, propertyId: property.id)
+                newProgression[tier] = value
+            }
+            
+            // Create new PropertyDefinition with updated progression
+            let updatedProperty = PropertyDefinition(
+                id: property.id,
+                name: property.name,
+                muscleGroups: property.muscleGroups,
+                progression: newProgression
+            )
+            updatedProperties.append(updatedProperty)
+        }
+        
+        // Create new MuscleConfig with updated properties
+        let updatedConfig = MuscleConfig(
+            config: currentConfig.config,
+            actions: currentConfig.actions,
+            properties: updatedProperties
+        )
+        
+        // Save updated config to game_muscles.json
+        return saveGameMusclesToBundle(config: updatedConfig)
+    }
+    
+    /// Extract a property value from an AnimationFrame
+    private func extractPropertyValueFromFrame(frame: AnimationFrame, propertyId: String) -> Double {
+        // Map property IDs to frame properties
+        switch propertyId {
+        case "fusiformShoulders":
+            return Double(frame.pose.fusiformShoulders)
+        case "fusiformDeltoids":
+            return Double(frame.pose.fusiformDeltoids)
+        case "fusiformUpperTorso":
+            return Double(frame.pose.fusiformUpperTorso)
+        case "fusiformLowerTorso":
+            return Double(frame.pose.fusiformLowerTorso)
+        case "fusiformUpperArms":
+            return Double(frame.pose.fusiformUpperArms)
+        case "fusiformLowerArms":
+            return Double(frame.pose.fusiformLowerArms)
+        case "fusiformUpperLegs":
+            return Double(frame.pose.fusiformUpperLegs)
+        case "fusiformLowerLegs":
+            return Double(frame.pose.fusiformLowerLegs)
+        case "strokeThicknessJoints":
+            return Double(frame.pose.strokeThicknessJoints)
+        case "strokeThicknessUpperTorso":
+            return Double(frame.pose.strokeThicknessUpperTorso)
+        case "strokeThicknessLowerTorso":
+            return Double(frame.pose.strokeThicknessLowerTorso)
+        case "strokeThicknessUpperArms":
+            return Double(frame.pose.strokeThicknessUpperArms)
+        case "strokeThicknessLowerArms":
+            return Double(frame.pose.strokeThicknessLowerArms)
+        case "strokeThicknessUpperLegs":
+            return Double(frame.pose.strokeThicknessUpperLegs)
+        case "strokeThicknessLowerLegs":
+            return Double(frame.pose.strokeThicknessLowerLegs)
+        case "strokeThicknessDeltoids":
+            return Double(frame.pose.strokeThicknessDeltoids)
+        case "strokeThicknessTrapezius":
+            return Double(frame.pose.strokeThicknessTrapezius)
+        case "neckWidth":
+            return Double(frame.pose.neckWidth)
+        case "handSize":
+            return Double(frame.pose.handSize)
+        case "footSize":
+            return Double(frame.pose.footSize)
+        case "skeletonSizeTorso":
+            return Double(frame.pose.skeletonSizeTorso)
+        case "skeletonSizeArm":
+            return Double(frame.pose.skeletonSizeArm)
+        case "skeletonSizeLeg":
+            return Double(frame.pose.skeletonSizeLeg)
+        case "waistThicknessMultiplier":
+            return Double(frame.pose.waistThicknessMultiplier)
+        default:
+            return 0
+        }
+    }
+    
+    /// Save game muscles config to bundle
+    private func saveGameMusclesToBundle(config: MuscleConfig) -> Bool {
+        do {
+            let encoder = JSONEncoder()
+            encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+            let jsonData = try encoder.encode(config)
+            
+            // Get the path to Documents/game_muscles.json
+            if let documentsURL = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first {
+                let fileURL = documentsURL.appendingPathComponent("game_muscles.json")
+                try jsonData.write(to: fileURL, options: .atomic)
+                print("✅ game_muscles.json regenerated and saved")
+                return true
+            }
+        } catch {
+            print("❌ Error saving game_muscles.json: \(error)")
+        }
+        return false
+    }
 }
-

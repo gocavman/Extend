@@ -993,7 +993,13 @@ class GameScene: SKScene {
         drawSkeletonConnector(from: rightUpperArmEnd, to: rightLowerArmMid, color: toSKColor(mutableFigure.rightLowerArmColor), skeletonSizeMultiplier: mutableFigure.skeletonSizeArm)
         
         // Add joint caps at connection points to fill gaps (elbows, knees, waist, shoulders)
-        let jointCapRadius = max(mutableFigure.strokeThicknessJoints * 0.3 * scale * jointShapeSize, 1.0)
+        let jointCapRadius = mutableFigure.strokeThicknessJoints * 0.3 * scale * jointShapeSize
+        
+        // Only draw joint caps if radius > 0 (when both strokeThicknessJoints and jointShapeSize > 0)
+        guard jointCapRadius > 0 else {
+            print("🎮 Stick figure rendered with \(container.children.count) nodes!")
+            return container
+        }
         
         // LEFT ARM ELBOW - blend upper and lower arm colors by using upper arm color
         drawCircle(at: leftUpperArmEnd, radius: jointCapRadius, color: toSKColor(mutableFigure.leftUpperArmColor))

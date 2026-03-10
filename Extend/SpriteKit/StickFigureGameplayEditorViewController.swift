@@ -274,7 +274,7 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
         case 0: return 2  // Zoom, Position buttons (Show Joints moved to header)
         case 1: return isExpanded ? 9 : 0  // Figure Scale, Joint Shape Size, Shoulder Width, Waist Width, Waist Thickness, Neck Length, Neck Width, Hand Size, Foot Size (Skeleton Size removed)
         case 2: return isExpanded ? 10 : 0  // Stroke Joints, Upper Torso, Lower Torso, Upper Arms, Lower Arms, Upper Legs, Lower Legs, Full Torso, Deltoids, Trapezius
-        case 3: return isExpanded ? 16 : 0  // 8 fusiform + 7 peak position sliders + 1 mid torso Y offset
+        case 3: return isExpanded ? 15 : 0  // 8 fusiform + 7 peak position sliders (upper arms, lower arms, upper legs, lower legs, upper torso, lower torso, deltoids)
         case 4: return isExpanded ? 3 : 0  // 3 Skeleton Size sliders: Torso, Arm, Leg
         case 5: return isExpanded ? 11 : 0  // 11 Joint sliders: head, leftShoulder, rightShoulder, leftElbow, rightElbow, leftKnee, rightKnee, leftCalf, rightCalf, waistRotation, neckRotation
         case 6: return isExpanded ? 12 : 0  // Color pickers for each body part (added shoulders)
@@ -1259,6 +1259,7 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
             tempPose.strokeThicknessLowerLegs = self.strokeThicknessLowerLegs
             tempPose.strokeThicknessFullTorso = self.strokeThicknessFullTorso
             tempPose.strokeThicknessDeltoids = self.strokeThicknessDeltoids
+            tempPose.strokeThicknessTrapezius = self.strokeThicknessTrapezius
             
             // Create EditModeValues to use with SavedEditFrame initializer
             let editValues = EditModeValues(
@@ -1479,6 +1480,7 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
         strokeThicknessLowerLegs = frame.strokeThicknessLowerLegs
         strokeThicknessFullTorso = frame.strokeThicknessFullTorso
         strokeThicknessDeltoids = frame.strokeThicknessDeltoids
+        strokeThicknessTrapezius = frame.strokeThicknessTrapezius
         
         // Restore fusiform
         fusiformUpperTorso = frame.fusiformUpperTorso
@@ -2328,7 +2330,11 @@ class FrameListViewController: UIViewController, UITableViewDataSource, UITableV
         
         // Setup navigation
         navigationItem.leftBarButtonItem = UIBarButtonItem(barButtonSystemItem: .close, target: self, action: #selector(closePressed))
-        navigationItem.rightBarButtonItem = UIBarButtonItem(title: "Sync", style: .plain, target: self, action: #selector(syncFromBundlePressed))
+        
+        // Create two right bar button items: Regenerate and Sync
+        let regenerateBtn = UIBarButtonItem(title: "Regenerate", style: .plain, target: self, action: #selector(regenerateInterpolationPressed))
+        let syncBtn = UIBarButtonItem(title: "Sync", style: .plain, target: self, action: #selector(syncFromBundlePressed))
+        navigationItem.rightBarButtonItems = [syncBtn, regenerateBtn]
         
         // Setup search bar
         searchBar.placeholder = "Search frames..."
@@ -2608,4 +2614,65 @@ class FrameListViewController: UIViewController, UITableViewDataSource, UITableV
         
         present(alert, animated: true)
     }
+    
+    // MARK: - Regenerate Interpolation
+    @objc private func regenerateInterpolationPressed() {
+        let alert = UIAlertController(
+            title: "Regenerate Interpolation?",
+            message: "This will regenerate the interpolation values in game_muscles.json based on the current Stand frames from animations.json.\n\nThis ensures your custom Stand frame changes are reflected in muscle progression.",
+            preferredStyle: .alert
+        )
+        
+        alert.addAction(UIAlertAction(title: "Cancel", style: .cancel))
+        
+        alert.addAction(UIAlertAction(title: "Regenerate", style: .default) { [weak self] _ in
+            self?.performInterpolationRegeneration()
+        })
+        
+        present(alert, animated: true)
+    }
+    
+    private func performInterpolationRegeneration() {
+        // Load the Stand frames from animations.json
+        guard let standFrames = self.loadStandFramesFromBundle() else {
+            let errorAlert = UIAlertController(
+                title: "Error",
+                message: "Could not load Stand frames from animations.json",
+                preferredStyle: .alert
+            )
+            errorAlert.addAction(UIAlertAction(title: "OK", style: .default))
+            self.present(errorAlert, animated: true)
+            return
+        }
+        
+        // Regenerate interpolation values based on Stand frames
+        if MuscleSystem.shared.regenerateInterpolationFromStandFrames(standFrames: standFrames) {
+            let successAlert = UIAlertController(
+                title: "Success",
+                message: "Interpolation values regenerated from Stand frames. game_muscles.json has been updated.",
+                preferredStyle: .alert
+            )
+            successAlert.addAction(UIAlertAction(title: "OK", style: .default))
+            self.present(successAlert, animated: true)
+        } else {
+            let errorAlert = UIAlertController(
+                title: "Error",
+                message: "Failed to regenerate interpolation values",
+                preferredStyle: .alert
+            )
+            errorAlert.addAction(UIAlertAction(title: "OK", style: .default))
+            self.present(errorAlert, animated: true)
+        }
+    }
+    
+    private func loadStandFramesFromBundle() -> [AnimationFrame]? {
+        let standFrames = AnimationStorage.shared.loadFrames().filter { frame in
+            let isStandFrame = ["Extra Small Stand", "Small Stand", "Stand", "Large Stand", "Extra Large Stand"].contains(frame.name)
+            return isStandFrame && frame.frameNumber == 0
+        }
+        
+        guard !standFrames.isEmpty else { return nil }
+        return standFrames
+    }
 }
+

@@ -654,7 +654,7 @@ struct StickFigure2D {
     var fusiformUpperArms: CGFloat = 0.0  // Taper from shoulder to elbow
     var fusiformLowerArms: CGFloat = 0.0  // Taper from elbow to wrist
     var fusiformShoulders: CGFloat = 0.0  // Shoulder joint taper (width variation at shoulders)
-    var fusiformDeltoids: CGFloat = 8.0  // Shoulder cap (deltoid muscle taper) - very high taper for shoulder caps
+    var fusiformDeltoids: CGFloat = 0.0  // Shoulder cap (deltoid muscle taper) - 0 by default (not visible unless explicitly set)
     var fusiformUpperLegs: CGFloat = 0.0  // Taper from hip to knee
     var fusiformLowerLegs: CGFloat = 0.0  // Taper from knee to ankle (inverted - larger at top)
     var fusiformUpperTorso: CGFloat = 0.0 // Taper from shoulders to mid-torso (inverted - larger at top)

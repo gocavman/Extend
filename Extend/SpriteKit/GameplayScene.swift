@@ -655,6 +655,7 @@ class GameplayScene: GameScene {
                 case "strokeThicknessLowerLegs": scaledFigure.strokeThicknessLowerLegs = interpolatedValue
                 case "strokeThicknessJoints": scaledFigure.strokeThicknessJoints = interpolatedValue
                 case "strokeThicknessDeltoids": scaledFigure.strokeThicknessDeltoids = interpolatedValue
+                case "strokeThicknessTrapezius": scaledFigure.strokeThicknessTrapezius = interpolatedValue
                 case "skeletonSizeTorso": scaledFigure.skeletonSizeTorso = interpolatedValue
                 case "skeletonSizeArm": scaledFigure.skeletonSizeArm = interpolatedValue
                 case "skeletonSizeLeg": scaledFigure.skeletonSizeLeg = interpolatedValue
