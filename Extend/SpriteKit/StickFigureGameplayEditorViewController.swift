@@ -41,7 +41,6 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
     private var peakPositionUpperTorso: CGFloat = 0.5  // Peak position for upper torso
     private var peakPositionLowerTorso: CGFloat = 0.5  // Peak position for lower torso
     private var peakPositionDeltoids: CGFloat = 0.3  // Peak position for deltoids
-    private var midTorsoYOffset: CGFloat = 0.0  // Y-axis offset for upper torso bottom pin position
     
     // Individual stroke thickness properties for each body part
     private var strokeThicknessJoints: CGFloat = 2.0
@@ -665,7 +664,6 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
         case (3, 12): addSliderCell(cell, label: "Peak Upper Torso", value: peakPositionUpperTorso, min: 0.1, max: 0.9, increment: 0.05, onChange: { [weak self] val in self?.peakPositionUpperTorso = val; self?.updateFigure() })
         case (3, 13): addSliderCell(cell, label: "Peak Lower Torso", value: peakPositionLowerTorso, min: 0.1, max: 1.0, increment: 0.05, onChange: { [weak self] val in self?.peakPositionLowerTorso = val; self?.updateFigure() })
         case (3, 14): addSliderCell(cell, label: "Peak Deltoids", value: peakPositionDeltoids, min: 0.1, max: 0.9, increment: 0.05, onChange: { [weak self] val in self?.peakPositionDeltoids = val; self?.updateFigure() })
-        case (3, 15): addSliderCell(cell, label: "Mid Torso Y Offset", value: midTorsoYOffset, min: -30.0, max: 30.0, increment: 0.5, onChange: { [weak self] val in self?.midTorsoYOffset = val; self?.updateFigure() })
         
         // Joint sliders - SECTION 5 (was previously section 4)
         case (5, 0): addSliderCell(cell, label: "Head", value: neckRotation, min: -180, max: 180, increment: 1, onChange: { [weak self] val in self?.neckRotation = val; self?.updateFigure() })
@@ -1078,7 +1076,6 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
             peakPositionLowerTorso = standFrame.peakPositionLowerTorso
             
             // Load mid torso Y offset
-            midTorsoYOffset = standFrame.midTorsoYOffset
             
             // Load ALL angles from standFrame
             neckRotation = CGFloat(standFrame.headAngle)
@@ -1156,7 +1153,6 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
             peakPositionUpperTorso: peakPositionUpperTorso,
             peakPositionLowerTorso: peakPositionLowerTorso,
             peakPositionDeltoids: peakPositionDeltoids,
-            midTorsoYOffset: midTorsoYOffset,
             figureOffsetX: figureOffsetX,
             figureOffsetY: figureOffsetY,
             neckRotation: neckRotation,
@@ -1233,7 +1229,6 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
             tempPose.peakPositionLowerLegs = self.peakPositionLowerLegs
             tempPose.peakPositionUpperTorso = self.peakPositionUpperTorso
             tempPose.peakPositionLowerTorso = self.peakPositionLowerTorso
-            tempPose.midTorsoYOffset = self.midTorsoYOffset
             tempPose.shoulderWidthMultiplier = self.shoulderWidthMultiplier
             tempPose.waistWidthMultiplier = self.waistWidthMultiplier
             tempPose.waistThicknessMultiplier = self.waistThicknessMultiplier
@@ -1507,7 +1502,6 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
         peakPositionLowerLegs = frame.peakPositionLowerLegs
         peakPositionUpperTorso = frame.peakPositionUpperTorso
         peakPositionLowerTorso = frame.peakPositionLowerTorso
-        midTorsoYOffset = frame.midTorsoYOffset
         
         // Clear existing objects
         if let editorScene = editorScene {
@@ -1946,7 +1940,6 @@ class StickFigureEditorScene: SKScene {
         peakPositionUpperTorso: CGFloat = 0.5,
         peakPositionLowerTorso: CGFloat = 0.5,
         peakPositionDeltoids: CGFloat = 0.3,
-        midTorsoYOffset: CGFloat = 0.0,
         figureOffsetX: CGFloat = 0,
         figureOffsetY: CGFloat = 0,
         neckRotation: CGFloat = 0,
@@ -2004,7 +1997,6 @@ class StickFigureEditorScene: SKScene {
         updatedFrame.peakPositionUpperTorso = peakPositionUpperTorso
         updatedFrame.peakPositionLowerTorso = peakPositionLowerTorso
         updatedFrame.peakPositionDeltoids = peakPositionDeltoids
-        updatedFrame.midTorsoYOffset = midTorsoYOffset
         updatedFrame.shoulderWidthMultiplier = shoulderWidthMultiplier
         updatedFrame.waistWidthMultiplier = waistWidthMultiplier
         updatedFrame.waistThicknessMultiplier = waistThicknessMultiplier

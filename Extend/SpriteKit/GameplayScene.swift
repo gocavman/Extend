@@ -625,7 +625,6 @@ class GameplayScene: GameScene {
         // These should NOT be overridden by muscle scaling (they're frame-specific for front vs side views)
         let frameShoulderWidth = figure.shoulderWidthMultiplier
         let frameWaistWidth = figure.waistWidthMultiplier
-        let frameMidTorsoYOffset = figure.midTorsoYOffset  // Preserve the offset for proper overlap
         var scaledFigure = figure
         
         // Apply each property's interpolated values to the figure
@@ -667,7 +666,6 @@ class GameplayScene: GameScene {
         
         scaledFigure.shoulderWidthMultiplier = frameShoulderWidth
         scaledFigure.waistWidthMultiplier = frameWaistWidth
-        scaledFigure.midTorsoYOffset = frameMidTorsoYOffset  // Restore the offset for proper torso overlap
         
         // Apply properties from the muscle system (both regular and derived)
         print("🎮 DEBUG applyMuscleScaling: Getting property values...")

@@ -210,21 +210,35 @@ class GameScene: SKScene {
                 path.move(to: firstPoint)
             }
             
-            // Draw top edge
+            // Draw top edge with curves
             for i in 1..<topEdgePoints.count {
-                path.addLine(to: topEdgePoints[i])
+                let prev = topEdgePoints[i - 1]
+                let curr = topEdgePoints[i]
+                
+                let controlX = (prev.x + curr.x) / 2
+                let controlY = (prev.y + curr.y) / 2
+                let control = CGPoint(x: controlX, y: controlY)
+                
+                path.addQuadCurve(to: curr, controlPoint: control)
             }
             
-            // Draw bottom edge in reverse
+            // Draw bottom edge in reverse with curves
             for i in stride(from: bottomEdgePoints.count - 1, through: 0, by: -1) {
-                path.addLine(to: bottomEdgePoints[i])
+                let curr = bottomEdgePoints[i]
+                let prev = i > 0 ? bottomEdgePoints[i - 1] : curr
+                
+                let controlX = (curr.x + prev.x) / 2
+                let controlY = (curr.y + prev.y) / 2
+                let control = CGPoint(x: controlX, y: controlY)
+                
+                path.addQuadCurve(to: curr, controlPoint: control)
             }
             
             path.close()
             
             let shape = SKShapeNode(path: path.cgPath)
             shape.fillColor = color
-            shape.strokeColor = color
+            shape.strokeColor = .clear
             shape.lineWidth = 0
             shape.zPosition = 1
             container.addChild(shape)
@@ -376,21 +390,37 @@ class GameScene: SKScene {
                 path.move(to: firstPoint)
             }
             
-            // Draw top edge with straight lines (enough segments make it look smooth)
+            // Draw top edge with curves for smooth fusiform shape
             for i in 1..<topEdgePoints.count {
-                path.addLine(to: topEdgePoints[i])
+                let prev = topEdgePoints[i - 1]
+                let curr = topEdgePoints[i]
+                
+                // Use quadratic curve for smooth edges
+                let controlX = (prev.x + curr.x) / 2
+                let controlY = (prev.y + curr.y) / 2
+                let control = CGPoint(x: controlX, y: controlY)
+                
+                path.addQuadCurve(to: curr, controlPoint: control)
             }
             
-            // Draw bottom edge in reverse with straight lines
+            // Draw bottom edge in reverse with curves
             for i in stride(from: bottomEdgePoints.count - 1, through: 0, by: -1) {
-                path.addLine(to: bottomEdgePoints[i])
+                let curr = bottomEdgePoints[i]
+                let prev = i > 0 ? bottomEdgePoints[i - 1] : curr
+                
+                // Use quadratic curve for smooth edges
+                let controlX = (curr.x + prev.x) / 2
+                let controlY = (curr.y + prev.y) / 2
+                let control = CGPoint(x: controlX, y: controlY)
+                
+                path.addQuadCurve(to: curr, controlPoint: control)
             }
             
             path.close()
             
             let shape = SKShapeNode(path: path.cgPath)
             shape.fillColor = color
-            shape.strokeColor = color
+            shape.strokeColor = .clear
             shape.lineWidth = 0
             shape.zPosition = 1
             container.addChild(shape)
@@ -514,19 +544,35 @@ class GameScene: SKScene {
                 let path = UIBezierPath()
                 path.move(to: topEdgePoints[0])
                 
+                // Draw top edge with curves
                 for i in 1..<topEdgePoints.count {
-                    path.addLine(to: topEdgePoints[i])
+                    let prev = topEdgePoints[i - 1]
+                    let curr = topEdgePoints[i]
+                    
+                    let controlX = (prev.x + curr.x) / 2
+                    let controlY = (prev.y + curr.y) / 2
+                    let control = CGPoint(x: controlX, y: controlY)
+                    
+                    path.addQuadCurve(to: curr, controlPoint: control)
                 }
                 
+                // Draw bottom edge in reverse with curves
                 for i in (0..<bottomEdgePoints.count).reversed() {
-                    path.addLine(to: bottomEdgePoints[i])
+                    let curr = bottomEdgePoints[i]
+                    let prev = i > 0 ? bottomEdgePoints[i - 1] : curr
+                    
+                    let controlX = (curr.x + prev.x) / 2
+                    let controlY = (curr.y + prev.y) / 2
+                    let control = CGPoint(x: controlX, y: controlY)
+                    
+                    path.addQuadCurve(to: curr, controlPoint: control)
                 }
                 
                 path.close()
                 
                 let shape = SKShapeNode(path: path.cgPath)
                 shape.fillColor = color
-                shape.strokeColor = color
+                shape.strokeColor = .clear
                 shape.lineWidth = 0
                 shape.zPosition = 1
                 container.addChild(shape)
@@ -616,7 +662,7 @@ class GameScene: SKScene {
             
             let shape = SKShapeNode(path: path.cgPath)
             shape.fillColor = color
-            shape.strokeColor = color
+            shape.strokeColor = .clear
             shape.lineWidth = 0
             shape.position = relativePos
             shape.zPosition = 2
@@ -767,40 +813,11 @@ class GameScene: SKScene {
         // Draw torso - SPLIT INTO TWO SEGMENTS: upper and lower
         // IMPORTANT: Draw upper torso FIRST, then lower torso, so lower torso appears on top
         
-        // Apply mid-torso Y offset as a pinning constraint
-        // The offset is defined in the upper torso's LOCAL coordinate system
-        // where Y points downward along the upper torso segment
-        // We rotate this offset by the total torso rotation to get world space
-        let totalTorsoRotationRadians = (mutableFigure.waistTorsoAngle + mutableFigure.midTorsoAngle) * .pi / 180
-        
-        // In upper torso's local space: offset is purely in Y direction (down the torso)
-        let offsetLocalX = CGFloat(0)
-        let offsetLocalY = mutableFigure.midTorsoYOffset
-        
-        // Rotate offset into world space using the upper torso's rotation
-        let rotatedOffsetX = offsetLocalX * cos(CGFloat(totalTorsoRotationRadians)) - offsetLocalY * sin(CGFloat(totalTorsoRotationRadians))
-        let rotatedOffsetY = offsetLocalX * sin(CGFloat(totalTorsoRotationRadians)) + offsetLocalY * cos(CGFloat(totalTorsoRotationRadians))
-        
-        // Apply offset from midTorso
-        let midTorsoWithOffset = CGPoint(
-            x: midTorsoPos.x + rotatedOffsetX,
-            y: midTorsoPos.y + rotatedOffsetY
-        )
-        
-        // Upper torso: curved segment when offset is significant, straight when minimal
-        // The upper torso draws to the offset point (not curved, just straight to that endpoint)
-        let midTorsoOffsetDistance = sqrt(pow(midTorsoWithOffset.x - midTorsoPos.x, 2) + pow(midTorsoWithOffset.y - midTorsoPos.y, 2))
-        if midTorsoOffsetDistance > 0.1 {
-            // Offset is significant - draw straight to offset point
-            drawTaperedSegment(from: neckPos, to: midTorsoWithOffset, color: toSKColor(mutableFigure.torsoColor), strokeThickness: mutableFigure.strokeThicknessUpperTorso, fusiform: mutableFigure.fusiformUpperTorso, inverted: true, peakPosition: mutableFigure.peakPositionUpperTorso)
-        } else {
-            // Offset is negligible - draw straight segment to midTorso
-            drawTaperedSegment(from: neckPos, to: midTorsoPos, color: toSKColor(mutableFigure.torsoColor), strokeThickness: mutableFigure.strokeThicknessUpperTorso, fusiform: mutableFigure.fusiformUpperTorso, inverted: true, peakPosition: mutableFigure.peakPositionUpperTorso)
-        }
+        // Upper torso: draw straight from neck to midTorso
+        drawTaperedSegment(from: neckPos, to: midTorsoPos, color: toSKColor(mutableFigure.torsoColor), strokeThickness: mutableFigure.strokeThicknessUpperTorso, fusiform: mutableFigure.fusiformUpperTorso, inverted: true, peakPosition: mutableFigure.peakPositionUpperTorso)
 
-        // Lower torso from mid-torso (PINNED to original midTorsoPos, not the offset)
+        // Lower torso from mid-torso
         // This keeps the lower torso connected to the visual mid-torso dot
-        // The upper torso overlaps by extending to midTorsoWithOffset
         
         if mutableFigure.waistThicknessMultiplier > 0.0 {
             // Draw triangle-shaped lower torso with rounded bottom corners
@@ -824,9 +841,13 @@ class GameScene: SKScene {
         let leftDeltoidLength = leftArmLength * 0.5  // ~1/2 of upper arm length (increased for taper visibility)
         let leftDeltoidDir = CGPoint(x: leftArmVector.x / leftArmLength, y: leftArmVector.y / leftArmLength)
         let leftDeltoidEnd = CGPoint(x: leftShoulderPos.x + leftDeltoidDir.x * leftDeltoidLength, y: leftShoulderPos.y + leftDeltoidDir.y * leftDeltoidLength)
-        // Deltoid peak is 3/4 of the upper arm's peak position
-        let deltoidPeakPos = mutableFigure.peakPositionUpperArms * 0.75
-        drawTaperedSegment(from: leftShoulderPos, to: leftDeltoidEnd, color: toSKColor(mutableFigure.leftUpperArmColor), strokeThickness: mutableFigure.strokeThicknessDeltoids, fusiform: mutableFigure.fusiformDeltoids, inverted: true, peakPosition: deltoidPeakPos)
+        // Deltoid start point: 1/4 of the way from shoulder towards neck (back up the arm vector slightly)
+        let neckToShoulderVec = CGPoint(x: leftShoulderPos.x - neckPos.x, y: leftShoulderPos.y - neckPos.y)
+        let neckToShoulderLen = sqrt(neckToShoulderVec.x * neckToShoulderVec.x + neckToShoulderVec.y * neckToShoulderVec.y)
+        let neckToShoulderDir = CGPoint(x: neckToShoulderVec.x / neckToShoulderLen, y: neckToShoulderVec.y / neckToShoulderLen)
+        let leftDeltoidStart = CGPoint(x: leftShoulderPos.x + neckToShoulderDir.x * neckToShoulderLen * 0.25, y: leftShoulderPos.y + neckToShoulderDir.y * neckToShoulderLen * 0.25)
+        // Deltoid peak controlled by peakPositionDeltoids slider
+        drawTaperedSegment(from: leftDeltoidStart, to: leftDeltoidEnd, color: toSKColor(mutableFigure.leftUpperArmColor), strokeThickness: mutableFigure.strokeThicknessDeltoids, fusiform: mutableFigure.fusiformDeltoids, inverted: true, peakPosition: mutableFigure.peakPositionDeltoids)
         
         // Right deltoid: from shoulder joint, extending down ~1/2 of upper arm, following shoulder rotation (longer for visible taper)
         let rightArmVector = CGPoint(x: rightUpperArmEnd.x - rightShoulderPos.x, y: rightUpperArmEnd.y - rightShoulderPos.y)
@@ -834,7 +855,13 @@ class GameScene: SKScene {
         let rightDeltoidLength = rightArmLength * 0.5  // ~1/2 of upper arm length (increased for taper visibility)
         let rightDeltoidDir = CGPoint(x: rightArmVector.x / rightArmLength, y: rightArmVector.y / rightArmLength)
         let rightDeltoidEnd = CGPoint(x: rightShoulderPos.x + rightDeltoidDir.x * rightDeltoidLength, y: rightShoulderPos.y + rightDeltoidDir.y * rightDeltoidLength)
-        drawTaperedSegment(from: rightShoulderPos, to: rightDeltoidEnd, color: toSKColor(mutableFigure.rightUpperArmColor), strokeThickness: mutableFigure.strokeThicknessDeltoids, fusiform: mutableFigure.fusiformDeltoids, inverted: true, peakPosition: deltoidPeakPos)
+        // Deltoid start point: 1/4 of the way from shoulder towards neck (back up the arm vector slightly)
+        let neckToRightShoulderVec = CGPoint(x: rightShoulderPos.x - neckPos.x, y: rightShoulderPos.y - neckPos.y)
+        let neckToRightShoulderLen = sqrt(neckToRightShoulderVec.x * neckToRightShoulderVec.x + neckToRightShoulderVec.y * neckToRightShoulderVec.y)
+        let neckToRightShoulderDir = CGPoint(x: neckToRightShoulderVec.x / neckToRightShoulderLen, y: neckToRightShoulderVec.y / neckToRightShoulderLen)
+        let rightDeltoidStart = CGPoint(x: rightShoulderPos.x + neckToRightShoulderDir.x * neckToRightShoulderLen * 0.25, y: rightShoulderPos.y + neckToRightShoulderDir.y * neckToRightShoulderLen * 0.25)
+        // Deltoid peak controlled by peakPositionDeltoids slider
+        drawTaperedSegment(from: rightDeltoidStart, to: rightDeltoidEnd, color: toSKColor(mutableFigure.rightUpperArmColor), strokeThickness: mutableFigure.strokeThicknessDeltoids, fusiform: mutableFigure.fusiformDeltoids, inverted: true, peakPosition: mutableFigure.peakPositionDeltoids)
         
         // Draw arms - with correct peak positions matching the editor
         // Upper arms: peak position controlled by slider
@@ -919,15 +946,14 @@ class GameScene: SKScene {
         // Draws as two segments that bend at midtorso: neck->midtorso and midtorso->waist
         let torsoLineWidth = max(mutableFigure.strokeThicknessFullTorso * 0.8 * scale * mutableFigure.skeletonSizeTorso, 1.0)
         let neckRelative = toRelative(neckPos)
-        let midTorsoOffsetRelative = toRelative(midTorsoWithOffset)  // Use offset position for upper torso
-        let midTorsoRelative = toRelative(midTorsoPos)  // Keep lower torso pinned to unoffset midtorso
+        let midTorsoRelative = toRelative(midTorsoPos)
         let waistRelative = toRelative(waistPos)
 
         let torsoPath = UIBezierPath()
         
-        // Upper torso segment: neck to offset point
+        // Upper torso segment: neck to midtorso
         torsoPath.move(to: neckRelative)
-        torsoPath.addLine(to: midTorsoOffsetRelative)
+        torsoPath.addLine(to: midTorsoRelative)
         
         // Lower torso segment: midtorso (PINNED, no offset) to waist
         torsoPath.addLine(to: midTorsoRelative)

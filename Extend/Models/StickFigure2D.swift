@@ -175,7 +175,6 @@ struct StickFigure2DPose: Codable {
     let peakPositionUpperTorso: CGFloat
     let peakPositionLowerTorso: CGFloat
     let peakPositionDeltoids: CGFloat
-    let midTorsoYOffset: CGFloat
     
     // Figure scale and thickness multipliers
     let figureScale: CGFloat
@@ -260,7 +259,6 @@ struct StickFigure2DPose: Codable {
         self.peakPositionUpperTorso = figure.peakPositionUpperTorso
         self.peakPositionLowerTorso = figure.peakPositionLowerTorso
         self.peakPositionDeltoids = figure.peakPositionDeltoids
-        self.midTorsoYOffset = figure.midTorsoYOffset
         self.figureScale = figure.scale
         self.strokeThicknessMultiplier = 1.0  // This would need to be tracked separately
         self.skeletonSizeTorso = figure.skeletonSizeTorso
@@ -340,7 +338,6 @@ struct StickFigure2DPose: Codable {
         figure.peakPositionUpperTorso = peakPositionUpperTorso
         figure.peakPositionLowerTorso = peakPositionLowerTorso
         figure.peakPositionDeltoids = peakPositionDeltoids
-        figure.midTorsoYOffset = midTorsoYOffset
         figure.shoulderWidthMultiplier = shoulderWidthMultiplier
         figure.waistWidthMultiplier = waistWidthMultiplier
         figure.waistThicknessMultiplier = waistThicknessMultiplier
@@ -420,7 +417,6 @@ struct StickFigure2DPose: Codable {
         try container.encode(round(peakPositionUpperArms), forKey: .peakPositionUpperArms)
         try container.encode(round(peakPositionUpperLegs), forKey: .peakPositionUpperLegs)
         try container.encode(round(peakPositionUpperTorso), forKey: .peakPositionUpperTorso)
-        try container.encode(round(midTorsoYOffset), forKey: .midTorsoYOffset)
         try container.encode(round(rightElbowAngle), forKey: .rightElbowAngle)
         try container.encode(round(rightFootAngle), forKey: .rightFootAngle)
         try container.encode(round(rightHandAngle), forKey: .rightHandAngle)
@@ -517,7 +513,6 @@ struct StickFigure2DPose: Codable {
         self.peakPositionUpperTorso = try container.decodeIfPresent(CGFloat.self, forKey: .peakPositionUpperTorso) ?? 0.5
         self.peakPositionLowerTorso = try container.decodeIfPresent(CGFloat.self, forKey: .peakPositionLowerTorso) ?? 0.5
         self.peakPositionDeltoids = try container.decodeIfPresent(CGFloat.self, forKey: .peakPositionDeltoids) ?? 0.3
-        self.midTorsoYOffset = try container.decodeIfPresent(CGFloat.self, forKey: .midTorsoYOffset) ?? 0.0
         self.figureScale = try container.decodeIfPresent(CGFloat.self, forKey: .figureScale) ?? 1.0
         self.strokeThicknessMultiplier = try container.decodeIfPresent(CGFloat.self, forKey: .strokeThicknessMultiplier) ?? 1.0
         self.skeletonSizeTorso = try container.decodeIfPresent(CGFloat.self, forKey: .skeletonSizeTorso) ?? 1.0
@@ -668,9 +663,7 @@ struct StickFigure2D {
     var peakPositionLowerTorso: CGFloat = 0.5  // Default: middle of lower torso
     var peakPositionDeltoids: CGFloat = 0.3  // Default: closer to shoulder joint for cap effect
     
-    // Mid-torso offset (Y-axis offset to adjust where upper torso bottom pins to mid-torso)
-    // 0.0 = default position, positive = moves down, negative = moves up
-    var midTorsoYOffset: CGFloat = 0.0
+    // ...existing code...
     
     // Static default Stand pose
     static func defaultStand() -> StickFigure2D {
@@ -1090,33 +1083,12 @@ struct StickFigure2DView: View {
         // The offset is defined in the upper torso's LOCAL coordinate system
         // where Y points downward along the upper torso segment
         // We rotate this offset by the total torso rotation to get world space
-        let totalTorsoRotationRadians = CGFloat((figure.waistTorsoAngle + figure.midTorsoAngle) * .pi / 180)
+        // (Note: totalTorsoRotationRadians calculation removed as it's no longer used with simplified torso drawing)
         
-        // In upper torso's local space: offset is purely in Y direction (down the torso)
-        let offsetLocalX = CGFloat(0)
-        let offsetLocalY = figure.midTorsoYOffset
+        // Upper torso: draws straight from neck to midTorso
+        drawSegment(from: neckPos, to: midTorsoPos, color: figure.torsoColor, strokeThickness: figure.strokeThicknessUpperTorso, fusiform: figure.fusiformUpperTorso, inverted: true, in: context)
         
-        // Rotate offset into world space using the upper torso's rotation
-        let rotatedOffsetX = offsetLocalX * cos(totalTorsoRotationRadians) - offsetLocalY * sin(totalTorsoRotationRadians)
-        let rotatedOffsetY = offsetLocalX * sin(totalTorsoRotationRadians) + offsetLocalY * cos(totalTorsoRotationRadians)
-        
-        // Apply offset from midTorso
-        let midTorsoWithOffset = CGPoint(
-            x: midTorsoPos.x + rotatedOffsetX,
-            y: midTorsoPos.y + rotatedOffsetY
-        )
-        
-        // Upper torso: draws to the offset point
-        let midTorsoOffsetDistance = sqrt(pow(midTorsoWithOffset.x - midTorsoPos.x, 2) + pow(midTorsoWithOffset.y - midTorsoPos.y, 2))
-        if midTorsoOffsetDistance > 0.1 {
-            // Offset is significant - draw straight from neck to offset point
-            drawSegment(from: neckPos, to: midTorsoWithOffset, color: figure.torsoColor, strokeThickness: figure.strokeThicknessUpperTorso, fusiform: figure.fusiformUpperTorso, inverted: true, in: context)
-        } else {
-            // Offset is negligible - draw straight segment
-            drawSegment(from: neckPos, to: midTorsoPos, color: figure.torsoColor, strokeThickness: figure.strokeThicknessUpperTorso, fusiform: figure.fusiformUpperTorso, inverted: true, in: context)
-        }
-        // Lower torso: pinned to the ORIGINAL midTorsoPos (the visual mid-torso dot)
-        // The upper torso overlaps by extending to midTorsoWithOffset
+        // Lower torso: pinned to the mid-torso dot
         drawSegment(from: midTorsoPos, to: waistPos, color: figure.torsoColor, strokeThickness: figure.strokeThicknessLowerTorso, fusiform: figure.fusiformLowerTorso, inverted: true, in: context)
         drawSegment(from: neckPos, to: headPos, color: figure.torsoColor, strokeThickness: figure.strokeThicknessUpperTorso, fusiform: 0, inverted: false, in: context)
         
@@ -1143,7 +1115,7 @@ struct StickFigure2DView: View {
         context.stroke(headCircle, with: .color(figure.headColor.opacity(0.8)), lineWidth: figure.strokeThickness)
         
         // Draw skeleton connector lines at joints that bend with the joint angles
-        drawSkeletonConnectors(neckPos: neckPos, midTorsoPos: midTorsoPos, midTorsoWithOffset: midTorsoWithOffset, waistPos: waistPos,
+        drawSkeletonConnectors(neckPos: neckPos, midTorsoPos: midTorsoPos, waistPos: waistPos,
                               leftShoulderPos: leftShoulderPos, rightShoulderPos: rightShoulderPos,
                               leftUpperArmEnd: leftUpperArmEnd, rightUpperArmEnd: rightUpperArmEnd,
                               leftForearmEnd: leftForearmEnd, rightForearmEnd: rightForearmEnd,
@@ -1362,7 +1334,7 @@ struct StickFigure2DView: View {
         context.fill(taperedPath, with: .color(color))
     }
     
-    private func drawSkeletonConnectors(neckPos: CGPoint, midTorsoPos: CGPoint, midTorsoWithOffset: CGPoint, waistPos: CGPoint,
+    private func drawSkeletonConnectors(neckPos: CGPoint, midTorsoPos: CGPoint, waistPos: CGPoint,
                                         leftShoulderPos: CGPoint, rightShoulderPos: CGPoint,
                                         leftUpperArmEnd: CGPoint, rightUpperArmEnd: CGPoint,
                                         leftForearmEnd: CGPoint, rightForearmEnd: CGPoint,
@@ -1374,12 +1346,11 @@ struct StickFigure2DView: View {
         
         var skeletonPath = Path()
         
-        // SPINE/TORSO CONNECTOR: Draws spine with bend at mid-torso offset point
-        // Upper spine: neck to offset point
+        // SPINE/TORSO CONNECTOR: Draws spine straight from neck to waist via mid-torso
+        // Upper spine: neck to mid-torso
         skeletonPath.move(to: neckPos)
-        skeletonPath.addLine(to: midTorsoWithOffset)
-        // Lower spine: offset point to original mid-torso to waist
         skeletonPath.addLine(to: midTorsoPos)
+        // Lower spine: mid-torso to waist
         skeletonPath.addLine(to: waistPos)
         
         // WAIST CONNECTORS: Pinned to neck position (follows upper body rotation)
