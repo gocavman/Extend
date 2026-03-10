@@ -52,6 +52,7 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
     private var strokeThicknessLowerLegs: CGFloat = 4.0
     private var strokeThicknessFullTorso: CGFloat = 1.0
     private var strokeThicknessDeltoids: CGFloat = 4.0
+    private var strokeThicknessTrapezius: CGFloat = 4.0
     
     // Position offset
     var figureOffsetX: CGFloat = 0
@@ -272,7 +273,7 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
         switch section {
         case 0: return 2  // Zoom, Position buttons (Show Joints moved to header)
         case 1: return isExpanded ? 9 : 0  // Figure Scale, Joint Shape Size, Shoulder Width, Waist Width, Waist Thickness, Neck Length, Neck Width, Hand Size, Foot Size (Skeleton Size removed)
-        case 2: return isExpanded ? 9 : 0  // Stroke Joints, Upper Torso, Lower Torso, Upper Arms, Lower Arms, Upper Legs, Lower Legs, Full Torso, Deltoids
+        case 2: return isExpanded ? 10 : 0  // Stroke Joints, Upper Torso, Lower Torso, Upper Arms, Lower Arms, Upper Legs, Lower Legs, Full Torso, Deltoids, Trapezius
         case 3: return isExpanded ? 16 : 0  // 8 fusiform + 7 peak position sliders + 1 mid torso Y offset
         case 4: return isExpanded ? 3 : 0  // 3 Skeleton Size sliders: Torso, Arm, Leg
         case 5: return isExpanded ? 11 : 0  // 11 Joint sliders: head, leftShoulder, rightShoulder, leftElbow, rightElbow, leftKnee, rightKnee, leftCalf, rightCalf, waistRotation, neckRotation
@@ -592,57 +593,64 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
             
         case (2, 1):
             // Stroke - Upper Torso
-            addSliderCell(cell, label: "Upper Torso", value: strokeThicknessUpperTorso, min: 0.0, max: 10.0, increment: 0.1, onChange: { [weak self] val in
+            addSliderCell(cell, label: "Upper Torso", value: strokeThicknessUpperTorso, min: 0.0, max: 20.0, increment: 0.1, onChange: { [weak self] val in
                 self?.strokeThicknessUpperTorso = val
                 self?.updateFigure()
             })
             
         case (2, 2):
             // Stroke - Lower Torso
-            addSliderCell(cell, label: "Lower Torso", value: strokeThicknessLowerTorso, min: 0.0, max: 10.0, increment: 0.1, onChange: { [weak self] val in
+            addSliderCell(cell, label: "Lower Torso", value: strokeThicknessLowerTorso, min: 0.0, max: 20.0, increment: 0.1, onChange: { [weak self] val in
                 self?.strokeThicknessLowerTorso = val
                 self?.updateFigure()
             })
             
         case (2, 3):
             // Stroke - Upper Arms
-            addSliderCell(cell, label: "Upper Arms", value: strokeThicknessUpperArms, min: 0.0, max: 10.0, increment: 0.1, onChange: { [weak self] val in
+            addSliderCell(cell, label: "Upper Arms", value: strokeThicknessUpperArms, min: 0.0, max: 20.0, increment: 0.1, onChange: { [weak self] val in
                 self?.strokeThicknessUpperArms = val
                 self?.updateFigure()
             })
             
         case (2, 4):
             // Stroke - Lower Arms
-            addSliderCell(cell, label: "Lower Arms", value: strokeThicknessLowerArms, min: 0.0, max: 10.0, increment: 0.1, onChange: { [weak self] val in
+            addSliderCell(cell, label: "Lower Arms", value: strokeThicknessLowerArms, min: 0.0, max: 20.0, increment: 0.1, onChange: { [weak self] val in
                 self?.strokeThicknessLowerArms = val
                 self?.updateFigure()
             })
             
         case (2, 5):
             // Stroke - Upper Legs
-            addSliderCell(cell, label: "Upper Legs", value: strokeThicknessUpperLegs, min: 0.0, max: 10.0, increment: 0.1, onChange: { [weak self] val in
+            addSliderCell(cell, label: "Upper Legs", value: strokeThicknessUpperLegs, min: 0.0, max: 20.0, increment: 0.1, onChange: { [weak self] val in
                 self?.strokeThicknessUpperLegs = val
                 self?.updateFigure()
             })
             
         case (2, 6):
             // Stroke - Lower Legs
-            addSliderCell(cell, label: "Lower Legs", value: strokeThicknessLowerLegs, min: 0.0, max: 10.0, increment: 0.1, onChange: { [weak self] val in
+            addSliderCell(cell, label: "Lower Legs", value: strokeThicknessLowerLegs, min: 0.0, max: 20.0, increment: 0.1, onChange: { [weak self] val in
                 self?.strokeThicknessLowerLegs = val
                 self?.updateFigure()
             })
             
         case (2, 7):
             // Stroke - Full Torso
-            addSliderCell(cell, label: "Full Torso", value: strokeThicknessFullTorso, min: 0.0, max: 10.0, increment: 0.1, onChange: { [weak self] val in
+            addSliderCell(cell, label: "Full Torso", value: strokeThicknessFullTorso, min: 0.0, max: 20.0, increment: 0.1, onChange: { [weak self] val in
                 self?.strokeThicknessFullTorso = val
                 self?.updateFigure()
             })
             
         case (2, 8):
             // Stroke - Deltoids
-            addSliderCell(cell, label: "Deltoids", value: strokeThicknessDeltoids, min: 0.0, max: 10.0, increment: 0.1, onChange: { [weak self] val in
+            addSliderCell(cell, label: "Deltoids", value: strokeThicknessDeltoids, min: 0.0, max: 20.0, increment: 0.1, onChange: { [weak self] val in
                 self?.strokeThicknessDeltoids = val
+                self?.updateFigure()
+            })
+            
+        case (2, 9):
+            // Stroke - Trapezius
+            addSliderCell(cell, label: "Trapezius", value: strokeThicknessTrapezius, min: 0.0, max: 20.0, increment: 0.1, onChange: { [weak self] val in
+                self?.strokeThicknessTrapezius = val
                 self?.updateFigure()
             })
             
@@ -1066,6 +1074,7 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
             fusiformUpperLegs = standFrame.fusiformUpperLegs
             fusiformLowerLegs = standFrame.fusiformLowerLegs
             fusiformShoulders = standFrame.fusiformShoulders
+            fusiformDeltoids = standFrame.fusiformDeltoids
             
             // Peak positions - load from standFrame
             peakPositionUpperArms = standFrame.peakPositionUpperArms
@@ -1074,8 +1083,7 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
             peakPositionLowerLegs = standFrame.peakPositionLowerLegs
             peakPositionUpperTorso = standFrame.peakPositionUpperTorso
             peakPositionLowerTorso = standFrame.peakPositionLowerTorso
-            
-            // Load mid torso Y offset
+            peakPositionDeltoids = standFrame.peakPositionDeltoids
             
             // Load ALL angles from standFrame
             neckRotation = CGFloat(standFrame.headAngle)
@@ -1120,7 +1128,7 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
     
     // MARK: - Update Figure
     func updateFigure() {
-        print("🎮 DEBUG updateFigure: skeletonSizeTorso=\(skeletonSizeTorso) skeletonSizeArm=\(skeletonSizeArm) skeletonSizeLeg=\(skeletonSizeLeg) jointShapeSize=\(jointShapeSize)")
+        print("🎮 DEBUG updateFigure: fusiformShoulders=\(fusiformShoulders), skeletonSizeTorso=\(skeletonSizeTorso) skeletonSizeArm=\(skeletonSizeArm) skeletonSizeLeg=\(skeletonSizeLeg) jointShapeSize=\(jointShapeSize)")
         
         // Update coordinate label if it exists
         coordinateLabel?.text = String(format: "X: %.0f\nY: %.0f", figureOffsetX, figureOffsetY)
@@ -1181,6 +1189,7 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
             strokeThicknessLowerLegs: strokeThicknessLowerLegs,
             strokeThicknessFullTorso: strokeThicknessFullTorso,
             strokeThicknessDeltoids: strokeThicknessDeltoids,
+            strokeThicknessTrapezius: strokeThicknessTrapezius,
             bodyPartColors: bodyPartColors,
             showInteractiveJoints: showInteractiveJoints
         )
@@ -1968,11 +1977,12 @@ class StickFigureEditorScene: SKScene {
         strokeThicknessLowerLegs: CGFloat = 3.5,
         strokeThicknessFullTorso: CGFloat = 1.0,
         strokeThicknessDeltoids: CGFloat = 4.0,
+        strokeThicknessTrapezius: CGFloat = 4.0,
         bodyPartColors: [String: UIColor] = [:],
         showInteractiveJoints: Bool = true
     ) {
         // Update the stick figure with new values
-        print("🎮 Updating editor scene with new values")
+        print("🎮 Updating editor scene with new values: fusiformShoulders=\(fusiformShoulders)")
         print("🎮 Angles - Neck:\(Int(neckRotation))° Torso:\(Int(torsoRotation))° LShoulder:\(Int(leftShoulderAngle))° LElbow:\(Int(leftElbowAngle))°")
         
         guard let gameState = gameState, let standFrame = gameState.standFrame else { return }
@@ -2018,6 +2028,7 @@ class StickFigureEditorScene: SKScene {
         updatedFrame.strokeThicknessLowerLegs = strokeThicknessLowerLegs
         updatedFrame.strokeThicknessFullTorso = strokeThicknessFullTorso
         updatedFrame.strokeThicknessDeltoids = strokeThicknessDeltoids
+        updatedFrame.strokeThicknessTrapezius = strokeThicknessTrapezius
         
         print("🎮 DEBUG updateWithValues: Setting skeletonSizeTorso=\(skeletonSizeTorso) skeletonSizeArm=\(skeletonSizeArm) skeletonSizeLeg=\(skeletonSizeLeg) jointShapeSize=\(jointShapeSize) on updatedFrame")
         

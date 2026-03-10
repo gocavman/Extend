@@ -643,6 +643,7 @@ class GameplayScene: GameScene {
                 case "fusiformLowerArms": scaledFigure.fusiformLowerArms = interpolatedValue
                 case "fusiformUpperLegs": scaledFigure.fusiformUpperLegs = interpolatedValue
                 case "fusiformLowerLegs": scaledFigure.fusiformLowerLegs = interpolatedValue
+                case "fusiformDeltoids": scaledFigure.fusiformDeltoids = interpolatedValue
                 case "neckWidth": scaledFigure.neckWidth = interpolatedValue
                 case "handSize": scaledFigure.handSize = interpolatedValue
                 case "footSize": scaledFigure.footSize = interpolatedValue
@@ -653,9 +654,17 @@ class GameplayScene: GameScene {
                 case "strokeThicknessUpperLegs": scaledFigure.strokeThicknessUpperLegs = interpolatedValue
                 case "strokeThicknessLowerLegs": scaledFigure.strokeThicknessLowerLegs = interpolatedValue
                 case "strokeThicknessJoints": scaledFigure.strokeThicknessJoints = interpolatedValue
+                case "strokeThicknessDeltoids": scaledFigure.strokeThicknessDeltoids = interpolatedValue
                 case "skeletonSizeTorso": scaledFigure.skeletonSizeTorso = interpolatedValue
                 case "skeletonSizeArm": scaledFigure.skeletonSizeArm = interpolatedValue
                 case "skeletonSizeLeg": scaledFigure.skeletonSizeLeg = interpolatedValue
+                case "peakPositionUpperArms": scaledFigure.peakPositionUpperArms = interpolatedValue
+                case "peakPositionLowerArms": scaledFigure.peakPositionLowerArms = interpolatedValue
+                case "peakPositionUpperLegs": scaledFigure.peakPositionUpperLegs = interpolatedValue
+                case "peakPositionLowerLegs": scaledFigure.peakPositionLowerLegs = interpolatedValue
+                case "peakPositionUpperTorso": scaledFigure.peakPositionUpperTorso = interpolatedValue
+                case "peakPositionLowerTorso": scaledFigure.peakPositionLowerTorso = interpolatedValue
+                case "peakPositionDeltoids": scaledFigure.peakPositionDeltoids = interpolatedValue
                 case "waistThicknessMultiplier": scaledFigure.waistThicknessMultiplier = interpolatedValue
                 default: break
                 }

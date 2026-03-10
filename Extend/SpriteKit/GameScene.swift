@@ -357,7 +357,9 @@ class GameScene: SKScene {
                     // NORMAL: Middle BULGE profile with smooth curve (not sharp) - uses peakPosition
                     let angle = (t - peakPosition) * CGFloat.pi
                     let curveShape = cos(angle)
-                    let bulge = 1.0 + (fusiform * max(0, curveShape))
+                    // Blend between a minimum width and the fusiform bulge to allow tapering
+                    // This gives more natural tapering at small fusiform values
+                    let bulge = 0.5 + (fusiform * max(0, curveShape))
                     widthFactorLeft = bulge
                     widthFactorRight = bulge
                 }
@@ -830,32 +832,41 @@ class GameScene: SKScene {
         }
         drawLine(from: neckPos, to: headPos, color: toSKColor(mutableFigure.torsoColor), width: mutableFigure.strokeThickness * mutableFigure.neckWidth)
         
-        // Draw shoulder joints with fusiformShoulders tapering
-        drawTaperedSegment(from: neckPos, to: leftShoulderPos, color: toSKColor(mutableFigure.torsoColor), strokeThickness: mutableFigure.strokeThicknessUpperTorso, fusiform: mutableFigure.fusiformShoulders, inverted: false, peakPosition: 0.5)
-        drawTaperedSegment(from: neckPos, to: rightShoulderPos, color: toSKColor(mutableFigure.torsoColor), strokeThickness: mutableFigure.strokeThicknessUpperTorso, fusiform: mutableFigure.fusiformShoulders, inverted: false, peakPosition: 0.5)
+        // Draw trapezius (traps) as triangular shape from neck to both shoulder joints
+        // Skip if both stroke thickness and fusiform are 0
+        print("🔍 TRAPEZIUS CHECK: strokeThicknessUpperTorso=\(mutableFigure.strokeThicknessUpperTorso), fusiformShoulders=\(mutableFigure.fusiformShoulders)")
+        if mutableFigure.strokeThicknessUpperTorso > 0 || mutableFigure.fusiformShoulders > 0 {
+            print("🔍 TRAPEZIUS: DRAWING with fusiformShoulders=\(mutableFigure.fusiformShoulders)")
+            drawTrapezius(neckPos: neckPos, leftShoulderPos: leftShoulderPos, rightShoulderPos: rightShoulderPos, color: toSKColor(mutableFigure.torsoColor), strokeThickness: mutableFigure.strokeThicknessTrapezius, fusiform: mutableFigure.fusiformShoulders, peakPosition: mutableFigure.peakPositionUpperTorso, baseCenter: baseCenter, scale: scale, container: container)
+        } else {
+            print("🔍 TRAPEZIUS: SKIPPED (both strokeThickness and fusiform are 0)")
+        }
         
         // Draw deltoids (shoulder caps) - render BEFORE upper arms so they appear behind
-        // Left deltoid: from shoulder joint, extending down ~1/2 of upper arm, following shoulder rotation (longer for visible taper)
-        let leftArmVector = CGPoint(x: leftUpperArmEnd.x - leftShoulderPos.x, y: leftUpperArmEnd.y - leftShoulderPos.y)
-        let leftArmLength = sqrt(leftArmVector.x * leftArmVector.x + leftArmVector.y * leftArmVector.y)
-        let leftDeltoidLength = leftArmLength * 0.5  // ~1/2 of upper arm length (increased for taper visibility)
-        let leftDeltoidDir = CGPoint(x: leftArmVector.x / leftArmLength, y: leftArmVector.y / leftArmLength)
-        let leftDeltoidEnd = CGPoint(x: leftShoulderPos.x + leftDeltoidDir.x * leftDeltoidLength, y: leftShoulderPos.y + leftDeltoidDir.y * leftDeltoidLength)
-        // Deltoid start point: on the shoulder line, 1/3 of the way towards the neck (towards RIGHT/center for left shoulder)
-        let leftDeltoidStart = CGPoint(x: leftShoulderPos.x + (neckPos.x - leftShoulderPos.x) * 0.5, y: leftShoulderPos.y)
-        // Deltoid peak controlled by peakPositionDeltoids slider
-        drawTaperedSegment(from: leftDeltoidStart, to: leftDeltoidEnd, color: toSKColor(mutableFigure.leftUpperArmColor), strokeThickness: mutableFigure.strokeThicknessDeltoids, fusiform: mutableFigure.fusiformDeltoids, inverted: true, peakPosition: mutableFigure.peakPositionDeltoids, legAsymmetry: "right")
-        
-        // Right deltoid: from shoulder joint, extending down ~1/2 of upper arm, following shoulder rotation (longer for visible taper)
-        let rightArmVector = CGPoint(x: rightUpperArmEnd.x - rightShoulderPos.x, y: rightUpperArmEnd.y - rightShoulderPos.y)
-        let rightArmLength = sqrt(rightArmVector.x * rightArmVector.x + rightArmVector.y * rightArmVector.y)
-        let rightDeltoidLength = rightArmLength * 0.5  // ~1/2 of upper arm length (increased for taper visibility)
-        let rightDeltoidDir = CGPoint(x: rightArmVector.x / rightArmLength, y: rightArmVector.y / rightArmLength)
-        let rightDeltoidEnd = CGPoint(x: rightShoulderPos.x + rightDeltoidDir.x * rightDeltoidLength, y: rightShoulderPos.y + rightDeltoidDir.y * rightDeltoidLength)
-        // Deltoid start point: on the shoulder line, 1/3 of the way towards the neck (towards LEFT/center for right shoulder)
-        let rightDeltoidStart = CGPoint(x: rightShoulderPos.x - (rightShoulderPos.x - neckPos.x) * 0.5, y: rightShoulderPos.y)
-        // Deltoid peak controlled by peakPositionDeltoids slider
-        drawTaperedSegment(from: rightDeltoidStart, to: rightDeltoidEnd, color: toSKColor(mutableFigure.rightUpperArmColor), strokeThickness: mutableFigure.strokeThicknessDeltoids, fusiform: mutableFigure.fusiformDeltoids, inverted: true, peakPosition: mutableFigure.peakPositionDeltoids, legAsymmetry: "left")
+        // Skip if both stroke thickness and fusiform are 0
+        if mutableFigure.strokeThicknessDeltoids > 0 || mutableFigure.fusiformDeltoids > 0 {
+            // Left deltoid: from shoulder joint, extending down ~1/2 of upper arm, following shoulder rotation (longer for visible taper)
+            let leftArmVector = CGPoint(x: leftUpperArmEnd.x - leftShoulderPos.x, y: leftUpperArmEnd.y - leftShoulderPos.y)
+            let leftArmLength = sqrt(leftArmVector.x * leftArmVector.x + leftArmVector.y * leftArmVector.y)
+            let leftDeltoidLength = leftArmLength * 0.5  // ~1/2 of upper arm length (increased for taper visibility)
+            let leftDeltoidDir = CGPoint(x: leftArmVector.x / leftArmLength, y: leftArmVector.y / leftArmLength)
+            let leftDeltoidEnd = CGPoint(x: leftShoulderPos.x + leftDeltoidDir.x * leftDeltoidLength, y: leftShoulderPos.y + leftDeltoidDir.y * leftDeltoidLength)
+            // Deltoid start point: on the shoulder line, 1/3 of the way towards the neck (towards RIGHT/center for left shoulder)
+            let leftDeltoidStart = CGPoint(x: leftShoulderPos.x + (neckPos.x - leftShoulderPos.x) * 0.5, y: leftShoulderPos.y)
+            // Deltoid peak controlled by peakPositionDeltoids slider
+            drawTaperedSegment(from: leftDeltoidStart, to: leftDeltoidEnd, color: toSKColor(mutableFigure.leftUpperArmColor), strokeThickness: mutableFigure.strokeThicknessDeltoids, fusiform: mutableFigure.fusiformDeltoids, inverted: true, peakPosition: mutableFigure.peakPositionDeltoids, legAsymmetry: "right")
+            
+            // Right deltoid: from shoulder joint, extending down ~1/2 of upper arm, following shoulder rotation (longer for visible taper)
+            let rightArmVector = CGPoint(x: rightUpperArmEnd.x - rightShoulderPos.x, y: rightUpperArmEnd.y - rightShoulderPos.y)
+            let rightArmLength = sqrt(rightArmVector.x * rightArmVector.x + rightArmVector.y * rightArmVector.y)
+            let rightDeltoidLength = rightArmLength * 0.5  // ~1/2 of upper arm length (increased for taper visibility)
+            let rightDeltoidDir = CGPoint(x: rightArmVector.x / rightArmLength, y: rightArmVector.y / rightArmLength)
+            let rightDeltoidEnd = CGPoint(x: rightShoulderPos.x + rightDeltoidDir.x * rightDeltoidLength, y: rightShoulderPos.y + rightDeltoidDir.y * rightDeltoidLength)
+            // Deltoid start point: on the shoulder line, 1/3 of the way towards the neck (towards LEFT/center for right shoulder)
+            let rightDeltoidStart = CGPoint(x: rightShoulderPos.x - (rightShoulderPos.x - neckPos.x) * 0.5, y: rightShoulderPos.y)
+            // Deltoid peak controlled by peakPositionDeltoids slider
+            drawTaperedSegment(from: rightDeltoidStart, to: rightDeltoidEnd, color: toSKColor(mutableFigure.rightUpperArmColor), strokeThickness: mutableFigure.strokeThicknessDeltoids, fusiform: mutableFigure.fusiformDeltoids, inverted: true, peakPosition: mutableFigure.peakPositionDeltoids, legAsymmetry: "left")
+        }
         
         // Draw arms - with correct peak positions matching the editor
         // Upper arms: peak position controlled by slider
@@ -1006,6 +1017,105 @@ class GameScene: SKScene {
         print("🎮 Stick figure rendered with \(container.children.count) nodes!")
         return container
     }
+    
+    // MARK: - Trapezius Drawing
+    func drawTrapezius(neckPos: CGPoint, leftShoulderPos: CGPoint, rightShoulderPos: CGPoint, color: SKColor, strokeThickness: CGFloat, fusiform: CGFloat, peakPosition: CGFloat, baseCenter: CGPoint, scale: CGFloat, container: SKNode) {
+        // Draw TWO triangular trapezius muscles (left and right)
+        // Each triangle is pinned to:
+        //   - Top corner: top of neck
+        //   - Bottom corner: bottom of neck
+        //   - Far corner: left or right shoulder joint
+        // The fusiform slider controls the HEIGHT up the neck (how far the triangles extend)
+        // The long edge (along the neck) should be slightly curved
+        
+        print("🔍 drawTrapezius called: fusiform=\(fusiform), strokeThickness=\(strokeThickness), scale=\(scale)")
+        
+        // Convert to relative coordinates
+        let neckRelative = CGPoint(x: (neckPos.x - baseCenter.x) * scale, y: (baseCenter.y - neckPos.y) * scale)
+        let leftShoulderRelative = CGPoint(x: (leftShoulderPos.x - baseCenter.x) * scale, y: (baseCenter.y - leftShoulderPos.y) * scale)
+        let rightShoulderRelative = CGPoint(x: (rightShoulderPos.x - baseCenter.x) * scale, y: (baseCenter.y - rightShoulderPos.y) * scale)
+        
+        // Calculate the applied stroke thickness
+        let appliedStrokeThickness = max(strokeThickness * scale, 0.5)
+        
+        // The neck has a visual height - we need to estimate top and bottom based on neckWidth and strokeThicknessUpperTorso
+        // The bottom of the neck is at neckPos
+        // The top of the neck is offset upward by the neck length
+        let neckHeight = 20 * scale  // Approximate neck height based on typical neck proportions
+        let neckTopRelative = CGPoint(x: neckRelative.x, y: neckRelative.y + neckHeight)
+        let neckBottomRelative = neckRelative  // Bottom of neck
+        
+        // Fusiform controls how far UP the neck the triangles extend
+        // fusiform = 0: triangles don't appear (or very minimal)
+        // fusiform = 10: triangles extend full height from bottom to top of neck
+        let heightFactor = min(fusiform / 10.0, 1.0)  // Normalize to 0.0 to 1.0
+        
+        // Calculate the actual top point based on height factor
+        let actualNeckTop = CGPoint(
+            x: neckRelative.x,
+            y: neckBottomRelative.y + (neckTopRelative.y - neckBottomRelative.y) * heightFactor
+        )
+        
+        print("🔍 drawTrapezius: neckTop=\(actualNeckTop), neckBottom=\(neckBottomRelative), leftShoulder=\(leftShoulderRelative), heightFactor=\(heightFactor)")
+        
+        // LEFT TRAPEZIUS TRIANGLE
+        // Vertices: actualNeckTop, neckBottomRelative, leftShoulderRelative
+        let leftPath = UIBezierPath()
+        leftPath.move(to: actualNeckTop)
+        
+        // Left side: from neck top to shoulder (straight line)
+        leftPath.addLine(to: leftShoulderRelative)
+        
+        // Bottom: from shoulder to neck bottom (straight line)
+        leftPath.addLine(to: neckBottomRelative)
+        
+        // Right side: from neck bottom to neck top with pronounced inward curve
+        let neckMidpoint = CGPoint(
+            x: (neckBottomRelative.x + actualNeckTop.x) / 2.0,
+            y: (neckBottomRelative.y + actualNeckTop.y) / 2.0
+        )
+        // Bulge the neck edge inward (toward center) with pronounced curve
+        let neckCurveControl = CGPoint(
+            x: neckMidpoint.x + 12.0 * scale,  // More pronounced bulge inward
+            y: neckMidpoint.y
+        )
+        leftPath.addQuadCurve(to: actualNeckTop, controlPoint: neckCurveControl)
+        leftPath.close()
+        
+        let leftShape = SKShapeNode(path: leftPath.cgPath)
+        leftShape.fillColor = color
+        leftShape.strokeColor = color
+        leftShape.lineWidth = appliedStrokeThickness
+        leftShape.zPosition = 1
+        container.addChild(leftShape)
+        
+        // RIGHT TRAPEZIUS TRIANGLE
+        // Vertices: actualNeckTop, neckBottomRelative, rightShoulderRelative
+        let rightPath = UIBezierPath()
+        rightPath.move(to: actualNeckTop)
+        
+        // Right side: from neck top to shoulder (straight line)
+        rightPath.addLine(to: rightShoulderRelative)
+        
+        // Bottom: from shoulder to neck bottom (straight line)
+        rightPath.addLine(to: neckBottomRelative)
+        
+        // Left side: from neck bottom to neck top with pronounced inward curve
+        let rightNeckCurveControl = CGPoint(
+            x: neckMidpoint.x - 12.0 * scale,  // More pronounced bulge inward
+            y: neckMidpoint.y
+        )
+        rightPath.addQuadCurve(to: actualNeckTop, controlPoint: rightNeckCurveControl)
+        rightPath.close()
+        
+        let rightShape = SKShapeNode(path: rightPath.cgPath)
+        rightShape.fillColor = color
+        rightShape.strokeColor = color
+        rightShape.lineWidth = appliedStrokeThickness
+        rightShape.zPosition = 1
+        container.addChild(rightShape)
+    }
+
     
     /// Calculate if a point is within a rectangular zone
     func isPoint(_ point: CGPoint, inZoneFrom start: CGPoint, width: CGFloat, height: CGFloat) -> Bool {

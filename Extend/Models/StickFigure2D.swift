@@ -156,6 +156,7 @@ struct StickFigure2DPose: Codable {
     let strokeThicknessLowerTorso: CGFloat
     let strokeThicknessFullTorso: CGFloat
     let strokeThicknessDeltoids: CGFloat
+    let strokeThicknessTrapezius: CGFloat
     
     // Fusiform controls
     let fusiformUpperArms: CGFloat
@@ -244,6 +245,7 @@ struct StickFigure2DPose: Codable {
         self.strokeThicknessLowerTorso = figure.strokeThicknessLowerTorso
         self.strokeThicknessFullTorso = figure.strokeThicknessFullTorso
         self.strokeThicknessDeltoids = figure.strokeThicknessDeltoids
+        self.strokeThicknessTrapezius = figure.strokeThicknessTrapezius
         self.fusiformUpperArms = figure.fusiformUpperArms
         self.fusiformLowerArms = figure.fusiformLowerArms
         self.fusiformUpperLegs = figure.fusiformUpperLegs
@@ -323,6 +325,7 @@ struct StickFigure2DPose: Codable {
         figure.strokeThicknessLowerTorso = strokeThicknessLowerTorso
         figure.strokeThicknessFullTorso = strokeThicknessFullTorso
         figure.strokeThicknessDeltoids = strokeThicknessDeltoids
+        figure.strokeThicknessTrapezius = strokeThicknessTrapezius
         figure.fusiformUpperArms = fusiformUpperArms
         figure.fusiformLowerArms = fusiformLowerArms
         figure.fusiformUpperLegs = fusiformUpperLegs
@@ -369,7 +372,7 @@ struct StickFigure2DPose: Codable {
         case strokeThickness, scale, headRadiusMultiplier
         case strokeThicknessUpperArms, strokeThicknessLowerArms
         case strokeThicknessUpperLegs, strokeThicknessLowerLegs
-        case strokeThicknessJoints, strokeThicknessUpperTorso, strokeThicknessLowerTorso, strokeThicknessFullTorso, strokeThicknessDeltoids
+        case strokeThicknessJoints, strokeThicknessUpperTorso, strokeThicknessLowerTorso, strokeThicknessFullTorso, strokeThicknessDeltoids, strokeThicknessTrapezius
         case fusiformUpperArms, fusiformLowerArms
         case fusiformUpperLegs, fusiformLowerLegs
         case fusiformUpperTorso, fusiformLowerTorso, fusiformShoulders, fusiformDeltoids
@@ -432,6 +435,7 @@ struct StickFigure2DPose: Codable {
         try container.encode(round(skeletonSizeLeg), forKey: .skeletonSizeLeg)
         try container.encode(round(strokeThicknessFullTorso), forKey: .strokeThicknessFullTorso)
         try container.encode(round(strokeThicknessDeltoids), forKey: .strokeThicknessDeltoids)
+        try container.encode(round(strokeThicknessTrapezius), forKey: .strokeThicknessTrapezius)
         try container.encode(round(strokeThicknessJoints), forKey: .strokeThicknessJoints)
         try container.encode(round(strokeThicknessLowerArms), forKey: .strokeThicknessLowerArms)
         try container.encode(round(strokeThicknessLowerLegs), forKey: .strokeThicknessLowerLegs)
@@ -498,6 +502,7 @@ struct StickFigure2DPose: Codable {
         self.strokeThicknessLowerTorso = try container.decodeIfPresent(CGFloat.self, forKey: .strokeThicknessLowerTorso) ?? 4.5
         self.strokeThicknessFullTorso = try container.decodeIfPresent(CGFloat.self, forKey: .strokeThicknessFullTorso) ?? 1.0
         self.strokeThicknessDeltoids = try container.decodeIfPresent(CGFloat.self, forKey: .strokeThicknessDeltoids) ?? 4.0
+        self.strokeThicknessTrapezius = try container.decodeIfPresent(CGFloat.self, forKey: .strokeThicknessTrapezius) ?? 4.0
         self.fusiformUpperArms = try container.decodeIfPresent(CGFloat.self, forKey: .fusiformUpperArms) ?? 0.0
         self.fusiformLowerArms = try container.decodeIfPresent(CGFloat.self, forKey: .fusiformLowerArms) ?? 0.0
         self.fusiformUpperLegs = try container.decodeIfPresent(CGFloat.self, forKey: .fusiformUpperLegs) ?? 0.0
@@ -643,6 +648,7 @@ struct StickFigure2D {
     var strokeThicknessLowerTorso: CGFloat = 4.5
     var strokeThicknessFullTorso: CGFloat = 1.0  // Overall torso thickness multiplier
     var strokeThicknessDeltoids: CGFloat = 4.0  // Deltoid (shoulder cap) thickness
+    var strokeThicknessTrapezius: CGFloat = 4.0  // Trapezius (shoulder/neck muscle) thickness
     
     // Fusiform (tapered) controls for each body part (0.0 = no taper, 1.0 = full taper)
     var fusiformUpperArms: CGFloat = 0.0  // Taper from shoulder to elbow
