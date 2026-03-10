@@ -706,7 +706,8 @@ class GameplayScene: GameScene {
         print("🎮 DEBUG applyMuscleScaling isSideView=\(isSideView)")
         
         if isSideView {
-            scaledFigure.fusiformUpperTorso = min(scaledFigure.fusiformUpperTorso, 3.0)
+            scaledFigure.fusiformUpperTorso = min(scaledFigure.fusiformUpperTorso, 2.0)
+            scaledFigure.fusiformShoulders = min(scaledFigure.fusiformShoulders, 0.0)
             //scaledFigure.strokeThicknessUpperTorso = min(scaledFigure.strokeThicknessUpperTorso, 5.0)
             //scaledFigure.strokeThicknessLowerTorso = min(scaledFigure.strokeThicknessLowerTorso, 1.0)
             //scaledFigure.strokeThicknessLowerLegs = min(scaledFigure.strokeThicknessLowerLegs, 3.0)

@@ -17,9 +17,10 @@
         "unit": "day"
       },
       "targetMuscleGroups": [
-        {"muscleGroup": "Quads", "percentage": 33},
-        {"muscleGroup": "Calfs", "percentage": 34},
-        {"muscleGroup": "Hamstrings", "percentage": 33}
+        {"muscleGroup": "Quads", "percentage": 20},
+        {"muscleGroup": "Calfs", "percentage": 20},
+        {"muscleGroup": "Heart", "percentage": 40},
+        {"muscleGroup": "Hamstrings", "percentage": 20}
       ]
     },
     {
@@ -46,11 +47,8 @@
       },
       "targetMuscleGroups": [
         {"muscleGroup": "Chest", "percentage": 85},
-        {"muscleGroup": "Shoulders", "percentage": 2},
-        {"muscleGroup": "Biceps", "percentage": 2},
-        {"muscleGroup": "Triceps", "percentage": 2},
-        {"muscleGroup": "Forearms", "percentage": 2},
-        {"muscleGroup": "Back", "percentage": 2}
+        {"muscleGroup": "Delts", "percentage": 2},
+        {"muscleGroup": "Triceps", "percentage": 2}
       ]
     },
     {
@@ -76,7 +74,7 @@
         "unit": "day"
       },
       "targetMuscleGroups": [
-        {"muscleGroup": "Shoulders", "percentage": 40},
+        {"muscleGroup": "Delts", "percentage": 40},
         {"muscleGroup": "Back", "percentage": 40},
         {"muscleGroup": "Biceps", "percentage": 10},
         {"muscleGroup": "Triceps", "percentage": 10}
@@ -87,7 +85,7 @@
     {
       "id": "fusiformShoulders",
       "name": "Shoulder Width",
-      "muscleGroups": ["Shoulders"],
+      "muscleGroups": ["Traps"],
       "progression": {
         "0": 0,
         "25": 1.02,
@@ -97,21 +95,9 @@
       }
     },
     {
-      "id": "strokeThicknessJoints",
-      "name": "Joint Thickness",
-      "muscleGroups": ["Shoulders"],
-      "progression": {
-        "0": 2.0,
-        "25": 3.8,
-        "50": 3.8,
-        "75": 3.8,
-        "100": 4.0
-      }
-    },
-    {
       "id": "fusiformDeltoids",
       "name": "Deltoid (Shoulder Cap)",
-      "muscleGroups": ["Shoulders"],
+      "muscleGroups": ["Delts"],
       "progression": {
         "0": 0,
         "25": 1.5,
@@ -267,7 +253,7 @@
     {
       "id": "neckWidth",
       "name": "Neck Width",
-      "muscleGroups": ["Shoulders"],
+      "muscleGroups": ["Traps"],
       "progression": {
         "0": 2.3,
         "25": 8.5,
@@ -351,7 +337,7 @@
     {
       "id": "strokeThicknessDeltoids",
       "name": "Deltoid (Shoulder) Thickness",
-      "muscleGroups": ["Shoulders"],
+      "muscleGroups": ["Delts"],
       "progression": {
         "0": 0,
         "25": 5,
@@ -363,7 +349,7 @@
     {
       "id": "strokeThicknessTrapezius",
       "name": "Trapezius Thickness",
-      "muscleGroups": ["Shoulders"],
+      "muscleGroups": ["Traps"],
       "progression": {
         "0": 0,
         "25": 4,
