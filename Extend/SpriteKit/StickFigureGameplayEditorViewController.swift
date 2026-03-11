@@ -28,13 +28,15 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
     private var footSize: CGFloat = 1.0  // Foot size multiplier
     private var fusiformUpperTorso: CGFloat = 4.0
     private var fusiformLowerTorso: CGFloat = 4.0
-    private var fusiformUpperArms: CGFloat = 2.0
+    private var fusiformBicep: CGFloat = 2.0
+    private var fusiformTricep: CGFloat = 1.0
     private var fusiformLowerArms: CGFloat = 3.0
     private var fusiformUpperLegs: CGFloat = 4.0
     private var fusiformLowerLegs: CGFloat = 4.0
     private var fusiformShoulders: CGFloat = 0.0  // Shoulder tapering
     private var fusiformDeltoids: CGFloat = 0.0  // Deltoid (shoulder cap) tapering
-    private var peakPositionUpperArms: CGFloat = 0.5  // Peak position for upper arms
+    private var peakPositionBicep: CGFloat = 0.5  // Peak position for bicep
+    private var peakPositionTricep: CGFloat = 0.5  // Peak position for tricep
     private var peakPositionLowerArms: CGFloat = 0.35  // Peak position for lower arms
     private var peakPositionUpperLegs: CGFloat = 0.2  // Peak position for upper legs
     private var peakPositionLowerLegs: CGFloat = 0.2  // Peak position for lower legs
@@ -46,7 +48,8 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
     private var strokeThicknessJoints: CGFloat = 2.0
     private var strokeThicknessUpperTorso: CGFloat = 5.0
     private var strokeThicknessLowerTorso: CGFloat = 5.0
-    private var strokeThicknessUpperArms: CGFloat = 4.0
+    private var strokeThicknessBicep: CGFloat = 4.0
+    private var strokeThicknessTricep: CGFloat = 3.0
     private var strokeThicknessLowerArms: CGFloat = 4.0
     private var strokeThicknessUpperLegs: CGFloat = 5.0
     private var strokeThicknessLowerLegs: CGFloat = 4.0
@@ -606,20 +609,27 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
             })
             
         case (2, 3):
-            // Stroke - Upper Arms
-            addSliderCell(cell, label: "Upper Arms", value: strokeThicknessUpperArms, min: 0.0, max: 20.0, increment: 0.1, onChange: { [weak self] val in
-                self?.strokeThicknessUpperArms = val
+            // Stroke - Bicep
+            addSliderCell(cell, label: "Bicep", value: strokeThicknessBicep, min: 0.0, max: 20.0, increment: 0.1, onChange: { [weak self] val in
+                self?.strokeThicknessBicep = val
                 self?.updateFigure()
             })
             
         case (2, 4):
+            // Stroke - Tricep
+            addSliderCell(cell, label: "Tricep", value: strokeThicknessTricep, min: 0.0, max: 15.0, increment: 0.1, onChange: { [weak self] val in
+                self?.strokeThicknessTricep = val
+                self?.updateFigure()
+            })
+            
+        case (2, 5):
             // Stroke - Lower Arms
             addSliderCell(cell, label: "Lower Arms", value: strokeThicknessLowerArms, min: 0.0, max: 20.0, increment: 0.1, onChange: { [weak self] val in
                 self?.strokeThicknessLowerArms = val
                 self?.updateFigure()
             })
             
-        case (2, 5):
+        case (2, 6):
             // Stroke - Upper Legs
             addSliderCell(cell, label: "Upper Legs", value: strokeThicknessUpperLegs, min: 0.0, max: 20.0, increment: 0.1, onChange: { [weak self] val in
                 self?.strokeThicknessUpperLegs = val
@@ -657,21 +667,23 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
         // Fusiform sliders - NOW SECTION 3
         case (3, 0): addSliderCell(cell, label: "Upper Torso", value: fusiformUpperTorso, min: 0, max: 10, increment: 0.1, onChange: { [weak self] val in self?.fusiformUpperTorso = val; self?.updateFigure() })
         case (3, 1): addSliderCell(cell, label: "Lower Torso", value: fusiformLowerTorso, min: 0, max: 10, increment: 0.1, onChange: { [weak self] val in self?.fusiformLowerTorso = val; self?.updateFigure() })
-        case (3, 2): addSliderCell(cell, label: "Upper Arms", value: fusiformUpperArms, min: 0, max: 10, increment: 0.1, onChange: { [weak self] val in self?.fusiformUpperArms = val; self?.updateFigure() })
-        case (3, 3): addSliderCell(cell, label: "Lower Arms", value: fusiformLowerArms, min: 0, max: 10, increment: 0.1, onChange: { [weak self] val in self?.fusiformLowerArms = val; self?.updateFigure() })
-        case (3, 4): addSliderCell(cell, label: "Upper Legs", value: fusiformUpperLegs, min: 0, max: 10, increment: 0.1, onChange: { [weak self] val in self?.fusiformUpperLegs = val; self?.updateFigure() })
-        case (3, 5): addSliderCell(cell, label: "Lower Legs", value: fusiformLowerLegs, min: 0, max: 10, increment: 0.1, onChange: { [weak self] val in self?.fusiformLowerLegs = val; self?.updateFigure() })
+        case (3, 2): addSliderCell(cell, label: "Bicep", value: fusiformBicep, min: 0, max: 10, increment: 0.1, onChange: { [weak self] val in self?.fusiformBicep = val; self?.updateFigure() })
+        case (3, 3): addSliderCell(cell, label: "Tricep", value: fusiformTricep, min: 0, max: 5, increment: 0.1, onChange: { [weak self] val in self?.fusiformTricep = val; self?.updateFigure() })
+        case (3, 4): addSliderCell(cell, label: "Lower Arms", value: fusiformLowerArms, min: 0, max: 10, increment: 0.1, onChange: { [weak self] val in self?.fusiformLowerArms = val; self?.updateFigure() })
+        case (3, 5): addSliderCell(cell, label: "Upper Legs", value: fusiformUpperLegs, min: 0, max: 10, increment: 0.1, onChange: { [weak self] val in self?.fusiformUpperLegs = val; self?.updateFigure() })
+        case (3, 6): addSliderCell(cell, label: "Lower Legs", value: fusiformLowerLegs, min: 0, max: 10, increment: 0.1, onChange: { [weak self] val in self?.fusiformLowerLegs = val; self?.updateFigure() })
         case (3, 6): addSliderCell(cell, label: "Shoulders", value: fusiformShoulders, min: 0, max: 10, increment: 0.1, onChange: { [weak self] val in self?.fusiformShoulders = val; self?.updateFigure() })
         case (3, 7): addSliderCell(cell, label: "Deltoids", value: fusiformDeltoids, min: 0, max: 10, increment: 0.1, onChange: { [weak self] val in self?.fusiformDeltoids = val; self?.updateFigure() })
         
         // Peak position sliders
-        case (3, 8): addSliderCell(cell, label: "Peak Upper Arm", value: peakPositionUpperArms, min: 0.1, max: 0.9, increment: 0.05, onChange: { [weak self] val in self?.peakPositionUpperArms = val; self?.updateFigure() })
-        case (3, 9): addSliderCell(cell, label: "Peak Lower Arm", value: peakPositionLowerArms, min: 0.1, max: 0.9, increment: 0.05, onChange: { [weak self] val in self?.peakPositionLowerArms = val; self?.updateFigure() })
-        case (3, 10): addSliderCell(cell, label: "Peak Upper Leg", value: peakPositionUpperLegs, min: 0.1, max: 0.9, increment: 0.05, onChange: { [weak self] val in self?.peakPositionUpperLegs = val; self?.updateFigure() })
-        case (3, 11): addSliderCell(cell, label: "Peak Lower Leg", value: peakPositionLowerLegs, min: 0.1, max: 0.9, increment: 0.05, onChange: { [weak self] val in self?.peakPositionLowerLegs = val; self?.updateFigure() })
-        case (3, 12): addSliderCell(cell, label: "Peak Upper Torso", value: peakPositionUpperTorso, min: 0.0, max: 0.9, increment: 0.05, onChange: { [weak self] val in self?.peakPositionUpperTorso = val; self?.updateFigure() })
-        case (3, 13): addSliderCell(cell, label: "Peak Lower Torso", value: peakPositionLowerTorso, min: 0.1, max: 1.0, increment: 0.05, onChange: { [weak self] val in self?.peakPositionLowerTorso = val; self?.updateFigure() })
-        case (3, 14): addSliderCell(cell, label: "Peak Deltoids", value: peakPositionDeltoids, min: 0.1, max: 0.9, increment: 0.05, onChange: { [weak self] val in self?.peakPositionDeltoids = val; self?.updateFigure() })
+        case (3, 8): addSliderCell(cell, label: "Peak Bicep", value: peakPositionBicep, min: 0.1, max: 0.9, increment: 0.05, onChange: { [weak self] val in self?.peakPositionBicep = val; self?.updateFigure() })
+        case (3, 9): addSliderCell(cell, label: "Peak Tricep", value: peakPositionTricep, min: 0.1, max: 0.9, increment: 0.05, onChange: { [weak self] val in self?.peakPositionTricep = val; self?.updateFigure() })
+        case (3, 10): addSliderCell(cell, label: "Peak Lower Arm", value: peakPositionLowerArms, min: 0.1, max: 0.9, increment: 0.05, onChange: { [weak self] val in self?.peakPositionLowerArms = val; self?.updateFigure() })
+        case (3, 11): addSliderCell(cell, label: "Peak Upper Leg", value: peakPositionUpperLegs, min: 0.1, max: 0.9, increment: 0.05, onChange: { [weak self] val in self?.peakPositionUpperLegs = val; self?.updateFigure() })
+        case (3, 12): addSliderCell(cell, label: "Peak Lower Leg", value: peakPositionLowerLegs, min: 0.1, max: 0.9, increment: 0.05, onChange: { [weak self] val in self?.peakPositionLowerLegs = val; self?.updateFigure() })
+        case (3, 13): addSliderCell(cell, label: "Peak Upper Torso", value: peakPositionUpperTorso, min: 0.0, max: 0.9, increment: 0.05, onChange: { [weak self] val in self?.peakPositionUpperTorso = val; self?.updateFigure() })
+        case (3, 14): addSliderCell(cell, label: "Peak Lower Torso", value: peakPositionLowerTorso, min: 0.1, max: 1.0, increment: 0.05, onChange: { [weak self] val in self?.peakPositionLowerTorso = val; self?.updateFigure() })
+        case (3, 15): addSliderCell(cell, label: "Peak Deltoids", value: peakPositionDeltoids, min: 0.1, max: 0.9, increment: 0.05, onChange: { [weak self] val in self?.peakPositionDeltoids = val; self?.updateFigure() })
         
         // Joint sliders - SECTION 5 (was previously section 4)
         case (5, 0): addSliderCell(cell, label: "Head", value: neckRotation, min: -180, max: 180, increment: 1, onChange: { [weak self] val in self?.neckRotation = val; self?.updateFigure() })
@@ -1048,7 +1060,8 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
             strokeThicknessJoints = standFrame.strokeThicknessJoints
             strokeThicknessUpperTorso = standFrame.strokeThicknessUpperTorso
             strokeThicknessLowerTorso = standFrame.strokeThicknessLowerTorso
-            strokeThicknessUpperArms = standFrame.strokeThicknessUpperArms
+            strokeThicknessBicep = standFrame.strokeThicknessBicep
+            strokeThicknessTricep = standFrame.strokeThicknessTricep
             strokeThicknessLowerArms = standFrame.strokeThicknessLowerArms
             strokeThicknessUpperLegs = standFrame.strokeThicknessUpperLegs
             strokeThicknessLowerLegs = standFrame.strokeThicknessLowerLegs
@@ -1070,7 +1083,8 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
             // Fusiforms - load from standFrame
             fusiformUpperTorso = standFrame.fusiformUpperTorso
             fusiformLowerTorso = standFrame.fusiformLowerTorso
-            fusiformUpperArms = standFrame.fusiformUpperArms
+            fusiformBicep = standFrame.fusiformBicep
+            fusiformTricep = standFrame.fusiformTricep
             fusiformLowerArms = standFrame.fusiformLowerArms
             fusiformUpperLegs = standFrame.fusiformUpperLegs
             fusiformLowerLegs = standFrame.fusiformLowerLegs
@@ -1078,7 +1092,8 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
             fusiformDeltoids = standFrame.fusiformDeltoids
             
             // Peak positions - load from standFrame
-            peakPositionUpperArms = standFrame.peakPositionUpperArms
+            peakPositionBicep = standFrame.peakPositionBicep
+            peakPositionTricep = standFrame.peakPositionTricep
             peakPositionLowerArms = standFrame.peakPositionLowerArms
             peakPositionUpperLegs = standFrame.peakPositionUpperLegs
             peakPositionLowerLegs = standFrame.peakPositionLowerLegs
@@ -1123,7 +1138,7 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
                 "rightLowerLeg": .black
             ]
             
-            print("🎮 ✓ Loaded Stand frame - scale:\(standFrame.scale), fusiform: upper=\(standFrame.fusiformUpperArms), lower=\(standFrame.fusiformLowerArms), angles: shoulder:\(standFrame.leftShoulderAngle)°, elbow:\(standFrame.leftElbowAngle)°, knee:\(standFrame.leftKneeAngle)°")
+            print("🎮 ✓ Loaded Stand frame - scale:\(standFrame.scale), fusiform: bicep=\(standFrame.fusiformBicep), tricep=\(standFrame.fusiformTricep), angles: shoulder:\(standFrame.leftShoulderAngle)°, elbow:\(standFrame.leftElbowAngle)°, knee:\(standFrame.leftKneeAngle)°")
         }
     }
     
@@ -1149,13 +1164,15 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
             footSize: footSize,
             fusiformUpperTorso: fusiformUpperTorso,
             fusiformLowerTorso: fusiformLowerTorso,
-            fusiformUpperArms: fusiformUpperArms,
+            fusiformBicep: fusiformBicep,
+            fusiformTricep: fusiformTricep,
             fusiformLowerArms: fusiformLowerArms,
             fusiformUpperLegs: fusiformUpperLegs,
             fusiformLowerLegs: fusiformLowerLegs,
             fusiformShoulders: fusiformShoulders,
             fusiformDeltoids: fusiformDeltoids,
-            peakPositionUpperArms: peakPositionUpperArms,
+            peakPositionBicep: peakPositionBicep,
+            peakPositionTricep: peakPositionTricep,
             peakPositionLowerArms: peakPositionLowerArms,
             peakPositionUpperLegs: peakPositionUpperLegs,
             peakPositionLowerLegs: peakPositionLowerLegs,
@@ -1184,7 +1201,8 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
             strokeThicknessJoints: strokeThicknessJoints,
             strokeThicknessUpperTorso: strokeThicknessUpperTorso,
             strokeThicknessLowerTorso: strokeThicknessLowerTorso,
-            strokeThicknessUpperArms: strokeThicknessUpperArms,
+            strokeThicknessBicep: strokeThicknessBicep,
+            strokeThicknessTricep: strokeThicknessTricep,
             strokeThicknessLowerArms: strokeThicknessLowerArms,
             strokeThicknessUpperLegs: strokeThicknessUpperLegs,
             strokeThicknessLowerLegs: strokeThicknessLowerLegs,
@@ -1233,7 +1251,8 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
             tempPose.rightFootAngle = self.rightFootAngle
             // Set all the fusiform and multiplier properties
             tempPose.fusiformShoulders = self.fusiformShoulders
-            tempPose.peakPositionUpperArms = self.peakPositionUpperArms
+            tempPose.peakPositionBicep = self.peakPositionBicep
+            tempPose.peakPositionTricep = self.peakPositionTricep
             tempPose.peakPositionLowerArms = self.peakPositionLowerArms
             tempPose.peakPositionUpperLegs = self.peakPositionUpperLegs
             tempPose.peakPositionLowerLegs = self.peakPositionLowerLegs
@@ -1253,7 +1272,8 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
             tempPose.strokeThicknessJoints = self.strokeThicknessJoints
             tempPose.strokeThicknessUpperTorso = self.strokeThicknessUpperTorso
             tempPose.strokeThicknessLowerTorso = self.strokeThicknessLowerTorso
-            tempPose.strokeThicknessUpperArms = self.strokeThicknessUpperArms
+            tempPose.strokeThicknessBicep = self.strokeThicknessBicep
+            tempPose.strokeThicknessTricep = self.strokeThicknessTricep
             tempPose.strokeThicknessLowerArms = self.strokeThicknessLowerArms
             tempPose.strokeThicknessUpperLegs = self.strokeThicknessUpperLegs
             tempPose.strokeThicknessLowerLegs = self.strokeThicknessLowerLegs
@@ -1266,13 +1286,15 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
                 figureScale: self.figureScale,
                 fusiformUpperTorso: self.fusiformUpperTorso,
                 fusiformLowerTorso: self.fusiformLowerTorso,
-                fusiformUpperArms: self.fusiformUpperArms,
+                fusiformBicep: self.fusiformBicep,
+                fusiformTricep: self.fusiformTricep,
                 fusiformLowerArms: self.fusiformLowerArms,
                 fusiformUpperLegs: self.fusiformUpperLegs,
                 fusiformLowerLegs: self.fusiformLowerLegs,
                 fusiformShoulders: self.fusiformShoulders,
                 fusiformDeltoids: self.fusiformDeltoids,
-                peakPositionUpperArms: self.peakPositionUpperArms,
+                peakPositionBicep: self.peakPositionBicep,
+                peakPositionTricep: self.peakPositionTricep,
                 peakPositionLowerArms: self.peakPositionLowerArms,
                 peakPositionUpperLegs: self.peakPositionUpperLegs,
                 peakPositionLowerLegs: self.peakPositionLowerLegs,
@@ -1293,7 +1315,8 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
                 strokeThicknessJoints: self.strokeThicknessJoints,
                 strokeThicknessUpperTorso: self.strokeThicknessUpperTorso,
                 strokeThicknessLowerTorso: self.strokeThicknessLowerTorso,
-                strokeThicknessUpperArms: self.strokeThicknessUpperArms,
+                strokeThicknessBicep: self.strokeThicknessBicep,
+                strokeThicknessTricep: self.strokeThicknessTricep,
                 strokeThicknessLowerArms: self.strokeThicknessLowerArms,
                 strokeThicknessUpperLegs: self.strokeThicknessUpperLegs,
                 strokeThicknessLowerLegs: self.strokeThicknessLowerLegs,
@@ -1474,7 +1497,8 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
         strokeThicknessJoints = frame.strokeThicknessJoints
         strokeThicknessUpperTorso = frame.strokeThicknessUpperTorso
         strokeThicknessLowerTorso = frame.strokeThicknessLowerTorso
-        strokeThicknessUpperArms = frame.strokeThicknessUpperArms
+        strokeThicknessBicep = frame.strokeThicknessBicep
+        strokeThicknessTricep = frame.strokeThicknessTricep
         strokeThicknessLowerArms = frame.strokeThicknessLowerArms
         strokeThicknessUpperLegs = frame.strokeThicknessUpperLegs
         strokeThicknessLowerLegs = frame.strokeThicknessLowerLegs
@@ -1485,7 +1509,8 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
         // Restore fusiform
         fusiformUpperTorso = frame.fusiformUpperTorso
         fusiformLowerTorso = frame.fusiformLowerTorso
-        fusiformUpperArms = frame.fusiformUpperArms
+        fusiformBicep = frame.fusiformBicep
+        fusiformTricep = frame.fusiformTricep
         fusiformLowerArms = frame.fusiformLowerArms
         fusiformUpperLegs = frame.fusiformUpperLegs
         fusiformLowerLegs = frame.fusiformLowerLegs
@@ -1509,7 +1534,8 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
         
         // Restore peak positions and fusiform shoulders
         fusiformShoulders = frame.fusiformShoulders
-        peakPositionUpperArms = frame.peakPositionUpperArms
+        peakPositionBicep = frame.peakPositionBicep
+        peakPositionTricep = frame.peakPositionTricep
         peakPositionLowerArms = frame.peakPositionLowerArms
         peakPositionUpperLegs = frame.peakPositionUpperLegs
         peakPositionLowerLegs = frame.peakPositionLowerLegs
@@ -1940,13 +1966,15 @@ class StickFigureEditorScene: SKScene {
         footSize: CGFloat = 1.0,
         fusiformUpperTorso: CGFloat,
         fusiformLowerTorso: CGFloat,
-        fusiformUpperArms: CGFloat,
+        fusiformBicep: CGFloat,
+        fusiformTricep: CGFloat,
         fusiformLowerArms: CGFloat,
         fusiformUpperLegs: CGFloat,
         fusiformLowerLegs: CGFloat,
         fusiformShoulders: CGFloat = 0.0,
         fusiformDeltoids: CGFloat = 0.0,
-        peakPositionUpperArms: CGFloat = 0.5,
+        peakPositionBicep: CGFloat = 0.5,
+        peakPositionTricep: CGFloat = 0.5,
         peakPositionLowerArms: CGFloat = 0.35,
         peakPositionUpperLegs: CGFloat = 0.2,
         peakPositionLowerLegs: CGFloat = 0.2,
@@ -1975,7 +2003,8 @@ class StickFigureEditorScene: SKScene {
         strokeThicknessJoints: CGFloat = 2.0,
         strokeThicknessUpperTorso: CGFloat = 5.0,
         strokeThicknessLowerTorso: CGFloat = 4.5,
-        strokeThicknessUpperArms: CGFloat = 4.0,
+        strokeThicknessBicep: CGFloat = 4.0,
+        strokeThicknessTricep: CGFloat = 3.0,
         strokeThicknessLowerArms: CGFloat = 3.5,
         strokeThicknessUpperLegs: CGFloat = 4.5,
         strokeThicknessLowerLegs: CGFloat = 3.5,
@@ -1998,13 +2027,15 @@ class StickFigureEditorScene: SKScene {
         var updatedFrame = standFrame
         updatedFrame.fusiformUpperTorso = fusiformUpperTorso
         updatedFrame.fusiformLowerTorso = fusiformLowerTorso
-        updatedFrame.fusiformUpperArms = fusiformUpperArms
+        updatedFrame.fusiformBicep = fusiformBicep
+        updatedFrame.fusiformTricep = fusiformTricep
         updatedFrame.fusiformLowerArms = fusiformLowerArms
         updatedFrame.fusiformShoulders = fusiformShoulders
         updatedFrame.fusiformDeltoids = fusiformDeltoids
         updatedFrame.fusiformUpperLegs = fusiformUpperLegs
         updatedFrame.fusiformLowerLegs = fusiformLowerLegs
-        updatedFrame.peakPositionUpperArms = peakPositionUpperArms
+        updatedFrame.peakPositionBicep = peakPositionBicep
+        updatedFrame.peakPositionTricep = peakPositionTricep
         updatedFrame.peakPositionLowerArms = peakPositionLowerArms
         updatedFrame.peakPositionUpperLegs = peakPositionUpperLegs
         updatedFrame.peakPositionLowerLegs = peakPositionLowerLegs
@@ -2026,7 +2057,8 @@ class StickFigureEditorScene: SKScene {
         updatedFrame.strokeThicknessJoints = strokeThicknessJoints
         updatedFrame.strokeThicknessUpperTorso = strokeThicknessUpperTorso
         updatedFrame.strokeThicknessLowerTorso = strokeThicknessLowerTorso
-        updatedFrame.strokeThicknessUpperArms = strokeThicknessUpperArms
+        updatedFrame.strokeThicknessBicep = strokeThicknessBicep
+        updatedFrame.strokeThicknessTricep = strokeThicknessTricep
         updatedFrame.strokeThicknessLowerArms = strokeThicknessLowerArms
         updatedFrame.strokeThicknessUpperLegs = strokeThicknessUpperLegs
         updatedFrame.strokeThicknessLowerLegs = strokeThicknessLowerLegs
@@ -2268,13 +2300,15 @@ class FrameListViewController: UIViewController, UITableViewDataSource, UITableV
                     figureScale: pose.scale,
                     fusiformUpperTorso: pose.fusiformUpperTorso,
                     fusiformLowerTorso: pose.fusiformLowerTorso,
-                    fusiformUpperArms: pose.fusiformUpperArms,
+                    fusiformBicep: pose.fusiformBicep,
+                    fusiformTricep: pose.fusiformTricep,
                     fusiformLowerArms: pose.fusiformLowerArms,
                     fusiformUpperLegs: pose.fusiformUpperLegs,
                     fusiformLowerLegs: pose.fusiformLowerLegs,
                     fusiformShoulders: pose.fusiformShoulders,
                     fusiformDeltoids: pose.fusiformDeltoids,
-                    peakPositionUpperArms: pose.peakPositionUpperArms,
+                    peakPositionBicep: pose.peakPositionBicep,
+                    peakPositionTricep: pose.peakPositionTricep,
                     peakPositionLowerArms: pose.peakPositionLowerArms,
                     peakPositionUpperLegs: pose.peakPositionUpperLegs,
                     peakPositionLowerLegs: pose.peakPositionLowerLegs,
@@ -2295,7 +2329,8 @@ class FrameListViewController: UIViewController, UITableViewDataSource, UITableV
                     strokeThicknessJoints: pose.strokeThicknessJoints,
                     strokeThicknessUpperTorso: pose.strokeThicknessUpperTorso,
                     strokeThicknessLowerTorso: pose.strokeThicknessLowerTorso,
-                    strokeThicknessUpperArms: pose.strokeThicknessUpperArms,
+                    strokeThicknessBicep: pose.strokeThicknessBicep,
+                    strokeThicknessTricep: pose.strokeThicknessTricep,
                     strokeThicknessLowerArms: pose.strokeThicknessLowerArms,
                     strokeThicknessUpperLegs: pose.strokeThicknessUpperLegs,
                     strokeThicknessLowerLegs: pose.strokeThicknessLowerLegs,

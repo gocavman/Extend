@@ -148,11 +148,11 @@ class GameplayScene: GameScene {
         print("🎮 setupCharacter: standFrame = \(gameState.standFrame != nil ? "SET" : "NIL")")
         print("🎮 setupCharacter: moveFrames.count = \(gameState.moveFrames.count)")
         print("🎮 standFrame fusiform values: upper=\(gameState.standFrame?.fusiformUpperTorso ?? 0), lower=\(gameState.standFrame?.fusiformLowerTorso ?? 0)")
-        print("🎮 standFrame ALL fusiforms: upperTorso=\(gameState.standFrame?.fusiformUpperTorso ?? 0), lowerTorso=\(gameState.standFrame?.fusiformLowerTorso ?? 0), upperArms=\(gameState.standFrame?.fusiformUpperArms ?? 0), lowerArms=\(gameState.standFrame?.fusiformLowerArms ?? 0), upperLegs=\(gameState.standFrame?.fusiformUpperLegs ?? 0), lowerLegs=\(gameState.standFrame?.fusiformLowerLegs ?? 0)")
+        print("🎮 standFrame ALL fusiforms: upperTorso=\(gameState.standFrame?.fusiformUpperTorso ?? 0), lowerTorso=\(gameState.standFrame?.fusiformLowerTorso ?? 0), bicep=\(gameState.standFrame?.fusiformBicep ?? 0), tricep=\(gameState.standFrame?.fusiformTricep ?? 0), lowerArms=\(gameState.standFrame?.fusiformLowerArms ?? 0), upperLegs=\(gameState.standFrame?.fusiformUpperLegs ?? 0), lowerLegs=\(gameState.standFrame?.fusiformLowerLegs ?? 0)")
         
         // Use the Stand frame from gameState
         if let standFrame = gameState.standFrame {
-            print("🎮 Stand frame fusiform values: shoulders=\(standFrame.fusiformShoulders), upperTorso=\(standFrame.fusiformUpperTorso), upperArms=\(standFrame.fusiformUpperArms), lowerArms=\(standFrame.fusiformLowerArms), upperLegs=\(standFrame.fusiformUpperLegs), lowerLegs=\(standFrame.fusiformLowerLegs)")
+            print("🎮 Stand frame fusiform values: shoulders=\(standFrame.fusiformShoulders), upperTorso=\(standFrame.fusiformUpperTorso), bicep=\(standFrame.fusiformBicep), tricep=\(standFrame.fusiformTricep), lowerArms=\(standFrame.fusiformLowerArms), upperLegs=\(standFrame.fusiformUpperLegs), lowerLegs=\(standFrame.fusiformLowerLegs)")
             print("🎮 Rendering stand frame from gameState")
             
             // Apply muscle scaling to the stand frame
@@ -578,7 +578,8 @@ class GameplayScene: GameScene {
                     figure.fusiformShoulders = frame.fusiformShoulders
                     figure.fusiformUpperTorso = frame.fusiformUpperTorso
                     figure.fusiformLowerTorso = frame.fusiformLowerTorso
-                    figure.fusiformUpperArms = frame.fusiformUpperArms
+                    figure.fusiformBicep = frame.fusiformBicep
+                    figure.fusiformTricep = frame.fusiformTricep
                     figure.fusiformLowerArms = frame.fusiformLowerArms
                     figure.fusiformUpperLegs = frame.fusiformUpperLegs
                     figure.fusiformLowerLegs = frame.fusiformLowerLegs
@@ -589,7 +590,8 @@ class GameplayScene: GameScene {
                     // Copy all stroke thickness values
                     figure.strokeThicknessUpperTorso = frame.strokeThicknessUpperTorso
                     figure.strokeThicknessLowerTorso = frame.strokeThicknessLowerTorso
-                    figure.strokeThicknessUpperArms = frame.strokeThicknessUpperArms
+                    figure.strokeThicknessBicep = frame.strokeThicknessBicep
+                    figure.strokeThicknessTricep = frame.strokeThicknessTricep
                     figure.strokeThicknessLowerArms = frame.strokeThicknessLowerArms
                     figure.strokeThicknessUpperLegs = frame.strokeThicknessUpperLegs
                     figure.strokeThicknessLowerLegs = frame.strokeThicknessLowerLegs
@@ -639,7 +641,8 @@ class GameplayScene: GameScene {
                 case "fusiformShoulders": scaledFigure.fusiformShoulders = interpolatedValue
                 case "fusiformUpperTorso": scaledFigure.fusiformUpperTorso = interpolatedValue
                 case "fusiformLowerTorso": scaledFigure.fusiformLowerTorso = interpolatedValue
-                case "fusiformUpperArms": scaledFigure.fusiformUpperArms = interpolatedValue
+                case "fusiformBicep": scaledFigure.fusiformBicep = interpolatedValue
+                case "fusiformTricep": scaledFigure.fusiformTricep = interpolatedValue
                 case "fusiformLowerArms": scaledFigure.fusiformLowerArms = interpolatedValue
                 case "fusiformUpperLegs": scaledFigure.fusiformUpperLegs = interpolatedValue
                 case "fusiformLowerLegs": scaledFigure.fusiformLowerLegs = interpolatedValue
@@ -649,7 +652,8 @@ class GameplayScene: GameScene {
                 case "footSize": scaledFigure.footSize = interpolatedValue
                 case "strokeThicknessUpperTorso": scaledFigure.strokeThicknessUpperTorso = interpolatedValue
                 case "strokeThicknessLowerTorso": scaledFigure.strokeThicknessLowerTorso = interpolatedValue
-                case "strokeThicknessUpperArms": scaledFigure.strokeThicknessUpperArms = interpolatedValue
+                case "strokeThicknessBicep": scaledFigure.strokeThicknessBicep = interpolatedValue
+                case "strokeThicknessTricep": scaledFigure.strokeThicknessTricep = interpolatedValue
                 case "strokeThicknessLowerArms": scaledFigure.strokeThicknessLowerArms = interpolatedValue
                 case "strokeThicknessUpperLegs": scaledFigure.strokeThicknessUpperLegs = interpolatedValue
                 case "strokeThicknessLowerLegs": scaledFigure.strokeThicknessLowerLegs = interpolatedValue
@@ -659,7 +663,8 @@ class GameplayScene: GameScene {
                 case "skeletonSizeTorso": scaledFigure.skeletonSizeTorso = interpolatedValue
                 case "skeletonSizeArm": scaledFigure.skeletonSizeArm = interpolatedValue
                 case "skeletonSizeLeg": scaledFigure.skeletonSizeLeg = interpolatedValue
-                case "peakPositionUpperArms": scaledFigure.peakPositionUpperArms = interpolatedValue
+                case "peakPositionBicep": scaledFigure.peakPositionBicep = interpolatedValue
+                case "peakPositionTricep": scaledFigure.peakPositionTricep = interpolatedValue
                 case "peakPositionLowerArms": scaledFigure.peakPositionLowerArms = interpolatedValue
                 case "peakPositionUpperLegs": scaledFigure.peakPositionUpperLegs = interpolatedValue
                 case "peakPositionLowerLegs": scaledFigure.peakPositionLowerLegs = interpolatedValue
@@ -719,7 +724,7 @@ class GameplayScene: GameScene {
             //scaledFigure.skeletonSizeLeg = min(scaledFigure.skeletonSizeLeg, max(2.0, 3.5 * legRatio))
         }
         
-        print("🎮 DEBUG applyMuscleScaling FINAL: skeletonSizeTorso=\(scaledFigure.skeletonSizeTorso) skeletonSizeArm=\(scaledFigure.skeletonSizeArm) skeletonSizeLeg=\(scaledFigure.skeletonSizeLeg), fusiformUpperTorso=\(scaledFigure.fusiformUpperTorso), fusiformUpperArms=\(scaledFigure.fusiformUpperArms)")
+        print("🎮 DEBUG applyMuscleScaling FINAL: skeletonSizeTorso=\(scaledFigure.skeletonSizeTorso) skeletonSizeArm=\(scaledFigure.skeletonSizeArm) skeletonSizeLeg=\(scaledFigure.skeletonSizeLeg), fusiformUpperTorso=\(scaledFigure.fusiformUpperTorso), fusiformBicep=\(scaledFigure.fusiformBicep), fusiformTricep=\(scaledFigure.fusiformTricep)")
         
         return scaledFigure
     }

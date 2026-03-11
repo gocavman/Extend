@@ -71,13 +71,15 @@ struct SavedEditFrame: Codable, Identifiable {
     let figureScale: CGFloat
     let fusiformUpperTorso: CGFloat
     let fusiformLowerTorso: CGFloat
-    let fusiformUpperArms: CGFloat
+    let fusiformBicep: CGFloat
+    let fusiformTricep: CGFloat
     let fusiformLowerArms: CGFloat
     let fusiformUpperLegs: CGFloat
     let fusiformLowerLegs: CGFloat
     let fusiformShoulders: CGFloat
     let fusiformDeltoids: CGFloat
-    let peakPositionUpperArms: CGFloat
+    let peakPositionBicep: CGFloat
+    let peakPositionTricep: CGFloat
     let peakPositionLowerArms: CGFloat
     let peakPositionUpperLegs: CGFloat
     let peakPositionLowerLegs: CGFloat
@@ -103,7 +105,8 @@ struct SavedEditFrame: Codable, Identifiable {
     let strokeThicknessLowerArms: CGFloat
     let strokeThicknessLowerLegs: CGFloat
     let strokeThicknessLowerTorso: CGFloat
-    let strokeThicknessUpperArms: CGFloat
+    let strokeThicknessBicep: CGFloat
+    let strokeThicknessTricep: CGFloat
     let strokeThicknessUpperLegs: CGFloat
     let strokeThicknessUpperTorso: CGFloat
     let strokeThicknessFullTorso: CGFloat
@@ -145,7 +148,8 @@ struct SavedEditFrame: Codable, Identifiable {
         self.figureScale = values.figureScale
         self.fusiformUpperTorso = values.fusiformUpperTorso
         self.fusiformLowerTorso = values.fusiformLowerTorso
-        self.fusiformUpperArms = values.fusiformUpperArms
+        self.fusiformBicep = values.fusiformBicep
+        self.fusiformTricep = values.fusiformTricep
         self.fusiformLowerArms = values.fusiformLowerArms
         self.fusiformUpperLegs = values.fusiformUpperLegs
         self.fusiformLowerLegs = values.fusiformLowerLegs
@@ -168,7 +172,8 @@ struct SavedEditFrame: Codable, Identifiable {
             // Set peak positions from pose
             self.fusiformShoulders = pose.fusiformShoulders
             self.fusiformDeltoids = pose.fusiformDeltoids
-            self.peakPositionUpperArms = pose.peakPositionUpperArms
+            self.peakPositionBicep = pose.peakPositionBicep
+            self.peakPositionTricep = pose.peakPositionTricep
             self.peakPositionLowerArms = pose.peakPositionLowerArms
             self.peakPositionUpperLegs = pose.peakPositionUpperLegs
             self.peakPositionLowerLegs = pose.peakPositionLowerLegs
@@ -190,7 +195,8 @@ struct SavedEditFrame: Codable, Identifiable {
             // Default peak positions
             self.fusiformShoulders = 0.0
             self.fusiformDeltoids = 0.5
-            self.peakPositionUpperArms = 0.5
+            self.peakPositionBicep = 0.5
+            self.peakPositionTricep = 0.5
             self.peakPositionLowerArms = 0.35
             self.peakPositionUpperLegs = 0.2
             self.peakPositionLowerLegs = 0.2
@@ -243,7 +249,8 @@ struct SavedEditFrame: Codable, Identifiable {
             self.strokeThicknessLowerArms = pose.strokeThicknessLowerArms
             self.strokeThicknessLowerLegs = pose.strokeThicknessLowerLegs
             self.strokeThicknessLowerTorso = pose.strokeThicknessLowerTorso
-            self.strokeThicknessUpperArms = pose.strokeThicknessUpperArms
+            self.strokeThicknessBicep = pose.strokeThicknessBicep
+            self.strokeThicknessTricep = pose.strokeThicknessTricep
             self.strokeThicknessUpperLegs = pose.strokeThicknessUpperLegs
             self.strokeThicknessUpperTorso = pose.strokeThicknessUpperTorso
             self.strokeThicknessFullTorso = pose.strokeThicknessFullTorso
@@ -255,7 +262,8 @@ struct SavedEditFrame: Codable, Identifiable {
             self.strokeThicknessLowerArms = 3.5
             self.strokeThicknessLowerLegs = 3.5
             self.strokeThicknessLowerTorso = 4.5
-            self.strokeThicknessUpperArms = 4.0
+            self.strokeThicknessBicep = 4.0
+            self.strokeThicknessTricep = 4.0
             self.strokeThicknessUpperLegs = 4.5
             self.strokeThicknessUpperTorso = 5.0
             self.strokeThicknessFullTorso = 1.0
@@ -272,9 +280,9 @@ struct SavedEditFrame: Codable, Identifiable {
     enum CodingKeys: String, CodingKey {
         case id, name, frameNumber, createdAt, objects, pose
         case figureScale
-        case fusiformUpperTorso, fusiformLowerTorso, fusiformUpperArms, fusiformLowerArms
+        case fusiformUpperTorso, fusiformLowerTorso, fusiformBicep, fusiformTricep, fusiformLowerArms
         case fusiformUpperLegs, fusiformLowerLegs, fusiformShoulders, fusiformDeltoids
-        case peakPositionUpperArms, peakPositionLowerArms, peakPositionUpperLegs
+        case peakPositionBicep, peakPositionTricep, peakPositionLowerArms, peakPositionUpperLegs
         case peakPositionLowerLegs, peakPositionUpperTorso, peakPositionLowerTorso, peakPositionDeltoids
         case figureOffsetX, figureOffsetY, waistPositionX, waistPositionY
         case shoulderWidthMultiplier, waistWidthMultiplier
@@ -284,7 +292,7 @@ struct SavedEditFrame: Codable, Identifiable {
         case leftHandAngle, rightHandAngle, leftHipAngle, rightHipAngle
         case leftKneeAngle, rightKneeAngle, leftFootAngle, rightFootAngle
         case strokeThicknessJoints, strokeThicknessLowerArms, strokeThicknessLowerLegs
-        case strokeThicknessLowerTorso, strokeThicknessUpperArms, strokeThicknessUpperLegs, strokeThicknessUpperTorso, strokeThicknessFullTorso, strokeThicknessDeltoids, strokeThicknessTrapezius
+        case strokeThicknessLowerTorso, strokeThicknessBicep, strokeThicknessTricep, strokeThicknessUpperLegs, strokeThicknessUpperTorso, strokeThicknessFullTorso, strokeThicknessDeltoids, strokeThicknessTrapezius
         case headRadiusMultiplier, shoulderWidthMultiplier_
         case footColor, handColor, headColor, torsoColor, leftArmColor, rightArmColor
         case leftLegColor, rightLegColor, leftUpperArmColor, leftLowerArmColor
@@ -317,13 +325,15 @@ struct SavedEditFrame: Codable, Identifiable {
         figureScale = try poseContainer.decodeIfPresent(CGFloat.self, forKey: .figureScale) ?? 1.0
         fusiformUpperTorso = try poseContainer.decodeIfPresent(CGFloat.self, forKey: .fusiformUpperTorso) ?? 0.0
         fusiformLowerTorso = try poseContainer.decodeIfPresent(CGFloat.self, forKey: .fusiformLowerTorso) ?? 0.0
-        fusiformUpperArms = try poseContainer.decodeIfPresent(CGFloat.self, forKey: .fusiformUpperArms) ?? 0.0
+        fusiformBicep = try poseContainer.decodeIfPresent(CGFloat.self, forKey: .fusiformBicep) ?? 0.0
+        fusiformTricep = try poseContainer.decodeIfPresent(CGFloat.self, forKey: .fusiformTricep) ?? 0.0
         fusiformLowerArms = try poseContainer.decodeIfPresent(CGFloat.self, forKey: .fusiformLowerArms) ?? 0.0
         fusiformUpperLegs = try poseContainer.decodeIfPresent(CGFloat.self, forKey: .fusiformUpperLegs) ?? 0.0
         fusiformLowerLegs = try poseContainer.decodeIfPresent(CGFloat.self, forKey: .fusiformLowerLegs) ?? 0.0
         fusiformShoulders = try poseContainer.decodeIfPresent(CGFloat.self, forKey: .fusiformShoulders) ?? 0.0
         fusiformDeltoids = try poseContainer.decodeIfPresent(CGFloat.self, forKey: .fusiformDeltoids) ?? 0.5
-        peakPositionUpperArms = try poseContainer.decodeIfPresent(CGFloat.self, forKey: .peakPositionUpperArms) ?? 0.0
+        peakPositionBicep = try poseContainer.decodeIfPresent(CGFloat.self, forKey: .peakPositionBicep) ?? 0.0
+        peakPositionTricep = try poseContainer.decodeIfPresent(CGFloat.self, forKey: .peakPositionTricep) ?? 0.0
         peakPositionLowerArms = try poseContainer.decodeIfPresent(CGFloat.self, forKey: .peakPositionLowerArms) ?? 0.0
         peakPositionUpperLegs = try poseContainer.decodeIfPresent(CGFloat.self, forKey: .peakPositionUpperLegs) ?? 0.0
         peakPositionLowerLegs = try poseContainer.decodeIfPresent(CGFloat.self, forKey: .peakPositionLowerLegs) ?? 0.0
@@ -367,7 +377,8 @@ struct SavedEditFrame: Codable, Identifiable {
         strokeThicknessLowerArms = try poseContainer.decodeIfPresent(CGFloat.self, forKey: .strokeThicknessLowerArms) ?? 3.5
         strokeThicknessLowerLegs = try poseContainer.decodeIfPresent(CGFloat.self, forKey: .strokeThicknessLowerLegs) ?? 3.5
         strokeThicknessLowerTorso = try poseContainer.decodeIfPresent(CGFloat.self, forKey: .strokeThicknessLowerTorso) ?? 4.5
-        strokeThicknessUpperArms = try poseContainer.decodeIfPresent(CGFloat.self, forKey: .strokeThicknessUpperArms) ?? 4.0
+        strokeThicknessBicep = try poseContainer.decodeIfPresent(CGFloat.self, forKey: .strokeThicknessBicep) ?? 4.0
+        strokeThicknessTricep = try poseContainer.decodeIfPresent(CGFloat.self, forKey: .strokeThicknessTricep) ?? 4.0
         strokeThicknessUpperLegs = try poseContainer.decodeIfPresent(CGFloat.self, forKey: .strokeThicknessUpperLegs) ?? 4.5
         strokeThicknessUpperTorso = try poseContainer.decodeIfPresent(CGFloat.self, forKey: .strokeThicknessUpperTorso) ?? 5.0
         strokeThicknessFullTorso = try poseContainer.decodeIfPresent(CGFloat.self, forKey: .strokeThicknessFullTorso) ?? 1.0
@@ -397,13 +408,15 @@ struct SavedEditFrame: Codable, Identifiable {
         try poseContainer.encode(figureScale, forKey: .figureScale)
         try poseContainer.encode(fusiformUpperTorso, forKey: .fusiformUpperTorso)
         try poseContainer.encode(fusiformLowerTorso, forKey: .fusiformLowerTorso)
-        try poseContainer.encode(fusiformUpperArms, forKey: .fusiformUpperArms)
+        try poseContainer.encode(fusiformBicep, forKey: .fusiformBicep)
+        try poseContainer.encode(fusiformTricep, forKey: .fusiformTricep)
         try poseContainer.encode(fusiformLowerArms, forKey: .fusiformLowerArms)
         try poseContainer.encode(fusiformUpperLegs, forKey: .fusiformUpperLegs)
         try poseContainer.encode(fusiformLowerLegs, forKey: .fusiformLowerLegs)
         try poseContainer.encode(fusiformShoulders, forKey: .fusiformShoulders)
         try poseContainer.encode(fusiformDeltoids, forKey: .fusiformDeltoids)
-        try poseContainer.encode(peakPositionUpperArms, forKey: .peakPositionUpperArms)
+        try poseContainer.encode(peakPositionBicep, forKey: .peakPositionBicep)
+        try poseContainer.encode(peakPositionTricep, forKey: .peakPositionTricep)
         try poseContainer.encode(peakPositionLowerArms, forKey: .peakPositionLowerArms)
         try poseContainer.encode(peakPositionUpperLegs, forKey: .peakPositionUpperLegs)
         try poseContainer.encode(peakPositionLowerLegs, forKey: .peakPositionLowerLegs)
@@ -443,7 +456,8 @@ struct SavedEditFrame: Codable, Identifiable {
         try poseContainer.encode(strokeThicknessLowerArms, forKey: .strokeThicknessLowerArms)
         try poseContainer.encode(strokeThicknessLowerLegs, forKey: .strokeThicknessLowerLegs)
         try poseContainer.encode(strokeThicknessLowerTorso, forKey: .strokeThicknessLowerTorso)
-        try poseContainer.encode(strokeThicknessUpperArms, forKey: .strokeThicknessUpperArms)
+        try poseContainer.encode(strokeThicknessBicep, forKey: .strokeThicknessBicep)
+        try poseContainer.encode(strokeThicknessTricep, forKey: .strokeThicknessTricep)
         try poseContainer.encode(strokeThicknessUpperLegs, forKey: .strokeThicknessUpperLegs)
         try poseContainer.encode(strokeThicknessUpperTorso, forKey: .strokeThicknessUpperTorso)
         try poseContainer.encode(strokeThicknessFullTorso, forKey: .strokeThicknessFullTorso)
@@ -575,7 +589,8 @@ class SavedFramesManager {
             ("fusiformLowerTorso", roundAndFormat(frame.fusiformLowerTorso, decimals: 2)),
             ("fusiformShoulders", roundAndFormat(frame.fusiformShoulders, decimals: 2)),
             ("fusiformDeltoids", roundAndFormat(frame.fusiformDeltoids, decimals: 2)),
-            ("fusiformUpperArms", roundAndFormat(frame.fusiformUpperArms, decimals: 2)),
+            ("fusiformBicep", roundAndFormat(frame.fusiformBicep, decimals: 2)),
+            ("fusiformTricep", roundAndFormat(frame.fusiformTricep, decimals: 2)),
             ("fusiformUpperLegs", roundAndFormat(frame.fusiformUpperLegs, decimals: 2)),
             ("fusiformUpperTorso", roundAndFormat(frame.fusiformUpperTorso, decimals: 2)),
             ("handColor", "\"#000000\""),
@@ -603,7 +618,8 @@ class SavedFramesManager {
             ("peakPositionLowerArms", roundAndFormat(frame.peakPositionLowerArms, decimals: 2)),
             ("peakPositionLowerLegs", roundAndFormat(frame.peakPositionLowerLegs, decimals: 2)),
             ("peakPositionLowerTorso", roundAndFormat(frame.peakPositionLowerTorso, decimals: 2)),
-            ("peakPositionUpperArms", roundAndFormat(frame.peakPositionUpperArms, decimals: 2)),
+            ("peakPositionBicep", roundAndFormat(frame.peakPositionBicep, decimals: 2)),
+            ("peakPositionTricep", roundAndFormat(frame.peakPositionTricep, decimals: 2)),
             ("peakPositionUpperLegs", roundAndFormat(frame.peakPositionUpperLegs, decimals: 2)),
             ("peakPositionUpperTorso", roundAndFormat(frame.peakPositionUpperTorso, decimals: 2)),
             ("peakPositionDeltoids", roundAndFormat(frame.peakPositionDeltoids, decimals: 2)),
@@ -631,7 +647,8 @@ class SavedFramesManager {
             ("strokeThicknessLowerArms", roundAndFormat(frame.strokeThicknessLowerArms, decimals: 1)),
             ("strokeThicknessLowerLegs", roundAndFormat(frame.strokeThicknessLowerLegs, decimals: 1)),
             ("strokeThicknessLowerTorso", roundAndFormat(frame.strokeThicknessLowerTorso, decimals: 1)),
-            ("strokeThicknessUpperArms", roundAndFormat(frame.strokeThicknessUpperArms, decimals: 1)),
+            ("strokeThicknessBicep", roundAndFormat(frame.strokeThicknessBicep, decimals: 1)),
+            ("strokeThicknessTricep", roundAndFormat(frame.strokeThicknessTricep, decimals: 1)),
             ("strokeThicknessUpperLegs", roundAndFormat(frame.strokeThicknessUpperLegs, decimals: 1)),
             ("strokeThicknessUpperTorso", roundAndFormat(frame.strokeThicknessUpperTorso, decimals: 1)),
             ("torsoColor", "\"#000000\""),
@@ -684,13 +701,15 @@ class SavedFramesManager {
                 figureScale: pose.scale,
                 fusiformUpperTorso: pose.fusiformUpperTorso,
                 fusiformLowerTorso: pose.fusiformLowerTorso,
-                fusiformUpperArms: pose.fusiformUpperArms,
+                fusiformBicep: pose.fusiformBicep,
+                fusiformTricep: pose.fusiformTricep,
                 fusiformLowerArms: pose.fusiformLowerArms,
                 fusiformUpperLegs: pose.fusiformUpperLegs,
                 fusiformLowerLegs: pose.fusiformLowerLegs,
                 fusiformShoulders: pose.fusiformShoulders,
                 fusiformDeltoids: pose.fusiformDeltoids,
-                peakPositionUpperArms: pose.peakPositionUpperArms,
+                peakPositionBicep: pose.peakPositionBicep,
+                peakPositionTricep: pose.peakPositionTricep,
                 peakPositionLowerArms: pose.peakPositionLowerArms,
                 peakPositionUpperLegs: pose.peakPositionUpperLegs,
                 peakPositionLowerLegs: pose.peakPositionLowerLegs,
@@ -711,7 +730,8 @@ class SavedFramesManager {
                 strokeThicknessJoints: pose.strokeThicknessJoints,
                 strokeThicknessUpperTorso: pose.strokeThicknessUpperTorso,
                 strokeThicknessLowerTorso: pose.strokeThicknessLowerTorso,
-                strokeThicknessUpperArms: pose.strokeThicknessUpperArms,
+                strokeThicknessBicep: pose.strokeThicknessBicep,
+                strokeThicknessTricep: pose.strokeThicknessTricep,
                 strokeThicknessLowerArms: pose.strokeThicknessLowerArms,
                 strokeThicknessUpperLegs: pose.strokeThicknessUpperLegs,
                 strokeThicknessLowerLegs: pose.strokeThicknessLowerLegs,

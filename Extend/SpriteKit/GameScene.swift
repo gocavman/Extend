@@ -103,9 +103,9 @@ class GameScene: SKScene {
         let leftShoulderPos = mutableFigure.leftShoulderPosition
         let rightShoulderPos = mutableFigure.rightShoulderPosition
         
-        print("🎮 DEBUG: Neck=\(neckPos), Waist=\(waistPos), UpperTorso fusiform=\(mutableFigure.fusiformUpperTorso), UpperArms fusiform=\(mutableFigure.fusiformUpperArms)")
+        print("🎮 DEBUG: Neck=\(neckPos), Waist=\(waistPos), UpperTorso fusiform=\(mutableFigure.fusiformUpperTorso), Bicep fusiform=\(mutableFigure.fusiformBicep), Tricep fusiform=\(mutableFigure.fusiformTricep)")
         
-        print("🎮 DEBUG: Neck=\(neckPos), Waist=\(waistPos), UpperTorso fusiform=\(mutableFigure.fusiformUpperTorso), UpperArms fusiform=\(mutableFigure.fusiformUpperArms)")
+        print("🎮 DEBUG: Neck=\(neckPos), Waist=\(waistPos), UpperTorso fusiform=\(mutableFigure.fusiformUpperTorso), Bicep fusiform=\(mutableFigure.fusiformBicep), Tricep fusiform=\(mutableFigure.fusiformTricep)")
         let leftUpperArmEnd = mutableFigure.leftUpperArmEnd
         let rightUpperArmEnd = mutableFigure.rightUpperArmEnd
         let leftForearmEnd = mutableFigure.leftForearmEnd
@@ -869,12 +869,15 @@ class GameScene: SKScene {
         }
         
         // Draw arms - with correct peak positions matching the editor
-        // Upper arms: peak position controlled by slider
-        drawTaperedSegment(from: leftShoulderPos, to: leftUpperArmEnd, color: toSKColor(mutableFigure.leftUpperArmColor), strokeThickness: mutableFigure.strokeThicknessUpperArms, fusiform: mutableFigure.fusiformUpperArms, inverted: true, peakPosition: mutableFigure.peakPositionUpperArms)
+        // Left bicep and tricep on same segment
+        drawTaperedSegment(from: leftShoulderPos, to: leftUpperArmEnd, color: toSKColor(mutableFigure.leftUpperArmColor), strokeThickness: mutableFigure.strokeThicknessBicep, fusiform: mutableFigure.fusiformBicep, inverted: true, peakPosition: mutableFigure.peakPositionBicep)
+        drawTaperedSegment(from: leftShoulderPos, to: leftUpperArmEnd, color: toSKColor(mutableFigure.leftUpperArmColor), strokeThickness: mutableFigure.strokeThicknessTricep, fusiform: mutableFigure.fusiformTricep, inverted: false, peakPosition: mutableFigure.peakPositionTricep)
         // Lower arms: peak position controlled by slider
         drawTaperedSegment(from: leftUpperArmEnd, to: leftForearmEnd, color: toSKColor(mutableFigure.leftLowerArmColor), strokeThickness: mutableFigure.strokeThicknessLowerArms, fusiform: mutableFigure.fusiformLowerArms, inverted: true, peakPosition: mutableFigure.peakPositionLowerArms)
         
-        drawTaperedSegment(from: rightShoulderPos, to: rightUpperArmEnd, color: toSKColor(mutableFigure.rightUpperArmColor), strokeThickness: mutableFigure.strokeThicknessUpperArms, fusiform: mutableFigure.fusiformUpperArms, inverted: true, peakPosition: mutableFigure.peakPositionUpperArms)
+        // Right bicep and tricep on same segment
+        drawTaperedSegment(from: rightShoulderPos, to: rightUpperArmEnd, color: toSKColor(mutableFigure.rightUpperArmColor), strokeThickness: mutableFigure.strokeThicknessBicep, fusiform: mutableFigure.fusiformBicep, inverted: true, peakPosition: mutableFigure.peakPositionBicep)
+        drawTaperedSegment(from: rightShoulderPos, to: rightUpperArmEnd, color: toSKColor(mutableFigure.rightUpperArmColor), strokeThickness: mutableFigure.strokeThicknessTricep, fusiform: mutableFigure.fusiformTricep, inverted: false, peakPosition: mutableFigure.peakPositionTricep)
         drawTaperedSegment(from: rightUpperArmEnd, to: rightForearmEnd, color: toSKColor(mutableFigure.rightLowerArmColor), strokeThickness: mutableFigure.strokeThicknessLowerArms, fusiform: mutableFigure.fusiformLowerArms, inverted: true, peakPosition: mutableFigure.peakPositionLowerArms)
         
         // Draw hands and feet with overlap

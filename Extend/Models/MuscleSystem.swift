@@ -338,9 +338,11 @@ class MuscleSystem {
         let value: Double
         switch propertyKey {
         case "fusiformShoulders": value = Double(frame.fusiformShoulders)
+        case "fusiformDeltoids": value = Double(frame.fusiformDeltoids)
         case "fusiformUpperTorso": value = Double(frame.fusiformUpperTorso)
         case "fusiformLowerTorso": value = Double(frame.fusiformLowerTorso)
-        case "fusiformUpperArms": value = Double(frame.fusiformUpperArms)
+        case "fusiformBicep": value = Double(frame.fusiformBicep)
+        case "fusiformTricep": value = Double(frame.fusiformTricep)
         case "fusiformLowerArms": value = Double(frame.fusiformLowerArms)
         case "fusiformUpperLegs": value = Double(frame.fusiformUpperLegs)
         case "fusiformLowerLegs": value = Double(frame.fusiformLowerLegs)
@@ -351,9 +353,12 @@ class MuscleSystem {
         case "skeletonSizeArm": value = Double(frame.skeletonSizeArm)
         case "skeletonSizeLeg": value = Double(frame.skeletonSizeLeg)
         case "waistThicknessMultiplier": value = Double(frame.waistThicknessMultiplier)
+        case "strokeThicknessDeltoids": value = Double(frame.strokeThicknessDeltoids)
+        case "strokeThicknessTrapezius": value = Double(frame.strokeThicknessTrapezius)
         case "strokeThicknessUpperTorso": value = Double(frame.strokeThicknessUpperTorso)
         case "strokeThicknessLowerTorso": value = Double(frame.strokeThicknessLowerTorso)
-        case "strokeThicknessUpperArms": value = Double(frame.strokeThicknessUpperArms)
+        case "strokeThicknessBicep": value = Double(frame.strokeThicknessBicep)
+        case "strokeThicknessTricep": value = Double(frame.strokeThicknessTricep)
         case "strokeThicknessLowerArms": value = Double(frame.strokeThicknessLowerArms)
         case "strokeThicknessUpperLegs": value = Double(frame.strokeThicknessUpperLegs)
         case "strokeThicknessLowerLegs": value = Double(frame.strokeThicknessLowerLegs)
@@ -448,8 +453,10 @@ class MuscleSystem {
             return Double(frame.pose.fusiformUpperTorso)
         case "fusiformLowerTorso":
             return Double(frame.pose.fusiformLowerTorso)
-        case "fusiformUpperArms":
-            return Double(frame.pose.fusiformUpperArms)
+        case "fusiformBicep":
+            return Double(frame.pose.fusiformBicep)
+        case "fusiformTricep":
+            return Double(frame.pose.fusiformTricep)
         case "fusiformLowerArms":
             return Double(frame.pose.fusiformLowerArms)
         case "fusiformUpperLegs":
@@ -462,8 +469,10 @@ class MuscleSystem {
             return Double(frame.pose.strokeThicknessUpperTorso)
         case "strokeThicknessLowerTorso":
             return Double(frame.pose.strokeThicknessLowerTorso)
-        case "strokeThicknessUpperArms":
-            return Double(frame.pose.strokeThicknessUpperArms)
+        case "strokeThicknessBicep":
+            return Double(frame.pose.strokeThicknessBicep)
+        case "strokeThicknessTricep":
+            return Double(frame.pose.strokeThicknessTricep)
         case "strokeThicknessLowerArms":
             return Double(frame.pose.strokeThicknessLowerArms)
         case "strokeThicknessUpperLegs":

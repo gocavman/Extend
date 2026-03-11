@@ -155,8 +155,8 @@
       }
     },
     {
-      "id": "fusiformUpperArms",
-      "name": "Upper Arm Bulge",
+      "id": "fusiformBicep",
+      "name": "Bicep Bulge",
       "muscleGroups": ["Biceps"],
       "progression": {
         "0": 0,
@@ -167,9 +167,33 @@
       }
     },
     {
-      "id": "strokeThicknessUpperArms",
-      "name": "Upper Arm Thickness",
+      "id": "strokeThicknessBicep",
+      "name": "Bicep Thickness",
       "muscleGroups": ["Biceps"],
+      "progression": {
+        "0": 4.0,
+        "25": 2.8,
+        "50": 5.2,
+        "75": 5.7,
+        "100": 8.0
+      }
+    },
+    {
+      "id": "fusiformTricep",
+      "name": "Tricep Bulge",
+      "muscleGroups": ["Triceps"],
+      "progression": {
+        "0": 0,
+        "25": 1.37,
+        "50": 1.37,
+        "75": 1.37,
+        "100": 1.585
+      }
+    },
+    {
+      "id": "strokeThicknessTricep",
+      "name": "Tricep Thickness",
+      "muscleGroups": ["Triceps"],
       "progression": {
         "0": 4.0,
         "25": 2.8,
@@ -357,30 +381,7 @@
         "75": 4,
         "100": 4
       }
-    },
-    {
-      "id": "fusiformTriceps",
-      "name": "Triceps Bulge",
-      "muscleGroups": ["Triceps"],
-      "progression": {
-        "0": 0,
-        "25": 2.0,
-        "50": 2.0,
-        "75": 2.0,
-        "100": 2.74
-      }
-    },
-    {
-      "id": "strokeThicknessTriceps",
-      "name": "Triceps Thickness",
-      "muscleGroups": ["Triceps"],
-      "progression": {
-        "0": 4.0,
-        "25": 3.0,
-        "50": 4.8,
-        "75": 5.9,
-        "100": 8.0
-      }
     }
   ]
 }
+

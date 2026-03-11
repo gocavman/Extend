@@ -6,7 +6,8 @@ struct GameplayEditModeView: View {
     @State private var strokeThicknessMultiplier: CGFloat = 1.0
     @State private var fusiformUpperTorso: CGFloat = 4.0
     @State private var fusiformLowerTorso: CGFloat = 4.0
-    @State private var fusiformUpperArms: CGFloat = 2.0
+    @State private var fusiformBicep: CGFloat = 2.0
+    @State private var fusiformTricep: CGFloat = 1.0
     @State private var fusiformLowerArms: CGFloat = 3.0
     @State private var fusiformUpperLegs: CGFloat = 4.0
     @State private var fusiformLowerLegs: CGFloat = 4.0
@@ -71,7 +72,8 @@ struct GameplayEditModeView: View {
                             
                             sliderWithButtons(label: "Upper Torso", value: $fusiformUpperTorso, range: 0...10, step: 1)
                             sliderWithButtons(label: "Lower Torso", value: $fusiformLowerTorso, range: 0...10, step: 1)
-                            sliderWithButtons(label: "Upper Arms", value: $fusiformUpperArms, range: 0...10, step: 1)
+                            sliderWithButtons(label: "Bicep (inner)", value: $fusiformBicep, range: 0...10, step: 1)
+                            sliderWithButtons(label: "Tricep (outer)", value: $fusiformTricep, range: 0...5, step: 0.5)
                             sliderWithButtons(label: "Lower Arms", value: $fusiformLowerArms, range: 0...10, step: 1)
                             sliderWithButtons(label: "Upper Legs", value: $fusiformUpperLegs, range: 0...10, step: 1)
                             sliderWithButtons(label: "Lower Legs", value: $fusiformLowerLegs, range: 0...10, step: 1)
@@ -190,13 +192,15 @@ struct GameplayEditModeView: View {
             figureScale: figureScale,
             fusiformUpperTorso: fusiformUpperTorso,
             fusiformLowerTorso: fusiformLowerTorso,
-            fusiformUpperArms: fusiformUpperArms,
+            fusiformBicep: fusiformBicep,
+            fusiformTricep: fusiformTricep,
             fusiformLowerArms: fusiformLowerArms,
             fusiformUpperLegs: fusiformUpperLegs,
             fusiformLowerLegs: fusiformLowerLegs,
             fusiformShoulders: nil,
             fusiformDeltoids: nil,
-            peakPositionUpperArms: nil,
+            peakPositionBicep: nil,
+            peakPositionTricep: nil,
             peakPositionLowerArms: nil,
             peakPositionUpperLegs: nil,
             peakPositionLowerLegs: nil,
@@ -217,7 +221,8 @@ struct GameplayEditModeView: View {
             strokeThicknessJoints: nil,
             strokeThicknessUpperTorso: nil,
             strokeThicknessLowerTorso: nil,
-            strokeThicknessUpperArms: nil,
+            strokeThicknessBicep: nil,
+            strokeThicknessTricep: nil,
             strokeThicknessLowerArms: nil,
             strokeThicknessUpperLegs: nil,
             strokeThicknessLowerLegs: nil,
@@ -239,13 +244,15 @@ struct EditModeValues {
     let figureScale: CGFloat
     let fusiformUpperTorso: CGFloat
     let fusiformLowerTorso: CGFloat
-    let fusiformUpperArms: CGFloat
+    let fusiformBicep: CGFloat
+    let fusiformTricep: CGFloat
     let fusiformLowerArms: CGFloat
     let fusiformUpperLegs: CGFloat
     let fusiformLowerLegs: CGFloat
     let fusiformShoulders: CGFloat?
     let fusiformDeltoids: CGFloat?
-    let peakPositionUpperArms: CGFloat?
+    let peakPositionBicep: CGFloat?
+    let peakPositionTricep: CGFloat?
     let peakPositionLowerArms: CGFloat?
     let peakPositionUpperLegs: CGFloat?
     let peakPositionLowerLegs: CGFloat?
@@ -266,7 +273,8 @@ struct EditModeValues {
     let strokeThicknessJoints: CGFloat?
     let strokeThicknessUpperTorso: CGFloat?
     let strokeThicknessLowerTorso: CGFloat?
-    let strokeThicknessUpperArms: CGFloat?
+    let strokeThicknessBicep: CGFloat?
+    let strokeThicknessTricep: CGFloat?
     let strokeThicknessLowerArms: CGFloat?
     let strokeThicknessUpperLegs: CGFloat?
     let strokeThicknessLowerLegs: CGFloat?

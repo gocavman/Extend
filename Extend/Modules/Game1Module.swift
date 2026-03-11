@@ -175,6 +175,14 @@ func loadActionConfigs() -> [ActionConfig] {
         let decoder = JSONDecoder()
         if let configs = try? decoder.decode([ActionConfig].self, from: data) {
             print("✅ Successfully loaded \(configs.count) action configurations from JSON")
+            // Debug: Print animation config for each action
+            for config in configs {
+                if let animConfig = config.stickFigureAnimation {
+                    print("  🎬 \(config.id): Animation=\(animConfig.animationName), Frames=\(animConfig.frameNumbers.count), Interval=\(animConfig.baseFrameInterval)s")
+                } else {
+                    print("  ⚠️ \(config.id): NO stickFigureAnimation defined")
+                }
+            }
             return configs
         } else {
             print("⚠️ Failed to decode actions_config.json")
@@ -1311,6 +1319,14 @@ class StickFigureGameState {
         var frameIndex = 0
         let speedMultiplier = (config.supportsSpeedBoost && gameState.speedBoostTimeRemaining > 0) ? 0.5 : 1.0
         let baseInterval = config.stickFigureAnimation?.baseFrameInterval ?? 0.15
+        
+        // Debug: Print frame timing info
+        if let animConfig = config.stickFigureAnimation {
+            print("🎬 Starting \(config.id) animation with baseInterval=\(animConfig.baseFrameInterval)s (speedMultiplier=\(speedMultiplier))")
+        } else {
+            print("⚠️ \(config.id) has NO stickFigureAnimation! Using fallback 0.15s")
+        }
+        
         let interval = baseInterval * speedMultiplier
         
         gameState.actionTimer = Timer.scheduledTimer(withTimeInterval: interval, repeats: true) { _ in
@@ -1353,6 +1369,9 @@ class StickFigureGameState {
     private func startActionWithVariableTiming(_ config: ActionConfig, gameState: StickFigureGameState, variableTiming: [Int: TimeInterval], startTime: Double) {
         var frameIndex = 0
         let speedMultiplier = (config.supportsSpeedBoost && gameState.speedBoostTimeRemaining > 0) ? 0.5 : 1.0
+        
+        // Debug: Print that this action uses variable timing
+        print("🎬 Starting \(config.id) with VARIABLE timing (\(variableTiming.count) custom intervals)")
         
         // Initialize config-driven floating text state
         var floatingTextIndex = 0
