@@ -117,8 +117,6 @@ struct StickFigure2DPose: Codable {
     let rightShoulderAngle: Double
     let leftElbowAngle: Double
     let rightElbowAngle: Double
-    let leftHandAngle: Double
-    let rightHandAngle: Double
     let leftHipAngle: Double
     let rightHipAngle: Double
     let leftKneeAngle: Double
@@ -212,8 +210,6 @@ struct StickFigure2DPose: Codable {
         self.rightShoulderAngle = figure.rightShoulderAngle
         self.leftElbowAngle = figure.leftElbowAngle
         self.rightElbowAngle = figure.rightElbowAngle
-        self.leftHandAngle = figure.leftHandAngle
-        self.rightHandAngle = figure.rightHandAngle
         self.leftHipAngle = figure.leftHipAngle
         self.rightHipAngle = figure.rightHipAngle
         self.leftKneeAngle = figure.leftKneeAngle
@@ -296,8 +292,6 @@ struct StickFigure2DPose: Codable {
         figure.rightShoulderAngle = rightShoulderAngle
         figure.leftElbowAngle = leftElbowAngle
         figure.rightElbowAngle = rightElbowAngle
-        figure.leftHandAngle = leftHandAngle
-        figure.rightHandAngle = rightHandAngle
         figure.leftHipAngle = leftHipAngle
         figure.rightHipAngle = rightHipAngle
         figure.leftKneeAngle = leftKneeAngle
@@ -372,7 +366,6 @@ struct StickFigure2DPose: Codable {
         case waistTorsoAngle, midTorsoAngle, headAngle
         case leftShoulderAngle, rightShoulderAngle
         case leftElbowAngle, rightElbowAngle
-        case leftHandAngle, rightHandAngle
         case leftHipAngle, rightHipAngle
         case leftKneeAngle, rightKneeAngle
         case leftFootAngle, rightFootAngle
@@ -421,7 +414,6 @@ struct StickFigure2DPose: Codable {
         try container.encode(jointColor, forKey: .jointColor)
         try container.encode(round(leftElbowAngle), forKey: .leftElbowAngle)
         try container.encode(round(leftFootAngle), forKey: .leftFootAngle)
-        try container.encode(round(leftHandAngle), forKey: .leftHandAngle)
         try container.encode(round(leftHipAngle), forKey: .leftHipAngle)
         try container.encode(round(leftKneeAngle), forKey: .leftKneeAngle)
         try container.encode(round(leftShoulderAngle), forKey: .leftShoulderAngle)
@@ -437,7 +429,6 @@ struct StickFigure2DPose: Codable {
         try container.encode(round(peakPositionUpperTorso), forKey: .peakPositionUpperTorso)
         try container.encode(round(rightElbowAngle), forKey: .rightElbowAngle)
         try container.encode(round(rightFootAngle), forKey: .rightFootAngle)
-        try container.encode(round(rightHandAngle), forKey: .rightHandAngle)
         try container.encode(round(rightHipAngle), forKey: .rightHipAngle)
         try container.encode(round(rightKneeAngle), forKey: .rightKneeAngle)
         try container.encode(round(rightShoulderAngle), forKey: .rightShoulderAngle)
@@ -479,8 +470,6 @@ struct StickFigure2DPose: Codable {
         self.rightShoulderAngle = try container.decode(Double.self, forKey: .rightShoulderAngle)
         self.leftElbowAngle = try container.decode(Double.self, forKey: .leftElbowAngle)
         self.rightElbowAngle = try container.decode(Double.self, forKey: .rightElbowAngle)
-        self.leftHandAngle = try container.decode(Double.self, forKey: .leftHandAngle)
-        self.rightHandAngle = try container.decode(Double.self, forKey: .rightHandAngle)
         self.leftHipAngle = try container.decodeIfPresent(Double.self, forKey: .leftHipAngle) ?? 0
         self.rightHipAngle = try container.decodeIfPresent(Double.self, forKey: .rightHipAngle) ?? 0
         self.leftKneeAngle = try container.decode(Double.self, forKey: .leftKneeAngle)
@@ -878,15 +867,6 @@ struct StickFigure2D {
         return CGPoint(x: x, y: y)
     }
     
-    var leftHandEnd: CGPoint {
-        let baseAngle = 270.0 + leftShoulderAngle + leftElbowAngle + leftHandAngle
-        let totalAngle = baseAngle + waistTorsoAngle + midTorsoAngle
-        let radians = totalAngle * .pi / 180
-        let x = leftForearmEnd.x + handLength * cos(radians)
-        let y = leftForearmEnd.y + handLength * sin(radians)
-        return CGPoint(x: x, y: y)
-    }
-    
     // Right arm positions
     var rightUpperArmEnd: CGPoint {
         let baseAngle = 270.0 + rightShoulderAngle
@@ -903,15 +883,6 @@ struct StickFigure2D {
         let radians = totalAngle * .pi / 180
         let x = rightUpperArmEnd.x + forearmLength * cos(radians)
         let y = rightUpperArmEnd.y + forearmLength * sin(radians)
-        return CGPoint(x: x, y: y)
-    }
-    
-    var rightHandEnd: CGPoint {
-        let baseAngle = 270.0 + rightShoulderAngle + rightElbowAngle + rightHandAngle
-        let totalAngle = baseAngle + waistTorsoAngle + midTorsoAngle
-        let radians = totalAngle * .pi / 180
-        let x = rightForearmEnd.x + handLength * cos(radians)
-        let y = rightForearmEnd.y + handLength * sin(radians)
         return CGPoint(x: x, y: y)
     }
     

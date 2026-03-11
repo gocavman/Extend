@@ -123,8 +123,6 @@ struct SavedEditFrame: Codable, Identifiable {
     let rightShoulderAngle: CGFloat
     let leftElbowAngle: CGFloat
     let rightElbowAngle: CGFloat
-    let leftHandAngle: CGFloat
-    let rightHandAngle: CGFloat
     let leftHipAngle: CGFloat
     let rightHipAngle: CGFloat
     let leftKneeAngle: CGFloat
@@ -197,15 +195,15 @@ struct SavedEditFrame: Codable, Identifiable {
             // Default peak positions
             self.fusiformShoulders = 0.0
             self.fusiformDeltoids = 0.5
-            self.peakPositionBicep = 0.5
-            self.peakPositionTricep = 0.5
-            self.peakPositionLowerArms = 0.35
-            self.peakPositionUpperLegs = 0.2
-            self.peakPositionLowerLegs = 0.2
-            self.peakPositionUpperTorso = 0.5
-            self.peakPositionLowerTorso = 0.5
-            self.peakPositionDeltoids = 0.3
-            self.armMuscleSide = "normal"
+            self.peakPositionBicep = values.peakPositionBicep ?? 0.5
+            self.peakPositionTricep = values.peakPositionTricep ?? 0.5
+            self.peakPositionLowerArms = values.peakPositionLowerArms ?? 0.35
+            self.peakPositionUpperLegs = values.peakPositionUpperLegs ?? 0.2
+            self.peakPositionLowerLegs = values.peakPositionLowerLegs ?? 0.2
+            self.peakPositionUpperTorso = values.peakPositionUpperTorso ?? 0.5
+            self.peakPositionLowerTorso = values.peakPositionLowerTorso ?? 0.5
+            self.peakPositionDeltoids = values.peakPositionDeltoids ?? 0.3
+            self.armMuscleSide = values.armMuscleSide ?? "normal"
         }
         
         // Store pose angles if provided, otherwise use defaults
@@ -218,8 +216,6 @@ struct SavedEditFrame: Codable, Identifiable {
             self.rightShoulderAngle = pose.rightShoulderAngle
             self.leftElbowAngle = pose.leftElbowAngle
             self.rightElbowAngle = pose.rightElbowAngle
-            self.leftHandAngle = pose.leftHandAngle
-            self.rightHandAngle = pose.rightHandAngle
             self.leftHipAngle = pose.leftHipAngle
             self.rightHipAngle = pose.rightHipAngle
             self.leftKneeAngle = pose.leftKneeAngle
@@ -236,8 +232,6 @@ struct SavedEditFrame: Codable, Identifiable {
             self.rightShoulderAngle = 0
             self.leftElbowAngle = 45
             self.rightElbowAngle = 45
-            self.leftHandAngle = -45
-            self.rightHandAngle = -45
             self.leftHipAngle = 0
             self.rightHipAngle = 0
             self.leftKneeAngle = 0
@@ -246,7 +240,7 @@ struct SavedEditFrame: Codable, Identifiable {
             self.rightFootAngle = 0
         }
         
-        // Store stroke thickness properties from pose
+        // Store stroke thickness properties from pose or values
         if let pose = pose {
             self.strokeThicknessJoints = pose.strokeThicknessJoints
             self.strokeThicknessLowerArms = pose.strokeThicknessLowerArms
@@ -260,18 +254,18 @@ struct SavedEditFrame: Codable, Identifiable {
             self.strokeThicknessDeltoids = pose.strokeThicknessDeltoids
             self.strokeThicknessTrapezius = pose.strokeThicknessTrapezius
         } else {
-            // Use defaults that match the Stand frame
-            self.strokeThicknessJoints = 2.5
-            self.strokeThicknessLowerArms = 3.5
-            self.strokeThicknessLowerLegs = 3.5
-            self.strokeThicknessLowerTorso = 4.5
-            self.strokeThicknessBicep = 4.0
-            self.strokeThicknessTricep = 4.0
-            self.strokeThicknessUpperLegs = 4.5
-            self.strokeThicknessUpperTorso = 5.0
-            self.strokeThicknessFullTorso = 1.0
-            self.strokeThicknessDeltoids = 4.0
-            self.strokeThicknessTrapezius = 4.0
+            // Use values from editor (EditModeValues) if available, otherwise use defaults
+            self.strokeThicknessJoints = values.strokeThicknessJoints ?? 2.5
+            self.strokeThicknessLowerArms = values.strokeThicknessLowerArms ?? 3.5
+            self.strokeThicknessLowerLegs = values.strokeThicknessLowerLegs ?? 3.5
+            self.strokeThicknessLowerTorso = values.strokeThicknessLowerTorso ?? 4.5
+            self.strokeThicknessBicep = values.strokeThicknessBicep ?? 4.0
+            self.strokeThicknessTricep = values.strokeThicknessTricep ?? 4.0
+            self.strokeThicknessUpperLegs = values.strokeThicknessUpperLegs ?? 4.5
+            self.strokeThicknessUpperTorso = values.strokeThicknessUpperTorso ?? 5.0
+            self.strokeThicknessFullTorso = values.strokeThicknessFullTorso ?? 1.0
+            self.strokeThicknessDeltoids = values.strokeThicknessDeltoids ?? 4.0
+            self.strokeThicknessTrapezius = values.strokeThicknessTrapezius ?? 4.0
         }
         
         // Store objects
@@ -293,7 +287,7 @@ struct SavedEditFrame: Codable, Identifiable {
         case waistThicknessMultiplier, skeletonSizeTorso, skeletonSizeArm, skeletonSizeLeg, jointShapeSize, neckLength, neckWidth
         case handSize, footSize, waistTorsoAngle, midTorsoAngle, torsoRotationAngle, headAngle
         case leftShoulderAngle, rightShoulderAngle, leftElbowAngle, rightElbowAngle
-        case leftHandAngle, rightHandAngle, leftHipAngle, rightHipAngle
+        case leftHipAngle, rightHipAngle
         case leftKneeAngle, rightKneeAngle, leftFootAngle, rightFootAngle
         case strokeThicknessJoints, strokeThicknessLowerArms, strokeThicknessLowerLegs
         case strokeThicknessLowerTorso, strokeThicknessBicep, strokeThicknessTricep, strokeThicknessUpperLegs, strokeThicknessUpperTorso, strokeThicknessFullTorso, strokeThicknessDeltoids, strokeThicknessTrapezius
@@ -368,8 +362,6 @@ struct SavedEditFrame: Codable, Identifiable {
         rightShoulderAngle = try poseContainer.decodeIfPresent(CGFloat.self, forKey: .rightShoulderAngle) ?? 0.0
         leftElbowAngle = try poseContainer.decodeIfPresent(CGFloat.self, forKey: .leftElbowAngle) ?? 0.0
         rightElbowAngle = try poseContainer.decodeIfPresent(CGFloat.self, forKey: .rightElbowAngle) ?? 0.0
-        leftHandAngle = try poseContainer.decodeIfPresent(CGFloat.self, forKey: .leftHandAngle) ?? 0.0
-        rightHandAngle = try poseContainer.decodeIfPresent(CGFloat.self, forKey: .rightHandAngle) ?? 0.0
         leftHipAngle = try poseContainer.decodeIfPresent(CGFloat.self, forKey: .leftHipAngle) ?? 0.0
         rightHipAngle = try poseContainer.decodeIfPresent(CGFloat.self, forKey: .rightHipAngle) ?? 0.0
         leftKneeAngle = try poseContainer.decodeIfPresent(CGFloat.self, forKey: .leftKneeAngle) ?? 0.0
@@ -450,8 +442,6 @@ struct SavedEditFrame: Codable, Identifiable {
         try poseContainer.encode(rightShoulderAngle, forKey: .rightShoulderAngle)
         try poseContainer.encode(leftElbowAngle, forKey: .leftElbowAngle)
         try poseContainer.encode(rightElbowAngle, forKey: .rightElbowAngle)
-        try poseContainer.encode(leftHandAngle, forKey: .leftHandAngle)
-        try poseContainer.encode(rightHandAngle, forKey: .rightHandAngle)
         try poseContainer.encode(leftHipAngle, forKey: .leftHipAngle)
         try poseContainer.encode(rightHipAngle, forKey: .rightHipAngle)
         try poseContainer.encode(leftKneeAngle, forKey: .leftKneeAngle)
@@ -585,6 +575,7 @@ class SavedFramesManager {
         
         // Build pose dictionary - sort alphabetically
         let poseEntries: [(String, String)] = [
+            ("armMuscleSide", "\"\(frame.armMuscleSide)\""),
             ("figureOffsetX", roundAndFormat(frame.positionX, decimals: 1)),
             ("figureOffsetY", roundAndFormat(frame.positionY, decimals: 1)),
             ("figureScale", roundAndFormat(frame.figureScale, decimals: 1)),
@@ -609,7 +600,6 @@ class SavedFramesManager {
             ("leftArmColor", "\"#000000\""),
             ("leftElbowAngle", "\(Int(frame.leftElbowAngle))"),
             ("leftFootAngle", "\(Int(frame.leftFootAngle))"),
-            ("leftHandAngle", "\(Int(frame.leftHandAngle))"),
             ("leftHipAngle", "\(Int(frame.leftHipAngle))"),
             ("leftKneeAngle", "\(Int(frame.leftKneeAngle))"),
             ("leftLegColor", "\"#000000\""),
@@ -632,7 +622,6 @@ class SavedFramesManager {
             ("rightArmColor", "\"#000000\""),
             ("rightElbowAngle", "\(Int(frame.rightElbowAngle))"),
             ("rightFootAngle", "\(Int(frame.rightFootAngle))"),
-            ("rightHandAngle", "\(Int(frame.rightHandAngle))"),
             ("rightHipAngle", "\(Int(frame.rightHipAngle))"),
             ("rightKneeAngle", "\(Int(frame.rightKneeAngle))"),
             ("rightLegColor", "\"#000000\""),

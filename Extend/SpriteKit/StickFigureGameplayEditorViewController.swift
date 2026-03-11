@@ -95,8 +95,6 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
     var leftElbowAngle: CGFloat = 0
     var rightShoulderAngle: CGFloat = 0
     var rightElbowAngle: CGFloat = 0
-    var leftHandAngle: CGFloat = 0
-    var rightHandAngle: CGFloat = 0
     var leftHipAngle: CGFloat = 0
     var rightHipAngle: CGFloat = 0
     var leftKneeAngle: CGFloat = 0
@@ -1147,8 +1145,6 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
             leftElbowAngle = CGFloat(standFrame.leftElbowAngle)
             rightShoulderAngle = CGFloat(standFrame.rightShoulderAngle)
             rightElbowAngle = CGFloat(standFrame.rightElbowAngle)
-            leftHandAngle = CGFloat(standFrame.leftHandAngle)
-            rightHandAngle = CGFloat(standFrame.rightHandAngle)
             leftHipAngle = CGFloat(standFrame.leftHipAngle)
             rightHipAngle = CGFloat(standFrame.rightHipAngle)
             leftKneeAngle = CGFloat(standFrame.leftKneeAngle)
@@ -1227,8 +1223,6 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
             leftElbowAngle: leftElbowAngle,
             rightShoulderAngle: rightShoulderAngle,
             rightElbowAngle: rightElbowAngle,
-            leftHandAngle: leftHandAngle,
-            rightHandAngle: rightHandAngle,
             leftHipAngle: leftHipAngle,
             leftKneeAngle: leftKneeAngle,
             rightHipAngle: rightHipAngle,
@@ -1278,8 +1272,6 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
             tempPose.leftElbowAngle = self.leftElbowAngle
             tempPose.rightShoulderAngle = self.rightShoulderAngle
             tempPose.rightElbowAngle = self.rightElbowAngle
-            tempPose.leftHandAngle = self.leftHandAngle
-            tempPose.rightHandAngle = self.rightHandAngle
             tempPose.leftHipAngle = self.leftHipAngle
             tempPose.rightHipAngle = self.rightHipAngle
             tempPose.leftKneeAngle = self.leftKneeAngle
@@ -1520,8 +1512,6 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
         leftElbowAngle = frame.leftElbowAngle
         rightShoulderAngle = frame.rightShoulderAngle
         rightElbowAngle = frame.rightElbowAngle
-        leftHandAngle = frame.leftHandAngle
-        rightHandAngle = frame.rightHandAngle
         leftHipAngle = frame.leftHipAngle
         rightHipAngle = frame.rightHipAngle
         leftKneeAngle = frame.leftKneeAngle
@@ -2031,8 +2021,6 @@ class StickFigureEditorScene: SKScene {
         leftElbowAngle: CGFloat = 0,
         rightShoulderAngle: CGFloat = 0,
         rightElbowAngle: CGFloat = 0,
-        leftHandAngle: CGFloat = 0,
-        rightHandAngle: CGFloat = 0,
         leftHipAngle: CGFloat = 0,
         leftKneeAngle: CGFloat = 0,
         rightHipAngle: CGFloat = 0,
@@ -2117,8 +2105,6 @@ class StickFigureEditorScene: SKScene {
         updatedFrame.leftElbowAngle = leftElbowAngle
         updatedFrame.rightShoulderAngle = rightShoulderAngle
         updatedFrame.rightElbowAngle = rightElbowAngle
-        updatedFrame.leftHandAngle = leftHandAngle
-        updatedFrame.rightHandAngle = rightHandAngle
         updatedFrame.leftKneeAngle = leftKneeAngle
         updatedFrame.rightKneeAngle = rightKneeAngle
         updatedFrame.leftFootAngle = leftFootAngle
