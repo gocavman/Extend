@@ -99,10 +99,11 @@
       "waistThicknessMultiplier": 0.9,
       "waistTorsoAngle": 0,
       "waistWidthMultiplier": 0.26,
-      "fusiformTricep": 0.0,
+      "fusiformTricep": 1.37,
       "peakPositionTricep": 0.47,
       "strokeThicknessBicep": 4,
-      "strokeThicknessTricep": 0.0
+      "strokeThicknessTricep": 0.0,
+      "armMuscleSide": "normal"
     }
   },
   {
@@ -188,10 +189,11 @@
       "waistThicknessMultiplier": 0.9,
       "waistTorsoAngle": 0,
       "waistWidthMultiplier": 0.28,
-      "fusiformTricep": 0.0,
+      "fusiformTricep": 1.58,
       "peakPositionTricep": 0.48,
       "strokeThicknessBicep": 9,
-      "strokeThicknessTricep": 0.0
+      "strokeThicknessTricep": 0.0,
+      "armMuscleSide": "normal"
     }
   },
   {
@@ -277,10 +279,11 @@
       "waistThicknessMultiplier": 0.9,
       "waistTorsoAngle": 0,
       "waistWidthMultiplier": 0.28,
-      "fusiformTricep": 0.0,
+      "fusiformTricep": 1.58,
       "peakPositionTricep": 0.48,
       "strokeThicknessBicep": 7,
-      "strokeThicknessTricep": 0.0
+      "strokeThicknessTricep": 0.0,
+      "armMuscleSide": "normal"
     }
   },
   {
@@ -366,10 +369,11 @@
       "waistThicknessMultiplier": 0.8,
       "waistTorsoAngle": 0,
       "waistWidthMultiplier": 0.28,
-      "fusiformTricep": 0.0,
+      "fusiformTricep": 1.58,
       "peakPositionTricep": 0.48,
       "strokeThicknessBicep": 5,
-      "strokeThicknessTricep": 0.0
+      "strokeThicknessTricep": 0.0,
+      "armMuscleSide": "normal"
     }
   },
   {
@@ -455,10 +459,11 @@
       "waistThicknessMultiplier": 0.9,
       "waistTorsoAngle": 0,
       "waistWidthMultiplier": 0.26,
-      "fusiformTricep": 0.0,
+      "fusiformTricep": 1.37,
       "peakPositionTricep": 0.47,
       "strokeThicknessBicep": 2.8,
-      "strokeThicknessTricep": 0.0
+      "strokeThicknessTricep": 0.0,
+      "armMuscleSide": "normal"
     }
   },
   {
@@ -547,7 +552,8 @@
       "fusiformTricep": 0.0,
       "peakPositionTricep": 0.1,
       "strokeThicknessBicep": 1,
-      "strokeThicknessTricep": 0.0
+      "strokeThicknessTricep": 0.0,
+      "armMuscleSide": "normal"
     }
   },
   {
@@ -636,7 +642,8 @@
       "fusiformTricep": 0.0,
       "peakPositionTricep": 0.1,
       "strokeThicknessBicep": 4,
-      "strokeThicknessTricep": 0.0
+      "strokeThicknessTricep": 0.0,
+      "armMuscleSide": "normal"
     }
   },
   {
@@ -725,7 +732,8 @@
       "fusiformTricep": 0.0,
       "peakPositionTricep": 0.1,
       "strokeThicknessBicep": 4,
-      "strokeThicknessTricep": 0.0
+      "strokeThicknessTricep": 0.0,
+      "armMuscleSide": "normal"
     }
   },
   {
@@ -814,7 +822,8 @@
       "fusiformTricep": 0.0,
       "peakPositionTricep": 0.1,
       "strokeThicknessBicep": 4,
-      "strokeThicknessTricep": 0.0
+      "strokeThicknessTricep": 0.0,
+      "armMuscleSide": "normal"
     }
   },
   {
@@ -903,7 +912,8 @@
       "fusiformTricep": 0.0,
       "peakPositionTricep": 0.1,
       "strokeThicknessBicep": 4,
-      "strokeThicknessTricep": 0.0
+      "strokeThicknessTricep": 0.0,
+      "armMuscleSide": "normal"
     }
   },
   {
@@ -992,7 +1002,8 @@
       "fusiformTricep": 0.0,
       "peakPositionTricep": 0.1,
       "strokeThicknessBicep": 4,
-      "strokeThicknessTricep": 0.0
+      "strokeThicknessTricep": 0.0,
+      "armMuscleSide": "normal"
     }
   },
   {
@@ -1081,7 +1092,8 @@
       "fusiformTricep": 0.0,
       "peakPositionTricep": 0.1,
       "strokeThicknessBicep": 4,
-      "strokeThicknessTricep": 0.0
+      "strokeThicknessTricep": 0.0,
+      "armMuscleSide": "normal"
     }
   },
   {
@@ -1170,7 +1182,8 @@
       "fusiformTricep": 0.0,
       "peakPositionTricep": 0.1,
       "strokeThicknessBicep": 4,
-      "strokeThicknessTricep": 0.0
+      "strokeThicknessTricep": 0.0,
+      "armMuscleSide": "normal"
     }
   },
   {
@@ -1259,7 +1272,8 @@
       "fusiformTricep": 0.0,
       "peakPositionTricep": 0.1,
       "strokeThicknessBicep": 4,
-      "strokeThicknessTricep": 0.0
+      "strokeThicknessTricep": 0.0,
+      "armMuscleSide": "normal"
     }
   }
 ]

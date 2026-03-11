@@ -179,6 +179,7 @@ struct StickFigure2DPose: Codable {
     let peakPositionUpperTorso: CGFloat
     let peakPositionLowerTorso: CGFloat
     let peakPositionDeltoids: CGFloat
+    let armMuscleSide: String
     
     // Figure scale and thickness multipliers
     let figureScale: CGFloat
@@ -267,6 +268,7 @@ struct StickFigure2DPose: Codable {
         self.peakPositionUpperTorso = figure.peakPositionUpperTorso
         self.peakPositionLowerTorso = figure.peakPositionLowerTorso
         self.peakPositionDeltoids = figure.peakPositionDeltoids
+        self.armMuscleSide = figure.armMuscleSide
         self.figureScale = figure.scale
         self.strokeThicknessMultiplier = 1.0  // This would need to be tracked separately
         self.skeletonSizeTorso = figure.skeletonSizeTorso
@@ -350,6 +352,7 @@ struct StickFigure2DPose: Codable {
         figure.peakPositionUpperTorso = peakPositionUpperTorso
         figure.peakPositionLowerTorso = peakPositionLowerTorso
         figure.peakPositionDeltoids = peakPositionDeltoids
+        figure.armMuscleSide = armMuscleSide
         figure.shoulderWidthMultiplier = shoulderWidthMultiplier
         figure.waistWidthMultiplier = waistWidthMultiplier
         figure.waistThicknessMultiplier = waistThicknessMultiplier
@@ -385,7 +388,7 @@ struct StickFigure2DPose: Codable {
         case fusiformBicep, fusiformTricep, fusiformLowerArms
         case fusiformUpperLegs, fusiformLowerLegs
         case fusiformUpperTorso, fusiformLowerTorso, fusiformShoulders, fusiformDeltoids
-        case peakPositionBicep, peakPositionTricep, peakPositionLowerArms, peakPositionUpperLegs, peakPositionLowerLegs, peakPositionUpperTorso, peakPositionLowerTorso, peakPositionDeltoids, midTorsoYOffset
+        case peakPositionBicep, peakPositionTricep, peakPositionLowerArms, peakPositionUpperLegs, peakPositionLowerLegs, peakPositionUpperTorso, peakPositionLowerTorso, peakPositionDeltoids, midTorsoYOffset, armMuscleSide
         case figureScale, strokeThicknessMultiplier, skeletonSizeTorso, skeletonSizeArm, skeletonSizeLeg, jointShapeSize
         case shoulderWidthMultiplier, waistWidthMultiplier, waistThicknessMultiplier, neckLength, neckWidth
         case handSize, footSize
@@ -395,6 +398,7 @@ struct StickFigure2DPose: Codable {
     func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
         // Alphabetically sorted encoding of all properties
+        try container.encode(armMuscleSide, forKey: .armMuscleSide)
         try container.encode(round(figureOffsetX), forKey: .figureOffsetX)
         try container.encode(round(figureOffsetY), forKey: .figureOffsetY)
         try container.encode(round(figureScale), forKey: .figureScale)
@@ -533,6 +537,7 @@ struct StickFigure2DPose: Codable {
         self.peakPositionUpperTorso = try container.decodeIfPresent(CGFloat.self, forKey: .peakPositionUpperTorso) ?? 0.5
         self.peakPositionLowerTorso = try container.decodeIfPresent(CGFloat.self, forKey: .peakPositionLowerTorso) ?? 0.5
         self.peakPositionDeltoids = try container.decodeIfPresent(CGFloat.self, forKey: .peakPositionDeltoids) ?? 0.3
+        self.armMuscleSide = try container.decodeIfPresent(String.self, forKey: .armMuscleSide) ?? "normal"
         self.figureScale = try container.decodeIfPresent(CGFloat.self, forKey: .figureScale) ?? 1.0
         self.strokeThicknessMultiplier = try container.decodeIfPresent(CGFloat.self, forKey: .strokeThicknessMultiplier) ?? 1.0
         self.skeletonSizeTorso = try container.decodeIfPresent(CGFloat.self, forKey: .skeletonSizeTorso) ?? 1.0
@@ -686,6 +691,12 @@ struct StickFigure2D {
     var peakPositionUpperTorso: CGFloat = 0.5  // Default: middle of upper torso
     var peakPositionLowerTorso: CGFloat = 0.5  // Default: middle of lower torso
     var peakPositionDeltoids: CGFloat = 0.3  // Default: closer to shoulder joint for cap effect
+    
+    // Arm muscle side control - determines which side bicep/tricep appear on based on pose
+    // "normal" = bicep on bottom/inner, tricep on top/outer (default)
+    // "flipped" = bicep on top/outer, tricep on bottom/inner
+    // "both" = both muscles visible on both sides
+    var armMuscleSide: String = "normal"  // "normal", "flipped", or "both"
     
     // ...existing code...
     
@@ -1116,17 +1127,13 @@ struct StickFigure2DView: View {
         drawSegment(from: midTorsoPos, to: waistPos, color: figure.torsoColor, strokeThickness: figure.strokeThicknessLowerTorso, fusiform: figure.fusiformLowerTorso, inverted: true, in: context)
         drawSegment(from: neckPos, to: headPos, color: figure.torsoColor, strokeThickness: figure.strokeThicknessUpperTorso, fusiform: 0, inverted: false, in: context)
         
-        // Draw arms (back arm first)
-        // LEFT ARM - Bicep (inner) and Tricep (outer) as separate bulges
-        drawSegment(from: leftShoulderPos, to: leftUpperArmEnd, color: figure.leftUpperArmColor, strokeThickness: figure.strokeThicknessBicep, fusiform: figure.fusiformBicep, inverted: true, peakPosition: figure.peakPositionBicep, in: context)
-        drawSegment(from: leftShoulderPos, to: leftUpperArmEnd, color: figure.leftUpperArmColor, strokeThickness: figure.strokeThicknessTricep, fusiform: figure.fusiformTricep, inverted: false, peakPosition: figure.peakPositionTricep, in: context)
-        
+        // LEFT ARM - Bicep and Tricep positioned based on armMuscleSide property
+        drawArmWithBicepTricep(from: leftShoulderPos, to: leftUpperArmEnd, color: figure.leftUpperArmColor, strokeThicknessBicep: figure.strokeThicknessBicep, strokeThicknessTricep: figure.strokeThicknessTricep, bicepFusiform: figure.fusiformBicep, tricepFusiform: figure.fusiformTricep, peakPositionBicep: figure.peakPositionBicep, peakPositionTricep: figure.peakPositionTricep, armMuscleSide: figure.armMuscleSide, isLeftArm: true, in: context)
         // LEFT LOWER ARM - diamond shape with peak at 35% (closer to elbow)
         drawSegment(from: leftUpperArmEnd, to: leftForearmEnd, color: figure.leftLowerArmColor, strokeThickness: figure.strokeThicknessLowerArms, fusiform: figure.fusiformLowerArms, inverted: true, peakPosition: figure.peakPositionLowerArms, in: context)
         
-        // RIGHT ARM - Bicep (inner) and Tricep (outer) as separate bulges
-        drawSegment(from: rightShoulderPos, to: rightUpperArmEnd, color: figure.rightUpperArmColor, strokeThickness: figure.strokeThicknessBicep, fusiform: figure.fusiformBicep, inverted: true, peakPosition: figure.peakPositionBicep, in: context)
-        drawSegment(from: rightShoulderPos, to: rightUpperArmEnd, color: figure.rightUpperArmColor, strokeThickness: figure.strokeThicknessTricep, fusiform: figure.fusiformTricep, inverted: false, peakPosition: figure.peakPositionTricep, in: context)
+        // RIGHT ARM - Bicep and Tricep positioned based on armMuscleSide property
+        drawArmWithBicepTricep(from: rightShoulderPos, to: rightUpperArmEnd, color: figure.rightUpperArmColor, strokeThicknessBicep: figure.strokeThicknessBicep, strokeThicknessTricep: figure.strokeThicknessTricep, bicepFusiform: figure.fusiformBicep, tricepFusiform: figure.fusiformTricep, peakPositionBicep: figure.peakPositionBicep, peakPositionTricep: figure.peakPositionTricep, armMuscleSide: figure.armMuscleSide, isLeftArm: false, in: context)
         
         // RIGHT LOWER ARM - diamond shape with peak at 35% (closer to elbow)
         drawSegment(from: rightUpperArmEnd, to: rightForearmEnd, color: figure.rightLowerArmColor, strokeThickness: figure.strokeThicknessLowerArms, fusiform: figure.fusiformLowerArms, inverted: true, peakPosition: figure.peakPositionLowerArms, in: context)
@@ -1276,6 +1283,123 @@ struct StickFigure2DView: View {
             taperedPath.closeSubpath()
             context.fill(taperedPath, with: .color(color))
         }
+    }
+    
+    private func drawArmWithBicepTricep(from: CGPoint, to: CGPoint, color: Color, strokeThicknessBicep: CGFloat, strokeThicknessTricep: CGFloat, bicepFusiform: CGFloat, tricepFusiform: CGFloat, peakPositionBicep: CGFloat = 0.5, peakPositionTricep: CGFloat = 0.5, armMuscleSide: String = "normal", isLeftArm: Bool = false, in context: GraphicsContext) {
+        // Draw arm with independent bicep and tricep control
+        // armMuscleSide determines which muscle appears on which side:
+        // - "normal" = bicep on bottom/inner, tricep on top/outer
+        // - "flipped" = bicep on top/outer, tricep on bottom/inner
+        // - "both" = both muscles visible on both sides
+        let dx = to.x - from.x
+        let dy = to.y - from.y
+        let length = sqrt(dx * dx + dy * dy)
+        
+        guard length > 0 else { return }
+        
+        let dirX = dx / length
+        let dirY = dy / length
+        let perpX = -dirY
+        let perpY = dirX
+        
+        var topEdgePoints: [CGPoint] = []
+        var bottomEdgePoints: [CGPoint] = []
+        
+        let numSegments = 20
+        for i in 0...numSegments {
+            let t = CGFloat(i) / CGFloat(numSegments)
+            let pos = CGPoint(x: from.x + dirX * t * length, y: from.y + dirY * t * length)
+            
+            // Calculate bicep width (bottom/inner side)
+            var bicepWidthFactor: CGFloat = 0.3
+            if bicepFusiform > 0 {
+                let angle = (t - peakPositionBicep) * CGFloat.pi
+                let curveShape = cos(angle)
+                bicepWidthFactor = 0.5 + (bicepFusiform * max(0, curveShape))
+            }
+            let bicepWidth = (strokeThicknessBicep / 2) * bicepWidthFactor
+            
+            // Calculate tricep width (top/outer side)
+            var tricepWidthFactor: CGFloat = 0.3
+            if tricepFusiform > 0 {
+                let angle = (t - peakPositionTricep) * CGFloat.pi
+                let curveShape = cos(angle)
+                tricepWidthFactor = 0.5 + (tricepFusiform * max(0, curveShape))
+            }
+            let tricepWidth = (strokeThicknessTricep / 2) * tricepWidthFactor
+            
+            // Determine which muscle appears on which side based on armMuscleSide
+            // For left arm: + perpendicular = inner/bottom, - perpendicular = outer/top
+            // For right arm: + perpendicular = outer/top, - perpendicular = inner/bottom
+            let topPoint: CGPoint
+            let bottomPoint: CGPoint
+            
+            switch armMuscleSide {
+            case "flipped":
+                // Flipped: bicep on top/outer, tricep on bottom/inner
+                if isLeftArm {
+                    topPoint = CGPoint(x: pos.x - perpX * bicepWidth, y: pos.y - perpY * bicepWidth)
+                    bottomPoint = CGPoint(x: pos.x + perpX * tricepWidth, y: pos.y + perpY * tricepWidth)
+                } else {
+                    topPoint = CGPoint(x: pos.x + perpX * bicepWidth, y: pos.y + perpY * bicepWidth)
+                    bottomPoint = CGPoint(x: pos.x - perpX * tricepWidth, y: pos.y - perpY * tricepWidth)
+                }
+            case "both":
+                // Both: average the widths on both sides
+                let avgWidth = (bicepWidth + tricepWidth) / 2
+                topPoint = CGPoint(x: pos.x + perpX * avgWidth, y: pos.y + perpY * avgWidth)
+                bottomPoint = CGPoint(x: pos.x - perpX * avgWidth, y: pos.y - perpY * avgWidth)
+            default: // "normal"
+                // Normal: bicep on bottom/inner, tricep on top/outer
+                if isLeftArm {
+                    topPoint = CGPoint(x: pos.x - perpX * tricepWidth, y: pos.y - perpY * tricepWidth)
+                    bottomPoint = CGPoint(x: pos.x + perpX * bicepWidth, y: pos.y + perpY * bicepWidth)
+                } else {
+                    topPoint = CGPoint(x: pos.x + perpX * tricepWidth, y: pos.y + perpY * tricepWidth)
+                    bottomPoint = CGPoint(x: pos.x - perpX * bicepWidth, y: pos.y - perpY * bicepWidth)
+                }
+            }
+            
+            topEdgePoints.append(topPoint)
+            bottomEdgePoints.append(bottomPoint)
+        }
+        
+        var taperedPath = Path()
+        
+        if let firstPoint = topEdgePoints.first {
+            taperedPath.move(to: firstPoint)
+        }
+        
+        // Draw top edge (tricep side) with curves
+        for i in 1..<topEdgePoints.count {
+            let prev = topEdgePoints[i - 1]
+            let curr = topEdgePoints[i]
+            
+            let controlX = (prev.x + curr.x) / 2
+            let controlY = (prev.y + curr.y) / 2
+            let control = CGPoint(x: controlX, y: controlY)
+            
+            taperedPath.addQuadCurve(to: curr, control: control)
+        }
+        
+        // Draw bottom edge (bicep side) in reverse with curves
+        for i in (0..<bottomEdgePoints.count).reversed() {
+            let curr = bottomEdgePoints[i]
+            let prev = i > 0 ? bottomEdgePoints[i - 1] : curr
+            
+            let controlX = (curr.x + prev.x) / 2
+            let controlY = (curr.y + prev.y) / 2
+            let control = CGPoint(x: controlX, y: controlY)
+            
+            if i == bottomEdgePoints.count - 1 {
+                taperedPath.addQuadCurve(to: curr, control: control)
+            } else {
+                taperedPath.addQuadCurve(to: curr, control: control)
+            }
+        }
+        
+        taperedPath.closeSubpath()
+        context.fill(taperedPath, with: .color(color))
     }
     
     private func drawCurvedSegment(from: CGPoint, to: CGPoint, bulgePoint: CGPoint, color: Color, strokeThickness: CGFloat, fusiform: CGFloat, in context: GraphicsContext) {

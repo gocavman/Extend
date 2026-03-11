@@ -229,6 +229,7 @@ struct GameplayEditModeView: View {
             strokeThicknessFullTorso: nil,
             strokeThicknessDeltoids: nil,
             strokeThicknessTrapezius: nil,
+            armMuscleSide: nil,
             showGrid: showGrid,
             showJoints: showJoints,
             positionX: positionX,
@@ -281,6 +282,7 @@ struct EditModeValues {
     let strokeThicknessFullTorso: CGFloat?
     let strokeThicknessDeltoids: CGFloat?
     let strokeThicknessTrapezius: CGFloat?
+    let armMuscleSide: String?
     let showGrid: Bool
     let showJoints: Bool
     let positionX: CGFloat

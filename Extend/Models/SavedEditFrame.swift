@@ -86,6 +86,7 @@ struct SavedEditFrame: Codable, Identifiable {
     let peakPositionUpperTorso: CGFloat
     let peakPositionLowerTorso: CGFloat
     let peakPositionDeltoids: CGFloat
+    let armMuscleSide: String  // "normal", "flipped", or "both"
     let positionX: CGFloat
     let positionY: CGFloat
     let shoulderWidthMultiplier: CGFloat
@@ -180,6 +181,7 @@ struct SavedEditFrame: Codable, Identifiable {
             self.peakPositionUpperTorso = pose.peakPositionUpperTorso
             self.peakPositionLowerTorso = pose.peakPositionLowerTorso
             self.peakPositionDeltoids = pose.peakPositionDeltoids
+            self.armMuscleSide = pose.armMuscleSide
         } else {
             self.shoulderWidthMultiplier = 1.0
             self.waistWidthMultiplier = 1.0
@@ -203,6 +205,7 @@ struct SavedEditFrame: Codable, Identifiable {
             self.peakPositionUpperTorso = 0.5
             self.peakPositionLowerTorso = 0.5
             self.peakPositionDeltoids = 0.3
+            self.armMuscleSide = "normal"
         }
         
         // Store pose angles if provided, otherwise use defaults
@@ -284,6 +287,7 @@ struct SavedEditFrame: Codable, Identifiable {
         case fusiformUpperLegs, fusiformLowerLegs, fusiformShoulders, fusiformDeltoids
         case peakPositionBicep, peakPositionTricep, peakPositionLowerArms, peakPositionUpperLegs
         case peakPositionLowerLegs, peakPositionUpperTorso, peakPositionLowerTorso, peakPositionDeltoids
+        case armMuscleSide
         case figureOffsetX, figureOffsetY, waistPositionX, waistPositionY
         case shoulderWidthMultiplier, waistWidthMultiplier
         case waistThicknessMultiplier, skeletonSizeTorso, skeletonSizeArm, skeletonSizeLeg, jointShapeSize, neckLength, neckWidth
@@ -340,6 +344,7 @@ struct SavedEditFrame: Codable, Identifiable {
         peakPositionUpperTorso = try poseContainer.decodeIfPresent(CGFloat.self, forKey: .peakPositionUpperTorso) ?? 0.0
         peakPositionLowerTorso = try poseContainer.decodeIfPresent(CGFloat.self, forKey: .peakPositionLowerTorso) ?? 0.0
         peakPositionDeltoids = try poseContainer.decodeIfPresent(CGFloat.self, forKey: .peakPositionDeltoids) ?? 0.3
+        armMuscleSide = try poseContainer.decodeIfPresent(String.self, forKey: .armMuscleSide) ?? "normal"
         positionX = try poseContainer.decodeIfPresent(CGFloat.self, forKey: .figureOffsetX) ?? 0.0
         positionY = try poseContainer.decodeIfPresent(CGFloat.self, forKey: .figureOffsetY) ?? 0.0
         shoulderWidthMultiplier = try poseContainer.decodeIfPresent(CGFloat.self, forKey: .shoulderWidthMultiplier) ?? 0.5
@@ -423,6 +428,7 @@ struct SavedEditFrame: Codable, Identifiable {
         try poseContainer.encode(peakPositionUpperTorso, forKey: .peakPositionUpperTorso)
         try poseContainer.encode(peakPositionLowerTorso, forKey: .peakPositionLowerTorso)
         try poseContainer.encode(peakPositionDeltoids, forKey: .peakPositionDeltoids)
+        try poseContainer.encode(armMuscleSide, forKey: .armMuscleSide)
         try poseContainer.encode(positionX, forKey: .figureOffsetX)
         try poseContainer.encode(positionY, forKey: .figureOffsetY)
         try poseContainer.encode(shoulderWidthMultiplier, forKey: .shoulderWidthMultiplier)
@@ -738,6 +744,7 @@ class SavedFramesManager {
                 strokeThicknessFullTorso: pose.strokeThicknessFullTorso,
                 strokeThicknessDeltoids: pose.strokeThicknessDeltoids,
                 strokeThicknessTrapezius: pose.strokeThicknessTrapezius,
+                armMuscleSide: pose.armMuscleSide,
                 showGrid: true,
                 showJoints: true,
                 positionX: 0,

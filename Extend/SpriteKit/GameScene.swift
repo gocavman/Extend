@@ -428,6 +428,144 @@ class GameScene: SKScene {
             container.addChild(shape)
         }
         
+        // Helper to draw bicep/tricep with independent left/right control
+        // bicepFusiform controls one side, tricepFusiform controls the other side
+        // armMuscleSide determines which muscle is on which side:
+        // - "normal" = bicep on bottom/inner, tricep on top/outer
+        // - "flipped" = bicep on top/outer, tricep on bottom/inner
+        // - "both" = both muscles visible on both sides
+        func drawArmWithBicepTricep(
+            from: CGPoint,
+            to: CGPoint,
+            color: SKColor,
+            strokeThicknessBicep: CGFloat,
+            strokeThicknessTricep: CGFloat,
+            bicepFusiform: CGFloat,
+            tricepFusiform: CGFloat,
+            peakPositionBicep: CGFloat = 0.5,
+            peakPositionTricep: CGFloat = 0.5,
+            armMuscleSide: String = "normal",
+            isLeftArm: Bool = false
+        ) {
+            print("🎨 DEBUG drawArmWithBicepTricep: armMuscleSide=\(armMuscleSide), isLeftArm=\(isLeftArm), bicepFusiform=\(bicepFusiform), tricepFusiform=\(tricepFusiform)")
+            // Convert to relative coordinates and apply scale
+            let fromRelative = CGPoint(x: (from.x - baseCenter.x) * scale, y: (baseCenter.y - from.y) * scale)
+            let toRelative = CGPoint(x: (to.x - baseCenter.x) * scale, y: (baseCenter.y - to.y) * scale)
+            
+            let dx = toRelative.x - fromRelative.x
+            let dy = toRelative.y - fromRelative.y
+            let length = sqrt(dx * dx + dy * dy)
+            
+            guard length > 0 else { return }
+            
+            let dirX = dx / length
+            let dirY = dy / length
+            let perpX = -dirY
+            let perpY = dirX
+            
+            var topEdgePoints: [CGPoint] = []
+            var bottomEdgePoints: [CGPoint] = []
+            
+            let numSegments = 20
+            for i in 0...numSegments {
+                let t = CGFloat(i) / CGFloat(numSegments)
+                let pos = CGPoint(x: fromRelative.x + dirX * t * length, y: fromRelative.y + dirY * t * length)
+                
+                // Calculate bicep width (bottom/inner side)
+                var bicepWidthFactor: CGFloat = 0.3
+                if bicepFusiform > 0 {
+                    let angle = (t - peakPositionBicep) * CGFloat.pi
+                    let curveShape = cos(angle)
+                    bicepWidthFactor = 0.5 + (bicepFusiform * max(0, curveShape))
+                }
+                let bicepWidth = (strokeThicknessBicep / 2) * bicepWidthFactor
+                
+                // Calculate tricep width (top/outer side)
+                var tricepWidthFactor: CGFloat = 0.3
+                if tricepFusiform > 0 {
+                    let angle = (t - peakPositionTricep) * CGFloat.pi
+                    let curveShape = cos(angle)
+                    tricepWidthFactor = 0.5 + (tricepFusiform * max(0, curveShape))
+                }
+                let tricepWidth = (strokeThicknessTricep / 2) * tricepWidthFactor
+                
+                // Determine which muscle appears on which side based on armMuscleSide
+                // For left arm: + perpendicular = inner/bottom, - perpendicular = outer/top
+                // For right arm: + perpendicular = outer/top, - perpendicular = inner/bottom
+                let topPoint: CGPoint
+                let bottomPoint: CGPoint
+                
+                switch armMuscleSide {
+                case "flipped":
+                    // Flipped: bicep on top/outer, tricep on bottom/inner
+                    if isLeftArm {
+                        topPoint = CGPoint(x: pos.x - perpX * bicepWidth, y: pos.y - perpY * bicepWidth)
+                        bottomPoint = CGPoint(x: pos.x + perpX * tricepWidth, y: pos.y + perpY * tricepWidth)
+                    } else {
+                        topPoint = CGPoint(x: pos.x + perpX * bicepWidth, y: pos.y + perpY * bicepWidth)
+                        bottomPoint = CGPoint(x: pos.x - perpX * tricepWidth, y: pos.y - perpY * tricepWidth)
+                    }
+                case "both":
+                    // Both: average the widths on both sides
+                    let avgWidth = (bicepWidth + tricepWidth) / 2
+                    topPoint = CGPoint(x: pos.x + perpX * avgWidth, y: pos.y + perpY * avgWidth)
+                    bottomPoint = CGPoint(x: pos.x - perpX * avgWidth, y: pos.y - perpY * avgWidth)
+                default: // "normal"
+                    // Normal: bicep on bottom/inner, tricep on top/outer
+                    if isLeftArm {
+                        topPoint = CGPoint(x: pos.x - perpX * tricepWidth, y: pos.y - perpY * tricepWidth)
+                        bottomPoint = CGPoint(x: pos.x + perpX * bicepWidth, y: pos.y + perpY * bicepWidth)
+                    } else {
+                        topPoint = CGPoint(x: pos.x + perpX * tricepWidth, y: pos.y + perpY * tricepWidth)
+                        bottomPoint = CGPoint(x: pos.x - perpX * bicepWidth, y: pos.y - perpY * bicepWidth)
+                    }
+                }
+                
+                topEdgePoints.append(topPoint)
+                bottomEdgePoints.append(bottomPoint)
+            }
+            
+            // Create the path
+            let path = UIBezierPath()
+            
+            if let firstPoint = topEdgePoints.first {
+                path.move(to: firstPoint)
+            }
+            
+            // Draw top edge (tricep side) with curves
+            for i in 1..<topEdgePoints.count {
+                let prev = topEdgePoints[i - 1]
+                let curr = topEdgePoints[i]
+                
+                let controlX = (prev.x + curr.x) / 2
+                let controlY = (prev.y + curr.y) / 2
+                let control = CGPoint(x: controlX, y: controlY)
+                
+                path.addQuadCurve(to: curr, controlPoint: control)
+            }
+            
+            // Draw bottom edge (bicep side) in reverse with curves
+            for i in stride(from: bottomEdgePoints.count - 1, through: 0, by: -1) {
+                let curr = bottomEdgePoints[i]
+                let prev = i > 0 ? bottomEdgePoints[i - 1] : curr
+                
+                let controlX = (curr.x + prev.x) / 2
+                let controlY = (curr.y + prev.y) / 2
+                let control = CGPoint(x: controlX, y: controlY)
+                
+                path.addQuadCurve(to: curr, controlPoint: control)
+            }
+            
+            path.close()
+            
+            let shape = SKShapeNode(path: path.cgPath)
+            shape.fillColor = color
+            shape.strokeColor = .clear
+            shape.lineWidth = 0
+            shape.zPosition = 1
+            container.addChild(shape)
+        }
+        
         // Helper to draw a line segment between two points
         func drawLine(from: CGPoint, to: CGPoint, color: SKColor, width: CGFloat = 2) {
             // Convert from base canvas coordinates to relative coordinates and apply scale
@@ -868,16 +1006,14 @@ class GameScene: SKScene {
             drawTaperedSegment(from: rightDeltoidStart, to: rightDeltoidEnd, color: toSKColor(mutableFigure.rightUpperArmColor), strokeThickness: mutableFigure.strokeThicknessDeltoids, fusiform: mutableFigure.fusiformDeltoids, inverted: true, peakPosition: mutableFigure.peakPositionDeltoids, legAsymmetry: "left")
         }
         
-        // Draw arms - with correct peak positions matching the editor
-        // Left bicep and tricep on same segment
-        drawTaperedSegment(from: leftShoulderPos, to: leftUpperArmEnd, color: toSKColor(mutableFigure.leftUpperArmColor), strokeThickness: mutableFigure.strokeThicknessBicep, fusiform: mutableFigure.fusiformBicep, inverted: true, peakPosition: mutableFigure.peakPositionBicep)
-        drawTaperedSegment(from: leftShoulderPos, to: leftUpperArmEnd, color: toSKColor(mutableFigure.leftUpperArmColor), strokeThickness: mutableFigure.strokeThicknessTricep, fusiform: mutableFigure.fusiformTricep, inverted: false, peakPosition: mutableFigure.peakPositionTricep)
+        // Draw arms - with independent bicep/tricep control
+        // Control which side the muscles appear on with armMuscleSide property
+        drawArmWithBicepTricep(from: leftShoulderPos, to: leftUpperArmEnd, color: toSKColor(mutableFigure.leftUpperArmColor), strokeThicknessBicep: mutableFigure.strokeThicknessBicep, strokeThicknessTricep: mutableFigure.strokeThicknessTricep, bicepFusiform: mutableFigure.fusiformBicep, tricepFusiform: mutableFigure.fusiformTricep, peakPositionBicep: mutableFigure.peakPositionBicep, peakPositionTricep: mutableFigure.peakPositionTricep, armMuscleSide: mutableFigure.armMuscleSide, isLeftArm: true)
         // Lower arms: peak position controlled by slider
         drawTaperedSegment(from: leftUpperArmEnd, to: leftForearmEnd, color: toSKColor(mutableFigure.leftLowerArmColor), strokeThickness: mutableFigure.strokeThicknessLowerArms, fusiform: mutableFigure.fusiformLowerArms, inverted: true, peakPosition: mutableFigure.peakPositionLowerArms)
         
-        // Right bicep and tricep on same segment
-        drawTaperedSegment(from: rightShoulderPos, to: rightUpperArmEnd, color: toSKColor(mutableFigure.rightUpperArmColor), strokeThickness: mutableFigure.strokeThicknessBicep, fusiform: mutableFigure.fusiformBicep, inverted: true, peakPosition: mutableFigure.peakPositionBicep)
-        drawTaperedSegment(from: rightShoulderPos, to: rightUpperArmEnd, color: toSKColor(mutableFigure.rightUpperArmColor), strokeThickness: mutableFigure.strokeThicknessTricep, fusiform: mutableFigure.fusiformTricep, inverted: false, peakPosition: mutableFigure.peakPositionTricep)
+        // Right arm: bicep on bottom (inner), tricep on top (outer)
+        drawArmWithBicepTricep(from: rightShoulderPos, to: rightUpperArmEnd, color: toSKColor(mutableFigure.rightUpperArmColor), strokeThicknessBicep: mutableFigure.strokeThicknessBicep, strokeThicknessTricep: mutableFigure.strokeThicknessTricep, bicepFusiform: mutableFigure.fusiformBicep, tricepFusiform: mutableFigure.fusiformTricep, peakPositionBicep: mutableFigure.peakPositionBicep, peakPositionTricep: mutableFigure.peakPositionTricep, armMuscleSide: mutableFigure.armMuscleSide, isLeftArm: false)
         drawTaperedSegment(from: rightUpperArmEnd, to: rightForearmEnd, color: toSKColor(mutableFigure.rightLowerArmColor), strokeThickness: mutableFigure.strokeThicknessLowerArms, fusiform: mutableFigure.fusiformLowerArms, inverted: true, peakPosition: mutableFigure.peakPositionLowerArms)
         
         // Draw hands and feet with overlap
