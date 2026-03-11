@@ -381,6 +381,30 @@
         "75": 4,
         "100": 4
       }
+    },
+    {
+      "id": "strokeThicknessJoints",
+      "name": "Joint Thickness",
+      "muscleGroups": ["Derived"],
+      "progression": {
+        "0": 0,
+        "25": 2,
+        "50": 2,
+        "75": 3,
+        "100": 4
+      }
+    },
+    {
+      "id": "jointShapeSize",
+      "name": "Joint Shape Size",
+      "muscleGroups": ["Derived"],
+      "progression": {
+        "0": 0,
+        "25": 0.5,
+        "50": 0.5,
+        "75": 1,
+        "100": 1
+      }
     }
   ]
 }

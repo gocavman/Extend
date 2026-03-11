@@ -353,6 +353,7 @@ struct StickFigure2DPose: Codable {
         figure.skeletonSizeTorso = skeletonSizeTorso
         figure.skeletonSizeArm = skeletonSizeArm
         figure.skeletonSizeLeg = skeletonSizeLeg
+        figure.jointShapeSize = jointShapeSize
         figure.neckLength = neckLength
         figure.neckWidth = neckWidth
         figure.handSize = handSize
@@ -624,6 +625,7 @@ struct StickFigure2D {
     var neckWidth: CGFloat = 1.0 // Neck connector width multiplier (1.0 = normal)
     var handSize: CGFloat = 1.0 // Hand size multiplier (1.0 = normal)
     var footSize: CGFloat = 1.0 // Foot size multiplier (1.0 = normal)
+    var jointShapeSize: CGFloat = 1.0 // Joint shape size multiplier (1.0 = normal, 0 = invisible)
     
     // Colors for each body part
     var headColor: Color = .black

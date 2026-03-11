@@ -1044,6 +1044,11 @@ class GameScene: SKScene {
         // Helper to draw a skeleton connector line with the color of its body part
         // Simple lines that bend around joints
         func drawSkeletonConnector(from: CGPoint, to: CGPoint, color: SKColor, skeletonSizeMultiplier: CGFloat) {
+            // Skip drawing if strokeThicknessJoints is 0
+            if mutableFigure.strokeThicknessJoints <= 0 {
+                return
+            }
+            
             let lineWidth = max(mutableFigure.strokeThicknessJoints * 0.8 * scale * skeletonSizeMultiplier, 1.0)
             print("🦴 Drawing skeleton connector: lineWidth=\(lineWidth), skeletonSize=\(skeletonSizeMultiplier), jointThickness=\(mutableFigure.strokeThicknessJoints), scale=\(scale)")
             
@@ -1133,12 +1138,14 @@ class GameScene: SKScene {
         
         // Add joint caps at connection points to fill gaps (elbows, knees, waist, shoulders)
         let jointCapRadius = mutableFigure.strokeThicknessJoints * 0.3 * scale * jointShapeSize
+        print("🎮 DEBUG joints: strokeThicknessJoints=\(mutableFigure.strokeThicknessJoints), jointShapeSize=\(jointShapeSize), scale=\(scale), jointCapRadius=\(jointCapRadius)")
         
         // Only draw joint caps if radius > 0 (when both strokeThicknessJoints and jointShapeSize > 0)
         guard jointCapRadius > 0 else {
-            print("🎮 Stick figure rendered with \(container.children.count) nodes!")
+            print("🎮 Joints skipped - jointCapRadius <= 0. Stick figure rendered with \(container.children.count) nodes!")
             return container
         }
+        print("🎮 Drawing joint circles with radius=\(jointCapRadius)")
         
         // LEFT ARM ELBOW - blend upper and lower arm colors by using upper arm color
         drawCircle(at: leftUpperArmEnd, radius: jointCapRadius, color: toSKColor(mutableFigure.leftUpperArmColor))

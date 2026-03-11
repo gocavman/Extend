@@ -25,11 +25,6 @@ class GameplayScene: GameScene {
     override func didMove(to view: SKView) {
         super.didMove(to: view)
         
-        print("🎮 GameplayScene didMove")
-        print("🎮 Scene size: \(size)")
-        print("🎮 View bounds: \(view.bounds)")
-        print("🎮 Safe area: \(view.safeAreaInsets)")
-        
         // Initialize gameState if needed
         guard let gameState = gameState else {
             print("🎮 ERROR: gameState is nil!")
@@ -48,29 +43,19 @@ class GameplayScene: GameScene {
         backgroundColor = SKColor(red: 0.95, green: 0.95, blue: 0.98, alpha: 1.0)
         
         // Create UI
-        print("🎮 Setting up UI...")
         setupUI()
-        print("🎮 UI setup complete")
         
         // Create character
-        print("🎮 Setting up character...")
         setupCharacter()
-        print("🎮 Character setup complete")
         
         // Create touch zones (debug visualization)
-        print("🎮 Setting up control zones...")
         setupControlZones()
-        print("🎮 Control zones setup complete")
         
         // Start game loop
-        print("🎮 Starting game loop...")
         startGameLoop()
-        print("🎮 Game loop started")
     }
     
     private func setupUI() {
-        print("🎮 Screen size: \(size)")
-        
         // TOP BAR - Moved down to avoid safe area
         let topBarY: CGFloat = size.height - 100
         
@@ -145,20 +130,13 @@ class GameplayScene: GameScene {
             return
         }
         
-        print("🎮 setupCharacter: standFrame = \(gameState.standFrame != nil ? "SET" : "NIL")")
-        print("🎮 setupCharacter: moveFrames.count = \(gameState.moveFrames.count)")
-        print("🎮 standFrame fusiform values: upper=\(gameState.standFrame?.fusiformUpperTorso ?? 0), lower=\(gameState.standFrame?.fusiformLowerTorso ?? 0)")
-        print("🎮 standFrame ALL fusiforms: upperTorso=\(gameState.standFrame?.fusiformUpperTorso ?? 0), lowerTorso=\(gameState.standFrame?.fusiformLowerTorso ?? 0), bicep=\(gameState.standFrame?.fusiformBicep ?? 0), tricep=\(gameState.standFrame?.fusiformTricep ?? 0), lowerArms=\(gameState.standFrame?.fusiformLowerArms ?? 0), upperLegs=\(gameState.standFrame?.fusiformUpperLegs ?? 0), lowerLegs=\(gameState.standFrame?.fusiformLowerLegs ?? 0)")
-        
         // Use the Stand frame from gameState
         if let standFrame = gameState.standFrame {
-            print("🎮 Stand frame fusiform values: shoulders=\(standFrame.fusiformShoulders), upperTorso=\(standFrame.fusiformUpperTorso), bicep=\(standFrame.fusiformBicep), tricep=\(standFrame.fusiformTricep), lowerArms=\(standFrame.fusiformLowerArms), upperLegs=\(standFrame.fusiformUpperLegs), lowerLegs=\(standFrame.fusiformLowerLegs)")
-            print("🎮 Rendering stand frame from gameState")
+            print("🎮 [STAND] Loaded frame: \(standFrame.scale) scale")
             
             // Apply muscle scaling to the stand frame
-            print("🎮 DEBUG Stand Frame BEFORE scaling: shoulderWidth=\(standFrame.shoulderWidthMultiplier), waistWidth=\(standFrame.waistWidthMultiplier), skeletonSizeTorso=\(standFrame.skeletonSizeTorso), skeletonSizeArm=\(standFrame.skeletonSizeArm), skeletonSizeLeg=\(standFrame.skeletonSizeLeg)")
             let scaledFrame = applyMuscleScaling(to: standFrame)
-            print("🎮 DEBUG Stand Frame AFTER scaling: shoulderWidth=\(scaledFrame.shoulderWidthMultiplier), waistWidth=\(scaledFrame.waistWidthMultiplier), skeletonSizeTorso=\(scaledFrame.skeletonSizeTorso), skeletonSizeArm=\(scaledFrame.skeletonSizeArm), skeletonSizeLeg=\(scaledFrame.skeletonSizeLeg)")
+            print("🎮 [JOINTS] Original: jointShapeSize=\(standFrame.jointShapeSize), strokeThicknessJoints=\(standFrame.strokeThicknessJoints) | After scaling: jointShapeSize=\(scaledFrame.jointShapeSize), strokeThicknessJoints=\(scaledFrame.strokeThicknessJoints)")
             
             // Create a container node
             let characterContainer = SKNode()
@@ -167,11 +145,7 @@ class GameplayScene: GameScene {
             characterContainer.zPosition = 10
             
             // Use renderStickFigure with proper scale
-            // The figure is in 600x720 base canvas
-            // Scale 1.2 provides good visible size without rendering issues
-            print("🎮 About to call renderStickFigure...")
-            let stickFigureNode = renderStickFigure(scaledFrame, at: CGPoint.zero, scale: 1.2, flipped: false)
-            print("🎮 renderStickFigure returned successfully")
+            let stickFigureNode = renderStickFigure(scaledFrame, at: CGPoint.zero, scale: 1.2, flipped: false, jointShapeSize: scaledFrame.jointShapeSize)
             characterContainer.addChild(stickFigureNode)
             
             // Render stand frame objects
@@ -451,7 +425,7 @@ class GameplayScene: GameScene {
                     let shouldFlip = !gameState.facingRight
                     let scaledFrame = self.applyMuscleScaling(to: moveFrame)
                     print("🎮 DEBUG Move Frame \(moveFrameIndex + 1) AFTER scaling: shoulderWidth=\(scaledFrame.shoulderWidthMultiplier), waistWidth=\(scaledFrame.waistWidthMultiplier), skeletonSizeTorso=\(scaledFrame.skeletonSizeTorso), skeletonSizeArm=\(scaledFrame.skeletonSizeArm), skeletonSizeLeg=\(scaledFrame.skeletonSizeLeg)")
-                    let stickFigureNode = self.renderStickFigure(scaledFrame, at: CGPoint.zero, scale: 1.2, flipped: shouldFlip)
+                    let stickFigureNode = self.renderStickFigure(scaledFrame, at: CGPoint.zero, scale: 1.2, flipped: shouldFlip, jointShapeSize: moveFrame.jointShapeSize)
                     characterContainer.addChild(stickFigureNode)
                     
                     // Render move frame objects
@@ -485,7 +459,7 @@ class GameplayScene: GameScene {
                 characterContainer.removeAllChildren()
                 let shouldFlip = !gameState.facingRight
                 let scaledFrame = applyMuscleScaling(to: standFrame)
-                let stickFigureNode = renderStickFigure(scaledFrame, at: CGPoint.zero, scale: 1.2, flipped: shouldFlip)
+                let stickFigureNode = renderStickFigure(scaledFrame, at: CGPoint.zero, scale: 1.2, flipped: shouldFlip, jointShapeSize: scaledFrame.jointShapeSize)
                 characterContainer.addChild(stickFigureNode)
                 
                 // Render stand frame objects
@@ -505,13 +479,13 @@ class GameplayScene: GameScene {
         characterContainer.removeAction(forKey: "moveAnimation")
         
         // Re-render with current frame
-        if gameState.isMovingLeft || gameState.isMovingRight {
+            if gameState.isMovingLeft || gameState.isMovingRight {
             // If moving, use current animation frame
             if animationFrameIndex < gameState.moveFrames.count {
                 let moveFrame = gameState.moveFrames[animationFrameIndex]
                 let shouldFlip = !gameState.facingRight
                 let scaledFrame = applyMuscleScaling(to: moveFrame)
-                let stickFigureNode = renderStickFigure(scaledFrame, at: CGPoint.zero, scale: 1.2, flipped: shouldFlip)
+                let stickFigureNode = renderStickFigure(scaledFrame, at: CGPoint.zero, scale: 1.2, flipped: shouldFlip, jointShapeSize: scaledFrame.jointShapeSize)
                 characterContainer.addChild(stickFigureNode)
                 
                 // Render move frame objects
@@ -524,7 +498,7 @@ class GameplayScene: GameScene {
             if let standFrame = gameState.standFrame {
                 let shouldFlip = !gameState.facingRight
                 let scaledFrame = applyMuscleScaling(to: standFrame)
-                let stickFigureNode = renderStickFigure(scaledFrame, at: CGPoint.zero, scale: 1.2, flipped: shouldFlip)
+                let stickFigureNode = renderStickFigure(scaledFrame, at: CGPoint.zero, scale: 1.2, flipped: shouldFlip, jointShapeSize: scaledFrame.jointShapeSize)
                 characterContainer.addChild(stickFigureNode)
                 
                 // Render stand frame objects
@@ -620,9 +594,6 @@ class GameplayScene: GameScene {
         // Ensure frames are loaded before attempting interpolation
         MuscleSystem.shared.ensureStandFramesLoaded()
         
-        print("🎮 applyMuscleScaling called")
-        print("🎮 DEBUG: MuscleSystem has \(MuscleSystem.shared.config?.properties.count ?? 0) properties configured")
-        
         // Store the frame's explicit shoulder and waist width multipliers
         // These should NOT be overridden by muscle scaling (they're frame-specific for front vs side views)
         let frameShoulderWidth = figure.shoulderWidthMultiplier
@@ -634,7 +605,6 @@ class GameplayScene: GameScene {
             for property in properties {
                 let propertyPoints = gameState.muscleState.getPoints(for: property.id)
                 let interpolatedValue = MuscleSystem.shared.interpolateProperty(property.id, musclePoints: propertyPoints)
-                print("🎮 DEBUG applyMuscleScaling: Property '\(property.name)' (id: \(property.id)) at \(propertyPoints) points -> \(interpolatedValue)")
                 
                 // Apply the interpolated value to the appropriate figure property
                 switch property.id {
@@ -657,9 +627,10 @@ class GameplayScene: GameScene {
                 case "strokeThicknessLowerArms": scaledFigure.strokeThicknessLowerArms = interpolatedValue
                 case "strokeThicknessUpperLegs": scaledFigure.strokeThicknessUpperLegs = interpolatedValue
                 case "strokeThicknessLowerLegs": scaledFigure.strokeThicknessLowerLegs = interpolatedValue
-                case "strokeThicknessJoints": scaledFigure.strokeThicknessJoints = interpolatedValue
                 case "strokeThicknessDeltoids": scaledFigure.strokeThicknessDeltoids = interpolatedValue
                 case "strokeThicknessTrapezius": scaledFigure.strokeThicknessTrapezius = interpolatedValue
+                case "strokeThicknessJoints": scaledFigure.strokeThicknessJoints = interpolatedValue
+                case "jointShapeSize": scaledFigure.jointShapeSize = interpolatedValue
                 case "skeletonSizeTorso": scaledFigure.skeletonSizeTorso = interpolatedValue
                 case "skeletonSizeArm": scaledFigure.skeletonSizeArm = interpolatedValue
                 case "skeletonSizeLeg": scaledFigure.skeletonSizeLeg = interpolatedValue
@@ -683,7 +654,6 @@ class GameplayScene: GameScene {
         scaledFigure.waistWidthMultiplier = frameWaistWidth
         
         // Apply properties from the muscle system (both regular and derived)
-        print("🎮 DEBUG applyMuscleScaling: Getting property values...")
         let handSize = MuscleSystem.shared.getDerivedPropertyValue(for: "handSize", state: gameState.muscleState)
         let footSize = MuscleSystem.shared.getDerivedPropertyValue(for: "footSize", state: gameState.muscleState)
         let skeletonSizeTorso = MuscleSystem.shared.getDerivedPropertyValue(for: "skeletonSizeTorso", state: gameState.muscleState)
@@ -696,8 +666,6 @@ class GameplayScene: GameScene {
         let neckWidthPoints = gameState.muscleState.getPoints(for: "neckWidth")
         let neckWidth = MuscleSystem.shared.interpolateProperty("neckWidth", musclePoints: neckWidthPoints)
         
-        print("🎮 DEBUG applyMuscleScaling derived: neckWidth=\(neckWidth), handSize=\(handSize), footSize=\(footSize), skeletonSizeTorso=\(skeletonSizeTorso), skeletonSizeArm=\(skeletonSizeArm), skeletonSizeLeg=\(skeletonSizeLeg), waistThicknessMultiplier=\(waistThicknessMultiplier), strokeThicknessFullTorso=\(strokeThicknessFullTorso)")
-        
         scaledFigure.neckWidth = neckWidth
         scaledFigure.handSize = handSize
         scaledFigure.footSize = footSize
@@ -707,24 +675,17 @@ class GameplayScene: GameScene {
         scaledFigure.waistThicknessMultiplier = waistThicknessMultiplier
         scaledFigure.strokeThicknessFullTorso = strokeThicknessFullTorso
         
-        let isSideView = frameShoulderWidth == 0 && frameWaistWidth == 0
+        // Determine if this is a side view based on whether character is currently moving
+        let isSideView = gameState.isMovingLeft || gameState.isMovingRight
+        
         print("🎮 DEBUG applyMuscleScaling isSideView=\(isSideView)")
         
         if isSideView {
             scaledFigure.fusiformUpperTorso = min(scaledFigure.fusiformUpperTorso, 2.0)
             scaledFigure.fusiformShoulders = min(scaledFigure.fusiformShoulders, 0.0)
-            //scaledFigure.strokeThicknessUpperTorso = min(scaledFigure.strokeThicknessUpperTorso, 5.0)
-            //scaledFigure.strokeThicknessLowerTorso = min(scaledFigure.strokeThicknessLowerTorso, 1.0)
-            //scaledFigure.strokeThicknessLowerLegs = min(scaledFigure.strokeThicknessLowerLegs, 3.0)
-            //scaledFigure.fusiformLowerLegs = min(scaledFigure.fusiformLowerLegs, 3.0)
-            
-            //let legRatio = scaledFigure.fusiformLowerLegs / 3.0
-            //scaledFigure.skeletonSizeTorso = min(scaledFigure.skeletonSizeTorso, max(2.0, 3.5 * legRatio))
-            //scaledFigure.skeletonSizeArm = min(scaledFigure.skeletonSizeArm, max(2.0, 3.5 * legRatio))
-            //scaledFigure.skeletonSizeLeg = min(scaledFigure.skeletonSizeLeg, max(2.0, 3.5 * legRatio))
         }
         
-        print("🎮 DEBUG applyMuscleScaling FINAL: skeletonSizeTorso=\(scaledFigure.skeletonSizeTorso) skeletonSizeArm=\(scaledFigure.skeletonSizeArm) skeletonSizeLeg=\(scaledFigure.skeletonSizeLeg), fusiformUpperTorso=\(scaledFigure.fusiformUpperTorso), fusiformBicep=\(scaledFigure.fusiformBicep), fusiformTricep=\(scaledFigure.fusiformTricep)")
+        print("🎮 DEBUG applyMuscleScaling FINAL: skeletonSizeTorso=\(scaledFigure.skeletonSizeTorso) skeletonSizeArm=\(scaledFigure.skeletonSizeArm) skeletonSizeLeg=\(scaledFigure.skeletonSizeLeg)")
         
         return scaledFigure
     }
@@ -739,7 +700,6 @@ class GameplayScene: GameScene {
             sprite.zPosition = 5  // Behind stick figure (which is 10+)
             sprite.name = "object_\(object.imageName)"
             container.addChild(sprite)
-            print("🎮 Rendered object: \(object.imageName) at \(sprite.position)")
         }
     }
     
