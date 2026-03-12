@@ -1,0 +1,240 @@
+{
+  "source": "/Users/cavan/Developer/Extend/Extend/Models/StickFigure2D.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "Add Object",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 1732
+        }
+      },
+      {
+        "comment": "",
+        "key": "?",
+        "location": {
+          "startingColumn": 50,
+          "startingLine": 1671
+        }
+      },
+      {
+        "comment": "",
+        "key": "Add",
+        "location": {
+          "startingColumn": 42,
+          "startingLine": 1685
+        }
+      },
+      {
+        "comment": "",
+        "key": "Thickness",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 1705
+        }
+      },
+      {
+        "comment": "",
+        "key": "Add",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 1720
+        }
+      },
+      {
+        "comment": "",
+        "key": "Done",
+        "location": {
+          "startingColumn": 28,
+          "startingLine": 1736
+        }
+      },
+      {
+        "comment": "",
+        "key": "Saved Frames",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 1959
+        }
+      },
+      {
+        "comment": "",
+        "key": "Delete Frame?",
+        "location": {
+          "startingColumn": 20,
+          "startingLine": 1990
+        }
+      },
+      {
+        "comment": "",
+        "key": "No saved frames yet",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 1804
+        }
+      },
+      {
+        "comment": "",
+        "key": "Save frames to create animations",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 1807
+        }
+      },
+      {
+        "comment": "",
+        "key": "Search frames...",
+        "location": {
+          "startingColumn": 39,
+          "startingLine": 1819
+        }
+      },
+      {
+        "comment": "",
+        "key": "Frame Name",
+        "location": {
+          "startingColumn": 47,
+          "startingLine": 1838
+        }
+      },
+      {
+        "comment": "",
+        "key": "Frame Number",
+        "location": {
+          "startingColumn": 47,
+          "startingLine": 1841
+        }
+      },
+      {
+        "comment": "",
+        "key": "Cancel",
+        "location": {
+          "startingColumn": 48,
+          "startingLine": 1846
+        }
+      },
+      {
+        "comment": "",
+        "key": "Save",
+        "location": {
+          "startingColumn": 48,
+          "startingLine": 1853
+        }
+      },
+      {
+        "comment": "",
+        "key": "Frame #%lld",
+        "location": {
+          "startingColumn": 58,
+          "startingLine": 1895
+        }
+      },
+      {
+        "comment": "",
+        "key": "Done",
+        "location": {
+          "startingColumn": 43,
+          "startingLine": 1979
+        }
+      },
+      {
+        "comment": "",
+        "key": "Edit",
+        "location": {
+          "startingColumn": 52,
+          "startingLine": 1979
+        }
+      },
+      {
+        "comment": "",
+        "key": "Done",
+        "location": {
+          "startingColumn": 28,
+          "startingLine": 1985
+        }
+      },
+      {
+        "comment": "",
+        "key": "Cancel",
+        "location": {
+          "startingColumn": 24,
+          "startingLine": 1991
+        }
+      },
+      {
+        "comment": "",
+        "key": "Delete",
+        "location": {
+          "startingColumn": 24,
+          "startingLine": 1994
+        }
+      },
+      {
+        "comment": "",
+        "key": "Are you sure you want to delete '%@'?",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 2003
+        }
+      },
+      {
+        "comment": "",
+        "key": "Save Animation Frame",
+        "location": {
+          "startingColumn": 18,
+          "startingLine": 2028
+        }
+      },
+      {
+        "comment": "",
+        "key": "Frame Name",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 2034
+        }
+      },
+      {
+        "comment": "",
+        "key": "e.g., Jump Start, Wave Hello",
+        "location": {
+          "startingColumn": 31,
+          "startingLine": 2037
+        }
+      },
+      {
+        "comment": "",
+        "key": "Frame Number",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 2042
+        }
+      },
+      {
+        "comment": "",
+        "key": "1",
+        "location": {
+          "startingColumn": 31,
+          "startingLine": 2045
+        }
+      },
+      {
+        "comment": "",
+        "key": "Cancel",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 2054
+        }
+      },
+      {
+        "comment": "",
+        "key": "Save",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 2061
+        }
+      }
+    ]
+  },
+  "version": 1
+}

@@ -74,7 +74,7 @@ struct PointsPerIntervalConfig: Codable {
     let points: Int             // Points to award per interval
 }
 
-struct ActionConfig: Codable {
+public struct ActionConfig: Codable {
     let id: String
     let displayName: String
     let unlockLevel: Int
@@ -220,7 +220,7 @@ func loadLevels() -> [LevelConfig] {
 
 // MARK: - Action Configurations
 
-let ACTION_CONFIGS: [ActionConfig] = loadActionConfigs()
+public let ACTION_CONFIGS: [ActionConfig] = loadActionConfigs()
 
 // MARK: - Level Configurations
 
@@ -753,15 +753,33 @@ class StickFigureGameState {
             standFrameObjects = []
         }
         
-        // Load Move frames 1-4
+        // Load Move frames - get frame numbers from config
         moveFrames = []
         moveFrameObjects = []
-        for frameNum in 1...4 {
+        var moveFrameNumbers = [1, 2, 3, 4, 5, 6, 7, 8] // Default fallback
+        
+        // Get actual frame numbers from "run" action config
+        if let runConfig = ACTION_CONFIGS.first(where: { $0.id == "run" }),
+           let animation = runConfig.stickFigureAnimation {
+            moveFrameNumbers = animation.frameNumbers
+        }
+        
+        print("🎮 DEBUG: allFrames.count = \(allFrames.count)")
+        print("🎮 DEBUG: Looking for Move frames with frameNumbers: \(moveFrameNumbers)")
+        let moveFramesInAllFrames = allFrames.filter { $0.name == "Move" }
+        print("🎮 DEBUG: Found \(moveFramesInAllFrames.count) Move frames in allFrames")
+        moveFramesInAllFrames.forEach { print("🎮   - Move frame \($0.frameNumber)") }
+        
+        for frameNum in moveFrameNumbers {
             if let frame = allFrames.first(where: { $0.name == "Move" && $0.frameNumber == frameNum }) {
                 moveFrames.append(frame.pose.toStickFigure2D())
                 moveFrameObjects.append(frame.objects)
+                print("🎮 ✓ Loaded Move frame \(frameNum)")
+            } else {
+                print("🎮 ✗ Move frame \(frameNum) not found in allFrames")
             }
         }
+        print("🎮 Loaded \(moveFrames.count) Move frames total: \(moveFrameNumbers)")
         
         // Load Shaker frames 1-2
         shakerFrames = []
@@ -1149,9 +1167,30 @@ class StickFigureGameState {
         // Set first frame immediately
         gameState.animationFrame = 1
         var frameCount = 1
-        gameState.animationTimer = Timer.scheduledTimer(withTimeInterval: 0.13, repeats: true) { _ in
+        
+        // Get frame numbers and interval from config
+        var frameNumbers = [1, 2, 3, 4]  // Default
+        var frameInterval = 0.13  // Default
+        
+        // If performing an action, use its config
+        if let actionId = gameState.currentPerformingAction,
+           let config = ACTION_CONFIGS.first(where: { $0.id == actionId }),
+           let animation = config.stickFigureAnimation {
+            frameNumbers = animation.frameNumbers
+            frameInterval = animation.baseFrameInterval
+        }
+        // If moving, use Move/Run config
+        else if gameState.isMovingLeft || gameState.isMovingRight,
+                let runConfig = ACTION_CONFIGS.first(where: { $0.id == "run" }),
+                let animation = runConfig.stickFigureAnimation {
+            frameNumbers = animation.frameNumbers
+            frameInterval = animation.baseFrameInterval
+        }
+        
+        let totalFrames = frameNumbers.count
+        gameState.animationTimer = Timer.scheduledTimer(withTimeInterval: frameInterval, repeats: true) { _ in
             frameCount += 1
-            gameState.animationFrame = ((frameCount - 1) % 4) + 1
+            gameState.animationFrame = ((frameCount - 1) % totalFrames) + 1
         }
     }
     

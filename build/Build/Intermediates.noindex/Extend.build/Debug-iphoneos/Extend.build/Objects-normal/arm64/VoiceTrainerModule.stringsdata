@@ -1,0 +1,824 @@
+{
+  "source": "/Users/cavan/Developer/Extend/Extend/Modules/VoiceTrainerModule.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "Voice Trainer",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 59
+        }
+      },
+      {
+        "comment": "",
+        "key": "Round %lld of %lld",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 64
+        }
+      },
+      {
+        "comment": "",
+        "key": "Text to Read",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 129
+        }
+      },
+      {
+        "comment": "",
+        "key": "Enter text to read aloud, one item per line...",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 143
+        }
+      },
+      {
+        "comment": "",
+        "key": "Number of Rounds",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 157
+        }
+      },
+      {
+        "comment": "",
+        "key": "%lld",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 174
+        }
+      },
+      {
+        "comment": "",
+        "key": "Round Length",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 195
+        }
+      },
+      {
+        "comment": "",
+        "key": "Round Length",
+        "location": {
+          "startingColumn": 36,
+          "startingLine": 199
+        }
+      },
+      {
+        "comment": "",
+        "key": "30 sec",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 200
+        }
+      },
+      {
+        "comment": "",
+        "key": "1 min",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 201
+        }
+      },
+      {
+        "comment": "",
+        "key": "1.5 min",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 202
+        }
+      },
+      {
+        "comment": "",
+        "key": "2 min",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 203
+        }
+      },
+      {
+        "comment": "",
+        "key": "2.5 min",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 204
+        }
+      },
+      {
+        "comment": "",
+        "key": "3 min",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 205
+        }
+      },
+      {
+        "comment": "",
+        "key": "3.5 min",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 206
+        }
+      },
+      {
+        "comment": "",
+        "key": "4 min",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 207
+        }
+      },
+      {
+        "comment": "",
+        "key": "4.5 min",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 208
+        }
+      },
+      {
+        "comment": "",
+        "key": "5 min",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 209
+        }
+      },
+      {
+        "comment": "",
+        "key": "6 min",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 210
+        }
+      },
+      {
+        "comment": "",
+        "key": "7 min",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 211
+        }
+      },
+      {
+        "comment": "",
+        "key": "8 min",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 212
+        }
+      },
+      {
+        "comment": "",
+        "key": "9 min",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 213
+        }
+      },
+      {
+        "comment": "",
+        "key": "10 min",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 214
+        }
+      },
+      {
+        "comment": "",
+        "key": "15 min",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 215
+        }
+      },
+      {
+        "comment": "",
+        "key": "20 min",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 216
+        }
+      },
+      {
+        "comment": "",
+        "key": "Rest Length",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 227
+        }
+      },
+      {
+        "comment": "",
+        "key": "Rest Length",
+        "location": {
+          "startingColumn": 36,
+          "startingLine": 231
+        }
+      },
+      {
+        "comment": "",
+        "key": "None",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 232
+        }
+      },
+      {
+        "comment": "",
+        "key": "10 sec",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 233
+        }
+      },
+      {
+        "comment": "",
+        "key": "15 sec",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 234
+        }
+      },
+      {
+        "comment": "",
+        "key": "30 sec",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 235
+        }
+      },
+      {
+        "comment": "",
+        "key": "45 sec",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 236
+        }
+      },
+      {
+        "comment": "",
+        "key": "1 min",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 237
+        }
+      },
+      {
+        "comment": "",
+        "key": "1.5 min",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 238
+        }
+      },
+      {
+        "comment": "",
+        "key": "2 min",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 239
+        }
+      },
+      {
+        "comment": "",
+        "key": "2.5 min",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 240
+        }
+      },
+      {
+        "comment": "",
+        "key": "3 min",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 241
+        }
+      },
+      {
+        "comment": "",
+        "key": "3.5 min",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 242
+        }
+      },
+      {
+        "comment": "",
+        "key": "4.5 min",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 243
+        }
+      },
+      {
+        "comment": "",
+        "key": "5 min",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 244
+        }
+      },
+      {
+        "comment": "",
+        "key": "Delay Between Lines",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 252
+        }
+      },
+      {
+        "comment": "",
+        "key": "Delay Between Lines",
+        "location": {
+          "startingColumn": 36,
+          "startingLine": 256
+        }
+      },
+      {
+        "comment": "",
+        "key": "0 sec",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 257
+        }
+      },
+      {
+        "comment": "",
+        "key": "1 sec",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 258
+        }
+      },
+      {
+        "comment": "",
+        "key": "2 sec",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 259
+        }
+      },
+      {
+        "comment": "",
+        "key": "3 sec",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 260
+        }
+      },
+      {
+        "comment": "",
+        "key": "4 sec",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 261
+        }
+      },
+      {
+        "comment": "",
+        "key": "5 sec",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 262
+        }
+      },
+      {
+        "comment": "",
+        "key": "6 sec",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 263
+        }
+      },
+      {
+        "comment": "",
+        "key": "7 sec",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 264
+        }
+      },
+      {
+        "comment": "",
+        "key": "8 sec",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 265
+        }
+      },
+      {
+        "comment": "",
+        "key": "9 sec",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 266
+        }
+      },
+      {
+        "comment": "",
+        "key": "10 sec",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 267
+        }
+      },
+      {
+        "comment": "",
+        "key": "Cooldown Period",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 278
+        }
+      },
+      {
+        "comment": "",
+        "key": "Cooldown Period",
+        "location": {
+          "startingColumn": 36,
+          "startingLine": 282
+        }
+      },
+      {
+        "comment": "",
+        "key": "None",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 283
+        }
+      },
+      {
+        "comment": "",
+        "key": "1 min",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 284
+        }
+      },
+      {
+        "comment": "",
+        "key": "2 min",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 285
+        }
+      },
+      {
+        "comment": "",
+        "key": "3 min",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 286
+        }
+      },
+      {
+        "comment": "",
+        "key": "4 min",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 287
+        }
+      },
+      {
+        "comment": "",
+        "key": "5 min",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 288
+        }
+      },
+      {
+        "comment": "",
+        "key": "10 min",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 289
+        }
+      },
+      {
+        "comment": "",
+        "key": "15 min",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 290
+        }
+      },
+      {
+        "comment": "",
+        "key": "20 min",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 291
+        }
+      },
+      {
+        "comment": "",
+        "key": "Random Order",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 302
+        }
+      },
+      {
+        "comment": "",
+        "key": "(%@)",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 350
+        }
+      },
+      {
+        "comment": "",
+        "key": "Pause",
+        "location": {
+          "startingColumn": 52,
+          "startingLine": 347
+        }
+      },
+      {
+        "comment": "",
+        "key": "Resume",
+        "location": {
+          "startingColumn": 80,
+          "startingLine": 347
+        }
+      },
+      {
+        "comment": "",
+        "key": "Start",
+        "location": {
+          "startingColumn": 91,
+          "startingLine": 347
+        }
+      },
+      {
+        "comment": "",
+        "key": "Save Configuration",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 1286
+        }
+      },
+      {
+        "comment": "",
+        "key": "Configuration Name",
+        "location": {
+          "startingColumn": 25,
+          "startingLine": 1282
+        }
+      },
+      {
+        "comment": "",
+        "key": "Enter name",
+        "location": {
+          "startingColumn": 31,
+          "startingLine": 1283
+        }
+      },
+      {
+        "comment": "",
+        "key": "Save",
+        "location": {
+          "startingColumn": 28,
+          "startingLine": 1290
+        }
+      },
+      {
+        "comment": "",
+        "key": "Cancel",
+        "location": {
+          "startingColumn": 28,
+          "startingLine": 1297
+        }
+      },
+      {
+        "comment": "",
+        "key": "Delete Configuration",
+        "location": {
+          "startingColumn": 16,
+          "startingLine": 1374
+        }
+      },
+      {
+        "comment": "",
+        "key": "Saved Configurations",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 1346
+        }
+      },
+      {
+        "comment": "",
+        "key": "No saved configurations",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 1321
+        }
+      },
+      {
+        "comment": "",
+        "key": "Done",
+        "location": {
+          "startingColumn": 28,
+          "startingLine": 1350
+        }
+      },
+      {
+        "comment": "",
+        "key": "Delete",
+        "location": {
+          "startingColumn": 20,
+          "startingLine": 1378
+        }
+      },
+      {
+        "comment": "",
+        "key": "Cancel",
+        "location": {
+          "startingColumn": 20,
+          "startingLine": 1386
+        }
+      },
+      {
+        "comment": "",
+        "key": "Are you sure you want to delete '%@'? This cannot be undone.",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 1392
+        }
+      },
+      {
+        "comment": "",
+        "key": "Lines: %lld",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 1433
+        }
+      },
+      {
+        "comment": "",
+        "key": "Rounds: %lld • Length: %@",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 1439
+        }
+      },
+      {
+        "comment": "",
+        "key": "Rest: %@ • Delay: %llds • Cooldown: %lldm",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 1442
+        }
+      },
+      {
+        "comment": "",
+        "key": "Random: %@",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 1445
+        }
+      },
+      {
+        "comment": "",
+        "key": "Rename Configuration",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 1491
+        }
+      },
+      {
+        "comment": "",
+        "key": "Configuration Name",
+        "location": {
+          "startingColumn": 25,
+          "startingLine": 1487
+        }
+      },
+      {
+        "comment": "",
+        "key": "Enter name",
+        "location": {
+          "startingColumn": 31,
+          "startingLine": 1488
+        }
+      },
+      {
+        "comment": "",
+        "key": "Save",
+        "location": {
+          "startingColumn": 28,
+          "startingLine": 1495
+        }
+      },
+      {
+        "comment": "",
+        "key": "Cancel",
+        "location": {
+          "startingColumn": 28,
+          "startingLine": 1502
+        }
+      },
+      {
+        "comment": "",
+        "key": "Round %lld/%lld",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 1546
+        }
+      },
+      {
+        "comment": "",
+        "key": "Done!",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 1604
+        }
+      },
+      {
+        "comment": "",
+        "key": "Rest",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 1612
+        }
+      },
+      {
+        "comment": "",
+        "key": "Cool down",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 1623
+        }
+      },
+      {
+        "comment": "",
+        "key": "Get Ready...",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 1647
+        }
+      },
+      {
+        "comment": "",
+        "key": "Starting in: %llds",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 1687
+        }
+      },
+      {
+        "comment": "",
+        "key": "Next in: %llds",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 1691
+        }
+      },
+      {
+        "comment": "",
+        "key": "Time Elapsed",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 1709
+        }
+      },
+      {
+        "comment": "",
+        "key": "Time Remaining",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 1721
+        }
+      },
+      {
+        "comment": "",
+        "key": "Rest Time",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 1733
+        }
+      },
+      {
+        "comment": "",
+        "key": "Round Time",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 1741
+        }
+      },
+      {
+        "comment": "",
+        "key": "Complete Session",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 1755
+        }
+      }
+    ]
+  },
+  "version": 1
+}

@@ -25,6 +25,14 @@ class GameplayScene: GameScene {
     override func didMove(to view: SKView) {
         super.didMove(to: view)
         
+        // DEBUG: Check if ACTION_CONFIGS is loaded
+        print("🎮 [DIDMOVE] ACTION_CONFIGS.count=\(ACTION_CONFIGS.count)")
+        if ACTION_CONFIGS.isEmpty {
+            print("🎮 [ERROR] ACTION_CONFIGS is EMPTY!")
+        } else {
+            print("🎮 [OK] ACTION_CONFIGS loaded: \(ACTION_CONFIGS.map { $0.id })")
+        }
+        
         // Initialize gameState if needed
         guard let gameState = gameState else {
             print("🎮 ERROR: gameState is nil!")
@@ -404,27 +412,69 @@ class GameplayScene: GameScene {
         characterNode?.removeAction(forKey: "moveAnimation")
         animationFrameIndex = 0
         
+        guard let gameState = gameState else {
+            print("🎮 ERROR: gameState is nil in startMovementAnimation")
+            return
+        }
+        
+        print("🎮 Available moveFrames count in gameState: \(gameState.moveFrames.count)")
+        
+        // Get frame interval and frame numbers from config
+        var frameInterval: TimeInterval = 0.15
+        var frameNumbers: [Int] = [0, 1, 2, 3] // Default fallback
+        
+        print("🎮 DEBUG ACTION_CONFIGS.count=\(ACTION_CONFIGS.count), IDs: \(ACTION_CONFIGS.map { $0.id })")
+        
+        if let config = ACTION_CONFIGS.first(where: { $0.id == "run" }),
+           let animation = config.stickFigureAnimation {
+            frameInterval = animation.baseFrameInterval
+            frameNumbers = animation.frameNumbers.map { $0 - 1 }
+            print("🎮 ✓ Got config from ACTION_CONFIGS: \(animation.frameNumbers.count) frames")
+            print("🎮   Frame numbers from config (1-indexed): \(animation.frameNumbers)")
+            print("🎮   Frame indices for array (0-indexed): \(frameNumbers)")
+        } else {
+            print("🎮 ⚠️  ACTION_CONFIGS not available or missing 'run' config")
+            // FALLBACK: Use all available frames from gameState instead of hardcoded [0,1,2,3]
+            if gameState.moveFrames.count > 0 {
+                frameNumbers = Array(0..<gameState.moveFrames.count)
+                print("🎮 ✓ Using all \(frameNumbers.count) available frames from gameState: \(frameNumbers)")
+            } else {
+                print("🎮 ✗ No frames available in gameState either, will use default [0,1,2,3]")
+            }
+        }
+        
+        if gameState.moveFrames.count > 0 {
+            print("🎮 ✓ moveFrames is populated with \(gameState.moveFrames.count) frames")
+        } else {
+            print("🎮 ✗ WARNING: moveFrames is EMPTY!")
+        }
+        
         // Use SKAction sequence instead of Timer for better performance
         var actions: [SKAction] = []
         
-        // Create actions for each move frame
-        for i in 0..<4 {
-            let moveFrameIndex = i
+        print("🎮 ANIMATION SEQUENCE - Creating \(frameNumbers.count) frame actions:")
+        
+        // Create actions for each frame in the animation
+        for (index, frameNum) in frameNumbers.enumerated() {
+            let moveFrameIndex = frameNum
+            
+            print("🎮   [\(index)] Frame index: \(moveFrameIndex)")
             
             actions.append(SKAction.run { [weak self] in
                 guard let self = self, let gameState = self.gameState else { return }
-                guard moveFrameIndex < gameState.moveFrames.count else { return }
+                guard moveFrameIndex < gameState.moveFrames.count else {
+                    print("🎮 ❌ moveFrameIndex \(moveFrameIndex) >= moveFrames.count \(gameState.moveFrames.count), skipping")
+                    return
+                }
                 
                 let moveFrame = gameState.moveFrames[moveFrameIndex]
-                print("🎮 Updating to move frame \(moveFrameIndex + 1)")
-                print("🎮 DEBUG Move Frame \(moveFrameIndex + 1) BEFORE scaling: shoulderWidth=\(moveFrame.shoulderWidthMultiplier), waistWidth=\(moveFrame.waistWidthMultiplier), skeletonSizeTorso=\(moveFrame.skeletonSizeTorso), skeletonSizeArm=\(moveFrame.skeletonSizeArm), skeletonSizeLeg=\(moveFrame.skeletonSizeLeg)")
+                print("🎮 🎬 Rendering move frame \(moveFrameIndex + 1)/\(gameState.moveFrames.count)")
                 
                 // Remove old stick figure and add new one
                 if let characterContainer = self.characterNode {
                     characterContainer.removeAllChildren()
                     let shouldFlip = !gameState.facingRight
                     let scaledFrame = self.applyMuscleScaling(to: moveFrame)
-                    print("🎮 DEBUG Move Frame \(moveFrameIndex + 1) AFTER scaling: shoulderWidth=\(scaledFrame.shoulderWidthMultiplier), waistWidth=\(scaledFrame.waistWidthMultiplier), skeletonSizeTorso=\(scaledFrame.skeletonSizeTorso), skeletonSizeArm=\(scaledFrame.skeletonSizeArm), skeletonSizeLeg=\(scaledFrame.skeletonSizeLeg)")
                     let stickFigureNode = self.renderStickFigure(scaledFrame, at: CGPoint.zero, scale: 1.2, flipped: shouldFlip, jointShapeSize: moveFrame.jointShapeSize)
                     characterContainer.addChild(stickFigureNode)
                     
@@ -435,15 +485,20 @@ class GameplayScene: GameScene {
                 }
             })
             
-            // Wait before next frame
-            actions.append(SKAction.wait(forDuration: 0.15))
+            // Wait before next frame using configured interval
+            actions.append(SKAction.wait(forDuration: frameInterval))
         }
+        
+        print("🎮 TOTAL ACTIONS CREATED: \(actions.count) (frames + delays)")
         
         // Run the sequence on the character node
         if !actions.isEmpty {
             let sequence = SKAction.sequence(actions)
             let repeatAction = SKAction.repeatForever(sequence)
             characterNode?.run(repeatAction, withKey: "moveAnimation")
+            print("🎮 ✅ Animation loop started with \(frameNumbers.count) frames repeating forever")
+        } else {
+            print("🎮 ❌ No actions to run!")
         }
     }
     

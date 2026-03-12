@@ -1,0 +1,624 @@
+{
+  "source": "/Users/cavan/Developer/Extend/Extend/Modules/SettingsModule.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "Settings",
+        "location": {
+          "startingColumn": 18,
+          "startingLine": 48
+        }
+      },
+      {
+        "comment": "",
+        "key": "Reset App?",
+        "location": {
+          "startingColumn": 24,
+          "startingLine": 215
+        }
+      },
+      {
+        "comment": "",
+        "key": "NavBar",
+        "location": {
+          "startingColumn": 37,
+          "startingLine": 58
+        }
+      },
+      {
+        "comment": "",
+        "key": "Dashboard",
+        "location": {
+          "startingColumn": 37,
+          "startingLine": 87
+        }
+      },
+      {
+        "comment": "",
+        "key": "Voice Trainer",
+        "location": {
+          "startingColumn": 37,
+          "startingLine": 98
+        }
+      },
+      {
+        "comment": "",
+        "key": "Reset",
+        "location": {
+          "startingColumn": 29,
+          "startingLine": 189
+        }
+      },
+      {
+        "comment": "",
+        "key": "About",
+        "location": {
+          "startingColumn": 29,
+          "startingLine": 199
+        }
+      },
+      {
+        "comment": "",
+        "key": "Background Color",
+        "location": {
+          "startingColumn": 37,
+          "startingLine": 63
+        }
+      },
+      {
+        "comment": "",
+        "key": "Use Gradient",
+        "location": {
+          "startingColumn": 32,
+          "startingLine": 68
+        }
+      },
+      {
+        "comment": "",
+        "key": "Gradient Secondary",
+        "location": {
+          "startingColumn": 41,
+          "startingLine": 74
+        }
+      },
+      {
+        "comment": "",
+        "key": "Text Color",
+        "location": {
+          "startingColumn": 37,
+          "startingLine": 80
+        }
+      },
+      {
+        "comment": "",
+        "key": "Customize",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 60
+        }
+      },
+      {
+        "comment": "",
+        "key": "Customize",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 89
+        }
+      },
+      {
+        "comment": "",
+        "key": "Header",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 93
+        }
+      },
+      {
+        "comment": "",
+        "key": "Workout Start Warning",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 100
+        }
+      },
+      {
+        "comment": "",
+        "key": "Countdown before workout starts",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 137
+        }
+      },
+      {
+        "comment": "",
+        "key": "%llds",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 118
+        }
+      },
+      {
+        "comment": "",
+        "key": "Rest End Warning",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 144
+        }
+      },
+      {
+        "comment": "",
+        "key": "Countdown during last seconds of rest",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 181
+        }
+      },
+      {
+        "comment": "",
+        "key": "%llds",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 162
+        }
+      },
+      {
+        "comment": "",
+        "key": "Reset App",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 194
+        }
+      },
+      {
+        "comment": "",
+        "key": "App Version",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 201
+        }
+      },
+      {
+        "comment": "",
+        "key": "1.0.0",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 203
+        }
+      },
+      {
+        "comment": "",
+        "key": "Build",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 208
+        }
+      },
+      {
+        "comment": "",
+        "key": "1",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 210
+        }
+      },
+      {
+        "comment": "",
+        "key": "Cancel",
+        "location": {
+          "startingColumn": 28,
+          "startingLine": 216
+        }
+      },
+      {
+        "comment": "",
+        "key": "Reset",
+        "location": {
+          "startingColumn": 28,
+          "startingLine": 217
+        }
+      },
+      {
+        "comment": "",
+        "key": "This will reset navbars, dashboard tiles, exercises, workouts, muscle groups, and equipment back to defaults.",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 222
+        }
+      },
+      {
+        "comment": "",
+        "key": "NavBar Items",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 373
+        }
+      },
+      {
+        "comment": "",
+        "key": "Items (Max 10)",
+        "location": {
+          "startingColumn": 21,
+          "startingLine": 303
+        }
+      },
+      {
+        "comment": "",
+        "key": "Bottom navbar shows first 5 items. Top navbar shows any extras.",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 304
+        }
+      },
+      {
+        "comment": "",
+        "key": "No items selected",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 310
+        }
+      },
+      {
+        "comment": "",
+        "key": "Add Item",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 349
+        }
+      },
+      {
+        "comment": "",
+        "key": "Add Item",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 367
+        }
+      },
+      {
+        "comment": "",
+        "key": "Add Items",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 524
+        }
+      },
+      {
+        "comment": "",
+        "key": "Cancel",
+        "location": {
+          "startingColumn": 28,
+          "startingLine": 528
+        }
+      },
+      {
+        "comment": "",
+        "key": "Done",
+        "location": {
+          "startingColumn": 28,
+          "startingLine": 534
+        }
+      },
+      {
+        "comment": "",
+        "key": "Dashboard Tiles",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 625
+        }
+      },
+      {
+        "comment": "",
+        "key": "Tiles",
+        "location": {
+          "startingColumn": 21,
+          "startingLine": 561
+        }
+      },
+      {
+        "comment": "",
+        "key": "No tiles added",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 563
+        }
+      },
+      {
+        "comment": "",
+        "key": "Add Tile",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 619
+        }
+      },
+      {
+        "comment": "",
+        "key": "Add Tile",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 824
+        }
+      },
+      {
+        "comment": "",
+        "key": "Modules",
+        "location": {
+          "startingColumn": 25,
+          "startingLine": 703
+        }
+      },
+      {
+        "comment": "",
+        "key": "Stat Cards",
+        "location": {
+          "startingColumn": 25,
+          "startingLine": 729
+        }
+      },
+      {
+        "comment": "",
+        "key": "Mini Games",
+        "location": {
+          "startingColumn": 25,
+          "startingLine": 760
+        }
+      },
+      {
+        "comment": "",
+        "key": "Blank Tile",
+        "location": {
+          "startingColumn": 25,
+          "startingLine": 786
+        }
+      },
+      {
+        "comment": "",
+        "key": "All stat cards are already added",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 731
+        }
+      },
+      {
+        "comment": "",
+        "key": "Game 1",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 771
+        }
+      },
+      {
+        "comment": "",
+        "key": "Add blank tile",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 792
+        }
+      },
+      {
+        "comment": "",
+        "key": "Cancel",
+        "location": {
+          "startingColumn": 28,
+          "startingLine": 828
+        }
+      },
+      {
+        "comment": "",
+        "key": "Add",
+        "location": {
+          "startingColumn": 28,
+          "startingLine": 832
+        }
+      },
+      {
+        "comment": "",
+        "key": "Edit Tile",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 983
+        }
+      },
+      {
+        "comment": "",
+        "key": "Tile Details",
+        "location": {
+          "startingColumn": 25,
+          "startingLine": 939
+        }
+      },
+      {
+        "comment": "",
+        "key": "Blank Tile Action",
+        "location": {
+          "startingColumn": 29,
+          "startingLine": 944
+        }
+      },
+      {
+        "comment": "",
+        "key": "Tile Size",
+        "location": {
+          "startingColumn": 25,
+          "startingLine": 953
+        }
+      },
+      {
+        "comment": "",
+        "key": "Icon",
+        "location": {
+          "startingColumn": 25,
+          "startingLine": 962
+        }
+      },
+      {
+        "comment": "",
+        "key": "Title",
+        "location": {
+          "startingColumn": 31,
+          "startingLine": 940
+        }
+      },
+      {
+        "comment": "",
+        "key": "Action",
+        "location": {
+          "startingColumn": 32,
+          "startingLine": 945
+        }
+      },
+      {
+        "comment": "",
+        "key": "Size",
+        "location": {
+          "startingColumn": 28,
+          "startingLine": 954
+        }
+      },
+      {
+        "comment": "",
+        "key": "Cancel",
+        "location": {
+          "startingColumn": 28,
+          "startingLine": 993
+        }
+      },
+      {
+        "comment": "",
+        "key": "Save",
+        "location": {
+          "startingColumn": 28,
+          "startingLine": 997
+        }
+      },
+      {
+        "comment": "",
+        "key": "Header",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 1095
+        }
+      },
+      {
+        "comment": "",
+        "key": "Remove dashboard image?",
+        "location": {
+          "startingColumn": 16,
+          "startingLine": 1097
+        }
+      },
+      {
+        "comment": "",
+        "key": "Title",
+        "location": {
+          "startingColumn": 21,
+          "startingLine": 1026
+        }
+      },
+      {
+        "comment": "",
+        "key": "Image",
+        "location": {
+          "startingColumn": 21,
+          "startingLine": 1036
+        }
+      },
+      {
+        "comment": "",
+        "key": "Background",
+        "location": {
+          "startingColumn": 21,
+          "startingLine": 1069
+        }
+      },
+      {
+        "comment": "",
+        "key": "Text",
+        "location": {
+          "startingColumn": 21,
+          "startingLine": 1088
+        }
+      },
+      {
+        "comment": "",
+        "key": "Title",
+        "location": {
+          "startingColumn": 21,
+          "startingLine": 1028
+        }
+      },
+      {
+        "comment": "",
+        "key": "Image Style",
+        "location": {
+          "startingColumn": 24,
+          "startingLine": 1037
+        }
+      },
+      {
+        "comment": "",
+        "key": "Choose Image",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 1049
+        }
+      },
+      {
+        "comment": "",
+        "key": "Background Color",
+        "location": {
+          "startingColumn": 29,
+          "startingLine": 1070
+        }
+      },
+      {
+        "comment": "",
+        "key": "Use Gradient",
+        "location": {
+          "startingColumn": 24,
+          "startingLine": 1075
+        }
+      },
+      {
+        "comment": "",
+        "key": "Gradient Secondary",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 1081
+        }
+      },
+      {
+        "comment": "",
+        "key": "Text Color",
+        "location": {
+          "startingColumn": 29,
+          "startingLine": 1089
+        }
+      },
+      {
+        "comment": "",
+        "key": "Cancel",
+        "location": {
+          "startingColumn": 20,
+          "startingLine": 1098
+        }
+      },
+      {
+        "comment": "",
+        "key": "Remove",
+        "location": {
+          "startingColumn": 20,
+          "startingLine": 1099
+        }
+      },
+      {
+        "comment": "",
+        "key": "This will remove the custom dashboard header image.",
+        "location": {
+          "startingColumn": 18,
+          "startingLine": 1104
+        }
+      }
+    ]
+  },
+  "version": 1
+}
