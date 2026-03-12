@@ -983,6 +983,7 @@ class GameScene: SKScene {
         // Draw deltoids (shoulder caps) - render BEFORE upper arms so they appear behind
         // Skip if both stroke thickness and fusiform are 0
         if mutableFigure.strokeThicknessDeltoids > 0 || mutableFigure.fusiformDeltoids > 0 {
+            print("🔍 DELTOID RENDER: stroke=\(mutableFigure.strokeThicknessDeltoids) fusiform=\(mutableFigure.fusiformDeltoids) peak=\(mutableFigure.peakPositionDeltoids)")
             // Left deltoid: from shoulder joint, extending down ~1/2 of upper arm, following shoulder rotation (longer for visible taper)
             let leftArmVector = CGPoint(x: leftUpperArmEnd.x - leftShoulderPos.x, y: leftUpperArmEnd.y - leftShoulderPos.y)
             let leftArmLength = sqrt(leftArmVector.x * leftArmVector.x + leftArmVector.y * leftArmVector.y)
@@ -1004,6 +1005,8 @@ class GameScene: SKScene {
             let rightDeltoidStart = CGPoint(x: rightShoulderPos.x - (rightShoulderPos.x - neckPos.x) * 0.5, y: rightShoulderPos.y)
             // Deltoid peak controlled by peakPositionDeltoids slider
             drawTaperedSegment(from: rightDeltoidStart, to: rightDeltoidEnd, color: toSKColor(mutableFigure.rightUpperArmColor), strokeThickness: mutableFigure.strokeThicknessDeltoids, fusiform: mutableFigure.fusiformDeltoids, inverted: true, peakPosition: mutableFigure.peakPositionDeltoids, legAsymmetry: "left")
+        } else {
+            print("🔍 DELTOID SKIP: stroke=\(mutableFigure.strokeThicknessDeltoids) fusiform=\(mutableFigure.fusiformDeltoids)")
         }
         
         // Draw arms - with independent bicep/tricep control

@@ -244,7 +244,7 @@ class MuscleSystem {
             for name in standNames {
                 if let frame = allFrames.first(where: { $0.name == name }) {
                     loadedFrames.append(frame)
-                    print("🦵 Loaded: \(name) - strokeThicknessFullTorso=\(frame.strokeThicknessFullTorso), strokeThicknessUpperTorso=\(frame.strokeThicknessUpperTorso)")
+                    print("🦵 Loaded: \(name) - strokeThicknessFullTorso=\(frame.strokeThicknessFullTorso), strokeThicknessUpperTorso=\(frame.strokeThicknessUpperTorso), fusiformDeltoids=\(frame.fusiformDeltoids), strokeThicknessDeltoids=\(frame.strokeThicknessDeltoids)")
                 } else {
                     print("🦵 NOT FOUND: \(name)")
                 }
@@ -278,18 +278,20 @@ class MuscleSystem {
     }
     
     /// Interpolate a property value based on muscle points using 5-frame lookup
-    /// - Parameters:
-    ///   - propertyKey: The property name (e.g., "fusiformUpperTorso", "strokeThicknessJoints")
-    ///   - musclePoints: Points value 0-100
-    /// - Returns: Interpolated value
+    /// Falls back to game_muscles.json progression if frames don't have the data
     func interpolateProperty(_ propertyKey: String, musclePoints: Double) -> Double {
         if standFrames.count != 5 {
             print("🦵 INTERP ERROR: standFrames.count=\(standFrames.count), need 5 for \(propertyKey)")
-            return 0
+            return getProgressionValue(propertyKey, musclePoints: musclePoints)
         }
         
         let framePoints = [0.0, 25.0, 50.0, 75.0, 100.0]
         let clamped = max(0, min(100, musclePoints))
+        
+        // Debug for deltoid at 100 points
+        if propertyKey == "fusiformDeltoids" && clamped == 100.0 {
+            print("🦵 DEBUG fusiformDeltoids at 100pts: tier4Frame=\(standFrames[4].name), fusiform=\(standFrames[4].fusiformDeltoids)")
+        }
         
         if propertyKey == "strokeThicknessFullTorso" {
             print("🦵 interpolateProperty strokeThicknessFullTorso: musclePoints=\(musclePoints), clamped=\(clamped)")
@@ -305,6 +307,17 @@ class MuscleSystem {
         }
         if clamped >= 100 {
             let val = getPropertyValue(propertyKey, from: standFrames[4])
+            // If frame value is 0, try to get from game_muscles.json progression
+            if val == 0 && (propertyKey.contains("fusiform") || propertyKey.contains("peakPosition")) {
+                let progressionVal = getProgressionValue(propertyKey, musclePoints: clamped)
+                if progressionVal > 0 {
+                    print("🦵   -> at 100 points: frame=\(val), using progression=\(progressionVal)")
+                    return progressionVal
+                }
+            }
+            if propertyKey == "fusiformDeltoids" {
+                print("🦵   -> at 100 points from \(standFrames[4].name): \(val)")
+            }
             if propertyKey == "strokeThicknessFullTorso" {
                 print("🦵   -> at 100 points: \(val)")
             }
@@ -331,6 +344,29 @@ class MuscleSystem {
         }
         
         return getPropertyValue(propertyKey, from: standFrames[0])
+    }
+    
+    /// Get progression value from game_muscles.json as a fallback
+    private func getProgressionValue(_ propertyKey: String, musclePoints: Double) -> Double {
+        guard let property = config?.properties.first(where: { $0.id == propertyKey }) else {
+            return 0
+        }
+        
+        let clamped = max(0, min(100, musclePoints))
+        let tiers = ["0", "25", "50", "75", "100"]
+        let points = [0.0, 25.0, 50.0, 75.0, 100.0]
+        
+        // Find surrounding tiers
+        for i in 0..<4 {
+            if clamped >= points[i] && clamped <= points[i + 1] {
+                let v1 = property.progression[tiers[i]] ?? 0
+                let v2 = property.progression[tiers[i + 1]] ?? 0
+                let ratio = (clamped - points[i]) / (points[i + 1] - points[i])
+                return v1 + (v2 - v1) * ratio
+            }
+        }
+        
+        return property.progression[tiers[4]] ?? 0
     }
     
     /// Helper to get a property value from a frame
@@ -363,9 +399,19 @@ class MuscleSystem {
         case "strokeThicknessUpperLegs": value = Double(frame.strokeThicknessUpperLegs)
         case "strokeThicknessLowerLegs": value = Double(frame.strokeThicknessLowerLegs)
         case "strokeThicknessJoints": value = Double(frame.strokeThicknessJoints)
+        case "jointShapeSize": value = Double(frame.jointShapeSize)
         case "strokeThicknessFullTorso":
             value = Double(frame.strokeThicknessFullTorso)
             print("🦵 getPropertyValue strokeThicknessFullTorso: frame=\(frame.name), value=\(value)")
+        case "peakPositionDeltoids": value = Double(frame.peakPositionDeltoids)
+        case "peakPositionBicep": value = Double(frame.peakPositionBicep)
+        case "peakPositionTricep": value = Double(frame.peakPositionTricep)
+        case "peakPositionLowerArms": value = Double(frame.peakPositionLowerArms)
+        case "peakPositionUpperLegs": value = Double(frame.peakPositionUpperLegs)
+        case "peakPositionLowerLegs": value = Double(frame.peakPositionLowerLegs)
+        case "peakPositionUpperTorso": value = Double(frame.peakPositionUpperTorso)
+        case "peakPositionLowerTorso": value = Double(frame.peakPositionLowerTorso)
+        case "Heart": value = 0  // Non-visual property, use default
         default:
             value = 0
             print("🦵 getPropertyValue UNKNOWN: propertyKey=\(propertyKey)")
@@ -497,6 +543,24 @@ class MuscleSystem {
             return Double(frame.pose.skeletonSizeLeg)
         case "waistThicknessMultiplier":
             return Double(frame.pose.waistThicknessMultiplier)
+        case "peakPositionDeltoids":
+            return Double(frame.pose.peakPositionDeltoids)
+        case "peakPositionBicep":
+            return Double(frame.pose.peakPositionBicep)
+        case "peakPositionTricep":
+            return Double(frame.pose.peakPositionTricep)
+        case "peakPositionLowerArms":
+            return Double(frame.pose.peakPositionLowerArms)
+        case "peakPositionUpperLegs":
+            return Double(frame.pose.peakPositionUpperLegs)
+        case "peakPositionLowerLegs":
+            return Double(frame.pose.peakPositionLowerLegs)
+        case "peakPositionUpperTorso":
+            return Double(frame.pose.peakPositionUpperTorso)
+        case "peakPositionLowerTorso":
+            return Double(frame.pose.peakPositionLowerTorso)
+        case "strokeThicknessFullTorso":
+            return Double(frame.pose.strokeThicknessFullTorso)
         default:
             return 0
         }

@@ -801,14 +801,16 @@ class GameplayScene: GameScene {
         // Determine if this is a side view based on whether character is currently moving
         let isSideView = gameState.isMovingLeft || gameState.isMovingRight
         
-        print("🎮 DEBUG applyMuscleScaling isSideView=\(isSideView)")
-        
         if isSideView {
             scaledFigure.fusiformUpperTorso = min(scaledFigure.fusiformUpperTorso, 2.0)
             scaledFigure.fusiformShoulders = min(scaledFigure.fusiformShoulders, 0.0)
         }
         
-        print("🎮 DEBUG applyMuscleScaling FINAL: skeletonSizeTorso=\(scaledFigure.skeletonSizeTorso) skeletonSizeArm=\(scaledFigure.skeletonSizeArm) skeletonSizeLeg=\(scaledFigure.skeletonSizeLeg)")
+        // Debug deltoid interpolation
+        let deltoidPoints = gameState.muscleState.getPoints(for: "fusiformDeltoids")
+        let deltoidStroke = MuscleSystem.shared.interpolateProperty("strokeThicknessDeltoids", musclePoints: gameState.muscleState.getPoints(for: "strokeThicknessDeltoids"))
+        let deltoidFusiform = MuscleSystem.shared.interpolateProperty("fusiformDeltoids", musclePoints: deltoidPoints)
+        print("🔍 DELTOID SCALING: points=\(deltoidPoints), fusiform=\(deltoidFusiform), stroke=\(deltoidStroke)")
         
         return scaledFigure
     }
