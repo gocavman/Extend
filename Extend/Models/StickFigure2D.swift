@@ -645,6 +645,12 @@ struct StickFigure2D {
     var handColor: Color = .black
     var footColor: Color = .black
     var jointColor: Color = .black  // Color for visual joints/dots
+    var eyeColor: Color = .black
+    
+    // Eye settings
+    var eyesEnabled: Bool = false
+    var irisColor: Color = .black
+    var irisEnabled: Bool = false
     
     // Stroke thickness (overall - kept for backward compatibility)
     var strokeThickness: CGFloat = 4.0
@@ -1123,6 +1129,41 @@ struct StickFigure2DView: View {
         ))
         context.fill(headCircle, with: .color(figure.headColor))
         context.stroke(headCircle, with: .color(figure.headColor.opacity(0.8)), lineWidth: figure.strokeThickness)
+        
+        // Draw eyes if enabled
+        print("👁️ EYE DEBUG: eyesEnabled=\(figure.eyesEnabled), eyeColor=\(figure.eyeColor), headRadius=\(figure.headRadius), scaledHeadRadius=\(scaledHeadRadius), headPos=\(headPos)")
+        if figure.eyesEnabled {
+            let eyeRadius = scaledHeadRadius * 0.2  // 20% of head radius
+            let eyeSpacing = scaledHeadRadius * 0.4  // Space between eyes
+            let eyeVerticalOffset = scaledHeadRadius * 0.1  // Slight vertical offset from center
+            
+            print("👁️ EYE RENDER: eyeRadius=\(eyeRadius), eyeSpacing=\(eyeSpacing), eyeVerticalOffset=\(eyeVerticalOffset)")
+            
+            // Left eye
+            let leftEyePos = CGPoint(x: headPos.x - eyeSpacing / 2, y: headPos.y - eyeVerticalOffset)
+            let leftEyePath = Circle().path(in: CGRect(
+                x: leftEyePos.x - eyeRadius,
+                y: leftEyePos.y - eyeRadius,
+                width: eyeRadius * 2,
+                height: eyeRadius * 2
+            ))
+            print("👁️ LEFT EYE: pos=\(leftEyePos), radius=\(eyeRadius), color=\(figure.eyeColor)")
+            context.fill(leftEyePath, with: .color(figure.eyeColor))
+            
+            // Right eye
+            let rightEyePos = CGPoint(x: headPos.x + eyeSpacing / 2, y: headPos.y - eyeVerticalOffset)
+            let rightEyePath = Circle().path(in: CGRect(
+                x: rightEyePos.x - eyeRadius,
+                y: rightEyePos.y - eyeRadius,
+                width: eyeRadius * 2,
+                height: eyeRadius * 2
+            ))
+            print("👁️ RIGHT EYE: pos=\(rightEyePos), radius=\(eyeRadius), color=\(figure.eyeColor)")
+            context.fill(rightEyePath, with: .color(figure.eyeColor))
+            print("👁️ EYES DRAWN SUCCESSFULLY")
+        } else {
+            print("👁️ EYES DISABLED: eyesEnabled=false")
+        }
         
         // Draw skeleton connector lines at joints that bend with the joint angles
         drawSkeletonConnectors(neckPos: neckPos, midTorsoPos: midTorsoPos, waistPos: waistPos,

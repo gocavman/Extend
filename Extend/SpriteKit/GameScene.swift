@@ -1033,6 +1033,42 @@ class GameScene: SKScene {
         print("🎮 Drawing head at \(headPos) with radius \(headRadius)")
         drawCircle(at: headPos, radius: headRadius, color: SKColor(mutableFigure.headColor))
         
+        // Draw eyes if enabled
+        print("👁️ EYE DEBUG: eyesEnabled=\(mutableFigure.eyesEnabled), eyeColor=\(mutableFigure.eyeColor), headRadius=\(headRadius), headPos=\(headPos)")
+        if mutableFigure.eyesEnabled {
+            let eyeRadius = headRadius * 0.3  // 20% of head radius
+            let eyeSpacing = headRadius * 0.6  // Space between eyes
+            let eyeVerticalOffset = headRadius * -0.1  // Slight vertical offset from center
+            let irisRadius = eyeRadius * 0.5  // 1/2 of eye radius
+            
+            print("👁️ EYE RENDER: eyeRadius=\(eyeRadius), eyeSpacing=\(eyeSpacing), eyeVerticalOffset=\(eyeVerticalOffset), irisRadius=\(irisRadius), irisEnabled=\(mutableFigure.irisEnabled)")
+            
+            // Left eye
+            let leftEyePos = CGPoint(x: headPos.x - eyeSpacing / 2, y: headPos.y - eyeVerticalOffset)
+            print("👁️ LEFT EYE: pos=\(leftEyePos), radius=\(eyeRadius), color=\(mutableFigure.eyeColor)")
+            drawCircle(at: leftEyePos, radius: eyeRadius, color: SKColor(mutableFigure.eyeColor))
+            
+            // Draw left iris if enabled
+            if mutableFigure.irisEnabled {
+                print("👁️ LEFT IRIS: pos=\(leftEyePos), radius=\(irisRadius), color=\(mutableFigure.irisColor)")
+                drawCircle(at: leftEyePos, radius: irisRadius, color: SKColor(mutableFigure.irisColor))
+            }
+            
+            // Right eye
+            let rightEyePos = CGPoint(x: headPos.x + eyeSpacing / 2, y: headPos.y - eyeVerticalOffset)
+            print("👁️ RIGHT EYE: pos=\(rightEyePos), radius=\(eyeRadius), color=\(mutableFigure.eyeColor)")
+            drawCircle(at: rightEyePos, radius: eyeRadius, color: SKColor(mutableFigure.eyeColor))
+            
+            // Draw right iris if enabled
+            if mutableFigure.irisEnabled {
+                print("👁️ RIGHT IRIS: pos=\(rightEyePos), radius=\(irisRadius), color=\(mutableFigure.irisColor)")
+                drawCircle(at: rightEyePos, radius: irisRadius, color: SKColor(mutableFigure.irisColor))
+            }
+            print("👁️ EYES DRAWN SUCCESSFULLY")
+        } else {
+            print("👁️ EYES DISABLED: eyesEnabled=false")
+        }
+        
         // NOW DRAW THE SKELETON CONNECTORS LAST (on top of everything else)
         // Each skeleton piece uses the color of its corresponding body part
         

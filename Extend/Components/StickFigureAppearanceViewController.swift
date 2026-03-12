@@ -10,7 +10,7 @@ class StickFigureAppearanceViewController: UIViewController, UITableViewDelegate
     var onMusclePointsChanged: (() -> Void)?
     
     private let tableView = UITableView(frame: .zero, style: .insetGrouped)
-    private var expandedSections: Set<Int> = [0]  // Muscles expanded by default, Colors collapsed
+    private var expandedSections: Set<Int> = [0]  // Muscles expanded by default, Colors and Eyes collapsed
     private var pendingColorCallback: ((UIColor) -> Void)?
     
     override func viewDidLoad() {
@@ -106,13 +106,14 @@ class StickFigureAppearanceViewController: UIViewController, UITableViewDelegate
     }
     
     func numberOfSections(in tableView: UITableView) -> Int {
-        return 2  // Muscles and Colors
+        return 3  // Muscles, Colors, and Eyes
     }
     
     func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
         switch section {
         case 0: return expandedSections.contains(0) ? (getMuscleGroups().count + 2) : 0  // Muscle groups section (info + muscle groups + buttons)
         case 1: return expandedSections.contains(1) ? 6 : 0  // Colors section (6 rows: Head, Torso, Arms, Legs, Accessories, Reset)
+        case 2: return expandedSections.contains(2) ? 4 : 0  // Eyes section (4 rows: Eye color, Default toggle, Iris color+toggle, Reset)
         default: return 0
         }
     }
@@ -121,12 +122,13 @@ class StickFigureAppearanceViewController: UIViewController, UITableViewDelegate
         switch section {
         case 0: return "MUSCLE DEVELOPMENT"
         case 1: return "COLORS"
+        case 2: return "EYES"
         default: return nil
         }
     }
     
     func tableView(_ tableView: UITableView, viewForHeaderInSection section: Int) -> UIView? {
-        guard section == 0 || section == 1 else { return nil }
+        guard section == 0 || section == 1 || section == 2 else { return nil }
         
         let headerView = UIView()
         headerView.backgroundColor = UIColor(red: 0.95, green: 0.95, blue: 0.98, alpha: 1.0)
@@ -164,11 +166,8 @@ class StickFigureAppearanceViewController: UIViewController, UITableViewDelegate
     }
     
     func tableView(_ tableView: UITableView, heightForHeaderInSection section: Int) -> CGFloat {
-        // Add extra spacing above Muscle Development section
-        if section == 0 {
-            return 50  // Normal header height + extra spacing
-        }
-        return 50  // Standard header height
+        // Reduce vertical spacing between sections
+        return 35  // Reduced from 50 to minimize white space
     }
     
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
@@ -179,6 +178,7 @@ class StickFigureAppearanceViewController: UIViewController, UITableViewDelegate
         switch indexPath.section {
         case 0: return createMuscleCell(tableView, cellForRowAt: indexPath)
         case 1: return createColorCell(tableView, cellForRowAt: indexPath)
+        case 2: return createEyesCell(tableView, cellForRowAt: indexPath)
         default: return cell
         }
     }
@@ -220,6 +220,19 @@ class StickFigureAppearanceViewController: UIViewController, UITableViewDelegate
             cell.contentView.heightAnchor.constraint(equalToConstant: 44).isActive = true
             
         case 2:  // Arms Grid
+            let container = UIStackView()
+            container.axis = .horizontal
+            container.spacing = 12
+            container.alignment = .center
+            container.translatesAutoresizingMaskIntoConstraints = false
+            
+            let label = UILabel()
+            label.text = "Arms"
+            label.font = UIFont.systemFont(ofSize: 13, weight: .semibold)
+            label.textColor = .gray
+            label.translatesAutoresizingMaskIntoConstraints = false
+            label.widthAnchor.constraint(equalToConstant: 50).isActive = true
+            
             let grid = createColorGrid([
                 ("L Upper", appearance.leftUpperArmColor, { [weak self] color in
                     self?.appearance.leftUpperArmColor = Color(uiColor: color)
@@ -242,16 +255,32 @@ class StickFigureAppearanceViewController: UIViewController, UITableViewDelegate
                     self?.onMusclePointsChanged?()
                 })
             ])
-            cell.contentView.addSubview(grid)
+            
+            container.addArrangedSubview(label)
+            container.addArrangedSubview(grid)
+            cell.contentView.addSubview(container)
             NSLayoutConstraint.activate([
-                grid.topAnchor.constraint(equalTo: cell.contentView.topAnchor, constant: 8),
-                grid.leadingAnchor.constraint(equalTo: cell.contentView.leadingAnchor, constant: 16),
-                grid.trailingAnchor.constraint(equalTo: cell.contentView.trailingAnchor, constant: -16),
-                grid.bottomAnchor.constraint(equalTo: cell.contentView.bottomAnchor, constant: -8)
+                container.topAnchor.constraint(equalTo: cell.contentView.topAnchor, constant: 8),
+                container.leadingAnchor.constraint(equalTo: cell.contentView.leadingAnchor, constant: 16),
+                container.trailingAnchor.constraint(equalTo: cell.contentView.trailingAnchor, constant: -16),
+                container.bottomAnchor.constraint(equalTo: cell.contentView.bottomAnchor, constant: -8)
             ])
             cell.contentView.heightAnchor.constraint(equalToConstant: 76).isActive = true
             
         case 3:  // Legs Grid
+            let container = UIStackView()
+            container.axis = .horizontal
+            container.spacing = 12
+            container.alignment = .center
+            container.translatesAutoresizingMaskIntoConstraints = false
+            
+            let label = UILabel()
+            label.text = "Legs"
+            label.font = UIFont.systemFont(ofSize: 13, weight: .semibold)
+            label.textColor = .gray
+            label.translatesAutoresizingMaskIntoConstraints = false
+            label.widthAnchor.constraint(equalToConstant: 50).isActive = true
+            
             let grid = createColorGrid([
                 ("L Upper", appearance.leftUpperLegColor, { [weak self] color in
                     self?.appearance.leftUpperLegColor = Color(uiColor: color)
@@ -274,16 +303,32 @@ class StickFigureAppearanceViewController: UIViewController, UITableViewDelegate
                     self?.onMusclePointsChanged?()
                 })
             ])
-            cell.contentView.addSubview(grid)
+            
+            container.addArrangedSubview(label)
+            container.addArrangedSubview(grid)
+            cell.contentView.addSubview(container)
             NSLayoutConstraint.activate([
-                grid.topAnchor.constraint(equalTo: cell.contentView.topAnchor, constant: 8),
-                grid.leadingAnchor.constraint(equalTo: cell.contentView.leadingAnchor, constant: 16),
-                grid.trailingAnchor.constraint(equalTo: cell.contentView.trailingAnchor, constant: -16),
-                grid.bottomAnchor.constraint(equalTo: cell.contentView.bottomAnchor, constant: -8)
+                container.topAnchor.constraint(equalTo: cell.contentView.topAnchor, constant: 8),
+                container.leadingAnchor.constraint(equalTo: cell.contentView.leadingAnchor, constant: 16),
+                container.trailingAnchor.constraint(equalTo: cell.contentView.trailingAnchor, constant: -16),
+                container.bottomAnchor.constraint(equalTo: cell.contentView.bottomAnchor, constant: -8)
             ])
             cell.contentView.heightAnchor.constraint(equalToConstant: 76).isActive = true
             
-        case 4:  // Accessories Grid
+        case 4:  // Accessories Grid (Hands, Feet, Joints, Eyes)
+            let container = UIStackView()
+            container.axis = .horizontal
+            container.spacing = 12
+            container.alignment = .center
+            container.translatesAutoresizingMaskIntoConstraints = false
+            
+            let label = UILabel()
+            label.text = "Accessories"
+            label.font = UIFont.systemFont(ofSize: 13, weight: .semibold)
+            label.textColor = .gray
+            label.translatesAutoresizingMaskIntoConstraints = false
+            label.widthAnchor.constraint(equalToConstant: 80).isActive = true
+            
             let grid = createColorGrid([
                 ("Hands", appearance.handColor, { [weak self] color in
                     self?.appearance.handColor = Color(uiColor: color)
@@ -301,12 +346,15 @@ class StickFigureAppearanceViewController: UIViewController, UITableViewDelegate
                     self?.onMusclePointsChanged?()
                 })
             ])
-            cell.contentView.addSubview(grid)
+            
+            container.addArrangedSubview(label)
+            container.addArrangedSubview(grid)
+            cell.contentView.addSubview(container)
             NSLayoutConstraint.activate([
-                grid.topAnchor.constraint(equalTo: cell.contentView.topAnchor, constant: 8),
-                grid.leadingAnchor.constraint(equalTo: cell.contentView.leadingAnchor, constant: 16),
-                grid.trailingAnchor.constraint(equalTo: cell.contentView.trailingAnchor, constant: -16),
-                grid.bottomAnchor.constraint(equalTo: cell.contentView.bottomAnchor, constant: -8)
+                container.topAnchor.constraint(equalTo: cell.contentView.topAnchor, constant: 8),
+                container.leadingAnchor.constraint(equalTo: cell.contentView.leadingAnchor, constant: 16),
+                container.trailingAnchor.constraint(equalTo: cell.contentView.trailingAnchor, constant: -16),
+                container.bottomAnchor.constraint(equalTo: cell.contentView.bottomAnchor, constant: -8)
             ])
             cell.contentView.heightAnchor.constraint(equalToConstant: 76).isActive = true
             
@@ -318,6 +366,115 @@ class StickFigureAppearanceViewController: UIViewController, UITableViewDelegate
             button.layer.cornerRadius = 6
             button.translatesAutoresizingMaskIntoConstraints = false
             button.addTarget(self, action: #selector(resetColorsTapped), for: .touchUpInside)
+            cell.contentView.addSubview(button)
+            NSLayoutConstraint.activate([
+                button.topAnchor.constraint(equalTo: cell.contentView.topAnchor, constant: 8),
+                button.leadingAnchor.constraint(equalTo: cell.contentView.leadingAnchor, constant: 16),
+                button.trailingAnchor.constraint(equalTo: cell.contentView.trailingAnchor, constant: -16),
+                button.bottomAnchor.constraint(equalTo: cell.contentView.bottomAnchor, constant: -8),
+                button.heightAnchor.constraint(equalToConstant: 36)
+            ])
+            cell.contentView.heightAnchor.constraint(equalToConstant: 52).isActive = true
+            
+        default:
+            break
+        }
+        
+        return cell
+    }
+    
+    private func createEyesCell(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
+        let cell = UITableViewCell(style: .default, reuseIdentifier: "eyesCell")
+        cell.selectionStyle = .none
+        cell.contentView.subviews.forEach { $0.removeFromSuperview() }
+        
+        switch indexPath.row {
+        case 0:  // Eye color picker
+            let row = UIStackView()
+            row.axis = .horizontal
+            row.spacing = 12
+            row.alignment = .center
+            row.translatesAutoresizingMaskIntoConstraints = false
+            
+            let label = UILabel()
+            label.text = "Eyes"
+            label.font = UIFont.systemFont(ofSize: 14)
+            label.translatesAutoresizingMaskIntoConstraints = false
+            
+            let colorButton = UIButton(type: .system)
+            colorButton.backgroundColor = UIColor(appearance.eyeColor)
+            colorButton.layer.cornerRadius = 6
+            colorButton.translatesAutoresizingMaskIntoConstraints = false
+            colorButton.widthAnchor.constraint(equalToConstant: 40).isActive = true
+            colorButton.heightAnchor.constraint(equalToConstant: 40).isActive = true
+            colorButton.addTarget(self, action: #selector(selectEyeColorTapped), for: .touchUpInside)
+            
+            let toggle = UISwitch()
+            toggle.isOn = appearance.eyesEnabled
+            toggle.translatesAutoresizingMaskIntoConstraints = false
+            toggle.addTarget(self, action: #selector(eyesToggleTapped(_:)), for: .valueChanged)
+            
+            row.addArrangedSubview(label)
+            row.addArrangedSubview(colorButton)
+            row.addArrangedSubview(UIView())  // Spacer
+            row.addArrangedSubview(toggle)
+            
+            cell.contentView.addSubview(row)
+            NSLayoutConstraint.activate([
+                row.topAnchor.constraint(equalTo: cell.contentView.topAnchor, constant: 8),
+                row.leadingAnchor.constraint(equalTo: cell.contentView.leadingAnchor, constant: 16),
+                row.trailingAnchor.constraint(equalTo: cell.contentView.trailingAnchor, constant: -16),
+                row.bottomAnchor.constraint(equalTo: cell.contentView.bottomAnchor, constant: -8)
+            ])
+            cell.contentView.heightAnchor.constraint(equalToConstant: 56).isActive = true
+            
+        case 1:  // Iris color picker
+            let row = UIStackView()
+            row.axis = .horizontal
+            row.spacing = 12
+            row.alignment = .center
+            row.translatesAutoresizingMaskIntoConstraints = false
+            
+            let label = UILabel()
+            label.text = "Iris"
+            label.font = UIFont.systemFont(ofSize: 14)
+            label.translatesAutoresizingMaskIntoConstraints = false
+            
+            let colorButton = UIButton(type: .system)
+            colorButton.backgroundColor = UIColor(appearance.irisColor)
+            colorButton.layer.cornerRadius = 6
+            colorButton.translatesAutoresizingMaskIntoConstraints = false
+            colorButton.widthAnchor.constraint(equalToConstant: 40).isActive = true
+            colorButton.heightAnchor.constraint(equalToConstant: 40).isActive = true
+            colorButton.addTarget(self, action: #selector(selectIrisColorTapped), for: .touchUpInside)
+            
+            let toggle = UISwitch()
+            toggle.isOn = appearance.irisEnabled
+            toggle.translatesAutoresizingMaskIntoConstraints = false
+            toggle.addTarget(self, action: #selector(irisToggleTapped(_:)), for: .valueChanged)
+            
+            row.addArrangedSubview(label)
+            row.addArrangedSubview(colorButton)
+            row.addArrangedSubview(UIView())  // Spacer
+            row.addArrangedSubview(toggle)
+            
+            cell.contentView.addSubview(row)
+            NSLayoutConstraint.activate([
+                row.topAnchor.constraint(equalTo: cell.contentView.topAnchor, constant: 8),
+                row.leadingAnchor.constraint(equalTo: cell.contentView.leadingAnchor, constant: 16),
+                row.trailingAnchor.constraint(equalTo: cell.contentView.trailingAnchor, constant: -16),
+                row.bottomAnchor.constraint(equalTo: cell.contentView.bottomAnchor, constant: -8)
+            ])
+            cell.contentView.heightAnchor.constraint(equalToConstant: 56).isActive = true
+            
+        case 2:  // Reset button
+            let button = UIButton(type: .system)
+            button.setTitle("Reset Eyes", for: .normal)
+            button.backgroundColor = UIColor.red.withAlphaComponent(0.7)
+            button.setTitleColor(.white, for: .normal)
+            button.layer.cornerRadius = 6
+            button.translatesAutoresizingMaskIntoConstraints = false
+            button.addTarget(self, action: #selector(resetEyesTapped), for: .touchUpInside)
             cell.contentView.addSubview(button)
             NSLayoutConstraint.activate([
                 button.topAnchor.constraint(equalTo: cell.contentView.topAnchor, constant: 8),
@@ -716,6 +873,46 @@ class StickFigureAppearanceViewController: UIViewController, UITableViewDelegate
         saveAppearanceToGameState()
         tableView.reloadSections([1], with: .fade)
         onMusclePointsChanged?()
+    }
+    
+    @objc private func eyesToggleTapped(_ toggle: UISwitch) {
+        appearance.eyesEnabled = toggle.isOn
+        saveAppearanceToGameState()
+        onMusclePointsChanged?()
+    }
+    
+    @objc private func resetEyesTapped() {
+        appearance.eyesEnabled = false
+        appearance.eyeColor = .black
+        appearance.irisEnabled = false
+        appearance.irisColor = .black
+        saveAppearanceToGameState()
+        tableView.reloadSections([2], with: .fade)
+        onMusclePointsChanged?()
+    }
+    
+    @objc private func irisToggleTapped(_ toggle: UISwitch) {
+        appearance.irisEnabled = toggle.isOn
+        saveAppearanceToGameState()
+        onMusclePointsChanged?()
+    }
+    
+    @objc private func selectEyeColorTapped() {
+        presentColorPicker(initialColor: UIColor(appearance.eyeColor)) { [weak self] color in
+            self?.appearance.eyeColor = Color(uiColor: color)
+            self?.saveAppearanceToGameState()
+            self?.tableView.reloadSections([2], with: .fade)
+            self?.onMusclePointsChanged?()
+        }
+    }
+    
+    @objc private func selectIrisColorTapped() {
+        presentColorPicker(initialColor: UIColor(appearance.irisColor)) { [weak self] color in
+            self?.appearance.irisColor = Color(uiColor: color)
+            self?.saveAppearanceToGameState()
+            self?.tableView.reloadSections([2], with: .fade)
+            self?.onMusclePointsChanged?()
+        }
     }
     
     private func presentColorPicker(initialColor: UIColor, completion: @escaping (UIColor) -> Void) {

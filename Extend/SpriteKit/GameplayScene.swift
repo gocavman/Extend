@@ -6,6 +6,13 @@ class GameplayScene: GameScene {
     var levelLabel: SKLabelNode?
     var animationFrameIndex: Int = 0
     
+    // Eye blinking properties
+    private var lastInteractionTime: TimeInterval = 0
+    private var isEyesBlinking: Bool = false
+    private var eyesBlinkEndTime: TimeInterval = 0
+    private let inactivityThreshold: TimeInterval = 15.0  // 15 seconds
+    private let blinkDuration: TimeInterval = 0.25  // 1/2 second
+    
     // Button areas for UI
     private var exitButtonArea: SKShapeNode?
     private var statsButtonArea: SKShapeNode?
@@ -58,6 +65,9 @@ class GameplayScene: GameScene {
         
         // Create touch zones (debug visualization)
         setupControlZones()
+        
+        // Initialize eye blinking timer
+        lastInteractionTime = CACurrentMediaTime()
         
         // Start game loop
         startGameLoop()
@@ -144,7 +154,10 @@ class GameplayScene: GameScene {
             
             // Apply muscle scaling to the stand frame
             let scaledFrame = applyMuscleScaling(to: standFrame)
-            print("🎮 [JOINTS] Original: jointShapeSize=\(standFrame.jointShapeSize), strokeThicknessJoints=\(standFrame.strokeThicknessJoints) | After scaling: jointShapeSize=\(scaledFrame.jointShapeSize), strokeThicknessJoints=\(scaledFrame.strokeThicknessJoints)")
+            // Apply appearance colors to the frame
+            var frameWithAppearance = scaledFrame
+            StickFigureAppearance.shared.applyToStickFigure(&frameWithAppearance)
+            print("🎮 [JOINTS] Original: jointShapeSize=\(standFrame.jointShapeSize), strokeThicknessJoints=\(standFrame.strokeThicknessJoints) | After scaling: jointShapeSize=\(frameWithAppearance.jointShapeSize), strokeThicknessJoints=\(frameWithAppearance.strokeThicknessJoints)")
             
             // Create a container node
             let characterContainer = SKNode()
@@ -153,7 +166,7 @@ class GameplayScene: GameScene {
             characterContainer.zPosition = 10
             
             // Use renderStickFigure with proper scale
-            let stickFigureNode = renderStickFigure(scaledFrame, at: CGPoint.zero, scale: 1.2, flipped: false, jointShapeSize: scaledFrame.jointShapeSize)
+            let stickFigureNode = renderStickFigure(frameWithAppearance, at: CGPoint.zero, scale: 1.2, flipped: false, jointShapeSize: frameWithAppearance.jointShapeSize)
             characterContainer.addChild(stickFigureNode)
             
             // Render stand frame objects
@@ -247,6 +260,9 @@ class GameplayScene: GameScene {
     override func handleTouchBegan(at point: CGPoint) {
         print("🎮 ===== TOUCH BEGAN =====")
         print("🎮 Touch point: \(point)")
+        
+        // Reset interaction timer for eye blinking
+        lastInteractionTime = CACurrentMediaTime()
         
         handleTouchAtLocation(point, isPress: true)
     }
@@ -371,6 +387,9 @@ class GameplayScene: GameScene {
     private func updateGameLogic() {
         guard let gameState = gameState, let character = characterNode else { return }
         
+        // Update eye blinking
+        updateEyeBlinking()
+        
         // Check if character is moving - update animation
         if gameState.isMovingLeft || gameState.isMovingRight {
             // Start animation if not already running
@@ -475,7 +494,10 @@ class GameplayScene: GameScene {
                     characterContainer.removeAllChildren()
                     let shouldFlip = !gameState.facingRight
                     let scaledFrame = self.applyMuscleScaling(to: moveFrame)
-                    let stickFigureNode = self.renderStickFigure(scaledFrame, at: CGPoint.zero, scale: 1.2, flipped: shouldFlip, jointShapeSize: moveFrame.jointShapeSize)
+                    // Apply appearance colors to the frame
+                    var frameWithAppearance = scaledFrame
+                    StickFigureAppearance.shared.applyToStickFigure(&frameWithAppearance)
+                    let stickFigureNode = self.renderStickFigure(frameWithAppearance, at: CGPoint.zero, scale: 1.2, flipped: shouldFlip, jointShapeSize: frameWithAppearance.jointShapeSize)
                     characterContainer.addChild(stickFigureNode)
                     
                     // Render move frame objects
@@ -514,13 +536,44 @@ class GameplayScene: GameScene {
                 characterContainer.removeAllChildren()
                 let shouldFlip = !gameState.facingRight
                 let scaledFrame = applyMuscleScaling(to: standFrame)
-                let stickFigureNode = renderStickFigure(scaledFrame, at: CGPoint.zero, scale: 1.2, flipped: shouldFlip, jointShapeSize: scaledFrame.jointShapeSize)
+                // Apply appearance colors to the frame
+                var frameWithAppearance = scaledFrame
+                StickFigureAppearance.shared.applyToStickFigure(&frameWithAppearance)
+                let stickFigureNode = renderStickFigure(frameWithAppearance, at: CGPoint.zero, scale: 1.2, flipped: shouldFlip, jointShapeSize: frameWithAppearance.jointShapeSize)
                 characterContainer.addChild(stickFigureNode)
                 
                 // Render stand frame objects
                 renderFrameObjects(gameState.standFrameObjects, on: characterContainer, scale: 1.2)
             }
         }
+    }
+    
+    private func updateEyeBlinking() {
+        guard gameState != nil else { return }
+        guard StickFigureAppearance.shared.eyesEnabled else { return }
+        
+        let currentTime = CACurrentMediaTime()
+        let timeSinceLastInteraction = currentTime - lastInteractionTime
+        
+        // Check if we should trigger a blink
+        if timeSinceLastInteraction >= inactivityThreshold && !isEyesBlinking {
+            print("👁️ BLINK: Triggering blink after \(timeSinceLastInteraction) seconds of inactivity")
+            triggerEyeBlink()
+        }
+        
+        // Check if blink should end
+        if isEyesBlinking && currentTime >= eyesBlinkEndTime {
+            print("👁️ BLINK: Ending blink, restoring eyes")
+            isEyesBlinking = false
+            lastInteractionTime = CACurrentMediaTime()  // Reset timer after blink
+            refreshCharacterAppearance()
+        }
+    }
+    
+    private func triggerEyeBlink() {
+        isEyesBlinking = true
+        eyesBlinkEndTime = CACurrentMediaTime() + blinkDuration
+        refreshCharacterAppearance()
     }
     
     /// Refresh the character appearance when colors are changed in the customizer
@@ -533,6 +586,12 @@ class GameplayScene: GameScene {
         characterContainer.removeAllChildren()
         characterContainer.removeAction(forKey: "moveAnimation")
         
+        // Store original eye state if we're blinking
+        let originalEyesEnabled = StickFigureAppearance.shared.eyesEnabled
+        if isEyesBlinking {
+            StickFigureAppearance.shared.eyesEnabled = false
+        }
+        
         // Re-render with current frame
             if gameState.isMovingLeft || gameState.isMovingRight {
             // If moving, use current animation frame
@@ -540,7 +599,10 @@ class GameplayScene: GameScene {
                 let moveFrame = gameState.moveFrames[animationFrameIndex]
                 let shouldFlip = !gameState.facingRight
                 let scaledFrame = applyMuscleScaling(to: moveFrame)
-                let stickFigureNode = renderStickFigure(scaledFrame, at: CGPoint.zero, scale: 1.2, flipped: shouldFlip, jointShapeSize: scaledFrame.jointShapeSize)
+                // Apply appearance colors to the frame
+                var frameWithAppearance = scaledFrame
+                StickFigureAppearance.shared.applyToStickFigure(&frameWithAppearance)
+                let stickFigureNode = renderStickFigure(frameWithAppearance, at: CGPoint.zero, scale: 1.2, flipped: shouldFlip, jointShapeSize: frameWithAppearance.jointShapeSize)
                 characterContainer.addChild(stickFigureNode)
                 
                 // Render move frame objects
@@ -553,13 +615,19 @@ class GameplayScene: GameScene {
             if let standFrame = gameState.standFrame {
                 let shouldFlip = !gameState.facingRight
                 let scaledFrame = applyMuscleScaling(to: standFrame)
-                let stickFigureNode = renderStickFigure(scaledFrame, at: CGPoint.zero, scale: 1.2, flipped: shouldFlip, jointShapeSize: scaledFrame.jointShapeSize)
+                // Apply appearance colors to the frame
+                var frameWithAppearance = scaledFrame
+                StickFigureAppearance.shared.applyToStickFigure(&frameWithAppearance)
+                let stickFigureNode = renderStickFigure(frameWithAppearance, at: CGPoint.zero, scale: 1.2, flipped: shouldFlip, jointShapeSize: frameWithAppearance.jointShapeSize)
                 characterContainer.addChild(stickFigureNode)
                 
                 // Render stand frame objects
                 renderFrameObjects(gameState.standFrameObjects, on: characterContainer, scale: 1.2)
             }
         }
+        
+        // Restore original eye state
+        StickFigureAppearance.shared.eyesEnabled = originalEyesEnabled
     }
     
     /// Render objects associated with a frame

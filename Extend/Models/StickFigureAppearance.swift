@@ -18,6 +18,10 @@ class StickFigureAppearance {
     private let handColorKey = "appearance_handColor"
     private let footColorKey = "appearance_footColor"
     private let jointColorKey = "appearance_jointColor"
+    private let eyeColorKey = "appearance_eyeColor"
+    private let eyesEnabledKey = "appearance_eyesEnabled"
+    private let irisColorKey = "appearance_irisColor"
+    private let irisEnabledKey = "appearance_irisEnabled"
     
     var headColor: Color {
         get { colorFromKey(headColorKey, default: .black) }
@@ -84,6 +88,26 @@ class StickFigureAppearance {
         set { saveColor(newValue, to: jointColorKey) }
     }
     
+    var eyeColor: Color {
+        get { colorFromKey(eyeColorKey, default: .black) }
+        set { saveColor(newValue, to: eyeColorKey) }
+    }
+    
+    var eyesEnabled: Bool {
+        get { UserDefaults.standard.bool(forKey: eyesEnabledKey) }
+        set { UserDefaults.standard.set(newValue, forKey: eyesEnabledKey) }
+    }
+    
+    var irisColor: Color {
+        get { colorFromKey(irisColorKey, default: .black) }
+        set { saveColor(newValue, to: irisColorKey) }
+    }
+    
+    var irisEnabled: Bool {
+        get { UserDefaults.standard.bool(forKey: irisEnabledKey) }
+        set { UserDefaults.standard.set(newValue, forKey: irisEnabledKey) }
+    }
+    
     // MARK: - Helper Methods
     
     private func colorFromKey(_ key: String, default defaultColor: Color) -> Color {
@@ -103,6 +127,7 @@ class StickFigureAppearance {
     
     /// Apply appearance colors to a StickFigure2D instance
     func applyToStickFigure(_ figure: inout StickFigure2D) {
+        print("👁️ APPEARANCE: Applying appearance - eyesEnabled=\(eyesEnabled), eyeColor=\(eyeColor)")
         figure.headColor = headColor
         figure.torsoColor = torsoColor
         figure.leftUpperArmColor = leftUpperArmColor
@@ -116,6 +141,11 @@ class StickFigureAppearance {
         figure.handColor = handColor
         figure.footColor = footColor
         figure.jointColor = jointColor
+        figure.eyeColor = eyeColor
+        figure.eyesEnabled = eyesEnabled
+        figure.irisColor = irisColor
+        figure.irisEnabled = irisEnabled
+        print("👁️ APPLIED: figure.eyesEnabled=\(figure.eyesEnabled), figure.eyeColor=\(figure.eyeColor)")
     }
     
     /// Reset all colors to default
@@ -133,6 +163,12 @@ class StickFigureAppearance {
         handColor = .black
         footColor = .black
         jointColor = .black
+        eyeColor = .black
+        eyesEnabled = false
+        irisColor = .black
+        irisEnabled = false
+        irisColor = .black
+        irisEnabled = false
     }
 }
 
