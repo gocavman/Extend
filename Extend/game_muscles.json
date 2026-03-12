@@ -229,7 +229,7 @@
     {
       "id": "fusiformUpperLegs",
       "name": "Upper Leg Bulge",
-      "muscleGroups": ["Quads", "Hamstrings"],
+      "muscleGroups": ["Quads"],
       "progression": {
         "0": 0,
         "25": 2.95,
@@ -241,7 +241,7 @@
     {
       "id": "strokeThicknessUpperLegs",
       "name": "Upper Leg Thickness",
-      "muscleGroups": ["Quads", "Hamstrings"],
+      "muscleGroups": ["Hamstrings"],
       "progression": {
         "0": 1.5,
         "25": 4.0,
@@ -404,6 +404,18 @@
         "50": 0.5,
         "75": 1,
         "100": 1
+      }
+    },
+    {
+      "id": "Heart",
+      "name": "Cardio",
+      "muscleGroups": ["Heart"],
+      "progression": {
+        "0": 0,
+        "25": 1,
+        "50": 2,
+        "75": 3,
+        "100": 4
       }
     }
   ]
