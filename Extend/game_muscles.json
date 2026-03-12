@@ -205,7 +205,7 @@
     {
       "id": "fusiformUpperTorso",
       "name": "Upper Torso Bulge",
-      "muscleGroups": ["Back"],
+      "muscleGroups": ["Chest"],
       "progression": {
         "0": 0,
         "25": 5.85,
@@ -217,7 +217,7 @@
     {
       "id": "strokeThicknessUpperTorso",
       "name": "Upper Torso Thickness",
-      "muscleGroups": ["Back","Chest"],
+      "muscleGroups": ["Chest"],
       "progression": {
         "0": 5.0,
         "25": 3.2,
@@ -409,7 +409,7 @@
     {
       "id": "skeletonSizeTorso",
       "name": "Skeleton Size - Torso",
-      "muscleGroups": ["Derived"],
+      "muscleGroups": ["Chest", "Abs", "Back"],
       "progression": {
         "0": 0.0,
         "25": 0.97,
@@ -421,7 +421,7 @@
     {
       "id": "skeletonSizeArm",
       "name": "Skeleton Size - Arm",
-      "muscleGroups": ["Derived"],
+      "muscleGroups": ["Biceps", "Triceps"],
       "progression": {
         "0": 0.0,
         "25": 0.97,
@@ -433,7 +433,7 @@
     {
       "id": "skeletonSizeLeg",
       "name": "Skeleton Size - Leg",
-      "muscleGroups": ["Derived"],
+      "muscleGroups": ["Quads", "Hamstrings", "Calfs"],
       "progression": {
         "0": 0.0,
         "25": 0.97,
@@ -445,7 +445,7 @@
     {
       "id": "waistThicknessMultiplier",
       "name": "Waist Thickness",
-      "muscleGroups": ["Derived"],
+      "muscleGroups": ["Abs"],
       "progression": {
         "0": 0.0,
         "25": 0.9,
@@ -457,7 +457,7 @@
     {
       "id": "strokeThicknessFullTorso",
       "name": "Full Torso Thickness",
-      "muscleGroups": ["Derived"],
+      "muscleGroups": ["Chest", "Back", "Abs"],
       "progression": {
         "0": 1.0,
         "25": 1.0,
