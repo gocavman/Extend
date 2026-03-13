@@ -234,8 +234,8 @@ class MuscleSystem {
             decoder.dateDecodingStrategy = .secondsSince1970
             
             let allFrames = try decoder.decode([SavedEditFrame].self, from: data)
-            print("🦵 MuscleSystem.loadStandFrames: Decoded \(allFrames.count) total frames")
-            print("🦵 Frame names: \(allFrames.map { $0.name }.joined(separator: ", "))")
+            //print("🦵 MuscleSystem.loadStandFrames: Decoded \(allFrames.count) total frames")
+            //print("🦵 Frame names: \(allFrames.map { $0.name }.joined(separator: ", "))")
             
             // Explicitly load the 5 Stand frames in the required order
             let standNames = ["Extra Small Stand", "Small Stand", "Stand", "Large Stand", "Extra Large Stand"]
@@ -244,7 +244,7 @@ class MuscleSystem {
             for name in standNames {
                 if let frame = allFrames.first(where: { $0.name == name }) {
                     loadedFrames.append(frame)
-                    print("🦵 Loaded: \(name) - strokeThicknessFullTorso=\(frame.strokeThicknessFullTorso), strokeThicknessUpperTorso=\(frame.strokeThicknessUpperTorso), fusiformDeltoids=\(frame.fusiformDeltoids), strokeThicknessDeltoids=\(frame.strokeThicknessDeltoids)")
+                    //print("🦵 Loaded: \(name) - strokeThicknessFullTorso=\(frame.strokeThicknessFullTorso), strokeThicknessUpperTorso=\(frame.strokeThicknessUpperTorso), fusiformDeltoids=\(frame.fusiformDeltoids), strokeThicknessDeltoids=\(frame.strokeThicknessDeltoids)")
                 } else {
                     print("🦵 NOT FOUND: \(name)")
                 }
@@ -253,7 +253,7 @@ class MuscleSystem {
             // Only set if we got all 5 frames
             if loadedFrames.count == 5 {
                 standFrames = loadedFrames
-                print("🦵 ✅ Successfully loaded all 5 stand frames")
+                //print("🦵 ✅ Successfully loaded all 5 stand frames")
             } else {
                 print("🦵 ❌ Only loaded \(loadedFrames.count) frames, need 5")
             }
@@ -288,20 +288,11 @@ class MuscleSystem {
         let framePoints = [0.0, 25.0, 50.0, 75.0, 100.0]
         let clamped = max(0, min(100, musclePoints))
         
-        // Debug for deltoid at 100 points
-        if propertyKey == "fusiformDeltoids" && clamped == 100.0 {
-            print("🦵 DEBUG fusiformDeltoids at 100pts: tier4Frame=\(standFrames[4].name), fusiform=\(standFrames[4].fusiformDeltoids)")
-        }
-        
-        if propertyKey == "strokeThicknessFullTorso" {
-            print("🦵 interpolateProperty strokeThicknessFullTorso: musclePoints=\(musclePoints), clamped=\(clamped)")
-        }
-        
         // Clamp to range [0, 100]
         if clamped <= 0 {
             let val = getPropertyValue(propertyKey, from: standFrames[0])
             if propertyKey == "strokeThicknessFullTorso" {
-                print("🦵   -> at 0 points: \(val)")
+                //print("🦵   -> at 0 points: \(val)")
             }
             return val
         }
@@ -311,15 +302,15 @@ class MuscleSystem {
             if val == 0 && (propertyKey.contains("fusiform") || propertyKey.contains("peakPosition")) {
                 let progressionVal = getProgressionValue(propertyKey, musclePoints: clamped)
                 if progressionVal > 0 {
-                    print("🦵   -> at 100 points: frame=\(val), using progression=\(progressionVal)")
+                    //print("🦵   -> at 100 points: frame=\(val), using progression=\(progressionVal)")
                     return progressionVal
                 }
             }
             if propertyKey == "fusiformDeltoids" {
-                print("🦵   -> at 100 points from \(standFrames[4].name): \(val)")
+                //print("🦵   -> at 100 points from \(standFrames[4].name): \(val)")
             }
             if propertyKey == "strokeThicknessFullTorso" {
-                print("🦵   -> at 100 points: \(val)")
+                //print("🦵   -> at 100 points: \(val)")
             }
             return val
         }
@@ -336,7 +327,7 @@ class MuscleSystem {
                 let interpolated = v1 + (v2 - v1) * ratio
                 
                 if propertyKey == "strokeThicknessFullTorso" {
-                    print("🦵   -> between frames \(i) and \(i+1): v1=\(v1), v2=\(v2), ratio=\(ratio), result=\(interpolated)")
+                    //print("🦵   -> between frames \(i) and \(i+1): v1=\(v1), v2=\(v2), ratio=\(ratio), result=\(interpolated)")
                 }
                 
                 return interpolated
@@ -402,7 +393,7 @@ class MuscleSystem {
         case "jointShapeSize": value = Double(frame.jointShapeSize)
         case "strokeThicknessFullTorso":
             value = Double(frame.strokeThicknessFullTorso)
-            print("🦵 getPropertyValue strokeThicknessFullTorso: frame=\(frame.name), value=\(value)")
+            //print("🦵 getPropertyValue strokeThicknessFullTorso: frame=\(frame.name), value=\(value)")
         case "peakPositionDeltoids": value = Double(frame.peakPositionDeltoids)
         case "peakPositionBicep": value = Double(frame.peakPositionBicep)
         case "peakPositionTricep": value = Double(frame.peakPositionTricep)
@@ -577,7 +568,7 @@ class MuscleSystem {
             if let documentsURL = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first {
                 let fileURL = documentsURL.appendingPathComponent("game_muscles.json")
                 try jsonData.write(to: fileURL, options: .atomic)
-                print("✅ game_muscles.json regenerated and saved")
+                //print("✅ game_muscles.json regenerated and saved")
                 return true
             }
         } catch {

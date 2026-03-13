@@ -1170,13 +1170,13 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
                 "rightLowerLeg": .black
             ]
             
-            print("🎮 ✓ Loaded Stand frame - scale:\(standFrame.scale), fusiform: bicep=\(standFrame.fusiformBicep), tricep=\(standFrame.fusiformTricep), angles: shoulder:\(standFrame.leftShoulderAngle)°, elbow:\(standFrame.leftElbowAngle)°, knee:\(standFrame.leftKneeAngle)°")
+            //print("🎮 ✓ Loaded Stand frame - scale:\(standFrame.scale), fusiform: bicep=\(standFrame.fusiformBicep), tricep=\(standFrame.fusiformTricep), angles: shoulder:\(standFrame.leftShoulderAngle)°, elbow:\(standFrame.leftElbowAngle)°, knee:\(standFrame.leftKneeAngle)°")
         }
     }
     
     // MARK: - Update Figure
     func updateFigure() {
-        print("🎮 DEBUG updateFigure: fusiformShoulders=\(fusiformShoulders), skeletonSizeTorso=\(skeletonSizeTorso) skeletonSizeArm=\(skeletonSizeArm) skeletonSizeLeg=\(skeletonSizeLeg) jointShapeSize=\(jointShapeSize)")
+        //print("🎮 DEBUG updateFigure: fusiformShoulders=\(fusiformShoulders), skeletonSizeTorso=\(skeletonSizeTorso) skeletonSizeArm=\(skeletonSizeArm) skeletonSizeLeg=\(skeletonSizeLeg) jointShapeSize=\(jointShapeSize)")
         
         // Update coordinate label if it exists
         coordinateLabel?.text = String(format: "X: %.0f\nY: %.0f", figureOffsetX, figureOffsetY)
@@ -1503,8 +1503,8 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
     }
     
     private func applyFrame(_ frame: SavedEditFrame) {
-        print("🎮 Applying frame: \(frame.name)")
-        print("🎮 DEBUG applyFrame: positionX=\(frame.positionX), positionY=\(frame.positionY)")
+        //print("🎮 Applying frame: \(frame.name)")
+        //print("🎮 DEBUG applyFrame: positionX=\(frame.positionX), positionY=\(frame.positionY)")
         // Restore all angles
         neckRotation = frame.headAngle
         upperTorsoRotation = frame.torsoRotationAngle
@@ -1549,7 +1549,7 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
         // Restore position offsets
         figureOffsetX = frame.positionX
         figureOffsetY = frame.positionY
-        print("🎮 DEBUG applyFrame after assignment: figureOffsetX=\(figureOffsetX), figureOffsetY=\(figureOffsetY)")
+        //print("🎮 DEBUG applyFrame after assignment: figureOffsetX=\(figureOffsetX), figureOffsetY=\(figureOffsetY)")
         
         // Restore all multiplier and size properties
         skeletonSizeTorso = frame.skeletonSizeTorso
@@ -2098,7 +2098,7 @@ class StickFigureEditorScene: SKScene {
         updatedFrame.strokeThicknessDeltoids = strokeThicknessDeltoids
         updatedFrame.strokeThicknessTrapezius = strokeThicknessTrapezius
         
-        print("🎮 DEBUG updateWithValues: Setting skeletonSizeTorso=\(skeletonSizeTorso) skeletonSizeArm=\(skeletonSizeArm) skeletonSizeLeg=\(skeletonSizeLeg) jointShapeSize=\(jointShapeSize) on updatedFrame")
+        //print("🎮 DEBUG updateWithValues: Setting skeletonSizeTorso=\(skeletonSizeTorso) skeletonSizeArm=\(skeletonSizeArm) skeletonSizeLeg=\(skeletonSizeLeg) jointShapeSize=\(jointShapeSize) on updatedFrame")
         
         // Apply angles to the frame - map to existing properties
         updatedFrame.headAngle = neckRotation           // Maps neckRotation to headAngle
@@ -2373,7 +2373,7 @@ class FrameListViewController: UIViewController, UITableViewDataSource, UITableV
                     bodyPartColors: nil,
                     showInteractiveJoints: nil
                 )
-                print("🎮 DEBUG: Bundle frame loaded - name=\(bundleFrame.name), figureOffsetX=\(pose.figureOffsetX), figureOffsetY=\(pose.figureOffsetY)")
+                //print("🎮 DEBUG: Bundle frame loaded - name=\(bundleFrame.name), figureOffsetX=\(pose.figureOffsetX), figureOffsetY=\(pose.figureOffsetY)")
                 // Convert AnimationObjects to EditorObjects
                 let editorObjects = bundleFrame.objects.map { animObj in
                     EditorObject(

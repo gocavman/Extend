@@ -975,7 +975,7 @@ class StickFigureAppearanceViewController: UIViewController, UITableViewDelegate
         textField.text = ""
         tableView.reloadSections([0], with: .fade)
         onMusclePointsChanged?()
-        print("✓ Set all properties to \(value)")
+        //print("✓ Set all properties to \(value)")
     }
 }
 

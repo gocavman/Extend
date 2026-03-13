@@ -127,7 +127,7 @@ class StickFigureAppearance {
     
     /// Apply appearance colors to a StickFigure2D instance
     func applyToStickFigure(_ figure: inout StickFigure2D) {
-        print("👁️ APPEARANCE: Applying appearance - eyesEnabled=\(eyesEnabled), eyeColor=\(eyeColor)")
+        //print("👁️ APPEARANCE: Applying appearance - eyesEnabled=\(eyesEnabled), eyeColor=\(eyeColor)")
         figure.headColor = headColor
         figure.torsoColor = torsoColor
         figure.leftUpperArmColor = leftUpperArmColor
@@ -145,7 +145,7 @@ class StickFigureAppearance {
         figure.eyesEnabled = eyesEnabled
         figure.irisColor = irisColor
         figure.irisEnabled = irisEnabled
-        print("👁️ APPLIED: figure.eyesEnabled=\(figure.eyesEnabled), figure.eyeColor=\(figure.eyeColor)")
+        //print("👁️ APPLIED: figure.eyesEnabled=\(figure.eyesEnabled), figure.eyeColor=\(figure.eyeColor)")
     }
     
     /// Reset all colors to default

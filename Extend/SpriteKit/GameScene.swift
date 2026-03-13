@@ -337,13 +337,6 @@ class GameScene: SKScene {
                     }
                     // If "none", both sides expand normally
                     
-                    // DEBUG: Log first deltoid pass
-                    if debugFirstPass && i == 0 {
-                        print("🎨 DELTOID DEBUG START: fusiform=\(fusiform), peakTLeft=\(peakTLeft), peakTRight=\(peakTRight), legAsymmetry='\(legAsymmetry)'")
-                    }
-                    if debugFirstPass && (i == 0 || i == numSegments/2 || i == numSegments) {
-                        print("🎨 DELTOID DEBUG: i=\(i), t=\(t), distFromPeakLeft=\(distFromPeakLeft), easeTLeft=\(easeTLeft), widthFactorLeft=\(widthFactorLeft)")
-                    }
                 } else {
                     // NORMAL: Middle BULGE profile with smooth curve (not sharp) - uses peakPosition
                     let angle = (t - peakPosition) * CGFloat.pi
@@ -953,18 +946,18 @@ class GameScene: SKScene {
         
         // Draw trapezius (traps) as triangular shape from neck to both shoulder joints
         // Skip if both stroke thickness and fusiform are 0
-        print("🔍 TRAPEZIUS CHECK: strokeThicknessUpperTorso=\(mutableFigure.strokeThicknessUpperTorso), fusiformShoulders=\(mutableFigure.fusiformShoulders)")
+        //print("🔍 TRAPEZIUS CHECK: strokeThicknessUpperTorso=\(mutableFigure.strokeThicknessUpperTorso), fusiformShoulders=\(mutableFigure.fusiformShoulders)")
         if mutableFigure.strokeThicknessUpperTorso > 0 || mutableFigure.fusiformShoulders > 0 {
-            print("🔍 TRAPEZIUS: DRAWING with fusiformShoulders=\(mutableFigure.fusiformShoulders)")
+            //print("🔍 TRAPEZIUS: DRAWING with fusiformShoulders=\(mutableFigure.fusiformShoulders)")
             drawTrapezius(neckPos: neckPos, leftShoulderPos: leftShoulderPos, rightShoulderPos: rightShoulderPos, color: toSKColor(mutableFigure.torsoColor), strokeThickness: mutableFigure.strokeThicknessTrapezius, fusiform: mutableFigure.fusiformShoulders, peakPosition: mutableFigure.peakPositionUpperTorso, baseCenter: baseCenter, scale: scale, container: container)
         } else {
-            print("🔍 TRAPEZIUS: SKIPPED (both strokeThickness and fusiform are 0)")
+            //print("🔍 TRAPEZIUS: SKIPPED (both strokeThickness and fusiform are 0)")
         }
         
         // Draw deltoids (shoulder caps) - render BEFORE upper arms so they appear behind
         // Skip if both stroke thickness and fusiform are 0
         if mutableFigure.strokeThicknessDeltoids > 0 || mutableFigure.fusiformDeltoids > 0 {
-            print("🔍 DELTOID RENDER: stroke=\(mutableFigure.strokeThicknessDeltoids) fusiform=\(mutableFigure.fusiformDeltoids) peak=\(mutableFigure.peakPositionDeltoids)")
+            //print("🔍 DELTOID RENDER: stroke=\(mutableFigure.strokeThicknessDeltoids) fusiform=\(mutableFigure.fusiformDeltoids) peak=\(mutableFigure.peakPositionDeltoids)")
             // Left deltoid: from shoulder joint, extending down ~1/2 of upper arm, following shoulder rotation (longer for visible taper)
             let leftArmVector = CGPoint(x: leftUpperArmEnd.x - leftShoulderPos.x, y: leftUpperArmEnd.y - leftShoulderPos.y)
             let leftArmLength = sqrt(leftArmVector.x * leftArmVector.x + leftArmVector.y * leftArmVector.y)
@@ -987,7 +980,7 @@ class GameScene: SKScene {
             // Deltoid peak controlled by peakPositionDeltoids slider
             drawTaperedSegment(from: rightDeltoidStart, to: rightDeltoidEnd, color: toSKColor(mutableFigure.rightUpperArmColor), strokeThickness: mutableFigure.strokeThicknessDeltoids, fusiform: mutableFigure.fusiformDeltoids, inverted: true, peakPosition: mutableFigure.peakPositionDeltoids, legAsymmetry: "left")
         } else {
-            print("🔍 DELTOID SKIP: stroke=\(mutableFigure.strokeThicknessDeltoids) fusiform=\(mutableFigure.fusiformDeltoids)")
+            //print("🔍 DELTOID SKIP: stroke=\(mutableFigure.strokeThicknessDeltoids) fusiform=\(mutableFigure.fusiformDeltoids)")
         }
         
         // Draw arms - with independent bicep/tricep control
@@ -1014,43 +1007,43 @@ class GameScene: SKScene {
         
         // Draw head
         let headRadius = mutableFigure.headRadius * 1.2  // Reduced from 3.5 to 1.2 - much smaller
-        print("🎮 Drawing head at \(headPos) with radius \(headRadius)")
+        //print("🎮 Drawing head at \(headPos) with radius \(headRadius)")
         drawCircle(at: headPos, radius: headRadius, color: SKColor(mutableFigure.headColor))
         
         // Draw eyes if enabled
-        print("👁️ EYE DEBUG: eyesEnabled=\(mutableFigure.eyesEnabled), eyeColor=\(mutableFigure.eyeColor), headRadius=\(headRadius), headPos=\(headPos)")
+        //print("👁️ EYE DEBUG: eyesEnabled=\(mutableFigure.eyesEnabled), eyeColor=\(mutableFigure.eyeColor), headRadius=\(headRadius), headPos=\(headPos)")
         if mutableFigure.eyesEnabled {
             let eyeRadius = headRadius * 0.3  // 20% of head radius
             let eyeSpacing = headRadius * 0.6  // Space between eyes
             let eyeVerticalOffset = headRadius * -0.1  // Slight vertical offset from center
             let irisRadius = eyeRadius * 0.5  // 1/2 of eye radius
             
-            print("👁️ EYE RENDER: eyeRadius=\(eyeRadius), eyeSpacing=\(eyeSpacing), eyeVerticalOffset=\(eyeVerticalOffset), irisRadius=\(irisRadius), irisEnabled=\(mutableFigure.irisEnabled)")
+            //print("👁️ EYE RENDER: eyeRadius=\(eyeRadius), eyeSpacing=\(eyeSpacing), eyeVerticalOffset=\(eyeVerticalOffset), irisRadius=\(irisRadius), irisEnabled=\(mutableFigure.irisEnabled)")
             
             // Left eye
             let leftEyePos = CGPoint(x: headPos.x - eyeSpacing / 2, y: headPos.y - eyeVerticalOffset)
-            print("👁️ LEFT EYE: pos=\(leftEyePos), radius=\(eyeRadius), color=\(mutableFigure.eyeColor)")
+            //print("👁️ LEFT EYE: pos=\(leftEyePos), radius=\(eyeRadius), color=\(mutableFigure.eyeColor)")
             drawCircle(at: leftEyePos, radius: eyeRadius, color: SKColor(mutableFigure.eyeColor))
             
             // Draw left iris if enabled
             if mutableFigure.irisEnabled {
-                print("👁️ LEFT IRIS: pos=\(leftEyePos), radius=\(irisRadius), color=\(mutableFigure.irisColor)")
+                //print("👁️ LEFT IRIS: pos=\(leftEyePos), radius=\(irisRadius), color=\(mutableFigure.irisColor)")
                 drawCircle(at: leftEyePos, radius: irisRadius, color: SKColor(mutableFigure.irisColor))
             }
             
             // Right eye
             let rightEyePos = CGPoint(x: headPos.x + eyeSpacing / 2, y: headPos.y - eyeVerticalOffset)
-            print("👁️ RIGHT EYE: pos=\(rightEyePos), radius=\(eyeRadius), color=\(mutableFigure.eyeColor)")
+            //print("👁️ RIGHT EYE: pos=\(rightEyePos), radius=\(eyeRadius), color=\(mutableFigure.eyeColor)")
             drawCircle(at: rightEyePos, radius: eyeRadius, color: SKColor(mutableFigure.eyeColor))
             
             // Draw right iris if enabled
             if mutableFigure.irisEnabled {
-                print("👁️ RIGHT IRIS: pos=\(rightEyePos), radius=\(irisRadius), color=\(mutableFigure.irisColor)")
+                //print("👁️ RIGHT IRIS: pos=\(rightEyePos), radius=\(irisRadius), color=\(mutableFigure.irisColor)")
                 drawCircle(at: rightEyePos, radius: irisRadius, color: SKColor(mutableFigure.irisColor))
             }
-            print("👁️ EYES DRAWN SUCCESSFULLY")
+            //print("👁️ EYES DRAWN SUCCESSFULLY")
         } else {
-            print("👁️ EYES DISABLED: eyesEnabled=false")
+            //print("👁️ EYES DISABLED: eyesEnabled=false")
         }
         
         // NOW DRAW THE SKELETON CONNECTORS LAST (on top of everything else)
@@ -1070,7 +1063,7 @@ class GameScene: SKScene {
             }
             
             let lineWidth = max(mutableFigure.strokeThicknessJoints * 0.8 * scale * skeletonSizeMultiplier, 1.0)
-            print("🦴 Drawing skeleton connector: lineWidth=\(lineWidth), skeletonSize=\(skeletonSizeMultiplier), jointThickness=\(mutableFigure.strokeThicknessJoints), scale=\(scale)")
+            //print("🦴 Drawing skeleton connector: lineWidth=\(lineWidth), skeletonSize=\(skeletonSizeMultiplier), jointThickness=\(mutableFigure.strokeThicknessJoints), scale=\(scale)")
             
             // Convert to relative coordinates
             let fromRelative = toRelative(from)
@@ -1158,14 +1151,14 @@ class GameScene: SKScene {
         
         // Add joint caps at connection points to fill gaps (elbows, knees, waist, shoulders)
         let jointCapRadius = mutableFigure.strokeThicknessJoints * 0.3 * scale * jointShapeSize
-        print("🎮 DEBUG joints: strokeThicknessJoints=\(mutableFigure.strokeThicknessJoints), jointShapeSize=\(jointShapeSize), scale=\(scale), jointCapRadius=\(jointCapRadius)")
+        //print("🎮 DEBUG joints: strokeThicknessJoints=\(mutableFigure.strokeThicknessJoints), jointShapeSize=\(jointShapeSize), scale=\(scale), jointCapRadius=\(jointCapRadius)")
         
         // Only draw joint caps if radius > 0 (when both strokeThicknessJoints and jointShapeSize > 0)
         guard jointCapRadius > 0 else {
-            print("🎮 Joints skipped - jointCapRadius <= 0. Stick figure rendered with \(container.children.count) nodes!")
+            //print("🎮 Joints skipped - jointCapRadius <= 0. Stick figure rendered with \(container.children.count) nodes!")
             return container
         }
-        print("🎮 Drawing joint circles with radius=\(jointCapRadius)")
+        //print("🎮 Drawing joint circles with radius=\(jointCapRadius)")
         
         // LEFT ARM ELBOW - blend upper and lower arm colors by using upper arm color
         drawCircle(at: leftUpperArmEnd, radius: jointCapRadius, color: toSKColor(mutableFigure.leftUpperArmColor))
@@ -1186,7 +1179,7 @@ class GameScene: SKScene {
         drawCircle(at: rightShoulderPos, radius: jointCapRadius, color: toSKColor(mutableFigure.torsoColor))
         
         
-        print("🎮 Stick figure rendered with \(container.children.count) nodes!")
+        //print("🎮 Stick figure rendered with \(container.children.count) nodes!")
         return container
     }
     
@@ -1200,7 +1193,7 @@ class GameScene: SKScene {
         // The fusiform slider controls the HEIGHT up the neck (how far the triangles extend)
         // The long edge (along the neck) should be slightly curved
         
-        print("🔍 drawTrapezius called: fusiform=\(fusiform), strokeThickness=\(strokeThickness), scale=\(scale)")
+        //Print("🔍 drawTrapezius called: fusiform=\(fusiform), strokeThickness=\(strokeThickness), scale=\(scale)")
         
         // Convert to relative coordinates
         let neckRelative = CGPoint(x: (neckPos.x - baseCenter.x) * scale, y: (baseCenter.y - neckPos.y) * scale)
@@ -1228,7 +1221,7 @@ class GameScene: SKScene {
             y: neckBottomRelative.y + (neckTopRelative.y - neckBottomRelative.y) * heightFactor
         )
         
-        print("🔍 drawTrapezius: neckTop=\(actualNeckTop), neckBottom=\(neckBottomRelative), leftShoulder=\(leftShoulderRelative), heightFactor=\(heightFactor)")
+        //print("🔍 drawTrapezius: neckTop=\(actualNeckTop), neckBottom=\(neckBottomRelative), leftShoulder=\(leftShoulderRelative), heightFactor=\(heightFactor)")
         
         // LEFT TRAPEZIUS TRIANGLE
         // Vertices: actualNeckTop, neckBottomRelative, leftShoulderRelative

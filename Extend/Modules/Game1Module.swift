@@ -171,24 +171,24 @@ struct Door {
 func loadActionConfigs() -> [ActionConfig] {
     // Try to load from bundle
     if let url = Bundle.main.url(forResource: "actions_config", withExtension: "json") {
-        print("📂 Found actions_config.json at: \(url)")
+        //print("📂 Found actions_config.json at: \(url)")
         
         do {
             let data = try Data(contentsOf: url)
-            print("📦 Read \(data.count) bytes from actions_config.json")
+            //print("📦 Read \(data.count) bytes from actions_config.json")
             
             let decoder = JSONDecoder()
             let configs = try decoder.decode([ActionConfig].self, from: data)
-            print("✅ Successfully loaded \(configs.count) action configurations from JSON")
+            //print("✅ Successfully loaded \(configs.count) action configurations from JSON")
             
             // Debug: Print animation config for each action
-            for config in configs {
-                if let animConfig = config.stickFigureAnimation {
-                    print("  🎬 \(config.id): Animation=\(animConfig.animationName), Frames=\(animConfig.frameNumbers.count), Interval=\(animConfig.baseFrameInterval)s")
-                } else {
-                    print("  ⚠️ \(config.id): NO stickFigureAnimation defined")
-                }
-            }
+            //for config in configs {
+                //if let animConfig = config.stickFigureAnimation {
+                    //print("  🎬 \(config.id): Animation=\(animConfig.animationName), Frames=\(animConfig.frameNumbers.count), Interval=\(animConfig.baseFrameInterval)s")
+                //} else {
+                    //print("  ⚠️ \(config.id): NO stickFigureAnimation defined")
+                //}
+            //}
             return configs
         } catch {
             print("❌ Failed to decode actions_config.json: \(error)")
@@ -760,7 +760,7 @@ class StickFigureGameState {
         if let standFrameData = allFrames.first(where: { $0.name == "Stand" && $0.frameNumber == 0 }) {
             standFrame = standFrameData.pose.toStickFigure2D()
             standFrameObjects = standFrameData.objects
-            print("🎮 ✓ Loaded Stand frame (frameNumber 0) with \(standFrameData.objects.count) objects")
+            //print("🎮 ✓ Loaded Stand frame (frameNumber 0) with \(standFrameData.objects.count) objects")
         } else {
             print("🎮 ✗ Stand frame 0 not found")
             standFrameObjects = []
@@ -777,22 +777,22 @@ class StickFigureGameState {
             moveFrameNumbers = animation.frameNumbers
         }
         
-        print("🎮 DEBUG: allFrames.count = \(allFrames.count)")
-        print("🎮 DEBUG: Looking for Move frames with frameNumbers: \(moveFrameNumbers)")
-        let moveFramesInAllFrames = allFrames.filter { $0.name == "Move" }
-        print("🎮 DEBUG: Found \(moveFramesInAllFrames.count) Move frames in allFrames")
-        moveFramesInAllFrames.forEach { print("🎮   - Move frame \($0.frameNumber)") }
+        //print("🎮 DEBUG: allFrames.count = \(allFrames.count)")
+        //print("🎮 DEBUG: Looking for Move frames with frameNumbers: \(moveFrameNumbers)")
+        //let moveFramesInAllFrames = allFrames.filter { $0.name == "Move" }
+        //print("🎮 DEBUG: Found \(moveFramesInAllFrames.count) Move frames in allFrames")
+        //moveFramesInAllFrames.forEach { print("🎮   - Move frame \($0.frameNumber)") }
         
         for frameNum in moveFrameNumbers {
             if let frame = allFrames.first(where: { $0.name == "Move" && $0.frameNumber == frameNum }) {
                 moveFrames.append(frame.pose.toStickFigure2D())
                 moveFrameObjects.append(frame.objects)
-                print("🎮 ✓ Loaded Move frame \(frameNum)")
+                //print("🎮 ✓ Loaded Move frame \(frameNum)")
             } else {
                 print("🎮 ✗ Move frame \(frameNum) not found in allFrames")
             }
         }
-        print("🎮 Loaded \(moveFrames.count) Move frames total: \(moveFrameNumbers)")
+        //print("🎮 Loaded \(moveFrames.count) Move frames total: \(moveFrameNumbers)")
         
         // Load Shaker frames 1-2
         shakerFrames = []
@@ -848,13 +848,13 @@ class StickFigureGameState {
         
         // Load the stick figure frames for this room
         loadStickFigureFrames()
-        print("🎮 initializeRoom: Loaded stick figure frames - standFrame = \(standFrame != nil ? "SET" : "NIL")")
+        //print("🎮 initializeRoom: Loaded stick figure frames - standFrame = \(standFrame != nil ? "SET" : "NIL")")
     }
     
     func forceReloadFrames() {
-        print("🎮 forceReloadFrames: Reloading all animation frames...")
+        //print("🎮 forceReloadFrames: Reloading all animation frames...")
         loadStickFigureFrames()
-        print("🎮 forceReloadFrames: standFrame = \(standFrame != nil ? "SET" : "NIL")")
+        //print("🎮 forceReloadFrames: standFrame = \(standFrame != nil ? "SET" : "NIL")")
     }
     
     // MARK: - Helper: Convert Hex Color to SwiftUI Color
@@ -1372,13 +1372,6 @@ class StickFigureGameState {
         let speedMultiplier = (config.supportsSpeedBoost && gameState.speedBoostTimeRemaining > 0) ? 0.5 : 1.0
         let baseInterval = config.stickFigureAnimation?.baseFrameInterval ?? 0.15
         
-        // Debug: Print frame timing info
-        if let animConfig = config.stickFigureAnimation {
-            print("🎬 Starting \(config.id) animation with baseInterval=\(animConfig.baseFrameInterval)s (speedMultiplier=\(speedMultiplier))")
-        } else {
-            print("⚠️ \(config.id) has NO stickFigureAnimation! Using fallback 0.15s")
-        }
-        
         let interval = baseInterval * speedMultiplier
         
         gameState.actionTimer = Timer.scheduledTimer(withTimeInterval: interval, repeats: true) { _ in
@@ -1423,7 +1416,7 @@ class StickFigureGameState {
         let speedMultiplier = (config.supportsSpeedBoost && gameState.speedBoostTimeRemaining > 0) ? 0.5 : 1.0
         
         // Debug: Print that this action uses variable timing
-        print("🎬 Starting \(config.id) with VARIABLE timing (\(variableTiming.count) custom intervals)")
+        //print("🎬 Starting \(config.id) with VARIABLE timing (\(variableTiming.count) custom intervals)")
         
         // Initialize config-driven floating text state
         var floatingTextIndex = 0
@@ -2092,7 +2085,7 @@ struct StatsOverlayView: View {
             .padding(.top, 50)
             .transition(.move(edge: .bottom))
             .onAppear {
-                print("📊 STATS OVERLAY APPEARED - Timer status: \(gameState.elapsedTimeTimer != nil)")
+                //print("📊 STATS OVERLAY APPEARED - Timer status: \(gameState.elapsedTimeTimer != nil)")
             }
         }
     }
@@ -2123,12 +2116,12 @@ private struct Game1ModuleView: View {
         }
         .onAppear {
             // Reset showGame to true when this module appears
-            print("🎮 Game1Module appeared - ensuring showGame is true")
+            //print("🎮 Game1Module appeared - ensuring showGame is true")
             showGame = true
         }
         .onChange(of: scenePhase) { oldValue, newValue in
             if newValue == .background || newValue == .inactive {
-                print("🎮 App going to background/inactive - Saving game state")
+                //print("🎮 App going to background/inactive - Saving game state")
                 gameState.saveStats()
             }
         }

@@ -472,7 +472,7 @@ class SavedFramesManager {
         var frames = getAllFrames()
         frames.append(frame)
         saveAll(frames)
-        print("✅ Frame saved: \(frame.name)")
+        //print("✅ Frame saved: \(frame.name)")
     }
     
     /// Get all saved frames
@@ -493,7 +493,7 @@ class SavedFramesManager {
     func deleteFrame(id: UUID) {
         let frames = getAllFrames().filter { $0.id != id }
         saveAll(frames)
-        print("✅ Frame deleted")
+        //print("✅ Frame deleted")
     }
     
     /// Rename a frame
@@ -502,7 +502,7 @@ class SavedFramesManager {
         if let index = frames.firstIndex(where: { $0.id == id }) {
             frames[index].name = newName
             saveAll(frames)
-            print("✅ Frame renamed to: \(newName)")
+            //print("✅ Frame renamed to: \(newName)")
         }
     }
     
@@ -518,7 +518,7 @@ class SavedFramesManager {
     
     /// Export frame as JSON string (direct frame object)
     func exportFrameAsJSON(frame: SavedEditFrame) -> String? {
-        print("✅ exportFrameAsJSON: Exporting frame '\(frame.name)'")
+        //print("✅ exportFrameAsJSON: Exporting frame '\(frame.name)'")
         
         // Helper to format number with specific decimal places
         func formatNumber(_ value: Double, decimals: Int) -> String {

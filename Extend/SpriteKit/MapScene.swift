@@ -9,7 +9,7 @@ class MapScene: GameScene {
     override func didMove(to view: SKView) {
         super.didMove(to: view)
         
-        print("🗺️ MapScene didMove - size: \(size)")
+        //print("🗺️ MapScene didMove - size: \(size)")
         
         // Set background
         backgroundColor = SKColor(red: 0.85, green: 0.95, blue: 0.85, alpha: 1.0)
@@ -105,7 +105,7 @@ class MapScene: GameScene {
             return
         }
         
-        print("🗺️ Setting up levels - current level: \(gameState.currentLevel)")
+        //print("🗺️ Setting up levels - current level: \(gameState.currentLevel)")
         
         let boxWidth: CGFloat = 80
         let boxHeight: CGFloat = 60
@@ -171,44 +171,44 @@ class MapScene: GameScene {
     }
     
     override func handleTouchBegan(at point: CGPoint) {
-        print("🗺️ Touch began at: \(point)")
-        let touchedNode = atPoint(point)
-        print("🗺️ Touched node: \(touchedNode.name ?? "unknown")")
+        //print("🗺️ Touch began at: \(point)")
+        //let touchedNode = atPoint(point)
+        //print("🗺️ Touched node: \(touchedNode.name ?? "unknown")")
     }
     
     override func handleTouchEnded(at point: CGPoint) {
-        print("🗺️ Touch ended at: \(point)")
-        print("🗺️ gameViewController is: \(gameViewController != nil ? "SET" : "NIL")")
-        print("🗺️ Screen size: \(size), Safe area insets: \(view?.safeAreaInsets ?? UIEdgeInsets.zero)")
+        //print("🗺️ Touch ended at: \(point)")
+        //print("🗺️ gameViewController is: \(gameViewController != nil ? "SET" : "NIL")")
+        //print("🗺️ Screen size: \(size), Safe area insets: \(view?.safeAreaInsets ?? UIEdgeInsets.zero)")
         
         let topBarY = size.height - 100
         let tapDistance = abs(point.y - topBarY)
         
-        print("🗺️ Button bar at Y=\(topBarY), tap distance=\(tapDistance), tap Y=\(point.y)")
+        //print("🗺️ Button bar at Y=\(topBarY), tap distance=\(tapDistance), tap Y=\(point.y)")
         
         // Check for top button taps
         if tapDistance < 35 {  // Increased from 25 to 35 for better hit detection
             // Exit button
             if point.x < 70 {
-                print("🗺️ ✓ Exit button tapped! - calling dismissGame() to exit to dashboard")
+                //print("🗺️ ✓ Exit button tapped! - calling dismissGame() to exit to dashboard")
                 gameViewController?.dismissGame()
                 return
             }
             // Stats button
             if point.x > size.width - 70 {
-                print("🗺️ ✓ Stats button tapped!")
+                //print("🗺️ ✓ Stats button tapped!")
                 gameViewController?.showStats()
                 return
             }
             // Appearance button
             if point.x > size.width / 2 - 105 && point.x < size.width / 2 - 35 {
-                print("🗺️ ✓ Appearance button tapped! - Opening appearance customization")
+                //print("🗺️ ✓ Appearance button tapped! - Opening appearance customization")
                 gameViewController?.showAppearance()
                 return
             }
             // Editor button (new UIKit editor)
             if point.x > size.width / 2 - 35 && point.x < size.width / 2 + 35 {
-                print("🗺️ ✓ Editor button tapped! - Opening UIKit Stick Figure Editor")
+                //print("🗺️ ✓ Editor button tapped! - Opening UIKit Stick Figure Editor")
                 gameViewController?.openStickFigureEditor()
                 return
             }
@@ -224,25 +224,25 @@ class MapScene: GameScene {
                 let levelNum = index + 1
                 // Only allow tapping on available levels (levelNum <= currentLevel)
                 if levelNum <= (gameState?.currentLevel ?? 1) {
-                    print("🗺️ ✓ Level \(levelNum) tapped!")
+                    //print("🗺️ ✓ Level \(levelNum) tapped!")
                     gameState?.currentLevel = levelNum
                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                        print("🗺️ In dispatch block - gameViewController: \(self.gameViewController != nil ? "SET" : "NIL")")
+                        //print("🗺️ In dispatch block - gameViewController: \(self.gameViewController != nil ? "SET" : "NIL")")
                         self.gameViewController?.startGameplay()
                     }
                 } else {
-                    print("🗺️ Level \(levelNum) is locked!")
+                    //print("🗺️ Level \(levelNum) is locked!")
                 }
                 return
             }
         }
         
-        print("🗺️ ✗ No node hit - touch at \(point)")
+        //print("🗺️ ✗ No node hit - touch at \(point)")
     }
     
     @MainActor
     deinit {
-        print("🗺️ MapScene deinit - cleaning up")
+        //print("🗺️ MapScene deinit - cleaning up")
         removeAllChildren()
         removeAllActions()
     }

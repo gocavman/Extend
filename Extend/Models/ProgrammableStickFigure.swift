@@ -799,7 +799,7 @@ struct ProgrammableStickFigureDemo: View {
                 // Header with buttons
                 HStack {
                     Button(action: {
-                        print("Back button tapped - isPresented = \(isPresented)")
+                        //print("Back button tapped - isPresented = \(isPresented)")
                         isPresented = false
                     }) {
                         HStack(spacing: 4) {
@@ -820,7 +820,7 @@ struct ProgrammableStickFigureDemo: View {
                     Spacer()
                     
                     Button(action: {
-                        print("🖊️  Edit button tapped!")
+                        //print("🖊️  Edit button tapped!")
                         showEditor = true
                     }) {
                         Image(systemName: "pencil.and.scribble")
@@ -1236,7 +1236,7 @@ struct DraggableJointEditorView: View {
                     Spacer()
                     
                     Button(action: {
-                        print("🔄 Reset pose to saved Stand")
+                        //print("🔄 Reset pose to saved Stand")
                         if let standPoseData = poseManager.savedPoses.first(where: { $0.name == "Stand" }) {
                             currentPose = standPoseData.pose.toStickFigurePose()
                         } else {

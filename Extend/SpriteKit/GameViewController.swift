@@ -31,13 +31,13 @@ class GameViewController: UIViewController {
         }
         
         // Show map on first load
-        print("🎮 GameViewController viewDidLoad - showing map for first time")
+        //print("🎮 GameViewController viewDidLoad - showing map for first time")
         showMapScene()
         hasInitializedScene = true
         
         // Ensure the SKView actually has the scene
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-            print("🎮 Verifying scene is displayed: \(self.skView?.scene != nil ? "YES" : "NO")")
+            //print("🎮 Verifying scene is displayed: \(self.skView?.scene != nil ? "YES" : "NO")")
         }
     }
     
@@ -69,11 +69,11 @@ class GameViewController: UIViewController {
             return
         }
         
-        print("🎮 startGameplay called - creating GameplayScene with size: \(skView.bounds.size)")
+        //print("🎮 startGameplay called - creating GameplayScene with size: \(skView.bounds.size)")
         
         // CRITICAL: Remove the old scene completely from the SKView
         if let oldScene = skView.scene {
-            print("🎮 SKView had existing scene: \(type(of: oldScene)) - removing it completely")
+            //print("🎮 SKView had existing scene: \(type(of: oldScene)) - removing it completely")
             oldScene.removeAllChildren()
             oldScene.removeAllActions()
             oldScene.removeFromParent()
@@ -81,7 +81,7 @@ class GameViewController: UIViewController {
         
         // Also clean up our currentScene reference
         if let currentScene = currentScene {
-            print("🎮 Cleaning up currentScene reference")
+            //print("🎮 Cleaning up currentScene reference")
             currentScene.removeAllChildren()
             currentScene.removeAllActions()
         }
@@ -93,36 +93,36 @@ class GameViewController: UIViewController {
         scene.scaleMode = .resizeFill
         scene.isUserInteractionEnabled = true
         
-        print("🎮 About to present GameplayScene to SKView")
-        print("🎮 SKView scene before presentScene: \(skView.scene != nil ? "HAS SCENE" : "NO SCENE")")
+        //print("🎮 About to present GameplayScene to SKView")
+        //print("🎮 SKView scene before presentScene: \(skView.scene != nil ? "HAS SCENE" : "NO SCENE")")
         
         // Present the scene directly without transition to avoid conflicts
         skView.presentScene(scene)
         
-        print("🎮 SKView scene after presentScene: \(skView.scene != nil ? "HAS SCENE" : "NO SCENE")")
-        print("🎮 Scene type: \(type(of: skView.scene))")
+        //print("🎮 SKView scene after presentScene: \(skView.scene != nil ? "HAS SCENE" : "NO SCENE")")
+        //print("🎮 Scene type: \(type(of: skView.scene))")
         currentScene = scene
         gameplayScene = scene  // Store reference for edit mode
-        print("🎮 GameplayScene is now active")
+        //print("🎮 GameplayScene is now active")
     }
     
     /// Dismiss the game and return to SwiftUI
     func dismissGame() {
-        print("🎮 dismissGame() called")
+        //print("🎮 dismissGame() called")
         // Save state
         gameState?.saveStats()
         gameState?.saveMapPosition(mapState ?? GameMapState())
         
         // Call the callback to notify SwiftUI
         DispatchQueue.main.async {
-            print("🎮 Calling onDismissGame callback")
+            //print("🎮 Calling onDismissGame callback")
             self.onDismissGame?()
         }
     }
     
     /// Show the stick figure gameplay editor (new UIKit version)
     func openStickFigureEditor() {
-        print("🎮 Opening Stick Figure Gameplay Editor (UIKit)")
+        //print("🎮 Opening Stick Figure Gameplay Editor (UIKit)")
         
         let editor = StickFigureGameplayEditorViewController()
         editor.gameState = gameState
@@ -131,66 +131,27 @@ class GameViewController: UIViewController {
         present(editor, animated: true)
     }
     
-    // ...existing code...
     func showStats() {
-        print("🎮 Opening Stats Window")
+        //print("🎮 Opening Stats Window")
         
         guard let gameState = gameState else { return }
         
-        // Create alert controller
-        let alertController = UIAlertController(title: "📊 Statistics", message: nil, preferredStyle: .alert)
+        // Create and present the stats view controller
+        let statsVC = StatsViewController()
+        statsVC.gameState = gameState
         
-        // Build stats message
-        var statsMessage = ""
-        statsMessage += "━━━━━━━━━━━━━━━━━━━━━━━\n"
-        statsMessage += "⭐ LEVEL & PROGRESS\n"
-        statsMessage += "━━━━━━━━━━━━━━━━━━━━━━━\n"
-        statsMessage += "Current Level: \(gameState.currentLevel)\n"
-        statsMessage += "Current Points: \(gameState.currentPoints)\n"
-        statsMessage += "High Score: \(gameState.highScore)\n\n"
+        // Configure sheet presentation to slide up from bottom
+        statsVC.modalPresentationStyle = .pageSheet
         
-        statsMessage += "━━━━━━━━━━━━━━━━━━━━━━━\n"
-        statsMessage += "⏱️  TIME\n"
-        statsMessage += "━━━━━━━━━━━━━━━━━━━━━━━\n"
-        statsMessage += "Session Time: \(formatTime(gameState.timeElapsed))\n"
-        statsMessage += "All Time: \(formatTime(gameState.allTimeElapsed))\n\n"
-        
-        statsMessage += "━━━━━━━━━━━━━━━━━━━━━━━\n"
-        statsMessage += "📈 PERFORMANCE\n"
-        statsMessage += "━━━━━━━━━━━━━━━━━━━━━━━\n"
-        
-        // Show action times if any
-        if !gameState.actionTimes.isEmpty {
-            statsMessage += "Actions Performed:\n"
-            for (action, time) in gameState.actionTimes.sorted(by: { $0.key < $1.key }) {
-                statsMessage += "  • \(action.capitalized): \(formatTime(time))\n"
-            }
-        } else {
-            statsMessage += "No actions performed yet\n"
+        if let sheet = statsVC.sheetPresentationController {
+            // Allow both large and medium detents, default to large
+            sheet.detents = [.medium(), .large()]
+            sheet.selectedDetentIdentifier = .large
+            sheet.prefersGrabberVisible = true
+            sheet.preferredCornerRadius = 16
         }
         
-        statsMessage += "\n━━━━━━━━━━━━━━━━━━━━━━━\n"
-        statsMessage += "🎮 COLLECTIBLES\n"
-        statsMessage += "━━━━━━━━━━━━━━━━━━━━━━━\n"
-        statsMessage += "Total Coins: \(gameState.totalCoinsCollected)\n"
-        
-        if !gameState.catchablesCaught.isEmpty {
-            statsMessage += "Catchables:\n"
-            for (item, count) in gameState.catchablesCaught.sorted(by: { $0.key < $1.key }) {
-                statsMessage += "  • \(item.capitalized): \(count)\n"
-            }
-        }
-        
-        statsMessage += "\n━━━━━━━━━━━━━━━━━━━━━━━"
-        
-        alertController.message = statsMessage
-        
-        let cancelAction = UIAlertAction(title: "Close", style: .default) { _ in
-            print("🎮 Stats window closed")
-        }
-        alertController.addAction(cancelAction)
-        
-        present(alertController, animated: true)
+        present(statsVC, animated: true)
     }
     
     /// Format time in seconds to readable format
@@ -210,7 +171,7 @@ class GameViewController: UIViewController {
     
     /// Show the appearance customization view
     func showAppearance() {
-        print("🎮 Opening Appearance Customization")
+        //print("🎮 Opening Appearance Customization")
         
         // IMPORTANT: Always use the main gameState, not just from gameplay scene
         // This ensures muscle points changes work from both map and gameplay
@@ -231,14 +192,14 @@ class GameViewController: UIViewController {
         let appearance = StickFigureAppearanceViewController()
         appearance.gameState = gameState
         appearance.onDismiss = { [weak self] in
-            print("🎮 Appearance customization closed - refreshing gameplay character")
+            //print("🎮 Appearance customization closed - refreshing gameplay character")
             // Notify the current scene to refresh its character rendering
             if let gameplayScene = self?.currentScene as? GameplayScene {
                 gameplayScene.refreshCharacterAppearance()
             }
         }
         appearance.onMusclePointsChanged = { [weak self] in
-            print("🎮 Muscle points changed - refreshing gameplay character in real-time")
+            //print("🎮 Muscle points changed - refreshing gameplay character in real-time")
             // Refresh the character in real-time when muscle points change
             if let gameplayScene = self?.currentScene as? GameplayScene {
                 gameplayScene.refreshCharacterAppearance()
@@ -258,7 +219,7 @@ class GameViewController: UIViewController {
 
     
     deinit {
-        print("🎮 GameViewController deinit - cleaning up")
+        //print("🎮 GameViewController deinit - cleaning up")
         // Clean up current scene
         currentScene?.removeAllChildren()
         currentScene?.removeAllActions()

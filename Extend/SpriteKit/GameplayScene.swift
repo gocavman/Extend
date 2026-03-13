@@ -318,7 +318,7 @@ private func handleTouchAtLocation(_ point: CGPoint, isPress: Bool) {
         return
     }
     
-    print("🎮 Checking zones - point: \(point), topButtonY: \(topButtonY), isPress: \(isPress)")
+    //print("🎮 Checking zones - point: \(point), topButtonY: \(topButtonY), isPress: \(isPress)")
     
     // Get character position
     guard let character = characterNode else {
@@ -327,7 +327,7 @@ private func handleTouchAtLocation(_ point: CGPoint, isPress: Bool) {
     }
     
     let characterX = character.position.x
-    print("🎮 Character position: \(characterX), Tap position: \(point.x)")
+    //print("🎮 Character position: \(characterX), Tap position: \(point.x)")
     
     // Check if tapping directly on the character (within a threshold)
     let characterTapThreshold: CGFloat = 60  // Reasonable tap area around character
@@ -335,13 +335,13 @@ private func handleTouchAtLocation(_ point: CGPoint, isPress: Bool) {
     
     if isCharacterTap && isPress {
         // Character was tapped - trigger the selected action
-        print("🎮 ✓ CHARACTER TAPPED - Attempting to trigger action")
+        //print("🎮 ✓ CHARACTER TAPPED - Attempting to trigger action")
         
         if let selectedAction = selectedAction {
-            print("🎮 ✓ Selected action is set: \(selectedAction.displayName)")
+            //print("🎮 ✓ Selected action is set: \(selectedAction.displayName)")
             // Only start action if not already performing one and not moving
             if gameState.currentPerformingAction == nil && !gameState.isMovingLeft && !gameState.isMovingRight {
-                print("🎮 ✓ Starting action animation: \(selectedAction.id)")
+                //print("🎮 ✓ Starting action animation: \(selectedAction.id)")
                 gameState.startAction(selectedAction, gameState: gameState)
             } else {
                 print("🎮 ⚠️ Cannot start action - currently performing: \(gameState.currentPerformingAction ?? "none"), moving: L=\(gameState.isMovingLeft) R=\(gameState.isMovingRight)")
@@ -364,34 +364,34 @@ private func handleTouchAtLocation(_ point: CGPoint, isPress: Bool) {
             gameState.isMovingRight = false
             gameState.facingRight = false
         } else {
-            print("🎮 ✓ RELEASE - STOP MOVING (was moving left)")
+            //print("🎮 ✓ RELEASE - STOP MOVING (was moving left)")
             gameState.isMovingLeft = false
             gameState.isMovingRight = false
         }
     } else if point.x > characterX {
         // Tap is to the RIGHT of character - move right
         if isPress {
-            print("🎮 ✓ TAP RIGHT OF CHARACTER - MOVE RIGHT")
+            //print("🎮 ✓ TAP RIGHT OF CHARACTER - MOVE RIGHT")
             gameState.isMovingRight = true
             gameState.isMovingLeft = false
             gameState.facingRight = true
         } else {
-            print("🎮 ✓ RELEASE - STOP MOVING (was moving right)")
+            //print("🎮 ✓ RELEASE - STOP MOVING (was moving right)")
             gameState.isMovingRight = false
             gameState.isMovingLeft = false
         }
     } else {
         // Tap is directly on character - do nothing or trigger action
         if isPress {
-            print("🎮 Touch directly on character (center action zone)")
+            //print("🎮 Touch directly on character (center action zone)")
         } else {
-            print("🎮 ✓ RELEASE - STOP MOVING (was on character)")
+            //print("🎮 ✓ RELEASE - STOP MOVING (was on character)")
             gameState.isMovingLeft = false
             gameState.isMovingRight = false
         }
     }
     
-    print("🎮 After handling: isMovingLeft=\(gameState.isMovingLeft), isMovingRight=\(gameState.isMovingRight)")
+    //print("🎮 After handling: isMovingLeft=\(gameState.isMovingLeft), isMovingRight=\(gameState.isMovingRight)")
 }
 
 private func startGameLoop() {
@@ -413,8 +413,8 @@ private func updateGameLogic() {
     updateEyeBlinking()
     
     // Check if an action animation is currently playing
-    if let currentAction = gameState.currentPerformingAction, let currentStickFigure = gameState.currentStickFigure {
-        print("🎮 [UPDATE] Rendering action frame for: \(currentAction)")
+    if let currentStickFigure = gameState.currentStickFigure {
+        //print("🎮 [UPDATE] Rendering action frame for: \(currentAction)")
         
         // Apply muscle scaling and appearance to the action frame
         let scaledFrame = applyMuscleScaling(to: currentStickFigure)
@@ -502,28 +502,28 @@ private func startMovementAnimation() {
     var frameInterval: TimeInterval = 0.15
     var frameNumbers: [Int] = [0, 1, 2, 3] // Default fallback
     
-    print("🎮 DEBUG ACTION_CONFIGS.count=\(ACTION_CONFIGS.count), IDs: \(ACTION_CONFIGS.map { $0.id })")
+    //print("🎮 DEBUG ACTION_CONFIGS.count=\(ACTION_CONFIGS.count), IDs: \(ACTION_CONFIGS.map { $0.id })")
     
     if let config = ACTION_CONFIGS.first(where: { $0.id == "run" }),
        let animation = config.stickFigureAnimation {
         frameInterval = animation.baseFrameInterval
         frameNumbers = animation.frameNumbers.map { $0 - 1 }
-        print("🎮 ✓ Got config from ACTION_CONFIGS: \(animation.frameNumbers.count) frames")
-        print("🎮   Frame numbers from config (1-indexed): \(animation.frameNumbers)")
-        print("🎮   Frame indices for array (0-indexed): \(frameNumbers)")
+        //print("🎮 ✓ Got config from ACTION_CONFIGS: \(animation.frameNumbers.count) frames")
+        //print("🎮   Frame numbers from config (1-indexed): \(animation.frameNumbers)")
+        //print("🎮   Frame indices for array (0-indexed): \(frameNumbers)")
     } else {
         print("🎮 ⚠️  ACTION_CONFIGS not available or missing 'run' config")
         // FALLBACK: Use all available frames from gameState instead of hardcoded [0,1,2,3]
         if gameState.moveFrames.count > 0 {
             frameNumbers = Array(0..<gameState.moveFrames.count)
-            print("🎮 ✓ Using all \(frameNumbers.count) available frames from gameState: \(frameNumbers)")
+            //print("🎮 ✓ Using all \(frameNumbers.count) available frames from gameState: \(frameNumbers)")
         } else {
             print("🎮 ✗ No frames available in gameState either, will use default [0,1,2,3]")
         }
     }
     
     if gameState.moveFrames.count > 0 {
-        print("🎮 ✓ moveFrames is populated with \(gameState.moveFrames.count) frames")
+        //print("🎮 ✓ moveFrames is populated with \(gameState.moveFrames.count) frames")
     } else {
         print("🎮 ✗ WARNING: moveFrames is EMPTY!")
     }
@@ -531,23 +531,23 @@ private func startMovementAnimation() {
     // Use SKAction sequence instead of Timer for better performance
     var actions: [SKAction] = []
     
-    print("🎮 ANIMATION SEQUENCE - Creating \(frameNumbers.count) frame actions:")
+    //print("🎮 ANIMATION SEQUENCE - Creating \(frameNumbers.count) frame actions:")
     
     // Create actions for each frame in the animation
-    for (index, frameNum) in frameNumbers.enumerated() {
+    for (_, frameNum) in frameNumbers.enumerated() {
         let moveFrameIndex = frameNum
         
-        print("🎮   [\(index)] Frame index: \(moveFrameIndex)")
+        //print("🎮   [\(index)] Frame index: \(moveFrameIndex)")
         
         actions.append(SKAction.run { [weak self] in
             guard let self = self, let gameState = self.gameState else { return }
             guard moveFrameIndex < gameState.moveFrames.count else {
-                print("🎮 ❌ moveFrameIndex \(moveFrameIndex) >= moveFrames.count \(gameState.moveFrames.count), skipping")
+                //print("🎮 ❌ moveFrameIndex \(moveFrameIndex) >= moveFrames.count \(gameState.moveFrames.count), skipping")
                 return
             }
             
             let moveFrame = gameState.moveFrames[moveFrameIndex]
-            print("🎮 🎬 Rendering move frame \(moveFrameIndex + 1)/\(gameState.moveFrames.count)")
+            //print("🎮 🎬 Rendering move frame \(moveFrameIndex + 1)/\(gameState.moveFrames.count)")
             
             // Remove old stick figure and add new one
             if let characterContainer = self.characterNode {
@@ -571,21 +571,21 @@ private func startMovementAnimation() {
         actions.append(SKAction.wait(forDuration: frameInterval))
     }
     
-    print("🎮 TOTAL ACTIONS CREATED: \(actions.count) (frames + delays)")
+    //print("🎮 TOTAL ACTIONS CREATED: \(actions.count) (frames + delays)")
     
     // Run the sequence on the character node
     if !actions.isEmpty {
         let sequence = SKAction.sequence(actions)
         let repeatAction = SKAction.repeatForever(sequence)
         characterNode?.run(repeatAction, withKey: "moveAnimation")
-        print("🎮 ✅ Animation loop started with \(frameNumbers.count) frames repeating forever")
+        //print("🎮 ✅ Animation loop started with \(frameNumbers.count) frames repeating forever")
     } else {
         print("🎮 ❌ No actions to run!")
     }
 }
 
 private func stopMovementAnimation() {
-    print("🎮 Stopping movement animation")
+    //print("🎮 Stopping movement animation")
     
     // Stop the animation action
     characterNode?.removeAction(forKey: "moveAnimation")
@@ -617,13 +617,13 @@ private func updateEyeBlinking() {
     
     // Check if we should trigger a blink
     if timeSinceLastInteraction >= inactivityThreshold && !isEyesBlinking {
-        print("👁️ BLINK: Triggering blink after \(timeSinceLastInteraction) seconds of inactivity")
+        //print("👁️ BLINK: Triggering blink after \(timeSinceLastInteraction) seconds of inactivity")
         triggerEyeBlink()
     }
     
     // Check if blink should end
     if isEyesBlinking && currentTime >= eyesBlinkEndTime {
-        print("👁️ BLINK: Ending blink, restoring eyes")
+        //print("👁️ BLINK: Ending blink, restoring eyes")
         isEyesBlinking = false
         lastInteractionTime = CACurrentMediaTime()  // Reset timer after blink
         refreshCharacterAppearance()
@@ -638,7 +638,7 @@ private func triggerEyeBlink() {
 
 /// Refresh the character appearance when colors are changed in the customizer
 func refreshCharacterAppearance() {
-    print("🎮 Refreshing character appearance after color change")
+    //print("🎮 Refreshing character appearance after color change")
     
     guard let gameState = gameState, let characterContainer = characterNode else { return }
     
@@ -758,7 +758,7 @@ private func loadFrameNamed(_ name: String) -> StickFigure2D? {
                 figure.skeletonSizeLeg = frame.skeletonSizeLeg
                 figure.waistThicknessMultiplier = frame.waistThicknessMultiplier
                 figure.waistWidthMultiplier = frame.waistWidthMultiplier
-                print("🎮 ✓ Loaded frame '\(name)' successfully")
+                //print("🎮 ✓ Loaded frame '\(name)' successfully")
                 return figure
             }
         }
@@ -867,10 +867,10 @@ private func applyMuscleScaling(to figure: StickFigure2D) -> StickFigure2D {
     }
     
     // Debug deltoid interpolation
-    let deltoidPoints = gameState.muscleState.getPoints(for: "fusiformDeltoids")
-    let deltoidStroke = MuscleSystem.shared.interpolateProperty("strokeThicknessDeltoids", musclePoints: gameState.muscleState.getPoints(for: "strokeThicknessDeltoids"))
-    let deltoidFusiform = MuscleSystem.shared.interpolateProperty("fusiformDeltoids", musclePoints: deltoidPoints)
-    print("🔍 DELTOID SCALING: points=\(deltoidPoints), fusiform=\(deltoidFusiform), stroke=\(deltoidStroke)")
+    //let deltoidPoints = gameState.muscleState.getPoints(for: "fusiformDeltoids")
+    //let deltoidStroke = MuscleSystem.shared.interpolateProperty("strokeThicknessDeltoids", musclePoints: gameState.muscleState.getPoints(for: "strokeThicknessDeltoids"))
+    //let deltoidFusiform = MuscleSystem.shared.interpolateProperty("fusiformDeltoids", musclePoints: deltoidPoints)
+    //print("🔍 DELTOID SCALING: points=\(deltoidPoints), fusiform=\(deltoidFusiform), stroke=\(deltoidStroke)")
     
     return scaledFigure
 }
@@ -957,7 +957,7 @@ private func showActionSelection() {
 
 @MainActor
 deinit {
-    print("🎮 GameplayScene deinit - cleaning up")
+    //print("🎮 GameplayScene deinit - cleaning up")
     removeAllChildren()
     removeAllActions()
 }
