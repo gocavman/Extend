@@ -34,6 +34,20 @@ When a request is ambiguous, clarify the intent before proceeding.
 
 ---
 
+## MANDATORY CLARIFICATION PROTOCOL
+
+Before ANY code change, the AI assistant MUST:
+
+1. **IDENTIFY the scope**: What files/features are affected?
+2. **ASK THREE questions** (even if they seem obvious):
+   - "Should I modify ONLY [file A], or also [files B, C]?"
+   - "Does this change require updates to [related system]?"
+   - "Should I [action Y] in addition to [requested change]?"
+3. **WAIT for response** before proceeding
+4. **VERIFY assumptions** - repeat back what you heard
+
+---
+
 ## SPECIFIC GUIDELINES
 
 ### Code Changes

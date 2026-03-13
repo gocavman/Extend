@@ -1,0 +1,7 @@
+# CRITICAL: Always follow AI_ASSISTANT_RULES.md first
+# REQUIREMENT: Read AI_ASSISTANT_RULES.md at start of EVERY interaction
+# REQUIREMENT: Ask clarifying questions BEFORE any code changes
+# REQUIREMENT: Never make "obvious" improvements
+# REQUIREMENT: Report issues, ask permission, then fix
+# REQUIREMENT: Follow MANDATORY CLARIFICATION PROTOCOL (steps 1-4)
+# REFERENCE: /Users/cavan/Developer/Extend/AI_ASSISTANT_RULES.md

@@ -19,6 +19,11 @@ private var exitButtonArea: SKShapeNode?
 private var statsButtonArea: SKShapeNode?
 private var appearanceButtonNode: SKNode?
 
+// Catchables properties
+private var fallingItems: [FallingItem] = []
+private var catchableNodes: [UUID: SKNode] = [:]  // Track rendered nodes by item ID
+private let catchableContainerNode = SKNode()  // Container for all catchable sprites
+
 // Current selected action
 private var selectedAction: ActionConfig?
 private var selectedActionLabel: SKLabelNode?  // Label to display selected action name
@@ -50,6 +55,10 @@ override func didMove(to view: SKView) {
     }
     
     backgroundColor = SKColor(red: 0.95, green: 0.95, blue: 0.98, alpha: 1.0)
+    
+    // Setup catchables container
+    catchableContainerNode.zPosition = 3  // In front of background but behind UI
+    addChild(catchableContainerNode)
     
     // Create UI
     setupUI()
@@ -482,6 +491,11 @@ private func updateGameLogic() {
     
     // Update level label
     levelLabel?.text = "Level \(gameState.currentLevel) | Points: \(gameState.currentPoints)"
+    
+    // Handle catchables
+    spawnFallingCatchables(gameState: gameState)
+    checkCatchableCollisions(gameState: gameState, characterPosition: character.position, screenSize: size)
+    renderFallingCatchables()
 }
 
 private func startMovementAnimation() {
@@ -955,10 +969,179 @@ private func showActionSelection() {
     }
 }
 
+// MARK: - Catchables Implementation
+
+private func spawnFallingCatchables(gameState: StickFigureGameState) {
+    // Filter catchables by unlock level
+    let unlockedItems = CATCHABLE_CONFIGS.filter { $0.unlockLevel <= gameState.currentLevel }
+    guard !unlockedItems.isEmpty else { return }
+    
+    // Calculate max items on screen
+    let maxItems = max(4, unlockedItems.count * 2)
+    
+    // Spawn new items with controlled probability
+    if fallingItems.count < maxItems && Double.random(in: 0...1) < 0.002 {
+        if let itemConfig = unlockedItems.randomElement() {
+            let item = FallingItem(
+                itemType: itemConfig.id,
+                x: CGFloat.random(in: 0.05...0.95),
+                y: 0.0,
+                rotation: Double.random(in: 0...360),
+                horizontalVelocity: CGFloat.random(in: -0.002...0.002),
+                verticalSpeed: CGFloat.random(in: itemConfig.baseVerticalSpeed...itemConfig.baseVerticalSpeedMax)
+            )
+            fallingItems.append(item)
+        }
+    }
+}
+
+private func renderFallingCatchables() {
+    // Update positions and rotations of existing items
+    for item in fallingItems {
+        // Create node if it doesn't exist
+        if catchableNodes[item.id] == nil {
+            if let node = createCatchableNode(for: item) {
+                catchableContainerNode.addChild(node)
+                catchableNodes[item.id] = node
+            }
+        }
+        
+        if let node = catchableNodes[item.id] {
+            // Update position (convert normalized coordinates to screen coordinates)
+            let screenX = item.x * size.width
+            let screenY = item.y * size.height
+            node.position = CGPoint(x: screenX, y: size.height - screenY)  // Flip Y for SpriteKit coordinates
+            
+            // Update rotation if configured
+            if let config = CATCHABLE_CONFIGS.first(where: { $0.id == item.itemType }), config.spins {
+                node.zRotation = CGFloat(item.rotation * Double.pi / 180.0)  // Convert to radians
+            }
+        }
+    }
+}
+
+private func checkCatchableCollisions(gameState: StickFigureGameState, characterPosition: CGPoint, screenSize: CGSize) {
+    for i in fallingItems.indices.reversed() {
+        let item = fallingItems[i]
+        
+        // Update item position
+        fallingItems[i].y += fallingItems[i].verticalSpeed
+        fallingItems[i].x += fallingItems[i].horizontalVelocity
+        
+        // Update rotation if needed
+        if let config = CATCHABLE_CONFIGS.first(where: { $0.id == item.itemType }), config.spins {
+            fallingItems[i].rotation += config.spinSpeed
+        }
+        
+        // Check collision with character
+        let itemScreenX = fallingItems[i].x * screenSize.width
+        let itemScreenY = (1.0 - fallingItems[i].y) * screenSize.height  // Convert to SpriteKit coordinates
+        let dx = itemScreenX - characterPosition.x
+        let dy = itemScreenY - characterPosition.y
+        let distance = sqrt(dx * dx + dy * dy)
+        
+        // Collision radius
+        let collisionRadius: CGFloat = 60
+        
+        if distance < collisionRadius {
+            // Collision detected!
+            if let config = CATCHABLE_CONFIGS.first(where: { $0.id == item.itemType }) {
+                // Update stats
+                gameState.catchablesCaught[config.id, default: 0] += 1
+                
+                // Award points
+                gameState.addPoints(config.points, action: item.itemType)
+                
+                // Trigger collision animation if configured
+                if let animationId = config.collisionAnimation {
+                    if let actionConfig = ACTION_CONFIGS.first(where: { $0.id == animationId }) {
+                        // Note: This would require implementing startAction in GameplayScene
+                        // For now, we'll skip animation to avoid dependencies
+                    }
+                }
+            }
+            
+            // Remove rendered node
+            if let node = catchableNodes[item.id] {
+                node.removeFromParent()
+                catchableNodes.removeValue(forKey: item.id)
+            }
+            
+            // Remove from items array
+            fallingItems.remove(at: i)
+            continue
+        }
+        
+        // Remove if off-screen
+        if fallingItems[i].y > 1.1 || fallingItems[i].x < -0.2 || fallingItems[i].x > 1.2 {
+            if let node = catchableNodes[item.id] {
+                node.removeFromParent()
+                catchableNodes.removeValue(forKey: item.id)
+            }
+            fallingItems.remove(at: i)
+        }
+    }
+}
+
+// Create or update rendered node for a catchable
+private func createCatchableNode(for item: FallingItem) -> SKNode? {
+    guard let config = CATCHABLE_CONFIGS.first(where: { $0.id == item.itemType }) else {
+        return nil
+    }
+    
+    let container = SKNode()
+    container.zPosition = 3
+    
+    // Try to render as SF Symbol first (if iconName is set and assetName is nil)
+    if let iconName = config.iconName, config.assetName == nil {
+        if let symbolImage = UIImage(systemName: iconName) {
+            // Tint the symbol with the configured color
+            let tintedImage: UIImage
+            if let hexColor = config.color {
+                let color = UIColor(hex: hexColor) ?? .white
+                tintedImage = symbolImage.withTintColor(color, renderingMode: .alwaysTemplate)
+            } else {
+                tintedImage = symbolImage
+            }
+            
+            let texture = SKTexture(image: tintedImage)
+            let sprite = SKSpriteNode(texture: texture)
+            sprite.size = CGSize(width: 40, height: 40)
+            sprite.zPosition = 3
+            container.addChild(sprite)
+        }
+    }
+    // Try to render as asset image
+    else if let assetName = config.assetName {
+        let sprite = SKSpriteNode(imageNamed: assetName)
+        sprite.size = CGSize(width: 40, height: 40)
+        sprite.zPosition = 3
+        container.addChild(sprite)
+    }
+    
+    return container
+}
+
 @MainActor
 deinit {
     //print("🎮 GameplayScene deinit - cleaning up")
     removeAllChildren()
     removeAllActions()
 }
+}
+
+// MARK: - UIColor Extension for Hex Support
+
+extension UIColor {
+    convenience init?(hex: String) {
+        let hex = hex.trimmingCharacters(in: CharacterSet(charactersIn: "#"))
+        guard hex.count == 6 else { return nil }
+        
+        let rgbValue = UInt32(hex, radix: 16) ?? 0
+        let red = CGFloat((rgbValue >> 16) & 0xFF) / 255.0
+        let green = CGFloat((rgbValue >> 8) & 0xFF) / 255.0
+        let blue = CGFloat(rgbValue & 0xFF) / 255.0
+        
+        self.init(red: red, green: green, blue: blue, alpha: 1.0)
+    }
 }
