@@ -493,7 +493,10 @@ private func updateGameLogic() {
     }
     
     // Update character position based on movement
-    let speed: CGFloat = 5.0
+    let baseSpeed: CGFloat = 5.0
+    let speedMultiplier = isBoostActive() ? 1.5 : 1.0  // 50% faster when boosted
+    let speed = baseSpeed * speedMultiplier
+    
     if gameState.isMovingLeft {
         character.position.x -= speed
     } else if gameState.isMovingRight {
@@ -1140,19 +1143,19 @@ private func createCatchableNode(for item: FallingItem) -> SKNode? {
     // Try to render as SF Symbol first (if iconName is set and assetName is nil)
     if let iconName = config.iconName, config.assetName == nil {
         if let symbolImage = UIImage(systemName: iconName) {
-            // Tint the symbol with the configured color
-            let tintedImage: UIImage
-            if let hexColor = config.color {
-                let color = UIColor(hex: hexColor) ?? .white
-                tintedImage = symbolImage.withTintColor(color, renderingMode: .alwaysTemplate)
-            } else {
-                tintedImage = symbolImage
-            }
-            
-            let texture = SKTexture(image: tintedImage)
+            let texture = SKTexture(image: symbolImage)
             let sprite = SKSpriteNode(texture: texture)
             sprite.size = size
             sprite.zPosition = 3
+            
+            // Apply color tint by setting the sprite's color
+            if let hexColor = config.color {
+                if let color = UIColor(hex: hexColor) {
+                    sprite.color = color
+                    sprite.colorBlendFactor = 1.0
+                }
+            }
+            
             container.addChild(sprite)
         }
     }
