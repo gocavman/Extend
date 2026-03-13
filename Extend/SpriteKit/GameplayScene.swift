@@ -24,6 +24,12 @@ private var fallingItems: [FallingItem] = []
 private var catchableNodes: [UUID: SKNode] = [:]  // Track rendered nodes by item ID
 private let catchableContainerNode = SKNode()  // Container for all catchable sprites
 
+// Boost properties
+private var boostEndTime: TimeInterval = 0
+private var boostTimerLabel: SKLabelNode?
+private var floatingTexts: [FloatingText] = []
+private let floatingTextContainer = SKNode()  // Container for floating text
+
 // Current selected action
 private var selectedAction: ActionConfig?
 private var selectedActionLabel: SKLabelNode?  // Label to display selected action name
@@ -59,6 +65,10 @@ override func didMove(to view: SKView) {
     // Setup catchables container
     catchableContainerNode.zPosition = 3  // In front of background but behind UI
     addChild(catchableContainerNode)
+    
+    // Setup floating text container
+    floatingTextContainer.zPosition = 50  // In front of everything
+    addChild(floatingTextContainer)
     
     // Create UI
     setupUI()
@@ -143,6 +153,16 @@ private func setupUI() {
     levelLabel?.text = "Level \(gameState?.currentLevel ?? 1) | Points: \(0)"
     levelLabel?.zPosition = 101
     if let label = levelLabel { addChild(label) }
+    
+    // Boost timer - top center below level label
+    boostTimerLabel = SKLabelNode(fontNamed: "Arial")
+    boostTimerLabel?.fontSize = 11
+    boostTimerLabel?.fontColor = SKColor(red: 1.0, green: 0.6, blue: 0.0, alpha: 1.0)  // Orange
+    boostTimerLabel?.position = CGPoint(x: size.width / 2, y: topBarY - 25)
+    boostTimerLabel?.text = ""
+    boostTimerLabel?.zPosition = 101
+    boostTimerLabel?.isHidden = true
+    if let label = boostTimerLabel { addChild(label) }
 }
 
     private func setupCharacter() {
@@ -491,6 +511,12 @@ private func updateGameLogic() {
     
     // Update level label
     levelLabel?.text = "Level \(gameState.currentLevel) | Points: \(gameState.currentPoints)"
+    
+    // Update floating text
+    updateFloatingText()
+    
+    // Update boost timer
+    updateBoostTimer()
     
     // Handle catchables
     spawnFallingCatchables(gameState: gameState)
@@ -1052,12 +1078,14 @@ private func checkCatchableCollisions(gameState: StickFigureGameState, character
                 // Award points
                 gameState.addPoints(config.points, action: item.itemType)
                 
-                // Trigger collision animation if configured
-                if let animationId = config.collisionAnimation {
-                    if let actionConfig = ACTION_CONFIGS.first(where: { $0.id == animationId }) {
-                        // Note: This would require implementing startAction in GameplayScene
-                        // For now, we'll skip animation to avoid dependencies
-                    }
+                // Display floating text with points
+                let pointsText = "+\(config.points)"
+                let textColor = UIColor(hex: config.color ?? "#808080") ?? .white
+                addFloatingText(pointsText, x: fallingItems[i].x, y: fallingItems[i].y, color: textColor)
+                
+                // Trigger collision animation if configured (Shaker special case)
+                if config.collisionAnimation == "Shaker" {
+                    activateBoost()
                 }
             }
             
@@ -1092,6 +1120,23 @@ private func createCatchableNode(for item: FallingItem) -> SKNode? {
     let container = SKNode()
     container.zPosition = 3
     
+    // Determine size based on catchable type
+    let size: CGSize
+    switch config.id {
+    case "leaf":
+        size = CGSize(width: 20, height: 20)  // Smaller
+    case "heart":
+        size = CGSize(width: 32, height: 32)  // Medium
+    case "brain":
+        size = CGSize(width: 36, height: 36)  // Medium-large
+    case "sun":
+        size = CGSize(width: 40, height: 40)  // Large
+    case "shaker":
+        size = CGSize(width: 24, height: 32)  // Thinner and taller
+    default:
+        size = CGSize(width: 36, height: 36)
+    }
+    
     // Try to render as SF Symbol first (if iconName is set and assetName is nil)
     if let iconName = config.iconName, config.assetName == nil {
         if let symbolImage = UIImage(systemName: iconName) {
@@ -1106,7 +1151,7 @@ private func createCatchableNode(for item: FallingItem) -> SKNode? {
             
             let texture = SKTexture(image: tintedImage)
             let sprite = SKSpriteNode(texture: texture)
-            sprite.size = CGSize(width: 40, height: 40)
+            sprite.size = size
             sprite.zPosition = 3
             container.addChild(sprite)
         }
@@ -1114,12 +1159,93 @@ private func createCatchableNode(for item: FallingItem) -> SKNode? {
     // Try to render as asset image
     else if let assetName = config.assetName {
         let sprite = SKSpriteNode(imageNamed: assetName)
-        sprite.size = CGSize(width: 40, height: 40)
+        sprite.size = size
         sprite.zPosition = 3
         container.addChild(sprite)
     }
     
     return container
+}
+
+// MARK: - Floating Text Management
+
+private func addFloatingText(_ text: String, x: CGFloat, y: CGFloat, color: UIColor) {
+    let label = SKLabelNode(fontNamed: "Arial-BoldMT")
+    label.text = text
+    label.fontSize = 14
+    label.fontColor = color
+    
+    // Convert normalized coordinates to screen coordinates
+    let screenX = x * size.width
+    let screenY = (1.0 - y) * size.height
+    label.position = CGPoint(x: screenX, y: screenY)
+    label.zPosition = 50
+    
+    floatingTextContainer.addChild(label)
+    
+    floatingTexts.append(FloatingText(
+        node: label,
+        x: screenX,
+        y: screenY,
+        color: color
+    ))
+}
+
+private func updateFloatingText() {
+    let deltaTime: TimeInterval = 0.016  // ~60 FPS
+    
+    for i in floatingTexts.indices.reversed() {
+        floatingTexts[i].age += deltaTime
+        
+        // Move upward
+        floatingTexts[i].y += 40 * deltaTime
+        floatingTexts[i].node.position.y = floatingTexts[i].y
+        
+        // Fade out
+        let alpha = max(0, 1.0 - (floatingTexts[i].age / floatingTexts[i].lifespan))
+        floatingTexts[i].node.alpha = CGFloat(alpha)
+        
+        // Remove if expired
+        if floatingTexts[i].age >= floatingTexts[i].lifespan {
+            floatingTexts[i].node.removeFromParent()
+            floatingTexts.remove(at: i)
+        }
+    }
+}
+
+// MARK: - Boost Management
+
+private func activateBoost() {
+    boostEndTime = CACurrentMediaTime() + 6.0  // 6 second boost
+}
+
+private func updateBoostTimer() {
+    let currentTime = CACurrentMediaTime()
+    let timeRemaining = boostEndTime - currentTime
+    
+    if timeRemaining > 0 {
+        let seconds = Int(timeRemaining)
+        boostTimerLabel?.text = "⚡ Boost: \(seconds)s"
+        boostTimerLabel?.isHidden = false
+    } else {
+        boostTimerLabel?.isHidden = true
+        boostEndTime = 0
+    }
+}
+
+private func isBoostActive() -> Bool {
+    return CACurrentMediaTime() < boostEndTime
+}
+
+// MARK: - Floating Text Structure
+
+struct FloatingText {
+    var node: SKLabelNode
+    var x: CGFloat
+    var y: CGFloat
+    var age: TimeInterval = 0
+    let lifespan: TimeInterval = 2.0
+    let color: UIColor
 }
 
 @MainActor
