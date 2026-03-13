@@ -170,11 +170,17 @@ struct Door {
 /// Loads action configurations from actions_config.json
 func loadActionConfigs() -> [ActionConfig] {
     // Try to load from bundle
-    if let url = Bundle.main.url(forResource: "actions_config", withExtension: "json"),
-       let data = try? Data(contentsOf: url) {
-        let decoder = JSONDecoder()
-        if let configs = try? decoder.decode([ActionConfig].self, from: data) {
+    if let url = Bundle.main.url(forResource: "actions_config", withExtension: "json") {
+        print("📂 Found actions_config.json at: \(url)")
+        
+        do {
+            let data = try Data(contentsOf: url)
+            print("📦 Read \(data.count) bytes from actions_config.json")
+            
+            let decoder = JSONDecoder()
+            let configs = try decoder.decode([ActionConfig].self, from: data)
             print("✅ Successfully loaded \(configs.count) action configurations from JSON")
+            
             // Debug: Print animation config for each action
             for config in configs {
                 if let animConfig = config.stickFigureAnimation {
@@ -184,11 +190,18 @@ func loadActionConfigs() -> [ActionConfig] {
                 }
             }
             return configs
-        } else {
-            print("⚠️ Failed to decode actions_config.json")
+        } catch {
+            print("❌ Failed to decode actions_config.json: \(error)")
+            if let decodingError = error as? DecodingError {
+                print("   Decoding error details: \(decodingError)")
+            }
         }
     } else {
-        print("⚠️ Could not find actions_config.json in bundle")
+        print("❌ Could not find actions_config.json in bundle")
+        print("   Bundle path: \(Bundle.main.bundlePath)")
+        if let contents = try? FileManager.default.contentsOfDirectory(atPath: Bundle.main.bundlePath) {
+            print("   Available resources: \(contents)")
+        }
     }
     
     // Fallback to empty array - should not happen if JSON is properly included

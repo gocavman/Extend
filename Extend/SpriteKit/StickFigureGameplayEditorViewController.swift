@@ -1267,7 +1267,9 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
             // Create a temporary StickFigure2D with current angles to use with SavedEditFrame initializer
             var tempPose = self.gameState?.standFrame ?? StickFigure2D()
             tempPose.headAngle = self.neckRotation
-            tempPose.midTorsoAngle = self.torsoRotation
+            tempPose.torsoRotationAngle = self.upperTorsoRotation  // Upper torso rotation around neck (purple dot - minute hand)
+            tempPose.midTorsoAngle = self.lowerTorsoRotation       // Upper torso rotation around midTorso
+            tempPose.waistTorsoAngle = self.waistTorsoAngle        // Entire upper body rotation around waist (orange dot)
             tempPose.leftShoulderAngle = self.leftShoulderAngle
             tempPose.leftElbowAngle = self.leftElbowAngle
             tempPose.rightShoulderAngle = self.rightShoulderAngle
@@ -1502,6 +1504,7 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
     
     private func applyFrame(_ frame: SavedEditFrame) {
         print("🎮 Applying frame: \(frame.name)")
+        print("🎮 DEBUG applyFrame: positionX=\(frame.positionX), positionY=\(frame.positionY)")
         // Restore all angles
         neckRotation = frame.headAngle
         upperTorsoRotation = frame.torsoRotationAngle
@@ -1546,6 +1549,7 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
         // Restore position offsets
         figureOffsetX = frame.positionX
         figureOffsetY = frame.positionY
+        print("🎮 DEBUG applyFrame after assignment: figureOffsetX=\(figureOffsetX), figureOffsetY=\(figureOffsetY)")
         
         // Restore all multiplier and size properties
         skeletonSizeTorso = frame.skeletonSizeTorso
@@ -2318,11 +2322,9 @@ class FrameListViewController: UIViewController, UITableViewDataSource, UITableV
         for bundleFrame in bundleFrames {
             bundleFrameIds.insert(bundleFrame.id)
             
-            // Check if this bundle frame is already in saved frames
-            if !allFrames.contains(where: { $0.id == bundleFrame.id }) {
-                // Convert AnimationFrame to SavedEditFrame
-                let pose = bundleFrame.pose.toStickFigure2D()
-                let editValues = EditModeValues(
+            // Always create SavedEditFrame from bundle version to get latest values
+            let pose = bundleFrame.pose.toStickFigure2D()
+            let editValues = EditModeValues(
                     figureScale: pose.scale,
                     fusiformUpperTorso: pose.fusiformUpperTorso,
                     fusiformLowerTorso: pose.fusiformLowerTorso,
@@ -2366,11 +2368,12 @@ class FrameListViewController: UIViewController, UITableViewDataSource, UITableV
                     armMuscleSide: pose.armMuscleSide,
                     showGrid: true,
                     showJoints: true,
-                    positionX: 0,
-                    positionY: 0,
+                    positionX: pose.figureOffsetX,
+                    positionY: pose.figureOffsetY,
                     bodyPartColors: nil,
                     showInteractiveJoints: nil
                 )
+                print("🎮 DEBUG: Bundle frame loaded - name=\(bundleFrame.name), figureOffsetX=\(pose.figureOffsetX), figureOffsetY=\(pose.figureOffsetY)")
                 // Convert AnimationObjects to EditorObjects
                 let editorObjects = bundleFrame.objects.map { animObj in
                     EditorObject(
@@ -2381,9 +2384,10 @@ class FrameListViewController: UIViewController, UITableViewDataSource, UITableV
                         scaleY: animObj.scale
                     )
                 }
-                let savedFrame = SavedEditFrame(id: bundleFrame.id, name: bundleFrame.name, from: editValues, pose: pose, objects: editorObjects)
+                let savedFrame = SavedEditFrame(id: bundleFrame.id, name: bundleFrame.name, frameNumber: bundleFrame.frameNumber, from: editValues, pose: pose, objects: editorObjects)
+                // Remove local version if it exists, then add bundle version
+                allFrames.removeAll { $0.id == bundleFrame.id }
                 allFrames.append(savedFrame)
-            }
         }
         
         // Sort by timestamp (newest first)

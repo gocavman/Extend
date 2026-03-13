@@ -1,3 +1,4 @@
+
 import SpriteKit
 
 /// SpriteKit scene for gameplay with character movement and interactions
@@ -17,6 +18,11 @@ class GameplayScene: GameScene {
     private var exitButtonArea: SKShapeNode?
     private var statsButtonArea: SKShapeNode?
     private var appearanceButtonNode: SKNode?
+    
+    // Current selected action
+    private var selectedAction: ActionConfig?
+    private var selectedActionLabel: SKLabelNode?  // Label to display selected action name
+    private var actionZoneNode: SKShapeNode?  // Reference to action zone for visual updates
     
     // Edit mode properties - REMOVED (now on Map Screen)
     // private var isEditMode: Bool = false
@@ -165,8 +171,9 @@ class GameplayScene: GameScene {
             characterContainer.name = "character"
             characterContainer.zPosition = 10
             
-            // Use renderStickFigure with proper scale
-            let stickFigureNode = renderStickFigure(frameWithAppearance, at: CGPoint.zero, scale: 1.2, flipped: false, jointShapeSize: frameWithAppearance.jointShapeSize)
+            // Use renderStickFigure with proper scale and figure offsets
+            let offsetPosition = CGPoint(x: frameWithAppearance.figureOffsetX, y: frameWithAppearance.figureOffsetY)
+            let stickFigureNode = renderStickFigure(frameWithAppearance, at: offsetPosition, scale: 1.2, flipped: false, jointShapeSize: frameWithAppearance.jointShapeSize)
             characterContainer.addChild(stickFigureNode)
             
             // Render stand frame objects
@@ -223,20 +230,31 @@ class GameplayScene: GameScene {
         // Center zone (action) - BOTTOM CENTER (20%)
         let centerZone = SKShapeNode(rectOf: CGSize(width: centerZoneWidth, height: zoneHeight))
         centerZone.position = CGPoint(x: leftZoneWidth + centerZoneWidth / 2, y: zoneHeight / 2)
-        centerZone.fillColor = SKColor.red.withAlphaComponent(0.4)
-        centerZone.strokeColor = .black
-        centerZone.lineWidth = 2
+        // Enhanced appearance: gradient-like effect with bright red
+        centerZone.fillColor = SKColor(red: 0.9, green: 0.1, blue: 0.1, alpha: 0.6)  // Brighter red
+        centerZone.strokeColor = SKColor(red: 1.0, green: 0.0, blue: 0.0, alpha: 1.0)  // Bright red border
+        centerZone.lineWidth = 3  // Thicker border for prominence
         centerZone.name = "centerZone"
         centerZone.zPosition = 5
         addChild(centerZone)
+        self.actionZoneNode = centerZone  // Store reference
         
-        let centerLabel = SKLabelNode(fontNamed: "Arial")
+        let centerLabel = SKLabelNode(fontNamed: "Arial-BoldMT")  // Use bold font
         centerLabel.text = "ACTION"
-        centerLabel.fontSize = 10
-        centerLabel.fontColor = .black
-        centerLabel.position = CGPoint(x: leftZoneWidth + centerZoneWidth / 2, y: zoneHeight / 2)
+        centerLabel.fontSize = 12
+        centerLabel.fontColor = .white  // White text for contrast
+        centerLabel.position = CGPoint(x: leftZoneWidth + centerZoneWidth / 2, y: zoneHeight / 2 + 15)
         centerLabel.zPosition = 6
         addChild(centerLabel)
+        
+        // Label to display selected action name
+        selectedActionLabel = SKLabelNode(fontNamed: "Arial")
+        selectedActionLabel?.text = "-"
+        selectedActionLabel?.fontSize = 10
+        selectedActionLabel?.fontColor = SKColor(red: 0.2, green: 0.2, blue: 0.2, alpha: 1.0)
+        selectedActionLabel?.position = CGPoint(x: leftZoneWidth + centerZoneWidth / 2, y: zoneHeight / 2 - 10)
+        selectedActionLabel?.zPosition = 6
+        addChild(selectedActionLabel!)
         
         // Right zone (move right) - BOTTOM RIGHT (40%)
         let rightZone = SKShapeNode(rectOf: CGSize(width: rightZoneWidth, height: zoneHeight))
@@ -270,6 +288,19 @@ class GameplayScene: GameScene {
     override func handleTouchEnded(at point: CGPoint) {
         print("🎮 ===== TOUCH ENDED =====")
         print("🎮 Touch point: \(point)")
+        
+        // Check for Action button in bottom center zone FIRST
+        let zoneHeight: CGFloat = 120
+        let leftZoneWidth = size.width * 0.4
+        let centerZoneWidth = size.width * 0.2
+        
+        // Check if touch is in ACTION zone (center zone at bottom)
+        let centerZoneX = leftZoneWidth + centerZoneWidth / 2
+        if point.y < zoneHeight && abs(point.x - centerZoneX) < centerZoneWidth / 2 {
+            print("🎮 Action zone tapped!")
+            showActionSelection()
+            return
+        }
         
         // First, check for button taps at the top
         let topBarY = size.height - 100
@@ -311,11 +342,21 @@ class GameplayScene: GameScene {
         }
         
         let topButtonY = size.height - 120  // Top button area (safe zone)
+        let zoneHeight: CGFloat = 120
         
         // Only ignore PRESS events in top button area
         // Always allow RELEASE events to stop movement
         if isPress && point.y > topButtonY {
             print("🎮 Touch in top button area, ignoring press")
+            return
+        }
+        
+        // Ignore ACTION zone presses - they should not trigger movement
+        let leftZoneWidth = size.width * 0.4
+        let centerZoneWidth = size.width * 0.2
+        let centerZoneX = leftZoneWidth + centerZoneWidth / 2
+        if isPress && point.y < zoneHeight && abs(point.x - centerZoneX) < centerZoneWidth / 2 {
+            print("🎮 Touch in ACTION zone press, ignoring movement")
             return
         }
         
@@ -329,6 +370,29 @@ class GameplayScene: GameScene {
         
         let characterX = character.position.x
         print("🎮 Character position: \(characterX), Tap position: \(point.x)")
+        
+        // Check if tapping directly on the character (within a threshold)
+        let characterTapThreshold: CGFloat = 60  // Reasonable tap area around character
+        let isCharacterTap = abs(point.x - characterX) <= characterTapThreshold && point.y > zoneHeight
+        
+        if isCharacterTap && isPress {
+            // Character was tapped - trigger the selected action
+            print("🎮 ✓ CHARACTER TAPPED - Attempting to trigger action")
+            
+            if let selectedAction = selectedAction {
+                print("🎮 ✓ Selected action is set: \(selectedAction.displayName)")
+                // Only start action if not already performing one and not moving
+                if gameState.currentPerformingAction == nil && !gameState.isMovingLeft && !gameState.isMovingRight {
+                    print("🎮 ✓ Starting action animation: \(selectedAction.id)")
+                    gameState.startAction(selectedAction, gameState: gameState)
+                } else {
+                    print("🎮 ⚠️ Cannot start action - currently performing: \(gameState.currentPerformingAction ?? "none"), moving: L=\(gameState.isMovingLeft) R=\(gameState.isMovingRight)")
+                }
+            } else {
+                print("🎮 ⚠️ No action selected yet - tap ACTION button to select one")
+            }
+            return  // Exit early, don't process movement
+        }
         
         // Smart directional movement: determine direction based on tap position relative to character
         // If tap is to the left of character, move left (regardless of zone)
@@ -390,8 +454,29 @@ class GameplayScene: GameScene {
         // Update eye blinking
         updateEyeBlinking()
         
-        // Check if character is moving - update animation
-        if gameState.isMovingLeft || gameState.isMovingRight {
+        // Check if an action animation is currently playing
+        if let currentAction = gameState.currentPerformingAction, let currentStickFigure = gameState.currentStickFigure {
+            print("🎮 [UPDATE] Rendering action frame for: \(currentAction)")
+            
+            // Apply muscle scaling and appearance to the action frame
+            let scaledFrame = applyMuscleScaling(to: currentStickFigure)
+            var frameWithAppearance = scaledFrame
+            StickFigureAppearance.shared.applyToStickFigure(&frameWithAppearance)
+            
+            // Clear character node and render the new frame with offsets
+            character.removeAllChildren()
+            let shouldFlip = gameState.actionFlip
+            let offsetPosition = CGPoint(x: frameWithAppearance.figureOffsetX, y: frameWithAppearance.figureOffsetY)
+            let stickFigureNode = renderStickFigure(frameWithAppearance, at: offsetPosition, scale: 1.2, flipped: shouldFlip, jointShapeSize: frameWithAppearance.jointShapeSize)
+            character.addChild(stickFigureNode)
+            
+            // Render action frame objects
+            if gameState.currentFrameIndex < gameState.actionStickFigureObjects.count {
+                renderFrameObjects(gameState.actionStickFigureObjects[gameState.currentFrameIndex], on: character, scale: 1.2)
+            }
+            
+        } else if gameState.isMovingLeft || gameState.isMovingRight {
+            // Check if character is moving - update animation
             // Start animation if not already running
             if character.action(forKey: "moveAnimation") == nil {
                 startMovementAnimation()
@@ -400,6 +485,23 @@ class GameplayScene: GameScene {
             // Stop animation if running
             if character.action(forKey: "moveAnimation") != nil {
                 stopMovementAnimation()
+            }
+            
+            // If not moving and not performing action, make sure we show stand frame
+            // This handles the case where action just finished
+            if let standFrame = gameState.standFrame {
+                let scaledFrame = applyMuscleScaling(to: standFrame)
+                var frameWithAppearance = scaledFrame
+                StickFigureAppearance.shared.applyToStickFigure(&frameWithAppearance)
+                
+                character.removeAllChildren()
+                let shouldFlip = !gameState.facingRight
+                let offsetPosition = CGPoint(x: frameWithAppearance.figureOffsetX, y: frameWithAppearance.figureOffsetY)
+                let stickFigureNode = renderStickFigure(frameWithAppearance, at: offsetPosition, scale: 1.2, flipped: shouldFlip, jointShapeSize: frameWithAppearance.jointShapeSize)
+                character.addChild(stickFigureNode)
+                
+                // Render stand frame objects
+                renderFrameObjects(gameState.standFrameObjects, on: character, scale: 1.2)
             }
         }
         
@@ -825,6 +927,73 @@ class GameplayScene: GameScene {
             sprite.zPosition = 5  // Behind stick figure (which is 10+)
             sprite.name = "object_\(object.imageName)"
             container.addChild(sprite)
+        }
+    }
+    
+    /// Show action selection window
+    private func showActionSelection() {
+        guard let gameState = gameState, let gameViewController = gameViewController else {
+            print("🎮 ❌ showActionSelection FAILED: gameState=\(gameState != nil), gameViewController=\(gameViewController != nil)")
+            return
+        }
+        
+        print("🎮 showActionSelection called for level \(gameState.currentLevel)")
+        print("🎮 gameViewController class: \(type(of: gameViewController))")
+        print("🎮 LEVEL_CONFIGS.count=\(LEVEL_CONFIGS.count), ACTION_CONFIGS.count=\(ACTION_CONFIGS.count)")
+        
+        // Get the level config
+        guard let levelConfig = LEVEL_CONFIGS.first(where: { $0.id == gameState.currentLevel }) else {
+            print("🎮 ❌ Level config not found for level \(gameState.currentLevel)")
+            print("🎮 Available level IDs: \(LEVEL_CONFIGS.map { $0.id })")
+            return
+        }
+        
+        print("🎮 Level config found: \(levelConfig.name)")
+        print("🎮 Available action IDs in level config: \(levelConfig.availableActions)")
+        
+        // Get actions that match the available action IDs for this level
+        let availableActions = ACTION_CONFIGS.filter { config in
+            levelConfig.availableActions.contains(config.id)
+        }
+        
+        print("🎮 Filtered available actions: \(availableActions.map { $0.id })")
+        
+        if availableActions.isEmpty {
+            print("🎮 ⚠️ No actions available for level \(gameState.currentLevel)")
+            return
+        }
+        
+        print("🎮 ✓ Found \(availableActions.count) available actions for level \(gameState.currentLevel)")
+        
+        // Create action selection controller
+        let actionSelectionVC = ActionSelectionViewController()
+        actionSelectionVC.actions = availableActions
+        
+        print("🎮 Created ActionSelectionViewController")
+        print("🎮 About to present ActionSelectionViewController")
+        print("🎮 gameViewController: \(gameViewController)")
+        print("🎮 gameViewController.view: \(String(describing: gameViewController.view))")
+        
+        // Handle action selection
+        actionSelectionVC.onActionSelected = { [weak self] selectedAction in
+            print("🎮 Action selected: \(selectedAction.id)")
+            self?.selectedAction = selectedAction
+            // Update the label on the action zone
+            self?.selectedActionLabel?.text = selectedAction.displayName
+            print("🎮 ✓ Updated action label to: \(selectedAction.displayName)")
+        }
+        
+        // Handle dismissal
+        actionSelectionVC.onDismiss = { [weak self] in
+            print("🎮 Action selection dismissed")
+            _ = self  // Use self to avoid warning
+        }
+        
+        // Present the view controller on main thread
+        DispatchQueue.main.async {
+            print("🎮 Presenting ActionSelectionViewController with modal style: \(actionSelectionVC.modalPresentationStyle)")
+            gameViewController.present(actionSelectionVC, animated: true)
+            print("🎮 ✓ ActionSelectionViewController presented")
         }
     }
     

@@ -357,7 +357,10 @@ struct StickFigure2DPose: Codable {
         figure.neckLength = neckLength
         figure.neckWidth = neckWidth
         figure.handSize = handSize
+        figure.handSize = handSize
         figure.footSize = footSize
+        figure.figureOffsetX = figureOffsetX
+        figure.figureOffsetY = figureOffsetY
         return figure
     }
     
@@ -593,6 +596,10 @@ fileprivate extension Color {
 struct StickFigure2D {
     // Root position (centered in 600x720 base canvas)
     var waistPosition: CGPoint = CGPoint(x: 300, y: 360)
+    
+    // Figure position offsets (for positioning the entire figure within the canvas)
+    var figureOffsetX: CGFloat = 0.0
+    var figureOffsetY: CGFloat = 0.0
     
     // Joint angles (in degrees, 0° points up, 90° points right)
     var waistTorsoAngle: Double = 0 // Rotation of entire upper body around waist (orange dot)
