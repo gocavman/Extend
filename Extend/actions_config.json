@@ -38,7 +38,7 @@
     "stickFigureAnimation": {
       "animationName": "Move",
       "frameNumbers": [1, 2, 3, 4, 5, 6, 7, 8],
-      "baseFrameInterval": 2.15
+      "baseFrameInterval": 0.15
     }
   },
   {

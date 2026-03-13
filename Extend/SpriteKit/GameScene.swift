@@ -87,9 +87,6 @@ class GameScene: SKScene {
         
         // Apply custom appearance colors from UserDefaults
         StickFigureAppearance.shared.applyToStickFigure(&mutableFigure)
-        print("🎨 Applied appearance colors - torso: \(mutableFigure.torsoColor), leftUpperArm: \(mutableFigure.leftUpperArmColor), leftLowerArm: \(mutableFigure.leftLowerArmColor)")
-        
-        print("🎮 renderStickFigure: Drawing using StickFigure2D computed properties, scale: \(scale)")
         
         // Base canvas dimensions (matching StickFigure2D)
         let baseCanvasSize = CGSize(width: 600, height: 720)
@@ -103,9 +100,6 @@ class GameScene: SKScene {
         let leftShoulderPos = mutableFigure.leftShoulderPosition
         let rightShoulderPos = mutableFigure.rightShoulderPosition
         
-        print("🎮 DEBUG: Neck=\(neckPos), Waist=\(waistPos), UpperTorso fusiform=\(mutableFigure.fusiformUpperTorso), Bicep fusiform=\(mutableFigure.fusiformBicep), Tricep fusiform=\(mutableFigure.fusiformTricep)")
-        
-        print("🎮 DEBUG: Neck=\(neckPos), Waist=\(waistPos), UpperTorso fusiform=\(mutableFigure.fusiformUpperTorso), Bicep fusiform=\(mutableFigure.fusiformBicep), Tricep fusiform=\(mutableFigure.fusiformTricep)")
         let leftUpperArmEnd = mutableFigure.leftUpperArmEnd
         let rightUpperArmEnd = mutableFigure.rightUpperArmEnd
         let leftForearmEnd = mutableFigure.leftForearmEnd
@@ -114,9 +108,6 @@ class GameScene: SKScene {
         let rightUpperLegEnd = mutableFigure.rightUpperLegEnd
         let leftFootEnd = mutableFigure.leftFootEnd
         let rightFootEnd = mutableFigure.rightFootEnd
-        
-        print("🎮 Waist: \(waistPos), Neck: \(neckPos), Head: \(headPos)")
-        print("🎮 Left arm: shoulder->elbow->forearm = \(leftShoulderPos) -> \(leftUpperArmEnd) -> \(leftForearmEnd)")
         
         // Helper to convert SwiftUI Color to SKColor properly - MUST BE DEFINED FIRST
         func toSKColor(_ color: Color) -> SKColor {
@@ -381,7 +372,6 @@ class GameScene: SKScene {
             }
             
             if debugFirstPass {
-                print("🎨 DELTOID DEBUG SUMMARY: minWidth=\(minWidth), maxWidth=\(maxWidth), ratio=\(maxWidth/minWidth)")
                 debugFirstPass = false
             }
             
@@ -447,7 +437,6 @@ class GameScene: SKScene {
             armMuscleSide: String = "normal",
             isLeftArm: Bool = false
         ) {
-            print("🎨 DEBUG drawArmWithBicepTricep: armMuscleSide=\(armMuscleSide), isLeftArm=\(isLeftArm), bicepFusiform=\(bicepFusiform), tricepFusiform=\(tricepFusiform)")
             // Convert to relative coordinates and apply scale
             let fromRelative = CGPoint(x: (from.x - baseCenter.x) * scale, y: (baseCenter.y - from.y) * scale)
             let toRelative = CGPoint(x: (to.x - baseCenter.x) * scale, y: (baseCenter.y - to.y) * scale)
@@ -817,14 +806,6 @@ class GameScene: SKScene {
             let waistRelative = CGPoint(x: (waistPoint.x - baseCenter.x) * scale, y: (baseCenter.y - waistPoint.y) * scale)
             let leftHipRelative = CGPoint(x: (leftHipPos.x - baseCenter.x) * scale, y: (baseCenter.y - leftHipPos.y) * scale)
             let rightHipRelative = CGPoint(x: (rightHipPos.x - baseCenter.x) * scale, y: (baseCenter.y - rightHipPos.y) * scale)
-            
-            print("🔺 TRIANGLE DEBUG:")
-            print("  topPoint: \(midTorsoPoint) -> \(topPointRelative)")
-            print("  waist: \(waistPoint) -> \(waistRelative)")
-            print("  leftHip: \(leftHipPos) -> \(leftHipRelative)")
-            print("  rightHip: \(rightHipPos) -> \(rightHipRelative)")
-            print("  pointPosition: \(pointPosition)")
-            print("  fusiform: \(fusiform), strokeThickness: \(strokeThickness)")
             
             // Apply fusiform to hip width - fusiform expands the hips
             let hipDistance = sqrt(pow(rightHipRelative.x - leftHipRelative.x, 2) + pow(rightHipRelative.y - leftHipRelative.y, 2))
