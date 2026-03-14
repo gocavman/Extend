@@ -1153,23 +1153,25 @@ private func createCatchableNode(for item: FallingItem) -> SKNode? {
     
     // Try to render as SF Symbol first (if iconName is set and assetName is nil)
     if let iconName = config.iconName, config.assetName == nil {
+        let sprite = SKSpriteNode()
+        sprite.size = size
+        sprite.zPosition = 3
+        
+        // Create tinted image for the symbol
         if let symbolImage = UIImage(systemName: iconName, withConfiguration: UIImage.SymbolConfiguration(scale: .large)) {
-            let texture = SKTexture(image: symbolImage)
-            let sprite = SKSpriteNode(texture: texture)
-            sprite.size = size
-            sprite.zPosition = 3
-            
-            // Apply the hex color directly
-            if let hexColor = config.color, let color = UIColor(hex: hexColor) {
-                print("🍃 Leaf color: hex=\(hexColor), UIColor=\(color)")
-                sprite.color = color
-                sprite.colorBlendFactor = 1.0
+            let tintedImage: UIImage
+            if let hexColor = config.color, let targetColor = UIColor(hex: hexColor) {
+                // Render symbol with template rendering mode and apply color
+                tintedImage = symbolImage.withTintColor(targetColor, renderingMode: .alwaysTemplate)
+                print("🍃 Created tinted image for \(iconName) with color \(targetColor)")
             } else {
-                print("🍃 Leaf color: NO COLOR SET (hex=\(config.color ?? "nil"))")
+                tintedImage = symbolImage
             }
             
-            container.addChild(sprite)
+            sprite.texture = SKTexture(image: tintedImage)
         }
+        
+        container.addChild(sprite)
     }
     // Try to render as asset image
     else if let assetName = config.assetName {
