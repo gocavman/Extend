@@ -1012,12 +1012,22 @@ private func spawnFallingCatchables(gameState: StickFigureGameState) {
     for itemConfig in unlockedItems {
         // Check spawn probability for this specific item
         if fallingItems.count < maxItems && Double.random(in: 0...1) < itemConfig.baseSpawnChance {
+            // Determine horizontal velocity based on direction config
+            let horizontalVel: CGFloat
+            if itemConfig.direction == "falls" {
+                // Falls: moves sideways while falling
+                horizontalVel = CGFloat.random(in: -0.002...0.002)
+            } else {
+                // Vertical: straight down, no horizontal movement
+                horizontalVel = 0.0
+            }
+            
             let item = FallingItem(
                 itemType: itemConfig.id,
                 x: CGFloat.random(in: 0.1...0.9),
                 y: -0.1,  // Spawn above screen
                 rotation: Double.random(in: 0...360),
-                horizontalVelocity: CGFloat.random(in: -0.002...0.002),
+                horizontalVelocity: horizontalVel,
                 verticalSpeed: CGFloat.random(in: itemConfig.baseVerticalSpeed...itemConfig.baseVerticalSpeedMax)
             )
             fallingItems.append(item)
