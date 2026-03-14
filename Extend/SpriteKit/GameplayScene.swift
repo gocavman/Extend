@@ -1153,31 +1153,27 @@ private func createCatchableNode(for item: FallingItem) -> SKNode? {
     
     // Try to render as SF Symbol first (if iconName is set and assetName is nil)
     if let iconName = config.iconName, config.assetName == nil {
-        if let symbolImage = UIImage(systemName: iconName) {
-            // Create a properly colored version of the symbol
+        let symbolConfig = UIImage.SymbolConfiguration(pointSize: 20, weight: .semibold)
+        if let baseSymbol = UIImage(systemName: iconName, withConfiguration: symbolConfig) {
+            // Bake the color into the symbol by rendering it to an image with the color
+            var finalImage = baseSymbol
             if let hexColor = config.color, let targetColor = UIColor(hex: hexColor) {
-                // Create image with proper color rendering
-                let size = CGSize(width: 64, height: 64)
-                let renderer = UIGraphicsImageRenderer(size: size)
-                let coloredImage = renderer.image { _ in
-                    symbolImage.draw(in: CGRect(origin: .zero, size: size))
-                }
-                
-                // Now tint the rendered image
-                let tintedImage = coloredImage.withTintColor(targetColor, renderingMode: .alwaysOriginal)
-                let texture = SKTexture(image: tintedImage)
-                let sprite = SKSpriteNode(texture: texture)
-                sprite.size = self.size
-                sprite.zPosition = 3
-                container.addChild(sprite)
-            } else {
-                // No color config, just use the symbol as-is
-                let texture = SKTexture(image: symbolImage)
-                let sprite = SKSpriteNode(texture: texture)
-                sprite.size = self.size
-                sprite.zPosition = 3
-                container.addChild(sprite)
+                // Render symbol with color baked in
+                let imageSize = CGSize(width: 40, height: 40)
+                UIGraphicsBeginImageContextWithOptions(imageSize, false, 0)
+                targetColor.setFill()
+                let rect = CGRect(origin: .zero, size: imageSize)
+                UIBezierPath(rect: rect).fill()
+                baseSymbol.draw(in: rect, blendMode: .multiply, alpha: 1.0)
+                finalImage = UIGraphicsGetImageFromCurrentImageContext() ?? baseSymbol
+                UIGraphicsEndImageContext()
             }
+            
+            let texture = SKTexture(image: finalImage)
+            let sprite = SKSpriteNode(texture: texture)
+            sprite.size = size
+            sprite.zPosition = 3
+            container.addChild(sprite)
         }
     }
     // Try to render as asset image
