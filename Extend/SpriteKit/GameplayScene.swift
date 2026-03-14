@@ -1153,20 +1153,15 @@ private func createCatchableNode(for item: FallingItem) -> SKNode? {
     
     // Try to render as SF Symbol first (if iconName is set and assetName is nil)
     if let iconName = config.iconName, config.assetName == nil {
-        // Create the SF Symbol with template rendering mode
-        let symbolConfig = UIImage.SymbolConfiguration(pointSize: 24, weight: .regular, scale: .large)
-        if let symbolImage = UIImage(systemName: iconName, withConfiguration: symbolConfig) {
-            // Apply color FIRST before converting to texture
-            var coloredImage = symbolImage
+        // Get the base symbol image
+        if var symbolImage = UIImage(systemName: iconName) {
+            // Apply color tint using alwaysOriginal mode
             if let hexColor = config.color, let targetColor = UIColor(hex: hexColor) {
-                coloredImage = symbolImage.withTintColor(targetColor, renderingMode: .alwaysTemplate)
-                print("🍃 Tinted \(iconName) with \(targetColor)")
+                symbolImage = symbolImage.withTintColor(targetColor, renderingMode: .alwaysOriginal)
+                print("🍃 Tinted \(iconName) with alwaysOriginal mode")
             }
             
-            // Now create texture from the colored image
-            let texture = SKTexture(image: coloredImage)
-            texture.filteringMode = .linear
-            
+            let texture = SKTexture(image: symbolImage)
             let sprite = SKSpriteNode(texture: texture)
             sprite.size = size
             sprite.zPosition = 3
