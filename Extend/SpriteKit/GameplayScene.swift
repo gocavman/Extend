@@ -1008,13 +1008,13 @@ private func spawnFallingCatchables(gameState: StickFigureGameState) {
     // Calculate max items on screen
     let maxItems = max(4, unlockedItems.count * 2)
     
-    // Spawn new items with controlled probability
-    if fallingItems.count < maxItems && Double.random(in: 0...1) < 0.002 {
+    // Spawn new items with controlled probability - INCREASED from 0.002 to 0.01 (5x more frequent)
+    if fallingItems.count < maxItems && Double.random(in: 0...1) < 0.01 {
         if let itemConfig = unlockedItems.randomElement() {
             let item = FallingItem(
                 itemType: itemConfig.id,
-                x: CGFloat.random(in: 0.05...0.95),
-                y: 0.0,
+                x: CGFloat.random(in: 0.1...0.9),  // Spawn in middle 80% of screen (avoid edges)
+                y: -0.1,  // Spawn ABOVE screen, not at top edge
                 rotation: Double.random(in: 0...360),
                 horizontalVelocity: CGFloat.random(in: -0.002...0.002),
                 verticalSpeed: CGFloat.random(in: itemConfig.baseVerticalSpeed...itemConfig.baseVerticalSpeedMax)
@@ -1142,20 +1142,18 @@ private func createCatchableNode(for item: FallingItem) -> SKNode? {
     
     // Try to render as SF Symbol first (if iconName is set and assetName is nil)
     if let iconName = config.iconName, config.assetName == nil {
-        if let symbolImage = UIImage(systemName: iconName) {
+        // Create a configuration for rendering the symbol with a specific color
+        let symbolConfig = UIImage.SymbolConfiguration(pointSize: 20, weight: .semibold)
+        if var symbolImage = UIImage(systemName: iconName, withConfiguration: symbolConfig) {
+            // Apply color by creating a colored version
+            if let hexColor = config.color, let color = UIColor(hex: hexColor) {
+                symbolImage = symbolImage.withTintColor(color, renderingMode: .alwaysOriginal)
+            }
+            
             let texture = SKTexture(image: symbolImage)
             let sprite = SKSpriteNode(texture: texture)
             sprite.size = size
             sprite.zPosition = 3
-            
-            // Apply color tint by setting the sprite's color
-            if let hexColor = config.color {
-                if let color = UIColor(hex: hexColor) {
-                    sprite.color = color
-                    sprite.colorBlendFactor = 1.0
-                }
-            }
-            
             container.addChild(sprite)
         }
     }
