@@ -117,17 +117,12 @@ public struct ActionConfig: Codable {
 
 // MARK: - Level Configuration
 
-struct LevelCatchableConfig: Codable {
-    let chance: Double  // Probability of spawning (0.0 to 1.0)
-}
-
 struct LevelConfig: Codable {
     let id: Int
     let name: String
     let displayName: String
     let pointsToComplete: Int
     let availableActions: [String]  // Action IDs available in this level
-    let catchables: [String: LevelCatchableConfig]  // Catchable types and their config
     let mapX: Double
     let mapY: Double
     let width: Double
