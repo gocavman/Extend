@@ -1142,20 +1142,28 @@ private func createCatchableNode(for item: FallingItem) -> SKNode? {
     
     // Try to render as SF Symbol first (if iconName is set and assetName is nil)
     if let iconName = config.iconName, config.assetName == nil {
-        // Use SKLabelNode to render the SF Symbol with color support
-        let label = SKLabelNode(fontNamed: ".AppleSystemUIFont")
-        label.text = iconName
-        label.fontSize = 24
-        label.zPosition = 3
-        
-        // Apply color from config
-        if let hexColor = config.color, let color = UIColor(hex: hexColor) {
-            label.fontColor = color
-        } else {
-            label.fontColor = .white
+        if let symbolImage = UIImage(systemName: iconName) {
+            // Render with color by creating colored image
+            let coloredImage: UIImage
+            if let hexColor = config.color, let color = UIColor(hex: hexColor) {
+                // Create a colored version using a graphics context
+                let size = CGSize(width: 32, height: 32)
+                UIGraphicsBeginImageContextWithOptions(size, false, 0)
+                color.setFill()
+                UIBezierPath(rect: CGRect(origin: .zero, size: size)).fill()
+                symbolImage.draw(in: CGRect(origin: .zero, size: size), blendMode: .screen, alpha: 1.0)
+                coloredImage = UIGraphicsGetImageFromCurrentImageContext() ?? symbolImage
+                UIGraphicsEndImageContext()
+            } else {
+                coloredImage = symbolImage
+            }
+            
+            let texture = SKTexture(image: coloredImage)
+            let sprite = SKSpriteNode(texture: texture)
+            sprite.size = size
+            sprite.zPosition = 3
+            container.addChild(sprite)
         }
-        
-        container.addChild(label)
     }
     // Try to render as asset image
     else if let assetName = config.assetName {
