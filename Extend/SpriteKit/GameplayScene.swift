@@ -1153,21 +1153,21 @@ private func createCatchableNode(for item: FallingItem) -> SKNode? {
     
     // Try to render as SF Symbol first (if iconName is set and assetName is nil)
     if let iconName = config.iconName, config.assetName == nil {
-        // Get the base symbol image
-        if var symbolImage = UIImage(systemName: iconName) {
-            // Apply color tint using alwaysOriginal mode
-            if let hexColor = config.color, let targetColor = UIColor(hex: hexColor) {
-                symbolImage = symbolImage.withTintColor(targetColor, renderingMode: .alwaysOriginal)
-                print("🍃 Tinted \(iconName) with alwaysOriginal mode")
-            }
-            
-            let texture = SKTexture(image: symbolImage)
-            let sprite = SKSpriteNode(texture: texture)
-            sprite.size = size
-            sprite.zPosition = 3
-            
-            container.addChild(sprite)
+        // For now, render as colored circles instead of SF Symbols
+        // Get the color from config
+        var spriteColor = SKColor.white
+        if let hexColor = config.color, let color = UIColor(hex: hexColor) {
+            spriteColor = SKColor(cgColor: color.cgColor)
         }
+        
+        // Create a simple colored circle sprite
+        let sprite = SKShapeNode(circleOfRadius: size.width / 2)
+        sprite.fillColor = spriteColor
+        sprite.strokeColor = spriteColor
+        sprite.lineWidth = 0
+        sprite.zPosition = 3
+        
+        container.addChild(sprite)
     }
     // Try to render as asset image
     else if let assetName = config.assetName {
