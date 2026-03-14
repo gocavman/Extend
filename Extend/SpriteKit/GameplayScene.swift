@@ -1153,25 +1153,26 @@ private func createCatchableNode(for item: FallingItem) -> SKNode? {
     
     // Try to render as SF Symbol first (if iconName is set and assetName is nil)
     if let iconName = config.iconName, config.assetName == nil {
-        let sprite = SKSpriteNode()
-        sprite.size = size
-        sprite.zPosition = 3
-        
-        // Create tinted image for the symbol
-        if let symbolImage = UIImage(systemName: iconName, withConfiguration: UIImage.SymbolConfiguration(scale: .large)) {
-            let tintedImage: UIImage
+        // Create the SF Symbol with template rendering mode
+        let symbolConfig = UIImage.SymbolConfiguration(pointSize: 24, weight: .regular, scale: .large)
+        if let symbolImage = UIImage(systemName: iconName, withConfiguration: symbolConfig) {
+            // Apply color FIRST before converting to texture
+            var coloredImage = symbolImage
             if let hexColor = config.color, let targetColor = UIColor(hex: hexColor) {
-                // Render symbol with template rendering mode and apply color
-                tintedImage = symbolImage.withTintColor(targetColor, renderingMode: .alwaysTemplate)
-                print("🍃 Created tinted image for \(iconName) with color \(targetColor)")
-            } else {
-                tintedImage = symbolImage
+                coloredImage = symbolImage.withTintColor(targetColor, renderingMode: .alwaysTemplate)
+                print("🍃 Tinted \(iconName) with \(targetColor)")
             }
             
-            sprite.texture = SKTexture(image: tintedImage)
+            // Now create texture from the colored image
+            let texture = SKTexture(image: coloredImage)
+            texture.filteringMode = .linear
+            
+            let sprite = SKSpriteNode(texture: texture)
+            sprite.size = size
+            sprite.zPosition = 3
+            
+            container.addChild(sprite)
         }
-        
-        container.addChild(sprite)
     }
     // Try to render as asset image
     else if let assetName = config.assetName {
