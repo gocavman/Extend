@@ -1155,16 +1155,19 @@ private func createCatchableNode(for item: FallingItem) -> SKNode? {
     if let iconName = config.iconName, config.assetName == nil {
         let symbolConfig = UIImage.SymbolConfiguration(pointSize: 20, weight: .semibold)
         if let baseSymbol = UIImage(systemName: iconName, withConfiguration: symbolConfig) {
-            // Bake the color into the symbol by rendering it to an image with the color
             var finalImage = baseSymbol
             if let hexColor = config.color, let targetColor = UIColor(hex: hexColor) {
-                // Render symbol with color baked in
+                // Create colored version: draw symbol, then colorize it
                 let imageSize = CGSize(width: 40, height: 40)
                 UIGraphicsBeginImageContextWithOptions(imageSize, false, 0)
-                targetColor.setFill()
-                let rect = CGRect(origin: .zero, size: imageSize)
-                UIBezierPath(rect: rect).fill()
-                baseSymbol.draw(in: rect, blendMode: .multiply, alpha: 1.0)
+                
+                // Draw the symbol
+                baseSymbol.draw(in: CGRect(origin: .zero, size: imageSize))
+                
+                // Draw color on top with screen blend mode (lightens)
+                targetColor.withAlphaComponent(0.8).setFill()
+                UIBezierPath(rect: CGRect(origin: .zero, size: imageSize)).fill()
+                
                 finalImage = UIGraphicsGetImageFromCurrentImageContext() ?? baseSymbol
                 UIGraphicsEndImageContext()
             }
