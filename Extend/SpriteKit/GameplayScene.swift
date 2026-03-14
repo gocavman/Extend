@@ -1153,21 +1153,32 @@ private func createCatchableNode(for item: FallingItem) -> SKNode? {
     
     // Try to render as SF Symbol first (if iconName is set and assetName is nil)
     if let iconName = config.iconName, config.assetName == nil {
-        // For now, render as colored circles instead of SF Symbols
-        // Get the color from config
-        var spriteColor = SKColor.white
-        if let hexColor = config.color, let color = UIColor(hex: hexColor) {
-            spriteColor = SKColor(cgColor: color.cgColor)
+        if let symbolImage = UIImage(systemName: iconName) {
+            // Create a properly colored version of the symbol
+            if let hexColor = config.color, let targetColor = UIColor(hex: hexColor) {
+                // Create image with proper color rendering
+                let size = CGSize(width: 64, height: 64)
+                let renderer = UIGraphicsImageRenderer(size: size)
+                let coloredImage = renderer.image { _ in
+                    symbolImage.draw(in: CGRect(origin: .zero, size: size))
+                }
+                
+                // Now tint the rendered image
+                let tintedImage = coloredImage.withTintColor(targetColor, renderingMode: .alwaysOriginal)
+                let texture = SKTexture(image: tintedImage)
+                let sprite = SKSpriteNode(texture: texture)
+                sprite.size = self.size
+                sprite.zPosition = 3
+                container.addChild(sprite)
+            } else {
+                // No color config, just use the symbol as-is
+                let texture = SKTexture(image: symbolImage)
+                let sprite = SKSpriteNode(texture: texture)
+                sprite.size = self.size
+                sprite.zPosition = 3
+                container.addChild(sprite)
+            }
         }
-        
-        // Create a simple colored circle sprite
-        let sprite = SKShapeNode(circleOfRadius: size.width / 2)
-        sprite.fillColor = spriteColor
-        sprite.strokeColor = spriteColor
-        sprite.lineWidth = 0
-        sprite.zPosition = 3
-        
-        container.addChild(sprite)
     }
     // Try to render as asset image
     else if let assetName = config.assetName {
