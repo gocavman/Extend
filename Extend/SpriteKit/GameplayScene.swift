@@ -1008,9 +1008,10 @@ private func spawnFallingCatchables(gameState: StickFigureGameState) {
     // Calculate max items on screen
     let maxItems = max(4, unlockedItems.count * 2)
     
-    // Spawn new items with controlled probability (0.002 = ~1 every 8 seconds at 60 FPS)
-    if fallingItems.count < maxItems && Double.random(in: 0...1) < 0.002 {
-        if let itemConfig = unlockedItems.randomElement() {
+    // Spawn new items - each catchable has its own spawn chance
+    for itemConfig in unlockedItems {
+        // Check spawn probability for this specific item
+        if fallingItems.count < maxItems && Double.random(in: 0...1) < itemConfig.baseSpawnChance {
             let item = FallingItem(
                 itemType: itemConfig.id,
                 x: CGFloat.random(in: 0.1...0.9),
@@ -1143,25 +1144,17 @@ private func createCatchableNode(for item: FallingItem) -> SKNode? {
     // Try to render as SF Symbol first (if iconName is set and assetName is nil)
     if let iconName = config.iconName, config.assetName == nil {
         if let symbolImage = UIImage(systemName: iconName) {
-            // Render with color by creating colored image
-            let coloredImage: UIImage
-            if let hexColor = config.color, let color = UIColor(hex: hexColor) {
-                // Create a colored version using a graphics context
-                let size = CGSize(width: 32, height: 32)
-                UIGraphicsBeginImageContextWithOptions(size, false, 0)
-                color.setFill()
-                UIBezierPath(rect: CGRect(origin: .zero, size: size)).fill()
-                symbolImage.draw(in: CGRect(origin: .zero, size: size), blendMode: .screen, alpha: 1.0)
-                coloredImage = UIGraphicsGetImageFromCurrentImageContext() ?? symbolImage
-                UIGraphicsEndImageContext()
-            } else {
-                coloredImage = symbolImage
-            }
-            
-            let texture = SKTexture(image: coloredImage)
+            let texture = SKTexture(image: symbolImage)
             let sprite = SKSpriteNode(texture: texture)
             sprite.size = size
             sprite.zPosition = 3
+            
+            // Apply color tint using color blend
+            if let hexColor = config.color, let color = UIColor(hex: hexColor) {
+                sprite.color = color
+                sprite.colorBlendFactor = 1.0
+            }
+            
             container.addChild(sprite)
         }
     }
