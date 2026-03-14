@@ -1153,27 +1153,21 @@ private func createCatchableNode(for item: FallingItem) -> SKNode? {
     
     // Try to render as SF Symbol first (if iconName is set and assetName is nil)
     if let iconName = config.iconName, config.assetName == nil {
-        // Create symbol with heavy weight and larger size for better rendering
-        let symbolConfig = UIImage.SymbolConfiguration(pointSize: 28, weight: .bold)
-        if let symbolImage = UIImage(systemName: iconName, withConfiguration: symbolConfig) {
-            // Create tinted version by rendering with the hex color
-            let tintedImage: UIImage
-            if let hexColor = config.color, let targetColor = UIColor(hex: hexColor) {
-                // Render the symbol with the target color
-                let renderer = UIGraphicsImageRenderer(size: CGSize(width: 32, height: 32))
-                tintedImage = renderer.image { context in
-                    // Draw the symbol in the target color
-                    targetColor.setFill()
-                    symbolImage.draw(in: CGRect(x: 0, y: 0, width: 32, height: 32), blendMode: .darken, alpha: 1.0)
-                }
-            } else {
-                tintedImage = symbolImage
-            }
-            
-            let texture = SKTexture(image: tintedImage)
+        if let symbolImage = UIImage(systemName: iconName, withConfiguration: UIImage.SymbolConfiguration(scale: .large)) {
+            let texture = SKTexture(image: symbolImage)
             let sprite = SKSpriteNode(texture: texture)
             sprite.size = size
             sprite.zPosition = 3
+            
+            // Apply the hex color directly
+            if let hexColor = config.color, let color = UIColor(hex: hexColor) {
+                print("🍃 Leaf color: hex=\(hexColor), UIColor=\(color)")
+                sprite.color = color
+                sprite.colorBlendFactor = 1.0
+            } else {
+                print("🍃 Leaf color: NO COLOR SET (hex=\(config.color ?? "nil"))")
+            }
+            
             container.addChild(sprite)
         }
     }
