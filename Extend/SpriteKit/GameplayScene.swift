@@ -1155,10 +1155,23 @@ private func createCatchableNode(for item: FallingItem) -> SKNode? {
     if let iconName = config.iconName, config.assetName == nil {
         // Map SF Symbol names to emoji that support coloring
         let emojiMap: [String: String] = [
-            "leaf.fill": "🍃",
+            "leaf.fill": "🍀",
             "heart.fill": "❤️",
             "brain.fill": "🧠",
-            "sun.max.fill": "☀️"
+            "sun.max.fill": "☀️",
+            "apple": "🍎",
+            "orange": "🍊",
+            "banana": "🍌",
+            "strawberry": "🍓",
+            "grapes": "🍇",
+            "diamond.fill": "💎",
+            "coin.fill": "🪙",
+            "gift.fill": "🎁",
+            "star.fill": "⭐️",
+            "waterdrop.fill": "💧",
+            "snowflake": "❄️",
+            "moon.fill": "🌙",
+            "seedling.fill": "🌱"
         ]
         
         let emoji = emojiMap[iconName] ?? "●"
