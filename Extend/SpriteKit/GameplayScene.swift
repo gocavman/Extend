@@ -1153,31 +1153,27 @@ private func createCatchableNode(for item: FallingItem) -> SKNode? {
     
     // Try to render as SF Symbol first (if iconName is set and assetName is nil)
     if let iconName = config.iconName, config.assetName == nil {
-        let symbolConfig = UIImage.SymbolConfiguration(pointSize: 20, weight: .semibold)
-        if let baseSymbol = UIImage(systemName: iconName, withConfiguration: symbolConfig) {
-            var finalImage = baseSymbol
-            if let hexColor = config.color, let targetColor = UIColor(hex: hexColor) {
-                // Create colored version: draw symbol, then colorize it
-                let imageSize = CGSize(width: 40, height: 40)
-                UIGraphicsBeginImageContextWithOptions(imageSize, false, 0)
-                
-                // Draw the symbol
-                baseSymbol.draw(in: CGRect(origin: .zero, size: imageSize))
-                
-                // Draw color on top with screen blend mode (lightens)
-                targetColor.withAlphaComponent(0.8).setFill()
-                UIBezierPath(rect: CGRect(origin: .zero, size: imageSize)).fill()
-                
-                finalImage = UIGraphicsGetImageFromCurrentImageContext() ?? baseSymbol
-                UIGraphicsEndImageContext()
-            }
-            
-            let texture = SKTexture(image: finalImage)
-            let sprite = SKSpriteNode(texture: texture)
-            sprite.size = size
-            sprite.zPosition = 3
-            container.addChild(sprite)
+        // Map SF Symbol names to emoji that support coloring
+        let emojiMap: [String: String] = [
+            "leaf.fill": "🍃",
+            "heart.fill": "❤️",
+            "brain.fill": "🧠",
+            "sun.max.fill": "☀️"
+        ]
+        
+        let emoji = emojiMap[iconName] ?? "●"
+        
+        let label = SKLabelNode(fontNamed: "Arial")
+        label.text = emoji
+        label.fontSize = 24
+        label.zPosition = 3
+        
+        // Apply color if configured
+        if let hexColor = config.color, let color = UIColor(hex: hexColor) {
+            label.fontColor = color
         }
+        
+        container.addChild(label)
     }
     // Try to render as asset image
     else if let assetName = config.assetName {
