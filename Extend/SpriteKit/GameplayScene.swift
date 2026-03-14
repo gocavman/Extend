@@ -1092,6 +1092,9 @@ private func checkCatchableCollisions(gameState: StickFigureGameState, character
                 // Award points
                 gameState.addPoints(config.points, action: item.itemType)
                 
+                // IMMEDIATELY save points after catchable collected
+                gameState.saveStats()
+                
                 // Display floating text with points
                 let pointsText = "+\(config.points)"
                 let textColor = UIColor(hex: config.color ?? "#808080") ?? .white

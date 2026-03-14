@@ -706,8 +706,8 @@ class StickFigureGameState {
             self.allTimeElapsed += 0.1
             self.timeElapsed += 0.1
             
-            // Auto-save every 10 seconds (100 * 0.1 second intervals)
-            if Int(self.allTimeElapsed * 10) % 100 == 0 {
+            // Auto-save every 2 seconds (20 * 0.1 second intervals) - more frequently to prevent data loss
+            if Int(self.allTimeElapsed * 10) % 20 == 0 {
                 self.saveStats()
             }
         }
