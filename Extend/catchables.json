@@ -69,7 +69,7 @@
     "assetName": "Shaker",
     "iconName": null,
     "unlockLevel": 1,
-    "direction": "falls",
+    "direction": "vertical",
     "spins": true,
     "spinSpeed": 6,
     "collisionAnimation": "Shaker",
