@@ -1008,13 +1008,13 @@ private func spawnFallingCatchables(gameState: StickFigureGameState) {
     // Calculate max items on screen
     let maxItems = max(4, unlockedItems.count * 2)
     
-    // Spawn new items with controlled probability - INCREASED from 0.002 to 0.01 (5x more frequent)
-    if fallingItems.count < maxItems && Double.random(in: 0...1) < 0.01 {
+    // Spawn new items with controlled probability (0.002 = ~1 every 8 seconds at 60 FPS)
+    if fallingItems.count < maxItems && Double.random(in: 0...1) < 0.002 {
         if let itemConfig = unlockedItems.randomElement() {
             let item = FallingItem(
                 itemType: itemConfig.id,
-                x: CGFloat.random(in: 0.1...0.9),  // Spawn in middle 80% of screen (avoid edges)
-                y: -0.1,  // Spawn ABOVE screen, not at top edge
+                x: CGFloat.random(in: 0.1...0.9),
+                y: -0.1,  // Spawn above screen
                 rotation: Double.random(in: 0...360),
                 horizontalVelocity: CGFloat.random(in: -0.002...0.002),
                 verticalSpeed: CGFloat.random(in: itemConfig.baseVerticalSpeed...itemConfig.baseVerticalSpeedMax)
@@ -1142,20 +1142,20 @@ private func createCatchableNode(for item: FallingItem) -> SKNode? {
     
     // Try to render as SF Symbol first (if iconName is set and assetName is nil)
     if let iconName = config.iconName, config.assetName == nil {
-        // Create a configuration for rendering the symbol with a specific color
-        let symbolConfig = UIImage.SymbolConfiguration(pointSize: 20, weight: .semibold)
-        if var symbolImage = UIImage(systemName: iconName, withConfiguration: symbolConfig) {
-            // Apply color by creating a colored version
-            if let hexColor = config.color, let color = UIColor(hex: hexColor) {
-                symbolImage = symbolImage.withTintColor(color, renderingMode: .alwaysOriginal)
-            }
-            
-            let texture = SKTexture(image: symbolImage)
-            let sprite = SKSpriteNode(texture: texture)
-            sprite.size = size
-            sprite.zPosition = 3
-            container.addChild(sprite)
+        // Use SKLabelNode to render the SF Symbol with color support
+        let label = SKLabelNode(fontNamed: ".AppleSystemUIFont")
+        label.text = iconName
+        label.fontSize = 24
+        label.zPosition = 3
+        
+        // Apply color from config
+        if let hexColor = config.color, let color = UIColor(hex: hexColor) {
+            label.fontColor = color
+        } else {
+            label.fontColor = .white
         }
+        
+        container.addChild(label)
     }
     // Try to render as asset image
     else if let assetName = config.assetName {
