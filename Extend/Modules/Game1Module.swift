@@ -598,11 +598,15 @@ class StickFigureGameState {
 
         let needed = pointsNeeded(forLevel: currentLevel)
         if currentPoints >= needed {
+            print("🎮 LEVEL COMPLETE! Points: \(currentPoints) >= Needed: \(needed)")
+            print("🎮 Current Level BEFORE increment: \(currentLevel)")
             addFloatingText("Level Complete!", x: 0.5, y: 0.2, color: .purple, fontSize: 18)
             spawnFireworks()
             currentPoints = 0
             sessionActions.removeAll()
             shouldReturnToMap = true
+            currentLevel += 1  // INCREMENT LEVEL!
+            print("🎮 Current Level AFTER increment: \(currentLevel)")
         }
     }
 
