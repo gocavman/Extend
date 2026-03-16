@@ -63,10 +63,10 @@ class GameViewController: UIViewController {
             hudStack.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -10),
             hudStack.heightAnchor.constraint(equalToConstant: 60)
         ])
-        
+
         // Create buttons
         let exitBtn = createHUDButton(title: "EXIT", color: UIColor(red: 0.8, green: 0.2, blue: 0.2, alpha: 0.9), action: #selector(exitTapped))
-        let appearanceBtn = createHUDButton(title: "🧍", color: UIColor(red: 0.7, green: 0.4, blue: 0.8, alpha: 0.9), action: #selector(appearanceTapped))
+        let appearanceBtn = createAppearanceButton()
         let editBtn = createHUDButton(title: "EDIT", color: UIColor(red: 0.2, green: 0.7, blue: 0.4, alpha: 0.9), action: #selector(editTapped))
         let statsBtn = createHUDButton(title: "STATS", color: UIColor(red: 0.2, green: 0.5, blue: 0.8, alpha: 0.9), action: #selector(statsTapped))
         
@@ -92,6 +92,24 @@ class GameViewController: UIViewController {
         button.layer.borderWidth = 2
         button.layer.cornerRadius = 8
         button.addTarget(self, action: action, for: .touchUpInside)
+        return button
+    }
+    
+    private func createAppearanceButton() -> UIButton {
+        let button = UIButton(type: .system)
+        
+        // Create SF Symbol image
+        if let image = UIImage(systemName: "figure.stand") {
+            let resizedImage = image.withConfiguration(UIImage.SymbolConfiguration(pointSize: 20, weight: .bold))
+            button.setImage(resizedImage, for: .normal)
+            button.tintColor = .black
+        }
+        
+        button.backgroundColor = UIColor(red: 0.7, green: 0.4, blue: 0.8, alpha: 0.9)
+        button.layer.borderColor = UIColor.black.cgColor
+        button.layer.borderWidth = 2
+        button.layer.cornerRadius = 8
+        button.addTarget(self, action: #selector(appearanceTapped), for: .touchUpInside)
         return button
     }
     
