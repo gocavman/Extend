@@ -102,7 +102,8 @@ class StatsViewController: UIViewController {
         var perfSection = StatSection(title: "Performance", rows: [])
         if !gameState.actionTimes.isEmpty {
             for (action, time) in gameState.actionTimes.sorted(by: { $0.key < $1.key }) {
-                perfSection.rows.append(.stat(label: action.capitalized, value: formatTime(time)))
+                let displayName = getActionDisplayName(action)
+                perfSection.rows.append(.stat(label: displayName, value: formatTime(time)))
             }
         } else {
             perfSection.rows.append(.stat(label: "No actions performed yet", value: ""))
@@ -134,6 +135,15 @@ class StatsViewController: UIViewController {
         } else {
             return String(format: "%ds", secs)
         }
+    }
+    
+    private func getActionDisplayName(_ actionId: String) -> String {
+        // Search ACTION_CONFIGS for this action ID and return its displayName
+        if let actionConfig = ACTION_CONFIGS.first(where: { $0.id == actionId }) {
+            return actionConfig.displayName
+        }
+        // Fallback for system actions like "move" that aren't in ACTION_CONFIGS
+        return actionId.capitalized
     }
     
     @objc private func closeButtonTapped() {

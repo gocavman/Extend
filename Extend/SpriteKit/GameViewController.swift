@@ -68,11 +68,13 @@ class GameViewController: UIViewController {
         let exitBtn = createHUDButton(title: "EXIT", color: UIColor(red: 0.8, green: 0.2, blue: 0.2, alpha: 0.9), action: #selector(exitTapped))
         let appearanceBtn = createAppearanceButton()
         let editBtn = createHUDButton(title: "EDIT", color: UIColor(red: 0.2, green: 0.7, blue: 0.4, alpha: 0.9), action: #selector(editTapped))
+        let resetLevelBtn = createHUDButton(title: "LVL", color: UIColor(red: 0.9, green: 0.5, blue: 0.2, alpha: 0.9), action: #selector(resetLevelTapped))
         let statsBtn = createHUDButton(title: "STATS", color: UIColor(red: 0.2, green: 0.5, blue: 0.8, alpha: 0.9), action: #selector(statsTapped))
         
         hudStack.addArrangedSubview(exitBtn)
         hudStack.addArrangedSubview(appearanceBtn)
         hudStack.addArrangedSubview(editBtn)
+        hudStack.addArrangedSubview(resetLevelBtn)
         hudStack.addArrangedSubview(statsBtn)
         
         self.hudContainer = hudStack
@@ -126,6 +128,29 @@ class GameViewController: UIViewController {
     @objc private func editTapped() {
         print("🎮 EDIT tapped from HUD")
         openStickFigureEditor()
+    }
+    
+    @objc private func resetLevelTapped() {
+        print("🎮 RESET LEVEL tapped from HUD (Developer Mode)")
+        
+        guard let gameState = gameState else { return }
+        
+        // Show alert with level selection
+        let alert = UIAlertController(title: "Reset to Level", message: "Select which level to reset to:", preferredStyle: .alert)
+        
+        // Add options for levels 1-10 (or however many levels you have)
+        for level in 1...10 {
+            alert.addAction(UIAlertAction(title: "Level \(level)", style: .default) { [weak self] _ in
+                gameState.currentLevel = level
+                print("🎮 Developer: Reset to Level \(level)")
+                // Refresh the map to show updated level colors
+                self?.showMapScene()
+            })
+        }
+        
+        alert.addAction(UIAlertAction(title: "Cancel", style: .cancel))
+        
+        present(alert, animated: true)
     }
     
     @objc private func statsTapped() {
