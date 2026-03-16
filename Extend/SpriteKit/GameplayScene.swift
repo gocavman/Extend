@@ -935,10 +935,12 @@ private func applyMuscleScaling(to figure: StickFigure2D) -> StickFigure2D {
     scaledFigure.strokeThicknessFullTorso = strokeThicknessFullTorso
     
     // Determine if this is a side view based on whether character is currently moving
-    let isSideView = gameState.isMovingLeft || gameState.isMovingRight
+    //let isSideView = gameState.isMovingLeft || gameState.isMovingRight
+    let isSideView = scaledFigure.shoulderWidthMultiplier < 0.1 && scaledFigure.waistWidthMultiplier < 0.1
     
     if isSideView {
         scaledFigure.fusiformUpperTorso = min(scaledFigure.fusiformUpperTorso, 2.0)
+        scaledFigure.strokeThicknessUpperTorso = min(scaledFigure.strokeThicknessUpperTorso, 2.0)
         scaledFigure.fusiformShoulders = min(scaledFigure.fusiformShoulders, 0.0)
     }
     
@@ -1260,8 +1262,52 @@ private func addFloatingText(_ text: String, x: CGFloat, y: CGFloat, color: UICo
 }
 
 private func updateFloatingText() {
+    guard let gameState = gameState else { return }
+    
     let deltaTime: TimeInterval = 0.016  // ~60 FPS
     
+    // Render and update gameState's floating texts (from actions like Rest)
+    for floatingText in gameState.floatingTexts {
+        // Check if we've already created a node for this floating text
+        if let existingNode = floatingTextContainer.children.first(where: { $0.name == floatingText.id.uuidString }) as? SKLabelNode {
+            // Update existing node position
+            let screenX = floatingText.x * size.width
+            let screenY = (1.0 - floatingText.y) * size.height
+            existingNode.position = CGPoint(x: screenX, y: screenY)
+            
+            // Update alpha based on age
+            let alpha = max(0, 1.0 - (floatingText.age / floatingText.lifespan))
+            existingNode.alpha = CGFloat(alpha)
+        } else {
+            // Create new node for this floating text
+            let label = SKLabelNode(fontNamed: "Arial-BoldMT")
+            label.text = floatingText.text
+            label.fontSize = CGFloat(floatingText.fontSize)
+            label.name = floatingText.id.uuidString
+            label.fontColor = floatingText.color
+            
+            // Convert normalized coordinates to screen coordinates
+            let screenX = floatingText.x * size.width
+            let screenY = (1.0 - floatingText.y) * size.height
+            label.position = CGPoint(x: screenX, y: screenY)
+            label.zPosition = 50
+            
+            floatingTextContainer.addChild(label)
+        }
+    }
+    
+    // Clean up removed gameState floating texts
+    for node in floatingTextContainer.children {
+        if gameState.floatingTexts.first(where: { $0.id.uuidString == node.name }) == nil && node.name?.isEmpty == false {
+            // This node's floating text has been removed from gameState
+            if !floatingTexts.contains(where: { $0.node === node }) {
+                // It's not one of our SpriteKit floating texts, so remove it
+                node.removeFromParent()
+            }
+        }
+    }
+    
+    // Update existing SpriteKit floating texts
     for i in floatingTexts.indices.reversed() {
         floatingTexts[i].age += deltaTime
         

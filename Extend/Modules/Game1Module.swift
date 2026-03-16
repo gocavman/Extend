@@ -262,7 +262,7 @@ struct FloatingTextItem: Identifiable {
     var x: CGFloat
     var y: CGFloat
     var text: String
-    var color: Color
+    var color: UIColor
     var fontSize: CGFloat = 12
     var age: Double = 0
     let lifespan: Double = 2.0
@@ -864,16 +864,16 @@ class StickFigureGameState {
     
     // MARK: - Helper: Convert Hex Color to SwiftUI Color
     
-    func getColorFromHex(_ hexString: String) -> Color {
+    func getColorFromHex(_ hexString: String) -> UIColor {
         let hex = hexString.trimmingCharacters(in: CharacterSet(charactersIn: "#"))
         guard hex.count == 6 else { return .gray }
         
         let rgbValue = UInt32(hex, radix: 16) ?? 0
-        let red = Double((rgbValue >> 16) & 0xFF) / 255.0
-        let green = Double((rgbValue >> 8) & 0xFF) / 255.0
-        let blue = Double(rgbValue & 0xFF) / 255.0
+        let red = CGFloat((rgbValue >> 16) & 0xFF) / 255.0
+        let green = CGFloat((rgbValue >> 8) & 0xFF) / 255.0
+        let blue = CGFloat(rgbValue & 0xFF) / 255.0
         
-        return Color(red: red, green: green, blue: blue)
+        return UIColor(red: red, green: green, blue: blue, alpha: 1.0)
     }
 
     func resetIdleTimer() {
@@ -960,7 +960,7 @@ class StickFigureGameState {
         }
     }
 
-    func addFloatingText(_ text: String, x: CGFloat, y: CGFloat, color: Color, fontSize: CGFloat = 12, isMeditation: Bool = false) {
+    func addFloatingText(_ text: String, x: CGFloat, y: CGFloat, color: UIColor, fontSize: CGFloat = 12, isMeditation: Bool = false) {
         let item = FloatingTextItem(x: x, y: y, text: text, color: color, fontSize: fontSize, isMeditation: isMeditation)
         floatingTexts.append(item)
     }
@@ -1310,30 +1310,30 @@ class StickFigureGameState {
         return frameCount * baseInterval
     }
     
-    private func parseFloatingTextColor(_ colorString: String?) -> Color? {
+    private func parseFloatingTextColor(_ colorString: String?) -> UIColor? {
         guard let colorString = colorString else { return nil }
         
         let color = colorString.lowercased().trimmingCharacters(in: .whitespaces)
         
         switch color {
         case "red":
-            return Color(red: 1.0, green: 0.2, blue: 0.2)
+            return UIColor(red: 1.0, green: 0.2, blue: 0.2, alpha: 1.0)
         case "green":
-            return Color(red: 0.2, green: 0.8, blue: 0.2)
+            return UIColor(red: 0.2, green: 0.8, blue: 0.2, alpha: 1.0)
         case "blue":
-            return Color(red: 0.2, green: 0.6, blue: 1.0)
+            return UIColor(red: 0.2, green: 0.6, blue: 1.0, alpha: 1.0)
         case "yellow":
-            return Color(red: 1.0, green: 0.8, blue: 0.0)
+            return UIColor(red: 1.0, green: 0.8, blue: 0.0, alpha: 1.0)
         case "orange":
-            return Color(red: 1.0, green: 0.6, blue: 0.0)
+            return UIColor(red: 1.0, green: 0.6, blue: 0.0, alpha: 1.0)
         case "purple":
-            return Color(red: 0.8, green: 0.2, blue: 0.8)
+            return UIColor(red: 0.8, green: 0.2, blue: 0.8, alpha: 1.0)
         case "gray", "grey":
-            return Color(red: 0.5, green: 0.5, blue: 0.5)
+            return UIColor(red: 0.5, green: 0.5, blue: 0.5, alpha: 1.0)
         case "white":
-            return Color(red: 1.0, green: 1.0, blue: 1.0)
+            return UIColor(red: 1.0, green: 1.0, blue: 1.0, alpha: 1.0)
         case "black":
-            return Color(red: 0.0, green: 0.0, blue: 0.0)
+            return UIColor(red: 0.0, green: 0.0, blue: 0.0, alpha: 1.0)
         default:
             return nil
         }
@@ -1408,7 +1408,14 @@ class StickFigureGameState {
         
         let interval = baseInterval * speedMultiplier
         
-        gameState.actionTimer = Timer.scheduledTimer(withTimeInterval: interval, repeats: true) { _ in
+        // Initialize floating text state for uniform timing
+        var floatingTextIndex = 0
+        var nextFloatingTextTime: Double = 0  // Show first text immediately
+        var elapsedTime = 0.0
+        
+        print("🎬 Starting uniform action: \(config.id), has floatingText: \(config.floatingText != nil)")
+        
+        gameState.actionTimer = Timer.scheduledTimer(withTimeInterval: interval, repeats: true) { [weak self] _ in
             if frameIndex < gameState.actionStickFigureFrames.count {
                 // Update stick figure frame
                 if frameIndex < gameState.actionStickFigureFrames.count {
@@ -1418,7 +1425,39 @@ class StickFigureGameState {
                 gameState.lastActionFrame = frameIndex
                 gameState.currentFrameIndex = frameIndex
                 
+                // Handle config-driven floating text
+                if let floatingTextConfig = config.floatingText, let texts = floatingTextConfig.text, !texts.isEmpty {
+                    print("🎬 Checking floating text: elapsed=\(elapsedTime), nextShow=\(nextFloatingTextTime), texts=\(texts)")
+                    // Check if we should show floating text (respects loop property)
+                    let shouldLoop = floatingTextConfig.loop ?? true  // Default to looping if not specified
+                    let hasShownAllText = floatingTextIndex >= texts.count
+                    
+                    // Only show text if looping is enabled, OR if we haven't shown all text yet
+                    if !hasShownAllText || shouldLoop {
+                        if elapsedTime >= nextFloatingTextTime {
+                            let text: String
+                            if floatingTextConfig.random ?? false {
+                                // Random selection
+                                text = texts.randomElement() ?? texts[0]
+                            } else {
+                                // Sequential selection
+                                text = texts[floatingTextIndex % texts.count]
+                                floatingTextIndex += 1
+                            }
+                            
+                            print("🎬 SHOWING floating text: '\(text)' at elapsed=\(elapsedTime)")
+                            
+                            // Parse color from config (default to blue if not specified)
+                            let textColor = self?.parseFloatingTextColor(floatingTextConfig.color) ?? UIColor(red: 0.2, green: 0.6, blue: 1.0, alpha: 1.0)
+                            
+                            gameState.addFloatingText(text, x: 0.5, y: 0.65, color: textColor, fontSize: 20, isMeditation: true)
+                            nextFloatingTextTime = elapsedTime + (floatingTextConfig.timing ?? 5.0)
+                        }
+                    }
+                }
+                
                 frameIndex += 1
+                elapsedTime += interval
             } else {
                 gameState.actionTimer?.invalidate()
                 gameState.actionTimer = nil
@@ -1510,7 +1549,7 @@ class StickFigureGameState {
                         }
                         
                         // Parse color from config (default to blue if not specified)
-                        let textColor = parseFloatingTextColor(floatingTextConfig.color) ?? Color.blue
+                        let textColor = parseFloatingTextColor(floatingTextConfig.color) ?? UIColor(red: 0.2, green: 0.6, blue: 1.0, alpha: 1.0)
                         
                         gameState.addFloatingText(text, x: 0.5, y: 0.65, color: textColor, fontSize: 20, isMeditation: true)
                         nextFloatingTextTime += floatingTextConfig.timing ?? 5.0
@@ -1837,7 +1876,7 @@ class GameMapState {
         return remaining > 0 ? remaining : nil
     }
     
-    func addMapFloatingText(_ text: String, x: CGFloat, y: CGFloat, color: Color, fontSize: CGFloat = 12) {
+    func addMapFloatingText(_ text: String, x: CGFloat, y: CGFloat, color: UIColor, fontSize: CGFloat = 12) {
         let floatingText = FloatingTextItem(x: x, y: y, text: text, color: color, fontSize: fontSize)
         mapFloatingTexts.append(floatingText)
     }
