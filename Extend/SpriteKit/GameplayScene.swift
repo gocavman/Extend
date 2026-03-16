@@ -79,6 +79,14 @@ override func didMove(to view: SKView) {
     // Create touch zones
     setupControlZones()
     
+    // Auto-select action from gameState if available
+    if !gameState.selectedAction.isEmpty,
+       let actionConfig = ACTION_CONFIGS.first(where: { $0.id == gameState.selectedAction }) {
+        selectedAction = actionConfig
+        selectedActionLabel?.text = actionConfig.displayName
+        print("🎮 Auto-selected action: \(actionConfig.displayName)")
+    }
+    
     // Initialize eye blinking timer
     lastInteractionTime = CACurrentMediaTime()
     

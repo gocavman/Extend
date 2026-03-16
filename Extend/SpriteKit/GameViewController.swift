@@ -78,6 +78,10 @@ class GameViewController: UIViewController {
         self.hudContainer = hudStack
     }
     
+    func setHUDVisible(_ visible: Bool) {
+        hudContainer?.isHidden = !visible
+    }
+    
     private func createHUDButton(title: String, color: UIColor, action: Selector) -> UIButton {
         let button = UIButton(type: .system)
         button.setTitle(title, for: .normal)
@@ -115,6 +119,9 @@ class GameViewController: UIViewController {
     func showMapScene() {
         guard let skView = skView, let gameState = gameState, let mapState = mapState else { return }
         
+        // Show HUD on the map
+        setHUDVisible(true)
+        
         // Position character next to the level they just exited (not on top of it)
         if let levelConfig = LEVEL_CONFIGS.first(where: { $0.id == gameState.currentLevel }) {
             // Position character slightly below and to the left of the level station
@@ -146,6 +153,9 @@ class GameViewController: UIViewController {
             print("❌ startGameplay: missing skView, gameState, or mapState")
             return
         }
+        
+        // Hide HUD during gameplay
+        setHUDVisible(false)
         
         //print("🎮 startGameplay called - creating GameplayScene with size: \(skView.bounds.size)")
         

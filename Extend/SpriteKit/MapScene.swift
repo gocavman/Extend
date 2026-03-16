@@ -265,14 +265,17 @@ class MapScene: GameScene {
         guard let gameState = gameState else { return }
         guard let levelConfig = LEVEL_CONFIGS.first(where: { $0.id == levelId }) else { return }
         
-        // Set the current level
-        gameState.currentLevel = levelId
+        // IMPORTANT: Do NOT modify gameState.currentLevel here!
+        // currentLevel represents the HIGHEST UNLOCKED level and should only increase
+        // We'll pass the levelId to gameplay through a separate mechanism if needed
         
-        // Get the next unlocked action (first action not yet completed)
-        // For now, just use the first available action
-        if let firstAction = levelConfig.availableActions.first {
-            gameState.selectedAction = firstAction
-            //print("🗺️ Auto-selected action: \(firstAction) for level \(levelId)")
+        // Auto-select the newest/last unlocked action (most recently added to availableActions)
+        // For Level 1: ["rest"] → select rest
+        // For Level 2: ["rest", "run"] → select run
+        // For Level 3: ["rest", "run", "jump"] → select jump
+        if let lastAction = levelConfig.availableActions.last {
+            gameState.selectedAction = lastAction
+            print("🗺️ Auto-selected action: \(lastAction) for level \(levelId)")
         }
         
         // Start gameplay
