@@ -1310,6 +1310,35 @@ class StickFigureGameState {
         return frameCount * baseInterval
     }
     
+    private func parseFloatingTextColor(_ colorString: String?) -> Color? {
+        guard let colorString = colorString else { return nil }
+        
+        let color = colorString.lowercased().trimmingCharacters(in: .whitespaces)
+        
+        switch color {
+        case "red":
+            return Color(red: 1.0, green: 0.2, blue: 0.2)
+        case "green":
+            return Color(red: 0.2, green: 0.8, blue: 0.2)
+        case "blue":
+            return Color(red: 0.2, green: 0.6, blue: 1.0)
+        case "yellow":
+            return Color(red: 1.0, green: 0.8, blue: 0.0)
+        case "orange":
+            return Color(red: 1.0, green: 0.6, blue: 0.0)
+        case "purple":
+            return Color(red: 0.8, green: 0.2, blue: 0.8)
+        case "gray", "grey":
+            return Color(red: 0.5, green: 0.5, blue: 0.5)
+        case "white":
+            return Color(red: 1.0, green: 1.0, blue: 1.0)
+        case "black":
+            return Color(red: 0.0, green: 0.0, blue: 0.0)
+        default:
+            return nil
+        }
+    }
+    
     func startAction(_ config: ActionConfig, gameState: StickFigureGameState) {
         // Stop other animations
         gameState.animationTimer?.invalidate()
@@ -1463,18 +1492,29 @@ class StickFigureGameState {
             
             // Handle config-driven floating text
             if let floatingTextConfig = config.floatingText, let texts = floatingTextConfig.text, !texts.isEmpty {
-                if elapsedTime >= nextFloatingTextTime {
-                    let text: String
-                    if floatingTextConfig.random ?? false {
-                        // Random selection
-                        text = texts.randomElement() ?? texts[0]
-                    } else {
-                        // Sequential selection
-                        text = texts[floatingTextIndex % texts.count]
-                        floatingTextIndex += 1
+                // Check if we should show floating text (respects loop property)
+                let shouldLoop = floatingTextConfig.loop ?? true  // Default to looping if not specified
+                let hasShownAllText = floatingTextIndex >= texts.count
+                
+                // Only show text if looping is enabled, OR if we haven't shown all text yet
+                if !hasShownAllText || shouldLoop {
+                    if elapsedTime >= nextFloatingTextTime {
+                        let text: String
+                        if floatingTextConfig.random ?? false {
+                            // Random selection
+                            text = texts.randomElement() ?? texts[0]
+                        } else {
+                            // Sequential selection
+                            text = texts[floatingTextIndex % texts.count]
+                            floatingTextIndex += 1
+                        }
+                        
+                        // Parse color from config (default to blue if not specified)
+                        let textColor = parseFloatingTextColor(floatingTextConfig.color) ?? Color.blue
+                        
+                        gameState.addFloatingText(text, x: 0.5, y: 0.65, color: textColor, fontSize: 20, isMeditation: true)
+                        nextFloatingTextTime += floatingTextConfig.timing ?? 5.0
                     }
-                    gameState.addFloatingText(text, x: 0.5, y: 0.65, color: .blue, fontSize: 20, isMeditation: true)
-                    nextFloatingTextTime += floatingTextConfig.timing ?? 5.0
                 }
             }
             

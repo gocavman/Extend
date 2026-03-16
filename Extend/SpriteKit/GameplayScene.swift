@@ -30,6 +30,9 @@ private var boostTimerLabel: SKLabelNode?
 private var floatingTexts: [FloatingText] = []
 private let floatingTextContainer = SKNode()  // Container for floating text
 
+// Countdown properties
+private var countdownTimerLabel: SKLabelNode?
+
 // Current selected action
 private var selectedAction: ActionConfig?
 private var selectedActionLabel: SKLabelNode?  // Label to display selected action name
@@ -171,6 +174,16 @@ private func setupUI() {
     boostTimerLabel?.zPosition = 101
     boostTimerLabel?.isHidden = true
     if let label = boostTimerLabel { addChild(label) }
+    
+    // Countdown timer - positioned above stick figure (will be updated during updateCountdownTimer)
+    countdownTimerLabel = SKLabelNode(fontNamed: "Arial-BoldMT")
+    countdownTimerLabel?.fontSize = 14
+    countdownTimerLabel?.fontColor = SKColor(red: 0.2, green: 0.8, blue: 0.2, alpha: 1.0)  // Green
+    countdownTimerLabel?.position = CGPoint(x: size.width / 2, y: size.height / 2 + 100)  // Default position, will be updated
+    countdownTimerLabel?.text = ""
+    countdownTimerLabel?.zPosition = 101
+    countdownTimerLabel?.isHidden = true
+    if let label = countdownTimerLabel { addChild(label) }
 }
 
     private func setupCharacter() {
@@ -393,6 +406,15 @@ private func handleTouchAtLocation(_ point: CGPoint, isPress: Bool) {
     // If tap is to the left of character, move left (regardless of zone)
     // If tap is to the right of character, move right (regardless of zone)
     
+    // Check if movement is allowed by the current action
+    let isMovementAllowed = selectedAction?.allowMovement ?? true
+    
+    if !isMovementAllowed && gameState.currentPerformingAction != nil {
+        // Movement is disabled by the current action
+        print("🎮 ⚠️ Movement disabled for action: \(gameState.currentPerformingAction ?? "unknown")")
+        return
+    }
+    
     if point.x < characterX {
         // Tap is to the LEFT of character - move left
         if isPress {
@@ -528,6 +550,9 @@ private func updateGameLogic() {
     
     // Update boost timer
     updateBoostTimer()
+    
+    // Update countdown timer
+    updateCountdownTimer()
     
     // Handle catchables
     spawnFallingCatchables(gameState: gameState)
@@ -1278,6 +1303,45 @@ private func updateBoostTimer() {
 
 private func isBoostActive() -> Bool {
     return CACurrentMediaTime() < boostEndTime
+}
+
+private func updateCountdownTimer() {
+    guard let gameState = gameState else { return }
+    guard let character = characterNode else { return }
+    
+    // Only show countdown if an action is being performed and countdown is enabled
+    let timeRemaining = gameState.actionCountdownTimeRemaining
+    let totalDuration = gameState.actionCountdownTotalDuration
+    
+    if timeRemaining > 0 && totalDuration > 0 {
+        // Format time: MM:SS
+        let minutes = Int(timeRemaining) / 60
+        let seconds = Int(timeRemaining) % 60
+        let timeString = String(format: "%d:%02d", minutes, seconds)
+        
+        // Calculate color based on time remaining (green → yellow → red)
+        let percentRemaining = timeRemaining / totalDuration
+        var textColor: SKColor
+        
+        if percentRemaining > 0.5 {
+            // Green for first half
+            textColor = SKColor(red: 0.2, green: 0.8, blue: 0.2, alpha: 1.0)
+        } else if percentRemaining > 0.25 {
+            // Yellow for second half
+            textColor = SKColor(red: 1.0, green: 0.8, blue: 0.0, alpha: 1.0)
+        } else {
+            // Red for last quarter
+            textColor = SKColor(red: 1.0, green: 0.2, blue: 0.2, alpha: 1.0)
+        }
+        
+        // Position countdown label above the stick figure
+        countdownTimerLabel?.position = CGPoint(x: character.position.x, y: character.position.y + 120)
+        countdownTimerLabel?.text = timeString
+        countdownTimerLabel?.fontColor = textColor
+        countdownTimerLabel?.isHidden = false
+    } else {
+        countdownTimerLabel?.isHidden = true
+    }
 }
 
 // MARK: - Floating Text Structure

@@ -70,7 +70,7 @@ class MapScene: GameScene {
         // Create a visible background grid area
         let background = SKShapeNode(rectOf: CGSize(width: MAP_WIDTH, height: MAP_HEIGHT))
         background.position = CGPoint(x: MAP_WIDTH / 2, y: MAP_HEIGHT / 2)
-        background.fillColor = SKColor(red: 0.9, green: 0.95, blue: 0.9, alpha: 1.0)
+        background.fillColor = SKColor(red: 211, green: 211, blue: 211, alpha: 0.1)
         background.strokeColor = SKColor(red: 0.7, green: 0.7, blue: 0.7, alpha: 0.5)
         background.lineWidth = 2
         background.zPosition = 0
