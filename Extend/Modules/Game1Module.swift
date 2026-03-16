@@ -687,7 +687,7 @@ class StickFigureGameState {
         UserDefaults.standard.set(payload, forKey: statsKey)
         UserDefaults.standard.synchronize()
         
-        print("📊 saveStats: Saved Level=\(currentLevel), Points=\(currentPoints), Score=\(score)")
+        //print("📊 saveStats: Saved Level=\(currentLevel), Points=\(currentPoints), Score=\(score)")
         
         // Also save muscle state
         saveMuscleState()
@@ -714,7 +714,7 @@ class StickFigureGameState {
 
     private func loadStats() {
         guard let payload = UserDefaults.standard.dictionary(forKey: statsKey) else {
-            print("📊 loadStats: No saved stats found")
+            //print("📊 loadStats: No saved stats found")
             return
         }
         currentLevel = payload["currentLevel"] as? Int ?? currentLevel
@@ -736,7 +736,7 @@ class StickFigureGameState {
         }
         
         highScore = UserDefaults.standard.integer(forKey: highScoreKey)
-        print("📊 loadStats: Loaded Level=\(currentLevel), Points=\(currentPoints), Score=\(score)")
+        //print("📊 loadStats: Loaded Level=\(currentLevel), Points=\(currentPoints), Score=\(score)")
     }
     
     private func loadMuscleState() {

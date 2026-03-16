@@ -11,6 +11,7 @@ class GameViewController: UIViewController {
     weak var gameplayScene: GameplayScene?
     var onDismissGame: (() -> Void)?  // Callback for SwiftUI dismissal
     private var hasInitializedScene = false  // Track if we've shown the initial scene
+    private var hudContainer: UIStackView?  // HUD buttons container
     
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -33,6 +34,7 @@ class GameViewController: UIViewController {
         // Show map on first load
         //print("🎮 GameViewController viewDidLoad - showing map for first time")
         showMapScene()
+        setupHUD()  // Add HUD buttons to UIView
         hasInitializedScene = true
         
         // Ensure the SKView actually has the scene
@@ -41,9 +43,85 @@ class GameViewController: UIViewController {
         }
     }
     
+    private func setupHUD() {
+        // Create HUD container at top of screen
+        let hudStack = UIStackView()
+        hudStack.axis = .horizontal
+        hudStack.spacing = 10
+        hudStack.distribution = .fillEqually
+        hudStack.alignment = .center
+        
+        // Add to view below safe area
+        view.addSubview(hudStack)
+        hudStack.translatesAutoresizingMaskIntoConstraints = false
+        
+        // Position below safe area with more padding so buttons are fully visible and clickable
+        let topInset = view.safeAreaInsets.top + 60  // Increased from 10 to 60
+        NSLayoutConstraint.activate([
+            hudStack.topAnchor.constraint(equalTo: view.topAnchor, constant: topInset),
+            hudStack.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 10),
+            hudStack.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -10),
+            hudStack.heightAnchor.constraint(equalToConstant: 60)
+        ])
+        
+        // Create buttons
+        let exitBtn = createHUDButton(title: "EXIT", color: UIColor(red: 0.8, green: 0.2, blue: 0.2, alpha: 0.9), action: #selector(exitTapped))
+        let appearanceBtn = createHUDButton(title: "🧍", color: UIColor(red: 0.7, green: 0.4, blue: 0.8, alpha: 0.9), action: #selector(appearanceTapped))
+        let editBtn = createHUDButton(title: "EDIT", color: UIColor(red: 0.2, green: 0.7, blue: 0.4, alpha: 0.9), action: #selector(editTapped))
+        let statsBtn = createHUDButton(title: "STATS", color: UIColor(red: 0.2, green: 0.5, blue: 0.8, alpha: 0.9), action: #selector(statsTapped))
+        
+        hudStack.addArrangedSubview(exitBtn)
+        hudStack.addArrangedSubview(appearanceBtn)
+        hudStack.addArrangedSubview(editBtn)
+        hudStack.addArrangedSubview(statsBtn)
+        
+        self.hudContainer = hudStack
+    }
+    
+    private func createHUDButton(title: String, color: UIColor, action: Selector) -> UIButton {
+        let button = UIButton(type: .system)
+        button.setTitle(title, for: .normal)
+        button.titleLabel?.font = UIFont.boldSystemFont(ofSize: 18)
+        button.backgroundColor = color
+        button.setTitleColor(.white, for: .normal)
+        button.layer.borderColor = UIColor.black.cgColor
+        button.layer.borderWidth = 2
+        button.layer.cornerRadius = 8
+        button.addTarget(self, action: action, for: .touchUpInside)
+        return button
+    }
+    
+    @objc private func exitTapped() {
+        print("🎮 EXIT tapped from HUD")
+        dismissGame()
+    }
+    
+    @objc private func appearanceTapped() {
+        print("🎮 APPEARANCE tapped from HUD")
+        showAppearance()
+    }
+    
+    @objc private func editTapped() {
+        print("🎮 EDIT tapped from HUD")
+        openStickFigureEditor()
+    }
+    
+    @objc private func statsTapped() {
+        print("🎮 STATS tapped from HUD")
+        showStats()
+    }
+    
     /// Show the map/level selection scene
     func showMapScene() {
         guard let skView = skView, let gameState = gameState, let mapState = mapState else { return }
+        
+        // Position character next to the level they just exited (not on top of it)
+        if let levelConfig = LEVEL_CONFIGS.first(where: { $0.id == gameState.currentLevel }) {
+            // Position character slightly below and to the left of the level station
+            let offsetDistance: CGFloat = 120  // pixels away from station
+            mapState.characterX = levelConfig.mapX - offsetDistance
+            mapState.characterY = levelConfig.mapY - offsetDistance
+        }
         
         // Remove previous scene if it exists
         if let currentScene = currentScene {

@@ -52,7 +52,26 @@ class GameScene: SKScene {
         }
         for touch in touches {
             let locationInView = touch.location(in: view)
-            let locationInScene = self.convert(locationInView, from: view)
+            
+            // Convert view coordinates to scene coordinates
+            // View: (0,0) at top-left, grows right and down
+            // Scene: (0,0) at bottom-left, grows right and up
+            // We need to flip Y and scale by the view's content scale factor
+            
+            let contentScaleFactor = view.contentScaleFactor
+            let viewBounds = view.bounds
+            
+            // Normalize view coordinates to 0-1 range
+            let normalizedX = locationInView.x / viewBounds.width
+            let normalizedY = locationInView.y / viewBounds.height
+            
+            // Convert to scene coordinates (flip Y because scene is bottom-left origin)
+            let sceneX = normalizedX * self.size.width
+            let sceneY = (1.0 - normalizedY) * self.size.height  // Flip Y
+            
+            let locationInScene = CGPoint(x: sceneX, y: sceneY)
+            
+            print("📍 GameScene.touchesEnded - viewBounds: \(viewBounds), viewLoc: \(locationInView), contentScale: \(contentScaleFactor), sceneLoc: \(locationInScene), sceneSize: \(self.size)")
             handleTouchEnded(at: locationInScene)
         }
     }
