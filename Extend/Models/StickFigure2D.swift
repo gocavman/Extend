@@ -43,7 +43,12 @@ struct AnimationFrame: Codable, Identifiable, Equatable {
         pose = try container.decode(StickFigure2DPose.self, forKey: .pose)
         // objects is optional - if not present, default to empty array
         objects = try container.decodeIfPresent([AnimationObject].self, forKey: .objects) ?? []
-        createdAt = try container.decode(Date.self, forKey: .createdAt)
+        // Decode createdAt as Double (Unix timestamp) and convert to Date
+        if let timestamp = try container.decodeIfPresent(Double.self, forKey: .createdAt) {
+            createdAt = Date(timeIntervalSince1970: timestamp)
+        } else {
+            createdAt = Date()
+        }
     }
     
     // Equatable conformance

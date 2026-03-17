@@ -135,15 +135,15 @@ struct SavedEditFrame: Codable, Identifiable {
     
     /// Initialize from EditModeValues with optional pose data
     init(name: String, frameNumber: Int = 0, from values: EditModeValues, pose: StickFigure2D? = nil, objects: [EditorObject] = []) {
-        self.init(id: UUID(), name: name, frameNumber: frameNumber, from: values, pose: pose, objects: objects)
+        self.init(id: UUID(), name: name, frameNumber: frameNumber, from: values, pose: pose, objects: objects, timestamp: Date())
     }
     
     /// Initialize from EditModeValues with optional pose data and custom id
-    init(id: UUID, name: String, frameNumber: Int = 0, from values: EditModeValues, pose: StickFigure2D? = nil, objects: [EditorObject] = []) {
+    init(id: UUID, name: String, frameNumber: Int = 0, from values: EditModeValues, pose: StickFigure2D? = nil, objects: [EditorObject] = [], timestamp: Date = Date()) {
         self.id = id
         self.name = name
         self.frameNumber = frameNumber
-        self.timestamp = Date()
+        self.timestamp = timestamp
         self.figureScale = values.figureScale
         self.fusiformUpperTorso = values.fusiformUpperTorso
         self.fusiformLowerTorso = values.fusiformLowerTorso
@@ -481,7 +481,11 @@ class SavedFramesManager {
               let frames = try? JSONDecoder().decode([SavedEditFrame].self, from: data) else {
             return []
         }
-        return frames.sorted { $0.timestamp > $1.timestamp }
+        let sorted = frames.sorted { $0.timestamp > $1.timestamp }
+        for frame in sorted {
+            print("🎮 Frame: \(frame.name) - timestamp: \(frame.timestamp)")
+        }
+        return sorted
     }
     
     /// Get a specific frame by ID
@@ -771,7 +775,8 @@ class SavedFramesManager {
                 frameNumber: animFrame.frameNumber,
                 from: editValues,
                 pose: pose,
-                objects: editorObjects
+                objects: editorObjects,
+                timestamp: animFrame.createdAt
             )
             savedFrames.append(savedFrame)
         }

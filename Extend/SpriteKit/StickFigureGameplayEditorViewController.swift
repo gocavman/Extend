@@ -2668,7 +2668,7 @@ class FrameListViewController: UIViewController, UITableViewDataSource, UITableV
                         scaleY: animObj.scale
                     )
                 }
-                let savedFrame = SavedEditFrame(id: bundleFrame.id, name: bundleFrame.name, frameNumber: bundleFrame.frameNumber, from: editValues, pose: pose, objects: editorObjects)
+                let savedFrame = SavedEditFrame(id: bundleFrame.id, name: bundleFrame.name, frameNumber: bundleFrame.frameNumber, from: editValues, pose: pose, objects: editorObjects, timestamp: bundleFrame.createdAt)
                 // Remove local version if it exists, then add bundle version
                 allFrames.removeAll { $0.id == bundleFrame.id }
                 allFrames.append(savedFrame)
@@ -2676,6 +2676,10 @@ class FrameListViewController: UIViewController, UITableViewDataSource, UITableV
         
         // Sort by timestamp (newest first)
         frames = allFrames.sorted { $0.timestamp > $1.timestamp }
+        print("🎮 Frame list sorted - \(frames.count) frames:")
+        for (index, frame) in frames.enumerated() {
+            print("  [\(index)]: \(frame.name) - \(frame.timestamp)")
+        }
         filteredFrames = frames
         
         // Setup navigation
@@ -2762,16 +2766,6 @@ class FrameListViewController: UIViewController, UITableViewDataSource, UITableV
         stackView.distribution = .fill
         stackView.translatesAutoresizingMaskIntoConstraints = false
         
-        // Load button
-        let loadBtn = UIButton(type: .system)
-        loadBtn.setImage(UIImage(systemName: "arrow.down.doc"), for: .normal)
-        loadBtn.tintColor = UIColor(red: 0.2, green: 0.4, blue: 0.6, alpha: 1.0)
-        loadBtn.translatesAutoresizingMaskIntoConstraints = false
-        loadBtn.addAction(UIAction { _ in
-            self.onFrameSelected?(frame)
-            self.dismiss(animated: true)
-        }, for: .touchUpInside)
-        
         // Rename button
         let renameBtn = UIButton(type: .system)
         renameBtn.setImage(UIImage(systemName: "pencil"), for: .normal)
@@ -2799,7 +2793,6 @@ class FrameListViewController: UIViewController, UITableViewDataSource, UITableV
             self.deleteFrame(frame, at: indexPath)
         }, for: .touchUpInside)
         
-        stackView.addArrangedSubview(loadBtn)
         stackView.addArrangedSubview(renameBtn)
         stackView.addArrangedSubview(copyBtn)
         stackView.addArrangedSubview(deleteBtn)
@@ -2807,8 +2800,6 @@ class FrameListViewController: UIViewController, UITableViewDataSource, UITableV
         cell.contentView.addSubview(stackView)
         
         NSLayoutConstraint.activate([
-            loadBtn.widthAnchor.constraint(equalToConstant: 20),
-            loadBtn.heightAnchor.constraint(equalToConstant: 20),
             renameBtn.widthAnchor.constraint(equalToConstant: 20),
             renameBtn.heightAnchor.constraint(equalToConstant: 20),
             copyBtn.widthAnchor.constraint(equalToConstant: 20),
