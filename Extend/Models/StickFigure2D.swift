@@ -56,27 +56,51 @@ struct AnimationFrame: Codable, Identifiable, Equatable {
 
 struct AnimationObject: Codable, Identifiable, Equatable {
     let id: UUID
-    var imageName: String
+    var type: ObjectType = .image  // image or box
+    var imageName: String = ""  // For image type
     var position: CGPoint
     var rotation: Double // in degrees
     var scale: Double
     
+    // Box-specific properties
+    var width: CGFloat = 50   // Box width
+    var height: CGFloat = 50  // Box height
+    var color: String = "#FF0000"  // Box color as hex string
+    
+    enum ObjectType: String, Codable {
+        case image = "image"
+        case box = "box"
+    }
+    
     init(imageName: String, position: CGPoint, rotation: Double = 0, scale: Double = 1.0) {
         self.id = UUID()
+        self.type = .image
         self.imageName = imageName
         self.position = position
         self.rotation = rotation
         self.scale = scale
     }
     
+    init(boxAt position: CGPoint, width: CGFloat = 50, height: CGFloat = 50, color: String = "#FF0000", rotation: Double = 0) {
+        self.id = UUID()
+        self.type = .box
+        self.position = position
+        self.width = width
+        self.height = height
+        self.color = color
+        self.rotation = rotation
+        self.scale = 1.0
+    }
+    
     // Custom Codable to handle position as dict with x,y keys
     enum CodingKeys: String, CodingKey {
-        case id, imageName, position, rotation, scale
+        case id, type, imageName, position, rotation, scale, width, height, color
     }
     
     func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
         try container.encode(id, forKey: .id)
+        try container.encode(type, forKey: .type)
         try container.encode(imageName, forKey: .imageName)
         
         // Encode position as a nested object
@@ -86,11 +110,15 @@ struct AnimationObject: Codable, Identifiable, Equatable {
         
         try container.encode(rotation, forKey: .rotation)
         try container.encode(scale, forKey: .scale)
+        try container.encode(width, forKey: .width)
+        try container.encode(height, forKey: .height)
+        try container.encode(color, forKey: .color)
     }
     
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         id = try container.decode(UUID.self, forKey: .id)
+        type = try container.decode(ObjectType.self, forKey: .type)
         imageName = try container.decode(String.self, forKey: .imageName)
         
         // Decode position from nested object
@@ -101,6 +129,9 @@ struct AnimationObject: Codable, Identifiable, Equatable {
         
         rotation = try container.decode(Double.self, forKey: .rotation)
         scale = try container.decode(Double.self, forKey: .scale)
+        width = try container.decode(CGFloat.self, forKey: .width)
+        height = try container.decode(CGFloat.self, forKey: .height)
+        color = try container.decode(String.self, forKey: .color)
     }
     
     enum PositionKeys: String, CodingKey {

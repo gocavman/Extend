@@ -9,6 +9,7 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
     // MARK: - Properties
     private var skView: SKView?
     private var editorScene: StickFigureEditorScene?
+    private var colorPickerEditorScene: StickFigureEditorScene?  // Store scene for color picker delegate
     
     private let topContainer = UIView()
     private let bottomContainer = UIView()
@@ -1363,10 +1364,11 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
                 showInteractiveJoints: self.showInteractiveJoints
             )
             
-            // Extract objects from the editor scene
+            // Extract objects from the editor scene (both image sprites and box shapes)
             var frameObjects: [EditorObject] = []
             if let editorScene = self.editorScene {
                 for node in editorScene.children {
+                    // Handle image objects (SKSpriteNode)
                     if let sprite = node as? SKSpriteNode, sprite.name?.hasPrefix("object_") == true {
                         let assetName = (sprite.userData?["assetName"] as? String) ?? "Unknown"
                         let editorObject = EditorObject(
@@ -1377,7 +1379,29 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
                             scaleY: sprite.yScale
                         )
                         frameObjects.append(editorObject)
-                        print("🎮 Saving object: \(assetName) at \(sprite.position) scale: \(sprite.xScale)")
+                        print("🎮 Saving image object: \(assetName) at \(sprite.position) scale: \(sprite.xScale)")
+                    }
+                    // Handle box objects (SKShapeNode) - store as special editor objects with type prefix
+                    else if let shapeNode = node as? SKShapeNode, shapeNode.name?.hasPrefix("object_box_") == true {
+                        var width = shapeNode.userData?["width"] as? CGFloat ?? 50
+                        var height = shapeNode.userData?["height"] as? CGFloat ?? 50
+                        let color = shapeNode.userData?["color"] as? String ?? "#FF0000"
+                        
+                        // Apply scale to get actual dimensions being saved
+                        width *= shapeNode.xScale
+                        height *= shapeNode.yScale
+                        
+                        // Use a special naming scheme to identify this as a box when loading
+                        let boxAssetName = "BOX_\(color)_\(Int(width))_\(Int(height))"
+                        let editorObject = EditorObject(
+                            assetName: boxAssetName,
+                            position: shapeNode.position,
+                            rotation: shapeNode.zRotation,
+                            scaleX: 1.0,  // Scale is baked into width/height, so set to 1.0
+                            scaleY: 1.0   // Scale is baked into width/height, so set to 1.0
+                        )
+                        frameObjects.append(editorObject)
+                        print("🎮 Saving box object: \(color) \(Int(width))x\(Int(height)) at \(shapeNode.position)")
                     }
                 }
             }
@@ -1406,18 +1430,152 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
     
     @objc private func addObjectPressed() {
         print("🎮 Add object button pressed")
-        let alert = UIAlertController(title: "Add Object", message: "Select an asset", preferredStyle: .actionSheet)
+        let alert = UIAlertController(title: "Add Object", message: "Select object type", preferredStyle: .actionSheet)
         
+        // Image assets
         let assets = ["Apple", "Dumbbell", "Kettlebell", "Shaker"]
         
         for asset in assets {
             alert.addAction(UIAlertAction(title: asset, style: .default) { [weak self] _ in
-                self?.addObject(asset: asset)
+                self?.addImageObject(asset: asset)
             })
         }
         
+        // Add Box option
+        alert.addAction(UIAlertAction(title: "Box", style: .default) { [weak self] _ in
+            self?.addBoxObject()
+        })
+        
         alert.addAction(UIAlertAction(title: "Cancel", style: .cancel))
         present(alert, animated: true)
+    }
+    
+    private func addImageObject(asset: String) {
+        print("🎮 Adding image object: \(asset)")
+        addObject(asset: asset)
+    }
+    
+    private func addBoxObject() {
+        print("🎮 Adding box object with color picker")
+        guard let scene = editorScene else { 
+            print("🎮 ❌ ERROR: editorScene is nil!")
+            return 
+        }
+        
+        // Show color picker for the box
+        let colorPicker = UIColorPickerViewController()
+        colorPicker.selectedColor = .red  // Default color
+        colorPicker.delegate = self
+        colorPicker.supportsAlpha = false
+        
+        print("🎮 Presenting color picker, editorScene size: \(scene.size)")
+        
+        // Store reference to editor scene for use in delegate
+        self.colorPickerEditorScene = scene
+        
+        present(colorPicker, animated: true)
+    }
+    
+    // Add UIColorPickerViewControllerDelegate method to handle color selection
+    func colorPickerViewControllerDidFinish(_ viewController: UIColorPickerViewController) {
+        print("🎮 Color picker finished")
+        let selectedColor = viewController.selectedColor
+        print("🎮 Selected color: \(selectedColor.toHexString())")
+        
+        guard let editorScene = colorPickerEditorScene else {
+            print("🎮 ❌ ERROR: colorPickerEditorScene is nil!")
+            dismiss(animated: true)
+            return
+        }
+        
+        print("🎮 Editor scene found, creating box...")
+        
+        // Create box with selected color
+        let boxObject = AnimationObject(boxAt: CGPoint(x: editorScene.size.width / 2, y: editorScene.size.height / 2 - 100), width: 50, height: 50, color: selectedColor.toHexString(), rotation: 0)
+        
+        // Create sprite node for visualization
+        let boxNode = SKShapeNode(rectOf: CGSize(width: 50, height: 50))
+        boxNode.fillColor = selectedColor
+        boxNode.strokeColor = .black
+        boxNode.lineWidth = 2
+        boxNode.position = CGPoint(x: editorScene.size.width / 2, y: editorScene.size.height / 2 - 100)
+        boxNode.zPosition = 5
+        boxNode.name = "object_box_\(boxObject.id)"
+        
+        // Store object data
+        boxNode.userData = NSMutableDictionary()
+        boxNode.userData?["type"] = "box"
+        boxNode.userData?["boxObject"] = boxObject
+        boxNode.userData?["color"] = selectedColor.toHexString()
+        boxNode.userData?["width"] = 50.0
+        boxNode.userData?["height"] = 50.0
+        boxNode.userData?["rotation"] = 0.0
+        
+        if showObjectControls {
+            addBoxObjectControls(to: boxNode, in: editorScene, width: 50, height: 50)
+        }
+        
+        editorScene.addChild(boxNode)
+        print("🎮 Box object added with color: \(selectedColor.toHexString())")
+        
+        colorPickerEditorScene = nil
+        dismiss(animated: true)
+    }
+    
+    private func addBoxObjectControls(to boxNode: SKNode, in scene: SKScene, width: CGFloat = 50, height: CGFloat = 50) {
+        // Calculate half-dimensions for dot positioning
+        let halfWidth = width / 2
+        let halfHeight = height / 2
+        
+        // Add move dot (center of box)
+        let moveDot = SKShapeNode(circleOfRadius: 6)
+        moveDot.fillColor = .blue
+        moveDot.strokeColor = .darkGray
+        moveDot.lineWidth = 1
+        moveDot.position = CGPoint(x: 0, y: 0)  // Center of the box
+        moveDot.name = "object_move_\(boxNode.name ?? "")"
+        moveDot.zPosition = 10
+        boxNode.addChild(moveDot)
+        
+        // Add resize width dot (right edge) - GREEN
+        let resizeWidthDot = SKShapeNode(circleOfRadius: 6)
+        resizeWidthDot.fillColor = .green
+        resizeWidthDot.strokeColor = .darkGray
+        resizeWidthDot.lineWidth = 1
+        resizeWidthDot.position = CGPoint(x: halfWidth, y: 0)
+        resizeWidthDot.name = "object_resize_width_\(boxNode.name ?? "")"
+        resizeWidthDot.zPosition = 10
+        boxNode.addChild(resizeWidthDot)
+        
+        // Add resize height dot (top edge) - YELLOW
+        let resizeHeightDot = SKShapeNode(circleOfRadius: 6)
+        resizeHeightDot.fillColor = .yellow
+        resizeHeightDot.strokeColor = .darkGray
+        resizeHeightDot.lineWidth = 1
+        resizeHeightDot.position = CGPoint(x: 0, y: halfHeight)
+        resizeHeightDot.name = "object_resize_height_\(boxNode.name ?? "")"
+        resizeHeightDot.zPosition = 10
+        boxNode.addChild(resizeHeightDot)
+        
+        // Add rotate dot (top-right corner)
+        let rotateDot = SKShapeNode(circleOfRadius: 6)
+        rotateDot.fillColor = .purple
+        rotateDot.strokeColor = .darkGray
+        rotateDot.lineWidth = 1
+        rotateDot.position = CGPoint(x: halfWidth, y: halfHeight)
+        rotateDot.name = "object_rotate_\(boxNode.name ?? "")"
+        rotateDot.zPosition = 10
+        boxNode.addChild(rotateDot)
+        
+        // Add delete dot (bottom-right corner)
+        let deleteDot = SKShapeNode(circleOfRadius: 6)
+        deleteDot.fillColor = .red
+        deleteDot.strokeColor = .darkGray
+        deleteDot.lineWidth = 1
+        deleteDot.position = CGPoint(x: halfWidth, y: -halfHeight)
+        deleteDot.name = "object_delete_\(boxNode.name ?? "")"
+        deleteDot.zPosition = 10
+        boxNode.addChild(deleteDot)
     }
     
     private func addObject(asset: String) {
@@ -1585,14 +1743,54 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
         
         // Load objects from frame
         for editorObject in frame.objects {
-            addObject(asset: editorObject.assetName)
-            // Update the position, rotation, and scale of the last added object
-            if let lastObject = editorScene?.children.last(where: { $0.name?.hasPrefix("object_") == true }) as? SKSpriteNode {
-                lastObject.position = editorObject.position
-                lastObject.zRotation = editorObject.rotation
-                lastObject.xScale = editorObject.scaleX
-                lastObject.yScale = editorObject.scaleY
-                print("🎮 Loaded object: \(editorObject.assetName) at \(lastObject.position)")
+            // Check if this is a box (identified by BOX_ prefix)
+            if editorObject.assetName.hasPrefix("BOX_") {
+                // Parse box properties from assetName format: BOX_#RRGGBB_width_height
+                let parts = editorObject.assetName.split(separator: "_")
+                if parts.count >= 4 {
+                    let color = String(parts[1])  // #RRGGBB
+                    let width = CGFloat(Int(parts[2]) ?? 50)
+                    let height = CGFloat(Int(parts[3]) ?? 50)
+                    let boxColor = UIColor(hex: color) ?? .red
+                    
+                    // Create the box node
+                    let boxNode = SKShapeNode(rectOf: CGSize(width: width, height: height))
+                    boxNode.fillColor = boxColor
+                    boxNode.strokeColor = .black
+                    boxNode.lineWidth = 2
+                    boxNode.position = editorObject.position
+                    boxNode.zRotation = editorObject.rotation
+                    boxNode.xScale = editorObject.scaleX
+                    boxNode.yScale = editorObject.scaleY
+                    boxNode.zPosition = 5
+                    boxNode.name = "object_box_\(UUID())"
+                    
+                    // Store box data
+                    boxNode.userData = NSMutableDictionary()
+                    boxNode.userData?["type"] = "box"
+                    boxNode.userData?["color"] = color
+                    boxNode.userData?["width"] = width
+                    boxNode.userData?["height"] = height
+                    boxNode.userData?["rotation"] = editorObject.rotation
+                    
+                    if showObjectControls {
+                        addBoxObjectControls(to: boxNode, in: editorScene!, width: width, height: height)
+                    }
+                    
+                    editorScene?.addChild(boxNode)
+                    print("🎮 Loaded box: \(color) \(Int(width))x\(Int(height)) at \(boxNode.position)")
+                }
+            } else {
+                // Load as image object
+                addObject(asset: editorObject.assetName)
+                // Update the position, rotation, and scale of the last added object
+                if let lastObject = editorScene?.children.last(where: { $0.name?.hasPrefix("object_") == true }) as? SKSpriteNode {
+                    lastObject.position = editorObject.position
+                    lastObject.zRotation = editorObject.rotation
+                    lastObject.xScale = editorObject.scaleX
+                    lastObject.yScale = editorObject.scaleY
+                    print("🎮 Loaded object: \(editorObject.assetName) at \(lastObject.position)")
+                }
             }
         }
         
@@ -1607,13 +1805,58 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
     
     // MARK: - UIColorPickerViewControllerDelegate
     func colorPickerViewControllerDidSelectColor(_ viewController: UIColorPickerViewController) {
-        if let colorKey = pendingColorKey {
+        // Check if this is for a box color (colorPickerEditorScene will be set)
+        if colorPickerEditorScene != nil {
+            print("🎮 Box color picker finished")
+            let selectedColor = viewController.selectedColor
+            print("🎮 Selected color: \(selectedColor.toHexString())")
+            
+            guard let editorScene = colorPickerEditorScene else {
+                viewController.dismiss(animated: true)
+                return
+            }
+            
+            print("🎮 Editor scene found, creating box...")
+            
+            // Create box with selected color
+            let boxObject = AnimationObject(boxAt: CGPoint(x: editorScene.size.width / 2, y: editorScene.size.height / 2 - 100), width: 50, height: 50, color: selectedColor.toHexString(), rotation: 0)
+            
+            // Create sprite node for visualization
+            let boxNode = SKShapeNode(rectOf: CGSize(width: 50, height: 50))
+            boxNode.fillColor = selectedColor
+            boxNode.strokeColor = .black
+            boxNode.lineWidth = 2
+            boxNode.position = CGPoint(x: editorScene.size.width / 2, y: editorScene.size.height / 2 - 100)
+            boxNode.zPosition = 5
+            boxNode.name = "object_box_\(boxObject.id)"
+            
+            // Store object data
+            boxNode.userData = NSMutableDictionary()
+            boxNode.userData?["type"] = "box"
+            boxNode.userData?["boxObject"] = boxObject
+            boxNode.userData?["color"] = selectedColor.toHexString()
+            boxNode.userData?["width"] = 50.0
+            boxNode.userData?["height"] = 50.0
+            boxNode.userData?["rotation"] = 0.0
+            
+            if showObjectControls {
+                addBoxObjectControls(to: boxNode, in: editorScene)
+            }
+            
+            editorScene.addChild(boxNode)
+            print("🎮 Box object added with color: \(selectedColor.toHexString())")
+            
+            colorPickerEditorScene = nil
+            viewController.dismiss(animated: true)
+        }
+        // Otherwise it's for body part color
+        else if let colorKey = pendingColorKey {
             bodyPartColors[colorKey] = viewController.selectedColor
             pendingColorButton?.backgroundColor = viewController.selectedColor
             print("🎨 Color picker: Set \(colorKey) to color \(viewController.selectedColor)")
             updateFigure()
+            viewController.dismiss(animated: true)  // Dismiss the color picker, not the entire editor
         }
-        viewController.dismiss(animated: true)  // Dismiss the color picker, not the entire editor
     }
     
     // MARK: - UIImagePickerControllerDelegate
@@ -1682,21 +1925,24 @@ class StickFigureEditorScene: SKScene {
             if let shapeNode = node as? SKShapeNode {
                 if let nodeName = shapeNode.name {
                     if nodeName.hasPrefix("object_move_") {
-                        draggedObject = shapeNode.parent as? SKSpriteNode
+                        // Parent could be either an SKSpriteNode (image) or SKShapeNode (box)
+                        draggedObject = shapeNode.parent
                         draggedJointName = nodeName  // Track operation type
                         lastDragPosition = location
-                        dragOffset = CGPoint(x: location.x - draggedObject!.position.x,
-                                            y: location.y - draggedObject!.position.y)
+                        if let draggedObject = draggedObject {
+                            dragOffset = CGPoint(x: location.x - draggedObject.position.x,
+                                                y: location.y - draggedObject.position.y)
+                        }
                         print("🎮 Started moving object")
                         return
                     } else if nodeName.hasPrefix("object_rotate_") {
-                        draggedObject = shapeNode.parent as? SKSpriteNode
+                        draggedObject = shapeNode.parent
                         draggedJointName = nodeName  // Reuse this to track operation type
                         lastDragPosition = location
                         print("🎮 Started rotating object")
                         return
                     } else if nodeName.hasPrefix("object_resize_") {
-                        draggedObject = shapeNode.parent as? SKSpriteNode
+                        draggedObject = shapeNode.parent
                         draggedJointName = nodeName  // Reuse this to track operation type
                         lastDragPosition = location
                         print("🎮 Started resizing object")
@@ -1752,24 +1998,62 @@ class StickFigureEditorScene: SKScene {
                 draggedObject.position = newPos
                 print("🎮 Object moved")
             } else if operation.hasPrefix("object_rotate_") {
-                // Calculate rotation based on horizontal drag - continuous smooth rotation
+                // Calculate rotation based on horizontal drag
                 let dx = location.x - lastDragPosition.x
-                // Apply rotation directly and proportionally to drag distance
                 if abs(dx) > 0 {
-                    let rotation = CGFloat(-dx) * 0.02
+                    let rotation = CGFloat(dx) * 0.02
                     draggedObject.zRotation += rotation
+                    print("🎮 Object rotated: \(draggedObject.zRotation)")
+                }
+            } else if operation.hasPrefix("object_resize_width_") {
+                // Resize WIDTH only (GREEN dot) - horizontal drag affects x scale
+                let dx = location.x - lastDragPosition.x
+                if abs(dx) > 0 {
+                    let scaleFactor = 1.0 + (dx * 0.02)
+                    draggedObject.xScale *= scaleFactor
+                    
+                    // Counter-scale the control dots so they don't shrink/grow
+                    for child in draggedObject.children {
+                        if let dotNode = child as? SKShapeNode {
+                            dotNode.xScale /= scaleFactor
+                        }
+                    }
+                    
+                    print("🎮 Width resized: xScale = \(draggedObject.xScale)")
+                }
+            } else if operation.hasPrefix("object_resize_height_") {
+                // Resize HEIGHT only (YELLOW dot) - vertical drag affects y scale
+                let dy = location.y - lastDragPosition.y
+                if abs(dy) > 0 {
+                    let scaleFactor = 1.0 + (dy * 0.02)
+                    draggedObject.yScale *= scaleFactor
+                    
+                    // Counter-scale the control dots so they don't shrink/grow
+                    for child in draggedObject.children {
+                        if let dotNode = child as? SKShapeNode {
+                            dotNode.yScale /= scaleFactor
+                        }
+                    }
+                    
+                    print("🎮 Height resized: yScale = \(draggedObject.yScale)")
                 }
             } else if operation.hasPrefix("object_resize_") {
-                // Calculate resize based on drag distance (both directions - enlarge and shrink)
+                // Fallback for other resize operations (both dimensions)
                 let dx = location.x - lastDragPosition.x
                 let dy = location.y - lastDragPosition.y
-                
-                // Resize dot is at bottom-right, so dragging down-right enlarges, up-left shrinks
                 let dragMagnitude = (dx + dy) * 0.02
                 if abs(dragMagnitude) > 0 {
                     let scaleFactor = 1.0 + dragMagnitude
                     draggedObject.xScale *= scaleFactor
                     draggedObject.yScale *= scaleFactor
+                    
+                    // Counter-scale the control dots so they don't shrink/grow
+                    for child in draggedObject.children {
+                        if let dotNode = child as? SKShapeNode {
+                            dotNode.xScale /= scaleFactor
+                            dotNode.yScale /= scaleFactor
+                        }
+                    }
                 }
             } else {
                 // Normal object dragging
@@ -2739,6 +3023,27 @@ class FrameListViewController: UIViewController, UITableViewDataSource, UITableV
         
         guard !standFrames.isEmpty else { return nil }
         return standFrames
+    }
+}
+
+// MARK: - UIColor Extension for Hex Conversion
+
+extension UIColor {
+    func toHexString() -> String {
+        var red: CGFloat = 0
+        var green: CGFloat = 0
+        var blue: CGFloat = 0
+        var alpha: CGFloat = 0
+        
+        self.getRed(&red, green: &green, blue: &blue, alpha: &alpha)
+        
+        let redInt = Int(lround(Double(red) * 255))
+        let greenInt = Int(lround(Double(green) * 255))
+        let blueInt = Int(lround(Double(blue) * 255))
+        
+        let hexString = String(format: "#%02X%02X%02X", redInt, greenInt, blueInt)
+        
+        return hexString
     }
 }
 

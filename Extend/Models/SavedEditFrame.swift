@@ -743,13 +743,26 @@ class SavedFramesManager {
             )
             
             let editorObjects = animFrame.objects.map { animObj in
-                EditorObject(
-                    assetName: animObj.imageName,
-                    position: animObj.position,
-                    rotation: animObj.rotation,
-                    scaleX: animObj.scale,
-                    scaleY: animObj.scale
-                )
+                if animObj.type == .box {
+                    // Store box as special EditorObject with BOX_ prefix
+                    let boxAssetName = "BOX_\(animObj.color)_\(Int(animObj.width))_\(Int(animObj.height))"
+                    return EditorObject(
+                        assetName: boxAssetName,
+                        position: animObj.position,
+                        rotation: animObj.rotation,
+                        scaleX: 1.0,  // Scale is baked into dimensions
+                        scaleY: 1.0
+                    )
+                } else {
+                    // Image object
+                    return EditorObject(
+                        assetName: animObj.imageName,
+                        position: animObj.position,
+                        rotation: animObj.rotation,
+                        scaleX: animObj.scale,
+                        scaleY: animObj.scale
+                    )
+                }
             }
             
             let savedFrame = SavedEditFrame(

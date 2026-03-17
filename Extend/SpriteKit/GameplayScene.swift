@@ -955,14 +955,31 @@ private func applyMuscleScaling(to figure: StickFigure2D) -> StickFigure2D {
 
 private func renderFrameObjects(_ objects: [AnimationObject], on container: SKNode, scale: CGFloat) {
     for object in objects {
-        let sprite = SKSpriteNode(imageNamed: object.imageName)
-        sprite.position = object.position * scale
-        sprite.zRotation = CGFloat(object.rotation)
-        sprite.xScale *= object.scale
-        sprite.yScale *= object.scale
-        sprite.zPosition = 5  // Behind stick figure (which is 10+)
-        sprite.name = "object_\(object.imageName)"
-        container.addChild(sprite)
+        let node: SKNode
+        
+        if object.type == .box {
+            // Render box
+            let boxNode = SKShapeNode(rectOf: CGSize(width: object.width * scale, height: object.height * scale))
+            let boxColor = UIColor(hex: object.color) ?? UIColor(red: 1.0, green: 0.0, blue: 0.0, alpha: 1.0)
+            boxNode.fillColor = boxColor
+            boxNode.strokeColor = .black
+            boxNode.lineWidth = 2
+            boxNode.zPosition = 5
+            boxNode.name = "object_box_\(object.id)"
+            node = boxNode
+        } else {
+            // Render image (existing logic)
+            let sprite = SKSpriteNode(imageNamed: object.imageName)
+            sprite.xScale *= object.scale
+            sprite.yScale *= object.scale
+            sprite.zPosition = 5
+            sprite.name = "object_image_\(object.imageName)"
+            node = sprite
+        }
+        
+        node.position = object.position * scale
+        node.zRotation = CGFloat(object.rotation)
+        container.addChild(node)
     }
 }
 
