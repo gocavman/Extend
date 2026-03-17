@@ -481,11 +481,7 @@ class SavedFramesManager {
               let frames = try? JSONDecoder().decode([SavedEditFrame].self, from: data) else {
             return []
         }
-        let sorted = frames.sorted { $0.timestamp > $1.timestamp }
-        for frame in sorted {
-            print("🎮 Frame: \(frame.name) - timestamp: \(frame.timestamp)")
-        }
-        return sorted
+        return frames.sorted { $0.timestamp > $1.timestamp }
     }
     
     /// Get a specific frame by ID

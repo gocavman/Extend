@@ -1023,17 +1023,90 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
     private func updateObjectControlVisibility() {
         guard let editorScene = editorScene else { return }
         
-        // Find all objects and show/hide their control dots
+        // Find all objects and update their control dots
         editorScene.children.forEach { node in
             if node.name?.hasPrefix("object_") == true {
-                // This is an object sprite, update its control dot visibility
-                node.children.forEach { child in
-                    if let dot = child as? SKShapeNode, child.name?.hasPrefix("object_") == true {
-                        dot.isHidden = !showObjectControls
+                if showObjectControls {
+                    // Check if dots exist
+                    let hasDots = node.children.contains { child in
+                        child.name?.hasPrefix("object_move_") == true ||
+                        child.name?.hasPrefix("object_resize_") == true ||
+                        child.name?.hasPrefix("object_rotate_") == true ||
+                        child.name?.hasPrefix("object_delete_") == true
+                    }
+                    
+                    if !hasDots {
+                        // Dots don't exist - create them
+                        if node is SKShapeNode {
+                            // It's a box
+                            let width = (node.userData?["width"] as? CGFloat) ?? 50
+                            let height = (node.userData?["height"] as? CGFloat) ?? 50
+                            addBoxObjectControls(to: node, in: editorScene, width: width, height: height)
+                        } else if let spriteNode = node as? SKSpriteNode {
+                            // It's an image object
+                            let asset = (node.userData?["assetName"] as? String) ?? node.name ?? "Object"
+                            addImageObjectControls(to: spriteNode, assetName: asset)
+                        }
+                    } else {
+                        // Dots exist, just show them
+                        node.children.forEach { child in
+                            if let dot = child as? SKShapeNode, child.name?.hasPrefix("object_") == true {
+                                dot.isHidden = false
+                            }
+                        }
+                    }
+                } else {
+                    // Hide all dots
+                    node.children.forEach { child in
+                        if let dot = child as? SKShapeNode, child.name?.hasPrefix("object_") == true {
+                            dot.isHidden = true
+                        }
                     }
                 }
             }
         }
+    }
+    
+    private func addImageObjectControls(to sprite: SKSpriteNode, assetName: String) {
+        // Add center dot for moving the object
+        let moveDot = SKShapeNode(circleOfRadius: 3)
+        moveDot.fillColor = .white
+        moveDot.strokeColor = .darkGray
+        moveDot.lineWidth = 1
+        moveDot.position = CGPoint(x: 0, y: 0)
+        moveDot.name = "object_move_\(assetName)"
+        moveDot.zPosition = 12
+        sprite.addChild(moveDot)
+        
+        // Add rotate dot
+        let rotateDot = SKShapeNode(circleOfRadius: 3)
+        rotateDot.fillColor = .yellow
+        rotateDot.strokeColor = .darkGray
+        rotateDot.lineWidth = 1
+        rotateDot.position = CGPoint(x: 25, y: 25)
+        rotateDot.name = "object_rotate_\(assetName)"
+        rotateDot.zPosition = 12
+        sprite.addChild(rotateDot)
+        
+        // Add resize dot
+        let resizeDot = SKShapeNode(circleOfRadius: 3)
+        resizeDot.fillColor = .cyan
+        resizeDot.strokeColor = .darkGray
+        resizeDot.lineWidth = 1
+        resizeDot.position = CGPoint(x: 25, y: -25)
+        resizeDot.name = "object_resize_\(assetName)"
+        resizeDot.zPosition = 12
+        sprite.addChild(resizeDot)
+        
+        // Add delete dot
+        let deleteDot = SKShapeNode(circleOfRadius: 3)
+        deleteDot.fillColor = .red
+        deleteDot.strokeColor = .darkGray
+        deleteDot.lineWidth = 1
+        deleteDot.position = CGPoint(x: -25, y: 25)
+        deleteDot.name = "object_delete_\(assetName)"
+        deleteDot.zPosition = 12
+        sprite.addChild(deleteDot)
     }
     
     @objc private func toggleSectionExpansion(_ gesture: UITapGestureRecognizer) {
@@ -1457,9 +1530,9 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
     
     private func addBoxObject() {
         print("🎮 Adding box object with color picker")
-        guard let scene = editorScene else { 
+        guard let scene = editorScene else {
             print("🎮 ❌ ERROR: editorScene is nil!")
-            return 
+            return
         }
         
         // Show color picker for the box
@@ -2676,10 +2749,6 @@ class FrameListViewController: UIViewController, UITableViewDataSource, UITableV
         
         // Sort by timestamp (newest first)
         frames = allFrames.sorted { $0.timestamp > $1.timestamp }
-        print("🎮 Frame list sorted - \(frames.count) frames:")
-        for (index, frame) in frames.enumerated() {
-            print("  [\(index)]: \(frame.name) - \(frame.timestamp)")
-        }
         filteredFrames = frames
         
         // Setup navigation
