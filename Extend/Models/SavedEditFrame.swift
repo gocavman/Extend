@@ -557,7 +557,25 @@ class SavedFramesManager {
         for (index, object) in frame.objects.enumerated() {
             jsonString += "      {\n"
             jsonString += "        \"id\" : \"\(object.id.uuidString)\",\n"
-            jsonString += "        \"imageName\" : \"\(object.assetName)\",\n"
+            // Determine type based on assetName (BOX_ prefix = box, otherwise image)
+            let objectType = object.assetName.hasPrefix("BOX_") ? "box" : "image"
+            jsonString += "        \"type\" : \"\(objectType)\",\n"
+            
+            if objectType == "box" {
+                // For box objects, parse the BOX_#COLOR_WIDTH_HEIGHT format
+                let parts = object.assetName.split(separator: "_")
+                let color = parts.count > 1 ? String(parts[1]) : "#FF0000"
+                let width = parts.count > 2 ? Double(parts[2]) ?? 50.0 : 50.0
+                let height = parts.count > 3 ? Double(parts[3]) ?? 50.0 : 50.0
+                
+                jsonString += "        \"color\" : \"\(color)\",\n"
+                jsonString += "        \"width\" : \(width),\n"
+                jsonString += "        \"height\" : \(height),\n"
+            } else {
+                // For image objects
+                jsonString += "        \"imageName\" : \"\(object.assetName)\",\n"
+            }
+            
             jsonString += "        \"position\" : {\n"
             jsonString += "          \"x\" : \(roundAndFormat(object.position.x, decimals: 1)),\n"
             jsonString += "          \"y\" : \(roundAndFormat(object.position.y, decimals: 1))\n"
