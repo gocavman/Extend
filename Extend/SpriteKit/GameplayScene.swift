@@ -1236,13 +1236,23 @@ private func checkCatchableCollisions(gameState: StickFigureGameState, character
             continue
         }
         
-        // Remove if off-screen
-        if fallingItems[i].y > 1.1 || fallingItems[i].x < -0.2 || fallingItems[i].x > 1.2 {
+        // Remove if off-screen (bottom only) - wrap around horizontally
+        if fallingItems[i].y > 1.1 {
+            // Catchable has fallen below the screen - remove it
             if let node = catchableNodes[item.id] {
                 node.removeFromParent()
                 catchableNodes.removeValue(forKey: item.id)
             }
             fallingItems.remove(at: i)
+        } else if fallingItems[i].x < 0 || fallingItems[i].x > 1 {
+            // Catchable has drifted off the side - wrap it around horizontally immediately
+            if fallingItems[i].x < 0 {
+                // Wrap from left to right - move just barely on-screen on the right
+                fallingItems[i].x += 1.0
+            } else if fallingItems[i].x > 1 {
+                // Wrap from right to left - move just barely on-screen on the left
+                fallingItems[i].x -= 1.0
+            }
         }
     }
 }
