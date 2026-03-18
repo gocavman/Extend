@@ -1,6 +1,22 @@
 
 import SpriteKit
 
+// MARK: - Falling Item
+
+struct FallingItem: Identifiable, Equatable {
+    let id: UUID = UUID()
+    let itemType: String  // catchable ID like "leaf", "heart", etc.
+    var x: CGFloat
+    var y: CGFloat
+    var rotation: Double = 0
+    var horizontalVelocity: CGFloat = 0
+    var verticalSpeed: CGFloat = 0.001
+    
+    static func == (lhs: FallingItem, rhs: FallingItem) -> Bool {
+        lhs.id == rhs.id
+    }
+}
+
 /// SpriteKit scene for gameplay with character movement and interactions
 class GameplayScene: GameScene {
 private var characterNode: SKNode?
@@ -23,6 +39,7 @@ private var appearanceButtonNode: SKNode?
 private var fallingItems: [FallingItem] = []
 private var catchableNodes: [UUID: SKNode] = [:]  // Track rendered nodes by item ID
 private let catchableContainerNode = SKNode()  // Container for all catchable sprites
+private var lastSpawnTime: [String: TimeInterval] = [:]  // Track last spawn time per catchable ID
 
 // Boost properties
 private var boostEndTime: TimeInterval = 0
@@ -1089,33 +1106,51 @@ private func spawnFallingCatchables(gameState: StickFigureGameState) {
     let unlockedItems = CATCHABLE_CONFIGS.filter { $0.unlockLevel <= gameState.currentLevel }
     guard !unlockedItems.isEmpty else { return }
     
-    // Calculate max items on screen
-    let maxItems = max(4, unlockedItems.count * 2)
+    let currentTime = Date().timeIntervalSince1970
     
-    // Spawn new items - each catchable has its own spawn chance
+    // Spawn new items - each catchable respects its own limits
     for itemConfig in unlockedItems {
-        // Check spawn probability for this specific item
-        if fallingItems.count < maxItems && Double.random(in: 0...1) < itemConfig.baseSpawnChance {
-            // Determine horizontal velocity based on direction config
-            let horizontalVel: CGFloat
-            if itemConfig.direction == "falls" {
-                // Falls: moves sideways while falling
-                horizontalVel = CGFloat.random(in: -0.002...0.002)
-            } else {
-                // Vertical: straight down, no horizontal movement
-                horizontalVel = 0.0
-            }
-            
-            let item = FallingItem(
-                itemType: itemConfig.id,
-                x: CGFloat.random(in: 0.1...0.9),
-                y: -0.1,  // Spawn above screen
-                rotation: Double.random(in: 0...360),
-                horizontalVelocity: horizontalVel,
-                verticalSpeed: CGFloat.random(in: itemConfig.baseVerticalSpeed...itemConfig.baseVerticalSpeedMax)
-            )
-            fallingItems.append(item)
+        // Get max items and cooldown from config, with sensible defaults
+        let maxOnScreen = itemConfig.maxOnScreen ?? 8
+        let minSecondsBetweenSpawns = itemConfig.minSecondsBetweenSpawns ?? 0.5
+        
+        // Count how many of this item type are currently on screen
+        let countOfThisType = fallingItems.filter { $0.itemType == itemConfig.id }.count
+        
+        // Check if we've hit the max for this item
+        guard countOfThisType < maxOnScreen else { continue }
+        
+        // Check if enough time has passed since last spawn of this type
+        let lastSpawn = lastSpawnTime[itemConfig.id] ?? -minSecondsBetweenSpawns
+        let timeSinceLastSpawn = currentTime - lastSpawn
+        
+        guard timeSinceLastSpawn >= minSecondsBetweenSpawns else { continue }
+        
+        // Check spawn probability
+        guard Double.random(in: 0...1) < itemConfig.baseSpawnChance else { continue }
+        
+        // All checks passed - spawn this item
+        let horizontalVel: CGFloat
+        if itemConfig.direction == "falls" {
+            // Falls: moves sideways while falling
+            horizontalVel = CGFloat.random(in: -0.002...0.002)
+        } else {
+            // Vertical: straight down, no horizontal movement
+            horizontalVel = 0.0
         }
+        
+        let item = FallingItem(
+            itemType: itemConfig.id,
+            x: CGFloat.random(in: 0.1...0.9),
+            y: -0.1,  // Spawn above screen
+            rotation: Double.random(in: 0...360),
+            horizontalVelocity: horizontalVel,
+            verticalSpeed: CGFloat.random(in: itemConfig.baseVerticalSpeed...itemConfig.baseVerticalSpeedMax)
+        )
+        fallingItems.append(item)
+        
+        // Update last spawn time for this item type
+        lastSpawnTime[itemConfig.id] = currentTime
     }
 }
 
@@ -1221,22 +1256,10 @@ private func createCatchableNode(for item: FallingItem) -> SKNode? {
     let container = SKNode()
     container.zPosition = 3
     
-    // Determine size based on catchable type
-    let size: CGSize
-    switch config.id {
-    case "leaf":
-        size = CGSize(width: 20, height: 20)  // Smaller
-    case "heart":
-        size = CGSize(width: 32, height: 32)  // Medium
-    case "brain":
-        size = CGSize(width: 36, height: 36)  // Medium-large
-    case "sun":
-        size = CGSize(width: 40, height: 40)  // Large
-    case "shaker":
-        size = CGSize(width: 24, height: 32)  // Thinner and taller
-    default:
-        size = CGSize(width: 36, height: 36)
-    }
+    // Get size from config, or use defaults (36x36)
+    let width = config.width ?? 36.0
+    let height = config.height ?? 36.0
+    let size = CGSize(width: width, height: height)
     
     // Try to render as SF Symbol first (if iconName is set and assetName is nil)
     if let iconName = config.iconName, config.assetName == nil {

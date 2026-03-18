@@ -286,6 +286,10 @@ struct CatchableConfig: Codable {
     let baseVerticalSpeedMax: Double
     let color: String?  // Hex color for SF symbols
     let points: Int
+    let width: CGFloat?  // Optional: width in pixels (defaults to 36)
+    let height: CGFloat?  // Optional: height in pixels (defaults to 36)
+    let maxOnScreen: Int?  // Optional: max catchables of this type on screen
+    let minSecondsBetweenSpawns: Double?  // Optional: minimum seconds between spawns
 }
 
 /// Loads catchable configurations from catchables.json
@@ -310,36 +314,6 @@ func loadCatchables() -> [CatchableConfig] {
 let CATCHABLE_CONFIGS: [CatchableConfig] = loadCatchables()
 
 // MARK: - Falling Item
-
-struct FallingItem: Identifiable, Equatable {
-    let id: UUID = UUID()
-    let itemType: String  // "leaf", "heart", "brain", "sun"
-    var x: CGFloat
-    var y: CGFloat
-    var rotation: Double = 0
-    var horizontalVelocity: CGFloat = 0
-    var verticalSpeed: CGFloat = 0.003
-    
-    static func == (lhs: FallingItem, rhs: FallingItem) -> Bool {
-        lhs.id == rhs.id
-    }
-}
-
-// MARK: - Falling Shaker
-
-struct FallingShaker: Identifiable, Equatable {
-    let id = UUID()
-    var x: CGFloat
-    var y: CGFloat
-    var rotation: Double = 0
-    var verticalSpeed: CGFloat = 0.005
-    
-    static func == (lhs: FallingShaker, rhs: FallingShaker) -> Bool {
-        lhs.id == rhs.id
-    }
-}
-
-// MARK: - Firework Particle
 
 struct FireworkParticle: Identifiable {
     let id = UUID()
@@ -453,10 +427,6 @@ class StickFigureGameState {
     var actionFloatingTextActionId: String? = nil
     var actionFloatingTextLastTime: Double = 0
     var actionFloatingTextIndex: Int = 0
-
-    // Falling items
-    var fallingItems: [FallingItem] = []
-    var fallingShakers: [FallingShaker] = []
 
     // Shaker action
     var isPerformingShaker: Bool = false
@@ -1005,157 +975,6 @@ class StickFigureGameState {
                     color: colors[i % colors.count]
                 )
             )
-        }
-    }
-
-    func checkFallingItemCollisions(figureX: CGFloat, figureY: CGFloat, screenWidth: CGFloat, screenHeight: CGFloat) {
-        // Spawn falling items based on current level
-        let unlockedItems = CATCHABLE_CONFIGS.filter { $0.unlockLevel <= currentLevel }
-        let maxItems = max(4, unlockedItems.count * 2)
-        
-        if fallingItems.count < maxItems && Double.random(in: 0...1) < 0.002 {
-            if let itemConfig = unlockedItems.randomElement() {
-                let item = FallingItem(
-                    itemType: itemConfig.id,
-                    x: CGFloat.random(in: 0.05...0.95),
-                    y: 0.0,
-                    rotation: Double.random(in: 0...360),
-                    horizontalVelocity: CGFloat.random(in: -0.002...0.002),
-                    verticalSpeed: CGFloat.random(in: itemConfig.baseVerticalSpeed...itemConfig.baseVerticalSpeedMax)
-                )
-                fallingItems.append(item)
-            }
-        }
-        
-        for i in fallingItems.indices.reversed() {
-            fallingItems[i].y += fallingItems[i].verticalSpeed
-            fallingItems[i].x += fallingItems[i].horizontalVelocity
-            
-            // Get config to access spinSpeed
-            if let config = CATCHABLE_CONFIGS.first(where: { $0.id == fallingItems[i].itemType }), config.spins {
-                fallingItems[i].rotation += config.spinSpeed
-            }
-            
-            let itemScreenX = fallingItems[i].x * screenWidth
-            let itemScreenY = fallingItems[i].y * screenHeight
-            let dx = itemScreenX - figureX
-            let characterCollisionY = figureY + 60
-            let dy = itemScreenY - characterCollisionY
-            
-            if sqrt(dx * dx + dy * dy) < 60 {
-                // Found the config for this item
-                if let config = CATCHABLE_CONFIGS.first(where: { $0.id == fallingItems[i].itemType }) {
-                    // Update stats dynamically
-                    catchablesCaught[config.id, default: 0] += 1
-                    
-                    // Trigger collision animation if configured
-                    if let animationId = config.collisionAnimation {
-                        if let actionConfig = ACTION_CONFIGS.first(where: { $0.id == animationId }) {
-                            startAction(actionConfig, gameState: self)
-                        }
-                    }
-                    
-                    addPoints(config.points, action: fallingItems[i].itemType)
-                    
-                    // Get color from hex string in config
-                    let pointColor = getColorFromHex(config.color ?? "#808080")
-                    addFloatingText("+\(config.points)", x: fallingItems[i].x, y: fallingItems[i].y, color: pointColor)
-                }
-                fallingItems.remove(at: i)
-                continue
-            }
-            
-            if fallingItems[i].y > 1.1 || fallingItems[i].x < -0.2 || fallingItems[i].x > 1.2 {
-                fallingItems.remove(at: i)
-            }
-        }
-    }
-
-    func checkShakerCollisions(figureX: CGFloat, figureY: CGFloat, screenWidth: CGFloat, screenHeight: CGFloat) {
-        // Use config-driven spawn chance for Shaker
-        if let shakerConfig = CATCHABLE_CONFIGS.first(where: { $0.id == "shaker" }) {
-            // Allow up to 1 Shaker on screen (same as before, but now respects low spawn chance)
-            if fallingShakers.count < 1 && Double.random(in: 0...1) < shakerConfig.baseSpawnChance {
-                let shaker = FallingShaker(
-                    x: CGFloat.random(in: 0.1...0.9),
-                    y: 0.0,
-                    rotation: Double.random(in: 0...360),
-                    verticalSpeed: shakerConfig.baseVerticalSpeed
-                )
-                fallingShakers.append(shaker)
-            }
-        }
-
-        for i in fallingShakers.indices.reversed() {
-            fallingShakers[i].y += fallingShakers[i].verticalSpeed
-            fallingShakers[i].rotation += 6
-
-            let shakerScreenX = fallingShakers[i].x * screenWidth
-            let shakerScreenY = fallingShakers[i].y * screenHeight
-            let dx = shakerScreenX - figureX
-            // Collision detection at the bottom/feet of character (60 pixels below top of collision box)
-            let characterCollisionY = figureY + 60
-            let dy = shakerScreenY - characterCollisionY
-            if sqrt(dx * dx + dy * dy) < 60 {
-                totalShakersCaught += 1
-                addPoints(5, action: "shaker")
-                addFloatingText("Boost!", x: fallingShakers[i].x, y: fallingShakers[i].y, color: .orange)
-                fallingShakers.remove(at: i)
-
-                speedBoostEndTime = Date().addingTimeInterval(6)
-                // Start boost timer refresh for UI updates
-                boostTimerRefreshTimer?.invalidate()
-                boostTimerRefreshTimer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { [weak self] timer in
-                    guard let self = self else { return }
-                    if self.speedBoostTimeRemaining <= 0 {
-                        timer.invalidate()
-                        self.boostTimerRefreshTimer = nil
-                    }
-                    // Increment tick to trigger view updates
-                    self.boostTimerTick += 1
-                }
-                triggerShakerAnimation()
-                continue
-            }
-
-            if fallingShakers[i].y > 1.1 {
-                fallingShakers.remove(at: i)
-            }
-        }
-    }
-
-    private func triggerShakerAnimation() {
-        shakerAnimationTimer?.invalidate()
-        isPerformingShaker = true
-        shakerFlip = Bool.random()
-        shakerFrame = 1
-        
-        // Animation: show frame 1 briefly, then frame 2 for 1 second
-        var animationStage = 0
-        
-        shakerAnimationTimer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { [weak self] timer in
-            guard let self = self else {
-                timer.invalidate()
-                return
-            }
-            
-            animationStage += 1
-            
-            if animationStage == 1 {
-                // Show frame 1 for 0.1 seconds
-                self.shakerFrame = 1
-            } else if animationStage == 2 {
-                // Show frame 2 starting at 0.2 seconds
-                self.shakerFrame = 2
-            } else if animationStage >= 12 {
-                // After 1.2 seconds total (frame 2 for 1 second), complete animation
-                timer.invalidate()
-                self.shakerAnimationTimer = nil
-                self.isPerformingShaker = false
-                self.shakerFrame = 1
-                // Trigger fireworks when shaker animation completes
-                self.spawnFireworks()
-            }
         }
     }
 
