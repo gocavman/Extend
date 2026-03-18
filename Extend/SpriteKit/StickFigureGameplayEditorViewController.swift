@@ -1455,8 +1455,10 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
             )
             
             // Extract objects from the editor scene (both image sprites and box shapes)
+            // Objects can be either direct children of the scene OR children of characterNode
             var frameObjects: [EditorObject] = []
             if let editorScene = self.editorScene {
+                // Check direct children of scene
                 for node in editorScene.children {
                     // Handle image objects (SKSpriteNode)
                     if let sprite = node as? SKSpriteNode, sprite.name?.hasPrefix("object_") == true {
@@ -1492,6 +1494,47 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
                         )
                         frameObjects.append(editorObject)
                         print("🎮 Saving box object: \(color) \(Int(width))x\(Int(height)) at \(shapeNode.position)")
+                    }
+                }
+                
+                // Also check characterNode children
+                if let charNode = editorScene.characterNode {
+                    for node in charNode.children {
+                        // Handle image objects (SKSpriteNode)
+                        if let sprite = node as? SKSpriteNode, sprite.name?.hasPrefix("object_") == true {
+                            let assetName = (sprite.userData?["assetName"] as? String) ?? "Unknown"
+                            let editorObject = EditorObject(
+                                assetName: assetName,
+                                position: sprite.position,
+                                rotation: sprite.zRotation,
+                                scaleX: sprite.xScale,
+                                scaleY: sprite.yScale
+                            )
+                            frameObjects.append(editorObject)
+                            print("🎮 Saving image object (from char node): \(assetName) at \(sprite.position) scale: \(sprite.xScale)")
+                        }
+                        // Handle box objects (SKShapeNode)
+                        else if let shapeNode = node as? SKShapeNode, shapeNode.name?.hasPrefix("object_box_") == true {
+                            var width = shapeNode.userData?["width"] as? CGFloat ?? 50
+                            var height = shapeNode.userData?["height"] as? CGFloat ?? 50
+                            let color = shapeNode.userData?["color"] as? String ?? "#FF0000"
+                            
+                            // Apply scale to get actual dimensions being saved
+                            width *= shapeNode.xScale
+                            height *= shapeNode.yScale
+                            
+                            // Use a special naming scheme to identify this as a box when loading
+                            let boxAssetName = "BOX_\(color)_\(Int(width))_\(Int(height))"
+                            let editorObject = EditorObject(
+                                assetName: boxAssetName,
+                                position: shapeNode.position,
+                                rotation: shapeNode.zRotation,
+                                scaleX: 1.0,  // Scale is baked into width/height, so set to 1.0
+                                scaleY: 1.0   // Scale is baked into width/height, so set to 1.0
+                            )
+                            frameObjects.append(editorObject)
+                            print("🎮 Saving box object (from char node): \(color) \(Int(width))x\(Int(height)) at \(shapeNode.position)")
+                        }
                     }
                 }
             }
@@ -1746,6 +1789,7 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
             sprite.addChild(deleteDot)
         }
         
+        // Add sprite directly to scene - it will be moved to characterNode in updateFigure()
         editorScene.addChild(sprite)
         print("🎮 Added \(asset) object to scene at position \(sprite.position)")
     }
@@ -1822,16 +1866,25 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
         peakPositionUpperTorso = frame.peakPositionUpperTorso
         peakPositionLowerTorso = frame.peakPositionLowerTorso
         
-        // Clear existing objects
+        // Clear existing objects from both scene and characterNode
         if let editorScene = editorScene {
             editorScene.children.forEach { node in
                 if node.name?.hasPrefix("object_") == true {
                     node.removeFromParent()
                 }
             }
+            // Also clear from characterNode if it exists
+            if let charNode = editorScene.characterNode {
+                charNode.children.forEach { node in
+                    if node.name?.hasPrefix("object_") == true {
+                        node.removeFromParent()
+                    }
+                }
+            }
         }
         
         // Load objects from frame
+        print("🎮 applyFrame: Loading \(frame.objects.count) objects from frame '\(frame.name)'")
         for editorObject in frame.objects {
             // Check if this is a box (identified by BOX_ prefix)
             if editorObject.assetName.hasPrefix("BOX_") {
@@ -1867,6 +1920,7 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
                         addBoxObjectControls(to: boxNode, in: editorScene!, width: width, height: height)
                     }
                     
+                    // Add box directly to scene - it will be moved to characterNode after updateFigure()
                     editorScene?.addChild(boxNode)
                     print("🎮 Loaded box: \(color) \(Int(width))x\(Int(height)) at \(boxNode.position)")
                 }
@@ -1874,6 +1928,7 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
                 // Load as image object
                 addObject(asset: editorObject.assetName)
                 // Update the position, rotation, and scale of the last added object
+                // Look for the object in scene (since addObject now adds to scene, not characterNode during frame loading)
                 if let lastObject = editorScene?.children.last(where: { $0.name?.hasPrefix("object_") == true }) as? SKSpriteNode {
                     lastObject.position = editorObject.position
                     lastObject.zRotation = editorObject.rotation
@@ -2531,7 +2586,36 @@ class StickFigureEditorScene: SKScene {
             drawInteractiveJoints(on: container, frame: updatedFrame, scale: renderScale)
         }
         
+        // Collect any existing objects before replacing characterNode
+        var existingObjects: [SKNode] = []
+        
+        // Collect from old characterNode
+        if let oldCharNode = characterNode {
+            existingObjects.append(contentsOf: oldCharNode.children.filter { $0.name?.hasPrefix("object_") == true })
+            // Remove old character node from scene
+            oldCharNode.removeFromParent()
+        }
+        
+        // Collect objects directly in the scene (these are newly added objects waiting for characterNode)
+        // Do this BEFORE adding the new container to avoid collecting it
+        existingObjects.append(contentsOf: children.filter { $0.name?.hasPrefix("object_") == true })
+        
+        // Add new container (new characterNode)
         addChild(container)
+        
+        // Move all collected objects to the new characterNode
+        for objectNode in existingObjects {
+            objectNode.removeFromParent()
+            // Adjust object position to be relative to the new container
+            // Objects were positioned in absolute scene coordinates, but now they need to be relative to container
+            let containerPos = container.position
+            objectNode.position = CGPoint(
+                x: objectNode.position.x - containerPos.x,
+                y: objectNode.position.y - containerPos.y
+            )
+            container.addChild(objectNode)
+            print("🎮 Moved object \(objectNode.name ?? "unnamed") from absolute pos to relative pos: \(objectNode.position), container was at: \(containerPos)")
+        }
         
         // Preserve the current zoom level when updating the figure
         container.setScale(currentZoom)
@@ -2600,14 +2684,24 @@ class StickFigureEditorScene: SKScene {
     func updateZoom(_ zoom: CGFloat) {
         let sceneCenter = CGPoint(x: size.width / 2, y: size.height / 2)
         
-        // Apply zoom to character node (stick figure)
+        // Apply zoom to character node (stick figure and its child objects)
+        // Since objects are now children of characterNode, they scale together
         if let characterNode = characterNode {
+            // Calculate the vector from scene center to character node position
+            let dx = characterNode.position.x - sceneCenter.x
+            let dy = characterNode.position.y - sceneCenter.y
+            
+            // Update character node position to zoom from scene center
+            characterNode.position = CGPoint(
+                x: sceneCenter.x + dx * zoom / currentZoom,
+                y: sceneCenter.y + dy * zoom / currentZoom
+            )
+            
+            // Scale the character node (this also scales all child objects)
             characterNode.setScale(zoom)
         }
         
-        // Apply zoom to all objects that are direct children of the scene
-        // Objects must be scaled around the scene center, not their own position
-        // This ensures they zoom from the same point as the stick figure
+        // Handle any objects that are direct children of the scene (for backwards compatibility)
         children.forEach { node in
             if node.name?.hasPrefix("object_") == true {
                 // Calculate the vector from scene center to object center
@@ -2728,9 +2822,11 @@ class FrameListViewController: UIViewController, UITableViewDataSource, UITableV
         
         // Load frames from animations.json (bundle) and track their IDs
         let bundleFrames = AnimationStorage.shared.loadFrames()
+        print("🎮 FrameListViewController: Loaded \(bundleFrames.count) frames from bundle")
         
         // Add bundle frames to the list if not already present, and track their IDs
         for bundleFrame in bundleFrames {
+            print("🎮 FrameListViewController: Processing bundle frame '\(bundleFrame.name)' with \(bundleFrame.objects.count) objects")
             bundleFrameIds.insert(bundleFrame.id)
             
             // Always create SavedEditFrame from bundle version to get latest values
@@ -2787,13 +2883,26 @@ class FrameListViewController: UIViewController, UITableViewDataSource, UITableV
                 //print("🎮 DEBUG: Bundle frame loaded - name=\(bundleFrame.name), figureOffsetX=\(pose.figureOffsetX), figureOffsetY=\(pose.figureOffsetY)")
                 // Convert AnimationObjects to EditorObjects
                 let editorObjects = bundleFrame.objects.map { animObj in
-                    EditorObject(
-                        assetName: animObj.imageName,
-                        position: animObj.position,
-                        rotation: animObj.rotation,
-                        scaleX: animObj.scale,
-                        scaleY: animObj.scale
-                    )
+                    if animObj.type == .box {
+                        // Store box as special EditorObject with BOX_ prefix
+                        let boxAssetName = "BOX_\(animObj.color)_\(Int(animObj.width))_\(Int(animObj.height))"
+                        return EditorObject(
+                            assetName: boxAssetName,
+                            position: animObj.position,
+                            rotation: animObj.rotation,
+                            scaleX: 1.0,  // Scale is baked into dimensions
+                            scaleY: 1.0
+                        )
+                    } else {
+                        // Image object
+                        return EditorObject(
+                            assetName: animObj.imageName,
+                            position: animObj.position,
+                            rotation: animObj.rotation,
+                            scaleX: animObj.scale,
+                            scaleY: animObj.scale
+                        )
+                    }
                 }
                 let savedFrame = SavedEditFrame(id: bundleFrame.id, name: bundleFrame.name, frameNumber: bundleFrame.frameNumber, from: editValues, pose: pose, objects: editorObjects, timestamp: bundleFrame.createdAt)
                 // Remove local version if it exists, then add bundle version
