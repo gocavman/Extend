@@ -1023,44 +1023,61 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
     private func updateObjectControlVisibility() {
         guard let editorScene = editorScene else { return }
         
-        // Find all objects and update their control dots
+        // Objects can be either direct children of the scene or children of characterNode
+        var allObjectNodes: [SKNode] = []
+        
+        // Check direct children of scene
         editorScene.children.forEach { node in
             if node.name?.hasPrefix("object_") == true {
-                if showObjectControls {
-                    // Check if dots exist
-                    let hasDots = node.children.contains { child in
-                        child.name?.hasPrefix("object_move_") == true ||
-                        child.name?.hasPrefix("object_resize_") == true ||
-                        child.name?.hasPrefix("object_rotate_") == true ||
-                        child.name?.hasPrefix("object_delete_") == true
-                    }
-                    
-                    if !hasDots {
-                        // Dots don't exist - create them
-                        if node is SKShapeNode {
-                            // It's a box
-                            let width = (node.userData?["width"] as? CGFloat) ?? 50
-                            let height = (node.userData?["height"] as? CGFloat) ?? 50
-                            addBoxObjectControls(to: node, in: editorScene, width: width, height: height)
-                        } else if let spriteNode = node as? SKSpriteNode {
-                            // It's an image object
-                            let asset = (node.userData?["assetName"] as? String) ?? node.name ?? "Object"
-                            addImageObjectControls(to: spriteNode, assetName: asset)
-                        }
-                    } else {
-                        // Dots exist, just show them
-                        node.children.forEach { child in
-                            if let dot = child as? SKShapeNode, child.name?.hasPrefix("object_") == true {
-                                dot.isHidden = false
-                            }
-                        }
+                allObjectNodes.append(node)
+            }
+        }
+        
+        // Also check characterNode if it exists
+        if let charNode = editorScene.characterNode {
+            charNode.children.forEach { node in
+                if node.name?.hasPrefix("object_") == true {
+                    allObjectNodes.append(node)
+                }
+            }
+        }
+        
+        // Update all found objects
+        allObjectNodes.forEach { node in
+            if showObjectControls {
+                // Check if dots exist
+                let hasDots = node.children.contains { child in
+                    child.name?.hasPrefix("object_move_") == true ||
+                    child.name?.hasPrefix("object_resize_") == true ||
+                    child.name?.hasPrefix("object_rotate_") == true ||
+                    child.name?.hasPrefix("object_delete_") == true
+                }
+                
+                if !hasDots {
+                    // Dots don't exist - create them
+                    if node is SKShapeNode {
+                        // It's a box
+                        let width = (node.userData?["width"] as? CGFloat) ?? 50
+                        let height = (node.userData?["height"] as? CGFloat) ?? 50
+                        addBoxObjectControls(to: node, in: editorScene, width: width, height: height)
+                    } else if let spriteNode = node as? SKSpriteNode {
+                        // It's an image object
+                        let asset = (node.userData?["assetName"] as? String) ?? node.name ?? "Object"
+                        addImageObjectControls(to: spriteNode, assetName: asset)
                     }
                 } else {
-                    // Hide all dots
+                    // Dots exist, just show them
                     node.children.forEach { child in
                         if let dot = child as? SKShapeNode, child.name?.hasPrefix("object_") == true {
-                            dot.isHidden = true
+                            dot.isHidden = false
                         }
+                    }
+                }
+            } else {
+                // Hide all dots
+                node.children.forEach { child in
+                    if let dot = child as? SKShapeNode, child.name?.hasPrefix("object_") == true {
+                        dot.isHidden = true
                     }
                 }
             }
@@ -1968,7 +1985,7 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
 // MARK: - Editor Scene
 class StickFigureEditorScene: SKScene {
     var gameState: StickFigureGameState?
-    private var characterNode: SKNode?
+    var characterNode: SKNode?
     private var draggedJoint: SKNode?
     private var draggedObject: SKNode?
     private var dragOffset: CGPoint = .zero
@@ -2409,6 +2426,7 @@ class StickFigureEditorScene: SKScene {
         guard let gameState = gameState, let standFrame = gameState.standFrame else { return }
         
         // Remove old character
+        print("🎮 updateWithValues: Removing old character")
         characterNode?.removeFromParent()
         
         // Create updated frame with angles
@@ -2581,11 +2599,28 @@ class StickFigureEditorScene: SKScene {
     
     func updateZoom(_ zoom: CGFloat) {
         currentZoom = zoom
-        // Apply zoom to character node directly
+        // Apply zoom to character node (stick figure)
         if let characterNode = characterNode {
             characterNode.setScale(zoom)
         }
+        // Also apply zoom to all objects that are direct children of the scene
+        children.forEach { node in
+            if node.name?.hasPrefix("object_") == true {
+                node.setScale(zoom)
+            }
+        }
         print("🎮 Zoom updated to \(zoom)x")
+    }
+    
+    /// Add an object to the character node (ensuring proper scaling)
+    func addObjectToCharacter(_ node: SKNode) {
+        if let charNode = characterNode {
+            charNode.addChild(node)
+            print("🎮 Object \(node.name ?? "unnamed") added to character container")
+        } else {
+            addChild(node)
+            print("🎮 Object \(node.name ?? "unnamed") added to scene (character not ready yet)")
+        }
     }
     
     private func applyColorsToNode(_ node: SKNode, colors: [String: UIColor]) {
