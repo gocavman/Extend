@@ -193,6 +193,33 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
         jointsButton.addTarget(self, action: #selector(toggleJointsFromHeader(_:)), for: .touchUpInside)
         // REMOVED: headerView.addSubview(jointsButton)  - old button no longer shown
         
+        // Save Frame button
+        let saveButton = UIButton(type: .system)
+        saveButton.setTitle("💾", for: .normal)
+        saveButton.titleLabel?.font = UIFont.systemFont(ofSize: 16)
+        saveButton.tintColor = .white
+        saveButton.translatesAutoresizingMaskIntoConstraints = false
+        saveButton.addTarget(self, action: #selector(savePressed), for: .touchUpInside)
+        headerView.addSubview(saveButton)
+        
+        // Load Frame button
+        let loadButton = UIButton(type: .system)
+        loadButton.setTitle("📂", for: .normal)
+        loadButton.titleLabel?.font = UIFont.systemFont(ofSize: 16)
+        loadButton.tintColor = .white
+        loadButton.translatesAutoresizingMaskIntoConstraints = false
+        loadButton.addTarget(self, action: #selector(loadPressed), for: .touchUpInside)
+        headerView.addSubview(loadButton)
+        
+        // Add Object button
+        let addObjectButton = UIButton(type: .system)
+        addObjectButton.setTitle("➕", for: .normal)
+        addObjectButton.titleLabel?.font = UIFont.systemFont(ofSize: 14)
+        addObjectButton.tintColor = .white
+        addObjectButton.translatesAutoresizingMaskIntoConstraints = false
+        addObjectButton.addTarget(self, action: #selector(addObjectPressed), for: .touchUpInside)
+        headerView.addSubview(addObjectButton)
+        
         let refreshButton = UIButton(type: .system)
         refreshButton.setTitle("↻", for: .normal)
         refreshButton.titleLabel?.font = UIFont.systemFont(ofSize: 16, weight: .bold)
@@ -227,6 +254,19 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
             titleLabel.leadingAnchor.constraint(equalTo: headerView.leadingAnchor, constant: 16),
             titleLabel.centerYAnchor.constraint(equalTo: headerView.centerYAnchor),
             
+            // Save button (first of the new buttons, before refresh)
+            saveButton.trailingAnchor.constraint(equalTo: loadButton.leadingAnchor, constant: -8),
+            saveButton.centerYAnchor.constraint(equalTo: headerView.centerYAnchor),
+            
+            // Load button
+            loadButton.trailingAnchor.constraint(equalTo: addObjectButton.leadingAnchor, constant: -8),
+            loadButton.centerYAnchor.constraint(equalTo: headerView.centerYAnchor),
+            
+            // Add Object button
+            addObjectButton.trailingAnchor.constraint(equalTo: refreshButton.leadingAnchor, constant: -8),
+            addObjectButton.centerYAnchor.constraint(equalTo: headerView.centerYAnchor),
+            
+            // Refresh button
             refreshButton.trailingAnchor.constraint(equalTo: interactiveControlsButton.leadingAnchor, constant: -8),
             refreshButton.centerYAnchor.constraint(equalTo: headerView.centerYAnchor),
             
@@ -267,7 +307,7 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
     
     // MARK: - UITableViewDataSource & UITableViewDelegate
     func numberOfSections(in tableView: UITableView) -> Int {
-        return 8  // Display, Scale, Stroke, Fusiform, Joints, Colors, Save/Load, Objects
+        return 7  // Display, Scale, Stroke, Fusiform, Joints, Colors (Save/Load and Objects moved to header)
     }
     
     func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
@@ -281,8 +321,6 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
         case 4: return isExpanded ? 3 : 0  // 3 Skeleton Size sliders: Torso, Arm, Leg
         case 5: return isExpanded ? 11 : 0  // 11 Joint sliders: head, leftShoulder, rightShoulder, leftElbow, rightElbow, leftKnee, rightKnee, leftCalf, rightCalf, waistRotation, neckRotation
         case 6: return isExpanded ? 12 : 0  // Color pickers for each body part (added shoulders)
-        case 7: return 2  // Frames label + Save + Load (now on same row), Objects label + Add Object button
-        case 8: return 0  // Objects handled in section 7 now
         default: return 0
         }
     }
@@ -296,8 +334,6 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
         case 4: return "SKELETON"
         case 5: return "JOINT ANGLES"
         case 6: return "COLORS"
-        case 7: return nil  // Header in cell now
-        case 8: return nil  // Removed
         default: return nil
         }
     }
@@ -724,91 +760,6 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
             addColorButton(cell, label: "L Lower Leg", colorKey: "leftLowerLeg")
         case (6, 11):
             addColorButton(cell, label: "R Lower Leg", colorKey: "rightLowerLeg")
-            
-        case (7, 0):
-            // Frames label with Save and Load buttons on same row
-            let container = UIStackView()
-            container.axis = .horizontal
-            container.spacing = 8
-            container.distribution = .fill
-            container.translatesAutoresizingMaskIntoConstraints = false
-            
-            // Frames label
-            let framesLabel = UILabel()
-            framesLabel.text = "Frames:"
-            framesLabel.font = UIFont.systemFont(ofSize: 12, weight: .semibold)
-            framesLabel.textColor = .darkGray
-            framesLabel.setContentHuggingPriority(.required, for: .horizontal)
-            
-            // Save button
-            let saveBtn = UIButton(type: .system)
-            saveBtn.setTitle("SAVE", for: .normal)
-            saveBtn.titleLabel?.font = UIFont.systemFont(ofSize: 11)
-            saveBtn.backgroundColor = UIColor(red: 0.2, green: 0.6, blue: 0.2, alpha: 1.0)
-            saveBtn.setTitleColor(.white, for: .normal)
-            saveBtn.layer.cornerRadius = 4
-            saveBtn.addTarget(self, action: #selector(savePressed), for: .touchUpInside)
-            
-            // Load button
-            let loadBtn = UIButton(type: .system)
-            loadBtn.setTitle("LOAD", for: .normal)
-            loadBtn.titleLabel?.font = UIFont.systemFont(ofSize: 11)
-            loadBtn.backgroundColor = UIColor(red: 0.2, green: 0.4, blue: 0.6, alpha: 1.0)
-            loadBtn.setTitleColor(.white, for: .normal)
-            loadBtn.layer.cornerRadius = 4
-            loadBtn.addTarget(self, action: #selector(loadPressed), for: .touchUpInside)
-            
-            container.addArrangedSubview(framesLabel)
-            container.addArrangedSubview(saveBtn)
-            container.addArrangedSubview(loadBtn)
-            
-            cell.contentView.addSubview(container)
-            NSLayoutConstraint.activate([
-                container.topAnchor.constraint(equalTo: cell.contentView.topAnchor, constant: 4),
-                container.leadingAnchor.constraint(equalTo: cell.contentView.leadingAnchor, constant: 16),
-                container.trailingAnchor.constraint(equalTo: cell.contentView.trailingAnchor, constant: -16),
-                container.bottomAnchor.constraint(equalTo: cell.contentView.bottomAnchor, constant: -4),
-                container.heightAnchor.constraint(greaterThanOrEqualToConstant: 32),
-                saveBtn.widthAnchor.constraint(equalToConstant: 60),
-                loadBtn.widthAnchor.constraint(equalToConstant: 60)
-            ])
-            
-        case (7, 1):
-            // Objects label with Add Object button (was previously 6, 1)
-            let container = UIStackView()
-            container.axis = .horizontal
-            container.spacing = 8
-            container.distribution = .fill
-            container.translatesAutoresizingMaskIntoConstraints = false
-            
-            // Objects label
-            let objectsLabel = UILabel()
-            objectsLabel.text = "Objects:"
-            objectsLabel.font = UIFont.systemFont(ofSize: 12, weight: .semibold)
-            objectsLabel.textColor = .darkGray
-            objectsLabel.setContentHuggingPriority(.required, for: .horizontal)
-            
-            // Add object button - same width as SAVE/LOAD buttons
-            let btn = UIButton(type: .system)
-            btn.setTitle("+ ADD", for: .normal)
-            btn.titleLabel?.font = UIFont.systemFont(ofSize: 11)
-            btn.backgroundColor = UIColor(red: 0.4, green: 0.5, blue: 0.6, alpha: 1.0)
-            btn.setTitleColor(.white, for: .normal)
-            btn.layer.cornerRadius = 4
-            btn.addTarget(self, action: #selector(addObjectPressed), for: .touchUpInside)
-            
-            container.addArrangedSubview(objectsLabel)
-            container.addArrangedSubview(btn)
-            
-            cell.contentView.addSubview(container)
-            NSLayoutConstraint.activate([
-                container.topAnchor.constraint(equalTo: cell.contentView.topAnchor, constant: 4),
-                container.leadingAnchor.constraint(equalTo: cell.contentView.leadingAnchor, constant: 16),
-                container.trailingAnchor.constraint(equalTo: cell.contentView.trailingAnchor, constant: -16),
-                container.bottomAnchor.constraint(equalTo: cell.contentView.bottomAnchor, constant: -4),
-                container.heightAnchor.constraint(greaterThanOrEqualToConstant: 32),
-                btn.widthAnchor.constraint(equalToConstant: 60)
-            ])
             
         default:
             break

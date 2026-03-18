@@ -134,9 +134,11 @@ struct AnimationObject: Codable, Identifiable, Equatable {
         
         rotation = try container.decode(Double.self, forKey: .rotation)
         scale = try container.decode(Double.self, forKey: .scale)
-        width = try container.decode(CGFloat.self, forKey: .width)
-        height = try container.decode(CGFloat.self, forKey: .height)
-        color = try container.decode(String.self, forKey: .color)
+        
+        // Box-specific properties - optional for image objects
+        width = try container.decodeIfPresent(CGFloat.self, forKey: .width) ?? 50
+        height = try container.decodeIfPresent(CGFloat.self, forKey: .height) ?? 50
+        color = try container.decodeIfPresent(String.self, forKey: .color) ?? "#FF0000"
     }
     
     enum PositionKeys: String, CodingKey {
