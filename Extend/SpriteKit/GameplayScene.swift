@@ -972,10 +972,10 @@ private func renderFrameObjects(_ objects: [AnimationObject], on container: SKNo
             boxNode.name = "object_box_\(object.id)"
             node = boxNode
         } else {
-            // Render image with exact scale from editor - no additional scaling
+            // Render image with exact size from editor
             let sprite = SKSpriteNode(imageNamed: object.imageName)
-            sprite.xScale *= object.scale
-            sprite.yScale *= object.scale
+            // Set to the exact size saved in the editor (width/height are in pixels)
+            sprite.size = CGSize(width: object.width, height: object.height)
             sprite.zPosition = 5
             sprite.name = "object_image_\(object.imageName)"
             node = sprite

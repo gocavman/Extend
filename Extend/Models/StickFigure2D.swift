@@ -133,7 +133,7 @@ struct AnimationObject: Codable, Identifiable, Equatable {
         position = CGPoint(x: x, y: y)
         
         rotation = try container.decode(Double.self, forKey: .rotation)
-        scale = try container.decode(Double.self, forKey: .scale)
+        scale = try container.decodeIfPresent(Double.self, forKey: .scale) ?? 1.0
         
         // Box-specific properties - optional for image objects
         width = try container.decodeIfPresent(CGFloat.self, forKey: .width) ?? 50

@@ -573,14 +573,21 @@ class SavedFramesManager {
                 jsonString += "        \"color\" : \"\(color)\",\n"
                 jsonString += "        \"width\" : \(width),\n"
                 jsonString += "        \"height\" : \(height),\n"
+            } else {
+                // For image objects, export actual scaled dimensions (50 is the editor base size)
+                let editorBaseSize: CGFloat = 50.0
+                let width = editorBaseSize * object.scaleX
+                let height = editorBaseSize * object.scaleY
+                
+                jsonString += "        \"width\" : \(roundAndFormat(width, decimals: 1)),\n"
+                jsonString += "        \"height\" : \(roundAndFormat(height, decimals: 1)),\n"
             }
             
             jsonString += "        \"position\" : {\n"
             jsonString += "          \"x\" : \(roundAndFormat(object.position.x, decimals: 1)),\n"
             jsonString += "          \"y\" : \(roundAndFormat(object.position.y, decimals: 1))\n"
             jsonString += "        },\n"
-            jsonString += "        \"rotation\" : \(roundAndFormat(object.rotation, decimals: 4)),\n"
-            jsonString += "        \"scale\" : \(roundAndFormat(object.scaleX, decimals: 4))\n"
+            jsonString += "        \"rotation\" : \(roundAndFormat(object.rotation, decimals: 4))\n"
             jsonString += "      }"
             if index < frame.objects.count - 1 {
                 jsonString += ","
