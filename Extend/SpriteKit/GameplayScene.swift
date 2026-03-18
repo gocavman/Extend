@@ -212,7 +212,7 @@ private func setupUI() {
             characterContainer.addChild(stickFigureNode)
             
             // Render stand frame objects
-            renderFrameObjects(gameState.standFrameObjects, on: characterContainer, scale: 1.2)
+            renderFrameObjects(gameState.standFrameObjects, on: characterContainer, scale: 1.2, figureOffsetX: frameWithAppearance.figureOffsetX, figureOffsetY: frameWithAppearance.figureOffsetY)
             
             addChild(characterContainer)
             characterNode = characterContainer
@@ -489,7 +489,7 @@ private func updateGameLogic() {
         
         // Render action frame objects
         if gameState.currentFrameIndex < gameState.actionStickFigureObjects.count {
-            renderFrameObjects(gameState.actionStickFigureObjects[gameState.currentFrameIndex], on: character, scale: 1.2)
+            renderFrameObjects(gameState.actionStickFigureObjects[gameState.currentFrameIndex], on: character, scale: 1.2, figureOffsetX: frameWithAppearance.figureOffsetX, figureOffsetY: frameWithAppearance.figureOffsetY)
         }
         
     } else if gameState.isMovingLeft || gameState.isMovingRight {
@@ -518,7 +518,7 @@ private func updateGameLogic() {
             character.addChild(stickFigureNode)
             
             // Render stand frame objects
-            renderFrameObjects(gameState.standFrameObjects, on: character, scale: 1.2)
+            renderFrameObjects(gameState.standFrameObjects, on: character, scale: 1.2, figureOffsetX: frameWithAppearance.figureOffsetX, figureOffsetY: frameWithAppearance.figureOffsetY)
         }
     }
     
@@ -633,12 +633,13 @@ private func startMovementAnimation() {
                 // Apply appearance colors to the frame
                 var frameWithAppearance = scaledFrame
                 StickFigureAppearance.shared.applyToStickFigure(&frameWithAppearance)
-                let stickFigureNode = self.renderStickFigure(frameWithAppearance, at: CGPoint.zero, scale: 1.2, flipped: shouldFlip, jointShapeSize: frameWithAppearance.jointShapeSize)
+                let offsetPosition = CGPoint(x: frameWithAppearance.figureOffsetX, y: frameWithAppearance.figureOffsetY)
+                let stickFigureNode = self.renderStickFigure(frameWithAppearance, at: offsetPosition, scale: 1.2, flipped: shouldFlip, jointShapeSize: frameWithAppearance.jointShapeSize)
                 characterContainer.addChild(stickFigureNode)
                 
                 // Render move frame objects
                 if moveFrameIndex < gameState.moveFrameObjects.count {
-                    self.renderFrameObjects(gameState.moveFrameObjects[moveFrameIndex], on: characterContainer, scale: 1.2)
+                    self.renderFrameObjects(gameState.moveFrameObjects[moveFrameIndex], on: characterContainer, scale: 1.2, figureOffsetX: frameWithAppearance.figureOffsetX, figureOffsetY: frameWithAppearance.figureOffsetY)
                 }
             }
         })
@@ -675,11 +676,12 @@ private func stopMovementAnimation() {
             // Apply appearance colors to the frame
             var frameWithAppearance = scaledFrame
             StickFigureAppearance.shared.applyToStickFigure(&frameWithAppearance)
-            let stickFigureNode = renderStickFigure(frameWithAppearance, at: CGPoint.zero, scale: 1.2, flipped: shouldFlip, jointShapeSize: frameWithAppearance.jointShapeSize)
+            let offsetPosition = CGPoint(x: frameWithAppearance.figureOffsetX, y: frameWithAppearance.figureOffsetY)
+            let stickFigureNode = renderStickFigure(frameWithAppearance, at: offsetPosition, scale: 1.2, flipped: shouldFlip, jointShapeSize: frameWithAppearance.jointShapeSize)
             characterContainer.addChild(stickFigureNode)
             
             // Render stand frame objects
-            renderFrameObjects(gameState.standFrameObjects, on: characterContainer, scale: 1.2)
+            renderFrameObjects(gameState.standFrameObjects, on: characterContainer, scale: 1.2, figureOffsetX: frameWithAppearance.figureOffsetX, figureOffsetY: frameWithAppearance.figureOffsetY)
         }
     }
 }
@@ -738,12 +740,13 @@ func refreshCharacterAppearance() {
             // Apply appearance colors to the frame
             var frameWithAppearance = scaledFrame
             StickFigureAppearance.shared.applyToStickFigure(&frameWithAppearance)
-            let stickFigureNode = renderStickFigure(frameWithAppearance, at: CGPoint.zero, scale: 1.2, flipped: shouldFlip, jointShapeSize: frameWithAppearance.jointShapeSize)
+            let offsetPosition = CGPoint(x: frameWithAppearance.figureOffsetX, y: frameWithAppearance.figureOffsetY)
+            let stickFigureNode = renderStickFigure(frameWithAppearance, at: offsetPosition, scale: 1.2, flipped: shouldFlip, jointShapeSize: frameWithAppearance.jointShapeSize)
             characterContainer.addChild(stickFigureNode)
             
             // Render move frame objects
             if animationFrameIndex < gameState.moveFrameObjects.count {
-                renderFrameObjects(gameState.moveFrameObjects[animationFrameIndex], on: characterContainer, scale: 1.2)
+                renderFrameObjects(gameState.moveFrameObjects[animationFrameIndex], on: characterContainer, scale: 1.2, figureOffsetX: frameWithAppearance.figureOffsetX, figureOffsetY: frameWithAppearance.figureOffsetY)
             }
         }
     } else {
@@ -754,11 +757,12 @@ func refreshCharacterAppearance() {
             // Apply appearance colors to the frame
             var frameWithAppearance = scaledFrame
             StickFigureAppearance.shared.applyToStickFigure(&frameWithAppearance)
-            let stickFigureNode = renderStickFigure(frameWithAppearance, at: CGPoint.zero, scale: 1.2, flipped: shouldFlip, jointShapeSize: frameWithAppearance.jointShapeSize)
+            let offsetPosition = CGPoint(x: frameWithAppearance.figureOffsetX, y: frameWithAppearance.figureOffsetY)
+            let stickFigureNode = renderStickFigure(frameWithAppearance, at: offsetPosition, scale: 1.2, flipped: shouldFlip, jointShapeSize: frameWithAppearance.jointShapeSize)
             characterContainer.addChild(stickFigureNode)
             
             // Render stand frame objects
-            renderFrameObjects(gameState.standFrameObjects, on: characterContainer, scale: 1.2)
+            renderFrameObjects(gameState.standFrameObjects, on: characterContainer, scale: 1.2, figureOffsetX: frameWithAppearance.figureOffsetX, figureOffsetY: frameWithAppearance.figureOffsetY)
         }
     }
     
@@ -953,13 +957,13 @@ private func applyMuscleScaling(to figure: StickFigure2D) -> StickFigure2D {
     return scaledFigure
 }
 
-private func renderFrameObjects(_ objects: [AnimationObject], on container: SKNode, scale: CGFloat) {
+private func renderFrameObjects(_ objects: [AnimationObject], on container: SKNode, scale: CGFloat, figureOffsetX: CGFloat = 0, figureOffsetY: CGFloat = 0) {
     for object in objects {
         let node: SKNode
         
         if object.type == .box {
-            // Render box
-            let boxNode = SKShapeNode(rectOf: CGSize(width: object.width * scale, height: object.height * scale))
+            // Render box with exact size from editor - no scaling
+            let boxNode = SKShapeNode(rectOf: CGSize(width: object.width, height: object.height))
             let boxColor = UIColor(hex: object.color) ?? UIColor(red: 1.0, green: 0.0, blue: 0.0, alpha: 1.0)
             boxNode.fillColor = boxColor
             boxNode.strokeColor = .black
@@ -968,7 +972,7 @@ private func renderFrameObjects(_ objects: [AnimationObject], on container: SKNo
             boxNode.name = "object_box_\(object.id)"
             node = boxNode
         } else {
-            // Render image (existing logic)
+            // Render image with exact scale from editor - no additional scaling
             let sprite = SKSpriteNode(imageNamed: object.imageName)
             sprite.xScale *= object.scale
             sprite.yScale *= object.scale
@@ -977,9 +981,25 @@ private func renderFrameObjects(_ objects: [AnimationObject], on container: SKNo
             node = sprite
         }
         
-        node.position = object.position * scale
+        // Objects positioned exactly as they appear in the editor
+        // Convert from editor coordinates to gameplay coordinates
+        
+        let estimatedEditorSize: CGFloat = 402
+        let editorCenter = estimatedEditorSize / 2
+        
+        // Editor: origin at top-left, Y increases downward
+        // Gameplay: origin at scene center, Y increases upward
+        let relativePos = CGPoint(
+            x: object.position.x - editorCenter,
+            y: -(editorCenter - object.position.y)
+        )
+        
+        // Position object exactly as it appears in the editor
+        node.position = relativePos
         node.zRotation = CGFloat(object.rotation)
         container.addChild(node)
+        
+        print("🎮 renderFrameObjects: object=\(object.imageName), editorPos=\(object.position), relativePos=\(relativePos)")
     }
 }
 

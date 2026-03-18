@@ -1937,15 +1937,15 @@
     "name" : "Box Jump",
     "objects" : [
       {
-        "id" : "8A4A9581-FAD8-4C90-81C8-921E4E77AAF4",
+        "id" : "891D2D4D-D3EB-48C5-B433-4A0498076C35",
         "type" : "box",
         "imageName" : "BOX_#000000_66_50",
-        "color" : "#000000",
-        "width" : 66.0,
-        "height" : 50.0,
+        "color": "#000000",
+        "width": 66,
+        "height": 50,
         "position" : {
-          "x" : 6.8,
-          "y" : -103.2
+            "x" : 269,
+            "y" : 150
         },
         "rotation" : 0,
         "scale" : 1
