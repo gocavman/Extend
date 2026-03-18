@@ -2598,17 +2598,36 @@ class StickFigureEditorScene: SKScene {
     }
     
     func updateZoom(_ zoom: CGFloat) {
-        currentZoom = zoom
+        let sceneCenter = CGPoint(x: size.width / 2, y: size.height / 2)
+        
         // Apply zoom to character node (stick figure)
         if let characterNode = characterNode {
             characterNode.setScale(zoom)
         }
-        // Also apply zoom to all objects that are direct children of the scene
+        
+        // Apply zoom to all objects that are direct children of the scene
+        // Objects must be scaled around the scene center, not their own position
+        // This ensures they zoom from the same point as the stick figure
         children.forEach { node in
             if node.name?.hasPrefix("object_") == true {
+                // Calculate the vector from scene center to object center
+                let dx = node.position.x - sceneCenter.x
+                let dy = node.position.y - sceneCenter.y
+                
+                // Update object position: move it proportionally from the previous zoom to new zoom
+                // Scale the distance from center by the zoom change ratio
+                node.position = CGPoint(
+                    x: sceneCenter.x + dx * zoom / currentZoom,
+                    y: sceneCenter.y + dy * zoom / currentZoom
+                )
+                
+                // Scale the object itself
                 node.setScale(zoom)
             }
         }
+        
+        // Update current zoom after positioning
+        currentZoom = zoom
         print("🎮 Zoom updated to \(zoom)x")
     }
     
