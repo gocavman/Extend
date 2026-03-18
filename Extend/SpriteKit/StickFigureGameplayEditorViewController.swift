@@ -1503,15 +1503,20 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
                         // Handle image objects (SKSpriteNode)
                         if let sprite = node as? SKSpriteNode, sprite.name?.hasPrefix("object_") == true {
                             let assetName = (sprite.userData?["assetName"] as? String) ?? "Unknown"
+                            // Convert relative position to absolute scene coordinates
+                            let absolutePosition = CGPoint(
+                                x: sprite.position.x + charNode.position.x,
+                                y: sprite.position.y + charNode.position.y
+                            )
                             let editorObject = EditorObject(
                                 assetName: assetName,
-                                position: sprite.position,
+                                position: absolutePosition,
                                 rotation: sprite.zRotation,
                                 scaleX: sprite.xScale,
                                 scaleY: sprite.yScale
                             )
                             frameObjects.append(editorObject)
-                            print("🎮 Saving image object (from char node): \(assetName) at \(sprite.position) scale: \(sprite.xScale)")
+                            print("🎮 Saving image object (from char node): \(assetName) at \(absolutePosition) (relative: \(sprite.position)) scale: \(sprite.xScale)")
                         }
                         // Handle box objects (SKShapeNode)
                         else if let shapeNode = node as? SKShapeNode, shapeNode.name?.hasPrefix("object_box_") == true {
@@ -1523,17 +1528,23 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
                             width *= shapeNode.xScale
                             height *= shapeNode.yScale
                             
+                            // Convert relative position to absolute scene coordinates
+                            let absolutePosition = CGPoint(
+                                x: shapeNode.position.x + charNode.position.x,
+                                y: shapeNode.position.y + charNode.position.y
+                            )
+                            
                             // Use a special naming scheme to identify this as a box when loading
                             let boxAssetName = "BOX_\(color)_\(Int(width))_\(Int(height))"
                             let editorObject = EditorObject(
                                 assetName: boxAssetName,
-                                position: shapeNode.position,
+                                position: absolutePosition,
                                 rotation: shapeNode.zRotation,
                                 scaleX: 1.0,  // Scale is baked into width/height, so set to 1.0
                                 scaleY: 1.0   // Scale is baked into width/height, so set to 1.0
                             )
                             frameObjects.append(editorObject)
-                            print("🎮 Saving box object (from char node): \(color) \(Int(width))x\(Int(height)) at \(shapeNode.position)")
+                            print("🎮 Saving box object (from char node): \(color) \(Int(width))x\(Int(height)) at \(absolutePosition) (relative: \(shapeNode.position))")
                         }
                     }
                 }
