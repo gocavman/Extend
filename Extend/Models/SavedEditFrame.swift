@@ -560,6 +560,8 @@ class SavedFramesManager {
             // Determine type based on assetName (BOX_ prefix = box, otherwise image)
             let objectType = object.assetName.hasPrefix("BOX_") ? "box" : "image"
             jsonString += "        \"type\" : \"\(objectType)\",\n"
+            // Always include imageName for serialization
+            jsonString += "        \"imageName\" : \"\(object.assetName)\",\n"
             
             if objectType == "box" {
                 // For box objects, parse the BOX_#COLOR_WIDTH_HEIGHT format
@@ -571,9 +573,6 @@ class SavedFramesManager {
                 jsonString += "        \"color\" : \"\(color)\",\n"
                 jsonString += "        \"width\" : \(width),\n"
                 jsonString += "        \"height\" : \(height),\n"
-            } else {
-                // For image objects
-                jsonString += "        \"imageName\" : \"\(object.assetName)\",\n"
             }
             
             jsonString += "        \"position\" : {\n"

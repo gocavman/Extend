@@ -2587,34 +2587,42 @@ class StickFigureEditorScene: SKScene {
         }
         
         // Collect any existing objects before replacing characterNode
-        var existingObjects: [SKNode] = []
+        var existingObjects: [(node: SKNode, absolutePos: CGPoint)] = []
         
-        // Collect from old characterNode
+        // Collect from old characterNode - convert relative positions to absolute BEFORE removing from parent
         if let oldCharNode = characterNode {
-            existingObjects.append(contentsOf: oldCharNode.children.filter { $0.name?.hasPrefix("object_") == true })
+            for child in oldCharNode.children where child.name?.hasPrefix("object_") == true {
+                // Calculate absolute position while node is still in the scene
+                let absolutePos = child.position + oldCharNode.position
+                existingObjects.append((node: child, absolutePos: absolutePos))
+            }
             // Remove old character node from scene
             oldCharNode.removeFromParent()
         }
         
         // Collect objects directly in the scene (these are newly added objects waiting for characterNode)
         // Do this BEFORE adding the new container to avoid collecting it
-        existingObjects.append(contentsOf: children.filter { $0.name?.hasPrefix("object_") == true })
+        for child in children where child.name?.hasPrefix("object_") == true {
+            existingObjects.append((node: child, absolutePos: child.position))
+        }
         
         // Add new container (new characterNode)
         addChild(container)
         
         // Move all collected objects to the new characterNode
-        for objectNode in existingObjects {
+        for item in existingObjects {
+            let objectNode = item.node
+            let absolutePos = item.absolutePos
+            
             objectNode.removeFromParent()
-            // Adjust object position to be relative to the new container
-            // Objects were positioned in absolute scene coordinates, but now they need to be relative to container
+            // Convert from absolute scene coordinates to relative coordinates in the container
             let containerPos = container.position
             objectNode.position = CGPoint(
-                x: objectNode.position.x - containerPos.x,
-                y: objectNode.position.y - containerPos.y
+                x: absolutePos.x - containerPos.x,
+                y: absolutePos.y - containerPos.y
             )
             container.addChild(objectNode)
-            print("🎮 Moved object \(objectNode.name ?? "unnamed") from absolute pos to relative pos: \(objectNode.position), container was at: \(containerPos)")
+            print("🎮 Moved object \(objectNode.name ?? "unnamed") to relative pos: \(objectNode.position) (was absolute: \(absolutePos), container at: \(containerPos))")
         }
         
         // Preserve the current zoom level when updating the figure
