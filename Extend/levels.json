@@ -27,8 +27,8 @@
   },
   {
     "id": 3,
-    "name": "Jump",
-    "displayName": "Jump",
+    "name": "Box Jump",
+    "displayName": "Box Jump",
     "pointsToComplete": 150,
     "availableActions": ["rest", "run", "jump"],
     "mapX": 900,

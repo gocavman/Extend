@@ -483,13 +483,19 @@ private func updateGameLogic() {
         // Clear character node and render the new frame with offsets
         character.removeAllChildren()
         let shouldFlip = gameState.actionFlip
-        let offsetPosition = CGPoint(x: frameWithAppearance.figureOffsetX, y: frameWithAppearance.figureOffsetY)
+        var offsetPosition = CGPoint(x: frameWithAppearance.figureOffsetX, y: frameWithAppearance.figureOffsetY)
+        
+        // Mirror the X offset when flipping
+        if shouldFlip {
+            offsetPosition.x = -offsetPosition.x
+        }
+        
         let stickFigureNode = renderStickFigure(frameWithAppearance, at: offsetPosition, scale: 1.2, flipped: shouldFlip, jointShapeSize: frameWithAppearance.jointShapeSize)
         character.addChild(stickFigureNode)
         
-        // Render action frame objects
+        // Render action frame objects with flip applied
         if gameState.currentFrameIndex < gameState.actionStickFigureObjects.count {
-            renderFrameObjects(gameState.actionStickFigureObjects[gameState.currentFrameIndex], on: character, scale: 1.2, figureOffsetX: frameWithAppearance.figureOffsetX, figureOffsetY: frameWithAppearance.figureOffsetY)
+            renderFrameObjects(gameState.actionStickFigureObjects[gameState.currentFrameIndex], on: character, scale: 1.2, figureOffsetX: offsetPosition.x, figureOffsetY: offsetPosition.y, shouldFlip: shouldFlip)
         }
         
     } else if gameState.isMovingLeft || gameState.isMovingRight {
@@ -957,7 +963,7 @@ private func applyMuscleScaling(to figure: StickFigure2D) -> StickFigure2D {
     return scaledFigure
 }
 
-private func renderFrameObjects(_ objects: [AnimationObject], on container: SKNode, scale: CGFloat, figureOffsetX: CGFloat = 0, figureOffsetY: CGFloat = 0) {
+private func renderFrameObjects(_ objects: [AnimationObject], on container: SKNode, scale: CGFloat, figureOffsetX: CGFloat = 0, figureOffsetY: CGFloat = 0, shouldFlip: Bool = false) {
     for object in objects {
         let node: SKNode
         
@@ -989,10 +995,16 @@ private func renderFrameObjects(_ objects: [AnimationObject], on container: SKNo
         
         // Editor: origin at top-left, Y increases downward
         // Gameplay: origin at scene center, Y increases upward
-        let relativePos = CGPoint(
+        var relativePos = CGPoint(
             x: object.position.x - editorCenter,
             y: -(editorCenter - object.position.y)
         )
+        
+        // Apply horizontal flip to object position if needed
+        if shouldFlip {
+            relativePos.x = -relativePos.x
+            node.xScale = -1.0
+        }
         
         // Position object exactly as it appears in the editor
         node.position = relativePos

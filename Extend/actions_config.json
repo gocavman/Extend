@@ -43,15 +43,16 @@
   },
   {
     "id": "jump",
-    "displayName": "Jump",
+    "displayName": "Box Jump",
     "unlockLevel": 3,
     "pointsPerCompletion": 3,
     "variableTiming": null,
-    "flipMode": "none",
+    "flipMode": "alternating",
     "supportsSpeedBoost": true,
     "allowMovement": false,
+    "countdown": true,
     "floatingText": {
-      "timing": 0.5,
+      "timing": 1.5,
       "text": ["jump", "whoohoo", "weee", "yay!"],
       "random": true,
       "loop": true,
@@ -59,7 +60,7 @@
     },
     "stickFigureAnimation": {
       "animationName": "Box Jump",
-      "frameNumbers": [1, 2, 3, 4, 5, 6, 7, 8, 8, 8, 7,6,5,4,3,2,2, 3, 4, 5, 6, 7, 8,8,8,7,6,5,4,3,2,2, 3, 4, 5, 6, 7, 8,8,8,7,6,5,4,3,2,2, 3, 4, 5, 6, 7, 8,8,8,7,6,5,4,3,2,2, 3, 4, 5, 6, 7, 8,8,8,7,6,5,4,3,2, 9,9,9,9,9,9,9,9,9],
+      "frameNumbers": [1, 2, 3, 4, 5, 6, 7, 8, 8, 8, 7,6,5,4,3,2,2, 3, 4, 5, 6, 7, 8,8,8,7,6,5,4,3,2,2, 3, 4, 5, 6, 7, 8,8,8,7,6,5,4,3,2,2, 3, 4, 5, 6, 7, 8,8,8,7,6,5,4,3,2,2, 3, 4, 5, 6, 7, 8,8,8,7,6,5,4,3,2],
       "baseFrameInterval": 0.15
     }
   },
