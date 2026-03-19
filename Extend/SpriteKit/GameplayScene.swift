@@ -40,6 +40,7 @@ private var fallingItems: [FallingItem] = []
 private var catchableNodes: [UUID: SKNode] = [:]  // Track rendered nodes by item ID
 private let catchableContainerNode = SKNode()  // Container for all catchable sprites
 private var lastSpawnTime: [String: TimeInterval] = [:]  // Track last spawn time per catchable ID
+private var lastGlobalSpawnTime: TimeInterval = 0  // Global spawn timer for weighted pool system
 
 // Boost properties
 private var boostEndTime: TimeInterval = 0
@@ -1108,50 +1109,68 @@ private func spawnFallingCatchables(gameState: StickFigureGameState) {
     
     let currentTime = Date().timeIntervalSince1970
     
-    // Spawn new items - each catchable respects its own limits
-    for itemConfig in unlockedItems {
-        // Get max items and cooldown from config, with sensible defaults
-        let maxOnScreen = itemConfig.maxOnScreen ?? 8
-        let minSecondsBetweenSpawns = itemConfig.minSecondsBetweenSpawns ?? 0.5
-        
-        // Count how many of this item type are currently on screen
-        let countOfThisType = fallingItems.filter { $0.itemType == itemConfig.id }.count
-        
-        // Check if we've hit the max for this item
-        guard countOfThisType < maxOnScreen else { continue }
-        
-        // Check if enough time has passed since last spawn of this type
-        let lastSpawn = lastSpawnTime[itemConfig.id] ?? -minSecondsBetweenSpawns
-        let timeSinceLastSpawn = currentTime - lastSpawn
-        
-        guard timeSinceLastSpawn >= minSecondsBetweenSpawns else { continue }
-        
-        // Check spawn probability
-        guard Double.random(in: 0...1) < itemConfig.baseSpawnChance else { continue }
-        
-        // All checks passed - spawn this item
-        let horizontalVel: CGFloat
-        if itemConfig.direction == "falls" {
-            // Falls: moves sideways while falling
-            horizontalVel = CGFloat.random(in: -0.002...0.002)
-        } else {
-            // Vertical: straight down, no horizontal movement
-            horizontalVel = 0.0
-        }
-        
-        let item = FallingItem(
-            itemType: itemConfig.id,
-            x: CGFloat.random(in: 0.1...0.9),
-            y: -0.1,  // Spawn above screen
-            rotation: Double.random(in: 0...360),
-            horizontalVelocity: horizontalVel,
-            verticalSpeed: CGFloat.random(in: itemConfig.baseVerticalSpeed...itemConfig.baseVerticalSpeedMax)
-        )
-        fallingItems.append(item)
-        
-        // Update last spawn time for this item type
-        lastSpawnTime[itemConfig.id] = currentTime
+    // Global spawn pool system: try to spawn ONE random item every few seconds
+    // Initialize lastGlobalSpawnTime if needed
+    if lastGlobalSpawnTime == 0 {
+        lastGlobalSpawnTime = currentTime
     }
+    
+    // Spawn interval: 5-20 seconds (choose randomly each spawn)
+    let spawnInterval = Double.random(in: 5.0...20.0)
+    let timeSinceLastSpawn = currentTime - lastGlobalSpawnTime
+    
+    guard timeSinceLastSpawn >= spawnInterval else { return }
+    
+    // Time to spawn! Pick ONE random item based on spawn weights
+    // Calculate total weight
+    let totalWeight = unlockedItems.reduce(0) { $0 + $1.spawnWeight }
+    guard totalWeight > 0 else { return }
+    
+    // Pick a random weight and find which item it corresponds to
+    var randomWeight = Double.random(in: 0..<totalWeight)
+    var selectedItem: CatchableConfig? = nil
+    
+    for itemConfig in unlockedItems {
+        randomWeight -= itemConfig.spawnWeight
+        if randomWeight <= 0 {
+            selectedItem = itemConfig
+            break
+        }
+    }
+    
+    guard let itemConfig = selectedItem else { return }
+    
+    // Check if we've hit the max for this item
+    let maxOnScreen = itemConfig.maxOnScreen ?? 1
+    let countOfThisType = fallingItems.filter { $0.itemType == itemConfig.id }.count
+    guard countOfThisType < maxOnScreen else {
+        // Max reached, try again next cycle
+        lastGlobalSpawnTime = currentTime
+        return
+    }
+    
+    // Spawn this item
+    let horizontalVel: CGFloat
+    if itemConfig.direction == "falls" {
+        // Falls: moves sideways while falling
+        horizontalVel = CGFloat.random(in: -0.002...0.002)
+    } else {
+        // Vertical: straight down, no horizontal movement
+        horizontalVel = 0.0
+    }
+    
+    let item = FallingItem(
+        itemType: itemConfig.id,
+        x: CGFloat.random(in: 0.1...0.9),
+        y: -0.1,  // Spawn above screen
+        rotation: Double.random(in: 0...360),
+        horizontalVelocity: horizontalVel,
+        verticalSpeed: CGFloat.random(in: itemConfig.baseVerticalSpeed...itemConfig.baseVerticalSpeedMax)
+    )
+    fallingItems.append(item)
+    
+    // Update last global spawn time for next spawn
+    lastGlobalSpawnTime = currentTime
 }
 
 private func renderFallingCatchables() {

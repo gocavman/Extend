@@ -9,15 +9,14 @@
       "spins": true,
       "spinSpeed": 6,
       "collisionAnimation": "Shaker",
-      "baseSpawnChance": 0.009,
+      "spawnWeight": 15,
       "baseVerticalSpeed": 0.005,
       "baseVerticalSpeedMax": 0.005,
       "color": null,
       "points": 20,
       "width": 20,
       "height": 32,
-      "maxOnScreen": 2,
-      "minSecondsBetweenSpawns": 15.0
+      "maxOnScreen": 1
     },
     {
     "id": "leaf",
@@ -29,15 +28,14 @@
     "spins": true,
     "spinSpeed": 4,
     "collisionAnimation": null,
-    "baseSpawnChance": 0.009,
+    "spawnWeight": 25,
     "baseVerticalSpeed": 0.001,
     "baseVerticalSpeedMax": 0.0015,
     "color": "#22C55E",
     "points": 1,
     "width": 20,
     "height": 20,
-    "maxOnScreen": 3,
-    "minSecondsBetweenSpawns": 0.5
+    "maxOnScreen": 1
   },
   {
     "id": "heart",
@@ -49,15 +47,14 @@
     "spins": true,
     "spinSpeed": 4,
     "collisionAnimation": null,
-    "baseSpawnChance": 0.009,
+    "spawnWeight": 25,
     "baseVerticalSpeed": 0.0008,
     "baseVerticalSpeedMax": 0.0015,
     "color": "#EF4444",
     "points": 5,
     "width": 32,
     "height": 32,
-    "maxOnScreen": 3,
-    "minSecondsBetweenSpawns": 2.0
+    "maxOnScreen": 1
   },
   {
     "id": "brain",
@@ -69,15 +66,14 @@
     "spins": true,
     "spinSpeed": 4,
     "collisionAnimation": null,
-    "baseSpawnChance": 0.009,
+    "spawnWeight": 25,
     "baseVerticalSpeed": 0.0008,
     "baseVerticalSpeedMax": 0.0015,
     "color": "#FFC0CB",
     "points": 10,
     "width": 36,
     "height": 36,
-    "maxOnScreen": 2,
-    "minSecondsBetweenSpawns": 3.0
+    "maxOnScreen": 1
   },
   {
     "id": "sun",
@@ -89,15 +85,14 @@
     "spins": true,
     "spinSpeed": 4,
     "collisionAnimation": null,
-    "baseSpawnChance": 0.009,
+    "spawnWeight": 10,
     "baseVerticalSpeed": 0.0008,
     "baseVerticalSpeedMax": 0.0015,
     "color": "#FBBF24",
     "points": 15,
     "width": 40,
     "height": 40,
-    "maxOnScreen": 2,
-    "minSecondsBetweenSpawns": 4.0
+    "maxOnScreen": 1
   },
   {
     "id": "diamond",
@@ -109,15 +104,14 @@
     "spins": true,
     "spinSpeed": 4,
     "collisionAnimation": null,
-    "baseSpawnChance": 0.009,
+    "spawnWeight": 10,
     "baseVerticalSpeed": 0.001,
     "baseVerticalSpeedMax": 0.0015,
     "color": "#22C55E",
     "points": 1,
     "width": 36,
     "height": 36,
-    "maxOnScreen": 2,
-    "minSecondsBetweenSpawns": 5.0
+    "maxOnScreen": 1
   },
   {
     "id": "coin",
@@ -129,15 +123,14 @@
     "spins": false,
     "spinSpeed": 4,
     "collisionAnimation": null,
-    "baseSpawnChance": 0.009,
+    "spawnWeight": 10,
     "baseVerticalSpeed": 0.001,
     "baseVerticalSpeedMax": 0.0015,
     "color": "#22C55E",
     "points": 1,
     "width": 36,
     "height": 36,
-    "maxOnScreen": 2,
-    "minSecondsBetweenSpawns": 6.0
+    "maxOnScreen": 1
   },
   {
     "id": "gift",
@@ -149,15 +142,14 @@
     "spins": false,
     "spinSpeed": 4,
     "collisionAnimation": null,
-    "baseSpawnChance": 0.009,
+    "spawnWeight": 5,
     "baseVerticalSpeed": 0.001,
     "baseVerticalSpeedMax": 0.0015,
     "color": "#22C55E",
     "points": 1,
     "width": 36,
     "height": 36,
-    "maxOnScreen": 2,
-    "minSecondsBetweenSpawns": 7.0
+    "maxOnScreen": 1
   },
   {
     "id": "star",
@@ -169,15 +161,14 @@
     "spins": true,
     "spinSpeed": 4,
     "collisionAnimation": null,
-    "baseSpawnChance": 0.009,
+    "spawnWeight": 5,
     "baseVerticalSpeed": 0.001,
     "baseVerticalSpeedMax": 0.0015,
     "color": "#22C55E",
     "points": 1,
     "width": 36,
     "height": 36,
-    "maxOnScreen": 2,
-    "minSecondsBetweenSpawns": 7.0
+    "maxOnScreen": 1
   },
   {
     "id": "apple",
@@ -189,15 +180,14 @@
     "spins": false,
     "spinSpeed": 4,
     "collisionAnimation": null,
-    "baseSpawnChance": 0.009,
+    "spawnWeight": 5,
     "baseVerticalSpeed": 0.001,
     "baseVerticalSpeedMax": 0.0015,
     "color": "#22C55E",
     "points": 1,
     "width": 36,
     "height": 36,
-    "maxOnScreen": 2,
-    "minSecondsBetweenSpawns": 7.0
+    "maxOnScreen": 1
   },
   {
     "id": "orange",
@@ -209,15 +199,14 @@
     "spins": false,
     "spinSpeed": 4,
     "collisionAnimation": null,
-    "baseSpawnChance": 0.009,
+    "spawnWeight": 5,
     "baseVerticalSpeed": 0.001,
     "baseVerticalSpeedMax": 0.0015,
     "color": "#22C55E",
     "points": 1,
     "width": 36,
     "height": 36,
-    "maxOnScreen": 2,
-    "minSecondsBetweenSpawns": 7.0
+    "maxOnScreen": 1
   },
   {
     "id": "banana",
@@ -229,15 +218,14 @@
     "spins": false,
     "spinSpeed": 4,
     "collisionAnimation": null,
-    "baseSpawnChance": 0.009,
+    "spawnWeight": 5,
     "baseVerticalSpeed": 0.001,
     "baseVerticalSpeedMax": 0.0015,
     "color": "#22C55E",
     "points": 1,
     "width": 36,
     "height": 36,
-    "maxOnScreen": 2,
-    "minSecondsBetweenSpawns": 7.0
+    "maxOnScreen": 1
   },
   {
     "id": "seedling",
@@ -249,15 +237,14 @@
     "spins": true,
     "spinSpeed": 4,
     "collisionAnimation": null,
-    "baseSpawnChance": 0.009,
+    "spawnWeight": 5,
     "baseVerticalSpeed": 0.001,
     "baseVerticalSpeedMax": 0.0015,
     "color": "#22C55E",
     "points": 1,
     "width": 36,
     "height": 36,
-    "maxOnScreen": 2,
-    "minSecondsBetweenSpawns": 7.0
+    "maxOnScreen": 1
   },
   {
     "id": "grapes",
@@ -269,15 +256,14 @@
     "spins": false,
     "spinSpeed": 4,
     "collisionAnimation": null,
-    "baseSpawnChance": 0.009,
+    "spawnWeight": 5,
     "baseVerticalSpeed": 0.001,
     "baseVerticalSpeedMax": 0.0015,
     "color": "#22C55E",
     "points": 1,
     "width": 36,
     "height": 36,
-    "maxOnScreen": 2,
-    "minSecondsBetweenSpawns": 7.0
+    "maxOnScreen": 1
   },
   {
     "id": "strawberry",
@@ -289,15 +275,14 @@
     "spins": false,
     "spinSpeed": 4,
     "collisionAnimation": null,
-    "baseSpawnChance": 0.009,
+    "spawnWeight": 5,
     "baseVerticalSpeed": 0.001,
     "baseVerticalSpeedMax": 0.0015,
     "color": "#22C55E",
     "points": 1,
     "width": 36,
     "height": 36,
-    "maxOnScreen": 2,
-    "minSecondsBetweenSpawns": 7.0
+    "maxOnScreen": 1
   },
   {
     "id": "waterdrop",
@@ -309,15 +294,14 @@
     "spins": false,
     "spinSpeed": 4,
     "collisionAnimation": null,
-    "baseSpawnChance": 0.009,
+    "spawnWeight": 5,
     "baseVerticalSpeed": 0.001,
     "baseVerticalSpeedMax": 0.01,
     "color": "#22C55E",
     "points": 1,
     "width": 36,
     "height": 36,
-    "maxOnScreen": 3,
-    "minSecondsBetweenSpawns": 5.0
+    "maxOnScreen": 1
   },
   {
     "id": "snowflake",
@@ -329,15 +313,14 @@
     "spins": true,
     "spinSpeed": 4,
     "collisionAnimation": null,
-    "baseSpawnChance": 0.009,
+    "spawnWeight": 5,
     "baseVerticalSpeed": 0.001,
     "baseVerticalSpeedMax": 0.0015,
     "color": "#22C55E",
     "points": 1,
     "width": 36,
     "height": 36,
-    "maxOnScreen": 5,
-    "minSecondsBetweenSpawns": 1.0
+    "maxOnScreen": 1
   },
   {
     "id": "moon",
@@ -349,14 +332,13 @@
     "spins": true,
     "spinSpeed": 4,
     "collisionAnimation": null,
-    "baseSpawnChance": 0.009,
+    "spawnWeight": 5,
     "baseVerticalSpeed": 0.001,
     "baseVerticalSpeedMax": 0.0015,
     "color": "#22C55E",
     "points": 1,
     "width": 36,
     "height": 36,
-    "maxOnScreen": 2,
-    "minSecondsBetweenSpawns": 7.0
+    "maxOnScreen": 1
   }
 ]

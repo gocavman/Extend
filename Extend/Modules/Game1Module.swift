@@ -281,7 +281,7 @@ struct CatchableConfig: Codable {
     let spins: Bool
     let spinSpeed: Double
     let collisionAnimation: String?  // Optional action animation ID
-    let baseSpawnChance: Double
+    let spawnWeight: Double  // Weighted random selection (0-100)
     let baseVerticalSpeed: Double
     let baseVerticalSpeedMax: Double
     let color: String?  // Hex color for SF symbols
@@ -289,7 +289,6 @@ struct CatchableConfig: Codable {
     let width: CGFloat?  // Optional: width in pixels (defaults to 36)
     let height: CGFloat?  // Optional: height in pixels (defaults to 36)
     let maxOnScreen: Int?  // Optional: max catchables of this type on screen
-    let minSecondsBetweenSpawns: Double?  // Optional: minimum seconds between spawns
 }
 
 /// Loads catchable configurations from catchables.json
