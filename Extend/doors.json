@@ -10,10 +10,10 @@
   },
   {
     "id": "door_to_main_map_from_training_1",
-    "mapX": 200,
-    "mapY": 400,
-    "width": 100,
-    "height": 150,
+    "mapX": 125,
+    "mapY": 900,
+    "width": 150,
+    "height": 100,
     "destinationRoomId": "main_map",
     "returnDoorId": "door_to_training_room_1"
   }

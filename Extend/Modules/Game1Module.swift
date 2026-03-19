@@ -154,7 +154,8 @@ struct RoomConfig: Codable {
     let name: String
     let width: Double
     let height: Double
-    let backgroundImage: String
+    let backgroundImage: String?
+    let backgroundColor: String?
     let levels: [Int]
     let doors: [String]
 }

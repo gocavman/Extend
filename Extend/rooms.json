@@ -5,6 +5,7 @@
     "width": 2000,
     "height": 2000,
     "backgroundImage": "map_bg",
+    "backgroundColor": "#E0E0E0",
     "levels": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
     "doors": ["door_to_training_room_1"]
   },
@@ -14,6 +15,7 @@
     "width": 1000,
     "height": 1000,
     "backgroundImage": "training_room_1_bg",
+    "backgroundColor": "#B0E0E6",
     "levels": [],
     "doors": ["door_to_main_map_from_training_1"]
   }

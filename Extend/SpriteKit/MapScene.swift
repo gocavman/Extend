@@ -84,13 +84,49 @@ class MapScene: GameScene {
         // Create a visible background grid area
         let background = SKShapeNode(rectOf: CGSize(width: MAP_WIDTH, height: MAP_HEIGHT))
         background.position = CGPoint(x: MAP_WIDTH / 2, y: MAP_HEIGHT / 2)
-        background.fillColor = SKColor(red: 211, green: 211, blue: 211, alpha: 0.1)
+        
+        // Get background color from room config
+        var backgroundColor = SKColor(red: 0.83, green: 0.83, blue: 0.83, alpha: 1.0)  // Default gray
+        if let roomConfig = getRoomConfig(currentRoomId) {
+            // Use backgroundColor if defined
+            if let hexColor = roomConfig.backgroundColor {
+                backgroundColor = hexToColor(hexColor)
+            }
+        }
+        
+        background.fillColor = backgroundColor
         background.strokeColor = SKColor(red: 0.7, green: 0.7, blue: 0.7, alpha: 0.5)
         background.lineWidth = 2
         background.zPosition = 0
         container.addChild(background)
     }
     
+    // MARK: - Helper Methods
+    
+    private func hexToColor(_ hex: String) -> SKColor {
+        var hexString = hex.trimmingCharacters(in: .whitespaces).uppercased()
+        
+        // Remove # if present
+        if hexString.hasPrefix("#") {
+            hexString.removeFirst()
+        }
+        
+        // Handle 6-digit hex (RRGGBB)
+        if hexString.count == 6 {
+            let scanner = Scanner(string: hexString)
+            var rgbValue: UInt64 = 0
+            scanner.scanHexInt64(&rgbValue)
+            
+            let red = CGFloat((rgbValue >> 16) & 0xFF) / 255.0
+            let green = CGFloat((rgbValue >> 8) & 0xFF) / 255.0
+            let blue = CGFloat(rgbValue & 0xFF) / 255.0
+            
+            return SKColor(red: red, green: green, blue: blue, alpha: 1.0)
+        }
+        
+        // Fallback to gray if parsing fails
+        return SKColor(red: 0.83, green: 0.83, blue: 0.83, alpha: 1.0)
+    }
     private func setupLevelStations() {
         guard let container = mapContainer else { return }
         guard let gameState = gameState else {
@@ -150,8 +186,8 @@ class MapScene: GameScene {
             let doorSize = CGSize(width: doorConfig.width, height: doorConfig.height)
             let door = SKShapeNode(rectOf: doorSize)
             door.position = CGPoint(x: doorConfig.mapX, y: doorConfig.mapY)
-            door.fillColor = SKColor(red: 0.5, green: 0.0, blue: 0.5, alpha: 0.6)  // Purple with transparency
-            door.strokeColor = SKColor(red: 1.0, green: 0.0, blue: 1.0, alpha: 1.0)  // Bright purple border
+            door.fillColor = hexToColor("#6F4E37")
+            door.strokeColor = hexToColor("#5C4033")  // Bright purple border
             door.lineWidth = 3
             door.name = "door_\(doorConfig.id)"
             door.zPosition = 15
@@ -160,7 +196,7 @@ class MapScene: GameScene {
             // Add label with destination
             let label = SKLabelNode(fontNamed: "Arial")
             label.text = doorConfig.destinationRoomId
-            label.fontSize = 12
+            label.fontSize = 20
             label.fontColor = .white
             label.position = CGPoint(x: doorConfig.mapX, y: doorConfig.mapY)
             label.zPosition = 16
@@ -200,14 +236,15 @@ class MapScene: GameScene {
     }
     
     private func setupRoomLabel() {
-        // Create a label that stays at the top of the screen (not affected by camera)
+        // Create a label that stays at the top of the current room
         let label = SKLabelNode(fontNamed: "Arial")
-        label.fontSize = 20
+        label.fontSize = 24
         label.fontColor = .black
         label.zPosition = 1000  // High z-position to appear on top
-        label.position = CGPoint(x: size.width / 2, y: size.height - 40)
+        // Position at top-center of the room (in world coordinates)
+        label.position = CGPoint(x: MAP_WIDTH / 2, y: MAP_HEIGHT - 50)
         label.name = "roomLabel"
-        addChild(label)
+        mapContainer?.addChild(label)
         roomLabelNode = label
         
         // Update with current room name
