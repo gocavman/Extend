@@ -26,6 +26,13 @@ class StatsViewController: UIViewController {
         titleLabel.font = UIFont.boldSystemFont(ofSize: 20)
         titleLabel.textColor = .black
         
+        // Add reset button for developers (shown when debug flag is on)
+        let resetButton = UIButton(type: .system)
+        resetButton.setTitle("🔧 Reset", for: .normal)
+        resetButton.titleLabel?.font = UIFont.systemFont(ofSize: 12, weight: .semibold)
+        resetButton.setTitleColor(.orange, for: .normal)
+        resetButton.addTarget(self, action: #selector(resetStatsTapped), for: .touchUpInside)
+        
         let closeButton = UIButton(type: .system)
         closeButton.setImage(UIImage(systemName: "xmark.circle.fill"), for: .normal)
         closeButton.tintColor = .black
@@ -33,14 +40,20 @@ class StatsViewController: UIViewController {
         closeButton.addTarget(self, action: #selector(closeButtonTapped), for: .touchUpInside)
         
         header.addSubview(titleLabel)
+        header.addSubview(resetButton)
         header.addSubview(closeButton)
         
         titleLabel.translatesAutoresizingMaskIntoConstraints = false
+        resetButton.translatesAutoresizingMaskIntoConstraints = false
         closeButton.translatesAutoresizingMaskIntoConstraints = false
         
         NSLayoutConstraint.activate([
             titleLabel.leadingAnchor.constraint(equalTo: header.leadingAnchor, constant: 16),
             titleLabel.centerYAnchor.constraint(equalTo: header.centerYAnchor),
+            
+            resetButton.centerXAnchor.constraint(equalTo: header.centerXAnchor),
+            resetButton.centerYAnchor.constraint(equalTo: header.centerYAnchor),
+            resetButton.widthAnchor.constraint(greaterThanOrEqualToConstant: 50),
             
             closeButton.trailingAnchor.constraint(equalTo: header.trailingAnchor, constant: -16),
             closeButton.centerYAnchor.constraint(equalTo: header.centerYAnchor),
@@ -103,7 +116,8 @@ class StatsViewController: UIViewController {
         if !gameState.actionTimes.isEmpty {
             for (action, time) in gameState.actionTimes.sorted(by: { $0.key < $1.key }) {
                 let displayName = getActionDisplayName(action)
-                perfSection.rows.append(.stat(label: displayName, value: formatTime(time)))
+                // Convert milliseconds to seconds for display
+                perfSection.rows.append(.stat(label: displayName, value: formatTime(time / 1000.0)))
             }
         } else {
             perfSection.rows.append(.stat(label: "No actions performed yet", value: ""))
@@ -148,6 +162,42 @@ class StatsViewController: UIViewController {
     
     @objc private func closeButtonTapped() {
         dismiss(animated: true)
+    }
+    
+    @objc private func resetStatsTapped() {
+        // Show confirmation alert
+        let alert = UIAlertController(
+            title: "Reset All Statistics?",
+            message: "This will reset all statistics (time, points, levels, etc.) back to defaults. This cannot be undone.",
+            preferredStyle: .alert
+        )
+        
+        alert.addAction(UIAlertAction(title: "Cancel", style: .cancel))
+        alert.addAction(UIAlertAction(title: "Reset", style: .destructive) { [weak self] _ in
+            guard let gameState = self?.gameState else { return }
+            
+            // Reset all game data
+            gameState.currentLevel = 1
+            gameState.currentPoints = 0
+            gameState.selectedAction = "Rest"
+            gameState.sessionActions.removeAll()
+            gameState.actionTimes.removeAll()
+            gameState.catchablesCaught.removeAll()
+            gameState.totalCoinsCollected = 0
+            gameState.allTimeElapsed = 0
+            gameState.timeElapsed = 0
+            gameState.score = 0
+            gameState.highScore = 0
+            gameState.saveStats()
+            gameState.saveHighScore()
+            
+            // Clear coin last collected time
+            UserDefaults.standard.removeObject(forKey: "game1_coin_last_collected_time")
+            
+            self?.loadStats()
+        })
+        
+        present(alert, animated: true)
     }
 }
 
