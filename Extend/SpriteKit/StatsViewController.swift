@@ -1,5 +1,21 @@
 import UIKit
 
+// MARK: - Custom Header View for proper touch handling
+class StatHeaderView: UIView {
+    override func hitTest(_ point: CGPoint, with event: UIEvent?) -> UIView? {
+        // Let touches pass through to buttons, but handle other touches normally
+        let hitView = super.hitTest(point, with: event)
+        
+        // If a button is tapped, return it
+        if hitView is UIButton {
+            return hitView
+        }
+        
+        // For labels and other views, still allow hits
+        return hitView
+    }
+}
+
 /// Statistics view controller with TableView that slides up from bottom
 class StatsViewController: UIViewController {
     var gameState: StickFigureGameState?
@@ -17,8 +33,8 @@ class StatsViewController: UIViewController {
         // Configure view
         view.backgroundColor = .white
         
-        // Configure header
-        let header = UIView()
+        // Configure header with custom view for proper touch handling
+        let header = StatHeaderView()
         header.backgroundColor = UIColor(red: 0.95, green: 0.95, blue: 0.98, alpha: 1.0)
         
         let titleLabel = UILabel()
@@ -32,16 +48,19 @@ class StatsViewController: UIViewController {
         resetButton.titleLabel?.font = UIFont.systemFont(ofSize: 12, weight: .semibold)
         resetButton.setTitleColor(.orange, for: .normal)
         resetButton.addTarget(self, action: #selector(resetStatsTapped), for: .touchUpInside)
+        resetButton.isUserInteractionEnabled = true
         
         let closeButton = UIButton(type: .system)
         closeButton.setImage(UIImage(systemName: "xmark.circle.fill"), for: .normal)
         closeButton.tintColor = .black
         closeButton.imageView?.contentMode = .scaleAspectFit
         closeButton.addTarget(self, action: #selector(closeButtonTapped), for: .touchUpInside)
+        closeButton.isUserInteractionEnabled = true
         
         header.addSubview(titleLabel)
         header.addSubview(resetButton)
         header.addSubview(closeButton)
+        header.isUserInteractionEnabled = true
         
         titleLabel.translatesAutoresizingMaskIntoConstraints = false
         resetButton.translatesAutoresizingMaskIntoConstraints = false
@@ -53,12 +72,13 @@ class StatsViewController: UIViewController {
             
             resetButton.centerXAnchor.constraint(equalTo: header.centerXAnchor),
             resetButton.centerYAnchor.constraint(equalTo: header.centerYAnchor),
-            resetButton.widthAnchor.constraint(greaterThanOrEqualToConstant: 50),
+            resetButton.widthAnchor.constraint(greaterThanOrEqualToConstant: 80),
+            resetButton.heightAnchor.constraint(equalToConstant: 44),
             
             closeButton.trailingAnchor.constraint(equalTo: header.trailingAnchor, constant: -16),
             closeButton.centerYAnchor.constraint(equalTo: header.centerYAnchor),
-            closeButton.widthAnchor.constraint(equalToConstant: 30),
-            closeButton.heightAnchor.constraint(equalToConstant: 30),
+            closeButton.widthAnchor.constraint(equalToConstant: 44),
+            closeButton.heightAnchor.constraint(equalToConstant: 44),
             
             header.heightAnchor.constraint(equalToConstant: 50)  // Reduced from 60
         ])
@@ -161,10 +181,13 @@ class StatsViewController: UIViewController {
     }
     
     @objc private func closeButtonTapped() {
+        print("❌ DEBUG: closeButtonTapped() called!")
         dismiss(animated: true)
     }
     
     @objc private func resetStatsTapped() {
+        print("🔧 DEBUG: resetStatsTapped() called!")
+        
         // Show confirmation alert
         let alert = UIAlertController(
             title: "Reset All Statistics?",
@@ -174,7 +197,12 @@ class StatsViewController: UIViewController {
         
         alert.addAction(UIAlertAction(title: "Cancel", style: .cancel))
         alert.addAction(UIAlertAction(title: "Reset", style: .destructive) { [weak self] _ in
-            guard let gameState = self?.gameState else { return }
+            guard let self = self, let gameState = self.gameState else {
+                print("❌ DEBUG: gameState is nil in reset action")
+                return
+            }
+            
+            print("🔄 DEBUG: Starting reset...")
             
             // Reset all game data
             gameState.currentLevel = 1
@@ -188,13 +216,18 @@ class StatsViewController: UIViewController {
             gameState.timeElapsed = 0
             gameState.score = 0
             gameState.highScore = 0
+            
+            print("💾 DEBUG: Saving stats...")
             gameState.saveStats()
             gameState.saveHighScore()
             
             // Clear coin last collected time
             UserDefaults.standard.removeObject(forKey: "game1_coin_last_collected_time")
+            UserDefaults.standard.synchronize()
             
-            self?.loadStats()
+            print("🔄 DEBUG: Reloading stats UI...")
+            self.loadStats()
+            print("✅ DEBUG: Reset complete")
         })
         
         present(alert, animated: true)

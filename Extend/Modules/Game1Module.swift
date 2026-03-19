@@ -782,6 +782,7 @@ class StickFigureGameState {
 
     func saveHighScore() {
         UserDefaults.standard.set(highScore, forKey: highScoreKey)
+        UserDefaults.standard.synchronize()
     }
 
     func saveMapPosition(_ mapState: GameMapState) {
