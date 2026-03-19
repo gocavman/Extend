@@ -10,24 +10,27 @@ extension CGVector {
     }
 }
 
-/// SpriteKit scene for the level map - 2000x2000 scrollable room with character and level stations
+/// SpriteKit scene for the level map - scrollable room with character and level stations
 class MapScene: GameScene {
     // MARK: - Map Dimensions and Configuration
-    private let MAP_WIDTH: CGFloat = 2000
-    private let MAP_HEIGHT: CGFloat = 2000
+    private var MAP_WIDTH: CGFloat = 2000  // Will be set from room config
+    private var MAP_HEIGHT: CGFloat = 2000  // Will be set from room config
     private let CHARACTER_SPEED: CGFloat = 400 // pixels per second
     private let PROXIMITY_THRESHOLD: CGFloat = 80 // distance to trigger level entry
-    private let VISIBLE_AREA_WIDTH: CGFloat = 500  // Doubled because camera scale is 2x
-    private let VISIBLE_AREA_HEIGHT: CGFloat = 500 // Doubled because camera scale is 2x
+    private var VISIBLE_AREA_WIDTH: CGFloat { MAP_WIDTH / 4 }  // Quarter of room width
+    private var VISIBLE_AREA_HEIGHT: CGFloat { MAP_HEIGHT / 4 }  // Quarter of room height
     private let CAMERA_SCALE: CGFloat = 2.0  // Zoom level
     
     // MARK: - Nodes and State
     private var mapContainer: SKNode? // Container for all map content (moves with camera)
     private var characterNode: SKSpriteNode?
     private var levelStationNodes: [Int: SKShapeNode] = [:] // levelId -> node
+    private var doorNodes: [String: SKShapeNode] = [:] // doorId -> node
     private var targetPosition: CGPoint? = nil
     private var isMoving = false
     private var currentAnimationFrame = 1
+    private var currentRoomId: String = "main_map"  // Track which room we're in
+    private var roomLabelNode: SKLabelNode?  // Label showing current room name
     
     // MARK: - Timers
     private var movementTimer: Timer?
@@ -38,6 +41,13 @@ class MapScene: GameScene {
         super.didMove(to: view)
         
         //print("🗺️ MapScene didMove - size: \(size)")
+        
+        // Load room dimensions from config
+        if let roomConfig = getRoomConfig(currentRoomId) {
+            MAP_WIDTH = CGFloat(roomConfig.width)
+            MAP_HEIGHT = CGFloat(roomConfig.height)
+            print("🗺️ Room '\(roomConfig.name)' dimensions: \(MAP_WIDTH) x \(MAP_HEIGHT)")
+        }
         
         // Set background
         backgroundColor = SKColor(red: 0.95, green: 0.95, blue: 0.95, alpha: 1.0)
@@ -51,10 +61,14 @@ class MapScene: GameScene {
         // Setup map content
         setupMapBackground()
         setupLevelStations()
+        setupDoors()
         setupCharacter()
         
         // Initialize camera
         setupCamera()
+        
+        // Add room label at top of screen
+        setupRoomLabel()
         
         // Start timers
         startMovementTimer()
@@ -86,8 +100,14 @@ class MapScene: GameScene {
         
         //print("🗺️ Creating level stations from LEVEL_CONFIGS")
         
-        // Create level station boxes from LEVEL_CONFIGS
+        // Get only the level IDs for this room
+        let levelsInRoom = getLevelsInRoom(currentRoomId)
+        
+        // Create level station boxes - filtered by room
         for levelConfig in LEVEL_CONFIGS {
+            // Only show levels that are in this room
+            guard levelsInRoom.contains(levelConfig.id) else { continue }
+            
             let isCompleted = levelConfig.id < gameState.currentLevel
             let isAvailable = levelConfig.id <= gameState.currentLevel
             
@@ -114,6 +134,39 @@ class MapScene: GameScene {
             container.addChild(label)
             
             levelStationNodes[levelConfig.id] = station
+        }
+    }
+    
+    private func setupDoors() {
+        guard let container = mapContainer else { return }
+        
+        // Get all doors for the current room
+        let doorsInRoom = getDoorsInRoom(currentRoomId)
+        
+        print("🚪 Setting up \(doorsInRoom.count) doors for room: \(currentRoomId)")
+        
+        for doorConfig in doorsInRoom {
+            // Create door as a rectangle
+            let doorSize = CGSize(width: doorConfig.width, height: doorConfig.height)
+            let door = SKShapeNode(rectOf: doorSize)
+            door.position = CGPoint(x: doorConfig.mapX, y: doorConfig.mapY)
+            door.fillColor = SKColor(red: 0.5, green: 0.0, blue: 0.5, alpha: 0.6)  // Purple with transparency
+            door.strokeColor = SKColor(red: 1.0, green: 0.0, blue: 1.0, alpha: 1.0)  // Bright purple border
+            door.lineWidth = 3
+            door.name = "door_\(doorConfig.id)"
+            door.zPosition = 15
+            container.addChild(door)
+            
+            // Add label with destination
+            let label = SKLabelNode(fontNamed: "Arial")
+            label.text = doorConfig.destinationRoomId
+            label.fontSize = 12
+            label.fontColor = .white
+            label.position = CGPoint(x: doorConfig.mapX, y: doorConfig.mapY)
+            label.zPosition = 16
+            container.addChild(label)
+            
+            doorNodes[doorConfig.id] = door
         }
     }
     
@@ -144,6 +197,30 @@ class MapScene: GameScene {
         
         // Clamp camera to visible area bounds
         clampCameraPosition()
+    }
+    
+    private func setupRoomLabel() {
+        // Create a label that stays at the top of the screen (not affected by camera)
+        let label = SKLabelNode(fontNamed: "Arial")
+        label.fontSize = 20
+        label.fontColor = .black
+        label.zPosition = 1000  // High z-position to appear on top
+        label.position = CGPoint(x: size.width / 2, y: size.height - 40)
+        label.name = "roomLabel"
+        addChild(label)
+        roomLabelNode = label
+        
+        // Update with current room name
+        updateRoomLabel()
+    }
+    
+    private func updateRoomLabel() {
+        guard let label = roomLabelNode else { return }
+        if let roomConfig = getRoomConfig(currentRoomId) {
+            label.text = "📍 \(roomConfig.name)"
+        } else {
+            label.text = "📍 \(currentRoomId)"
+        }
     }
     
     // MARK: - Camera Management
@@ -247,6 +324,20 @@ class MapScene: GameScene {
         
         let charPos = characterNode.position
         
+        // Check doors first
+        let doorsInRoom = getDoorsInRoom(currentRoomId)
+        for doorConfig in doorsInRoom {
+            let doorPos = CGPoint(x: doorConfig.mapX, y: doorConfig.mapY)
+            let distance = hypot(charPos.x - doorPos.x, charPos.y - doorPos.y)
+            
+            // If character touches a door, change rooms
+            if distance < doorConfig.width / 2 && !isMoving {
+                print("🚪 Character touched door: \(doorConfig.id) - entering room: \(doorConfig.destinationRoomId)")
+                enterRoom(doorConfig.destinationRoomId, fromDoorId: doorConfig.returnDoorId)
+                return
+            }
+        }
+        
         // Check each level station
         for levelConfig in LEVEL_CONFIGS {
             let stationPos = CGPoint(x: levelConfig.mapX, y: levelConfig.mapY)
@@ -282,6 +373,55 @@ class MapScene: GameScene {
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
             self.gameViewController?.startGameplay()
         }
+    }
+    
+    private func enterRoom(_ roomId: String, fromDoorId: String) {
+        guard let mapState = mapState else { return }
+        guard let returnDoor = getDoorConfig(fromDoorId) else {
+            print("⚠️ Could not find return door: \(fromDoorId)")
+            return
+        }
+        
+        // Update current room
+        currentRoomId = roomId
+        
+        // IMPORTANT: Load the new room's dimensions from config
+        if let roomConfig = getRoomConfig(currentRoomId) {
+            MAP_WIDTH = CGFloat(roomConfig.width)
+            MAP_HEIGHT = CGFloat(roomConfig.height)
+            print("🗺️ Entered room '\(roomConfig.name)' - dimensions: \(MAP_WIDTH) x \(MAP_HEIGHT)")
+        }
+        
+        // Position character at the return door location, but offset away from the door
+        // to prevent immediate re-collision and door looping
+        let doorX = returnDoor.mapX
+        let doorY = returnDoor.mapY
+        
+        // Offset character away from door by a safe distance (100 units)
+        let offsetDistance: CGFloat = 100
+        mapState.characterX = doorX + offsetDistance
+        mapState.characterY = doorY
+        
+        // Clear and rebuild map content for new room
+        mapContainer?.removeAllChildren()
+        doorNodes.removeAll()
+        levelStationNodes.removeAll()
+        
+        // Rebuild the map for the new room
+        setupMapBackground()
+        setupLevelStations()
+        setupDoors()
+        setupCharacter()
+        
+        // Update room label
+        updateRoomLabel()
+        
+        // Update camera
+        if let characterNode = characterNode {
+            camera?.position = characterNode.position
+        }
+        
+        print("🚪 Successfully entered room: \(roomId)")
     }
     
     // MARK: - Touch Handling

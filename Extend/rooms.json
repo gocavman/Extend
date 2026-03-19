@@ -1,0 +1,20 @@
+[
+  {
+    "id": "main_map",
+    "name": "Main Training Area",
+    "width": 2000,
+    "height": 2000,
+    "backgroundImage": "map_bg",
+    "levels": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
+    "doors": ["door_to_training_room_1"]
+  },
+  {
+    "id": "training_room_1",
+    "name": "Advanced Training Room",
+    "width": 1000,
+    "height": 1000,
+    "backgroundImage": "training_room_1_bg",
+    "levels": [],
+    "doors": ["door_to_main_map_from_training_1"]
+  }
+]

@@ -135,6 +135,30 @@ struct LevelConfig: Codable {
     }
 }
 
+// MARK: - Door Configuration
+
+struct DoorConfig: Codable {
+    let id: String
+    let mapX: Double
+    let mapY: Double
+    let width: Double
+    let height: Double
+    let destinationRoomId: String
+    let returnDoorId: String
+}
+
+// MARK: - Room Configuration
+
+struct RoomConfig: Codable {
+    let id: String
+    let name: String
+    let width: Double
+    let height: Double
+    let backgroundImage: String
+    let levels: [Int]
+    let doors: [String]
+}
+
 // MARK: - Door Structure
 
 struct Door {
@@ -233,6 +257,69 @@ public let ACTION_CONFIGS: [ActionConfig] = loadActionConfigs()
 // MARK: - Level Configurations
 
 let LEVEL_CONFIGS: [LevelConfig] = loadLevels()
+
+// MARK: - Door and Room Loading Functions
+
+/// Loads door configurations from doors.json
+func loadDoors() -> [DoorConfig] {
+    if let url = Bundle.main.url(forResource: "doors", withExtension: "json") {
+        do {
+            let data = try Data(contentsOf: url)
+            let doors = try JSONDecoder().decode([DoorConfig].self, from: data)
+            print("✅ Successfully loaded \(doors.count) door configurations")
+            return doors
+        } catch {
+            print("⚠️ Failed to decode doors.json: \(error)")
+        }
+    } else {
+        print("ℹ️ doors.json not found - no doors will be available")
+    }
+    return []
+}
+
+/// Loads room configurations from rooms.json
+func loadRooms() -> [RoomConfig] {
+    if let url = Bundle.main.url(forResource: "rooms", withExtension: "json") {
+        do {
+            let data = try Data(contentsOf: url)
+            let rooms = try JSONDecoder().decode([RoomConfig].self, from: data)
+            print("✅ Successfully loaded \(rooms.count) room configurations")
+            return rooms
+        } catch {
+            print("⚠️ Failed to decode rooms.json: \(error)")
+        }
+    } else {
+        print("ℹ️ rooms.json not found - using default main map only")
+    }
+    return []
+}
+
+// MARK: - Door and Room Configurations
+
+let DOOR_CONFIGS: [DoorConfig] = loadDoors()
+let ROOM_CONFIGS: [RoomConfig] = loadRooms()
+
+// Helper to get a room by ID
+func getRoomConfig(_ roomId: String) -> RoomConfig? {
+    return ROOM_CONFIGS.first { $0.id == roomId }
+}
+
+// Helper to get a door by ID
+func getDoorConfig(_ doorId: String) -> DoorConfig? {
+    return DOOR_CONFIGS.first { $0.id == doorId }
+}
+
+// Helper to get all doors in a room
+func getDoorsInRoom(_ roomId: String) -> [DoorConfig] {
+    guard let room = getRoomConfig(roomId) else { return [] }
+    return DOOR_CONFIGS.filter { room.doors.contains($0.id) }
+}
+
+// Helper to get all level IDs in a room
+func getLevelsInRoom(_ roomId: String) -> [Int] {
+    guard let room = getRoomConfig(roomId) else { return [] }
+    return room.levels
+}
 
 public struct Game1Module: AppModule {
     public let id: UUID = ModuleIDs.game1
