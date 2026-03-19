@@ -1432,6 +1432,8 @@ private func updateFloatingText() {
 
 private func activateBoost() {
     boostEndTime = CACurrentMediaTime() + 6.0  // 6 second boost
+    // Also update gameState's speedBoostEndTime so animations can use it
+    gameState?.speedBoostEndTime = Date().addingTimeInterval(6.0)
 }
 
 private func updateBoostTimer() {

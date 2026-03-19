@@ -1198,7 +1198,10 @@ class StickFigureGameState {
         
         // Start config-driven countdown timer if enabled
         if config.countdown == true {
-            let duration = calculateAnimationDuration(config: config)
+            let baselineDuration = calculateAnimationDuration(config: config)
+            // Apply speed boost multiplier if applicable
+            let speedMultiplier = (config.supportsSpeedBoost && gameState.speedBoostTimeRemaining > 0) ? 0.5 : 1.0
+            let duration = baselineDuration * speedMultiplier
             gameState.actionCountdownTotalDuration = duration
             gameState.actionCountdownTimeRemaining = duration
             gameState.actionCountdownTimer?.invalidate()
@@ -1226,6 +1229,8 @@ class StickFigureGameState {
         let baseInterval = config.stickFigureAnimation?.baseFrameInterval ?? 0.15
         
         let interval = baseInterval * speedMultiplier
+        
+        print("🎬 UNIFORM TIMING: \(config.id), supportsSpeedBoost=\(config.supportsSpeedBoost), speedBoostRemaining=\(gameState.speedBoostTimeRemaining), speedMultiplier=\(speedMultiplier), baseInterval=\(baseInterval), finalInterval=\(interval)")
         
         // Initialize floating text state for uniform timing
         var floatingTextIndex = 0
@@ -1298,6 +1303,10 @@ class StickFigureGameState {
                     gameState.addPoints(config.pointsPerCompletion, action: config.id)
                     // Award muscle points for this action
                     gameState.awardMuscleLevelPoints(for: config.id)
+                    
+                    // Show floating text with points awarded
+                    let pointsText = "+\(config.pointsPerCompletion)"
+                    gameState.addFloatingText(pointsText, x: 0.5, y: 0.5, color: .green, fontSize: 32)
                 }
             }
         }
@@ -1337,6 +1346,10 @@ class StickFigureGameState {
                     gameState.addPoints(config.pointsPerCompletion, action: config.id)
                     // Award muscle points for this action
                     gameState.awardMuscleLevelPoints(for: config.id)
+                    
+                    // Show floating text with points awarded
+                    let pointsText = "+\(config.pointsPerCompletion)"
+                    gameState.addFloatingText(pointsText, x: 0.5, y: 0.5, color: .green, fontSize: 32)
                 }
                 return
             }
