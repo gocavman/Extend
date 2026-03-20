@@ -32,8 +32,6 @@ class MapScene: GameScene {
     private var isMoving = false
     private var currentAnimationFrame = 1
     private var currentRoomId: String = "main_map"  // Track which room we're in
-    private var roomLabelNode: SKLabelNode?  // Label showing current room name
-    private var levelPointsLabelNode: SKLabelNode?  // Label showing level and points
     
     // MARK: - Timers
     private var movementTimer: Timer?
@@ -70,9 +68,6 @@ class MapScene: GameScene {
         
         // Initialize camera
         setupCamera()
-        
-        // Add room label at top of screen
-        setupRoomLabel()
         
         // Start timers
         startMovementTimer()
@@ -250,50 +245,6 @@ class MapScene: GameScene {
         
         // Clamp camera to visible area bounds
         clampCameraPosition()
-    }
-    
-    private func setupRoomLabel() {
-        // Create a label that stays at the top of the current room
-        let label = SKLabelNode(fontNamed: "Arial")
-        label.fontSize = 24
-        label.fontColor = .black
-        label.zPosition = 1000  // High z-position to appear on top
-        // Position at top-center of the room (in world coordinates)
-        label.position = CGPoint(x: MAP_WIDTH / 2, y: MAP_HEIGHT - 50)
-        label.name = "roomLabel"
-        mapContainer?.addChild(label)
-        roomLabelNode = label
-        
-        // Create level and points label below the room name
-        let levelPointsLabel = SKLabelNode(fontNamed: "Arial")
-        levelPointsLabel.fontSize = 18
-        levelPointsLabel.fontColor = .black
-        levelPointsLabel.zPosition = 1000  // High z-position to appear on top
-        // Position below room label
-        levelPointsLabel.position = CGPoint(x: MAP_WIDTH / 2, y: MAP_HEIGHT - 100)
-        levelPointsLabel.name = "levelPointsLabel"
-        mapContainer?.addChild(levelPointsLabel)
-        levelPointsLabelNode = levelPointsLabel
-        
-        // Update with current room name and level/points
-        updateRoomLabel()
-        updateLevelPoints()
-    }
-    
-    private func updateRoomLabel() {
-        guard let label = roomLabelNode else { return }
-        if let roomConfig = getRoomConfig(currentRoomId) {
-            label.text = "📍 \(roomConfig.name)"
-        } else {
-            label.text = "📍 \(currentRoomId)"
-        }
-    }
-    
-    private func updateLevelPoints() {
-        guard let label = levelPointsLabelNode else { return }
-        let level = gameState?.currentLevel ?? 1
-        let points = gameState?.currentPoints ?? 0
-        label.text = "Level: \(level) | Points: \(points)"
     }
     
     // MARK: - Camera Management
@@ -500,16 +451,15 @@ class MapScene: GameScene {
         setupPopulation()
         setupCharacter()
         
-        // Update room label
-        updateRoomLabel()
+        // Update HUD with room info
+        if let roomConfig = getRoomConfig(currentRoomId) {
+            gameViewController?.updateHUDInfo(roomName: roomConfig.name, level: gameState?.currentLevel ?? 1, points: gameState?.currentPoints ?? 0)
+        }
         
         // Update camera
         if let characterNode = characterNode {
             camera?.position = characterNode.position
         }
-        
-        // Update level/points display
-        updateLevelPoints()
         
         print("🚪 Successfully entered room: \(roomId)")
     }
@@ -559,7 +509,9 @@ class MapScene: GameScene {
         }
         
         // Update HUD to show new points
-        updateLevelPoints()
+        if let roomConfig = getRoomConfig(currentRoomId) {
+            gameViewController?.updateHUDInfo(roomName: roomConfig.name, level: gameState?.currentLevel ?? 1, points: gameState?.currentPoints ?? 0)
+        }
     }
     
     // MARK: - Touch Handling

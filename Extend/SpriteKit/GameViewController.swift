@@ -12,6 +12,9 @@ class GameViewController: UIViewController {
     var onDismissGame: (() -> Void)?  // Callback for SwiftUI dismissal
     private var hasInitializedScene = false  // Track if we've shown the initial scene
     private var hudContainer: UIStackView?  // HUD buttons container
+    private var infoContainer: UIStackView?  // Info labels container (room name, level, points)
+    private var roomNameLabel: UILabel?  // Room name display
+    private var levelPointsLabel: UILabel?  // Level and points display
     
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -78,10 +81,55 @@ class GameViewController: UIViewController {
         hudStack.addArrangedSubview(statsBtn)
         
         self.hudContainer = hudStack
+        
+        // Create info labels container below buttons (no spacing)
+        let infoStack = UIStackView()
+        infoStack.axis = .horizontal
+        infoStack.spacing = 20
+        infoStack.distribution = .fillEqually
+        infoStack.alignment = .center
+        
+        view.addSubview(infoStack)
+        infoStack.translatesAutoresizingMaskIntoConstraints = false
+        
+        NSLayoutConstraint.activate([
+            infoStack.topAnchor.constraint(equalTo: hudStack.bottomAnchor, constant: 0),
+            infoStack.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 10),
+            infoStack.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -10),
+            infoStack.heightAnchor.constraint(equalToConstant: 40)
+        ])
+        
+        // Create room name label
+        let roomLabel = UILabel()
+        roomLabel.textAlignment = .center
+        roomLabel.font = UIFont.systemFont(ofSize: 14, weight: .medium)
+        roomLabel.textColor = .black
+        roomLabel.text = "Main Training Area"
+        infoStack.addArrangedSubview(roomLabel)
+        self.roomNameLabel = roomLabel
+        
+        // Create level and points label
+        let levelPointsLabel = UILabel()
+        levelPointsLabel.textAlignment = .center
+        levelPointsLabel.font = UIFont.systemFont(ofSize: 14, weight: .medium)
+        levelPointsLabel.textColor = .black
+        levelPointsLabel.text = "Level: 1 | Points: 0"
+        infoStack.addArrangedSubview(levelPointsLabel)
+        self.levelPointsLabel = levelPointsLabel
+        
+        // Store reference to info container so we can hide it during gameplay
+        self.infoContainer = infoStack
     }
     
     func setHUDVisible(_ visible: Bool) {
         hudContainer?.isHidden = !visible
+        infoContainer?.isHidden = !visible
+    }
+    
+    /// Update HUD labels with current room, level, and points
+    func updateHUDInfo(roomName: String, level: Int, points: Int) {
+        roomNameLabel?.text = "📍 \(roomName)"
+        levelPointsLabel?.text = "Level: \(level) | Points: \(points)"
     }
     
     private func createHUDButton(title: String, color: UIColor, action: Selector) -> UIButton {
@@ -172,6 +220,10 @@ class GameViewController: UIViewController {
             mapState.characterX = levelConfig.mapX - offsetDistance
             mapState.characterY = levelConfig.mapY - offsetDistance
         }
+        
+        // Update HUD with current room info
+        let roomName = getRoomConfig("main_map")?.name ?? "Main Map"
+        updateHUDInfo(roomName: roomName, level: gameState.currentLevel, points: gameState.currentPoints)
         
         // Remove previous scene if it exists
         if let currentScene = currentScene {
