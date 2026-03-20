@@ -10,6 +10,7 @@ class MapHUDScene: SKScene {
     private var statsButton: SKShapeNode?
     private var appearanceButton: SKLabelNode?
     private var editorButton: SKShapeNode?
+    private var levelPointsLabel: SKLabelNode?
     
     override func didMove(to view: SKView) {
         super.didMove(to: view)
@@ -94,6 +95,17 @@ class MapHUDScene: SKScene {
         editorLabel.position = CGPoint(x: size.width / 2 + 65, y: topBarY)
         editorLabel.zPosition = 101
         addChild(editorLabel)
+        
+        // MARK: - Level and Points Row (Below Buttons)
+        let statsRowY: CGFloat = topBarY - 40
+        let levelPointsLabel = SKLabelNode(fontNamed: "Arial")
+        levelPointsLabel.text = "Level: 1 | Points: 0"
+        levelPointsLabel.fontSize = 14
+        levelPointsLabel.fontColor = .black
+        levelPointsLabel.position = CGPoint(x: size.width / 2, y: statsRowY)
+        levelPointsLabel.name = "levelPointsLabel"
+        levelPointsLabel.zPosition = 101
+        addChild(levelPointsLabel)
     }
     
     // MARK: - Touch Handling
@@ -138,6 +150,12 @@ class MapHUDScene: SKScene {
                 return
             }
         }
+    }
+    
+    // MARK: - Update Methods
+    
+    func updateLevelPoints(level: Int, points: Int) {
+        levelPointsLabel?.text = "Level: \(level) | Points: \(points)"
     }
     
     @MainActor

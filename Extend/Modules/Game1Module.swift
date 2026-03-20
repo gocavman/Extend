@@ -139,6 +139,7 @@ struct LevelConfig: Codable {
 
 struct DoorConfig: Codable {
     let id: String
+    let name: String?  // Optional: display name for the door
     let mapX: Double
     let mapY: Double
     let width: Double
@@ -153,6 +154,7 @@ struct PopulationConfig: Codable {
     let items: [String]  // Array of emojis or asset names
     let count: Int       // How many to spawn
     let points: Int      // Points awarded per collection
+    let size: CGFloat?   // Optional: emoji/asset size (default: 20)
 }
 
 // MARK: - Room Configuration

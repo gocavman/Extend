@@ -1,6 +1,7 @@
 [
   {
     "id": "door_to_training_room_1",
+    "name": "Training Room",
     "mapX": 2000,
     "mapY": 1000,
     "width": 100,
@@ -10,6 +11,7 @@
   },
   {
     "id": "door_to_main_map_from_training_1",
+    "name": "Back to Main",
     "mapX": 125,
     "mapY": 900,
     "width": 150,

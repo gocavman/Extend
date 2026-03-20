@@ -1314,4 +1314,28 @@ class GameScene: SKScene {
             .withTintColor(color, renderingMode: .alwaysTemplate)
         return image
     }
+    
+    /// Convert hex color string (e.g., "#6F4E37") to SKColor
+    func hexToColor(_ hex: String) -> SKColor {
+        var hexSanitized = hex.trimmingCharacters(in: .whitespacesAndNewlines)
+        hexSanitized = hexSanitized.hasPrefix("#") ? String(hexSanitized.dropFirst()) : hexSanitized
+        
+        // Default to gray if invalid
+        guard hexSanitized.count == 6 else {
+            return SKColor(red: 0.5, green: 0.5, blue: 0.5, alpha: 1.0)
+        }
+        
+        let scanner = Scanner(string: hexSanitized)
+        var hexNumber: UInt64 = 0
+        
+        guard scanner.scanHexInt64(&hexNumber) else {
+            return SKColor(red: 0.5, green: 0.5, blue: 0.5, alpha: 1.0)
+        }
+        
+        let red = CGFloat((hexNumber & 0xFF0000) >> 16) / 255.0
+        let green = CGFloat((hexNumber & 0x00FF00) >> 8) / 255.0
+        let blue = CGFloat(hexNumber & 0x0000FF) / 255.0
+        
+        return SKColor(red: red, green: green, blue: blue, alpha: 1.0)
+    }
 }

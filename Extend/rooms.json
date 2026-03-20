@@ -10,8 +10,9 @@
     "doors": ["door_to_training_room_1"],
     "population": {
       "items": ["⭐"],
-      "count": 15,
-      "points": 50
+      "count": 7,
+      "points": 5,
+      "size": 24
     }
   },
   {
@@ -25,8 +26,9 @@
     "doors": ["door_to_main_map_from_training_1"],
     "population": {
       "items": ["🌲"],
-      "count": 15,
-      "points": 50
+      "count": 20,
+      "points": 5,
+      "size": 35
     }
   }
 ]

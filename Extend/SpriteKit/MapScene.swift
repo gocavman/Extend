@@ -23,6 +23,7 @@ class MapScene: GameScene {
     
     // MARK: - Nodes and State
     private var mapContainer: SKNode? // Container for all map content (moves with camera)
+    private var hudContainer: SKNode? // Fixed HUD layer for level/points display
     private var characterNode: SKSpriteNode?
     private var levelStationNodes: [Int: SKShapeNode] = [:] // levelId -> node
     private var doorNodes: [String: SKShapeNode] = [:] // doorId -> node
@@ -32,6 +33,7 @@ class MapScene: GameScene {
     private var currentAnimationFrame = 1
     private var currentRoomId: String = "main_map"  // Track which room we're in
     private var roomLabelNode: SKLabelNode?  // Label showing current room name
+    private var levelPointsLabelNode: SKLabelNode?  // Label showing level and points
     
     // MARK: - Timers
     private var movementTimer: Timer?
@@ -103,32 +105,6 @@ class MapScene: GameScene {
         container.addChild(background)
     }
     
-    // MARK: - Helper Methods
-    
-    private func hexToColor(_ hex: String) -> SKColor {
-        var hexString = hex.trimmingCharacters(in: .whitespaces).uppercased()
-        
-        // Remove # if present
-        if hexString.hasPrefix("#") {
-            hexString.removeFirst()
-        }
-        
-        // Handle 6-digit hex (RRGGBB)
-        if hexString.count == 6 {
-            let scanner = Scanner(string: hexString)
-            var rgbValue: UInt64 = 0
-            scanner.scanHexInt64(&rgbValue)
-            
-            let red = CGFloat((rgbValue >> 16) & 0xFF) / 255.0
-            let green = CGFloat((rgbValue >> 8) & 0xFF) / 255.0
-            let blue = CGFloat(rgbValue & 0xFF) / 255.0
-            
-            return SKColor(red: red, green: green, blue: blue, alpha: 1.0)
-        }
-        
-        // Fallback to gray if parsing fails
-        return SKColor(red: 0.83, green: 0.83, blue: 0.83, alpha: 1.0)
-    }
     private func setupLevelStations() {
         guard let container = mapContainer else { return }
         guard let gameState = gameState else {
@@ -195,9 +171,9 @@ class MapScene: GameScene {
             door.zPosition = 15
             container.addChild(door)
             
-            // Add label with destination
+            // Add label with door name (or destination room ID as fallback)
             let label = SKLabelNode(fontNamed: "Arial")
-            label.text = doorConfig.destinationRoomId
+            label.text = doorConfig.name ?? doorConfig.destinationRoomId
             label.fontSize = 20
             label.fontColor = .white
             label.position = CGPoint(x: doorConfig.mapX, y: doorConfig.mapY)
@@ -224,6 +200,7 @@ class MapScene: GameScene {
         let roomPadding: CGFloat = 100  // Keep items away from edges
         let spawnableWidth = MAP_WIDTH - (roomPadding * 2)
         let spawnableHeight = MAP_HEIGHT - (roomPadding * 2)
+        let fontSize = populationConfig.size ?? 40  // Default to 40 if not specified
         
         // Spawn population items at random positions
         for i in 0..<populationConfig.count {
@@ -236,7 +213,7 @@ class MapScene: GameScene {
             // Create emoji as label node
             let populationNode = SKLabelNode(fontNamed: "Arial")
             populationNode.text = emoji
-            populationNode.fontSize = 40
+            populationNode.fontSize = fontSize
             populationNode.position = CGPoint(x: randomX, y: randomY)
             populationNode.name = "population_\(currentRoomId)_\(i)"
             populationNode.zPosition = 12
@@ -287,8 +264,20 @@ class MapScene: GameScene {
         mapContainer?.addChild(label)
         roomLabelNode = label
         
-        // Update with current room name
+        // Create level and points label below the room name
+        let levelPointsLabel = SKLabelNode(fontNamed: "Arial")
+        levelPointsLabel.fontSize = 18
+        levelPointsLabel.fontColor = .black
+        levelPointsLabel.zPosition = 1000  // High z-position to appear on top
+        // Position below room label
+        levelPointsLabel.position = CGPoint(x: MAP_WIDTH / 2, y: MAP_HEIGHT - 100)
+        levelPointsLabel.name = "levelPointsLabel"
+        mapContainer?.addChild(levelPointsLabel)
+        levelPointsLabelNode = levelPointsLabel
+        
+        // Update with current room name and level/points
         updateRoomLabel()
+        updateLevelPoints()
     }
     
     private func updateRoomLabel() {
@@ -298,6 +287,13 @@ class MapScene: GameScene {
         } else {
             label.text = "📍 \(currentRoomId)"
         }
+    }
+    
+    private func updateLevelPoints() {
+        guard let label = levelPointsLabelNode else { return }
+        let level = gameState?.currentLevel ?? 1
+        let points = gameState?.currentPoints ?? 0
+        label.text = "Level: \(level) | Points: \(points)"
     }
     
     // MARK: - Camera Management
@@ -512,10 +508,14 @@ class MapScene: GameScene {
             camera?.position = characterNode.position
         }
         
+        // Update level/points display
+        updateLevelPoints()
+        
         print("🚪 Successfully entered room: \(roomId)")
     }
     
     private func collectPopulation(populationId: String, populationNode: SKLabelNode) {
+        guard let container = mapContainer else { return }
         guard let roomConfig = getRoomConfig(currentRoomId) else { return }
         guard let populationConfig = roomConfig.population else { return }
         
@@ -523,26 +523,43 @@ class MapScene: GameScene {
         
         print("🌟 Collected population item '\(populationNode.text ?? "?")' - \(pointsAwarded) points awarded")
         
-        // Add floating text showing points
-        let pointsText = "+\(pointsAwarded)"
-        gameState?.addFloatingText(pointsText, x: populationNode.position.x, y: populationNode.position.y, color: .yellow, fontSize: 28)
+        // Award points
+        gameState?.addPoints(pointsAwarded, action: "collect")
         
-        // Create a collection animation
-        let scaleDown = SKAction.scale(to: 0.5, duration: 0.2)
-        let fadeOut = SKAction.fadeOut(withDuration: 0.2)
-        let group = SKAction.group([scaleDown, fadeOut])
+        // Create floating text showing points directly on MapScene
+        let pointsText = "+\(pointsAwarded)"
+        let floatingTextNode = SKLabelNode(fontNamed: "Arial")
+        floatingTextNode.text = pointsText
+        floatingTextNode.fontSize = 28
+        floatingTextNode.fontColor = .green
+        floatingTextNode.position = populationNode.position
+        floatingTextNode.zPosition = 20
+        container.addChild(floatingTextNode)
+        
+        // Create a floating up animation
+        let moveUp = SKAction.moveBy(x: 0, y: 60, duration: 0.6)
+        let fadeOut = SKAction.fadeOut(withDuration: 0.6)
+        let group = SKAction.group([moveUp, fadeOut])
         let remove = SKAction.removeFromParent()
         let sequence = SKAction.sequence([group, remove])
+        floatingTextNode.run(sequence)
         
-        populationNode.run(sequence)
+        // Create a collection animation for the population item
+        let scaleDown = SKAction.scale(to: 0.5, duration: 0.2)
+        let itemFadeOut = SKAction.fadeOut(withDuration: 0.2)
+        let itemGroup = SKAction.group([scaleDown, itemFadeOut])
+        let itemRemove = SKAction.removeFromParent()
+        let itemSequence = SKAction.sequence([itemGroup, itemRemove])
+        
+        populationNode.run(itemSequence)
         
         // Remove from tracking dictionary after a short delay
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
             self.populationNodes.removeValue(forKey: populationId)
         }
         
-        // Update game score
-        gameState?.addPoints(pointsAwarded, action: "collect")
+        // Update HUD to show new points
+        updateLevelPoints()
     }
     
     // MARK: - Touch Handling
