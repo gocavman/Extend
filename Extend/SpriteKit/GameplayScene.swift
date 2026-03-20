@@ -103,9 +103,9 @@ override func didMove(to view: SKView) {
     setupControlZones()
     
     // Set up callback for action/exercise points floating animation
-    gameState.onPointsAwarded = { [weak self] points, x, y, delay in
+    gameState.onPointsAwarded = { [weak self] points, x, y in
         let pointsText = "+\(points)"
-        self?.addFloatingText(pointsText, x: x, y: y, color: .green, points: points, delay: delay)
+        self?.addFloatingText(pointsText, x: x, y: y, color: .green, points: points)
     }
     
     // Auto-select action from gameState if available
@@ -186,7 +186,7 @@ private func setupUI() {
     levelLabel = SKLabelNode(fontNamed: "Arial")
     levelLabel?.fontSize = 12
     levelLabel?.fontColor = .black
-    levelLabel?.position = CGPoint(x: size.width / 2 - 60, y: topBarY)
+    levelLabel?.position = CGPoint(x: size.width / 2 - 80, y: topBarY)
     levelLabel?.text = "Level: \(gameState?.currentLevel ?? 1)"
     levelLabel?.zPosition = 101
     if let label = levelLabel { addChild(label) }
@@ -195,7 +195,7 @@ private func setupUI() {
     pointsTextLabel = SKLabelNode(fontNamed: "Arial")
     pointsTextLabel?.fontSize = 12
     pointsTextLabel?.fontColor = .black
-    pointsTextLabel?.position = CGPoint(x: size.width / 2 + 10, y: topBarY)
+    pointsTextLabel?.position = CGPoint(x: size.width / 2 - 5, y: topBarY)
     pointsTextLabel?.text = "Points: "
     pointsTextLabel?.zPosition = 101
     if let label = pointsTextLabel { addChild(label) }
@@ -204,7 +204,7 @@ private func setupUI() {
     pointsValueLabel = SKLabelNode(fontNamed: "Arial")
     pointsValueLabel?.fontSize = 12
     pointsValueLabel?.fontColor = .black
-    pointsValueLabel?.position = CGPoint(x: size.width / 2 + 38, y: topBarY)
+    pointsValueLabel?.position = CGPoint(x: size.width / 2 + 40, y: topBarY)
     pointsValueLabel?.text = "\(gameState?.currentPoints ?? 0)"
     pointsValueLabel?.zPosition = 101
     if let label = pointsValueLabel { addChild(label) }
@@ -1369,15 +1369,7 @@ private func createCatchableNode(for item: FallingItem) -> SKNode? {
 
 // MARK: - Floating Text Management
 
-private func addFloatingText(_ text: String, x: CGFloat, y: CGFloat, color: UIColor, points: Int = 0, delay: TimeInterval = 0) {
-    // If there's a delay, schedule the floating text creation for later
-    if delay > 0 {
-        DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [weak self] in
-            self?.addFloatingText(text, x: x, y: y, color: color, points: points, delay: 0)
-        }
-        return
-    }
-    
+private func addFloatingText(_ text: String, x: CGFloat, y: CGFloat, color: UIColor, points: Int = 0) {
     let label = SKLabelNode(fontNamed: "Arial-BoldMT")
     label.text = text
     label.fontSize = 32  // Make it larger for point text
@@ -1420,13 +1412,11 @@ private func addFloatingText(_ text: String, x: CGFloat, y: CGFloat, color: UICo
         
         label.run(sequence)
         
-        // After the float animation completes (0.8 seconds), trigger the points animation on the header label
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) { [weak self] in
-            guard let gameState = self?.gameState else { return }
-            let newTotal = gameState.currentPoints
-            let previousTotal = newTotal - points
-            self?.animateHeaderPointsCounter(from: previousTotal, to: newTotal)
-        }
+        // Trigger the points counter animation immediately
+        guard let gameState = gameState else { return }
+        let newTotal = gameState.currentPoints
+        let previousTotal = newTotal - points
+        animateHeaderPointsCounter(from: previousTotal, to: newTotal)
     }
     
     private func animateHeaderPointsCounter(from startPoints: Int, to endPoints: Int) {
@@ -1440,24 +1430,28 @@ private func addFloatingText(_ text: String, x: CGFloat, y: CGFloat, color: UICo
         pointsValueLabel.fontSize = 14
         pointsValueLabel.fontName = "Arial-BoldMT"
         
-        // For each point to add, show an increment
-        // Distribute the increments evenly across the duration
-        let updateInterval: TimeInterval = duration / Double(pointsToAdd)
+        // Ensure minimum 10 updates for smooth animation, even for 1 point
+        let minUpdates = 10
+        let updates = max(minUpdates, pointsToAdd)
+        let updateInterval: TimeInterval = duration / Double(updates)
         var currentIncrement = 0
         
         var timer: Timer?
         timer = Timer.scheduledTimer(withTimeInterval: updateInterval, repeats: true) { _ in
             currentIncrement += 1
-            let newValue = startPoints + currentIncrement
             
-            if currentIncrement >= pointsToAdd {
-                timer?.invalidate()  // INVALIDATE IMMEDIATELY
+            // Calculate which point value to show based on progress through the animation
+            let pointsToShowThisFrame = Int(Double(pointsToAdd) * Double(currentIncrement) / Double(updates))
+            let newValue = startPoints + pointsToShowThisFrame
+            
+            if currentIncrement >= updates {
+                timer?.invalidate()
                 // Set final value - return to normal formatting
                 pointsValueLabel.text = "\(endPoints)"
                 pointsValueLabel.fontSize = 12  // Return to normal size
                 pointsValueLabel.fontName = "Arial"  // Return to normal (not bold)
             } else {
-                // Update to the new value (always an integer increment)
+                // Update to the new value
                 pointsValueLabel.text = "\(newValue)"
                 // Keep it larger and bold while incrementing
                 pointsValueLabel.fontSize = 14
