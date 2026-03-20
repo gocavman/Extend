@@ -26,6 +26,7 @@ class MapScene: GameScene {
     private var characterNode: SKSpriteNode?
     private var levelStationNodes: [Int: SKShapeNode] = [:] // levelId -> node
     private var doorNodes: [String: SKShapeNode] = [:] // doorId -> node
+    private var populationNodes: [String: SKLabelNode] = [:] // populationId -> node (emoji label)
     private var targetPosition: CGPoint? = nil
     private var isMoving = false
     private var currentAnimationFrame = 1
@@ -62,6 +63,7 @@ class MapScene: GameScene {
         setupMapBackground()
         setupLevelStations()
         setupDoors()
+        setupPopulation()
         setupCharacter()
         
         // Initialize camera
@@ -203,6 +205,44 @@ class MapScene: GameScene {
             container.addChild(label)
             
             doorNodes[doorConfig.id] = door
+        }
+    }
+    
+    private func setupPopulation() {
+        guard let container = mapContainer else { return }
+        guard let roomConfig = getRoomConfig(currentRoomId) else { return }
+        
+        // Check if room has population config
+        guard let populationConfig = roomConfig.population,
+              !populationConfig.items.isEmpty,
+              populationConfig.count > 0 else {
+            return
+        }
+        
+        print("🌟 Spawning \(populationConfig.count) population items in room: \(currentRoomId)")
+        
+        let roomPadding: CGFloat = 100  // Keep items away from edges
+        let spawnableWidth = MAP_WIDTH - (roomPadding * 2)
+        let spawnableHeight = MAP_HEIGHT - (roomPadding * 2)
+        
+        // Spawn population items at random positions
+        for i in 0..<populationConfig.count {
+            let randomX = CGFloat.random(in: roomPadding..<(roomPadding + spawnableWidth))
+            let randomY = CGFloat.random(in: roomPadding..<(roomPadding + spawnableHeight))
+            
+            // Pick random emoji from items array
+            let emoji = populationConfig.items.randomElement() ?? "⭐"
+            
+            // Create emoji as label node
+            let populationNode = SKLabelNode(fontNamed: "Arial")
+            populationNode.text = emoji
+            populationNode.fontSize = 40
+            populationNode.position = CGPoint(x: randomX, y: randomY)
+            populationNode.name = "population_\(currentRoomId)_\(i)"
+            populationNode.zPosition = 12
+            container.addChild(populationNode)
+            
+            populationNodes[populationNode.name ?? ""] = populationNode
         }
     }
     
@@ -375,6 +415,18 @@ class MapScene: GameScene {
             }
         }
         
+        // Check population items for collision
+        let populationCollisionDistance: CGFloat = 50
+        for (populationId, populationNode) in populationNodes {
+            let distance = hypot(charPos.x - populationNode.position.x, charPos.y - populationNode.position.y)
+            
+            if distance < populationCollisionDistance {
+                // Character collided with population item
+                collectPopulation(populationId: populationId, populationNode: populationNode)
+                return
+            }
+        }
+        
         // Check each level station
         for levelConfig in LEVEL_CONFIGS {
             let stationPos = CGPoint(x: levelConfig.mapX, y: levelConfig.mapY)
@@ -443,11 +495,13 @@ class MapScene: GameScene {
         mapContainer?.removeAllChildren()
         doorNodes.removeAll()
         levelStationNodes.removeAll()
+        populationNodes.removeAll()
         
         // Rebuild the map for the new room
         setupMapBackground()
         setupLevelStations()
         setupDoors()
+        setupPopulation()
         setupCharacter()
         
         // Update room label
@@ -459,6 +513,36 @@ class MapScene: GameScene {
         }
         
         print("🚪 Successfully entered room: \(roomId)")
+    }
+    
+    private func collectPopulation(populationId: String, populationNode: SKLabelNode) {
+        guard let roomConfig = getRoomConfig(currentRoomId) else { return }
+        guard let populationConfig = roomConfig.population else { return }
+        
+        let pointsAwarded = populationConfig.points
+        
+        print("🌟 Collected population item '\(populationNode.text ?? "?")' - \(pointsAwarded) points awarded")
+        
+        // Add floating text showing points
+        let pointsText = "+\(pointsAwarded)"
+        gameState?.addFloatingText(pointsText, x: populationNode.position.x, y: populationNode.position.y, color: .yellow, fontSize: 28)
+        
+        // Create a collection animation
+        let scaleDown = SKAction.scale(to: 0.5, duration: 0.2)
+        let fadeOut = SKAction.fadeOut(withDuration: 0.2)
+        let group = SKAction.group([scaleDown, fadeOut])
+        let remove = SKAction.removeFromParent()
+        let sequence = SKAction.sequence([group, remove])
+        
+        populationNode.run(sequence)
+        
+        // Remove from tracking dictionary after a short delay
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
+            self.populationNodes.removeValue(forKey: populationId)
+        }
+        
+        // Update game score
+        gameState?.addPoints(pointsAwarded, action: "collect")
     }
     
     // MARK: - Touch Handling

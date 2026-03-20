@@ -147,6 +147,14 @@ struct DoorConfig: Codable {
     let returnDoorId: String
 }
 
+// MARK: - Population Configuration
+
+struct PopulationConfig: Codable {
+    let items: [String]  // Array of emojis or asset names
+    let count: Int       // How many to spawn
+    let points: Int      // Points awarded per collection
+}
+
 // MARK: - Room Configuration
 
 struct RoomConfig: Codable {
@@ -158,6 +166,7 @@ struct RoomConfig: Codable {
     let backgroundColor: String?
     let levels: [Int]
     let doors: [String]
+    let population: PopulationConfig?
 }
 
 // MARK: - Door Structure
