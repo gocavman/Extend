@@ -106,7 +106,7 @@ class GameViewController: UIViewController {
         roomLabel.textAlignment = .center
         roomLabel.font = UIFont.systemFont(ofSize: 14, weight: .medium)
         roomLabel.textColor = .black
-        roomLabel.text = "Main Training Area"
+        roomLabel.text = "📍Gym"
         infoStack.addArrangedSubview(roomLabel)
         self.roomNameLabel = roomLabel
         

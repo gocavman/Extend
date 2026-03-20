@@ -1,7 +1,7 @@
 [
   {
     "id": "main_map",
-    "name": "Main Training Area",
+    "name": "Gym",
     "width": 2000,
     "height": 2000,
     "backgroundImage": "map_bg",
