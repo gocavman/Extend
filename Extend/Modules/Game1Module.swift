@@ -438,6 +438,9 @@ class StickFigureGameState {
     var timeElapsed: Double = 0
     var allTimeElapsed: Double = 0
     
+    // Callback for floating points animation (set by GameplayScene)
+    var onPointsAwarded: ((Int, CGFloat, CGFloat, TimeInterval) -> Void)?  // points, x, y, delay
+    
     // Debug flags
     var showDebugGestureAreas: Bool = false {
         didSet {
@@ -1404,8 +1407,15 @@ class StickFigureGameState {
                     gameState.awardMuscleLevelPoints(for: config.id)
                     
                     // Show floating text with points awarded
-                    let pointsText = "+\(config.pointsPerCompletion)"
-                    gameState.addFloatingText(pointsText, x: 0.5, y: 0.5, color: .green, fontSize: 32)
+                    // Use callback if available (GameplayScene), otherwise use default floating text
+                    if let callback = gameState.onPointsAwarded {
+                        // Pass the action duration so floating text waits until animation completes
+                        let delayTime = duration / 1000.0  // Convert from ms to seconds
+                        callback(config.pointsPerCompletion, 0.5, 0.5, delayTime)  // Center of screen
+                    } else {
+                        let pointsText = "+\(config.pointsPerCompletion)"
+                        gameState.addFloatingText(pointsText, x: 0.5, y: 0.5, color: .green, fontSize: 32)
+                    }
                 }
             }
         }
@@ -1447,8 +1457,15 @@ class StickFigureGameState {
                     gameState.awardMuscleLevelPoints(for: config.id)
                     
                     // Show floating text with points awarded
-                    let pointsText = "+\(config.pointsPerCompletion)"
-                    gameState.addFloatingText(pointsText, x: 0.5, y: 0.5, color: .green, fontSize: 32)
+                    // Use callback if available (GameplayScene), otherwise use default floating text
+                    if let callback = gameState.onPointsAwarded {
+                        // Pass the action duration so floating text waits until animation completes
+                        let delayTime = duration / 1000.0  // Convert from ms to seconds
+                        callback(config.pointsPerCompletion, 0.5, 0.5, delayTime)  // Center of screen
+                    } else {
+                        let pointsText = "+\(config.pointsPerCompletion)"
+                        gameState.addFloatingText(pointsText, x: 0.5, y: 0.5, color: .green, fontSize: 32)
+                    }
                 }
                 return
             }

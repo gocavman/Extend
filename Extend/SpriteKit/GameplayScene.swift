@@ -21,6 +21,8 @@ struct FallingItem: Identifiable, Equatable {
 class GameplayScene: GameScene {
 private var characterNode: SKNode?
 var levelLabel: SKLabelNode?
+var pointsTextLabel: SKLabelNode?  // Label for "Points: " text
+var pointsValueLabel: SKLabelNode?  // Separate label for just the points number
 var animationFrameIndex: Int = 0
 
 // Eye blinking properties
@@ -100,6 +102,12 @@ override func didMove(to view: SKView) {
     // Create touch zones
     setupControlZones()
     
+    // Set up callback for action/exercise points floating animation
+    gameState.onPointsAwarded = { [weak self] points, x, y, delay in
+        let pointsText = "+\(points)"
+        self?.addFloatingText(pointsText, x: x, y: y, color: .green, points: points, delay: delay)
+    }
+    
     // Auto-select action from gameState if available
     if !gameState.selectedAction.isEmpty,
        let actionConfig = ACTION_CONFIGS.first(where: { $0.id == gameState.selectedAction }) {
@@ -174,14 +182,32 @@ private func setupUI() {
         addChild(appearanceButtonNode!)
     }
     
-    // Level display - top center
+    // Level display - top center left (level ONLY, no points)
     levelLabel = SKLabelNode(fontNamed: "Arial")
     levelLabel?.fontSize = 12
     levelLabel?.fontColor = .black
-    levelLabel?.position = CGPoint(x: size.width / 2, y: topBarY)
-    levelLabel?.text = "Level \(gameState?.currentLevel ?? 1) | Points: \(0)"
+    levelLabel?.position = CGPoint(x: size.width / 2 - 60, y: topBarY)
+    levelLabel?.text = "Level: \(gameState?.currentLevel ?? 1)"
     levelLabel?.zPosition = 101
     if let label = levelLabel { addChild(label) }
+    
+    // Points label text - "Points: " (static)
+    pointsTextLabel = SKLabelNode(fontNamed: "Arial")
+    pointsTextLabel?.fontSize = 12
+    pointsTextLabel?.fontColor = .black
+    pointsTextLabel?.position = CGPoint(x: size.width / 2 + 10, y: topBarY)
+    pointsTextLabel?.text = "Points: "
+    pointsTextLabel?.zPosition = 101
+    if let label = pointsTextLabel { addChild(label) }
+    
+    // Points display - separate value label (animates separately, close to "Points:" label)
+    pointsValueLabel = SKLabelNode(fontNamed: "Arial")
+    pointsValueLabel?.fontSize = 12
+    pointsValueLabel?.fontColor = .black
+    pointsValueLabel?.position = CGPoint(x: size.width / 2 + 38, y: topBarY)
+    pointsValueLabel?.text = "\(gameState?.currentPoints ?? 0)"
+    pointsValueLabel?.zPosition = 101
+    if let label = pointsValueLabel { addChild(label) }
     
     // Boost timer - top center below level label
     boostTimerLabel = SKLabelNode(fontNamed: "Arial")
@@ -566,8 +592,11 @@ private func updateGameLogic() {
         character.position.x = size.width + 50
     }
     
-    // Update level label
-    levelLabel?.text = "Level \(gameState.currentLevel) | Points: \(gameState.currentPoints)"
+    // Update level label (level ONLY, no points)
+    levelLabel?.text = "Level: \(gameState.currentLevel)"
+    
+    // NOTE: pointsValueLabel is updated only by animateHeaderPointsCounter during animation
+    // Do NOT update it here - let the animation handle all points label updates
     
     // Update floating text
     updateFloatingText()
@@ -1236,7 +1265,7 @@ private func checkCatchableCollisions(gameState: StickFigureGameState, character
                 // Display floating text with points
                 let pointsText = "+\(config.points)"
                 let textColor = UIColor(hex: config.color ?? "#808080") ?? .white
-                addFloatingText(pointsText, x: fallingItems[i].x, y: fallingItems[i].y, color: textColor)
+                addFloatingText(pointsText, x: fallingItems[i].x, y: fallingItems[i].y, color: textColor, points: config.points)
                 
                 // Trigger collision animation if configured (Shaker special case)
                 if config.collisionAnimation == "Shaker" {
@@ -1340,10 +1369,18 @@ private func createCatchableNode(for item: FallingItem) -> SKNode? {
 
 // MARK: - Floating Text Management
 
-private func addFloatingText(_ text: String, x: CGFloat, y: CGFloat, color: UIColor) {
+private func addFloatingText(_ text: String, x: CGFloat, y: CGFloat, color: UIColor, points: Int = 0, delay: TimeInterval = 0) {
+    // If there's a delay, schedule the floating text creation for later
+    if delay > 0 {
+        DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [weak self] in
+            self?.addFloatingText(text, x: x, y: y, color: color, points: points, delay: 0)
+        }
+        return
+    }
+    
     let label = SKLabelNode(fontNamed: "Arial-BoldMT")
     label.text = text
-    label.fontSize = 14
+    label.fontSize = 32  // Make it larger for point text
     label.fontColor = color
     
     // Convert normalized coordinates to screen coordinates
@@ -1360,7 +1397,74 @@ private func addFloatingText(_ text: String, x: CGFloat, y: CGFloat, color: UICo
         y: screenY,
         color: color
     ))
+    
+    // If this is a points text, animate it to the HUD and trigger counter animation
+    if points > 0 && text.starts(with: "+") {
+        animatePointsToHUD(label: label, points: points, startX: screenX, startY: screenY)
+    }
 }
+
+    private func animatePointsToHUD(label: SKLabelNode, points: Int, startX: CGFloat, startY: CGFloat) {
+        guard let pointsValueLabel = pointsValueLabel else { return }
+        
+        // Target the points value label on the right side of the screen
+        let targetX = pointsValueLabel.position.x
+        let targetY = pointsValueLabel.position.y
+        
+        // Animate floating text to header points position over 0.8 seconds
+        let moveAction = SKAction.move(to: CGPoint(x: targetX, y: targetY), duration: 0.8)
+        let fadeAction = SKAction.fadeOut(withDuration: 0.8)
+        let group = SKAction.group([moveAction, fadeAction])
+        let removeAction = SKAction.removeFromParent()
+        let sequence = SKAction.sequence([group, removeAction])
+        
+        label.run(sequence)
+        
+        // After the float animation completes (0.8 seconds), trigger the points animation on the header label
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) { [weak self] in
+            guard let gameState = self?.gameState else { return }
+            let newTotal = gameState.currentPoints
+            let previousTotal = newTotal - points
+            self?.animateHeaderPointsCounter(from: previousTotal, to: newTotal)
+        }
+    }
+    
+    private func animateHeaderPointsCounter(from startPoints: Int, to endPoints: Int) {
+        guard let pointsValueLabel = pointsValueLabel else { return }
+        
+        let pointsToAdd = endPoints - startPoints
+        let duration: TimeInterval = 0.8
+        
+        // Initialize the label with the starting value immediately and make it bold
+        pointsValueLabel.text = "\(startPoints)"
+        pointsValueLabel.fontSize = 14
+        pointsValueLabel.fontName = "Arial-BoldMT"
+        
+        // For each point to add, show an increment
+        // Distribute the increments evenly across the duration
+        let updateInterval: TimeInterval = duration / Double(pointsToAdd)
+        var currentIncrement = 0
+        
+        var timer: Timer?
+        timer = Timer.scheduledTimer(withTimeInterval: updateInterval, repeats: true) { _ in
+            currentIncrement += 1
+            let newValue = startPoints + currentIncrement
+            
+            if currentIncrement >= pointsToAdd {
+                timer?.invalidate()  // INVALIDATE IMMEDIATELY
+                // Set final value - return to normal formatting
+                pointsValueLabel.text = "\(endPoints)"
+                pointsValueLabel.fontSize = 12  // Return to normal size
+                pointsValueLabel.fontName = "Arial"  // Return to normal (not bold)
+            } else {
+                // Update to the new value (always an integer increment)
+                pointsValueLabel.text = "\(newValue)"
+                // Keep it larger and bold while incrementing
+                pointsValueLabel.fontSize = 14
+                pointsValueLabel.fontName = "Arial-BoldMT"
+            }
+        }
+    }
 
 private func updateFloatingText() {
     guard let gameState = gameState else { return }
