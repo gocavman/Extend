@@ -441,6 +441,9 @@ class StickFigureGameState {
     // Callback for floating points animation (set by GameplayScene)
     var onPointsAwarded: ((Int, CGFloat, CGFloat) -> Void)?  // points, x, y
     
+    // Callback for level up notification (set by GameplayScene)
+    var onLevelUp: ((Int) -> Void)?  // newLevel
+    
     // Debug flags
     var showDebugGestureAreas: Bool = false {
         didSet {
@@ -673,6 +676,11 @@ class StickFigureGameState {
             shouldReturnToMap = true
             currentLevel += 1  // INCREMENT LEVEL!
             print("🎮 Current Level AFTER increment: \(currentLevel)")
+            
+            // Notify the scene about the level up so it can update the HUD immediately
+            if let callback = onLevelUp {
+                callback(currentLevel)
+            }
         }
     }
 

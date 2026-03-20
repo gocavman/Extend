@@ -108,6 +108,11 @@ override func didMove(to view: SKView) {
         self?.addFloatingText(pointsText, x: x, y: y, color: .green, points: points)
     }
     
+    // Set up callback for level up notification
+    gameState.onLevelUp = { [weak self] newLevel in
+        self?.levelLabel?.text = "Level: \(newLevel)"
+    }
+    
     // Auto-select action from gameState if available
     if !gameState.selectedAction.isEmpty,
        let actionConfig = ACTION_CONFIGS.first(where: { $0.id == gameState.selectedAction }) {

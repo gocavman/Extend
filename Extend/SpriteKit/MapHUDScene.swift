@@ -104,7 +104,7 @@ class MapHUDScene: SKScene {
         
         // Level label on left side
         let levelLabel = SKLabelNode(fontNamed: "Arial")
-        levelLabel.text = "Level: 1"
+        levelLabel.text = "Level: \(gameState?.currentLevel ?? 1)"
         levelLabel.fontSize = 14
         levelLabel.fontColor = .black
         levelLabel.position = CGPoint(x: size.width / 2 - 80, y: statsRowY)
@@ -191,6 +191,10 @@ class MapHUDScene: SKScene {
     func updateLevelPoints(level: Int, points: Int) {
         levelLabel?.text = "Level: \(level)"
         pointsValueLabel?.text = "\(points)"
+    }
+    
+    func updateLevel(_ level: Int) {
+        levelLabel?.text = "Level: \(level)"
     }
     
     func animatePointsValue(from startPoints: Int, to endPoints: Int) {

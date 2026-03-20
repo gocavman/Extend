@@ -73,6 +73,17 @@ class MapScene: GameScene {
         startMovementTimer()
         startAnimationTimer()
         startProximityCheckTimer()
+        
+        // Set up callback for level up notification
+        if let gameState = gameState {
+            gameState.onLevelUp = { [weak self] newLevel in
+                // Update HUD through gameViewController
+                let roomName = self?.currentRoomId ?? "main_map"
+                if let roomConfig = getRoomConfig(roomName) {
+                    self?.gameViewController?.updateHUDInfo(roomName: roomConfig.name, level: newLevel, points: gameState.currentPoints)
+                }
+            }
+        }
     }
     
     // MARK: - Setup Methods
