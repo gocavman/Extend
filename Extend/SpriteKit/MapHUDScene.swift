@@ -4,13 +4,16 @@ import SpriteKit
 /// This scene stays fixed on screen and doesn't move with the camera
 class MapHUDScene: SKScene {
     weak var gameViewController: GameViewController?
+    var gameState: StickFigureGameState?
     
     // Button nodes for hit detection
     private var exitButton: SKShapeNode?
     private var statsButton: SKShapeNode?
     private var appearanceButton: SKLabelNode?
     private var editorButton: SKShapeNode?
-    private var levelPointsLabel: SKLabelNode?
+    private var levelLabel: SKLabelNode?
+    private var pointsLabel: SKLabelNode?
+    private var pointsValueLabel: SKLabelNode?  // Separate label for just the number
     
     override func didMove(to view: SKView) {
         super.didMove(to: view)
@@ -98,14 +101,45 @@ class MapHUDScene: SKScene {
         
         // MARK: - Level and Points Row (Below Buttons)
         let statsRowY: CGFloat = topBarY - 40
-        let levelPointsLabel = SKLabelNode(fontNamed: "Arial")
-        levelPointsLabel.text = "Level: 1 | Points: 0"
-        levelPointsLabel.fontSize = 14
-        levelPointsLabel.fontColor = .black
-        levelPointsLabel.position = CGPoint(x: size.width / 2, y: statsRowY)
-        levelPointsLabel.name = "levelPointsLabel"
-        levelPointsLabel.zPosition = 101
-        addChild(levelPointsLabel)
+        
+        // Level label on left side
+        let levelLabel = SKLabelNode(fontNamed: "Arial")
+        levelLabel.text = "Level: 1"
+        levelLabel.fontSize = 14
+        levelLabel.fontColor = .black
+        levelLabel.position = CGPoint(x: size.width / 2 - 80, y: statsRowY)
+        levelLabel.name = "levelLabel"
+        levelLabel.zPosition = 101
+        addChild(levelLabel)
+        self.levelLabel = levelLabel
+        
+        // Points label on right side - split into two labels for separate animation
+        let pointsLabelText = SKLabelNode(fontNamed: "Arial")
+        pointsLabelText.text = "Points: "
+        pointsLabelText.fontSize = 14
+        pointsLabelText.fontColor = .black
+        pointsLabelText.position = CGPoint(x: size.width / 2 + 50, y: statsRowY)
+        pointsLabelText.name = "pointsLabelText"
+        pointsLabelText.zPosition = 101
+        addChild(pointsLabelText)
+        self.pointsLabel = pointsLabelText
+        
+        // Points value label (animated separately)
+        let pointsValueLabel = SKLabelNode(fontNamed: "Arial")
+        pointsValueLabel.fontSize = 14
+        pointsValueLabel.fontColor = .black
+        pointsValueLabel.position = CGPoint(x: size.width / 2 + 110, y: statsRowY)
+        pointsValueLabel.name = "pointsValueLabel"
+        pointsValueLabel.zPosition = 101
+        addChild(pointsValueLabel)
+        self.pointsValueLabel = pointsValueLabel
+        
+        // Initialize points with actual game state value
+        if let gameState = gameState {
+            pointsValueLabel.text = "\(gameState.currentPoints)"
+        } else {
+            pointsValueLabel.text = "0"
+        }
     }
     
     // MARK: - Touch Handling
@@ -155,7 +189,36 @@ class MapHUDScene: SKScene {
     // MARK: - Update Methods
     
     func updateLevelPoints(level: Int, points: Int) {
-        levelPointsLabel?.text = "Level: \(level) | Points: \(points)"
+        levelLabel?.text = "Level: \(level)"
+        pointsValueLabel?.text = "\(points)"
+    }
+    
+    func animatePointsValue(from startPoints: Int, to endPoints: Int) {
+        guard let pointsValueLabel = pointsValueLabel else { return }
+        
+        let pointsToAdd = endPoints - startPoints
+        let duration: TimeInterval = 0.8
+        let updateInterval: TimeInterval = 0.01
+        let updates = Int(duration / updateInterval)
+        let pointsPerUpdate = Double(pointsToAdd) / Double(updates)
+        
+        var currentValue = Double(startPoints)
+        
+        Timer.scheduledTimer(withTimeInterval: updateInterval, repeats: true) { timer in
+            currentValue += pointsPerUpdate
+            
+            if currentValue >= Double(endPoints) {
+                timer.invalidate()
+                // Set final value - return to normal size
+                pointsValueLabel.text = "\(endPoints)"
+                pointsValueLabel.fontSize = 14
+            } else {
+                let displayValue = Int(currentValue)
+                pointsValueLabel.text = "\(displayValue)"
+                // Make only the value bold by increasing its size
+                pointsValueLabel.fontSize = 16
+            }
+        }
     }
     
     @MainActor

@@ -468,28 +468,60 @@ class MapScene: GameScene {
         guard let container = mapContainer else { return }
         guard let roomConfig = getRoomConfig(currentRoomId) else { return }
         guard let populationConfig = roomConfig.population else { return }
+        guard let gameState = gameState else { return }
+        guard let view = view else { return }
+        guard let camera = camera else { return }
         
         let pointsAwarded = populationConfig.points
+        let pointsBeforeCollection = gameState.currentPoints
         
         print("🌟 Collected population item '\(populationNode.text ?? "?")' - \(pointsAwarded) points awarded")
         
-        // Award points
-        gameState?.addPoints(pointsAwarded, action: "collect")
+        // Award points (but don't update HUD yet - wait until float animation completes)
+        gameState.addPoints(pointsAwarded, action: "collect")
         
-        // Create floating text showing points directly on MapScene
+        // Create floating text showing points
         let pointsText = "+\(pointsAwarded)"
         let floatingTextNode = SKLabelNode(fontNamed: "Arial")
         floatingTextNode.text = pointsText
-        floatingTextNode.fontSize = 28
-        floatingTextNode.fontColor = .green
+        floatingTextNode.fontSize = 32
+        floatingTextNode.fontColor = hexToColor("#023020")  // Dark green color
         floatingTextNode.position = populationNode.position
         floatingTextNode.zPosition = 20
         container.addChild(floatingTextNode)
         
-        // Create a floating up animation
-        let moveUp = SKAction.moveBy(x: 0, y: 60, duration: 0.6)
-        let fadeOut = SKAction.fadeOut(withDuration: 0.6)
-        let group = SKAction.group([moveUp, fadeOut])
+        // Calculate target position in HUD (points label is on right side of screen)
+        let screenWidth = view.bounds.width
+        let screenHeight = view.bounds.height
+        
+        // Target the points VALUE position in the HUD, to the RIGHT of the number
+        // The points value label is nested in a stack, positioned to the right
+        // We want to target further right, past the value number
+        let hudScreenX = screenWidth / 2 + 140  // Further right, past the points value
+        let hudScreenY = screenHeight - 90  // Points label Y position
+        
+        // Convert screen coordinates to world coordinates
+        let screenCenterX = screenWidth / 2
+        let screenCenterY = screenHeight / 2
+        
+        // Offset from screen center
+        let screenOffsetX = hudScreenX - screenCenterX
+        let screenOffsetY = screenCenterY - hudScreenY
+        
+        // Convert to world coordinates
+        let hudWorldX = camera.position.x + (screenOffsetX * CAMERA_SCALE)
+        let hudWorldY = camera.position.y - (screenOffsetY * CAMERA_SCALE)
+        
+        print("🌟 Points float target:")
+        print("   Screen HUD pos: (\(hudScreenX), \(hudScreenY))")
+        print("   Screen center: (\(screenCenterX), \(screenCenterY))")
+        print("   Camera pos: \(camera.position)")
+        print("   World target: (\(hudWorldX), \(hudWorldY))")
+        
+        // Animate floating text to HUD position
+        let moveToHUD = SKAction.move(to: CGPoint(x: hudWorldX, y: hudWorldY), duration: 0.8)
+        let fadeOut = SKAction.fadeOut(withDuration: 0.8)
+        let group = SKAction.group([moveToHUD, fadeOut])
         let remove = SKAction.removeFromParent()
         let sequence = SKAction.sequence([group, remove])
         floatingTextNode.run(sequence)
@@ -503,14 +535,15 @@ class MapScene: GameScene {
         
         populationNode.run(itemSequence)
         
-        // Remove from tracking dictionary after a short delay
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
-            self.populationNodes.removeValue(forKey: populationId)
-        }
+        // Remove from tracking dictionary IMMEDIATELY to prevent double collection
+        // This prevents the proximity check timer from detecting the same collision again
+        populationNodes.removeValue(forKey: populationId)
         
-        // Update HUD to show new points
-        if let roomConfig = getRoomConfig(currentRoomId) {
-            gameViewController?.updateHUDInfo(roomName: roomConfig.name, level: gameState?.currentLevel ?? 1, points: gameState?.currentPoints ?? 0)
+        // IMPORTANT: Delay the points increment animation until the floating text reaches the HUD
+        // The float animation takes 0.8 seconds, so start the count animation then
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) {
+            let newTotal = gameState.currentPoints
+            self.gameViewController?.animatePointsIncrease(from: pointsBeforeCollection, to: newTotal)
         }
     }
     

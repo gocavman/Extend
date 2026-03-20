@@ -14,7 +14,9 @@ class GameViewController: UIViewController {
     private var hudContainer: UIStackView?  // HUD buttons container
     private var infoContainer: UIStackView?  // Info labels container (room name, level, points)
     private var roomNameLabel: UILabel?  // Room name display
-    private var levelPointsLabel: UILabel?  // Level and points display
+    private var levelLabel: UILabel?  // Level display
+    private var pointsTextLabel: UILabel?  // "Points: " text label
+    private var pointsValueLabel: UILabel?  // Points value (number only)
     
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -108,14 +110,40 @@ class GameViewController: UIViewController {
         infoStack.addArrangedSubview(roomLabel)
         self.roomNameLabel = roomLabel
         
-        // Create level and points label
-        let levelPointsLabel = UILabel()
-        levelPointsLabel.textAlignment = .center
-        levelPointsLabel.font = UIFont.systemFont(ofSize: 14, weight: .medium)
-        levelPointsLabel.textColor = .black
-        levelPointsLabel.text = "Level: 1 | Points: 0"
-        infoStack.addArrangedSubview(levelPointsLabel)
-        self.levelPointsLabel = levelPointsLabel
+        // Create level label
+        let levelLabel = UILabel()
+        levelLabel.textAlignment = .center
+        levelLabel.font = UIFont.systemFont(ofSize: 14, weight: .medium)
+        levelLabel.textColor = .black
+        // Initialize with actual gameState level
+        levelLabel.text = "Level: \(gameState?.currentLevel ?? 1)"
+        infoStack.addArrangedSubview(levelLabel)
+        self.levelLabel = levelLabel
+        
+        // Create points label stack - closer spacing between "Points:" and value
+        let pointsStack = UIStackView()
+        pointsStack.axis = .horizontal
+        pointsStack.spacing = 2  // Very tight spacing
+        pointsStack.distribution = .fillProportionally
+        pointsStack.alignment = .center
+        infoStack.addArrangedSubview(pointsStack)
+        
+        let pointsTextLabel = UILabel()
+        pointsTextLabel.textAlignment = .right
+        pointsTextLabel.font = UIFont.systemFont(ofSize: 14, weight: .medium)
+        pointsTextLabel.textColor = .black
+        pointsTextLabel.text = "Points:"
+        pointsStack.addArrangedSubview(pointsTextLabel)
+        self.pointsTextLabel = pointsTextLabel
+        
+        let pointsValueLabel = UILabel()
+        pointsValueLabel.textAlignment = .left
+        pointsValueLabel.font = UIFont.systemFont(ofSize: 14, weight: .medium)
+        pointsValueLabel.textColor = .black
+        // Initialize with actual gameState points, not hardcoded 0
+        pointsValueLabel.text = "\(gameState?.currentPoints ?? 0)"
+        pointsStack.addArrangedSubview(pointsValueLabel)
+        self.pointsValueLabel = pointsValueLabel
         
         // Store reference to info container so we can hide it during gameplay
         self.infoContainer = infoStack
@@ -129,7 +157,35 @@ class GameViewController: UIViewController {
     /// Update HUD labels with current room, level, and points
     func updateHUDInfo(roomName: String, level: Int, points: Int) {
         roomNameLabel?.text = "📍 \(roomName)"
-        levelPointsLabel?.text = "Level: \(level) | Points: \(points)"
+        levelLabel?.text = "Level: \(level)"
+        pointsValueLabel?.text = "\(points)"
+    }
+    
+    /// Animate points counting from current to new total
+    func animatePointsIncrease(from startPoints: Int, to endPoints: Int) {
+        let pointsToAdd = endPoints - startPoints
+        let duration: TimeInterval = 0.8
+        let updateInterval: TimeInterval = 0.01
+        let updates = Int(duration / updateInterval)
+        let pointsPerUpdate = Double(pointsToAdd) / Double(updates)
+        
+        var currentValue = Double(startPoints)
+        
+        Timer.scheduledTimer(withTimeInterval: updateInterval, repeats: true) { [weak self] timer in
+            currentValue += pointsPerUpdate
+            
+            if currentValue >= Double(endPoints) {
+                timer.invalidate()
+                // Set final value - return to normal size and weight
+                self?.pointsValueLabel?.text = "\(endPoints)"
+                self?.pointsValueLabel?.font = UIFont.systemFont(ofSize: 14, weight: .medium)
+            } else {
+                let displayValue = Int(currentValue)
+                self?.pointsValueLabel?.text = "\(displayValue)"
+                // Make it larger and bold while incrementing
+                self?.pointsValueLabel?.font = UIFont.systemFont(ofSize: 16, weight: .bold)
+            }
+        }
     }
     
     private func createHUDButton(title: String, color: UIColor, action: Selector) -> UIButton {
