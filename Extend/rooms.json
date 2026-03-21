@@ -18,8 +18,8 @@
   {
     "id": "training_room_1",
     "name": "Trees",
-    "width": 1000,
-    "height": 1000,
+    "width": 2500,
+    "height": 2500,
     "backgroundImage": "training_room_1_bg",
     "backgroundColor": "#BFFFFF",
     "levels": [],
