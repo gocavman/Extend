@@ -29,7 +29,7 @@ class GameScene: SKScene {
         }
         for touch in touches {
             let locationInView = touch.location(in: view)
-            let locationInScene = self.convert(locationInView, from: view)
+            let locationInScene = convertViewToScene(locationInView)
             handleTouchBegan(at: locationInScene)
         }
     }
@@ -41,9 +41,30 @@ class GameScene: SKScene {
         }
         for touch in touches {
             let locationInView = touch.location(in: view)
-            let locationInScene = self.convert(locationInView, from: view)
+            let locationInScene = convertViewToScene(locationInView)
             handleTouchMoved(to: locationInScene)
         }
+    }
+    
+    /// Convert view coordinates to scene coordinates
+    /// View: (0,0) at top-left, grows right and down
+    /// Scene: (0,0) at bottom-left, grows right and up
+    private func convertViewToScene(_ viewPoint: CGPoint) -> CGPoint {
+        guard let view = self.view else { return viewPoint }
+        
+        let viewBounds = view.bounds
+        
+        // Normalize view coordinates to 0-1 range
+        let normalizedX = viewPoint.x / viewBounds.width
+        let normalizedY = viewPoint.y / viewBounds.height
+        
+        // Convert to scene coordinates (flip Y because scene is bottom-left origin)
+        let sceneX = normalizedX * self.size.width
+        let sceneY = (1.0 - normalizedY) * self.size.height  // Flip Y
+        
+        let scenePoint = CGPoint(x: sceneX, y: sceneY)
+        print("📍 convertViewToScene - view: \(viewPoint), bounds: \(viewBounds), scene: \(scenePoint), sceneSize: \(self.size)")
+        return scenePoint
     }
     
     override func touchesEnded(_ touches: Set<UITouch>, with event: UIEvent?) {
@@ -53,26 +74,7 @@ class GameScene: SKScene {
         }
         for touch in touches {
             let locationInView = touch.location(in: view)
-            
-            // Convert view coordinates to scene coordinates
-            // View: (0,0) at top-left, grows right and down
-            // Scene: (0,0) at bottom-left, grows right and up
-            // We need to flip Y and scale by the view's content scale factor
-            
-            let contentScaleFactor = view.contentScaleFactor
-            let viewBounds = view.bounds
-            
-            // Normalize view coordinates to 0-1 range
-            let normalizedX = locationInView.x / viewBounds.width
-            let normalizedY = locationInView.y / viewBounds.height
-            
-            // Convert to scene coordinates (flip Y because scene is bottom-left origin)
-            let sceneX = normalizedX * self.size.width
-            let sceneY = (1.0 - normalizedY) * self.size.height  // Flip Y
-            
-            let locationInScene = CGPoint(x: sceneX, y: sceneY)
-            
-            print("📍 GameScene.touchesEnded - viewBounds: \(viewBounds), viewLoc: \(locationInView), contentScale: \(contentScaleFactor), sceneLoc: \(locationInScene), sceneSize: \(self.size)")
+            let locationInScene = convertViewToScene(locationInView)
             handleTouchEnded(at: locationInScene)
         }
     }

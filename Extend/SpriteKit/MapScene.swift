@@ -32,6 +32,7 @@ class MapScene: GameScene {
     private var isMoving = false
     private var currentAnimationFrame = 1
     private var currentRoomId: String = "main_map"  // Track which room we're in
+    private var cameraScale: CGFloat = 2.0  // Store camera scale for coordinate conversion
     
     // MARK: - Timers
     private var movementTimer: Timer?
@@ -41,7 +42,7 @@ class MapScene: GameScene {
     override func didMove(to view: SKView) {
         super.didMove(to: view)
         
-        //print("🗺️ MapScene didMove - size: \(size)")
+        print("🗺️ MapScene didMove - scene size: \(size)")
         
         // Load room dimensions from config
         if let roomConfig = getRoomConfig(currentRoomId) {
@@ -251,6 +252,7 @@ class MapScene: GameScene {
         let camera = SKCameraNode()
         camera.position = CGPoint(x: mapState.characterX, y: mapState.characterY)
         camera.setScale(CAMERA_SCALE)  // Zoom out 2x
+        cameraScale = CAMERA_SCALE  // Store the scale value
         addChild(camera)
         self.camera = camera
         
@@ -565,75 +567,92 @@ class MapScene: GameScene {
     // MARK: - Touch Handling
     
     override func handleTouchBegan(at point: CGPoint) {
-        // Convert screen touch to map coordinates
-        guard let camera = camera else { return }
-        
-        let _ = CGPoint(
-            x: point.x - size.width / 2 + camera.position.x,
-            y: point.y - size.height / 2 + camera.position.y
-        )
-        
-        //print("🗺️ Touch began at screen: \(point), world: \(worldPoint)")
+        // Start tracking the finger - convert to world coordinates and set as initial target
+        updateTargetPosition(from: point)
+    }
+    
+    override func handleTouchMoved(to point: CGPoint) {
+        // Continuously update target as finger moves
+        updateTargetPosition(from: point)
     }
     
     override func handleTouchEnded(at point: CGPoint) {
-        print("\n🎯 TOUCH ENDED")
-        print("   Scene size: \(size)")
-        print("   Touch point (scene): \(point)")
-        print("   Camera pos: \(camera?.position ?? .zero)")
-        // Touch point is already in SCENE coordinates (0 to size.width, 0 to size.height)
-        // We need to convert to WORLD coordinates
+        // Release the target when finger is lifted
+        targetPosition = nil
+        isMoving = false
+        mapState?.isMoving = false
+    }
+    
+    /// Convert scene touch point to world coordinates and update target
+    private func updateTargetPosition(from point: CGPoint) {
         guard let camera = camera else {
-            print("   ❌ No camera!")
+            print("❌ updateTargetPosition: camera is nil!")
+            return
+        }
+        guard let characterNode = characterNode else {
+            print("❌ updateTargetPosition: characterNode is nil!")
             return
         }
         
-        print("   → Handling as character movement")
+        // point is in SCENE coordinates
+        // Scene origin is at bottom-left (0,0)
+        // The camera is positioned at some world coordinate and looks at the scene
         
-        // Convert SCENE coordinates to WORLD coordinates
-        // Scene: 0,0 at bottom-left, size = (402, 874)
-        // World: arbitrary large space (2000x2000)
-        // Camera: positioned at world coordinate, with 2.0 zoom scale
+        print("===== TOUCH DEBUG START =====")
+        print("1. Input: Touch point (scene coords): \(point)")
+        print("   Scene size: \(size)")
+        print("   Camera state: pos=\(camera.position), scale=\(cameraScale)")
+        print("   Character pos: \(characterNode.position)")
+        print("   MAP bounds: (0,0) to (\(MAP_WIDTH), \(MAP_HEIGHT))")
         
-        // Scene coordinate relative to scene center
-        let sceneCenter = CGPoint(x: size.width / 2, y: size.height / 2)
-        let pointFromCenter = CGPoint(x: point.x - sceneCenter.x, y: point.y - sceneCenter.y)
+        // Step 1: Calculate scene center (this is where the camera is "looking" in scene space)
+        let sceneCenterX = size.width / 2
+        let sceneCenterY = size.height / 2
+        print("2. Scene center (camera viewport center): (\(sceneCenterX), \(sceneCenterY))")
         
-        print("   SceneCenter: \(sceneCenter)")
-        print("   PointFromCenter: \(pointFromCenter)")
+        // Step 2: Calculate offset from scene center to touch point
+        // If you tap left of center, this will be negative
+        // If you tap above center (higher Y), this will be positive
+        let sceneOffsetX = point.x - sceneCenterX
+        let sceneOffsetY = point.y - sceneCenterY
+        print("3. Offset from center: (\(sceneOffsetX), \(sceneOffsetY))")
+        print("   - Negative X means LEFT of center, positive means RIGHT")
+        print("   - Negative Y means BELOW center, positive means ABOVE")
         
-        // With camera scale 2.0, each scene pixel = 2 world pixels
-        // Camera shows (size.width * scale) x (size.height * scale) of world
-        let worldOffsetFromCamera = CGPoint(
-            x: pointFromCenter.x * CAMERA_SCALE,
-            y: pointFromCenter.y * CAMERA_SCALE
-        )
+        // Step 3: Scale the offset by camera zoom to get world offset
+        // cameraScale = 2.0 means we see 2x more world than scene
+        // So a 100-pixel offset on screen = 200-pixel offset in world
+        let worldOffsetX = sceneOffsetX * cameraScale
+        let worldOffsetY = sceneOffsetY * cameraScale
+        print("4. World offset after camera scale (x\(cameraScale)): (\(worldOffsetX), \(worldOffsetY))")
         
-        print("   WorldOffset: \(worldOffsetFromCamera)")
+        // Step 4: Calculate world point
+        // The world coordinate = camera position + offset from camera
+        let worldX = camera.position.x + worldOffsetX
+        let worldY = camera.position.y + worldOffsetY
+        print("5. World point (unclamped): (\(worldX), \(worldY))")
         
-        // World position = camera position + world offset
-        let worldPoint = CGPoint(
-            x: camera.position.x + worldOffsetFromCamera.x,
-            y: camera.position.y + worldOffsetFromCamera.y
-        )
+        // Step 5: Clamp to valid map bounds
+        let clampedX = max(0, min(worldX, MAP_WIDTH))
+        let clampedY = max(0, min(worldY, MAP_HEIGHT))
+        let clampedPoint = CGPoint(x: clampedX, y: clampedY)
         
-        // Clamp to map bounds
-        let clampedPoint = CGPoint(
-            x: max(0, min(worldPoint.x, MAP_WIDTH)),
-            y: max(0, min(worldPoint.y, MAP_HEIGHT))
-        )
+        print("6. Clamping applied:")
+        if clampedX != worldX {
+            print("   X clamped: \(worldX) → \(clampedX)")
+        }
+        if clampedY != worldY {
+            print("   Y clamped: \(worldY) → \(clampedY)")
+        }
+        print("   Final target: (\(clampedX), \(clampedY))")
+        print("===== TOUCH DEBUG END =====")
         
-        let charPos = characterNode?.position ?? .zero
-        print("   TargetWorld: \(worldPoint) → clamped: \(clampedPoint)")
-        print("   CharacterPos: \(charPos)")
-        print("   Distance: \(hypot(clampedPoint.x - charPos.x, clampedPoint.y - charPos.y))")
-        
-        // Set target position for character to move to
+        // Set target position
         targetPosition = clampedPoint
         isMoving = true
         mapState?.isMoving = true
         
-        // Update character rotation to face the target
+        // Update character rotation
         updateCharacterRotation(toward: clampedPoint)
     }
     
