@@ -353,6 +353,15 @@ private func setupControlZones() {
         handleTouchAtLocation(point, isPress: true)
     }
     
+    override func handleTouchMoved(to point: CGPoint) {
+        // Reset interaction timer for eye blinking
+        lastInteractionTime = CACurrentMediaTime()
+        
+        // Continuously update movement direction as finger moves
+        // This allows the character to follow the finger across the screen
+        handleTouchAtLocation(point, isPress: true)
+    }
+    
     override func handleTouchEnded(at point: CGPoint) {
         // Check for Action button in bottom center zone FIRST
         let zoneHeight: CGFloat = 120
@@ -455,10 +464,6 @@ private func handleTouchAtLocation(_ point: CGPoint, isPress: Bool) {
         return  // Exit early, don't process movement
     }
     
-    // Smart directional movement: determine direction based on tap position relative to character
-    // If tap is to the left of character, move left (regardless of zone)
-    // If tap is to the right of character, move right (regardless of zone)
-    
     // Check if movement is allowed by the current action
     let isMovementAllowed = selectedAction?.allowMovement ?? true
     
@@ -468,36 +473,40 @@ private func handleTouchAtLocation(_ point: CGPoint, isPress: Bool) {
         return
     }
     
-    if point.x < characterX {
-        // Tap is to the LEFT of character - move left
+    // Define movement zones (using already declared leftZoneWidth and centerZoneWidth)
+    let rightZoneX = leftZoneWidth + centerZoneWidth
+    
+    // Determine which zone the touch is in
+    if point.x < leftZoneWidth {
+        // LEFT ZONE - always move left
         if isPress {
-            print("🎮 ✓ TAP LEFT OF CHARACTER - MOVE LEFT")
+            print("🎮 ✓ LEFT ZONE TAP - MOVE LEFT")
             gameState.isMovingLeft = true
             gameState.isMovingRight = false
             gameState.facingRight = false
         } else {
-            //print("🎮 ✓ RELEASE - STOP MOVING (was moving left)")
+            // Release - stop moving
             gameState.isMovingLeft = false
             gameState.isMovingRight = false
         }
-    } else if point.x > characterX {
-        // Tap is to the RIGHT of character - move right
+    } else if point.x > rightZoneX {
+        // RIGHT ZONE - always move right
         if isPress {
-            //print("🎮 ✓ TAP RIGHT OF CHARACTER - MOVE RIGHT")
+            print("🎮 ✓ RIGHT ZONE TAP - MOVE RIGHT")
             gameState.isMovingRight = true
             gameState.isMovingLeft = false
             gameState.facingRight = true
         } else {
-            //print("🎮 ✓ RELEASE - STOP MOVING (was moving right)")
+            // Release - stop moving
             gameState.isMovingRight = false
             gameState.isMovingLeft = false
         }
     } else {
-        // Tap is directly on character - do nothing or trigger action
+        // CENTER ZONE - stop movement
         if isPress {
-            //print("🎮 Touch directly on character (center action zone)")
+            //print("🎮 Touch in center zone - no movement")
         } else {
-            //print("🎮 ✓ RELEASE - STOP MOVING (was on character)")
+            //print("🎮 ✓ RELEASE - STOP MOVING")
             gameState.isMovingLeft = false
             gameState.isMovingRight = false
         }
