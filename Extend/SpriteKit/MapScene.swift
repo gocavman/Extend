@@ -491,6 +491,10 @@ class MapScene: GameScene {
         // Award points (but don't update HUD yet - wait until float animation completes)
         gameState.addPoints(pointsAwarded, action: "collect")
         
+        // Haptic feedback for population points collection
+        let impact = UIImpactFeedbackGenerator(style: .light)
+        impact.impactOccurred()
+        
         // Create floating text showing points
         let pointsText = "+\(pointsAwarded)"
         let floatingTextNode = SKLabelNode(fontNamed: "Arial")

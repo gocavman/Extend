@@ -106,6 +106,10 @@ override func didMove(to view: SKView) {
     gameState.onPointsAwarded = { [weak self] points, x, y in
         let pointsText = "+\(points)"
         self?.addFloatingText(pointsText, x: x, y: y, color: .green, points: points)
+        
+        // Haptic feedback for points awarded
+        let impact = UIImpactFeedbackGenerator(style: .light)
+        impact.impactOccurred()
     }
     
     // Set up callback for level up notification
@@ -1271,6 +1275,10 @@ private func checkCatchableCollisions(gameState: StickFigureGameState, character
                 let pointsText = "+\(config.points)"
                 let textColor = UIColor(hex: config.color ?? "#808080") ?? .white
                 addFloatingText(pointsText, x: fallingItems[i].x, y: fallingItems[i].y, color: textColor, points: config.points)
+                
+                // Haptic feedback for catchable collision
+                let impact = UIImpactFeedbackGenerator(style: .light)
+                impact.impactOccurred()
                 
                 // Trigger collision animation if configured (Shaker special case)
                 if config.collisionAnimation == "Shaker" {
