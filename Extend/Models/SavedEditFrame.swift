@@ -8,6 +8,8 @@ struct EditorObject: Codable, Identifiable {
     var rotation: CGFloat  // in radians
     var scaleX: CGFloat
     var scaleY: CGFloat
+    var baseWidth: CGFloat?  // Actual base width of the object in the editor (e.g., 40 for Shaker)
+    var baseHeight: CGFloat?  // Actual base height of the object in the editor (e.g., 60 for Shaker)
     
     enum CodingKeys: String, CodingKey {
         case id
@@ -15,19 +17,23 @@ struct EditorObject: Codable, Identifiable {
         case position
         case rotation
         case scale  // JSON uses "scale" for both scaleX and scaleY
+        case baseWidth
+        case baseHeight
     }
     
     enum PositionKeys: String, CodingKey {
         case x, y
     }
     
-    init(assetName: String, position: CGPoint, rotation: CGFloat = 0, scaleX: CGFloat = 1.0, scaleY: CGFloat = 1.0) {
+    init(assetName: String, position: CGPoint, rotation: CGFloat = 0, scaleX: CGFloat = 1.0, scaleY: CGFloat = 1.0, baseWidth: CGFloat? = nil, baseHeight: CGFloat? = nil) {
         self.id = UUID()
         self.assetName = assetName
         self.position = position
         self.rotation = rotation
         self.scaleX = scaleX
         self.scaleY = scaleY
+        self.baseWidth = baseWidth
+        self.baseHeight = baseHeight
     }
     
     init(from decoder: Decoder) throws {
@@ -46,6 +52,10 @@ struct EditorObject: Codable, Identifiable {
         let scale = try container.decodeIfPresent(CGFloat.self, forKey: .scale) ?? 1.0
         scaleX = scale
         scaleY = scale
+        
+        // Decode optional base dimensions
+        baseWidth = try container.decodeIfPresent(CGFloat.self, forKey: .baseWidth)
+        baseHeight = try container.decodeIfPresent(CGFloat.self, forKey: .baseHeight)
     }
     
     func encode(to encoder: Encoder) throws {
@@ -59,6 +69,14 @@ struct EditorObject: Codable, Identifiable {
         var posContainer = container.nestedContainer(keyedBy: PositionKeys.self, forKey: .position)
         try posContainer.encode(position.x, forKey: .x)
         try posContainer.encode(position.y, forKey: .y)
+        
+        // Encode optional base dimensions
+        if let baseWidth = baseWidth {
+            try container.encode(baseWidth, forKey: .baseWidth)
+        }
+        if let baseHeight = baseHeight {
+            try container.encode(baseHeight, forKey: .baseHeight)
+        }
     }
 }
 
@@ -574,13 +592,15 @@ class SavedFramesManager {
                 jsonString += "        \"width\" : \(width),\n"
                 jsonString += "        \"height\" : \(height),\n"
             } else {
-                // For image objects, export actual scaled dimensions (50 is the editor base size)
-                let editorBaseSize: CGFloat = 50.0
-                let width = editorBaseSize * object.scaleX
-                let height = editorBaseSize * object.scaleY
+                // For image objects, export the final actual dimensions (baseWidth * scaleX, baseHeight * scaleY)
+                // These should match what was displayed in the editor
+                let baseWidth = object.baseWidth ?? 50.0
+                let baseHeight = object.baseHeight ?? 50.0
+                let actualWidth = baseWidth * object.scaleX
+                let actualHeight = baseHeight * object.scaleY
                 
-                jsonString += "        \"width\" : \(roundAndFormat(width, decimals: 1)),\n"
-                jsonString += "        \"height\" : \(roundAndFormat(height, decimals: 1)),\n"
+                jsonString += "        \"width\" : \(roundAndFormat(actualWidth, decimals: 1)),\n"
+                jsonString += "        \"height\" : \(roundAndFormat(actualHeight, decimals: 1)),\n"
             }
             
             jsonString += "        \"position\" : {\n"

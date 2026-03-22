@@ -1289,9 +1289,43 @@ private func checkCatchableCollisions(gameState: StickFigureGameState, character
                 let impact = UIImpactFeedbackGenerator(style: .light)
                 impact.impactOccurred()
                 
-                // Trigger collision animation if configured (Shaker special case)
-                if config.collisionAnimation == "Shaker" {
-                    activateBoost()
+                // Trigger collision animation if configured (e.g., Shaker)
+                if let collisionAnimName = config.collisionAnimation {
+                    print("🎮 COLLISION ANIM DETECTED: \(collisionAnimName)")
+                    // Find the action config with matching id
+                    let searchId = collisionAnimName.lowercased()
+                    print("🎮 Searching for action with id: \(searchId)")
+                    print("🎮 Available actions: \(ACTION_CONFIGS.map { $0.id })")
+                    
+                    if let actionConfig = ACTION_CONFIGS.first(where: { $0.id == searchId }) {
+                        print("🎮 Found action config: \(actionConfig.displayName)")
+                        // Check if we can start the action
+                        let canStart = gameState.currentPerformingAction == nil && !gameState.isMovingLeft && !gameState.isMovingRight
+                        print("🎮 Can start action: \(canStart) (performing: \(gameState.currentPerformingAction ?? "none"), movL: \(gameState.isMovingLeft), movR: \(gameState.isMovingRight))")
+                        
+                        if canStart {
+                            print("🎮 ✅ STARTING ACTION: \(actionConfig.displayName)")
+                            gameState.startAction(actionConfig, gameState: gameState)
+                            // Also activate boost for Shaker if applicable
+                            if collisionAnimName == "Shaker" {
+                                print("🎮 Activating boost for Shaker")
+                                activateBoost()
+                            }
+                        } else {
+                            print("🎮 ⚠️ Cannot start action - character is busy. Force-starting anyway...")
+                            // Stop current movement
+                            gameState.isMovingLeft = false
+                            gameState.isMovingRight = false
+                            // Start the action
+                            gameState.startAction(actionConfig, gameState: gameState)
+                            if collisionAnimName == "Shaker" {
+                                print("🎮 Activating boost for Shaker")
+                                activateBoost()
+                            }
+                        }
+                    } else {
+                        print("🎮 ❌ Action config not found for: \(searchId)")
+                    }
                 }
             }
             

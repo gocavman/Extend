@@ -199,5 +199,29 @@
       "frameNumbers": [1, 1, 1, 1, 1, 2, 3, 3, 3, 3, 3, 1, 1, 1, 1, 1],
       "baseFrameInterval": 0.2
     }
+  },
+  {
+    "id": "shaker",
+    "displayName": "Shaker",
+    "unlockLevel": 1,
+    "pointsPerCompletion": 0,
+    "variableTiming": {
+      "1": 5.0
+    },
+    "flipMode": "random",
+    "supportsSpeedBoost": false,
+    "allowMovement": true,
+    "floatingText": {
+      "timing": 5.0,
+      "text": ["Yum", "Delishish", "Sooooo good", "Yesssssss"],
+      "random": true,
+      "loop": false,
+      "color": "blue"
+    },
+    "stickFigureAnimation": {
+      "animationName": "Shaker",
+      "frameNumbers": [1, 2, 3, 2, 1],
+      "baseFrameInterval": 0.2
+    }
   }
 ]

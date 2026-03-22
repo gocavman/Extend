@@ -1100,9 +1100,19 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
         
         // Remove all objects from the editor scene
         if let editorScene = editorScene {
+            // Remove objects from direct children of scene
             editorScene.children.forEach { node in
                 if node.name?.hasPrefix("object_") == true {
                     node.removeFromParent()
+                }
+            }
+            
+            // Also remove objects from characterNode (they get moved there during figure updates)
+            if let characterNode = editorScene.characterNode {
+                characterNode.children.forEach { node in
+                    if node.name?.hasPrefix("object_") == true {
+                        node.removeFromParent()
+                    }
                 }
             }
             print("🎮 Cleared all objects from scene")
@@ -1454,6 +1464,8 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
                         // Handle image objects (SKSpriteNode)
                         if let sprite = node as? SKSpriteNode, sprite.name?.hasPrefix("object_") == true {
                             let assetName = (sprite.userData?["assetName"] as? String) ?? "Unknown"
+                            let baseWidth = sprite.userData?["baseWidth"] as? CGFloat
+                            let baseHeight = sprite.userData?["baseHeight"] as? CGFloat
                             // Convert relative position to absolute scene coordinates
                             let absolutePosition = CGPoint(
                                 x: sprite.position.x + charNode.position.x,
@@ -1464,10 +1476,12 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
                                 position: absolutePosition,
                                 rotation: sprite.zRotation,
                                 scaleX: sprite.xScale,
-                                scaleY: sprite.yScale
+                                scaleY: sprite.yScale,
+                                baseWidth: baseWidth,
+                                baseHeight: baseHeight
                             )
                             frameObjects.append(editorObject)
-                            print("🎮 Saving image object (from char node): \(assetName) at \(absolutePosition) (relative: \(sprite.position)) scale: \(sprite.xScale)")
+                            print("🎮 Saving image object (from char node): \(assetName) at \(absolutePosition) (relative: \(sprite.position)) scale: \(sprite.xScale) base: \(baseWidth ?? 0)x\(baseHeight ?? 0)")
                         }
                         // Handle box objects (SKShapeNode)
                         else if let shapeNode = node as? SKShapeNode, shapeNode.name?.hasPrefix("object_box_") == true {
@@ -1673,7 +1687,7 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
         boxNode.addChild(deleteDot)
     }
     
-    private func addObject(asset: String) {
+    private func addObject(asset: String, width: CGFloat? = nil, height: CGFloat? = nil) {
         print("🎮 Adding object: \(asset)")
         // Add the object to the editor scene
         guard let editorScene = editorScene else { return }
@@ -1693,8 +1707,26 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
         // Position below the center of the figure (lower on screen)
         sprite.position = CGPoint(x: editorScene.size.width / 2, y: editorScene.size.height / 2 - 100)
         sprite.zPosition = 5  // Behind the stick figure but in front of grid
-        // Scale to fit in a square (50x50), maintaining aspect ratio
-        sprite.size = CGSize(width: 50, height: 50)
+        
+        // Set dimensions based on provided parameters or use defaults
+        let objectWidth: CGFloat
+        let objectHeight: CGFloat
+        
+        if let providedWidth = width, let providedHeight = height {
+            // Use provided dimensions (from animations.json)
+            objectWidth = providedWidth
+            objectHeight = providedHeight
+        } else {
+            // Use default dimensions based on asset type
+            if asset == "Shaker" {
+                objectWidth = 23.3
+                objectHeight = 35
+            } else {
+                objectWidth = 50
+                objectHeight = 50
+            }
+        }
+        sprite.size = CGSize(width: objectWidth, height: objectHeight)
         sprite.name = "object_\(asset)"
         
         // Store object data for saving
@@ -1702,14 +1734,23 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
         sprite.userData?["assetName"] = asset
         sprite.userData?["rotation"] = 0.0
         sprite.userData?["scale"] = 1.0
+        // Store actual dimensions so export can use correct base sizes
+        sprite.userData?["baseWidth"] = objectWidth
+        sprite.userData?["baseHeight"] = objectHeight
         
         // Make sprite interactive with physics
-        sprite.physicsBody = SKPhysicsBody(circleOfRadius: 25)
+        // Use the average of width and height for a reasonable collision radius
+        let physicsRadius = (objectWidth + objectHeight) / 4
+        sprite.physicsBody = SKPhysicsBody(circleOfRadius: physicsRadius)
         sprite.physicsBody?.isDynamic = false
         sprite.physicsBody?.affectedByGravity = false
         
         // Add control dots only if showObjectControls is true
         if showObjectControls {
+            // Calculate half dimensions for control dot positioning
+            let halfWidth = objectWidth / 2
+            let halfHeight = objectHeight / 2
+            
             // Add center dot for moving the object
             let moveDot = SKShapeNode(circleOfRadius: 3)
             moveDot.fillColor = .white
@@ -1725,7 +1766,7 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
             rotateDot.fillColor = .yellow
             rotateDot.strokeColor = .darkGray
             rotateDot.lineWidth = 1
-            rotateDot.position = CGPoint(x: 25, y: 25)  // Top-right relative to object (scaled with size)
+            rotateDot.position = CGPoint(x: halfWidth, y: halfHeight)  // Top-right relative to object
             rotateDot.name = "object_rotate_\(asset)"
             rotateDot.zPosition = 12
             sprite.addChild(rotateDot)
@@ -1735,7 +1776,7 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
             resizeDot.fillColor = .cyan
             resizeDot.strokeColor = .darkGray
             resizeDot.lineWidth = 1
-            resizeDot.position = CGPoint(x: 25, y: -25)  // Bottom-right relative to object (scaled with size)
+            resizeDot.position = CGPoint(x: halfWidth, y: -halfHeight)  // Bottom-right relative to object
             resizeDot.name = "object_resize_\(asset)"
             resizeDot.zPosition = 12
             sprite.addChild(resizeDot)
@@ -1745,7 +1786,7 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
             deleteDot.fillColor = .red
             deleteDot.strokeColor = .darkGray
             deleteDot.lineWidth = 1
-            deleteDot.position = CGPoint(x: -25, y: 25)  // Top-left relative to object (scaled with size)
+            deleteDot.position = CGPoint(x: -halfWidth, y: halfHeight)  // Top-left relative to object
             deleteDot.name = "object_delete_\(asset)"
             deleteDot.zPosition = 12
             sprite.addChild(deleteDot)
@@ -1887,8 +1928,8 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
                     print("🎮 Loaded box: \(color) \(Int(width))x\(Int(height)) at \(boxNode.position)")
                 }
             } else {
-                // Load as image object
-                addObject(asset: editorObject.assetName)
+                // Load as image object - pass actual dimensions from saved frame if available
+                addObject(asset: editorObject.assetName, width: editorObject.baseWidth, height: editorObject.baseHeight)
                 // Update the position, rotation, and scale of the last added object
                 // Look for the object in scene (since addObject now adds to scene, not characterNode during frame loading)
                 if let lastObject = editorScene?.children.last(where: { $0.name?.hasPrefix("object_") == true }) as? SKSpriteNode {
@@ -1896,7 +1937,7 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
                     lastObject.zRotation = editorObject.rotation
                     lastObject.xScale = editorObject.scaleX
                     lastObject.yScale = editorObject.scaleY
-                    print("🎮 Loaded object: \(editorObject.assetName) at \(lastObject.position)")
+                    print("🎮 Loaded object: \(editorObject.assetName) at \(lastObject.position) with dimensions \(editorObject.baseWidth ?? 0)x\(editorObject.baseHeight ?? 0)")
                 }
             }
         }
@@ -2864,13 +2905,15 @@ class FrameListViewController: UIViewController, UITableViewDataSource, UITableV
                             scaleY: 1.0
                         )
                     } else {
-                        // Image object
+                        // Image object - preserve width and height from AnimationObject
                         return EditorObject(
                             assetName: animObj.imageName,
                             position: animObj.position,
                             rotation: animObj.rotation,
                             scaleX: animObj.scale,
-                            scaleY: animObj.scale
+                            scaleY: animObj.scale,
+                            baseWidth: animObj.width,
+                            baseHeight: animObj.height
                         )
                     }
                 }
