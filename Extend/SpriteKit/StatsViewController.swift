@@ -137,8 +137,10 @@ class StatsViewController: UIViewController {
             for (action, time) in gameState.actionTimes.sorted(by: { $0.key < $1.key }) {
                 let displayName = getActionDisplayName(action)
                 // Convert milliseconds to seconds for display
-                perfSection.rows.append(.stat(label: displayName, value: formatTime(time / 1000.0)))
-            }
+                    if displayName != "Shaker" {
+                        perfSection.rows.append(.stat(label: displayName, value: formatTime(time / 1000.0)))
+                    }
+                }
         } else {
             perfSection.rows.append(.stat(label: "No actions performed yet", value: ""))
         }
