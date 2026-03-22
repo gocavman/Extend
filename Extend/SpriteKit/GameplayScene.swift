@@ -291,8 +291,8 @@ private func setupControlZones() {
     addChild(leftZone)
     
     let leftLabel = SKLabelNode(fontNamed: "Arial")
-    leftLabel.text = "LEFT"
-    leftLabel.fontSize = 12
+    leftLabel.text = "◀︎"  // Left arrow icon
+    leftLabel.fontSize = 24  // Larger for visibility
     leftLabel.fontColor = .black
     leftLabel.position = CGPoint(x: leftZoneWidth / 2, y: zoneHeight / 2)
     leftLabel.zPosition = 6
@@ -338,8 +338,8 @@ private func setupControlZones() {
     addChild(rightZone)
     
     let rightLabel = SKLabelNode(fontNamed: "Arial")
-    rightLabel.text = "RIGHT"
-    rightLabel.fontSize = 12
+    rightLabel.text = "▶︎"  // Right arrow icon
+    rightLabel.fontSize = 24  // Larger for visibility
     rightLabel.fontColor = .black
     rightLabel.position = CGPoint(x: leftZoneWidth + centerZoneWidth + rightZoneWidth / 2, y: zoneHeight / 2)
     rightLabel.zPosition = 6
@@ -1493,7 +1493,7 @@ private func addFloatingText(_ text: String, x: CGFloat, y: CGFloat, color: UICo
         var currentIncrement = 0
         
         var timer: Timer?
-        timer = Timer.scheduledTimer(withTimeInterval: updateInterval, repeats: true) { _ in
+        timer = Timer.scheduledTimer(withTimeInterval: updateInterval, repeats: true) { [weak self] _ in
             currentIncrement += 1
             
             // Calculate which point value to show based on progress through the animation
@@ -1506,6 +1506,9 @@ private func addFloatingText(_ text: String, x: CGFloat, y: CGFloat, color: UICo
                 pointsValueLabel.text = "\(endPoints)"
                 pointsValueLabel.fontSize = 12  // Return to normal size
                 pointsValueLabel.fontName = "Arial"  // Return to normal (not bold)
+                
+                // Trigger fireworks effect at the score location
+                self?.createFireworksAtScore()
             } else {
                 // Update to the new value
                 pointsValueLabel.text = "\(newValue)"
@@ -1513,6 +1516,56 @@ private func addFloatingText(_ text: String, x: CGFloat, y: CGFloat, color: UICo
                 pointsValueLabel.fontSize = 14
                 pointsValueLabel.fontName = "Arial-BoldMT"
             }
+        }
+    }
+    
+    private func createFireworksAtScore() {
+        guard let pointsValueLabel = pointsValueLabel else { return }
+        
+        let fireworkCount = 20  // Even more particles for denser effect
+        let colors: [SKColor] = [.yellow, .orange, .red, .cyan, .green, .magenta, .white, .systemYellow, .systemRed, .systemGreen]
+        
+        for i in 0..<fireworkCount {
+            let angle = CGFloat(i) * (2.0 * .pi / CGFloat(fireworkCount))
+            
+            // Much slower burst speed (20-60 range - very slow)
+            let baseSpeed: CGFloat = CGFloat.random(in: 20...60)
+            let velocityX = cos(angle) * baseSpeed
+            let velocityY = sin(angle) * baseSpeed
+            
+            // Randomize particle size (2-6 radius for variety)
+            let particleRadius = CGFloat.random(in: 2...6)
+            let particle = SKShapeNode(circleOfRadius: particleRadius)
+            particle.fillColor = colors[i % colors.count]
+            particle.strokeColor = .white
+            particle.lineWidth = 1
+            particle.position = pointsValueLabel.position
+            particle.zPosition = 50
+            addChild(particle)
+            
+            // Much slower animation with minimal gravity - floaty effect
+            let duration: TimeInterval = 2.5  // Very long duration - 2.5 seconds
+            let moveAction = SKAction.customAction(withDuration: duration) { node, elapsedTime in
+                let progress = elapsedTime / duration
+                
+                // Apply initial velocity with VERY weak gravity - particles float more than fall
+                let newX = node.position.x + (velocityX * CGFloat(elapsedTime))
+                
+                // Much weaker gravity (100 instead of 500) - particles float longer before falling
+                let gravity: CGFloat = 100
+                let newY = node.position.y + (velocityY * CGFloat(elapsedTime)) - (0.5 * gravity * CGFloat(elapsedTime) * CGFloat(elapsedTime))
+                node.position = CGPoint(x: newX, y: newY)
+                
+                // Fade out very gradually - takes full 2.5 seconds
+                node.alpha = 1.0 - progress
+                
+                // Slight scale down as it falls
+                node.setScale(1.0 - (progress * 0.2))
+            }
+            
+            let removeAction = SKAction.removeFromParent()
+            let sequence = SKAction.sequence([moveAction, removeAction])
+            particle.run(sequence)
         }
     }
 

@@ -163,6 +163,13 @@ class GameViewController: UIViewController {
     
     /// Animate points counting from current to new total
     func animatePointsIncrease(from startPoints: Int, to endPoints: Int) {
+        // Safeguard: if already past the end point somehow, just display it directly
+        if startPoints > endPoints {
+            pointsValueLabel?.text = "\(endPoints)"
+            pointsValueLabel?.font = UIFont.systemFont(ofSize: 14, weight: .medium)
+            return
+        }
+        
         let pointsToAdd = endPoints - startPoints
         let duration: TimeInterval = 0.8
         let updateInterval: TimeInterval = 0.01
@@ -170,17 +177,21 @@ class GameViewController: UIViewController {
         let pointsPerUpdate = Double(pointsToAdd) / Double(updates)
         
         var currentValue = Double(startPoints)
+        var completionCount = 0
         
         Timer.scheduledTimer(withTimeInterval: updateInterval, repeats: true) { [weak self] timer in
+            completionCount += 1
             currentValue += pointsPerUpdate
             
-            if currentValue >= Double(endPoints) {
+            // Check if we've exceeded updates OR currentValue has reached/exceeded endPoints
+            if completionCount >= updates || currentValue >= Double(endPoints) {
                 timer.invalidate()
                 // Set final value - return to normal size and weight
                 self?.pointsValueLabel?.text = "\(endPoints)"
                 self?.pointsValueLabel?.font = UIFont.systemFont(ofSize: 14, weight: .medium)
             } else {
-                let displayValue = Int(currentValue)
+                // Ensure displayValue never goes negative (safeguard against level threshold)
+                let displayValue = max(0, Int(currentValue))
                 self?.pointsValueLabel?.text = "\(displayValue)"
                 // Make it larger and bold while incrementing
                 self?.pointsValueLabel?.font = UIFont.systemFont(ofSize: 16, weight: .bold)
