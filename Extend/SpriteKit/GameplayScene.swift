@@ -265,7 +265,7 @@ private func setupUI() {
             characterContainer.addChild(stickFigureNode)
             
             // Render stand frame objects
-            renderFrameObjects(gameState.standFrameObjects, on: characterContainer, scale: 1.2, figureOffsetX: frameWithAppearance.figureOffsetX, figureOffsetY: frameWithAppearance.figureOffsetY)
+            renderFrameObjects(gameState.standFrameObjects, on: characterContainer, scale: 1.2, figureOffsetX: frameWithAppearance.figureOffsetX, figureOffsetY: frameWithAppearance.figureOffsetY, shouldFlip: false)
             
             addChild(characterContainer)
             characterNode = characterContainer
@@ -586,7 +586,7 @@ private func updateGameLogic() {
             character.addChild(stickFigureNode)
             
             // Render stand frame objects
-            renderFrameObjects(gameState.standFrameObjects, on: character, scale: 1.2, figureOffsetX: frameWithAppearance.figureOffsetX, figureOffsetY: frameWithAppearance.figureOffsetY)
+            renderFrameObjects(gameState.standFrameObjects, on: character, scale: 1.2, figureOffsetX: frameWithAppearance.figureOffsetX, figureOffsetY: frameWithAppearance.figureOffsetY, shouldFlip: shouldFlip)
         }
     }
     
@@ -710,7 +710,7 @@ private func startMovementAnimation() {
                 
                 // Render move frame objects
                 if moveFrameIndex < gameState.moveFrameObjects.count {
-                    self.renderFrameObjects(gameState.moveFrameObjects[moveFrameIndex], on: characterContainer, scale: 1.2, figureOffsetX: frameWithAppearance.figureOffsetX, figureOffsetY: frameWithAppearance.figureOffsetY)
+                    self.renderFrameObjects(gameState.moveFrameObjects[moveFrameIndex], on: characterContainer, scale: 1.2, figureOffsetX: frameWithAppearance.figureOffsetX, figureOffsetY: frameWithAppearance.figureOffsetY, shouldFlip: shouldFlip)
                 }
             }
         })
@@ -752,7 +752,7 @@ private func stopMovementAnimation() {
             characterContainer.addChild(stickFigureNode)
             
             // Render stand frame objects
-            renderFrameObjects(gameState.standFrameObjects, on: characterContainer, scale: 1.2, figureOffsetX: frameWithAppearance.figureOffsetX, figureOffsetY: frameWithAppearance.figureOffsetY)
+            renderFrameObjects(gameState.standFrameObjects, on: characterContainer, scale: 1.2, figureOffsetX: frameWithAppearance.figureOffsetX, figureOffsetY: frameWithAppearance.figureOffsetY, shouldFlip: shouldFlip)
         }
     }
 }
@@ -817,7 +817,7 @@ func refreshCharacterAppearance() {
             
             // Render move frame objects
             if animationFrameIndex < gameState.moveFrameObjects.count {
-                renderFrameObjects(gameState.moveFrameObjects[animationFrameIndex], on: characterContainer, scale: 1.2, figureOffsetX: frameWithAppearance.figureOffsetX, figureOffsetY: frameWithAppearance.figureOffsetY)
+                renderFrameObjects(gameState.moveFrameObjects[animationFrameIndex], on: characterContainer, scale: 1.2, figureOffsetX: frameWithAppearance.figureOffsetX, figureOffsetY: frameWithAppearance.figureOffsetY, shouldFlip: shouldFlip)
             }
         }
     } else {
@@ -833,7 +833,7 @@ func refreshCharacterAppearance() {
             characterContainer.addChild(stickFigureNode)
             
             // Render stand frame objects
-            renderFrameObjects(gameState.standFrameObjects, on: characterContainer, scale: 1.2, figureOffsetX: frameWithAppearance.figureOffsetX, figureOffsetY: frameWithAppearance.figureOffsetY)
+            renderFrameObjects(gameState.standFrameObjects, on: characterContainer, scale: 1.2, figureOffsetX: frameWithAppearance.figureOffsetX, figureOffsetY: frameWithAppearance.figureOffsetY, shouldFlip: shouldFlip)
         }
     }
     
@@ -1065,15 +1065,18 @@ private func renderFrameObjects(_ objects: [AnimationObject], on container: SKNo
             y: -(editorCenter - object.position.y)
         )
         
-        // Apply horizontal flip to object position if needed
+        // Apply horizontal flip to object position and rotation if needed
+        var objectRotation = CGFloat(object.rotation)
         if shouldFlip {
             relativePos.x = -relativePos.x
             node.xScale = -1.0
+            // Mirror the rotation angle when flipping
+            objectRotation = -objectRotation
         }
         
         // Position object exactly as it appears in the editor
         node.position = relativePos
-        node.zRotation = CGFloat(object.rotation)
+        node.zRotation = objectRotation
         container.addChild(node)
         
         print("🎮 renderFrameObjects: object=\(object.imageName), editorPos=\(object.position), relativePos=\(relativePos)")
@@ -1472,7 +1475,10 @@ private func addFloatingText(_ text: String, x: CGFloat, y: CGFloat, color: UICo
         guard let gameState = gameState else { return }
         let newTotal = gameState.currentPoints
         let previousTotal = newTotal - points
-        animateHeaderPointsCounter(from: previousTotal, to: newTotal)
+        // Clamp previousTotal to 0 to prevent negative points display on level up
+        // (When level up happens, currentPoints is reset to 0 before points animation is triggered)
+        let clampedPreviousTotal = max(0, previousTotal)
+        animateHeaderPointsCounter(from: clampedPreviousTotal, to: newTotal)
     }
     
     private func animateHeaderPointsCounter(from startPoints: Int, to endPoints: Int) {
