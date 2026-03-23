@@ -387,16 +387,19 @@ class MapScene: GameScene {
             }
         }
         
-        // Check each level station
-        for levelConfig in LEVEL_CONFIGS {
-            let stationPos = CGPoint(x: levelConfig.mapX, y: levelConfig.mapY)
-            let distance = hypot(charPos.x - stationPos.x, charPos.y - stationPos.y)
-            
-            // If character is close and level is available, enter it
-            if distance < PROXIMITY_THRESHOLD && !isMoving && levelConfig.id <= gameState.currentLevel {
-                //print("🗺️ ✓ Character near level \(levelConfig.id) - entering gameplay")
-                enterLevel(levelConfig.id)
-                return
+        // Check each level station (only in main map)
+        // Training rooms like "Trees" have empty levels array and should not trigger level entry
+        if currentRoomId == "main_map" {
+            for levelConfig in LEVEL_CONFIGS {
+                let stationPos = CGPoint(x: levelConfig.mapX, y: levelConfig.mapY)
+                let distance = hypot(charPos.x - stationPos.x, charPos.y - stationPos.y)
+                
+                // If character is close and level is available, enter it
+                if distance < PROXIMITY_THRESHOLD && !isMoving && levelConfig.id <= gameState.currentLevel {
+                    //print("🗺️ ✓ Character near level \(levelConfig.id) - entering gameplay")
+                    enterLevel(levelConfig.id)
+                    return
+                }
             }
         }
     }

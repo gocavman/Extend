@@ -204,7 +204,7 @@
     "id": "shaker",
     "displayName": "Shaker",
     "unlockLevel": 1,
-    "pointsPerCompletion": 0,
+    "pointsPerCompletion": 5,
     "variableTiming": {
       "1": 5.0
     },
