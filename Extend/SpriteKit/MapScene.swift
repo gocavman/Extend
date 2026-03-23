@@ -209,10 +209,25 @@ class MapScene: GameScene {
         let spawnableHeight = MAP_HEIGHT - (roomPadding * 2)
         let fontSize = populationConfig.size ?? 40  // Default to 40 if not specified
         
-        // Spawn population items at random positions
+        // Get all obstacles (doors and level stations) in this room
+        let doorsInRoom = getDoorsInRoom(currentRoomId)
+        
+        // Spawn population items at random positions (avoiding doors and levels)
         for i in 0..<populationConfig.count {
-            let randomX = CGFloat.random(in: roomPadding..<(roomPadding + spawnableWidth))
-            let randomY = CGFloat.random(in: roomPadding..<(roomPadding + spawnableHeight))
+            var randomX: CGFloat
+            var randomY: CGFloat
+            var attempts = 0
+            let maxAttempts = 50  // Prevent infinite loops
+            
+            // Keep generating positions until we find one that doesn't overlap
+            repeat {
+                randomX = CGFloat.random(in: roomPadding..<(roomPadding + spawnableWidth))
+                randomY = CGFloat.random(in: roomPadding..<(roomPadding + spawnableHeight))
+                attempts += 1
+            } while !isSpawnPositionSafe(CGPoint(x: randomX, y: randomY), doors: doorsInRoom) && attempts < maxAttempts
+            
+            // If we couldn't find a safe spot after maxAttempts, use the last position anyway
+            // (this prevents infinite loops in edge cases)
             
             // Pick random emoji from items array
             let emoji = populationConfig.items.randomElement() ?? "⭐"
@@ -228,6 +243,37 @@ class MapScene: GameScene {
             
             populationNodes[populationNode.name ?? ""] = populationNode
         }
+    }
+    
+    /// Check if a spawn position is safe (doesn't overlap with doors or level stations)
+    private func isSpawnPositionSafe(_ position: CGPoint, doors: [DoorConfig]) -> Bool {
+        let collisionBuffer: CGFloat = 120  // Extra buffer around doors/levels to avoid too-close spawns
+        
+        // Check distance to all doors in this room
+        for doorConfig in doors {
+            let doorPos = CGPoint(x: doorConfig.mapX, y: doorConfig.mapY)
+            let doorCollisionRadius = max(doorConfig.width, doorConfig.height) / 2 + collisionBuffer
+            let distance = hypot(position.x - doorPos.x, position.y - doorPos.y)
+            
+            if distance < doorCollisionRadius {
+                return false  // Too close to a door
+            }
+        }
+        
+        // Check distance to all level stations (only if in main map)
+        if currentRoomId == "main_map" {
+            for levelConfig in LEVEL_CONFIGS {
+                let levelPos = CGPoint(x: levelConfig.mapX, y: levelConfig.mapY)
+                let levelCollisionRadius = max(levelConfig.width, levelConfig.height) / 2 + collisionBuffer
+                let distance = hypot(position.x - levelPos.x, position.y - levelPos.y)
+                
+                if distance < levelCollisionRadius {
+                    return false  // Too close to a level
+                }
+            }
+        }
+        
+        return true  // Position is safe
     }
     
     private func setupCharacter() {
