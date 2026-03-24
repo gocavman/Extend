@@ -584,7 +584,7 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
             
         case (1, 6):
             // Neck Width slider (was previously at 1, 7)
-            addSliderCell(cell, label: "Neck Width", value: neckWidth, min: 0.5, max: 10.0, increment: 0.1, onChange: { [weak self] val in
+            addSliderCell(cell, label: "Neck Width", value: neckWidth, min: 0.5, max: 20.0, increment: 0.1, onChange: { [weak self] val in
                 self?.neckWidth = val
                 self?.updateFigure()
             })
@@ -3233,15 +3233,23 @@ class FrameListViewController: UIViewController, UITableViewDataSource, UITableV
         }
         
         // Regenerate interpolation values based on Stand frames
+        print("🎮 ========== REGENERATE BUTTON PRESSED ==========")
+        print("🎮 Loaded \(standFrames.count) stand frames")
         if MuscleSystem.shared.regenerateInterpolationFromStandFrames(standFrames: standFrames) {
+            print("🎮 Regeneration succeeded, reloading config...")
+            // Reload the config to make sure the updated values are in memory
+            MuscleSystem.shared.reloadMuscleConfig()
+            print("🎮 Config reloaded")
+            
             let successAlert = UIAlertController(
                 title: "Success",
-                message: "Interpolation values regenerated from Stand frames. game_muscles.json has been updated.",
+                message: "Interpolation values regenerated! JSON has been copied to your clipboard.\n\nPaste it into game_muscles.json in your Xcode project.",
                 preferredStyle: .alert
             )
             successAlert.addAction(UIAlertAction(title: "OK", style: .default))
             self.present(successAlert, animated: true)
         } else {
+            print("🎮 ❌ Regeneration failed")
             let errorAlert = UIAlertController(
                 title: "Error",
                 message: "Failed to regenerate interpolation values",

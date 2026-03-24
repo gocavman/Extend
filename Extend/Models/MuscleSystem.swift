@@ -1,4 +1,5 @@
 import Foundation
+import UIKit
 
 // MARK: - Muscle System Data Structures
 
@@ -9,6 +10,27 @@ struct MuscleConfig: Codable {
     
     enum CodingKeys: String, CodingKey {
         case config, actions, properties
+    }
+    
+    init(config: ConfigSettings, actions: [GameAction], properties: [PropertyDefinition]) {
+        self.config = config
+        self.actions = actions
+        self.properties = properties
+    }
+    
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        // Maintain order: config, actions, properties
+        try container.encode(config, forKey: .config)
+        try container.encode(actions, forKey: .actions)
+        try container.encode(properties, forKey: .properties)
+    }
+    
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        config = try container.decode(ConfigSettings.self, forKey: .config)
+        actions = try container.decode([GameAction].self, forKey: .actions)
+        properties = try container.decode([PropertyDefinition].self, forKey: .properties)
     }
 }
 
@@ -31,6 +53,26 @@ struct GameAction: Codable {
     enum CodingKeys: String, CodingKey {
         case id, name, description, pointsAwarded, frequency, targetMuscleGroups
     }
+    
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(id, forKey: .id)
+        try container.encode(name, forKey: .name)
+        try container.encodeIfPresent(description, forKey: .description)
+        try container.encode(pointsAwarded, forKey: .pointsAwarded)
+        try container.encodeIfPresent(frequency, forKey: .frequency)
+        try container.encode(targetMuscleGroups, forKey: .targetMuscleGroups)
+    }
+    
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(String.self, forKey: .id)
+        name = try container.decode(String.self, forKey: .name)
+        description = try container.decodeIfPresent(String.self, forKey: .description)
+        pointsAwarded = try container.decode(Int.self, forKey: .pointsAwarded)
+        frequency = try container.decodeIfPresent(Frequency.self, forKey: .frequency)
+        targetMuscleGroups = try container.decode([MuscleGroupDistribution].self, forKey: .targetMuscleGroups)
+    }
 }
 
 struct MuscleGroupDistribution: Codable {
@@ -43,14 +85,111 @@ struct Frequency: Codable {
     let unit: String
 }
 
+// Helper struct for ordered progression
+struct OrderedProgression: Codable {
+    var values: [(String, Double)] = []
+    
+    init(_ dict: [String: Double]) {
+        let orderedKeys = ["0", "25", "50", "75", "100"]
+        for key in orderedKeys {
+            if let value = dict[key] {
+                values.append((key, value))
+            }
+        }
+    }
+    
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: DynamicKey.self)
+        for (key, value) in values {
+            try container.encode(value, forKey: DynamicKey(stringValue: key)!)
+        }
+    }
+    
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: DynamicKey.self)
+        for key in container.allKeys {
+            if let value = try container.decodeIfPresent(Double.self, forKey: key) {
+                values.append((key.stringValue, value))
+            }
+        }
+    }
+    
+    struct DynamicKey: CodingKey {
+        let stringValue: String
+        init?(stringValue: String) {
+            self.stringValue = stringValue
+        }
+        var intValue: Int? { nil }
+        init?(intValue: Int) { nil }
+    }
+    
+    subscript(key: String) -> Double? {
+        get { values.first(where: { $0.0 == key })?.1 }
+        set {
+            if let newValue = newValue {
+                if let index = values.firstIndex(where: { $0.0 == key }) {
+                    values[index].1 = newValue
+                } else {
+                    values.append((key, newValue))
+                }
+            }
+        }
+    }
+}
+
 struct PropertyDefinition: Codable {
     let id: String
     let name: String
-    let muscleGroups: [String]  // Now supports multiple muscle groups
+    let muscleGroups: [String]
     let progression: [String: Double]
     
     enum CodingKeys: String, CodingKey {
         case id, name, muscleGroups, progression
+    }
+    
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        // Encode in specific order: id, name, muscleGroups, progression
+        try container.encode(id, forKey: .id)
+        try container.encode(name, forKey: .name)
+        try container.encode(muscleGroups, forKey: .muscleGroups)
+        
+        // Encode progression with explicitly ordered keys
+        var progressionContainer = container.nestedContainer(keyedBy: ProgressionCodingKey.self, forKey: .progression)
+        let orderedKeys = ["0", "25", "50", "75", "100"]
+        for key in orderedKeys {
+            if let value = progression[key] {
+                try progressionContainer.encode(value, forKey: ProgressionCodingKey(stringValue: key)!)
+            }
+        }
+    }
+    
+    struct ProgressionCodingKey: CodingKey {
+        let stringValue: String
+        
+        init?(stringValue: String) {
+            self.stringValue = stringValue
+        }
+        
+        var intValue: Int? { nil }
+        init?(intValue: Int) { nil }
+    }
+    
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(String.self, forKey: .id)
+        name = try container.decode(String.self, forKey: .name)
+        muscleGroups = try container.decode([String].self, forKey: .muscleGroups)
+        
+        let ordered = try container.decode(OrderedProgression.self, forKey: .progression)
+        progression = Dictionary(uniqueKeysWithValues: ordered.values)
+    }
+    
+    init(id: String, name: String, muscleGroups: [String], progression: [String: Double]) {
+        self.id = id
+        self.name = name
+        self.muscleGroups = muscleGroups
+        self.progression = progression
     }
 }
 
@@ -265,15 +404,65 @@ class MuscleSystem {
     
     /// Load muscle config from bundle
     func loadMuscleConfig() {
-        if let bundleURL = Bundle.main.url(forResource: "game_muscles", withExtension: "json") {
-            do {
-                let data = try Data(contentsOf: bundleURL)
-                let decoder = JSONDecoder()
-                config = try decoder.decode(MuscleConfig.self, from: data)
-                state.initializeProperties(with: config?.properties ?? [])
-            } catch {
-                print("🦵 ❌ Failed to load game_muscles.json: \(error)")
+        print("🦵 Loading muscle config...")
+        var configData: Data?
+        var source = "unknown"
+        
+        // First, try to load from Documents (regenerated file has priority)
+        if let documentsURL = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first {
+            let fileURL = documentsURL.appendingPathComponent("game_muscles.json")
+            print("🦵 Checking Documents: \(fileURL.path)")
+            
+            if FileManager.default.fileExists(atPath: fileURL.path) {
+                do {
+                    configData = try Data(contentsOf: fileURL)
+                    source = "Documents"
+                    print("🦵 ✅ Loaded game_muscles.json from Documents (\(configData?.count ?? 0) bytes)")
+                } catch {
+                    print("🦵 ⚠️ Failed to load game_muscles.json from Documents: \(error)")
+                }
+            } else {
+                print("🦵 Documents file does not exist")
             }
+        }
+        
+        // If Documents file doesn't exist or failed, load from Bundle
+        if configData == nil {
+            print("🦵 Checking Bundle...")
+            if let bundleURL = Bundle.main.url(forResource: "game_muscles", withExtension: "json") {
+                do {
+                    configData = try Data(contentsOf: bundleURL)
+                    source = "Bundle"
+                    print("🦵 ✅ Loaded game_muscles.json from Bundle (\(configData?.count ?? 0) bytes)")
+                } catch {
+                    print("🦵 ❌ Failed to load game_muscles.json from Bundle: \(error)")
+                }
+            } else {
+                print("🦵 ❌ Bundle file not found")
+            }
+        }
+        
+        // Decode the loaded data
+        if let configData = configData {
+            do {
+                let decoder = JSONDecoder()
+                config = try decoder.decode(MuscleConfig.self, from: configData)
+                state.initializeProperties(with: config?.properties ?? [])
+                print("🦵 ✅ Successfully decoded config from \(source)")
+                print("🦵 Loaded \(config?.properties.count ?? 0) properties")
+                print("🦵 Loaded \(config?.actions.count ?? 0) actions")
+                
+                // Debug: Show the actions
+                if let actions = config?.actions {
+                    for action in actions {
+                        print("🦵   - Action: \(action.id) '\(action.name)'")
+                    }
+                }
+            } catch {
+                print("🦵 ❌ Failed to decode game_muscles.json: \(error)")
+            }
+        } else {
+            print("🦵 ❌ No config data to decode")
         }
     }
     
@@ -432,19 +621,72 @@ class MuscleSystem {
         return interpolateProperty(propertyKey, musclePoints: avgPoints)
     }
     
+    /// Load actions from Bundle version (used before regeneration to ensure actions are preserved)
+    func loadActionsFromBundle() -> [GameAction] {
+        guard let bundleURL = Bundle.main.url(forResource: "game_muscles", withExtension: "json") else {
+            print("🦵 ❌ Could not load actions from Bundle: file not found")
+            return []
+        }
+        
+        do {
+            let data = try Data(contentsOf: bundleURL)
+            let decoder = JSONDecoder()
+            let bundleConfig = try decoder.decode(MuscleConfig.self, from: data)
+            print("🦵 ✅ Loaded \(bundleConfig.actions.count) actions from Bundle")
+            for action in bundleConfig.actions {
+                print("🦵   - Action: \(action.id) '\(action.name)'")
+            }
+            return bundleConfig.actions
+        } catch {
+            print("🦵 ❌ Failed to load actions from Bundle: \(error)")
+            return []
+        }
+    }
+    
     /// Regenerate interpolation values in game_muscles.json based on current Stand frames
     func regenerateInterpolationFromStandFrames(standFrames: [AnimationFrame]) -> Bool {
         // Load current game_muscles.json config
-        guard let currentConfig = config else { return false }
+        guard let currentConfig = config else {
+            print("🦵 ❌ REGEN FAILED: currentConfig is nil")
+            return false
+        }
         
-        // Sort stand frames by scale (smallest to largest)
-        let sortedFrames = standFrames.sorted { $0.pose.scale < $1.pose.scale }
+        print("🦵 ========== REGENERATION START ==========")
+        print("🦵 Found \(standFrames.count) stand frames to process")
+        print("🦵 Current config has \(currentConfig.actions.count) actions")
         
-        // Map scales to tier names
-        let tiers = ["0", "25", "50", "75", "100"]
-        let interpolationMap: [String: AnimationFrame] = Dictionary(uniqueKeysWithValues:
-            zip(tiers, sortedFrames.prefix(5)).map { ($0, $1) }
-        )
+        // If current config has no actions, try to load them from Bundle
+        var actionsToPreserve = currentConfig.actions
+        if actionsToPreserve.isEmpty {
+            print("🦵 ⚠️ Current config has 0 actions, loading from Bundle...")
+            actionsToPreserve = loadActionsFromBundle()
+        }
+        
+        print("🦵 Will preserve \(actionsToPreserve.count) actions")
+        for action in actionsToPreserve {
+            print("🦵   - Action: \(action.id) '\(action.name)'")
+        }
+        
+        // Map Stand frames by name to their corresponding tiers
+        // Explicitly map by frame name instead of scale (scale is a rendering property, not a tier discriminator)
+        let frameTierMapping: [(tierName: String, frameName: String)] = [
+            ("0", "Extra Small Stand"),
+            ("25", "Small Stand"),
+            ("50", "Stand"),
+            ("75", "Large Stand"),
+            ("100", "Extra Large Stand")
+        ]
+        
+        var interpolationMap: [String: AnimationFrame] = [:]
+        for (tierName, requiredFrameName) in frameTierMapping {
+            if let matchingFrame = standFrames.first(where: { $0.name == requiredFrameName }) {
+                interpolationMap[tierName] = matchingFrame
+                print("🦵 ✅ Mapped tier '\(tierName)' to frame: '\(requiredFrameName)'")
+            } else {
+                print("🦵 ❌ REGEN FAILED: Stand frame '\(requiredFrameName)' not found for tier '\(tierName)'")
+                return false
+            }
+        }
         
         // Update progression values for each property by creating new PropertyDefinition objects
         var updatedProperties: [PropertyDefinition] = []
@@ -455,6 +697,11 @@ class MuscleSystem {
             for (tier, frame) in interpolationMap {
                 let value = extractPropertyValueFromFrame(frame: frame, propertyId: property.id)
                 newProgression[tier] = value
+                
+                // DEBUG: Log the first few properties
+                if property.id == "strokeThicknessUpperTorso" || property.id == "fusiformShoulders" {
+                    print("🦵   Property '\(property.id)' @ tier '\(tier)' (frame '\(frame.name)'): \(value)")
+                }
             }
             
             // Create new PropertyDefinition with updated progression
@@ -467,15 +714,29 @@ class MuscleSystem {
             updatedProperties.append(updatedProperty)
         }
         
-        // Create new MuscleConfig with updated properties
+        print("🦵 Created \(updatedProperties.count) updated properties")
+        
+        // Create new MuscleConfig with updated properties AND preserved actions
         let updatedConfig = MuscleConfig(
             config: currentConfig.config,
-            actions: currentConfig.actions,
+            actions: actionsToPreserve,  // ← Use the preserved (or loaded from Bundle) actions
             properties: updatedProperties
         )
         
+        print("🦵 Updated config has \(updatedConfig.actions.count) actions ready to save")
+        
         // Save updated config to game_muscles.json
-        return saveGameMusclesToBundle(config: updatedConfig)
+        print("🦵 Attempting to save game_muscles.json...")
+        let saveSuccess = saveGameMusclesToBundle(config: updatedConfig)
+        
+        if saveSuccess {
+            print("🦵 ✅ game_muscles.json saved successfully")
+            print("🦵 ========== REGENERATION COMPLETE ==========")
+        } else {
+            print("🦵 ❌ Failed to save game_muscles.json")
+        }
+        
+        return saveSuccess
     }
     
     /// Extract a property value from an AnimationFrame
@@ -560,20 +821,200 @@ class MuscleSystem {
     /// Save game muscles config to bundle
     private func saveGameMusclesToBundle(config: MuscleConfig) -> Bool {
         do {
-            let encoder = JSONEncoder()
-            encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
-            let jsonData = try encoder.encode(config)
+            // DEBUG: Check what we're about to encode
+            print("🦵 About to encode config with:")
+            print("🦵   - config: \(config.config)")
+            print("🦵   - actions.count: \(config.actions.count)")
+            for (i, action) in config.actions.enumerated() {
+                print("🦵     [\(i)] \(action.id): \(action.name)")
+            }
+            print("🦵   - properties.count: \(config.properties.count)")
+            
+            // Manually build JSON with controlled key ordering
+            var jsonString = "{\n"
+            
+            // 1. Encode config
+            jsonString += "  \"config\" : {\n"
+            jsonString += "    \"description\" : \(encodeString(config.config.description ?? "")),\n"
+            jsonString += "    \"pointsPerCompletion\" : \(config.config.pointsPerCompletion),\n"
+            jsonString += "    \"timeframeUnit\" : \(encodeString(config.config.timeframeUnit)),\n"
+            jsonString += "    \"tiers\" : [\n"
+            for (i, tier) in config.config.tiers.enumerated() {
+                jsonString += "      \(encodeString(tier))"
+                if i < config.config.tiers.count - 1 {
+                    jsonString += ","
+                }
+                jsonString += "\n"
+            }
+            jsonString += "    ],\n"
+            jsonString += "    \"tierGating\" : \(config.config.tierGating)\n"
+            jsonString += "  },\n"
+            
+            // 2. Encode actions
+            jsonString += "  \"actions\" : [\n"
+            for (i, action) in config.actions.enumerated() {
+                jsonString += encodeGameAction(action, indent: 4)
+                if i < config.actions.count - 1 {
+                    jsonString += ","
+                }
+                jsonString += "\n"
+            }
+            jsonString += "  ],\n"
+            
+            // 3. Encode properties
+            jsonString += "  \"properties\" : [\n"
+            for (i, property) in config.properties.enumerated() {
+                jsonString += encodePropertyDefinition(property, indent: 4)
+                if i < config.properties.count - 1 {
+                    jsonString += ","
+                }
+                jsonString += "\n"
+            }
+            jsonString += "  ]\n"
+            jsonString += "}"
+            
+            let jsonData = jsonString.data(using: .utf8)!
+            print("🦵 Generated JSON: \(jsonData.count) bytes")
+            
+            // DEBUG: Print first 1500 chars
+            let preview = String(jsonString.prefix(1500))
+            print("🦵 JSON Preview:\n\(preview)")
             
             // Get the path to Documents/game_muscles.json
             if let documentsURL = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first {
                 let fileURL = documentsURL.appendingPathComponent("game_muscles.json")
+                print("🦵 Saving to: \(fileURL.path)")
+                
                 try jsonData.write(to: fileURL, options: .atomic)
-                //print("✅ game_muscles.json regenerated and saved")
-                return true
+                
+                // Verify the file was actually written
+                if FileManager.default.fileExists(atPath: fileURL.path) {
+                    let savedData = try Data(contentsOf: fileURL)
+                    print("🦵 ✅ File saved successfully! Size: \(savedData.count) bytes")
+                    
+                    // Try to load it back to verify it's valid JSON
+                    let decoder = JSONDecoder()
+                    _ = try decoder.decode(MuscleConfig.self, from: savedData)
+                    print("🦵 ✅ File is valid JSON and can be decoded")
+                    
+                    // COPY THE JSON TO CLIPBOARD
+                    UIPasteboard.general.string = jsonString
+                    print("🦵 ✅ JSON copied to clipboard!")
+                    print("🦵 You can now paste it directly into game_muscles.json in your project")
+                    
+                    return true
+                } else {
+                    print("🦵 ❌ File does not exist after write!")
+                    return false
+                }
+            } else {
+                print("🦵 ❌ Could not get Documents directory")
+                return false
             }
         } catch {
-            print("❌ Error saving game_muscles.json: \(error)")
+            print("🦵 ❌ Error saving game_muscles.json: \(error)")
+            return false
         }
-        return false
+    }
+    
+    private func encodeString(_ value: String) -> String {
+        let escaped = value
+            .replacingOccurrences(of: "\\", with: "\\\\")
+            .replacingOccurrences(of: "\"", with: "\\\"")
+            .replacingOccurrences(of: "\n", with: "\\n")
+            .replacingOccurrences(of: "\r", with: "\\r")
+            .replacingOccurrences(of: "\t", with: "\\t")
+        return "\"\(escaped)\""
+    }
+    
+    private func encodeGameAction(_ action: GameAction, indent: Int) -> String {
+        let ind = String(repeating: " ", count: indent)
+        let ind2 = String(repeating: " ", count: indent + 2)
+        let ind3 = String(repeating: " ", count: indent + 4)
+        
+        var result = "\(ind){\n"
+        result += "\(ind2)\"id\" : \(encodeString(action.id)),\n"
+        result += "\(ind2)\"name\" : \(encodeString(action.name)),\n"
+        
+        if let description = action.description {
+            result += "\(ind2)\"description\" : \(encodeString(description)),\n"
+        }
+        
+        result += "\(ind2)\"pointsAwarded\" : \(action.pointsAwarded),\n"
+        
+        if let frequency = action.frequency {
+            result += "\(ind2)\"frequency\" : {\n"
+            result += "\(ind3)\"count\" : \(frequency.count),\n"
+            result += "\(ind3)\"unit\" : \(encodeString(frequency.unit))\n"
+            result += "\(ind2)},\n"
+        }
+        
+        result += "\(ind2)\"targetMuscleGroups\" : [\n"
+        for (i, group) in action.targetMuscleGroups.enumerated() {
+            result += "\(ind3){\n"
+            result += "\(ind3)  \"muscleGroup\" : \(encodeString(group.muscleGroup)),\n"
+            result += "\(ind3)  \"percentage\" : \(group.percentage)\n"
+            result += "\(ind3)}"
+            if i < action.targetMuscleGroups.count - 1 {
+                result += ","
+            }
+            result += "\n"
+        }
+        result += "\(ind2)]\n"
+        result += "\(ind)}"
+        
+        return result
+    }
+    
+    private func encodePropertyDefinition(_ property: PropertyDefinition, indent: Int) -> String {
+        let ind = String(repeating: " ", count: indent)
+        let ind2 = String(repeating: " ", count: indent + 2)
+        let ind3 = String(repeating: " ", count: indent + 4)
+        
+        var result = "\(ind){\n"
+        result += "\(ind2)\"id\" : \(encodeString(property.id)),\n"
+        result += "\(ind2)\"name\" : \(encodeString(property.name)),\n"
+        result += "\(ind2)\"muscleGroups\" : [\n"
+        for (i, group) in property.muscleGroups.enumerated() {
+            result += "\(ind3)\(encodeString(group))"
+            if i < property.muscleGroups.count - 1 {
+                result += ","
+            }
+            result += "\n"
+        }
+        result += "\(ind2)],\n"
+        
+        result += "\(ind2)\"progression\" : {\n"
+        let orderedKeys = ["0", "25", "50", "75", "100"]
+        var progressionLines: [String] = []
+        for key in orderedKeys {
+            if let value = property.progression[key] {
+                let formattedValue: String
+                if value == Double(Int(value)) {
+                    formattedValue = String(Int(value))
+                } else {
+                    formattedValue = String(value)
+                }
+                progressionLines.append("\(ind3)\(encodeString(key)) : \(formattedValue)")
+            }
+        }
+        result += progressionLines.joined(separator: ",\n") + "\n"
+        result += "\(ind2)}\n"
+        result += "\(ind)}"
+        
+        return result
+    }
+    
+    /// Helper to format Double values for JSON (remove unnecessary decimals)
+    private func formatDouble(_ value: Double) -> String {
+        if value == Double(Int(value)) {
+            return String(Int(value))
+        }
+        return String(value)
+    }
+    
+    /// Reload muscle config after regeneration (call this after clicking Regenerate button)
+    func reloadMuscleConfig() {
+        loadMuscleConfig()
     }
 }
