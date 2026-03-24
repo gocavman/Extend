@@ -439,11 +439,18 @@ private func handleTouchAtLocation(_ point: CGPoint, isPress: Bool) {
     }
     
     let characterX = character.position.x
+    let characterY = character.position.y
     //print("🎮 Character position: \(characterX), Tap position: \(point.x)")
     
-    // Check if tapping directly on the character (within a threshold)
-    let characterTapThreshold: CGFloat = 60  // Reasonable tap area around character
-    let isCharacterTap = abs(point.x - characterX) <= characterTapThreshold && point.y > zoneHeight
+    // Check if tapping directly on the character (within visible bounds)
+    let characterTapThreshold: CGFloat = 60  // Horizontal threshold (half of 150px width)
+    let characterHeight: CGFloat = 225  // Character height
+    let characterHalfHeight = characterHeight / 2
+    
+    // Check both horizontal AND vertical bounds
+    let isCharacterTap = abs(point.x - characterX) <= characterTapThreshold && 
+                         point.y > zoneHeight &&
+                         abs(point.y - characterY) <= characterHalfHeight
     
     if isCharacterTap && isPress {
         // Character was tapped - trigger the selected action
