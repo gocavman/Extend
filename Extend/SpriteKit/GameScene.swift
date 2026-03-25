@@ -1135,13 +1135,71 @@ class GameScene: SKScene {
 
         let torsoPath = UIBezierPath()
         
-        // Upper torso segment: neck to midtorso
-        torsoPath.move(to: neckRelative)
-        torsoPath.addLine(to: midTorsoRelative)
-        
-        // Lower torso segment: midtorso (PINNED, no offset) to waist
-        torsoPath.addLine(to: midTorsoRelative)
-        torsoPath.addLine(to: waistRelative)
+        // Check if hourglass curve is enabled (fusiformFullTorso > 0)
+        if mutableFigure.fusiformFullTorso > 0 {
+            // Hourglass curve rendering: Create smooth curves with 3 peaks
+            let totalLength = hypot(neckRelative.y - waistRelative.y, neckRelative.x - waistRelative.x)
+            let topPeakDist = totalLength * mutableFigure.peakPositionFullTorsoTop
+            let middlePeakDist = totalLength * mutableFigure.peakPositionFullTorsoMiddle
+            let bottomPeakDist = totalLength * mutableFigure.peakPositionFullTorsoBottom
+            
+            // Calculate normalized direction along torso (from neck to waist)
+            let torsoDir = CGPoint(x: (waistRelative.x - neckRelative.x) / totalLength, y: (waistRelative.y - neckRelative.y) / totalLength)
+            // Perpendicular direction (for width bulges)
+            let perpDir = CGPoint(x: -torsoDir.y, y: torsoDir.x)
+            
+            // Intensity multiplier for bulge width
+            let bulgeIntensity = mutableFigure.fusiformFullTorso * torsoLineWidth * 0.5
+            
+            // Calculate positions along the torso for the 3 peaks
+            let topPeakPos = CGPoint(
+                x: neckRelative.x + torsoDir.x * topPeakDist,
+                y: neckRelative.y + torsoDir.y * topPeakDist
+            )
+            let middlePeakPos = CGPoint(
+                x: neckRelative.x + torsoDir.x * middlePeakDist,
+                y: neckRelative.y + torsoDir.y * middlePeakDist
+            )
+            let bottomPeakPos = CGPoint(
+                x: neckRelative.x + torsoDir.x * bottomPeakDist,
+                y: neckRelative.y + torsoDir.y * bottomPeakDist
+            )
+            
+            // Left side of hourglass (uses quadratic curves)
+            torsoPath.move(to: neckRelative)
+            // Neck to top bulge
+            let topBulgeLeft = CGPoint(x: topPeakPos.x - perpDir.x * bulgeIntensity * 0.8, y: topPeakPos.y - perpDir.y * bulgeIntensity * 0.8)
+            torsoPath.addCurve(to: topBulgeLeft, controlPoint1: neckRelative, controlPoint2: topBulgeLeft)
+            // Top bulge to middle pinch
+            let middlePinchLeft = CGPoint(x: middlePeakPos.x - perpDir.x * bulgeIntensity * 0.3, y: middlePeakPos.y - perpDir.y * bulgeIntensity * 0.3)
+            torsoPath.addCurve(to: middlePinchLeft, controlPoint1: topBulgeLeft, controlPoint2: middlePinchLeft)
+            // Middle pinch to bottom bulge
+            let bottomBulgeLeft = CGPoint(x: bottomPeakPos.x - perpDir.x * bulgeIntensity * 0.8, y: bottomPeakPos.y - perpDir.y * bulgeIntensity * 0.8)
+            torsoPath.addCurve(to: bottomBulgeLeft, controlPoint1: middlePinchLeft, controlPoint2: bottomBulgeLeft)
+            // Bottom bulge to waist
+            torsoPath.addCurve(to: waistRelative, controlPoint1: bottomBulgeLeft, controlPoint2: waistRelative)
+            
+            // Right side of hourglass (mirror of left side)
+            let bottomBulgeRight = CGPoint(x: bottomPeakPos.x + perpDir.x * bulgeIntensity * 0.8, y: bottomPeakPos.y + perpDir.y * bulgeIntensity * 0.8)
+            torsoPath.addCurve(to: bottomBulgeRight, controlPoint1: waistRelative, controlPoint2: bottomBulgeRight)
+            let middlePinchRight = CGPoint(x: middlePeakPos.x + perpDir.x * bulgeIntensity * 0.3, y: middlePeakPos.y + perpDir.y * bulgeIntensity * 0.3)
+            torsoPath.addCurve(to: middlePinchRight, controlPoint1: bottomBulgeRight, controlPoint2: middlePinchRight)
+            let topBulgeRight = CGPoint(x: topPeakPos.x + perpDir.x * bulgeIntensity * 0.8, y: topPeakPos.y + perpDir.y * bulgeIntensity * 0.8)
+            torsoPath.addCurve(to: topBulgeRight, controlPoint1: middlePinchRight, controlPoint2: topBulgeRight)
+            torsoPath.addCurve(to: neckRelative, controlPoint1: topBulgeRight, controlPoint2: neckRelative)
+            
+            // Close the path
+            torsoPath.close()
+        } else {
+            // Standard rendering: straight lines
+            // Upper torso segment: neck to midtorso
+            torsoPath.move(to: neckRelative)
+            torsoPath.addLine(to: midTorsoRelative)
+            
+            // Lower torso segment: midtorso (PINNED, no offset) to waist
+            torsoPath.addLine(to: midTorsoRelative)
+            torsoPath.addLine(to: waistRelative)
+        }
         
         let torsoLine = SKShapeNode(path: torsoPath.cgPath)
         torsoLine.strokeColor = toSKColor(mutableFigure.torsoColor)

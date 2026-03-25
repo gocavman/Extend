@@ -44,6 +44,10 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
     private var peakPositionUpperTorso: CGFloat = 0.5  // Peak position for upper torso
     private var peakPositionLowerTorso: CGFloat = 0.5  // Peak position for lower torso
     private var peakPositionDeltoids: CGFloat = 0.3  // Peak position for deltoids
+    private var fusiformFullTorso: CGFloat = 0.0  // Hourglass intensity
+    private var peakPositionFullTorsoTop: CGFloat = 0.15  // Top bulge position
+    private var peakPositionFullTorsoMiddle: CGFloat = 0.5  // Waist pinch position
+    private var peakPositionFullTorsoBottom: CGFloat = 0.85  // Bottom bulge position
     private var armMuscleSide: String = "normal"  // normal, flipped, or both
     
     // Individual stroke thickness properties for each body part
@@ -317,7 +321,7 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
         case 0: return 2  // Zoom, Position buttons (Show Joints moved to header)
         case 1: return isExpanded ? 9 : 0  // Figure Scale, Joint Shape Size, Shoulder Width, Waist Width, Waist Thickness, Neck Length, Neck Width, Hand Size, Foot Size (Skeleton Size removed)
         case 2: return isExpanded ? 10 : 0  // Stroke Joints, Upper Torso, Lower Torso, Upper Arms, Lower Arms, Upper Legs, Lower Legs, Full Torso, Deltoids, Trapezius
-        case 3: return isExpanded ? 18 : 0  // 9 fusiform (upper/lower torso, bicep, tricep, lower arms, upper legs, lower legs, shoulders, deltoids) + 8 peak position sliders + armMuscleSide
+        case 3: return isExpanded ? 22 : 0  // 9 fusiform + 1 full torso hourglass + 8 peak position + 3 peak torso positions + armMuscleSide
         case 4: return isExpanded ? 3 : 0  // 3 Skeleton Size sliders: Torso, Arm, Leg
         case 5: return isExpanded ? 11 : 0  // 11 Joint sliders: head, leftShoulder, rightShoulder, leftElbow, rightElbow, leftKnee, rightKnee, leftCalf, rightCalf, waistRotation, neckRotation
         case 6: return isExpanded ? 12 : 0  // Color pickers for each body part (added shoulders)
@@ -710,17 +714,21 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
         case (3, 6): addSliderCell(cell, label: "Lower Legs", value: fusiformLowerLegs, min: 0, max: 10, increment: 0.1, onChange: { [weak self] val in self?.fusiformLowerLegs = val; self?.updateFigure() })
         case (3, 7): addSliderCell(cell, label: "Shoulders", value: fusiformShoulders, min: 0, max: 10, increment: 0.1, onChange: { [weak self] val in self?.fusiformShoulders = val; self?.updateFigure() })
         case (3, 8): addSliderCell(cell, label: "Deltoids", value: fusiformDeltoids, min: 0, max: 10, increment: 0.1, onChange: { [weak self] val in self?.fusiformDeltoids = val; self?.updateFigure() })
+        case (3, 9): addSliderCell(cell, label: "Full Torso Hourglass", value: fusiformFullTorso, min: 0, max: 10, increment: 0.1, onChange: { [weak self] val in self?.fusiformFullTorso = val; self?.updateFigure() })
         
         // Peak position sliders
-        case (3, 9): addSliderCell(cell, label: "Peak Bicep", value: peakPositionBicep, min: 0.1, max: 0.9, increment: 0.05, onChange: { [weak self] val in self?.peakPositionBicep = val; self?.updateFigure() })
-        case (3, 10): addSliderCell(cell, label: "Peak Tricep", value: peakPositionTricep, min: 0.1, max: 0.9, increment: 0.05, onChange: { [weak self] val in self?.peakPositionTricep = val; self?.updateFigure() })
-        case (3, 11): addSliderCell(cell, label: "Peak Lower Arm", value: peakPositionLowerArms, min: 0.1, max: 0.9, increment: 0.05, onChange: { [weak self] val in self?.peakPositionLowerArms = val; self?.updateFigure() })
-        case (3, 12): addSliderCell(cell, label: "Peak Upper Leg", value: peakPositionUpperLegs, min: 0.1, max: 0.9, increment: 0.05, onChange: { [weak self] val in self?.peakPositionUpperLegs = val; self?.updateFigure() })
-        case (3, 13): addSliderCell(cell, label: "Peak Lower Leg", value: peakPositionLowerLegs, min: 0.1, max: 0.9, increment: 0.05, onChange: { [weak self] val in self?.peakPositionLowerLegs = val; self?.updateFigure() })
-        case (3, 14): addSliderCell(cell, label: "Peak Upper Torso", value: peakPositionUpperTorso, min: 0.0, max: 0.9, increment: 0.05, onChange: { [weak self] val in self?.peakPositionUpperTorso = val; self?.updateFigure() })
-        case (3, 15): addSliderCell(cell, label: "Peak Lower Torso", value: peakPositionLowerTorso, min: 0.1, max: 1.0, increment: 0.05, onChange: { [weak self] val in self?.peakPositionLowerTorso = val; self?.updateFigure() })
-        case (3, 16): addSliderCell(cell, label: "Peak Deltoids", value: peakPositionDeltoids, min: 0.1, max: 0.9, increment: 0.05, onChange: { [weak self] val in self?.peakPositionDeltoids = val; self?.updateFigure() })
-        case (3, 17): addSegmentedControlCell(cell, label: "Arm Muscle Side", value: armMuscleSide, options: ["normal", "flipped", "both"], onChange: { [weak self] val in self?.armMuscleSide = val; self?.updateFigure() })
+        case (3, 10): addSliderCell(cell, label: "Peak Bicep", value: peakPositionBicep, min: 0.1, max: 0.9, increment: 0.05, onChange: { [weak self] val in self?.peakPositionBicep = val; self?.updateFigure() })
+        case (3, 11): addSliderCell(cell, label: "Peak Tricep", value: peakPositionTricep, min: 0.1, max: 0.9, increment: 0.05, onChange: { [weak self] val in self?.peakPositionTricep = val; self?.updateFigure() })
+        case (3, 12): addSliderCell(cell, label: "Peak Lower Arm", value: peakPositionLowerArms, min: 0.1, max: 0.9, increment: 0.05, onChange: { [weak self] val in self?.peakPositionLowerArms = val; self?.updateFigure() })
+        case (3, 13): addSliderCell(cell, label: "Peak Upper Leg", value: peakPositionUpperLegs, min: 0.1, max: 0.9, increment: 0.05, onChange: { [weak self] val in self?.peakPositionUpperLegs = val; self?.updateFigure() })
+        case (3, 14): addSliderCell(cell, label: "Peak Lower Leg", value: peakPositionLowerLegs, min: 0.1, max: 0.9, increment: 0.05, onChange: { [weak self] val in self?.peakPositionLowerLegs = val; self?.updateFigure() })
+        case (3, 15): addSliderCell(cell, label: "Peak Upper Torso", value: peakPositionUpperTorso, min: 0.0, max: 0.9, increment: 0.05, onChange: { [weak self] val in self?.peakPositionUpperTorso = val; self?.updateFigure() })
+        case (3, 16): addSliderCell(cell, label: "Peak Lower Torso", value: peakPositionLowerTorso, min: 0.1, max: 1.0, increment: 0.05, onChange: { [weak self] val in self?.peakPositionLowerTorso = val; self?.updateFigure() })
+        case (3, 17): addSliderCell(cell, label: "Peak Deltoids", value: peakPositionDeltoids, min: 0.1, max: 0.9, increment: 0.05, onChange: { [weak self] val in self?.peakPositionDeltoids = val; self?.updateFigure() })
+        case (3, 18): addSliderCell(cell, label: "Peak Torso Top", value: peakPositionFullTorsoTop, min: 0.0, max: 0.4, increment: 0.05, onChange: { [weak self] val in self?.peakPositionFullTorsoTop = val; self?.updateFigure() })
+        case (3, 19): addSliderCell(cell, label: "Peak Torso Middle", value: peakPositionFullTorsoMiddle, min: 0.3, max: 0.7, increment: 0.05, onChange: { [weak self] val in self?.peakPositionFullTorsoMiddle = val; self?.updateFigure() })
+        case (3, 20): addSliderCell(cell, label: "Peak Torso Bottom", value: peakPositionFullTorsoBottom, min: 0.6, max: 1.0, increment: 0.05, onChange: { [weak self] val in self?.peakPositionFullTorsoBottom = val; self?.updateFigure() })
+        case (3, 21): addSegmentedControlCell(cell, label: "Arm Muscle Side", value: armMuscleSide, options: ["normal", "flipped", "both"], onChange: { [weak self] val in self?.armMuscleSide = val; self?.updateFigure() })
         
         // Joint sliders - SECTION 5 (was previously section 4)
         case (5, 0): addSliderCell(cell, label: "Head", value: neckRotation, min: -180, max: 180, increment: 1, onChange: { [weak self] val in self?.neckRotation = val; self?.updateFigure() })
@@ -1186,6 +1194,10 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
             peakPositionUpperTorso = standFrame.peakPositionUpperTorso
             peakPositionLowerTorso = standFrame.peakPositionLowerTorso
             peakPositionDeltoids = standFrame.peakPositionDeltoids
+            fusiformFullTorso = standFrame.fusiformFullTorso
+            peakPositionFullTorsoTop = standFrame.peakPositionFullTorsoTop
+            peakPositionFullTorsoMiddle = standFrame.peakPositionFullTorsoMiddle
+            peakPositionFullTorsoBottom = standFrame.peakPositionFullTorsoBottom
             armMuscleSide = standFrame.armMuscleSide
             
             // Load ALL angles from standFrame
@@ -1256,6 +1268,7 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
             fusiformLowerLegs: fusiformLowerLegs,
             fusiformShoulders: fusiformShoulders,
             fusiformDeltoids: fusiformDeltoids,
+            fusiformFullTorso: fusiformFullTorso,
             peakPositionBicep: peakPositionBicep,
             peakPositionTricep: peakPositionTricep,
             peakPositionLowerArms: peakPositionLowerArms,
@@ -1264,6 +1277,9 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
             peakPositionUpperTorso: peakPositionUpperTorso,
             peakPositionLowerTorso: peakPositionLowerTorso,
             peakPositionDeltoids: peakPositionDeltoids,
+            peakPositionFullTorsoTop: peakPositionFullTorsoTop,
+            peakPositionFullTorsoMiddle: peakPositionFullTorsoMiddle,
+            peakPositionFullTorsoBottom: peakPositionFullTorsoBottom,
             armMuscleSide: armMuscleSide,
             figureOffsetX: figureOffsetX,
             figureOffsetY: figureOffsetY,
@@ -2438,6 +2454,7 @@ class StickFigureEditorScene: SKScene {
         fusiformLowerLegs: CGFloat,
         fusiformShoulders: CGFloat = 0.0,
         fusiformDeltoids: CGFloat = 0.0,
+        fusiformFullTorso: CGFloat = 0.0,
         peakPositionBicep: CGFloat = 0.5,
         peakPositionTricep: CGFloat = 0.5,
         peakPositionLowerArms: CGFloat = 0.35,
@@ -2446,6 +2463,9 @@ class StickFigureEditorScene: SKScene {
         peakPositionUpperTorso: CGFloat = 0.5,
         peakPositionLowerTorso: CGFloat = 0.5,
         peakPositionDeltoids: CGFloat = 0.3,
+        peakPositionFullTorsoTop: CGFloat = 0.15,
+        peakPositionFullTorsoMiddle: CGFloat = 0.5,
+        peakPositionFullTorsoBottom: CGFloat = 0.85,
         armMuscleSide: String = "normal",
         figureOffsetX: CGFloat = 0,
         figureOffsetY: CGFloat = 0,
@@ -2497,6 +2517,7 @@ class StickFigureEditorScene: SKScene {
         updatedFrame.fusiformLowerArms = fusiformLowerArms
         updatedFrame.fusiformShoulders = fusiformShoulders
         updatedFrame.fusiformDeltoids = fusiformDeltoids
+        updatedFrame.fusiformFullTorso = fusiformFullTorso
         updatedFrame.fusiformUpperLegs = fusiformUpperLegs
         updatedFrame.fusiformLowerLegs = fusiformLowerLegs
         updatedFrame.peakPositionBicep = peakPositionBicep
@@ -2507,6 +2528,9 @@ class StickFigureEditorScene: SKScene {
         updatedFrame.peakPositionUpperTorso = peakPositionUpperTorso
         updatedFrame.peakPositionLowerTorso = peakPositionLowerTorso
         updatedFrame.peakPositionDeltoids = peakPositionDeltoids
+        updatedFrame.peakPositionFullTorsoTop = peakPositionFullTorsoTop
+        updatedFrame.peakPositionFullTorsoMiddle = peakPositionFullTorsoMiddle
+        updatedFrame.peakPositionFullTorsoBottom = peakPositionFullTorsoBottom
         updatedFrame.armMuscleSide = armMuscleSide
         updatedFrame.shoulderWidthMultiplier = shoulderWidthMultiplier
         updatedFrame.waistWidthMultiplier = waistWidthMultiplier

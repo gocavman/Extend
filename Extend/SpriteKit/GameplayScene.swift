@@ -560,11 +560,11 @@ private func handleTouchAtLocation(_ point: CGPoint, isPress: Bool) {
     }
     
     // Check if movement is allowed by the current action
-    let isMovementAllowed = selectedAction?.allowMovement ?? true
-    
-    if !isMovementAllowed && gameState.currentPerformingAction != nil {
+    if let currentAction = gameState.currentPerformingAction,
+       let config = ACTION_CONFIGS.first(where: { $0.id == currentAction }),
+       !config.allowMovement {
         // Movement is disabled by the current action
-        print("🎮 ⚠️ Movement disabled for action: \(gameState.currentPerformingAction ?? "unknown")")
+        print("🎮 ⚠️ Movement disabled for action: \(currentAction)")
         return
     }
     
@@ -1111,9 +1111,9 @@ private func applyMuscleScaling(to figure: StickFigure2D) -> StickFigure2D {
     if isSideView {
         scaledFigure.strokeThicknessUpperTorso = min(scaledFigure.strokeThicknessUpperTorso, 5.0)
         scaledFigure.fusiformShoulders = min(scaledFigure.fusiformShoulders, 3.0)
-        scaledFigure.strokeThicknessFullTorso = min(scaledFigure.strokeThicknessFullTorso, 5.0)
+        //scaledFigure.strokeThicknessFullTorso = min(scaledFigure.strokeThicknessFullTorso, 5.0)
         scaledFigure.strokeThicknessDeltoids = min(scaledFigure.strokeThicknessDeltoids, 3.0)
-        scaledFigure.skeletonSizeTorso = min(scaledFigure.skeletonSizeTorso, 3.0)
+        //scaledFigure.skeletonSizeTorso = min(scaledFigure.skeletonSizeTorso, 3.0)
         
     }
     

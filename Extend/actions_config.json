@@ -210,7 +210,7 @@
     },
     "flipMode": "random",
     "supportsSpeedBoost": false,
-    "allowMovement": true,
+    "allowMovement": false,
     "floatingText": {
       "timing": 5.0,
       "text": ["Yum", "Delishish", "Sooooo good", "Yesssssss"],

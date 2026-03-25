@@ -104,6 +104,10 @@ struct SavedEditFrame: Codable, Identifiable {
     let peakPositionUpperTorso: CGFloat
     let peakPositionLowerTorso: CGFloat
     let peakPositionDeltoids: CGFloat
+    let fusiformFullTorso: CGFloat
+    let peakPositionFullTorsoTop: CGFloat
+    let peakPositionFullTorsoMiddle: CGFloat
+    let peakPositionFullTorsoBottom: CGFloat
     let armMuscleSide: String  // "normal", "flipped", or "both"
     let positionX: CGFloat
     let positionY: CGFloat
@@ -197,6 +201,10 @@ struct SavedEditFrame: Codable, Identifiable {
             self.peakPositionUpperTorso = pose.peakPositionUpperTorso
             self.peakPositionLowerTorso = pose.peakPositionLowerTorso
             self.peakPositionDeltoids = pose.peakPositionDeltoids
+            self.fusiformFullTorso = pose.fusiformFullTorso
+            self.peakPositionFullTorsoTop = pose.peakPositionFullTorsoTop
+            self.peakPositionFullTorsoMiddle = pose.peakPositionFullTorsoMiddle
+            self.peakPositionFullTorsoBottom = pose.peakPositionFullTorsoBottom
             self.armMuscleSide = pose.armMuscleSide
         } else {
             self.shoulderWidthMultiplier = 1.0
@@ -221,6 +229,10 @@ struct SavedEditFrame: Codable, Identifiable {
             self.peakPositionUpperTorso = values.peakPositionUpperTorso ?? 0.5
             self.peakPositionLowerTorso = values.peakPositionLowerTorso ?? 0.5
             self.peakPositionDeltoids = values.peakPositionDeltoids ?? 0.3
+            self.fusiformFullTorso = 0.0
+            self.peakPositionFullTorsoTop = 0.15
+            self.peakPositionFullTorsoMiddle = 0.5
+            self.peakPositionFullTorsoBottom = 0.85
             self.armMuscleSide = values.armMuscleSide ?? "normal"
         }
         
@@ -299,6 +311,7 @@ struct SavedEditFrame: Codable, Identifiable {
         case fusiformUpperLegs, fusiformLowerLegs, fusiformShoulders, fusiformDeltoids
         case peakPositionBicep, peakPositionTricep, peakPositionLowerArms, peakPositionUpperLegs
         case peakPositionLowerLegs, peakPositionUpperTorso, peakPositionLowerTorso, peakPositionDeltoids
+        case fusiformFullTorso, peakPositionFullTorsoTop, peakPositionFullTorsoMiddle, peakPositionFullTorsoBottom
         case armMuscleSide
         case figureOffsetX, figureOffsetY, waistPositionX, waistPositionY
         case shoulderWidthMultiplier, waistWidthMultiplier
@@ -356,6 +369,10 @@ struct SavedEditFrame: Codable, Identifiable {
         peakPositionUpperTorso = try poseContainer.decodeIfPresent(CGFloat.self, forKey: .peakPositionUpperTorso) ?? 0.0
         peakPositionLowerTorso = try poseContainer.decodeIfPresent(CGFloat.self, forKey: .peakPositionLowerTorso) ?? 0.0
         peakPositionDeltoids = try poseContainer.decodeIfPresent(CGFloat.self, forKey: .peakPositionDeltoids) ?? 0.3
+        fusiformFullTorso = try poseContainer.decodeIfPresent(CGFloat.self, forKey: .fusiformFullTorso) ?? 0.0
+        peakPositionFullTorsoTop = try poseContainer.decodeIfPresent(CGFloat.self, forKey: .peakPositionFullTorsoTop) ?? 0.15
+        peakPositionFullTorsoMiddle = try poseContainer.decodeIfPresent(CGFloat.self, forKey: .peakPositionFullTorsoMiddle) ?? 0.5
+        peakPositionFullTorsoBottom = try poseContainer.decodeIfPresent(CGFloat.self, forKey: .peakPositionFullTorsoBottom) ?? 0.85
         armMuscleSide = try poseContainer.decodeIfPresent(String.self, forKey: .armMuscleSide) ?? "normal"
         positionX = try poseContainer.decodeIfPresent(CGFloat.self, forKey: .figureOffsetX) ?? 0.0
         positionY = try poseContainer.decodeIfPresent(CGFloat.self, forKey: .figureOffsetY) ?? 0.0
@@ -438,6 +455,10 @@ struct SavedEditFrame: Codable, Identifiable {
         try poseContainer.encode(peakPositionUpperTorso, forKey: .peakPositionUpperTorso)
         try poseContainer.encode(peakPositionLowerTorso, forKey: .peakPositionLowerTorso)
         try poseContainer.encode(peakPositionDeltoids, forKey: .peakPositionDeltoids)
+        try poseContainer.encode(fusiformFullTorso, forKey: .fusiformFullTorso)
+        try poseContainer.encode(peakPositionFullTorsoTop, forKey: .peakPositionFullTorsoTop)
+        try poseContainer.encode(peakPositionFullTorsoMiddle, forKey: .peakPositionFullTorsoMiddle)
+        try poseContainer.encode(peakPositionFullTorsoBottom, forKey: .peakPositionFullTorsoBottom)
         try poseContainer.encode(armMuscleSide, forKey: .armMuscleSide)
         try poseContainer.encode(positionX, forKey: .figureOffsetX)
         try poseContainer.encode(positionY, forKey: .figureOffsetY)
@@ -663,6 +684,10 @@ class SavedFramesManager {
             ("peakPositionUpperLegs", roundAndFormat(frame.peakPositionUpperLegs, decimals: 2)),
             ("peakPositionUpperTorso", roundAndFormat(frame.peakPositionUpperTorso, decimals: 2)),
             ("peakPositionDeltoids", roundAndFormat(frame.peakPositionDeltoids, decimals: 2)),
+            ("fusiformFullTorso", roundAndFormat(frame.fusiformFullTorso, decimals: 2)),
+            ("peakPositionFullTorsoTop", roundAndFormat(frame.peakPositionFullTorsoTop, decimals: 2)),
+            ("peakPositionFullTorsoMiddle", roundAndFormat(frame.peakPositionFullTorsoMiddle, decimals: 2)),
+            ("peakPositionFullTorsoBottom", roundAndFormat(frame.peakPositionFullTorsoBottom, decimals: 2)),
             ("rightArmColor", "\"#000000\""),
             ("rightElbowAngle", "\(Int(frame.rightElbowAngle))"),
             ("rightFootAngle", "\(Int(frame.rightFootAngle))"),

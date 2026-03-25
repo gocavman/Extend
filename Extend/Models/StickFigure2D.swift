@@ -205,6 +205,7 @@ struct StickFigure2DPose: Codable {
     let fusiformLowerTorso: CGFloat
     let fusiformShoulders: CGFloat
     let fusiformDeltoids: CGFloat
+    let fusiformFullTorso: CGFloat
     
     // Peak position controls
     let peakPositionBicep: CGFloat
@@ -215,6 +216,9 @@ struct StickFigure2DPose: Codable {
     let peakPositionUpperTorso: CGFloat
     let peakPositionLowerTorso: CGFloat
     let peakPositionDeltoids: CGFloat
+    let peakPositionFullTorsoTop: CGFloat
+    let peakPositionFullTorsoMiddle: CGFloat
+    let peakPositionFullTorsoBottom: CGFloat
     let armMuscleSide: String
     
     // Figure scale and thickness multipliers
@@ -294,6 +298,7 @@ struct StickFigure2DPose: Codable {
         self.fusiformLowerTorso = figure.fusiformLowerTorso
         self.fusiformShoulders = figure.fusiformShoulders
         self.fusiformDeltoids = figure.fusiformDeltoids
+        self.fusiformFullTorso = figure.fusiformFullTorso
         self.peakPositionBicep = figure.peakPositionBicep
         self.peakPositionTricep = figure.peakPositionTricep
         self.peakPositionLowerArms = figure.peakPositionLowerArms
@@ -302,6 +307,9 @@ struct StickFigure2DPose: Codable {
         self.peakPositionUpperTorso = figure.peakPositionUpperTorso
         self.peakPositionLowerTorso = figure.peakPositionLowerTorso
         self.peakPositionDeltoids = figure.peakPositionDeltoids
+        self.peakPositionFullTorsoTop = figure.peakPositionFullTorsoTop
+        self.peakPositionFullTorsoMiddle = figure.peakPositionFullTorsoMiddle
+        self.peakPositionFullTorsoBottom = figure.peakPositionFullTorsoBottom
         self.armMuscleSide = figure.armMuscleSide
         self.figureScale = figure.scale
         self.strokeThicknessMultiplier = 1.0  // This would need to be tracked separately
@@ -376,6 +384,7 @@ struct StickFigure2DPose: Codable {
         figure.fusiformLowerTorso = fusiformLowerTorso
         figure.fusiformShoulders = fusiformShoulders
         figure.fusiformDeltoids = fusiformDeltoids
+        figure.fusiformFullTorso = fusiformFullTorso
         figure.peakPositionBicep = peakPositionBicep
         figure.peakPositionTricep = peakPositionTricep
         figure.peakPositionLowerArms = peakPositionLowerArms
@@ -384,6 +393,9 @@ struct StickFigure2DPose: Codable {
         figure.peakPositionUpperTorso = peakPositionUpperTorso
         figure.peakPositionLowerTorso = peakPositionLowerTorso
         figure.peakPositionDeltoids = peakPositionDeltoids
+        figure.peakPositionFullTorsoTop = peakPositionFullTorsoTop
+        figure.peakPositionFullTorsoMiddle = peakPositionFullTorsoMiddle
+        figure.peakPositionFullTorsoBottom = peakPositionFullTorsoBottom
         figure.armMuscleSide = armMuscleSide
         figure.shoulderWidthMultiplier = shoulderWidthMultiplier
         figure.waistWidthMultiplier = waistWidthMultiplier
@@ -422,8 +434,8 @@ struct StickFigure2DPose: Codable {
         case strokeThicknessJoints, strokeThicknessUpperTorso, strokeThicknessLowerTorso, strokeThicknessFullTorso, strokeThicknessDeltoids, strokeThicknessTrapezius
         case fusiformBicep, fusiformTricep, fusiformLowerArms
         case fusiformUpperLegs, fusiformLowerLegs
-        case fusiformUpperTorso, fusiformLowerTorso, fusiformShoulders, fusiformDeltoids
-        case peakPositionBicep, peakPositionTricep, peakPositionLowerArms, peakPositionUpperLegs, peakPositionLowerLegs, peakPositionUpperTorso, peakPositionLowerTorso, peakPositionDeltoids, midTorsoYOffset, armMuscleSide
+        case fusiformUpperTorso, fusiformLowerTorso, fusiformShoulders, fusiformDeltoids, fusiformFullTorso
+        case peakPositionBicep, peakPositionTricep, peakPositionLowerArms, peakPositionUpperLegs, peakPositionLowerLegs, peakPositionUpperTorso, peakPositionLowerTorso, peakPositionDeltoids, peakPositionFullTorsoTop, peakPositionFullTorsoMiddle, peakPositionFullTorsoBottom, midTorsoYOffset, armMuscleSide
         case figureScale, strokeThicknessMultiplier, skeletonSizeTorso, skeletonSizeArm, skeletonSizeLeg, jointShapeSize
         case shoulderWidthMultiplier, waistWidthMultiplier, waistThicknessMultiplier, neckLength, neckWidth
         case handSize, footSize
@@ -445,6 +457,7 @@ struct StickFigure2DPose: Codable {
         try container.encode(round(fusiformTricep), forKey: .fusiformTricep)
         try container.encode(round(fusiformUpperLegs), forKey: .fusiformUpperLegs)
         try container.encode(round(fusiformUpperTorso), forKey: .fusiformUpperTorso)
+        try container.encode(round(fusiformFullTorso), forKey: .fusiformFullTorso)
         try container.encode(footColor, forKey: .footColor)
         try container.encode(handColor, forKey: .handColor)
         try container.encode(round(footSize), forKey: .footSize)
@@ -469,6 +482,9 @@ struct StickFigure2DPose: Codable {
         try container.encode(round(peakPositionTricep), forKey: .peakPositionTricep)
         try container.encode(round(peakPositionUpperLegs), forKey: .peakPositionUpperLegs)
         try container.encode(round(peakPositionUpperTorso), forKey: .peakPositionUpperTorso)
+        try container.encode(round(peakPositionFullTorsoTop), forKey: .peakPositionFullTorsoTop)
+        try container.encode(round(peakPositionFullTorsoMiddle), forKey: .peakPositionFullTorsoMiddle)
+        try container.encode(round(peakPositionFullTorsoBottom), forKey: .peakPositionFullTorsoBottom)
         try container.encode(round(rightElbowAngle), forKey: .rightElbowAngle)
         try container.encode(round(rightFootAngle), forKey: .rightFootAngle)
         try container.encode(round(rightHipAngle), forKey: .rightHipAngle)
@@ -560,6 +576,7 @@ struct StickFigure2DPose: Codable {
         self.fusiformLowerTorso = try container.decodeIfPresent(CGFloat.self, forKey: .fusiformLowerTorso) ?? 0.0
         self.fusiformShoulders = try container.decodeIfPresent(CGFloat.self, forKey: .fusiformShoulders) ?? 0.0
         self.fusiformDeltoids = try container.decodeIfPresent(CGFloat.self, forKey: .fusiformDeltoids) ?? 0.0
+        self.fusiformFullTorso = try container.decodeIfPresent(CGFloat.self, forKey: .fusiformFullTorso) ?? 0.0
         self.peakPositionBicep = try container.decodeIfPresent(CGFloat.self, forKey: .peakPositionBicep) ?? 0.5
         self.peakPositionTricep = try container.decodeIfPresent(CGFloat.self, forKey: .peakPositionTricep) ?? 0.5
         self.peakPositionLowerArms = try container.decodeIfPresent(CGFloat.self, forKey: .peakPositionLowerArms) ?? 0.35
@@ -568,6 +585,9 @@ struct StickFigure2DPose: Codable {
         self.peakPositionUpperTorso = try container.decodeIfPresent(CGFloat.self, forKey: .peakPositionUpperTorso) ?? 0.5
         self.peakPositionLowerTorso = try container.decodeIfPresent(CGFloat.self, forKey: .peakPositionLowerTorso) ?? 0.5
         self.peakPositionDeltoids = try container.decodeIfPresent(CGFloat.self, forKey: .peakPositionDeltoids) ?? 0.3
+        self.peakPositionFullTorsoTop = try container.decodeIfPresent(CGFloat.self, forKey: .peakPositionFullTorsoTop) ?? 0.15
+        self.peakPositionFullTorsoMiddle = try container.decodeIfPresent(CGFloat.self, forKey: .peakPositionFullTorsoMiddle) ?? 0.5
+        self.peakPositionFullTorsoBottom = try container.decodeIfPresent(CGFloat.self, forKey: .peakPositionFullTorsoBottom) ?? 0.85
         self.armMuscleSide = try container.decodeIfPresent(String.self, forKey: .armMuscleSide) ?? "normal"
         self.figureScale = try container.decodeIfPresent(CGFloat.self, forKey: .figureScale) ?? 1.0
         self.strokeThicknessMultiplier = try container.decodeIfPresent(CGFloat.self, forKey: .strokeThicknessMultiplier) ?? 1.0
@@ -733,6 +753,12 @@ struct StickFigure2D {
     var peakPositionUpperTorso: CGFloat = 0.5  // Default: middle of upper torso
     var peakPositionLowerTorso: CGFloat = 0.5  // Default: middle of lower torso
     var peakPositionDeltoids: CGFloat = 0.3  // Default: closer to shoulder joint for cap effect
+    
+    // Full torso hourglass control (smooth curved hourglass shape with 3 peaks)
+    var fusiformFullTorso: CGFloat = 0.0  // Intensity of hourglass curve (0 = straight, 10 = pronounced)
+    var peakPositionFullTorsoTop: CGFloat = 0.15  // Where shoulder/chest bulge reaches maximum (0-1)
+    var peakPositionFullTorsoMiddle: CGFloat = 0.5  // Where waist pinch occurs (0-1)
+    var peakPositionFullTorsoBottom: CGFloat = 0.85  // Where hip/gluteal bulge reaches maximum (0-1)
     
     // Arm muscle side control - determines which side bicep/tricep appear on based on pose
     // "normal" = bicep on bottom/inner, tricep on top/outer (default)
