@@ -843,6 +843,7 @@ class StickFigureGameState {
         // Load Stand frame (frameNumber 0 - as originally saved)
         if let standFrameData = allFrames.first(where: { $0.name == "Stand" && $0.frameNumber == 0 }) {
             standFrame = standFrameData.pose.toStickFigure2D()
+            print("🔍 Game1Module: Loaded Stand frame - fusiformFullTorso=\(standFrame?.fusiformFullTorso ?? -1)")
             standFrameObjects = standFrameData.objects
             //print("🎮 ✓ Loaded Stand frame (frameNumber 0) with \(standFrameData.objects.count) objects")
         } else {

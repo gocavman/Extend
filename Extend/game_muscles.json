@@ -651,6 +651,64 @@
         "75" : 0,
         "100" : 0
       }
+    },
+    {
+      "id" : "fusiformFullTorso",
+      "name" : "Full Torso Hourglass",
+      "muscleGroups" : [
+        "Chest",
+        "Abs",
+        "Back"
+      ],
+      "progression" : {
+        "0" : 0,
+        "25" : 0,
+        "50" : 0,
+        "75" : 0,
+        "100" : 0.4
+      }
+    },
+    {
+      "id" : "peakPositionFullTorsoTop",
+      "name" : "Hourglass Top Peak Position",
+      "muscleGroups" : [
+        "Chest"
+      ],
+      "progression" : {
+        "0" : 0.15,
+        "25" : 0.15,
+        "50" : 0.15,
+        "75" : 0.15,
+        "100" : 0.15
+      }
+    },
+    {
+      "id" : "peakPositionFullTorsoMiddle",
+      "name" : "Hourglass Middle Peak Position",
+      "muscleGroups" : [
+        "Abs"
+      ],
+      "progression" : {
+        "0" : 0.5,
+        "25" : 0.5,
+        "50" : 0.5,
+        "75" : 0.5,
+        "100" : 0.5
+      }
+    },
+    {
+      "id" : "peakPositionFullTorsoBottom",
+      "name" : "Hourglass Bottom Peak Position",
+      "muscleGroups" : [
+        "Abs"
+      ],
+      "progression" : {
+        "0" : 0.85,
+        "25" : 0.85,
+        "50" : 0.85,
+        "75" : 0.85,
+        "100" : 0.85
+      }
     }
   ]
 }

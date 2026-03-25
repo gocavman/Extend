@@ -17,6 +17,14 @@ struct AnimationStorage {
                 let data = try Data(contentsOf: bundleURL)
                 let decoder = JSONDecoder()
                 let frames = try decoder.decode([AnimationFrame].self, from: data)
+                
+                // DEBUG: Log fusiformFullTorso for all frames
+                for frame in frames {
+                    if frame.name.contains("Extra Large") || frame.name.contains("Stand") {
+                        print("🔍 AnimationStorage: Frame '\(frame.name)' - fusiformFullTorso=\(frame.pose.fusiformFullTorso)")
+                    }
+                }
+                
                 return frames
             } catch {
                 print("🎮 ERROR: Failed to decode animations.json: \(error)")

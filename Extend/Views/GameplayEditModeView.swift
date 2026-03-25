@@ -207,6 +207,10 @@ struct GameplayEditModeView: View {
             peakPositionUpperTorso: nil,
             peakPositionLowerTorso: nil,
             peakPositionDeltoids: nil,
+            fusiformFullTorso: nil,
+            peakPositionFullTorsoTop: nil,
+            peakPositionFullTorsoMiddle: nil,
+            peakPositionFullTorsoBottom: nil,
             skeletonSizeTorso: nil,
             skeletonSizeArm: nil,
             skeletonSizeLeg: nil,
@@ -260,6 +264,10 @@ struct EditModeValues {
     let peakPositionUpperTorso: CGFloat?
     let peakPositionLowerTorso: CGFloat?
     let peakPositionDeltoids: CGFloat?
+    let fusiformFullTorso: CGFloat?
+    let peakPositionFullTorsoTop: CGFloat?
+    let peakPositionFullTorsoMiddle: CGFloat?
+    let peakPositionFullTorsoBottom: CGFloat?
     let skeletonSizeTorso: CGFloat?
     let skeletonSizeArm: CGFloat?
     let skeletonSizeLeg: CGFloat?

@@ -645,7 +645,24 @@ class MuscleSystem {
     
     /// Regenerate interpolation values in game_muscles.json based on current Stand frames
     func regenerateInterpolationFromStandFrames(standFrames: [AnimationFrame]) -> Bool {
-        // Load current game_muscles.json config
+        // Load BUNDLE version to get the authoritative property list (includes new properties)
+        guard let bundleURL = Bundle.main.url(forResource: "game_muscles", withExtension: "json") else {
+            print("🦵 ❌ REGEN FAILED: Bundle game_muscles.json not found")
+            return false
+        }
+        
+        let bundleConfig: MuscleConfig
+        do {
+            let data = try Data(contentsOf: bundleURL)
+            let decoder = JSONDecoder()
+            bundleConfig = try decoder.decode(MuscleConfig.self, from: data)
+            print("🦵 ✅ Loaded Bundle config with \(bundleConfig.properties.count) properties (authoritative source)")
+        } catch {
+            print("🦵 ❌ Failed to load Bundle config: \(error)")
+            return false
+        }
+        
+        // Load current config to get actions (might be in Documents with user edits)
         guard let currentConfig = config else {
             print("🦵 ❌ REGEN FAILED: currentConfig is nil")
             return false
@@ -653,13 +670,14 @@ class MuscleSystem {
         
         print("🦵 ========== REGENERATION START ==========")
         print("🦵 Found \(standFrames.count) stand frames to process")
+        print("🦵 Bundle config has \(bundleConfig.properties.count) properties (using this as source)")
         print("🦵 Current config has \(currentConfig.actions.count) actions")
         
-        // If current config has no actions, try to load them from Bundle
+        // If current config has no actions, use Bundle actions
         var actionsToPreserve = currentConfig.actions
         if actionsToPreserve.isEmpty {
-            print("🦵 ⚠️ Current config has 0 actions, loading from Bundle...")
-            actionsToPreserve = loadActionsFromBundle()
+            print("🦵 ⚠️ Current config has 0 actions, using Bundle actions...")
+            actionsToPreserve = bundleConfig.actions
         }
         
         print("🦵 Will preserve \(actionsToPreserve.count) actions")
@@ -668,7 +686,6 @@ class MuscleSystem {
         }
         
         // Map Stand frames by name to their corresponding tiers
-        // Explicitly map by frame name instead of scale (scale is a rendering property, not a tier discriminator)
         let frameTierMapping: [(tierName: String, frameName: String)] = [
             ("0", "Extra Small Stand"),
             ("25", "Small Stand"),
@@ -688,9 +705,9 @@ class MuscleSystem {
             }
         }
         
-        // Update progression values for each property by creating new PropertyDefinition objects
+        // Update progression values for each property using BUNDLE properties as source
         var updatedProperties: [PropertyDefinition] = []
-        for property in currentConfig.properties {
+        for property in bundleConfig.properties {
             var newProgression: [String: Double] = [:]
             
             // For each tier, extract the property value from corresponding Stand frame
@@ -698,8 +715,8 @@ class MuscleSystem {
                 let value = extractPropertyValueFromFrame(frame: frame, propertyId: property.id)
                 newProgression[tier] = value
                 
-                // DEBUG: Log the first few properties
-                if property.id == "strokeThicknessUpperTorso" || property.id == "fusiformShoulders" {
+                // DEBUG: Log all hourglass properties and some others
+                if property.id.contains("FullTorso") || property.id == "strokeThicknessUpperTorso" || property.id == "fusiformShoulders" {
                     print("🦵   Property '\(property.id)' @ tier '\(tier)' (frame '\(frame.name)'): \(value)")
                 }
             }
@@ -715,11 +732,12 @@ class MuscleSystem {
         }
         
         print("🦵 Created \(updatedProperties.count) updated properties")
+        print("🦵 Property IDs: \(updatedProperties.map { $0.id }.joined(separator: ", "))")
         
         // Create new MuscleConfig with updated properties AND preserved actions
         let updatedConfig = MuscleConfig(
             config: currentConfig.config,
-            actions: actionsToPreserve,  // ← Use the preserved (or loaded from Bundle) actions
+            actions: actionsToPreserve,
             properties: updatedProperties
         )
         
@@ -813,6 +831,14 @@ class MuscleSystem {
             return Double(frame.pose.peakPositionLowerTorso)
         case "strokeThicknessFullTorso":
             return Double(frame.pose.strokeThicknessFullTorso)
+        case "fusiformFullTorso":
+            return Double(frame.pose.fusiformFullTorso)
+        case "peakPositionFullTorsoTop":
+            return Double(frame.pose.peakPositionFullTorsoTop)
+        case "peakPositionFullTorsoMiddle":
+            return Double(frame.pose.peakPositionFullTorsoMiddle)
+        case "peakPositionFullTorsoBottom":
+            return Double(frame.pose.peakPositionFullTorsoBottom)
         default:
             return 0
         }

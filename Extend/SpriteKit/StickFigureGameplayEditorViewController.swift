@@ -1146,6 +1146,7 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
         
         // Load the default Stand frame from animations.json
         if let standFrame = gameState.standFrame {
+            print("🔍 StickFigureEditor: loadStandFrameValues - standFrame.fusiformFullTorso=\(standFrame.fusiformFullTorso)")
             
             // Load ALL scale and thickness values from standFrame
             figureScale = standFrame.scale
@@ -1198,6 +1199,8 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
             peakPositionFullTorsoTop = standFrame.peakPositionFullTorsoTop
             peakPositionFullTorsoMiddle = standFrame.peakPositionFullTorsoMiddle
             peakPositionFullTorsoBottom = standFrame.peakPositionFullTorsoBottom
+            print("🔍 StickFigureEditor: Assigned sliders - fusiformFullTorso=\(fusiformFullTorso)")
+            print("🔍 StickFigureEditor: Assigned sliders - fusiformFullTorso=\(fusiformFullTorso)")
             armMuscleSide = standFrame.armMuscleSide
             
             // Load ALL angles from standFrame
@@ -1401,6 +1404,10 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
                 peakPositionUpperTorso: self.peakPositionUpperTorso,
                 peakPositionLowerTorso: self.peakPositionLowerTorso,
                 peakPositionDeltoids: self.peakPositionDeltoids,
+                fusiformFullTorso: self.fusiformFullTorso,
+                peakPositionFullTorsoTop: self.peakPositionFullTorsoTop,
+                peakPositionFullTorsoMiddle: self.peakPositionFullTorsoMiddle,
+                peakPositionFullTorsoBottom: self.peakPositionFullTorsoBottom,
                 skeletonSizeTorso: self.skeletonSizeTorso,
                 skeletonSizeArm: self.skeletonSizeArm,
                 skeletonSizeLeg: self.skeletonSizeLeg,
@@ -1878,6 +1885,8 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
         
         // Restore peak positions and fusiform shoulders
         fusiformShoulders = frame.fusiformShoulders
+        fusiformDeltoids = frame.fusiformDeltoids
+        fusiformFullTorso = frame.fusiformFullTorso
         peakPositionBicep = frame.peakPositionBicep
         peakPositionTricep = frame.peakPositionTricep
         peakPositionLowerArms = frame.peakPositionLowerArms
@@ -1885,6 +1894,12 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
         peakPositionLowerLegs = frame.peakPositionLowerLegs
         peakPositionUpperTorso = frame.peakPositionUpperTorso
         peakPositionLowerTorso = frame.peakPositionLowerTorso
+        peakPositionDeltoids = frame.peakPositionDeltoids
+        peakPositionFullTorsoTop = frame.peakPositionFullTorsoTop
+        peakPositionFullTorsoMiddle = frame.peakPositionFullTorsoMiddle
+        peakPositionFullTorsoBottom = frame.peakPositionFullTorsoBottom
+        print("🔍 applyFrame: Applied hourglass properties - fusiformFullTorso=\(fusiformFullTorso)")
+        armMuscleSide = frame.armMuscleSide
         
         // Clear existing objects from both scene and characterNode
         if let editorScene = editorScene {
@@ -2867,6 +2882,8 @@ class FrameListViewController: UIViewController, UITableViewDataSource, UITableV
             
             // Always create SavedEditFrame from bundle version to get latest values
             let pose = bundleFrame.pose.toStickFigure2D()
+            print("🔍 FrameListVC: Bundle frame '\(bundleFrame.name)' - fusiformFullTorso=\(pose.fusiformFullTorso)")
+            
             let editValues = EditModeValues(
                     figureScale: pose.scale,
                     fusiformUpperTorso: pose.fusiformUpperTorso,
@@ -2886,6 +2903,10 @@ class FrameListViewController: UIViewController, UITableViewDataSource, UITableV
                     peakPositionUpperTorso: pose.peakPositionUpperTorso,
                     peakPositionLowerTorso: pose.peakPositionLowerTorso,
                     peakPositionDeltoids: pose.peakPositionDeltoids,
+                    fusiformFullTorso: pose.fusiformFullTorso,
+                    peakPositionFullTorsoTop: pose.peakPositionFullTorsoTop,
+                    peakPositionFullTorsoMiddle: pose.peakPositionFullTorsoMiddle,
+                    peakPositionFullTorsoBottom: pose.peakPositionFullTorsoBottom,
                     skeletonSizeTorso: pose.skeletonSizeTorso,
                     skeletonSizeArm: pose.skeletonSizeArm,
                     skeletonSizeLeg: pose.skeletonSizeLeg,
