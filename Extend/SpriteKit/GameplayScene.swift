@@ -335,7 +335,7 @@ private func setupBrickGround() {
             brick.position = CGPoint(x: brickX, y: rowY)
             brick.zPosition = 5  // Explicit z-position
             brick.lineJoin = .bevel
-            brick.fillColor = brickColors[brickIndex % brickColors.count]
+            brick.fillColor = brickColors.randomElement() ?? brickColors[0]  // Random color for each brick
             brick.strokeColor = SKColor(red: 0.2, green: 0.15, blue: 0.1, alpha: 1.0)  // Dark outline
             brick.lineWidth = 1
             
@@ -356,32 +356,7 @@ private func setupBrickGround() {
             groundNode.addChild(brick)
         }
         
-        print("🧱 BRICK DEBUG: Row \(row) coverage: \(minX) to \(maxX) (width: \(maxX - minX))")
-        print("🧱 BRICK DEBUG: Row \(row) should cover from \(-size.width / 2) to \(size.width / 2)?")
     }
-    
-    print("🧱 BRICK DEBUG: Scene visible range: 0 to \(size.width) (width: \(size.width))")
-    
-    // DEBUG: Add visual bounds checker
-    let leftBound = SKShapeNode(circleOfRadius: 5)
-    leftBound.position = CGPoint(x: 0, y: groundY)
-    leftBound.fillColor = SKColor.red
-    leftBound.zPosition = 100
-    groundNode.addChild(leftBound)
-    
-    let rightBound = SKShapeNode(circleOfRadius: 5)
-    rightBound.position = CGPoint(x: size.width, y: groundY)
-    rightBound.fillColor = SKColor.green
-    rightBound.zPosition = 100
-    groundNode.addChild(rightBound)
-    
-    let centerBound = SKShapeNode(circleOfRadius: 3)
-    centerBound.position = CGPoint(x: size.width / 2, y: groundY)
-    centerBound.fillColor = SKColor.blue
-    centerBound.zPosition = 100
-    groundNode.addChild(centerBound)
-    
-    print("🧱 BRICK DEBUG: Added visual bounds - RED at left edge (0), GREEN at right edge (\(size.width)), BLUE at center (\(size.width/2))")
     
     addChild(groundNode)
 }
