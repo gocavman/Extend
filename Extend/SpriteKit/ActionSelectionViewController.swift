@@ -8,6 +8,22 @@ class ActionSelectionViewController: UIViewController, UITableViewDataSource, UI
     
     private let tableView = UITableView()
     private let dismissArea = UIView()
+    private let transitionController = ActionSelectionTransitionController()
+    
+    override init(nibName nibNameOrNil: String?, bundle nibBundleOrNil: Bundle?) {
+        super.init(nibName: nibNameOrNil, bundle: nibBundleOrNil)
+        setupPresentationStyle()
+    }
+    
+    required init?(coder: NSCoder) {
+        super.init(coder: coder)
+        setupPresentationStyle()
+    }
+    
+    private func setupPresentationStyle() {
+        self.modalPresentationStyle = .overFullScreen
+        self.transitioningDelegate = transitionController
+    }
     
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -15,22 +31,43 @@ class ActionSelectionViewController: UIViewController, UITableViewDataSource, UI
         print("🎮 ActionSelectionViewController viewDidLoad")
         print("🎮 Actions available: \(actions.count)")
         
-        // Set modal presentation style to work over SpriteKit
-        self.modalPresentationStyle = .overFullScreen
+        // Make absolutely sure the view is transparent
         self.view.backgroundColor = .clear
+        self.view.isOpaque = false
+        self.view.layer.backgroundColor = UIColor.clear.cgColor
+        self.view.layer.isOpaque = false
         
         setupUI()
         animateSlideUp()
     }
     
+    override func viewWillAppear(_ animated: Bool) {
+        super.viewWillAppear(animated)
+        
+        // Ensure transparency at presentation time
+        view.backgroundColor = .clear
+        view.isOpaque = false
+    }
+    
     private func setupUI() {
         print("🎮 ActionSelectionViewController setupUI - view bounds: \(view.bounds)")
-        view.backgroundColor = .clear
         
-        // Dismiss area (tap outside to close) - must cover ENTIRE screen
-        dismissArea.backgroundColor = UIColor.black.withAlphaComponent(0.3)
-        dismissArea.frame = view.bounds
-        dismissArea.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+        // Make the main view completely transparent and non-interactive except for our components
+        view.backgroundColor = .clear
+        view.isOpaque = false
+        view.layer.backgroundColor = UIColor.clear.cgColor
+        
+        // Hide the main view itself to prevent any background rendering
+        for subview in view.subviews {
+            if subview != tableView && subview != dismissArea {
+                subview.isHidden = true
+            }
+        }
+        
+        // Dismiss area (tap outside to close) - completely transparent, doesn't intercept touches above table
+        dismissArea.backgroundColor = .clear
+        dismissArea.isOpaque = false
+        dismissArea.frame = CGRect(x: 0, y: 0, width: view.bounds.width, height: view.bounds.height - CGFloat(actions.count * 60 + 30))
         let tapGesture = UITapGestureRecognizer(target: self, action: #selector(dismissViewController))
         dismissArea.addGestureRecognizer(tapGesture)
         view.addSubview(dismissArea)
@@ -62,11 +99,9 @@ class ActionSelectionViewController: UIViewController, UITableViewDataSource, UI
     
     private func animateSlideUp() {
         tableView.transform = CGAffineTransform(translationX: 0, y: tableView.frame.height)
-        dismissArea.alpha = 0
         
         UIView.animate(withDuration: 0.3, delay: 0, options: .curveEaseOut, animations: {
             self.tableView.transform = .identity
-            self.dismissArea.alpha = 1
         })
     }
     
@@ -77,7 +112,6 @@ class ActionSelectionViewController: UIViewController, UITableViewDataSource, UI
     private func animateDismiss() {
         UIView.animate(withDuration: 0.3, delay: 0, options: .curveEaseIn, animations: {
             self.tableView.transform = CGAffineTransform(translationX: 0, y: self.tableView.frame.height)
-            self.dismissArea.alpha = 0
         }, completion: { _ in
             self.dismiss(animated: false)
             self.onDismiss?()
@@ -204,5 +238,52 @@ class ActionTableViewCell: UITableViewCell {
         iconLabel.text = icons[action.id] ?? "🎯"
         titleLabel.text = action.displayName
         descriptionLabel.text = "\(action.pointsPerCompletion) pts per completion"
+    }
+}
+
+// MARK: - Transitioning Controller
+
+class ActionSelectionTransitionController: NSObject, UIViewControllerTransitioningDelegate {
+    func presentationController(forPresented presented: UIViewController, presenting: UIViewController?, source: UIViewController) -> UIPresentationController? {
+        return ClearBackgroundPresentationController(presentedViewController: presented, presenting: presenting)
+    }
+}
+
+// MARK: - Clear Background Presentation Controller
+
+class ClearBackgroundPresentationController: UIPresentationController {
+    override var shouldPresentInFullscreen: Bool {
+        return true
+    }
+    
+    override func presentationTransitionWillBegin() {
+        super.presentationTransitionWillBegin()
+        setupTransparentBackground()
+    }
+    
+    override var frameOfPresentedViewInContainerView: CGRect {
+        return containerView?.bounds ?? .zero
+    }
+    
+    override func containerViewWillLayoutSubviews() {
+        super.containerViewWillLayoutSubviews()
+        setupTransparentBackground()
+    }
+    
+    private func setupTransparentBackground() {
+        // Set container to transparent
+        containerView?.backgroundColor = .clear
+        
+        // Remove any dimming views that might have been added
+        if let containerView = containerView {
+            for subview in containerView.subviews {
+                if subview != presentedView && subview.backgroundColor != .clear {
+                    subview.backgroundColor = .clear
+                    subview.alpha = 0
+                }
+            }
+        }
+        
+        presentedViewController.view.backgroundColor = .clear
     }
 }

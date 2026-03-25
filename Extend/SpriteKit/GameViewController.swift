@@ -21,9 +21,20 @@ class GameViewController: UIViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
         
+        // Set clear background for transparent modal presentations
+        view.backgroundColor = .clear
+        view.isOpaque = false
+        
+        // Also set window background to clear for modal presentations
+        if let window = UIApplication.shared.connectedScenes.first as? UIWindowScene {
+            window.windows.forEach { $0.backgroundColor = .clear }
+        }
+        
         // Create SKView
         let skView = SKView(frame: view.bounds)
         skView.ignoresSiblingOrder = true
+        skView.backgroundColor = .clear
+        skView.isOpaque = false
         view.addSubview(skView)
         view.sendSubviewToBack(skView)
         self.skView = skView
