@@ -591,6 +591,10 @@ class MuscleSystem {
         case "peakPositionLowerLegs": value = Double(frame.peakPositionLowerLegs)
         case "peakPositionUpperTorso": value = Double(frame.peakPositionUpperTorso)
         case "peakPositionLowerTorso": value = Double(frame.peakPositionLowerTorso)
+        case "fusiformFullTorso": value = Double(frame.fusiformFullTorso)
+        case "peakPositionFullTorsoTop": value = Double(frame.peakPositionFullTorsoTop)
+        case "peakPositionFullTorsoMiddle": value = Double(frame.peakPositionFullTorsoMiddle)
+        case "peakPositionFullTorsoBottom": value = Double(frame.peakPositionFullTorsoBottom)
         case "Heart": value = 0  // Non-visual property, use default
         default:
             value = 0

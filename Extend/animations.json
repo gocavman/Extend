@@ -912,7 +912,7 @@
       "waistThicknessMultiplier": 0.9,
       "waistTorsoAngle": 0,
       "waistWidthMultiplier": 0.26,
-      "fusiformFullTorso": 0,
+      "fusiformFullTorso": 0.1,
       "peakPositionFullTorsoTop": 0.15,
       "peakPositionFullTorsoMiddle": 0.5,
       "peakPositionFullTorsoBottom": 0.85
@@ -1003,7 +1003,7 @@
       "waistThicknessMultiplier": 0.8,
       "waistTorsoAngle": 0,
       "waistWidthMultiplier": 0.28,
-      "fusiformFullTorso": 0,
+      "fusiformFullTorso": 0.3,
       "peakPositionFullTorsoTop": 0.15,
       "peakPositionFullTorsoMiddle": 0.5,
       "peakPositionFullTorsoBottom": 0.85
@@ -1094,7 +1094,7 @@
       "waistThicknessMultiplier": 0.9,
       "waistTorsoAngle": 0,
       "waistWidthMultiplier": 0.28,
-      "fusiformFullTorso": 0,
+      "fusiformFullTorso": 0.3,
       "peakPositionFullTorsoTop": 0.15,
       "peakPositionFullTorsoMiddle": 0.5,
       "peakPositionFullTorsoBottom": 0.85

@@ -1071,6 +1071,10 @@ private func applyMuscleScaling(to figure: StickFigure2D) -> StickFigure2D {
             case "peakPositionUpperTorso": scaledFigure.peakPositionUpperTorso = interpolatedValue
             case "peakPositionLowerTorso": scaledFigure.peakPositionLowerTorso = interpolatedValue
             case "peakPositionDeltoids": scaledFigure.peakPositionDeltoids = interpolatedValue
+            case "fusiformFullTorso": scaledFigure.fusiformFullTorso = interpolatedValue
+            case "peakPositionFullTorsoTop": scaledFigure.peakPositionFullTorsoTop = interpolatedValue
+            case "peakPositionFullTorsoMiddle": scaledFigure.peakPositionFullTorsoMiddle = interpolatedValue
+            case "peakPositionFullTorsoBottom": scaledFigure.peakPositionFullTorsoBottom = interpolatedValue
             case "waistThicknessMultiplier": scaledFigure.waistThicknessMultiplier = interpolatedValue
             default: break
             }
