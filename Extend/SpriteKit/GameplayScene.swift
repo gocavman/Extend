@@ -99,6 +99,9 @@ override func didMove(to view: SKView) {
     // Create character
     setupCharacter()
     
+    // Setup brick ground
+    setupBrickGround()
+    
     // Create touch zones
     setupControlZones()
     
@@ -272,9 +275,119 @@ private func setupUI() {
         }
 }
 
+private func setupBrickGround() {
+    let groundNode = SKNode()
+    groundNode.name = "brickGround"
+    groundNode.zPosition = 5  // Behind character (which is at zPosition 10)
+    
+    // Brick dimensions
+    let brickWidth: CGFloat = 40
+    let brickHeight: CGFloat = 20
+    let mortar: CGFloat = 1  // Spacing between bricks
+    
+    // Character is at y = size.height * 0.35
+    // We want ground to be just below character feet
+    let groundY = size.height * 0.35 - 80  // Slightly below character position
+    
+    // DEBUG: Print screen dimensions
+    print("🧱 BRICK DEBUG: Scene size = \(size)")
+    print("🧱 BRICK DEBUG: Scene width = \(size.width), height = \(size.height)")
+    print("🧱 BRICK DEBUG: Scene scaleMode = \(scaleMode)")
+    if let view = view {
+        print("🧱 BRICK DEBUG: View size = \(view.bounds.size)")
+        print("🧱 BRICK DEBUG: View frame = \(view.frame)")
+    }
+    
+    // Colors for brick effect (dark red/orange/gray/black)
+    let brickColors: [SKColor] = [
+        SKColor(red: 0.6, green: 0.2, blue: 0.1, alpha: 1.0),    // Dark red
+        SKColor(red: 0.7, green: 0.3, blue: 0.1, alpha: 1.0),    // Dark orange
+        SKColor(red: 0.5, green: 0.4, blue: 0.3, alpha: 1.0),    // Gray/brown
+        SKColor(red: 0.3, green: 0.2, blue: 0.2, alpha: 1.0)     // Dark gray/black
+    ]
+    
+    // Create 3 rows of bricks
+    for row in 0..<3 {
+        let rowY = groundY - CGFloat(row) * (brickHeight + mortar)
+        
+        // Offset every other row by half a brick width (brick bond pattern)
+        let offsetX = row % 2 == 1 ? brickWidth / 2 : 0
+        
+        // Calculate how many bricks needed to cover full screen width plus overlap
+        // From left edge (-width/2) to right edge (+width/2) = full width
+        // With offset applied, we need: width + offset + extra safety margin
+        let distanceToCover = size.width + offsetX + brickWidth * 2  // Extra margin on both sides
+        let bricksPerRow = Int(ceil(distanceToCover / (brickWidth + mortar)))
+        
+        print("🧱 BRICK DEBUG: Row \(row) - bricksPerRow = \(bricksPerRow), offsetX = \(offsetX)")
+        
+        var minX: CGFloat = CGFloat.infinity
+        var maxX: CGFloat = -CGFloat.infinity
+        
+        for brickIndex in 0..<bricksPerRow {
+            // Position bricks from 0 to size.width (match character positioning at size.width/2)
+            let brickX = offsetX + CGFloat(brickIndex) * (brickWidth + mortar)
+            minX = min(minX, brickX)
+            maxX = max(maxX, brickX + brickWidth)
+            
+            // Create brick rectangle - use precise size and position
+            let brick = SKShapeNode(rectOf: CGSize(width: brickWidth, height: brickHeight))
+            brick.position = CGPoint(x: brickX, y: rowY)
+            brick.zPosition = 5  // Explicit z-position
+            brick.lineJoin = .bevel
+            brick.fillColor = brickColors[brickIndex % brickColors.count]
+            brick.strokeColor = SKColor(red: 0.2, green: 0.15, blue: 0.1, alpha: 1.0)  // Dark outline
+            brick.lineWidth = 1
+            
+            // Add slight 3D effect with darker bottom shading
+            let shadowRect = SKShapeNode(rectOf: CGSize(width: brickWidth - 2, height: 3))
+            shadowRect.position = CGPoint(x: 0, y: -brickHeight / 2 + 1.5)
+            shadowRect.fillColor = SKColor(red: 0, green: 0, blue: 0, alpha: 0.3)
+            shadowRect.strokeColor = .clear
+            brick.addChild(shadowRect)
+            
+            // Add mortar lines (lighter horizontal lines)
+            let mortarLine = SKShapeNode(rectOf: CGSize(width: brickWidth + mortar, height: mortar))
+            mortarLine.position = CGPoint(x: 0, y: -brickHeight / 2)
+            mortarLine.fillColor = SKColor(red: 0.8, green: 0.75, blue: 0.7, alpha: 0.6)
+            mortarLine.strokeColor = .clear
+            brick.addChild(mortarLine)
+            
+            groundNode.addChild(brick)
+        }
+        
+        print("🧱 BRICK DEBUG: Row \(row) coverage: \(minX) to \(maxX) (width: \(maxX - minX))")
+        print("🧱 BRICK DEBUG: Row \(row) should cover from \(-size.width / 2) to \(size.width / 2)?")
+    }
+    
+    print("🧱 BRICK DEBUG: Scene visible range: 0 to \(size.width) (width: \(size.width))")
+    
+    // DEBUG: Add visual bounds checker
+    let leftBound = SKShapeNode(circleOfRadius: 5)
+    leftBound.position = CGPoint(x: 0, y: groundY)
+    leftBound.fillColor = SKColor.red
+    leftBound.zPosition = 100
+    groundNode.addChild(leftBound)
+    
+    let rightBound = SKShapeNode(circleOfRadius: 5)
+    rightBound.position = CGPoint(x: size.width, y: groundY)
+    rightBound.fillColor = SKColor.green
+    rightBound.zPosition = 100
+    groundNode.addChild(rightBound)
+    
+    let centerBound = SKShapeNode(circleOfRadius: 3)
+    centerBound.position = CGPoint(x: size.width / 2, y: groundY)
+    centerBound.fillColor = SKColor.blue
+    centerBound.zPosition = 100
+    groundNode.addChild(centerBound)
+    
+    print("🧱 BRICK DEBUG: Added visual bounds - RED at left edge (0), GREEN at right edge (\(size.width)), BLUE at center (\(size.width/2))")
+    
+    addChild(groundNode)
+}
+
 private func setupControlZones() {
-    // Define touch zones at BOTTOM of screen
-    // Left (40%), Center (20%), Right (40%)
+    // ...existing code...
     let zoneHeight: CGFloat = 120
     let leftZoneWidth = size.width * 0.4
     let centerZoneWidth = size.width * 0.2
@@ -448,7 +561,7 @@ private func handleTouchAtLocation(_ point: CGPoint, isPress: Bool) {
     let characterHalfHeight = characterHeight / 2
     
     // Check both horizontal AND vertical bounds
-    let isCharacterTap = abs(point.x - characterX) <= characterTapThreshold && 
+    let isCharacterTap = abs(point.x - characterX) <= characterTapThreshold &&
                          point.y > zoneHeight &&
                          abs(point.y - characterY) <= characterHalfHeight
     
