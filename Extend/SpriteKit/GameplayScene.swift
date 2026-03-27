@@ -671,6 +671,9 @@ private func updateGameLogic() {
         var frameWithAppearance = scaledFrame
         StickFigureAppearance.shared.applyToStickFigure(&frameWithAppearance)
         
+        // ⭐ Enable side view for action animations
+        frameWithAppearance.isSideView = true
+        
         // Clear character node and render the new frame with offsets
         character.removeAllChildren()
         let shouldFlip = gameState.actionFlip
