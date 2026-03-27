@@ -29,8 +29,9 @@ var animationFrameIndex: Int = 0
 private var lastInteractionTime: TimeInterval = 0
 private var isEyesBlinking: Bool = false
 private var eyesBlinkEndTime: TimeInterval = 0
-private let inactivityThreshold: TimeInterval = 15.0  // 15 seconds
+private let inactivityThreshold: TimeInterval = 10.0  // 15 seconds
 private let blinkDuration: TimeInterval = 0.25  // 1/2 second
+private var lastIdleDebugTime: TimeInterval = 0  // For throttling debug output
 
 // Button areas for UI
 private var exitButtonArea: SKShapeNode?
@@ -659,9 +660,6 @@ private func startGameLoop() {
 private func updateGameLogic() {
     guard let gameState = gameState, let character = characterNode else { return }
     
-    // Update eye blinking
-    updateEyeBlinking()
-    
     // Check if an action animation is currently playing
     if let currentStickFigure = gameState.currentStickFigure {
         //print("🎮 [UPDATE] Rendering action frame for: \(currentAction)")
@@ -699,6 +697,16 @@ private func updateGameLogic() {
             startMovementAnimation()
         }
     } else {
+        // Character is idle - this is when blinking can happen
+        let currentTime = CACurrentMediaTime()
+        if currentTime - lastIdleDebugTime > 1.0 {  // Print debug every 1 second to avoid spam
+            print("🎮 STATE: IDLE - Blinking check running")
+            lastIdleDebugTime = currentTime
+        }
+        
+        // Update eye blinking (only when idle)
+        updateEyeBlinking()
+        
         // Stop animation if running
         if character.action(forKey: "moveAnimation") != nil {
             stopMovementAnimation()
@@ -706,7 +714,8 @@ private func updateGameLogic() {
         
         // If not moving and not performing action, make sure we show stand frame
         // This handles the case where action just finished
-        if let standFrame = gameState.standFrame {
+        // BUT: Don't re-render if we're currently blinking (let blink effect show)
+        if !isEyesBlinking, let standFrame = gameState.standFrame {
             let scaledFrame = applyMuscleScaling(to: standFrame)
             var frameWithAppearance = scaledFrame
             StickFigureAppearance.shared.applyToStickFigure(&frameWithAppearance)
@@ -898,20 +907,25 @@ private func stopMovementAnimation() {
 
 private func updateEyeBlinking() {
     guard gameState != nil else { return }
-    guard StickFigureAppearance.shared.eyesEnabled else { return }
+    guard StickFigureAppearance.shared.eyesEnabled else {
+        print("👁️ BLINK: Eyes disabled, skipping blink check")
+        return
+    }
     
     let currentTime = CACurrentMediaTime()
     let timeSinceLastInteraction = currentTime - lastInteractionTime
     
+    print("👁️ BLINK DEBUG: timeSinceLastInteraction=\(String(format: "%.1f", timeSinceLastInteraction))s, threshold=\(inactivityThreshold)s, isBlinking=\(isEyesBlinking)")
+    
     // Check if we should trigger a blink
     if timeSinceLastInteraction >= inactivityThreshold && !isEyesBlinking {
-        //print("👁️ BLINK: Triggering blink after \(timeSinceLastInteraction) seconds of inactivity")
+        print("👁️ BLINK: Triggering blink after \(String(format: "%.1f", timeSinceLastInteraction)) seconds of inactivity")
         triggerEyeBlink()
     }
     
     // Check if blink should end
     if isEyesBlinking && currentTime >= eyesBlinkEndTime {
-        //print("👁️ BLINK: Ending blink, restoring eyes")
+        print("👁️ BLINK: Ending blink, restoring eyes")
         isEyesBlinking = false
         lastInteractionTime = CACurrentMediaTime()  // Reset timer after blink
         refreshCharacterAppearance()
@@ -950,6 +964,10 @@ func refreshCharacterAppearance() {
             // Apply appearance colors to the frame
             var frameWithAppearance = scaledFrame
             StickFigureAppearance.shared.applyToStickFigure(&frameWithAppearance)
+            
+            // ⭐ Enable side view for movement animation (consistent with updateGameLogic)
+            frameWithAppearance.isSideView = true
+            
             let offsetPosition = CGPoint(x: frameWithAppearance.figureOffsetX, y: frameWithAppearance.figureOffsetY)
             let stickFigureNode = renderStickFigure(frameWithAppearance, at: offsetPosition, scale: 1.2, flipped: shouldFlip, jointShapeSize: frameWithAppearance.jointShapeSize)
             characterContainer.addChild(stickFigureNode)
@@ -967,6 +985,10 @@ func refreshCharacterAppearance() {
             // Apply appearance colors to the frame
             var frameWithAppearance = scaledFrame
             StickFigureAppearance.shared.applyToStickFigure(&frameWithAppearance)
+            
+            // ⭐ Stand frame uses front view (isSideView defaults to false)
+            // No need to set isSideView - defaults to false for front view
+            
             let offsetPosition = CGPoint(x: frameWithAppearance.figureOffsetX, y: frameWithAppearance.figureOffsetY)
             let stickFigureNode = renderStickFigure(frameWithAppearance, at: offsetPosition, scale: 1.2, flipped: shouldFlip, jointShapeSize: frameWithAppearance.jointShapeSize)
             characterContainer.addChild(stickFigureNode)
