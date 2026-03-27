@@ -700,7 +700,7 @@ private func updateGameLogic() {
         // Character is idle - this is when blinking can happen
         let currentTime = CACurrentMediaTime()
         if currentTime - lastIdleDebugTime > 1.0 {  // Print debug every 1 second to avoid spam
-            print("🎮 STATE: IDLE - Blinking check running")
+            //print("🎮 STATE: IDLE - Blinking check running")
             lastIdleDebugTime = currentTime
         }
         
@@ -915,7 +915,7 @@ private func updateEyeBlinking() {
     let currentTime = CACurrentMediaTime()
     let timeSinceLastInteraction = currentTime - lastInteractionTime
     
-    print("👁️ BLINK DEBUG: timeSinceLastInteraction=\(String(format: "%.1f", timeSinceLastInteraction))s, threshold=\(inactivityThreshold)s, isBlinking=\(isEyesBlinking)")
+    //print("👁️ BLINK DEBUG: timeSinceLastInteraction=\(String(format: "%.1f", timeSinceLastInteraction))s, threshold=\(inactivityThreshold)s, isBlinking=\(isEyesBlinking)")
     
     // Check if we should trigger a blink
     if timeSinceLastInteraction >= inactivityThreshold && !isEyesBlinking {

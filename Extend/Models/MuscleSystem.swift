@@ -404,7 +404,7 @@ class MuscleSystem {
     
     /// Load muscle config from bundle
     func loadMuscleConfig() {
-        print("🦵 Loading muscle config...")
+        //print("🦵 Loading muscle config...")
         var configData: Data?
         var source = "unknown"
         

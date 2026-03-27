@@ -1042,8 +1042,8 @@ class GameScene: SKScene {
             //print("👁️ EYE RENDER: eyeRadius=\(eyeRadius), eyeVerticalOffset=\(eyeVerticalOffset), irisRadius=\(irisRadius), irisEnabled=\(mutableFigure.irisEnabled), isSideView=\(mutableFigure.isSideView)")
             
             if mutableFigure.isSideView {
-                // Side view: show ONLY the visible eye on the right side of the head
-                let visibleEyePos = CGPoint(x: headPos.x + headRadius * 0.25, y: headPos.y - eyeVerticalOffset)
+                // Side view: show ONLY the visible eye on the right side of the head (closer to edge)
+                let visibleEyePos = CGPoint(x: headPos.x + headRadius * 0.45, y: headPos.y - eyeVerticalOffset)
                 //print("👁️ SIDE VIEW EYE: pos=\(visibleEyePos), radius=\(eyeRadius), color=\(mutableFigure.eyeColor)")
                 drawCircle(at: visibleEyePos, radius: eyeRadius, color: SKColor(mutableFigure.eyeColor))
                 
