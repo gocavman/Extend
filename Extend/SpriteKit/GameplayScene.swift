@@ -58,6 +58,12 @@ private var selectedAction: ActionConfig?
 private var selectedActionLabel: SKLabelNode?  // Label to display selected action name
 private var actionZoneNode: SKShapeNode?  // Reference to action zone for visual updates
 
+// Brick regeneration properties
+private var brickGroundNode: SKNode?  // Reference to the brick ground container
+private var currentBrickViewportX: CGFloat = 0  // Track which X offset we're rendering
+private var brickRegenerationThreshold: CGFloat = 0  // Will be set to screen width during setup
+private var lastCharacterPositionX: CGFloat = 0  // Track last position to detect wrap events
+
 // Edit mode properties - REMOVED (now on Map Screen)
 // private var isEditMode: Bool = false
 // private var editButtonArea: SKShapeNode?
@@ -276,6 +282,21 @@ private func setupUI() {
 }
 
 private func setupBrickGround() {
+    // Initialize brick regeneration threshold to screen width
+    brickRegenerationThreshold = size.width
+    currentBrickViewportX = 0
+    lastCharacterPositionX = size.width / 2  // Character starts at center
+    
+    // Generate initial bricks
+    generateBricksForViewport(atX: 0)
+}
+
+private func generateBricksForViewport(atX viewportX: CGFloat) {
+    // Remove old brick ground if it exists
+    if let oldGround = brickGroundNode {
+        oldGround.removeFromParent()
+    }
+    
     let groundNode = SKNode()
     groundNode.name = "brickGround"
     groundNode.zPosition = 5  // Behind character (which is at zPosition 10)
@@ -288,15 +309,6 @@ private func setupBrickGround() {
     // Character is at y = size.height * 0.35
     // We want ground to be just below character feet
     let groundY = size.height * 0.35 - 80  // Slightly below character position
-    
-    // DEBUG: Print screen dimensions
-    print("🧱 BRICK DEBUG: Scene size = \(size)")
-    print("🧱 BRICK DEBUG: Scene width = \(size.width), height = \(size.height)")
-    print("🧱 BRICK DEBUG: Scene scaleMode = \(scaleMode)")
-    if let view = view {
-        print("🧱 BRICK DEBUG: View size = \(view.bounds.size)")
-        print("🧱 BRICK DEBUG: View frame = \(view.frame)")
-    }
     
     // Colors for brick effect (dark red/orange/gray/black)
     let brickColors: [SKColor] = [
@@ -314,21 +326,13 @@ private func setupBrickGround() {
         let offsetX = row % 2 == 1 ? brickWidth / 2 : 0
         
         // Calculate how many bricks needed to cover full screen width plus overlap
-        // From left edge (-width/2) to right edge (+width/2) = full width
-        // With offset applied, we need: width + offset + extra safety margin
+        // Include extra bricks beyond screen bounds for smooth wrapping
         let distanceToCover = size.width + offsetX + brickWidth * 2  // Extra margin on both sides
         let bricksPerRow = Int(ceil(distanceToCover / (brickWidth + mortar)))
         
-        print("🧱 BRICK DEBUG: Row \(row) - bricksPerRow = \(bricksPerRow), offsetX = \(offsetX)")
-        
-        var minX: CGFloat = CGFloat.infinity
-        var maxX: CGFloat = -CGFloat.infinity
-        
         for brickIndex in 0..<bricksPerRow {
-            // Position bricks from 0 to size.width (match character positioning at size.width/2)
+            // Position bricks from 0 to size.width
             let brickX = offsetX + CGFloat(brickIndex) * (brickWidth + mortar)
-            minX = min(minX, brickX)
-            maxX = max(maxX, brickX + brickWidth)
             
             // Create brick rectangle - use precise size and position
             let brick = SKShapeNode(rectOf: CGSize(width: brickWidth, height: brickHeight))
@@ -355,10 +359,40 @@ private func setupBrickGround() {
             
             groundNode.addChild(brick)
         }
-        
     }
     
+    // Store reference and add to scene
+    brickGroundNode = groundNode
     addChild(groundNode)
+    
+    // Update tracking
+    currentBrickViewportX = viewportX
+}
+
+private func checkAndRegenerateBricks(characterPosition: CGPoint) {
+    let currentX = characterPosition.x
+    
+    // Detect wrap events by checking for large jumps in position
+    // Wrap to right (from left edge to right edge): position jumps from negative to positive large value
+    // Wrap to left (from right edge to left edge): position jumps from large positive to negative
+    
+    let positionDelta = currentX - lastCharacterPositionX
+    
+    // If position changed by more than half screen width in one frame, it's a wrap
+    // This is the only time we regenerate - right after the wrap happens
+    if abs(positionDelta) > brickRegenerationThreshold / 2 {
+        regenerateBricks(atPosition: currentX)
+    }
+    
+    // Always update the last position for next frame comparison
+    lastCharacterPositionX = currentX
+}
+
+private func regenerateBricks(atPosition characterX: CGFloat) {
+    // Generate new bricks for the character's current position
+    generateBricksForViewport(atX: characterX)
+    
+    print("🧱 Bricks regenerated for character position: \(characterX)")
 }
 
 private func setupControlZones() {
@@ -704,6 +738,9 @@ private func updateGameLogic() {
     } else if character.position.x < -50 {
         character.position.x = size.width + 50
     }
+    
+    // ⭐ Check and regenerate bricks if needed
+    checkAndRegenerateBricks(characterPosition: character.position)
     
     // Update level label (level ONLY, no points)
     levelLabel?.text = "Level: \(gameState.currentLevel)"
