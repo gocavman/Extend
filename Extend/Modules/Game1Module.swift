@@ -1510,11 +1510,17 @@ class StickFigureGameState {
             
             gameState.lastActionFrame = frameIndex
             gameState.currentFrameIndex = frameIndex
-            frameIndex += 1
             
-            // Use the base frame interval for timing from stick figure animation config
+            // Get the current frame number (1-based) from the animation config
+            let frameNumber = config.stickFigureAnimation?.frameNumbers[frameIndex] ?? 1
+            
+            // Check if there's a custom timing for this frame number
+            // If variableTiming has an entry for this frame, use it; otherwise use baseFrameInterval
             let baseInterval = config.stickFigureAnimation?.baseFrameInterval ?? 0.15
-            let interval = baseInterval * speedMultiplier
+            let customInterval = variableTiming[frameNumber]
+            let interval = (customInterval ?? baseInterval) * speedMultiplier
+            
+            frameIndex += 1
             elapsedTime += interval
             
             DispatchQueue.main.asyncAfter(deadline: .now() + interval) {

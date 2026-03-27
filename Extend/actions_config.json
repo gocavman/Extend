@@ -206,7 +206,7 @@
     "unlockLevel": 1,
     "pointsPerCompletion": 5,
     "variableTiming": {
-      "1": 5.0
+      "1": 0.5
     },
     "flipMode": "random",
     "supportsSpeedBoost": false,
