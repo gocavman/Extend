@@ -716,6 +716,7 @@ struct StickFigure2D {
     var eyesEnabled: Bool = false
     var irisColor: Color = .black
     var irisEnabled: Bool = false
+    var isSideView: Bool = false  // When true, show only one eye (side view mode)
     
     // Stroke thickness (overall - kept for backward compatibility)
     var strokeThickness: CGFloat = 4.0
@@ -1205,32 +1206,48 @@ struct StickFigure2DView: View {
         //print("👁️ EYE DEBUG: eyesEnabled=\(figure.eyesEnabled), eyeColor=\(figure.eyeColor), headRadius=\(figure.headRadius), scaledHeadRadius=\(scaledHeadRadius), headPos=\(headPos)")
         if figure.eyesEnabled {
             let eyeRadius = scaledHeadRadius * 0.2  // 20% of head radius
-            let eyeSpacing = scaledHeadRadius * 0.4  // Space between eyes
             let eyeVerticalOffset = scaledHeadRadius * 0.1  // Slight vertical offset from center
             
-            //print("👁️ EYE RENDER: eyeRadius=\(eyeRadius), eyeSpacing=\(eyeSpacing), eyeVerticalOffset=\(eyeVerticalOffset)")
+            //print("👁️ EYE RENDER: eyeRadius=\(eyeRadius), eyeVerticalOffset=\(eyeVerticalOffset), isSideView=\(figure.isSideView)")
             
-            // Left eye
-            let leftEyePos = CGPoint(x: headPos.x - eyeSpacing / 2, y: headPos.y - eyeVerticalOffset)
-            let leftEyePath = Circle().path(in: CGRect(
-                x: leftEyePos.x - eyeRadius,
-                y: leftEyePos.y - eyeRadius,
-                width: eyeRadius * 2,
-                height: eyeRadius * 2
-            ))
-            //print("👁️ LEFT EYE: pos=\(leftEyePos), radius=\(eyeRadius), color=\(figure.eyeColor)")
-            context.fill(leftEyePath, with: .color(figure.eyeColor))
-            
-            // Right eye
-            let rightEyePos = CGPoint(x: headPos.x + eyeSpacing / 2, y: headPos.y - eyeVerticalOffset)
-            let rightEyePath = Circle().path(in: CGRect(
-                x: rightEyePos.x - eyeRadius,
-                y: rightEyePos.y - eyeRadius,
-                width: eyeRadius * 2,
-                height: eyeRadius * 2
-            ))
-            //print("👁️ RIGHT EYE: pos=\(rightEyePos), radius=\(eyeRadius), color=\(figure.eyeColor)")
-            context.fill(rightEyePath, with: .color(figure.eyeColor))
+            if figure.isSideView {
+                // Side view: show ONLY the visible eye
+                // Show the eye on the right side of the head (from the viewer's perspective)
+                let visibleEyePos = CGPoint(x: headPos.x + scaledHeadRadius * 0.15, y: headPos.y - eyeVerticalOffset)
+                let visibleEyePath = Circle().path(in: CGRect(
+                    x: visibleEyePos.x - eyeRadius,
+                    y: visibleEyePos.y - eyeRadius,
+                    width: eyeRadius * 2,
+                    height: eyeRadius * 2
+                ))
+                //print("👁️ SIDE VIEW EYE: pos=\(visibleEyePos), radius=\(eyeRadius), color=\(figure.eyeColor)")
+                context.fill(visibleEyePath, with: .color(figure.eyeColor))
+            } else {
+                // Front view: show both eyes (current behavior)
+                let eyeSpacing = scaledHeadRadius * 0.4  // Space between eyes
+                
+                // Left eye
+                let leftEyePos = CGPoint(x: headPos.x - eyeSpacing / 2, y: headPos.y - eyeVerticalOffset)
+                let leftEyePath = Circle().path(in: CGRect(
+                    x: leftEyePos.x - eyeRadius,
+                    y: leftEyePos.y - eyeRadius,
+                    width: eyeRadius * 2,
+                    height: eyeRadius * 2
+                ))
+                //print("👁️ LEFT EYE: pos=\(leftEyePos), radius=\(eyeRadius), color=\(figure.eyeColor)")
+                context.fill(leftEyePath, with: .color(figure.eyeColor))
+                
+                // Right eye
+                let rightEyePos = CGPoint(x: headPos.x + eyeSpacing / 2, y: headPos.y - eyeVerticalOffset)
+                let rightEyePath = Circle().path(in: CGRect(
+                    x: rightEyePos.x - eyeRadius,
+                    y: rightEyePos.y - eyeRadius,
+                    width: eyeRadius * 2,
+                    height: eyeRadius * 2
+                ))
+                //print("👁️ RIGHT EYE: pos=\(rightEyePos), radius=\(eyeRadius), color=\(figure.eyeColor)")
+                context.fill(rightEyePath, with: .color(figure.eyeColor))
+            }
             //print("👁️ EYES DRAWN SUCCESSFULLY")
         } else {
             //print("👁️ EYES DISABLED: eyesEnabled=false")

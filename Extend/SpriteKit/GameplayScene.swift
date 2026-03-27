@@ -836,6 +836,10 @@ private func startMovementAnimation() {
                 // Apply appearance colors to the frame
                 var frameWithAppearance = scaledFrame
                 StickFigureAppearance.shared.applyToStickFigure(&frameWithAppearance)
+                
+                // ⭐ Enable side view for running animation
+                frameWithAppearance.isSideView = true
+                
                 let offsetPosition = CGPoint(x: frameWithAppearance.figureOffsetX, y: frameWithAppearance.figureOffsetY)
                 let stickFigureNode = self.renderStickFigure(frameWithAppearance, at: offsetPosition, scale: 1.2, flipped: shouldFlip, jointShapeSize: frameWithAppearance.jointShapeSize)
                 characterContainer.addChild(stickFigureNode)

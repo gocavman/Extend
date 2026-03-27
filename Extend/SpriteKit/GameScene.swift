@@ -1036,32 +1036,47 @@ class GameScene: SKScene {
         //print("👁️ EYE DEBUG: eyesEnabled=\(mutableFigure.eyesEnabled), eyeColor=\(mutableFigure.eyeColor), headRadius=\(headRadius), headPos=\(headPos)")
         if mutableFigure.eyesEnabled {
             let eyeRadius = headRadius * 0.3  // 20% of head radius
-            let eyeSpacing = headRadius * 0.6  // Space between eyes
             let eyeVerticalOffset = headRadius * -0.1  // Slight vertical offset from center
             let irisRadius = eyeRadius * 0.5  // 1/2 of eye radius
             
-            //print("👁️ EYE RENDER: eyeRadius=\(eyeRadius), eyeSpacing=\(eyeSpacing), eyeVerticalOffset=\(eyeVerticalOffset), irisRadius=\(irisRadius), irisEnabled=\(mutableFigure.irisEnabled)")
+            //print("👁️ EYE RENDER: eyeRadius=\(eyeRadius), eyeVerticalOffset=\(eyeVerticalOffset), irisRadius=\(irisRadius), irisEnabled=\(mutableFigure.irisEnabled), isSideView=\(mutableFigure.isSideView)")
             
-            // Left eye
-            let leftEyePos = CGPoint(x: headPos.x - eyeSpacing / 2, y: headPos.y - eyeVerticalOffset)
-            //print("👁️ LEFT EYE: pos=\(leftEyePos), radius=\(eyeRadius), color=\(mutableFigure.eyeColor)")
-            drawCircle(at: leftEyePos, radius: eyeRadius, color: SKColor(mutableFigure.eyeColor))
-            
-            // Draw left iris if enabled
-            if mutableFigure.irisEnabled {
-                //print("👁️ LEFT IRIS: pos=\(leftEyePos), radius=\(irisRadius), color=\(mutableFigure.irisColor)")
-                drawCircle(at: leftEyePos, radius: irisRadius, color: SKColor(mutableFigure.irisColor))
-            }
-            
-            // Right eye
-            let rightEyePos = CGPoint(x: headPos.x + eyeSpacing / 2, y: headPos.y - eyeVerticalOffset)
-            //print("👁️ RIGHT EYE: pos=\(rightEyePos), radius=\(eyeRadius), color=\(mutableFigure.eyeColor)")
-            drawCircle(at: rightEyePos, radius: eyeRadius, color: SKColor(mutableFigure.eyeColor))
-            
-            // Draw right iris if enabled
-            if mutableFigure.irisEnabled {
-                //print("👁️ RIGHT IRIS: pos=\(rightEyePos), radius=\(irisRadius), color=\(mutableFigure.irisColor)")
-                drawCircle(at: rightEyePos, radius: irisRadius, color: SKColor(mutableFigure.irisColor))
+            if mutableFigure.isSideView {
+                // Side view: show ONLY the visible eye on the right side of the head
+                let visibleEyePos = CGPoint(x: headPos.x + headRadius * 0.25, y: headPos.y - eyeVerticalOffset)
+                //print("👁️ SIDE VIEW EYE: pos=\(visibleEyePos), radius=\(eyeRadius), color=\(mutableFigure.eyeColor)")
+                drawCircle(at: visibleEyePos, radius: eyeRadius, color: SKColor(mutableFigure.eyeColor))
+                
+                // Draw iris if enabled
+                if mutableFigure.irisEnabled {
+                    //print("👁️ SIDE VIEW IRIS: pos=\(visibleEyePos), radius=\(irisRadius), color=\(mutableFigure.irisColor)")
+                    drawCircle(at: visibleEyePos, radius: irisRadius, color: SKColor(mutableFigure.irisColor))
+                }
+            } else {
+                // Front view: show both eyes (current behavior)
+                let eyeSpacing = headRadius * 0.6  // Space between eyes
+                
+                // Left eye
+                let leftEyePos = CGPoint(x: headPos.x - eyeSpacing / 2, y: headPos.y - eyeVerticalOffset)
+                //print("👁️ LEFT EYE: pos=\(leftEyePos), radius=\(eyeRadius), color=\(mutableFigure.eyeColor)")
+                drawCircle(at: leftEyePos, radius: eyeRadius, color: SKColor(mutableFigure.eyeColor))
+                
+                // Draw left iris if enabled
+                if mutableFigure.irisEnabled {
+                    //print("👁️ LEFT IRIS: pos=\(leftEyePos), radius=\(irisRadius), color=\(mutableFigure.irisColor)")
+                    drawCircle(at: leftEyePos, radius: irisRadius, color: SKColor(mutableFigure.irisColor))
+                }
+                
+                // Right eye
+                let rightEyePos = CGPoint(x: headPos.x + eyeSpacing / 2, y: headPos.y - eyeVerticalOffset)
+                //print("👁️ RIGHT EYE: pos=\(rightEyePos), radius=\(eyeRadius), color=\(mutableFigure.eyeColor)")
+                drawCircle(at: rightEyePos, radius: eyeRadius, color: SKColor(mutableFigure.eyeColor))
+                
+                // Draw right iris if enabled
+                if mutableFigure.irisEnabled {
+                    //print("👁️ RIGHT IRIS: pos=\(rightEyePos), radius=\(irisRadius), color=\(mutableFigure.irisColor)")
+                    drawCircle(at: rightEyePos, radius: irisRadius, color: SKColor(mutableFigure.irisColor))
+                }
             }
             //print("👁️ EYES DRAWN SUCCESSFULLY")
         } else {
