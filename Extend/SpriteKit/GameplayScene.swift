@@ -1180,7 +1180,8 @@ private func applyMuscleScaling(to figure: StickFigure2D) -> StickFigure2D {
     
     if isSideView {
         scaledFigure.strokeThicknessUpperTorso = min(scaledFigure.strokeThicknessUpperTorso, 5.0)
-        scaledFigure.fusiformShoulders = min(scaledFigure.fusiformShoulders, 3.0)
+        //scaledFigure.fusiformShoulders = min(scaledFigure.fusiformShoulders, 3.0)
+        scaledFigure.fusiformShoulders = min(scaledFigure.fusiformShoulders, 0) // Make shoulder fusiform proportional to neck width for better side view appearance
         //scaledFigure.strokeThicknessFullTorso = min(scaledFigure.strokeThicknessFullTorso, 5.0)
         scaledFigure.strokeThicknessDeltoids = min(scaledFigure.strokeThicknessDeltoids, 3.0)
         //scaledFigure.skeletonSizeTorso = min(scaledFigure.skeletonSizeTorso, 3.0)
@@ -1487,6 +1488,10 @@ private func checkCatchableCollisions(gameState: StickFigureGameState, character
                             // Stop current movement
                             gameState.isMovingLeft = false
                             gameState.isMovingRight = false
+                            // Stop movement animation to prevent conflict with action animation
+                            if characterNode?.action(forKey: "moveAnimation") != nil {
+                                characterNode?.removeAction(forKey: "moveAnimation")
+                            }
                             // Start the action
                             gameState.startAction(actionConfig, gameState: gameState)
                             if collisionAnimName == "Shaker" {
