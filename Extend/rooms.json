@@ -7,7 +7,7 @@
     "backgroundImage": "map_bg",
     "backgroundColor": "#E0E0E0",
     "levels": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
-    "doors": ["door_to_training_room_1"],
+    "doors": ["door_to_training_room_1", "door_to_match_challenge"],
     "population": {
       "items": ["⭐"],
       "count": 7,
@@ -30,5 +30,16 @@
       "points": 1,
       "size": 100
     }
+  },
+  {
+    "id": "match_challenge",
+    "name": "Match Challenge",
+    "width": 1000,
+    "height": 1200,
+    "backgroundImage": null,
+    "backgroundColor": "#2C3E50",
+    "levels": [1, 2, 3, 4, 5],
+    "doors": ["door_to_main_map_from_match"],
+    "matchGame": true
   }
 ]

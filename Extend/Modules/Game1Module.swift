@@ -169,6 +169,7 @@ struct RoomConfig: Codable {
     let levels: [Int]
     let doors: [String]
     let population: PopulationConfig?
+    let matchGame: Bool?
 }
 
 // MARK: - Door Structure

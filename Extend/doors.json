@@ -18,5 +18,25 @@
     "height": 100,
     "destinationRoomId": "main_map",
     "returnDoorId": "door_to_training_room_1"
+  },
+  {
+    "id": "door_to_match_challenge",
+    "name": "Match Challenge",
+    "mapX": 1700,
+    "mapY": 100,
+    "width": 150,
+    "height": 100,
+    "destinationRoomId": "match_challenge",
+    "returnDoorId": "door_to_main_map_from_match"
+  },
+  {
+    "id": "door_to_main_map_from_match",
+    "name": "Back to Main",
+    "mapX": 125,
+    "mapY": 125,
+    "width": 150,
+    "height": 100,
+    "destinationRoomId": "main_map",
+    "returnDoorId": "door_to_match_challenge"
   }
 ]

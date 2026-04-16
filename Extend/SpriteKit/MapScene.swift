@@ -475,6 +475,16 @@ class MapScene: GameScene {
     
     private func enterRoom(_ roomId: String, fromDoorId: String) {
         guard let mapState = mapState else { return }
+        
+        // Check if this room is a match game room
+        if let roomConfig = getRoomConfig(roomId), roomConfig.matchGame == true {
+            print("🎮 Launching Match Game for room: \(roomConfig.name)")
+            let matchGameVC = MatchGameViewController()
+            matchGameVC.modalPresentationStyle = .fullScreen
+            gameViewController?.present(matchGameVC, animated: true)
+            return
+        }
+        
         guard let returnDoor = getDoorConfig(fromDoorId) else {
             print("⚠️ Could not find return door: \(fromDoorId)")
             return
