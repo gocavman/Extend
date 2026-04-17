@@ -96,6 +96,7 @@ class MatchGameViewController: UIViewController {
     private var dragStartPiece: (row: Int, col: Int)? = nil
     private var dragTargetPiece: (row: Int, col: Int)? = nil
     private var unlockedLevels: [Int] = [1]  // NEW: Track unlocked levels
+    private var movedPieces: Set<String> = []  // Track which pieces moved during gravity
     
     // MARK: - Game Logic
     private let darkBg = UIColor(hex: "#2C3E50") ?? .black
@@ -225,12 +226,14 @@ class MatchGameViewController: UIViewController {
         containerView.addSubview(gridContainer)
         gridContainer.translatesAutoresizingMaskIntoConstraints = false
         NSLayoutConstraint.activate([
-            gridContainer.topAnchor.constraint(equalTo: headerView.bottomAnchor, constant: 20),
-            gridContainer.leadingAnchor.constraint(equalTo: containerView.leadingAnchor, constant: 20),
-            gridContainer.trailingAnchor.constraint(equalTo: containerView.trailingAnchor, constant: -20),
-            gridContainer.bottomAnchor.constraint(equalTo: containerView.bottomAnchor, constant: -20),
+            gridContainer.centerYAnchor.constraint(equalTo: containerView.centerYAnchor),
+            gridContainer.centerXAnchor.constraint(equalTo: containerView.centerXAnchor),
+            gridContainer.leadingAnchor.constraint(greaterThanOrEqualTo: containerView.leadingAnchor, constant: 20),
+            gridContainer.trailingAnchor.constraint(lessThanOrEqualTo: containerView.trailingAnchor, constant: -20),
             // Make gridContainer square - width = height
-            gridContainer.widthAnchor.constraint(equalTo: gridContainer.heightAnchor, multiplier: 1.0)
+            gridContainer.widthAnchor.constraint(equalTo: gridContainer.heightAnchor, multiplier: 1.0),
+            // Set max size to prevent grid from being too large
+            gridContainer.widthAnchor.constraint(lessThanOrEqualToConstant: 400)
         ])
     }
     
@@ -989,8 +992,8 @@ class MatchGameViewController: UIViewController {
                 // Calculate the delta to move back (deltaX not currently used but kept for reference)
                 let _ = pos2.x - pos1.x
                 
-                // Slow smooth revert animation - pieces slide back slowly so you can see it
-                UIView.animate(withDuration: 0.8, delay: 0, options: .curveEaseInOut, animations: {
+                // Very slow revert animation - pieces slide back very slowly so you can clearly see it
+                UIView.animate(withDuration: 2.5, delay: 0, options: .curveEaseInOut, animations: {
                     button1.transform = .identity
                     button2.transform = .identity
                 }, completion: { _ in
@@ -1043,6 +1046,9 @@ class MatchGameViewController: UIViewController {
     private func applyGravity() {
         guard let level = currentLevel else { return }
         
+        // Clear the moved pieces tracking
+        movedPieces.removeAll()
+        
         // Apply gravity - pieces only fall to fill empty spaces below them
         for col in 0..<level.gridWidth {
             // For each column, find empty spaces and drop pieces into them
@@ -1059,8 +1065,9 @@ class MatchGameViewController: UIViewController {
                     } else {
                         // Found a piece
                         if emptyRow != -1 {
-                            // Move this piece to the empty row
+                            // Move this piece to the empty row - TRACK THIS MOVEMENT
                             let piece = gameGrid[row][col]
+                            movedPieces.insert("\(emptyRow),\(col)")  // Track that this position will be animated
                             gameGrid[emptyRow][col] = piece
                             piece?.row = emptyRow
                             piece?.col = col
@@ -1093,23 +1100,51 @@ class MatchGameViewController: UIViewController {
         
         // Don't update grid display here - let animation handle the visual update
         // Just animate pieces dropping with staggered timing
-        // Don't animate pieces dropping - just update the display
-        // This prevents all tiles from animating/spinning/blinking
+        animatePiecesDrop()
         
-        // Update grid display immediately after gravity applied
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [weak self] in
+        // Update grid display after drop animations complete (slower now)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { [weak self] in
             self?.updateGridDisplay()
         }
         
         // Check for more matches after brief delay
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { [weak self] in
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) { [weak self] in
             self?.checkForMatches()
         }
     }
     
     private func animatePiecesDrop() {
-        // Animation no longer needed - pieces just appear in new positions
-        // This prevents the blinking and spinning effect
+        guard let level = currentLevel else { return }
+        
+        // Animate only pieces that moved during gravity (new pieces filling from top)
+        for col in 0..<level.gridWidth {
+            for row in 0..<level.gridHeight {
+                let key = "\(row),\(col)"
+                // Only animate if this piece was part of the moved set
+                if movedPieces.contains(key), gridShapeMap[row][col], let button = gridButtons[row][col], gameGrid[row][col] != nil {
+                    // Reset any previous transforms
+                    button.transform = .identity
+                    button.alpha = 1.0
+                    
+                    // Stagger animation by row (pieces drop from top first)
+                    let animationDelay = Double(row) * 0.08
+                    
+                    // Start with piece above (off-screen) - slow animation
+                    button.transform = CGAffineTransform(translationX: 0, y: -60)
+                    
+                    // Animate drop into position (much slower - 2.0 seconds)
+                    UIView.animate(
+                        withDuration: 2.0,
+                        delay: animationDelay,
+                        options: .curveEaseOut,
+                        animations: {
+                            button.transform = CGAffineTransform(translationX: 0, y: 0)
+                        },
+                        completion: nil
+                    )
+                }
+            }
+        }
     }
     
     private func updateGridDisplay() {
@@ -1324,13 +1359,26 @@ class MatchGameViewController: UIViewController {
             UserDefaults.standard.set(score, forKey: "matchGameHighScore")
         }
         
-        // Dismiss this view controller
-        self.dismiss(animated: true) { [weak self] in
-            // After dismissal, explicitly show the map scene
-            if let gameViewController = self?.presentingController as? GameViewController {
-                // Call showMapScene() to explicitly return to the map
-                gameViewController.showMapScene()
-                print("🎮 Match game exited - map scene restored")
+        // Save game state before exiting
+        saveGameState()
+        
+        // If we have the mapScene reference, use it to properly navigate back
+        if let mapScene = mapScene, let returnDoorId = returnDoorId {
+            print("🎮 Exiting match game - calling mapScene to handle return")
+            // Dismiss and let mapScene handle the room transition
+            self.dismiss(animated: true) { [weak mapScene] in
+                mapScene?.handleReturnFromMatchGame(doorId: returnDoorId)
+            }
+        } else {
+            // Fallback: just dismiss and try to show map via gameViewController
+            let gameViewController = presentingController as? GameViewController
+            self.dismiss(animated: true) { [weak gameViewController] in
+                if let gvc = gameViewController {
+                    gvc.view.backgroundColor = .clear
+                    gvc.view.isOpaque = false
+                    gvc.showMapScene()
+                    print("🎮 Match game exited - fallback to direct showMapScene")
+                }
             }
         }
     }
