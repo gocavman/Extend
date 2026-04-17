@@ -1,0 +1,504 @@
+{
+  "source": "/Users/cavan/Developer/Extend/Extend/Models/ProgrammableStickFigure.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "Programmable Stick Figure",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 817
+        }
+      },
+      {
+        "comment": "",
+        "key": "Back",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 807
+        }
+      },
+      {
+        "comment": "",
+        "key": "Stand",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 866
+        }
+      },
+      {
+        "comment": "",
+        "key": "Customize Clothing",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 881
+        }
+      },
+      {
+        "comment": "",
+        "key": "Body Part Colors",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 925
+        }
+      },
+      {
+        "comment": "",
+        "key": "Body:",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 886
+        }
+      },
+      {
+        "comment": "",
+        "key": "",
+        "location": {
+          "startingColumn": 41,
+          "startingLine": 887
+        }
+      },
+      {
+        "comment": "",
+        "key": "Shirt:",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 893
+        }
+      },
+      {
+        "comment": "",
+        "key": "",
+        "location": {
+          "startingColumn": 41,
+          "startingLine": 894
+        }
+      },
+      {
+        "comment": "",
+        "key": "",
+        "location": {
+          "startingColumn": 36,
+          "startingLine": 897
+        }
+      },
+      {
+        "comment": "",
+        "key": "Pants:",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 903
+        }
+      },
+      {
+        "comment": "",
+        "key": "",
+        "location": {
+          "startingColumn": 41,
+          "startingLine": 904
+        }
+      },
+      {
+        "comment": "",
+        "key": "",
+        "location": {
+          "startingColumn": 36,
+          "startingLine": 907
+        }
+      },
+      {
+        "comment": "",
+        "key": "Shoes:",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 913
+        }
+      },
+      {
+        "comment": "",
+        "key": "",
+        "location": {
+          "startingColumn": 41,
+          "startingLine": 914
+        }
+      },
+      {
+        "comment": "",
+        "key": "",
+        "location": {
+          "startingColumn": 36,
+          "startingLine": 917
+        }
+      },
+      {
+        "comment": "",
+        "key": "Head/Neck:",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 930
+        }
+      },
+      {
+        "comment": "",
+        "key": "",
+        "location": {
+          "startingColumn": 41,
+          "startingLine": 931
+        }
+      },
+      {
+        "comment": "",
+        "key": "Torso/Shoulders:",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 937
+        }
+      },
+      {
+        "comment": "",
+        "key": "",
+        "location": {
+          "startingColumn": 41,
+          "startingLine": 938
+        }
+      },
+      {
+        "comment": "",
+        "key": "Upper Arm:",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 944
+        }
+      },
+      {
+        "comment": "",
+        "key": "",
+        "location": {
+          "startingColumn": 41,
+          "startingLine": 945
+        }
+      },
+      {
+        "comment": "",
+        "key": "Lower Arm:",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 951
+        }
+      },
+      {
+        "comment": "",
+        "key": "",
+        "location": {
+          "startingColumn": 41,
+          "startingLine": 952
+        }
+      },
+      {
+        "comment": "",
+        "key": "Hands:",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 958
+        }
+      },
+      {
+        "comment": "",
+        "key": "",
+        "location": {
+          "startingColumn": 41,
+          "startingLine": 959
+        }
+      },
+      {
+        "comment": "",
+        "key": "Upper Leg:",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 965
+        }
+      },
+      {
+        "comment": "",
+        "key": "",
+        "location": {
+          "startingColumn": 41,
+          "startingLine": 966
+        }
+      },
+      {
+        "comment": "",
+        "key": "Lower Leg:",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 972
+        }
+      },
+      {
+        "comment": "",
+        "key": "",
+        "location": {
+          "startingColumn": 41,
+          "startingLine": 973
+        }
+      },
+      {
+        "comment": "",
+        "key": "Feet:",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 979
+        }
+      },
+      {
+        "comment": "",
+        "key": "",
+        "location": {
+          "startingColumn": 41,
+          "startingLine": 980
+        }
+      },
+      {
+        "comment": "",
+        "key": "No Image",
+        "location": {
+          "startingColumn": 43,
+          "startingLine": 1093
+        }
+      },
+      {
+        "comment": "",
+        "key": "Pose Saved",
+        "location": {
+          "startingColumn": 16,
+          "startingLine": 1732
+        }
+      },
+      {
+        "comment": "",
+        "key": "Pose Editor",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 1233
+        }
+      },
+      {
+        "comment": "",
+        "key": "Back",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 1226
+        }
+      },
+      {
+        "comment": "",
+        "key": "Body Proportions",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 1517
+        }
+      },
+      {
+        "comment": "",
+        "key": "Torso Top Length: %lld",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 1521
+        }
+      },
+      {
+        "comment": "",
+        "key": "Torso Bottom Length: %lld",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 1530
+        }
+      },
+      {
+        "comment": "",
+        "key": "Neck Length: %lld",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 1539
+        }
+      },
+      {
+        "comment": "",
+        "key": "Animation Name:",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 1550
+        }
+      },
+      {
+        "comment": "",
+        "key": "e.g., Running",
+        "location": {
+          "startingColumn": 31,
+          "startingLine": 1551
+        }
+      },
+      {
+        "comment": "",
+        "key": "Position #:",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 1556
+        }
+      },
+      {
+        "comment": "",
+        "key": "1",
+        "location": {
+          "startingColumn": 31,
+          "startingLine": 1557
+        }
+      },
+      {
+        "comment": "",
+        "key": "Save Pose",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 1565
+        }
+      },
+      {
+        "comment": "",
+        "key": "Add Objects to Frame",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 1583
+        }
+      },
+      {
+        "comment": "",
+        "key": "Object Type",
+        "location": {
+          "startingColumn": 24,
+          "startingLine": 1587
+        }
+      },
+      {
+        "comment": "",
+        "key": "Image",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 1588
+        }
+      },
+      {
+        "comment": "",
+        "key": "Ball",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 1589
+        }
+      },
+      {
+        "comment": "",
+        "key": "Box",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 1590
+        }
+      },
+      {
+        "comment": "",
+        "key": "Stick",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 1591
+        }
+      },
+      {
+        "comment": "",
+        "key": "Color",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 1627
+        }
+      },
+      {
+        "comment": "",
+        "key": "",
+        "location": {
+          "startingColumn": 37,
+          "startingLine": 1624
+        }
+      },
+      {
+        "comment": "",
+        "key": "Objects: %lld",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 1659
+        }
+      },
+      {
+        "comment": "",
+        "key": "Add Object",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 1635
+        }
+      },
+      {
+        "comment": "",
+        "key": "Clear All",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 1647
+        }
+      },
+      {
+        "comment": "",
+        "key": "Saved Poses: %lld",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 1675
+        }
+      },
+      {
+        "comment": "",
+        "key": "Done",
+        "location": {
+          "startingColumn": 52,
+          "startingLine": 1681
+        }
+      },
+      {
+        "comment": "",
+        "key": "Reorder",
+        "location": {
+          "startingColumn": 61,
+          "startingLine": 1681
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@ - Position %lld",
+        "location": {
+          "startingColumn": 46,
+          "startingLine": 1696
+        }
+      },
+      {
+        "comment": "",
+        "key": "OK",
+        "location": {
+          "startingColumn": 20,
+          "startingLine": 1733
+        }
+      },
+      {
+        "comment": "",
+        "key": "Your pose has been saved successfully!",
+        "location": {
+          "startingColumn": 18,
+          "startingLine": 1735
+        }
+      }
+    ]
+  },
+  "version": 1
+}

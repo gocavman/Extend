@@ -482,6 +482,8 @@ class MapScene: GameScene {
             let matchGameVC = MatchGameViewController()
             matchGameVC.modalPresentationStyle = .fullScreen
             matchGameVC.presentingController = gameViewController
+            matchGameVC.mapScene = self
+            matchGameVC.returnDoorId = fromDoorId  // Pass the door ID for return navigation
             gameViewController?.present(matchGameVC, animated: true)
             return
         }
@@ -808,6 +810,18 @@ class MapScene: GameScene {
         let adjustedRotation = (degrees - 90) * .pi / 180
         
         characterNode.zRotation = adjustedRotation
+    }
+    
+    func handleReturnFromMatchGame(doorId: String) {
+        // Find the door configuration
+        guard let returnDoor = getDoorConfig(doorId) else {
+            print("⚠️ Could not find return door: \(doorId)")
+            return
+        }
+        
+        // Navigate back to main map using the door system
+        let mainMapRoomId = returnDoor.destinationRoomId
+        enterRoom(mainMapRoomId, fromDoorId: doorId)
     }
     
     @MainActor

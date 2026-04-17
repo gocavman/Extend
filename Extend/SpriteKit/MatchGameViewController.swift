@@ -65,6 +65,8 @@ class MatchGameViewController: UIViewController {
     
     // Delegate for dismissal
     var presentingController: UIViewController?
+    var mapScene: MapScene?  // Reference to map scene for refreshing
+    var returnDoorId: String?  // Door ID to return to when exiting
     
     // UI Components
     private let containerView = UIView()
@@ -73,6 +75,7 @@ class MatchGameViewController: UIViewController {
     private let gridStackView = UIStackView()
     private let exitButton = UIButton()
     private let levelLabel = UILabel()
+    private let levelSelectorButton = UIButton()  // NEW: Level selector dropdown
     private let scoreLabel = UILabel()
     private let movesLabel = UILabel()
     private let targetLabel = UILabel()
@@ -89,10 +92,12 @@ class MatchGameViewController: UIViewController {
     private var selectedPiece: (row: Int, col: Int)? = nil
     private var gridButtons: [[UIButton?]] = []
     private var isAnimating = false
+    private var lastSwappedPositions: ((row: Int, col: Int), (row: Int, col: Int))? = nil
     private var dragStartPiece: (row: Int, col: Int)? = nil
     private var dragTargetPiece: (row: Int, col: Int)? = nil
+    private var unlockedLevels: [Int] = [1]  // NEW: Track unlocked levels
     
-    // Colors
+    // MARK: - Game Logic
     private let darkBg = UIColor(hex: "#2C3E50") ?? .black
     private let lightBg = UIColor(hex: "#34495E") ?? .darkGray
     private let accentColor = UIColor(hex: "#E74C3C") ?? .red
@@ -101,6 +106,10 @@ class MatchGameViewController: UIViewController {
         super.viewDidLoad()
         setupUI()
         loadGameConfig()
+        
+        // Load saved game state
+        loadSavedState()
+        
         startLevel(currentLevelId)
     }
     
@@ -145,16 +154,27 @@ class MatchGameViewController: UIViewController {
             exitButton.heightAnchor.constraint(equalToConstant: 40)
         ])
         
-        // Level Label
+        // Level Selector Button (dropdown)
+        levelSelectorButton.setTitle("Level 1 ▼", for: .normal)
+        levelSelectorButton.titleLabel?.font = UIFont.systemFont(ofSize: 14, weight: .semibold)
+        levelSelectorButton.setTitleColor(.white, for: .normal)
+        levelSelectorButton.backgroundColor = UIColor(hex: "#E74C3C")?.withAlphaComponent(0.8) ?? .red.withAlphaComponent(0.8)
+        levelSelectorButton.layer.cornerRadius = 6
+        levelSelectorButton.addTarget(self, action: #selector(showLevelSelector), for: .touchUpInside)
+        headerView.addSubview(levelSelectorButton)
+        levelSelectorButton.translatesAutoresizingMaskIntoConstraints = false
+        NSLayoutConstraint.activate([
+            levelSelectorButton.topAnchor.constraint(equalTo: headerView.topAnchor, constant: 10),
+            levelSelectorButton.centerXAnchor.constraint(equalTo: headerView.centerXAnchor),
+            levelSelectorButton.widthAnchor.constraint(equalToConstant: 100),
+            levelSelectorButton.heightAnchor.constraint(equalToConstant: 40)
+        ])
+        
+        // Keep the old levelLabel hidden for now (still in setup but not visible)
         levelLabel.font = UIFont.systemFont(ofSize: 18, weight: .bold)
         levelLabel.textColor = .white
         levelLabel.text = "Level 1"
-        headerView.addSubview(levelLabel)
-        levelLabel.translatesAutoresizingMaskIntoConstraints = false
-        NSLayoutConstraint.activate([
-            levelLabel.topAnchor.constraint(equalTo: headerView.topAnchor, constant: 10),
-            levelLabel.centerXAnchor.constraint(equalTo: headerView.centerXAnchor)
-        ])
+        levelLabel.isHidden = true
         
         // Score Label
         scoreLabel.font = UIFont.systemFont(ofSize: 14, weight: .regular)
@@ -163,7 +183,7 @@ class MatchGameViewController: UIViewController {
         headerView.addSubview(scoreLabel)
         scoreLabel.translatesAutoresizingMaskIntoConstraints = false
         NSLayoutConstraint.activate([
-            scoreLabel.topAnchor.constraint(equalTo: levelLabel.bottomAnchor, constant: 5),
+            scoreLabel.topAnchor.constraint(equalTo: levelSelectorButton.bottomAnchor, constant: 5),
             scoreLabel.leadingAnchor.constraint(equalTo: headerView.leadingAnchor, constant: 15)
         ])
         
@@ -174,7 +194,7 @@ class MatchGameViewController: UIViewController {
         headerView.addSubview(movesLabel)
         movesLabel.translatesAutoresizingMaskIntoConstraints = false
         NSLayoutConstraint.activate([
-            movesLabel.topAnchor.constraint(equalTo: levelLabel.bottomAnchor, constant: 5),
+            movesLabel.topAnchor.constraint(equalTo: levelSelectorButton.bottomAnchor, constant: 5),
             movesLabel.trailingAnchor.constraint(equalTo: headerView.trailingAnchor, constant: -15)
         ])
         
@@ -208,7 +228,9 @@ class MatchGameViewController: UIViewController {
             gridContainer.topAnchor.constraint(equalTo: headerView.bottomAnchor, constant: 20),
             gridContainer.leadingAnchor.constraint(equalTo: containerView.leadingAnchor, constant: 20),
             gridContainer.trailingAnchor.constraint(equalTo: containerView.trailingAnchor, constant: -20),
-            gridContainer.bottomAnchor.constraint(equalTo: containerView.bottomAnchor, constant: -20)
+            gridContainer.bottomAnchor.constraint(equalTo: containerView.bottomAnchor, constant: -20),
+            // Make gridContainer square - width = height
+            gridContainer.widthAnchor.constraint(equalTo: gridContainer.heightAnchor, multiplier: 1.0)
         ])
     }
     
@@ -268,6 +290,11 @@ class MatchGameViewController: UIViewController {
         
         updateUI()
         renderGrid()
+        
+        // Check for initial matches on level load
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
+            self?.checkForMatches()
+        }
     }
     
     private func updateUI() {
@@ -280,21 +307,148 @@ class MatchGameViewController: UIViewController {
         movesLabel.text = "Moves: \(movesRemaining)"
         targetLabel.text = "Target: \(level.scoreTarget)"
         highScoreLabel.text = "High Score: \(highScore)"
+        
+        // Check if target score is reached
+        if score >= level.scoreTarget && !isAnimating {
+            checkLevelCompletion()
+        }
+    }
+    
+    private func checkLevelCompletion() {
+        guard let level = currentLevel, let config = gameConfig else { return }
+        
+        // Find next level
+        let nextLevelId = level.id + 1
+        if config.levels.contains(where: { $0.id == nextLevelId }) {
+            // Level complete! Show animation and progress to next level
+            print("🎉 LEVEL \(level.id) COMPLETE! Score: \(score) >= Target: \(level.scoreTarget)")
+            
+            // Unlock next level
+            if !unlockedLevels.contains(nextLevelId) {
+                unlockedLevels.append(nextLevelId)
+                unlockedLevels.sort()
+                print("🔓 Unlocked level \(nextLevelId)")
+            }
+            
+            // Disable interactions while animating
+            isAnimating = true
+            
+            // Show completion animation
+            showLevelCompleteAnimation {
+                // After animation, load next level
+                self.currentLevelId = nextLevelId
+                self.score = 0
+                self.startLevel(nextLevelId)
+                self.isAnimating = false
+            }
+        } else {
+            // All levels complete!
+            print("🎉 ALL LEVELS COMPLETE! Final Score: \(score)")
+            showGameCompleteAnimation {
+                // Return to map after all levels are complete
+                self.exitGame()
+            }
+        }
+    }
+    
+    private func showLevelCompleteAnimation(completion: @escaping () -> Void) {
+        // Create overlay with "Level Complete!" text
+        let overlay = UIView()
+        overlay.backgroundColor = UIColor.black.withAlphaComponent(0.7)
+        view.addSubview(overlay)
+        overlay.translatesAutoresizingMaskIntoConstraints = false
+        NSLayoutConstraint.activate([
+            overlay.topAnchor.constraint(equalTo: view.topAnchor),
+            overlay.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            overlay.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            overlay.bottomAnchor.constraint(equalTo: view.bottomAnchor)
+        ])
+        
+        let label = UILabel()
+        label.text = "LEVEL COMPLETE!"
+        label.font = UIFont.systemFont(ofSize: 48, weight: .bold)
+        label.textColor = .yellow
+        label.textAlignment = .center
+        overlay.addSubview(label)
+        label.translatesAutoresizingMaskIntoConstraints = false
+        NSLayoutConstraint.activate([
+            label.centerXAnchor.constraint(equalTo: overlay.centerXAnchor),
+            label.centerYAnchor.constraint(equalTo: overlay.centerYAnchor)
+        ])
+        
+        // Animate scale
+        label.transform = CGAffineTransform(scaleX: 0.1, y: 0.1)
+        
+        UIView.animate(withDuration: 0.5, delay: 0, options: .curveEaseOut, animations: {
+            label.transform = CGAffineTransform(scaleX: 1.2, y: 1.2)
+        }, completion: { _ in
+            UIView.animate(withDuration: 0.3, delay: 0.5, options: .curveEaseInOut, animations: {
+                overlay.alpha = 0
+            }, completion: { _ in
+                overlay.removeFromSuperview()
+                completion()
+            })
+        })
+    }
+    
+    private func showGameCompleteAnimation(completion: @escaping () -> Void) {
+        // Create overlay with "Game Complete!" text
+        let overlay = UIView()
+        overlay.backgroundColor = UIColor.black.withAlphaComponent(0.7)
+        view.addSubview(overlay)
+        overlay.translatesAutoresizingMaskIntoConstraints = false
+        NSLayoutConstraint.activate([
+            overlay.topAnchor.constraint(equalTo: view.topAnchor),
+            overlay.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            overlay.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            overlay.bottomAnchor.constraint(equalTo: view.bottomAnchor)
+        ])
+        
+        let label = UILabel()
+        label.text = "GAME COMPLETE!"
+        label.font = UIFont.systemFont(ofSize: 48, weight: .bold)
+        label.textColor = .green
+        label.textAlignment = .center
+        overlay.addSubview(label)
+        label.translatesAutoresizingMaskIntoConstraints = false
+        NSLayoutConstraint.activate([
+            label.centerXAnchor.constraint(equalTo: overlay.centerXAnchor),
+            label.centerYAnchor.constraint(equalTo: overlay.centerYAnchor)
+        ])
+        
+        // Animate scale
+        label.transform = CGAffineTransform(scaleX: 0.1, y: 0.1)
+        
+        UIView.animate(withDuration: 0.5, delay: 0, options: .curveEaseOut, animations: {
+            label.transform = CGAffineTransform(scaleX: 1.2, y: 1.2)
+        }, completion: { _ in
+            UIView.animate(withDuration: 0.3, delay: 1.0, options: .curveEaseInOut, animations: {
+                overlay.alpha = 0
+            }, completion: { _ in
+                overlay.removeFromSuperview()
+                completion()
+            })
+        })
     }
     
     private func renderGrid() {
         guard let level = currentLevel else { return }
         
-        // Clear existing
+        // Clear existing grid completely
         gridContainer.subviews.forEach { $0.removeFromSuperview() }
         gridStackView.removeFromSuperview()
         
-        // Create grid stack view
+        // Remove all arranged subviews from the stack view
+        gridStackView.arrangedSubviews.forEach { $0.removeFromSuperview() }
+        
+        // Setup grid stack view - make it fill equally vertically
         gridStackView.axis = .vertical
         gridStackView.spacing = 2
-        gridStackView.distribution = .fillEqually
+        gridStackView.distribution = .fillEqually  // Each row gets equal height
         gridContainer.addSubview(gridStackView)
         gridStackView.translatesAutoresizingMaskIntoConstraints = false
+        
+        // Make grid fill container
         NSLayoutConstraint.activate([
             gridStackView.topAnchor.constraint(equalTo: gridContainer.topAnchor),
             gridStackView.leadingAnchor.constraint(equalTo: gridContainer.leadingAnchor),
@@ -307,7 +461,7 @@ class MatchGameViewController: UIViewController {
             let rowStack = UIStackView()
             rowStack.axis = .horizontal
             rowStack.spacing = 2
-            rowStack.distribution = .fillEqually
+            rowStack.distribution = .fillEqually  // Each button gets equal width
             gridStackView.addArrangedSubview(rowStack)
             
             for col in 0..<level.gridWidth {
@@ -316,13 +470,12 @@ class MatchGameViewController: UIViewController {
                 button.layer.cornerRadius = 8
                 button.clipsToBounds = true
                 
-                // Set fixed size to make buttons square
-                let buttonSize: CGFloat = 60
+                // Make buttons square by constraining them to a fixed aspect ratio
+                // Since each row divides available width equally, we just need height = width
                 button.translatesAutoresizingMaskIntoConstraints = false
-                NSLayoutConstraint.activate([
-                    button.widthAnchor.constraint(equalToConstant: buttonSize),
-                    button.heightAnchor.constraint(equalToConstant: buttonSize)
-                ])
+                let aspectRatio = NSLayoutConstraint(item: button, attribute: .width, relatedBy: .equal, toItem: button, attribute: .height, multiplier: 1.0, constant: 0)
+                button.addConstraint(aspectRatio)
+                aspectRatio.priority = UILayoutPriority(rawValue: 999)
                 
                 if gridShapeMap[row][col], let piece = gameGrid[row][col] {
                     button.backgroundColor = UIColor(hex: level.colors[piece.colorIndex]) ?? .gray
@@ -442,31 +595,67 @@ class MatchGameViewController: UIViewController {
         isAnimating = true
         movesRemaining -= 1
         
-        // Swap
-        let temp = gameGrid[r1][c1]
-        gameGrid[r1][c1] = gameGrid[r2][c2]
-        gameGrid[r2][c2] = temp
+        // Remember the swap for potential revert
+        lastSwappedPositions = ((r1, c1), (r2, c2))
         
-        // Update positions
-        gameGrid[r1][c1]?.row = r1
-        gameGrid[r1][c1]?.col = c1
-        gameGrid[r2][c2]?.row = r2
-        gameGrid[r2][c2]?.col = c2
+        guard let button1 = gridButtons[r1][c1],
+              let button2 = gridButtons[r2][c2] else {
+            isAnimating = false
+            lastSwappedPositions = nil
+            return
+        }
         
-        updateGridDisplay()
+        // Get initial positions
+        let pos1 = button1.convert(CGPoint.zero, to: gridContainer)
+        let pos2 = button2.convert(CGPoint.zero, to: gridContainer)
         
-        // Check for power-up activation before checking matches
-        let powerUpAtR1C1 = gameGrid[r1][c1]?.type != .normal
-        let powerUpAtR2C2 = gameGrid[r2][c2]?.type != .normal
+        // Calculate the delta between positions
+        let deltaX = pos2.x - pos1.x
+        let deltaY = pos2.y - pos1.y
         
-        if powerUpAtR1C1 || powerUpAtR2C2 {
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { [weak self] in
-                self?.activatePowerUps(r1, c1, r2, c2)
-            }
-        } else {
-            // Check for matches after animation delay
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { [weak self] in
-                self?.checkForMatches()
+        // Animate the swap: button1 moves to button2's position and vice versa
+        UIView.animate(withDuration: 0.3, delay: 0, options: .curveEaseInOut, animations: {
+            button1.transform = CGAffineTransform(translationX: deltaX, y: deltaY)
+            button2.transform = CGAffineTransform(translationX: -deltaX, y: -deltaY)
+            
+            // Bring button1 to front during animation
+            button1.layer.zPosition = 100
+        }, completion: { _ in
+            button1.layer.zPosition = 0
+            button1.transform = .identity
+            button2.transform = .identity
+        })
+        
+        // Perform the actual swap in data after animation
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { [weak self] in
+            guard let self = self else { return }
+            
+            // Swap in data
+            let temp = self.gameGrid[r1][c1]
+            self.gameGrid[r1][c1] = self.gameGrid[r2][c2]
+            self.gameGrid[r2][c2] = temp
+            
+            // Update positions
+            self.gameGrid[r1][c1]?.row = r1
+            self.gameGrid[r1][c1]?.col = c1
+            self.gameGrid[r2][c2]?.row = r2
+            self.gameGrid[r2][c2]?.col = c2
+            
+            self.updateGridDisplay()
+            
+            // Check for power-up activation before checking matches
+            let powerUpAtR1C1 = self.gameGrid[r1][c1]?.type != .normal
+            let powerUpAtR2C2 = self.gameGrid[r2][c2]?.type != .normal
+            
+            if powerUpAtR1C1 || powerUpAtR2C2 {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { [weak self] in
+                    self?.activatePowerUps(r1, c1, r2, c2)
+                }
+            } else {
+                // Check for matches after swap animation
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { [weak self] in
+                    self?.checkForMatches()
+                }
             }
         }
     }
@@ -625,6 +814,13 @@ class MatchGameViewController: UIViewController {
     private func checkForMatches() {
         guard let level = currentLevel else { return }
         
+        // First, check if there are any valid moves available
+        if !hasValidMoves() {
+            print("🔄 No valid moves available - triggering shuffle")
+            shuffleGrid()
+            return
+        }
+        
         var matchesToRemove: Set<String> = []
         var powerUpsToCreate: [(row: Int, col: Int, type: PieceType)] = []
         
@@ -743,6 +939,9 @@ class MatchGameViewController: UIViewController {
             let impact = UIImpactFeedbackGenerator(style: .heavy)
             impact.impactOccurred()
             
+            // Valid match found - clear lastSwappedPositions
+            lastSwappedPositions = nil
+            
             // Animate matched pieces before removing them
             animateMatchedPieces(matchesToRemove)
             
@@ -772,7 +971,50 @@ class MatchGameViewController: UIViewController {
                 self?.applyGravity()
             }
         } else {
-            isAnimating = false
+            // No match found - revert the swap if one was made
+            if let ((r1, c1), (r2, c2)) = lastSwappedPositions {
+                print("⚠️ Invalid move - reverting swap")
+                lastSwappedPositions = nil
+                
+                guard let button1 = gridButtons[r1][c1],
+                      let button2 = gridButtons[r2][c2] else {
+                    isAnimating = false
+                    return
+                }
+                
+                // Get current positions
+                let pos1 = button1.convert(CGPoint.zero, to: gridContainer)
+                let pos2 = button2.convert(CGPoint.zero, to: gridContainer)
+                
+                // Calculate the delta to move back (deltaX not currently used but kept for reference)
+                let _ = pos2.x - pos1.x
+                
+                // Slow smooth revert animation - pieces slide back slowly so you can see it
+                UIView.animate(withDuration: 0.8, delay: 0, options: .curveEaseInOut, animations: {
+                    button1.transform = .identity
+                    button2.transform = .identity
+                }, completion: { _ in
+                    // Revert the swap in data
+                    let temp = self.gameGrid[r1][c1]
+                    self.gameGrid[r1][c1] = self.gameGrid[r2][c2]
+                    self.gameGrid[r2][c2] = temp
+                    
+                    // Update positions
+                    self.gameGrid[r1][c1]?.row = r1
+                    self.gameGrid[r1][c1]?.col = c1
+                    self.gameGrid[r2][c2]?.row = r2
+                    self.gameGrid[r2][c2]?.col = c2
+                    
+                    // Refund the move
+                    self.movesRemaining += 1
+                    
+                    self.updateGridDisplay()
+                    self.updateUI()
+                    self.isAnimating = false
+                })
+            } else {
+                isAnimating = false
+            }
         }
     }
     
@@ -786,14 +1028,12 @@ class MatchGameViewController: UIViewController {
                 if let button = gridButtons[row][col] {
                     // Animate: scale down + fade + rotate
                     UIView.animate(withDuration: 0.3, animations: {
-                        button.transform = CGAffineTransform(scaleX: 0.2, y: 0.2)
-                        button.alpha = 0.2
-                    })
-                    
-                    // Add a quick flash before disappearing
-                    UIView.animate(withDuration: 0.1, animations: {
-                        button.layer.borderColor = UIColor.yellow.cgColor
-                        button.layer.borderWidth = 4
+                        button.transform = CGAffineTransform(scaleX: 0.1, y: 0.1).rotated(by: CGFloat.pi)
+                        button.alpha = 0.0
+                    }, completion: { _ in
+                        // Reset transform after animation so new piece displays correctly
+                        button.transform = .identity
+                        button.alpha = 1.0
                     })
                 }
             }
@@ -803,19 +1043,33 @@ class MatchGameViewController: UIViewController {
     private func applyGravity() {
         guard let level = currentLevel else { return }
         
-        // Apply gravity
+        // Apply gravity - pieces only fall to fill empty spaces below them
         for col in 0..<level.gridWidth {
-            var writePos = level.gridHeight - 1
+            // For each column, find empty spaces and drop pieces into them
+            var emptyRow = -1
             
-            for readPos in (0..<level.gridHeight).reversed() {
-                if gridShapeMap[readPos][col], let piece = gameGrid[readPos][col] {
-                    if readPos != writePos {
-                        gameGrid[writePos][col] = piece
-                        piece.row = writePos
-                        piece.col = col
-                        gameGrid[readPos][col] = nil
+            // Scan from bottom to top to find empty spaces
+            for row in (0..<level.gridHeight).reversed() {
+                if gridShapeMap[row][col] {
+                    if gameGrid[row][col] == nil {
+                        // Found an empty space
+                        if emptyRow == -1 {
+                            emptyRow = row
+                        }
+                    } else {
+                        // Found a piece
+                        if emptyRow != -1 {
+                            // Move this piece to the empty row
+                            let piece = gameGrid[row][col]
+                            gameGrid[emptyRow][col] = piece
+                            piece?.row = emptyRow
+                            piece?.col = col
+                            gameGrid[row][col] = nil
+                            
+                            // Update emptyRow to the now-empty position
+                            emptyRow = row
+                        }
                     }
-                    writePos -= 1
                 }
             }
         }
@@ -839,43 +1093,23 @@ class MatchGameViewController: UIViewController {
         
         // Don't update grid display here - let animation handle the visual update
         // Just animate pieces dropping with staggered timing
-        animatePiecesDrop()
+        // Don't animate pieces dropping - just update the display
+        // This prevents all tiles from animating/spinning/blinking
         
-        // Check for more matches after longer animation delay
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { [weak self] in
+        // Update grid display immediately after gravity applied
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [weak self] in
+            self?.updateGridDisplay()
+        }
+        
+        // Check for more matches after brief delay
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { [weak self] in
             self?.checkForMatches()
         }
     }
     
     private func animatePiecesDrop() {
-        guard let level = currentLevel else { return }
-        
-        // First update the grid display to show new piece content
-        updateGridDisplay()
-        
-        // Now animate pieces dropping with staggered timing
-        for col in 0..<level.gridWidth {
-            for row in 0..<level.gridHeight {
-                if gridShapeMap[row][col], let button = gridButtons[row][col], gameGrid[row][col] != nil {
-                    // Stagger animation timing - pieces drop with delay
-                    let animationDelay = Double(row) * 0.08
-                    
-                    // Start with piece slightly higher (off-screen top) but VISIBLE
-                    button.transform = CGAffineTransform(translationX: 0, y: -100)
-                    
-                    // Animate drop into position
-                    UIView.animate(
-                        withDuration: 0.5,
-                        delay: animationDelay,
-                        options: .curveEaseOut,
-                        animations: {
-                            button.transform = CGAffineTransform(translationX: 0, y: 0)
-                        },
-                        completion: nil
-                    )
-                }
-            }
-        }
+        // Animation no longer needed - pieces just appear in new positions
+        // This prevents the blinking and spinning effect
     }
     
     private func updateGridDisplay() {
@@ -923,6 +1157,166 @@ class MatchGameViewController: UIViewController {
         updateUI()
     }
     
+    private func hasValidMoves() -> Bool {
+        guard let level = currentLevel else { return false }
+        
+        // Try each piece and see if swapping with adjacent pieces creates a match
+        for row in 0..<level.gridHeight {
+            for col in 0..<level.gridWidth {
+                if gridShapeMap[row][col], gameGrid[row][col] != nil {
+                    // Try swapping with right neighbor
+                    if col + 1 < level.gridWidth && gridShapeMap[row][col + 1] && gameGrid[row][col + 1] != nil {
+                        if wouldCreateMatch(swappingRow1: row, col1: col, row2: row, col2: col + 1) {
+                            return true
+                        }
+                    }
+                    
+                    // Try swapping with bottom neighbor
+                    if row + 1 < level.gridHeight && gridShapeMap[row + 1][col] && gameGrid[row + 1][col] != nil {
+                        if wouldCreateMatch(swappingRow1: row, col1: col, row2: row + 1, col2: col) {
+                            return true
+                        }
+                    }
+                }
+            }
+        }
+        
+        return false
+    }
+    
+    private func wouldCreateMatch(swappingRow1 r1: Int, col1 c1: Int, row2 r2: Int, col2 c2: Int) -> Bool {
+        // Temporarily swap
+        let temp = gameGrid[r1][c1]
+        gameGrid[r1][c1] = gameGrid[r2][c2]
+        gameGrid[r2][c2] = temp
+        
+        // Check for matches
+        var hasMatch = false
+        
+        // Check horizontal matches around r1, c1
+        if hasMatchesAtPosition(r1, c1) {
+            hasMatch = true
+        }
+        
+        // Check vertical matches around r1, c1
+        if !hasMatch && hasMatchesAtPosition(r1, c1) {
+            hasMatch = true
+        }
+        
+        // Check horizontal matches around r2, c2
+        if !hasMatch && hasMatchesAtPosition(r2, c2) {
+            hasMatch = true
+        }
+        
+        // Check vertical matches around r2, c2
+        if !hasMatch && hasMatchesAtPosition(r2, c2) {
+            hasMatch = true
+        }
+        
+        // Swap back
+        let temp2 = gameGrid[r1][c1]
+        gameGrid[r1][c1] = gameGrid[r2][c2]
+        gameGrid[r2][c2] = temp2
+        
+        return hasMatch
+    }
+    
+    private func hasMatchesAtPosition(_ row: Int, _ col: Int) -> Bool {
+        guard let level = currentLevel else { return false }
+        guard let piece = gameGrid[row][col], piece.type == .normal else { return false }
+        
+        // Check horizontal
+        var matchCount = 1
+        var checkCol = col - 1
+        while checkCol >= 0 && gridShapeMap[row][checkCol],
+              let nextPiece = gameGrid[row][checkCol],
+              piece.matches(nextPiece) {
+            matchCount += 1
+            checkCol -= 1
+        }
+        checkCol = col + 1
+        while checkCol < level.gridWidth && gridShapeMap[row][checkCol],
+              let nextPiece = gameGrid[row][checkCol],
+              piece.matches(nextPiece) {
+            matchCount += 1
+            checkCol += 1
+        }
+        if matchCount >= 3 {
+            return true
+        }
+        
+        // Check vertical
+        matchCount = 1
+        var checkRow = row - 1
+        while checkRow >= 0 && gridShapeMap[checkRow][col],
+              let nextPiece = gameGrid[checkRow][col],
+              piece.matches(nextPiece) {
+            matchCount += 1
+            checkRow -= 1
+        }
+        checkRow = row + 1
+        while checkRow < level.gridHeight && gridShapeMap[checkRow][col],
+              let nextPiece = gameGrid[checkRow][col],
+              piece.matches(nextPiece) {
+            matchCount += 1
+            checkRow += 1
+        }
+        if matchCount >= 3 {
+            return true
+        }
+        
+        return false
+    }
+    
+    private func shuffleGrid() {
+        guard let level = currentLevel else { return }
+        
+        isAnimating = true
+        
+        // Collect all pieces
+        var pieces: [GamePiece] = []
+        for row in 0..<level.gridHeight {
+            for col in 0..<level.gridWidth {
+                if gridShapeMap[row][col], let piece = gameGrid[row][col] {
+                    pieces.append(piece)
+                }
+            }
+        }
+        
+        // Shuffle the pieces array
+        pieces.shuffle()
+        
+        // Animate all pieces shuffling
+        var pieceIndex = 0
+        for row in 0..<level.gridHeight {
+            for col in 0..<level.gridWidth {
+                if gridShapeMap[row][col] && pieceIndex < pieces.count {
+                    let button = gridButtons[row][col]
+                    
+                    // Animate piece moving to new position
+                    UIView.animate(withDuration: 0.5, delay: Double(pieceIndex) * 0.05, options: .curveEaseInOut, animations: {
+                        // Scale and rotate during shuffle
+                        button?.transform = CGAffineTransform(scaleX: 0.5, y: 0.5).rotated(by: CGFloat.pi)
+                    }, completion: { _ in
+                        button?.transform = .identity
+                    })
+                    
+                    // Place the piece in grid
+                    gameGrid[row][col] = pieces[pieceIndex]
+                    pieces[pieceIndex].row = row
+                    pieces[pieceIndex].col = col
+                    pieceIndex += 1
+                }
+            }
+        }
+        
+        // After animation, update display and check for matches
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { [weak self] in
+            self?.updateGridDisplay()
+            self?.checkForMatches()
+        }
+    }
+    
     @objc private func exitGame() {
         // Save high score
         let currentHighScore = UserDefaults.standard.integer(forKey: "matchGameHighScore")
@@ -931,7 +1325,90 @@ class MatchGameViewController: UIViewController {
         }
         
         // Dismiss this view controller
-        // The presentingViewController should be the GameViewController which contains MapScene
-        self.dismiss(animated: true, completion: nil)
+        self.dismiss(animated: true) { [weak self] in
+            // After dismissal, explicitly show the map scene
+            if let gameViewController = self?.presentingController as? GameViewController {
+                // Call showMapScene() to explicitly return to the map
+                gameViewController.showMapScene()
+                print("🎮 Match game exited - map scene restored")
+            }
+        }
+    }
+    
+    // MARK: - Level Selector and State Persistence
+    
+    @objc private func showLevelSelector() {
+        let alert = UIAlertController(title: "Select Level", message: "Choose a level to play", preferredStyle: .actionSheet)
+        
+        // Add each unlocked level
+        if let config = gameConfig {
+            for level in config.levels {
+                if unlockedLevels.contains(level.id) {
+                    let title = level.id == currentLevelId ? "✓ Level \(level.id)" : "Level \(level.id)"
+                    alert.addAction(UIAlertAction(title: title, style: .default) { [weak self] _ in
+                        self?.selectLevel(level.id)
+                    })
+                }
+            }
+        }
+        
+        alert.addAction(UIAlertAction(title: "Cancel", style: .cancel))
+        present(alert, animated: true)
+    }
+    
+    private func selectLevel(_ levelId: Int) {
+        // Save current level state
+        saveGameState()
+        
+        // Change level
+        currentLevelId = levelId
+        score = 0
+        
+        // Clear old grid
+        gridContainer.subviews.forEach { $0.removeFromSuperview() }
+        gridStackView.removeFromSuperview()
+        gridStackView.arrangedSubviews.forEach { $0.removeFromSuperview() }
+        
+        // Start new level
+        startLevel(levelId)
+        
+        // Update button text
+        levelSelectorButton.setTitle("Level \(levelId) ▼", for: .normal)
+    }
+    
+    private func saveGameState() {
+        // Save current score and level
+        UserDefaults.standard.set(currentLevelId, forKey: "matchGameCurrentLevel")
+        UserDefaults.standard.set(score, forKey: "matchGameScore_\(currentLevelId)")
+        UserDefaults.standard.set(unlockedLevels, forKey: "matchGameUnlockedLevels")
+        print("💾 Game state saved: Level \(currentLevelId), Score \(score)")
+    }
+    
+    private func loadSavedState() {
+        // Load saved level and score
+        let savedLevel = UserDefaults.standard.integer(forKey: "matchGameCurrentLevel")
+        if savedLevel > 0 {
+            currentLevelId = savedLevel
+            levelSelectorButton.setTitle("Level \(savedLevel) ▼", for: .normal)
+        }
+        
+        // Load saved score for this level
+        let savedScore = UserDefaults.standard.integer(forKey: "matchGameScore_\(currentLevelId)")
+        if savedScore > 0 {
+            score = savedScore
+            print("📥 Restored: Level \(currentLevelId), Score \(score)")
+        }
+        
+        // Load unlocked levels
+        if let saved = UserDefaults.standard.array(forKey: "matchGameUnlockedLevels") as? [Int] {
+            unlockedLevels = saved
+        }
+    }
+    
+    override func viewWillDisappear(_ animated: Bool) {
+        super.viewWillDisappear(animated)
+        // Save state when exiting
+        saveGameState()
     }
 }
+
