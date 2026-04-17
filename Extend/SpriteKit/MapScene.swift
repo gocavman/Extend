@@ -481,6 +481,7 @@ class MapScene: GameScene {
             print("🎮 Launching Match Game for room: \(roomConfig.name)")
             let matchGameVC = MatchGameViewController()
             matchGameVC.modalPresentationStyle = .fullScreen
+            matchGameVC.presentingController = gameViewController
             gameViewController?.present(matchGameVC, animated: true)
             return
         }

@@ -63,6 +63,9 @@ class GamePiece {
 
 class MatchGameViewController: UIViewController {
     
+    // Delegate for dismissal
+    var presentingController: UIViewController?
+    
     // UI Components
     private let containerView = UIView()
     private let headerView = UIView()
@@ -312,6 +315,14 @@ class MatchGameViewController: UIViewController {
                 button.tag = row * level.gridWidth + col
                 button.layer.cornerRadius = 8
                 button.clipsToBounds = true
+                
+                // Set fixed size to make buttons square
+                let buttonSize: CGFloat = 60
+                button.translatesAutoresizingMaskIntoConstraints = false
+                NSLayoutConstraint.activate([
+                    button.widthAnchor.constraint(equalToConstant: buttonSize),
+                    button.heightAnchor.constraint(equalToConstant: buttonSize)
+                ])
                 
                 if gridShapeMap[row][col], let piece = gameGrid[row][col] {
                     button.backgroundColor = UIColor(hex: level.colors[piece.colorIndex]) ?? .gray
@@ -732,30 +743,60 @@ class MatchGameViewController: UIViewController {
             let impact = UIImpactFeedbackGenerator(style: .heavy)
             impact.impactOccurred()
             
-            // Remove matched pieces
-            for posString in matchesToRemove {
-                let parts = posString.split(separator: ",").map { Int($0) ?? 0 }
-                if parts.count == 2 {
-                    score += 100
-                    gameGrid[parts[0]][parts[1]] = nil
+            // Animate matched pieces before removing them
+            animateMatchedPieces(matchesToRemove)
+            
+            // Remove matched pieces after animation
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) { [weak self] in
+                for posString in matchesToRemove {
+                    let parts = posString.split(separator: ",").map { Int($0) ?? 0 }
+                    if parts.count == 2 {
+                        self?.score += 100
+                        self?.gameGrid[parts[0]][parts[1]] = nil
+                    }
                 }
+                
+                // Create power-ups
+                for powerUp in powerUpsToCreate {
+                    self?.gameGrid[powerUp.row][powerUp.col] = GamePiece(
+                        itemId: "power_up",
+                        colorIndex: 0,
+                        row: powerUp.row,
+                        col: powerUp.col,
+                        type: powerUp.type
+                    )
+                }
+                
+                self?.updateUI()
+                self?.updateGridDisplay()
+                self?.applyGravity()
             }
-            
-            // Create power-ups
-            for powerUp in powerUpsToCreate {
-                gameGrid[powerUp.row][powerUp.col] = GamePiece(
-                    itemId: "power_up",
-                    colorIndex: 0,
-                    row: powerUp.row,
-                    col: powerUp.col,
-                    type: powerUp.type
-                )
-            }
-            
-            updateUI()
-            applyGravity()
         } else {
             isAnimating = false
+        }
+    }
+    
+    private func animateMatchedPieces(_ matchesToRemove: Set<String>) {
+        for posString in matchesToRemove {
+            let parts = posString.split(separator: ",").map { Int($0) ?? 0 }
+            if parts.count == 2 {
+                let row = parts[0]
+                let col = parts[1]
+                
+                if let button = gridButtons[row][col] {
+                    // Animate: scale down + fade + rotate
+                    UIView.animate(withDuration: 0.3, animations: {
+                        button.transform = CGAffineTransform(scaleX: 0.2, y: 0.2)
+                        button.alpha = 0.2
+                    })
+                    
+                    // Add a quick flash before disappearing
+                    UIView.animate(withDuration: 0.1, animations: {
+                        button.layer.borderColor = UIColor.yellow.cgColor
+                        button.layer.borderWidth = 4
+                    })
+                }
+            }
         }
     }
     
@@ -796,11 +837,44 @@ class MatchGameViewController: UIViewController {
             }
         }
         
+        // Don't update grid display here - let animation handle the visual update
+        // Just animate pieces dropping with staggered timing
+        animatePiecesDrop()
+        
+        // Check for more matches after longer animation delay
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { [weak self] in
+            self?.checkForMatches()
+        }
+    }
+    
+    private func animatePiecesDrop() {
+        guard let level = currentLevel else { return }
+        
+        // First update the grid display to show new piece content
         updateGridDisplay()
         
-        // Check for more matches after animation delay (longer for drop animation)
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
-            self?.checkForMatches()
+        // Now animate pieces dropping with staggered timing
+        for col in 0..<level.gridWidth {
+            for row in 0..<level.gridHeight {
+                if gridShapeMap[row][col], let button = gridButtons[row][col], gameGrid[row][col] != nil {
+                    // Stagger animation timing - pieces drop with delay
+                    let animationDelay = Double(row) * 0.08
+                    
+                    // Start with piece slightly higher (off-screen top) but VISIBLE
+                    button.transform = CGAffineTransform(translationX: 0, y: -100)
+                    
+                    // Animate drop into position
+                    UIView.animate(
+                        withDuration: 0.5,
+                        delay: animationDelay,
+                        options: .curveEaseOut,
+                        animations: {
+                            button.transform = CGAffineTransform(translationX: 0, y: 0)
+                        },
+                        completion: nil
+                    )
+                }
+            }
         }
     }
     
@@ -856,6 +930,8 @@ class MatchGameViewController: UIViewController {
             UserDefaults.standard.set(score, forKey: "matchGameHighScore")
         }
         
-        dismiss(animated: true)
+        // Dismiss this view controller
+        // The presentingViewController should be the GameViewController which contains MapScene
+        self.dismiss(animated: true, completion: nil)
     }
 }
