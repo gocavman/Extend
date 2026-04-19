@@ -415,7 +415,7 @@ class MapScene: GameScene {
             
             // If character touches a door, change rooms
             if distance < doorConfig.width / 2 && !isMoving {
-                print("🚪 Character touched door: \(doorConfig.id) - entering room: \(doorConfig.destinationRoomId)")
+                //print("🚪 Character touched door: \(doorConfig.id) - entering room: \(doorConfig.destinationRoomId)")
                 enterRoom(doorConfig.destinationRoomId, fromDoorId: doorConfig.returnDoorId)
                 return
             }
@@ -478,7 +478,7 @@ class MapScene: GameScene {
         
         // Check if this room is a match game room
         if let roomConfig = getRoomConfig(roomId), roomConfig.matchGame == true {
-            print("🎮 Launching Match Game for room: \(roomConfig.name)")
+            //print("🎮 Launching Match Game for room: \(roomConfig.name)")
             let matchGameVC = MatchGameViewController()
             matchGameVC.modalPresentationStyle = .fullScreen
             matchGameVC.presentingController = gameViewController
