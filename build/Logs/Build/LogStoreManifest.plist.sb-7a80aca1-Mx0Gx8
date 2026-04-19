@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>logFormatVersion</key>
+	<integer>12</integer>
+	<key>logs</key>
+	<dict>
+		<key>1F98B8A2-3276-424E-8C9D-929370AAE7FC</key>
+		<dict>
+			<key>className</key>
+			<string>IDECommandLineBuildLog</string>
+			<key>documentTypeString</key>
+			<string>&lt;nil&gt;</string>
+			<key>domainType</key>
+			<string>Xcode.IDEActivityLogDomainType.BuildLog</string>
+			<key>fileName</key>
+			<string>1F98B8A2-3276-424E-8C9D-929370AAE7FC.xcactivitylog</string>
+			<key>hasPrimaryLog</key>
+			<true/>
+			<key>primaryObservable</key>
+			<dict>
+				<key>highLevelStatus</key>
+				<string>E</string>
+				<key>totalNumberOfAnalyzerIssues</key>
+				<integer>0</integer>
+				<key>totalNumberOfErrors</key>
+				<integer>1</integer>
+				<key>totalNumberOfTestFailures</key>
+				<integer>0</integer>
+				<key>totalNumberOfWarnings</key>
+				<integer>0</integer>
+			</dict>
+			<key>schemeIdentifier-containerName</key>
+			<string>Extend project</string>
+			<key>schemeIdentifier-schemeName</key>
+			<string>Extend</string>
+			<key>schemeIdentifier-sharedScheme</key>
+			<integer>1</integer>
+			<key>signature</key>
+			<string>Building project Extend with scheme Extend and configuration Debug</string>
+			<key>timeStartedRecording</key>
+			<real>798308673.32155204</real>
+			<key>timeStoppedRecording</key>
+			<real>798308697.86347795</real>
+			<key>title</key>
+			<string>Building project Extend with scheme Extend and configuration Debug</string>
+			<key>uniqueIdentifier</key>
+			<string>1F98B8A2-3276-424E-8C9D-929370AAE7FC</string>
+		</dict>
+		<key>7D33ED8F-0285-440F-9EC7-BD9AF0B7CB2E</key>
+		<dict>
+			<key>className</key>
+			<string>IDECommandLineBuildLog</string>
+			<key>documentTypeString</key>
+			<string>&lt;nil&gt;</string>
+			<key>domainType</key>
+			<string>Xcode.IDEActivityLogDomainType.BuildLog</string>
+			<key>fileName</key>
+			<string>7D33ED8F-0285-440F-9EC7-BD9AF0B7CB2E.xcactivitylog</string>
+			<key>hasPrimaryLog</key>
+			<true/>
+			<key>primaryObservable</key>
+			<dict>
+				<key>highLevelStatus</key>
+				<string>E</string>
+				<key>totalNumberOfAnalyzerIssues</key>
+				<integer>0</integer>
+				<key>totalNumberOfErrors</key>
+				<integer>5</integer>
+				<key>totalNumberOfTestFailures</key>
+				<integer>0</integer>
+				<key>totalNumberOfWarnings</key>
+				<integer>0</integer>
+			</dict>
+			<key>schemeIdentifier-containerName</key>
+			<string>Extend project</string>
+			<key>schemeIdentifier-schemeName</key>
+			<string>Extend</string>
+			<key>schemeIdentifier-sharedScheme</key>
+			<integer>1</integer>
+			<key>signature</key>
+			<string>Building project Extend with scheme Extend and configuration Debug</string>
+			<key>timeStartedRecording</key>
+			<real>798309255.80017304</real>
+			<key>timeStoppedRecording</key>
+			<real>798309271.55326498</real>
+			<key>title</key>
+			<string>Building project Extend with scheme Extend and configuration Debug</string>
+			<key>uniqueIdentifier</key>
+			<string>7D33ED8F-0285-440F-9EC7-BD9AF0B7CB2E</string>
+		</dict>
+	</dict>
+</dict>
+</plist>

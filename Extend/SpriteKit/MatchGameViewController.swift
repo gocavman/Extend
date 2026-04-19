@@ -93,11 +93,13 @@ class MatchGameViewController: UIViewController {
     private var selectedPiece: (row: Int, col: Int)? = nil
     private var gridButtons: [[UIButton?]] = []
     private var isAnimating = false
+    private var isAnimatingDrop = false  // Flag to prevent transform reset during drop animation
     private var lastSwappedPositions: ((row: Int, col: Int), (row: Int, col: Int))? = nil
     private var dragStartPiece: (row: Int, col: Int)? = nil
     private var dragTargetPiece: (row: Int, col: Int)? = nil
     private var unlockedLevels: [Int] = [1]  // NEW: Track unlocked levels
     private var movedPieces: Set<String> = []  // Track which pieces moved during gravity
+    private var fallDistances: [String: Int] = [:]  // Track how far each piece fell (row distance)
     
     // MARK: - Game Logic
     private let darkBg = UIColor(hex: "#2C3E50") ?? .black
@@ -1191,12 +1193,13 @@ class MatchGameViewController: UIViewController {
     private func applyGravity() {
         guard let level = currentLevel else { return }
         
-        // Clear the moved pieces tracking
+        // Clear the moved pieces tracking - we only want NEW pieces
         movedPieces.removeAll()
+        fallDistances.removeAll()
         
-        // Apply gravity - pieces only fall to fill empty spaces below them
+        // STEP 1: Apply gravity - existing pieces fall to fill empty spaces
+        // These do NOT get animated - they just move in place
         for col in 0..<level.gridWidth {
-            // For each column, find empty spaces and drop pieces into them
             var emptyRow = -1
             
             // Scan from bottom to top to find empty spaces
@@ -1210,15 +1213,14 @@ class MatchGameViewController: UIViewController {
                     } else {
                         // Found a piece
                         if emptyRow != -1 {
-                            // Move this piece to the empty row - TRACK THIS MOVEMENT
+                            // Move this piece down - NO ANIMATION
                             let piece = gameGrid[row][col]
-                            movedPieces.insert("\(emptyRow),\(col)")  // Track that this position will be animated
                             gameGrid[emptyRow][col] = piece
                             piece?.row = emptyRow
                             piece?.col = col
                             gameGrid[row][col] = nil
                             
-                            // Update emptyRow to the now-empty position
+                            // Update emptyRow for next iteration
                             emptyRow = row
                         }
                     }
@@ -1226,34 +1228,37 @@ class MatchGameViewController: UIViewController {
             }
         }
         
-        // Refill empty spaces from the top
+        // STEP 2: Refill empty spaces with NEW pieces - ONLY these animate
         for col in 0..<level.gridWidth {
             for row in 0..<level.gridHeight {
                 if gridShapeMap[row][col] && gameGrid[row][col] == nil {
                     let randomItemIndex = Int.random(in: 0..<level.items.count)
                     let randomColorIndex = Int.random(in: 0..<level.colors.count)
-                    gameGrid[row][col] = GamePiece(
+                    let newPiece = GamePiece(
                         itemId: level.items[randomItemIndex].id,
                         colorIndex: randomColorIndex,
                         row: row,
                         col: col,
                         type: .normal
                     )
+                    gameGrid[row][col] = newPiece
+                    
+                    // Track ONLY new pieces for animation
+                    movedPieces.insert("\(row),\(col)")
+                    // Distance from top of screen
+                    fallDistances["\(row),\(col)"] = row + 1
                 }
             }
         }
         
-        // Don't update grid display here - let animation handle the visual update
-        // Just animate pieces dropping with staggered timing
+        // Update grid display IMMEDIATELY
+        updateGridDisplay()
+        
+        // Animate ONLY new pieces falling
         animatePiecesDrop()
         
-        // Update grid display after drop animations complete
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) { [weak self] in
-            self?.updateGridDisplay()
-        }
-        
-        // Check for more matches after brief delay
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.4) { [weak self] in
+        // Check for more matches after animation
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.3) { [weak self] in
             self?.checkForMatches()
         }
     }
@@ -1267,28 +1272,29 @@ class MatchGameViewController: UIViewController {
                 let key = "\(row),\(col)"
                 // Only animate if this piece was part of the moved set
                 if movedPieces.contains(key), gridShapeMap[row][col], let button = gridButtons[row][col], gameGrid[row][col] != nil {
-                    // Reset any previous transforms
-                    button.transform = .identity
+                    // Calculate cell dimensions for proper fall distance
+                    let cellHeight = gridContainer.bounds.height / CGFloat(level.gridHeight)
+                    
+                    // Get the actual distance this piece fell (how many rows)
+                    let distance = fallDistances[key] ?? 0
+                    let fallDistance = cellHeight * CGFloat(distance)
+                    
+                    // Set starting position OFF-SCREEN ABOVE based on actual distance
+                    // Negative Y = above the screen, so we use -fallDistance
+                    button.transform = CGAffineTransform(translationX: 0, y: -fallDistance)
                     button.alpha = 1.0
                     
-                    // Calculate how far this piece needs to fall based on row
-                    // Pieces at top fall further than pieces near bottom
-                    let cellHeight = gridContainer.bounds.height / CGFloat(level.gridHeight)
-                    let fallDistance = cellHeight * CGFloat(row + 2)  // Extra 2 cells from top
+                    // Small stagger so cascades look nice
+                    let animationDelay = Double(row) * 0.03
                     
-                    // Much less stagger - only 0.02 per row instead of 0.08
-                    let animationDelay = Double(row) * 0.02
-                    
-                    // Start with piece above (off-screen) at calculated distance
-                    button.transform = CGAffineTransform(translationX: 0, y: -fallDistance)
-                    
-                    // Animate drop into position (1.0 second instead of 2.0 for better flow)
+                    // Animate falling DOWN into place (1.0 second total)
+                    // From above (-fallDistance) to final position (identity/0)
                     UIView.animate(
                         withDuration: 1.0,
                         delay: animationDelay,
                         options: .curveEaseIn,
                         animations: {
-                            button.transform = CGAffineTransform(translationX: 0, y: 0)
+                            button.transform = .identity
                         },
                         completion: nil
                     )
@@ -1617,4 +1623,3 @@ class MatchGameViewController: UIViewController {
         saveGameState()
     }
 }
-

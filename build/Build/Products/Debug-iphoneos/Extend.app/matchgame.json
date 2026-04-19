@@ -38,8 +38,8 @@
     {
       "id": 2,
       "name": "Level 2 - Warming Up Challenge",
-      "gridWidth": 6,
-      "gridHeight": 6,
+      "gridWidth": 7,
+      "gridHeight": 7,
       "items": [
         {
           "id": "apple",
@@ -66,11 +66,13 @@
         null
       ],
       "gridShape": [
+          "_______",
           "_XX_XX_",
           "XXXXXXX",
           "_XXXXX_",
           "__XXX__",
-          "___X___"
+          "___X___",
+          "_______"
       ],
       "movesAllowed": 25,
       "scoreTarget": 1000
