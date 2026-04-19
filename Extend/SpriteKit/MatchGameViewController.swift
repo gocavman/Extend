@@ -100,6 +100,7 @@ class MatchGameViewController: UIViewController {
     private var unlockedLevels: [Int] = [1]  // NEW: Track unlocked levels
     private var movedPieces: Set<String> = []  // Track which pieces moved during gravity
     private var fallDistances: [String: Int] = [:]  // Track how far each piece fell (row distance)
+    private var newPieces: Set<String> = []  // Track which pieces are NEW (from refill)
     
     // MARK: - Game Logic
     private let darkBg = UIColor(hex: "#2C3E50") ?? .black
@@ -1193,12 +1194,12 @@ class MatchGameViewController: UIViewController {
     private func applyGravity() {
         guard let level = currentLevel else { return }
         
-        // Clear the moved pieces tracking - we only want NEW pieces
+        // Clear tracking - we track ALL pieces that move (existing + new)
         movedPieces.removeAll()
         fallDistances.removeAll()
+        newPieces.removeAll()  // Clear the new pieces tracker
         
-        // STEP 1: Apply gravity - existing pieces fall to fill empty spaces
-        // These do NOT get animated - they just move in place
+        // STEP 1: Apply gravity - track existing pieces that fall
         for col in 0..<level.gridWidth {
             var emptyRow = -1
             
@@ -1213,8 +1214,11 @@ class MatchGameViewController: UIViewController {
                     } else {
                         // Found a piece
                         if emptyRow != -1 {
-                            // Move this piece down - NO ANIMATION
+                            // Move this piece down - TRACK IT FOR ANIMATION
                             let piece = gameGrid[row][col]
+                            let distance = row - emptyRow  // How many rows it falls
+                            movedPieces.insert("\(emptyRow),\(col)")  // Track final position
+                            fallDistances["\(emptyRow),\(col)"] = distance  // Distance fallen
                             gameGrid[emptyRow][col] = piece
                             piece?.row = emptyRow
                             piece?.col = col
@@ -1228,7 +1232,7 @@ class MatchGameViewController: UIViewController {
             }
         }
         
-        // STEP 2: Refill empty spaces with NEW pieces - ONLY these animate
+        // STEP 2: Refill empty spaces with NEW pieces - track with larger distance
         for col in 0..<level.gridWidth {
             for row in 0..<level.gridHeight {
                 if gridShapeMap[row][col] && gameGrid[row][col] == nil {
@@ -1243,10 +1247,15 @@ class MatchGameViewController: UIViewController {
                     )
                     gameGrid[row][col] = newPiece
                     
-                    // Track ONLY new pieces for animation
-                    movedPieces.insert("\(row),\(col)")
-                    // Distance from top of screen
-                    fallDistances["\(row),\(col)"] = row + 1
+                    // NEW pieces get larger fall distance (from above grid)
+                    // Only mark as moved if not already tracked as existing piece
+                    if !movedPieces.contains("\(row),\(col)") {
+                        movedPieces.insert("\(row),\(col)")
+                        // Distance for new pieces: from top of screen (larger distance)
+                        fallDistances["\(row),\(col)"] = row + 2
+                        // Mark this as a NEW piece
+                        newPieces.insert("\(row),\(col)")
+                    }
                 }
             }
         }
@@ -1266,7 +1275,7 @@ class MatchGameViewController: UIViewController {
     private func animatePiecesDrop() {
         guard let level = currentLevel else { return }
         
-        // Animate only pieces that moved during gravity (new pieces filling from top)
+        // Animate all pieces that moved during gravity
         for col in 0..<level.gridWidth {
             for row in 0..<level.gridHeight {
                 let key = "\(row),\(col)"
@@ -1279,16 +1288,21 @@ class MatchGameViewController: UIViewController {
                     let distance = fallDistances[key] ?? 0
                     let fallDistance = cellHeight * CGFloat(distance)
                     
-                    // Set starting position OFF-SCREEN ABOVE based on actual distance
-                    // Negative Y = above the screen, so we use -fallDistance
-                    button.transform = CGAffineTransform(translationX: 0, y: -fallDistance)
+                    // Check if this is a NEW piece or EXISTING piece that fell
+                    if newPieces.contains(key) {
+                        // NEW pieces fall from ABOVE (negative Y transform)
+                        button.transform = CGAffineTransform(translationX: 0, y: -fallDistance)
+                    } else {
+                        // EXISTING pieces fall DOWN (positive Y transform - start below and come up)
+                        button.transform = CGAffineTransform(translationX: 0, y: fallDistance)
+                    }
                     button.alpha = 1.0
                     
-                    // Small stagger so cascades look nice
-                    let animationDelay = Double(row) * 0.03
+                    // Reversed stagger: pieces at TOP start FIRST (no delay)
+                    // pieces at BOTTOM start LAST (longer delay)
+                    let animationDelay = Double(level.gridHeight - row - 1) * 0.05
                     
                     // Animate falling DOWN into place (1.0 second total)
-                    // From above (-fallDistance) to final position (identity/0)
                     UIView.animate(
                         withDuration: 1.0,
                         delay: animationDelay,
