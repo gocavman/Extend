@@ -91,7 +91,7 @@
 | 🐟 | Fish | Protein, omega-3 |
 | 🥒 | Olive | Healthy fat |
 
-## ❤️ Health & Wellness
+## ❤️🤎🤍🖤💜💙💚💛🧡💗💖 Health & Wellness
 
 | Emoji | Name | Description |
 |-------|------|-------------|

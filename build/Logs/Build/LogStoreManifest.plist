@@ -5,6 +5,49 @@
 	<key>logFormatVersion</key>
 	<integer>12</integer>
 	<key>logs</key>
-	<dict/>
+	<dict>
+		<key>274B1294-9AEC-4675-AE03-31D105A52656</key>
+		<dict>
+			<key>className</key>
+			<string>IDECommandLineBuildLog</string>
+			<key>documentTypeString</key>
+			<string>&lt;nil&gt;</string>
+			<key>domainType</key>
+			<string>Xcode.IDEActivityLogDomainType.BuildLog</string>
+			<key>fileName</key>
+			<string>274B1294-9AEC-4675-AE03-31D105A52656.xcactivitylog</string>
+			<key>hasPrimaryLog</key>
+			<true/>
+			<key>primaryObservable</key>
+			<dict>
+				<key>highLevelStatus</key>
+				<string>S</string>
+				<key>totalNumberOfAnalyzerIssues</key>
+				<integer>0</integer>
+				<key>totalNumberOfErrors</key>
+				<integer>0</integer>
+				<key>totalNumberOfTestFailures</key>
+				<integer>0</integer>
+				<key>totalNumberOfWarnings</key>
+				<integer>0</integer>
+			</dict>
+			<key>schemeIdentifier-containerName</key>
+			<string>Extend project</string>
+			<key>schemeIdentifier-schemeName</key>
+			<string>Extend</string>
+			<key>schemeIdentifier-sharedScheme</key>
+			<integer>1</integer>
+			<key>signature</key>
+			<string>Building project Extend with scheme Extend and configuration Debug</string>
+			<key>timeStartedRecording</key>
+			<real>798306400.49145496</real>
+			<key>timeStoppedRecording</key>
+			<real>798306438.94024396</real>
+			<key>title</key>
+			<string>Building project Extend with scheme Extend and configuration Debug</string>
+			<key>uniqueIdentifier</key>
+			<string>274B1294-9AEC-4675-AE03-31D105A52656</string>
+		</dict>
+	</dict>
 </dict>
 </plist>

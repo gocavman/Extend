@@ -8,7 +8,7 @@ struct MatchGameLevel: Codable {
     let gridWidth: Int
     let gridHeight: Int
     let items: [MatchItem]
-    let colors: [String]
+    let colors: [String?]  // Allow null for transparent background
     let gridShape: [String]
     let movesAllowed: Int
     let scoreTarget: Int
@@ -31,6 +31,7 @@ enum PieceType {
     case verticalArrow
     case horizontalArrow
     case bomb
+    case flame  // NEW: Clears all matching pieces when swapped
 }
 
 // MARK: - Game Piece
@@ -266,9 +267,18 @@ class MatchGameViewController: UIViewController {
         movesRemaining = level.movesAllowed
         selectedPiece = nil
         
-        // Build grid shape map
-        gridShapeMap = level.gridShape.map { row in
-            row.map { $0 == "X" }
+        // Build grid shape map from level configuration
+        gridShapeMap = Array(repeating: Array(repeating: false, count: level.gridWidth), count: level.gridHeight)
+        
+        // Parse grid shape strings into boolean grid
+        for (rowIndex, rowString) in level.gridShape.enumerated() {
+            if rowIndex < gridShapeMap.count {
+                for (colIndex, char) in rowString.enumerated() {
+                    if colIndex < gridShapeMap[rowIndex].count {
+                        gridShapeMap[rowIndex][colIndex] = (char == "X")
+                    }
+                }
+            }
         }
         
         // Initialize empty grid
@@ -340,7 +350,9 @@ class MatchGameViewController: UIViewController {
             showLevelCompleteAnimation {
                 // After animation, load next level
                 self.currentLevelId = nextLevelId
+                self.levelSelectorButton.setTitle("Level \(nextLevelId) ▼", for: .normal)
                 self.score = 0
+                self.saveGameState()  // Save the new level and unlocked status
                 self.startLevel(nextLevelId)
                 self.isAnimating = false
             }
@@ -481,7 +493,12 @@ class MatchGameViewController: UIViewController {
                 aspectRatio.priority = UILayoutPriority(rawValue: 999)
                 
                 if gridShapeMap[row][col], let piece = gameGrid[row][col] {
-                    button.backgroundColor = UIColor(hex: level.colors[piece.colorIndex]) ?? .gray
+                    // Handle optional colors - nil means transparent background
+                    if let colorHex = level.colors[piece.colorIndex] {
+                        button.backgroundColor = UIColor(hex: colorHex) ?? .gray
+                    } else {
+                        button.backgroundColor = .clear
+                    }
                     let itemEmoji = level.items[level.items.firstIndex(where: { $0.id == piece.itemId }) ?? 0].emoji ?? "?"
                     button.setTitle(itemEmoji, for: .normal)
                     button.titleLabel?.font = UIFont.systemFont(ofSize: 28)
@@ -508,6 +525,69 @@ class MatchGameViewController: UIViewController {
         let index = sender.tag
         let row = index / level.gridWidth
         let col = index % level.gridWidth
+        
+        // Check if tapped piece is a powerup - if so, activate it
+        if let piece = gameGrid[row][col], piece.type != .normal {
+            // Powerup activation when tapped directly
+            isAnimating = true
+            
+            switch piece.type {
+            case .verticalArrow:
+                // Clear entire column
+                let impact = UIImpactFeedbackGenerator(style: .medium)
+                impact.impactOccurred()
+                for r in 0..<level.gridHeight {
+                    if gridShapeMap[r][col] && gameGrid[r][col] != nil {
+                        score += 1
+                        gameGrid[r][col] = nil
+                    }
+                }
+                
+            case .horizontalArrow:
+                // Clear entire row
+                let impact = UIImpactFeedbackGenerator(style: .medium)
+                impact.impactOccurred()
+                for c in 0..<level.gridWidth {
+                    if gridShapeMap[row][c] && gameGrid[row][c] != nil {
+                        score += 1
+                        gameGrid[row][c] = nil
+                    }
+                }
+                
+            case .bomb:
+                // Clear 3x3 area
+                let impact = UIImpactFeedbackGenerator(style: .medium)
+                impact.impactOccurred()
+                for dr in -1...1 {
+                    for dc in -1...1 {
+                        let nr = row + dr
+                        let nc = col + dc
+                        if nr >= 0 && nr < level.gridHeight && nc >= 0 && nc < level.gridWidth &&
+                           gridShapeMap[nr][nc] && gameGrid[nr][nc] != nil {
+                            score += 1
+                            gameGrid[nr][nc] = nil
+                        }
+                    }
+                }
+                
+            case .flame:
+                // This shouldn't activate on tap alone - it needs a swap
+                // So do nothing here
+                break
+                
+            case .normal:
+                break
+            }
+            
+            selectedPiece = nil
+            updateGridDisplay()
+            updateUI()
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                self.applyGravity()
+                self.isAnimating = false
+            }
+            return
+        }
         
         if let selected = selectedPiece {
             // Try to swap
@@ -700,13 +780,13 @@ class MatchGameViewController: UIViewController {
             // Clear row and column
             for col in 0..<level.gridWidth {
                 if gridShapeMap[arrowRow][col] && gameGrid[arrowRow][col] != nil {
-                    score += 50
+                    score += 1
                     gameGrid[arrowRow][col] = nil
                 }
             }
             for row in 0..<level.gridHeight {
                 if gridShapeMap[row][arrowCol] && gameGrid[row][arrowCol] != nil {
-                    score += 50
+                    score += 1
                     gameGrid[row][arrowCol] = nil
                 }
             }
@@ -723,7 +803,7 @@ class MatchGameViewController: UIViewController {
             // Clear column
             for row in 0..<level.gridHeight {
                 if gridShapeMap[row][c1] && gameGrid[row][c1] != nil {
-                    score += 50
+                    score += 1
                     gameGrid[row][c1] = nil
                 }
             }
@@ -737,7 +817,7 @@ class MatchGameViewController: UIViewController {
             // Clear column
             for row in 0..<level.gridHeight {
                 if gridShapeMap[row][c2] && gameGrid[row][c2] != nil {
-                    score += 50
+                    score += 1
                     gameGrid[row][c2] = nil
                 }
             }
@@ -751,7 +831,7 @@ class MatchGameViewController: UIViewController {
             // Clear row
             for col in 0..<level.gridWidth {
                 if gridShapeMap[r1][col] && gameGrid[r1][col] != nil {
-                    score += 50
+                    score += 1
                     gameGrid[r1][col] = nil
                 }
             }
@@ -765,7 +845,7 @@ class MatchGameViewController: UIViewController {
             // Clear row
             for col in 0..<level.gridWidth {
                 if gridShapeMap[r2][col] && gameGrid[r2][col] != nil {
-                    score += 50
+                    score += 1
                     gameGrid[r2][col] = nil
                 }
             }
@@ -783,7 +863,7 @@ class MatchGameViewController: UIViewController {
                     let nc = c1 + dc
                     if nr >= 0 && nr < level.gridHeight && nc >= 0 && nc < level.gridWidth &&
                        gridShapeMap[nr][nc] && gameGrid[nr][nc] != nil {
-                        score += 75
+                        score += 1
                         gameGrid[nr][nc] = nil
                     }
                 }
@@ -802,8 +882,51 @@ class MatchGameViewController: UIViewController {
                     let nc = c2 + dc
                     if nr >= 0 && nr < level.gridHeight && nc >= 0 && nc < level.gridWidth &&
                        gridShapeMap[nr][nc] && gameGrid[nr][nc] != nil {
-                        score += 75
+                        score += 1
                         gameGrid[nr][nc] = nil
+                    }
+                }
+            }
+            gameGrid[r2][c2] = nil
+        }
+        
+        // Handle flame power-ups - clears ALL matching pieces
+        if piece1?.type == .flame {
+            let impact = UIImpactFeedbackGenerator(style: .heavy)
+            impact.impactOccurred()
+            
+            // Get the original piece that was swapped to find what to match
+            if let swappedPiece = piece2, swappedPiece.type == .normal {
+                // Clear all pieces that match piece2
+                for row in 0..<level.gridHeight {
+                    for col in 0..<level.gridWidth {
+                        if gridShapeMap[row][col], let piece = gameGrid[row][col] {
+                            if piece.itemId == swappedPiece.itemId && piece.colorIndex == swappedPiece.colorIndex {
+                                score += 1
+                                gameGrid[row][col] = nil
+                            }
+                        }
+                    }
+                }
+            }
+            gameGrid[r1][c1] = nil
+        }
+        
+        if piece2?.type == .flame {
+            let impact = UIImpactFeedbackGenerator(style: .heavy)
+            impact.impactOccurred()
+            
+            // Get the original piece that was swapped to find what to match
+            if let swappedPiece = piece1, swappedPiece.type == .normal {
+                // Clear all pieces that match piece1
+                for row in 0..<level.gridHeight {
+                    for col in 0..<level.gridWidth {
+                        if gridShapeMap[row][col], let piece = gameGrid[row][col] {
+                            if piece.itemId == swappedPiece.itemId && piece.colorIndex == swappedPiece.colorIndex {
+                                score += 1
+                                gameGrid[row][col] = nil
+                            }
+                        }
                     }
                 }
             }
@@ -844,7 +967,18 @@ class MatchGameViewController: UIViewController {
                     }
                     
                     if matchCount >= 5 {
-                        // 5+ match: create horizontal arrow at middle
+                        // 5+ match: create flame power-up at middle
+                        let middleCol = col + matchCount / 2
+                        powerUpsToCreate.append((row: row, col: middleCol, type: .flame))
+                        
+                        // Mark all pieces for removal
+                        for i in col..<col + matchCount {
+                            if let p = gameGrid[row][i], p.type == .normal {
+                                matchesToRemove.insert("\(p.row),\(p.col)")
+                            }
+                        }
+                    } else if matchCount >= 4 {
+                        // 4 match: create horizontal arrow at middle
                         let middleCol = col + matchCount / 2
                         powerUpsToCreate.append((row: row, col: middleCol, type: .horizontalArrow))
                         
@@ -855,7 +989,7 @@ class MatchGameViewController: UIViewController {
                             }
                         }
                     } else if matchCount >= 3 {
-                        // 3-4 match: remove pieces
+                        // 3 match: remove pieces
                         for i in col..<col + matchCount {
                             if let p = gameGrid[row][i], p.type == .normal {
                                 matchesToRemove.insert("\(p.row),\(p.col)")
@@ -887,7 +1021,18 @@ class MatchGameViewController: UIViewController {
                     }
                     
                     if matchCount >= 5 {
-                        // 5+ match: create vertical arrow at middle
+                        // 5+ match: create flame power-up at middle
+                        let middleRow = row + matchCount / 2
+                        powerUpsToCreate.append((row: middleRow, col: col, type: .flame))
+                        
+                        // Mark all pieces for removal
+                        for i in row..<row + matchCount {
+                            if let p = gameGrid[i][col], p.type == .normal {
+                                matchesToRemove.insert("\(p.row),\(p.col)")
+                            }
+                        }
+                    } else if matchCount >= 4 {
+                        // 4 match: create vertical arrow at middle
                         let middleRow = row + matchCount / 2
                         powerUpsToCreate.append((row: middleRow, col: col, type: .verticalArrow))
                         
@@ -898,7 +1043,7 @@ class MatchGameViewController: UIViewController {
                             }
                         }
                     } else if matchCount >= 3 {
-                        // 3-4 match: remove pieces
+                        // 3 match: remove pieces
                         for i in row..<row + matchCount {
                             if let p = gameGrid[i][col], p.type == .normal {
                                 matchesToRemove.insert("\(p.row),\(p.col)")
@@ -953,7 +1098,7 @@ class MatchGameViewController: UIViewController {
                 for posString in matchesToRemove {
                     let parts = posString.split(separator: ",").map { Int($0) ?? 0 }
                     if parts.count == 2 {
-                        self?.score += 100
+                        self?.score += 1
                         self?.gameGrid[parts[0]][parts[1]] = nil
                     }
                 }
@@ -1102,13 +1247,13 @@ class MatchGameViewController: UIViewController {
         // Just animate pieces dropping with staggered timing
         animatePiecesDrop()
         
-        // Update grid display after drop animations complete (slower now)
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { [weak self] in
+        // Update grid display after drop animations complete
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) { [weak self] in
             self?.updateGridDisplay()
         }
         
         // Check for more matches after brief delay
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) { [weak self] in
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.4) { [weak self] in
             self?.checkForMatches()
         }
     }
@@ -1126,17 +1271,22 @@ class MatchGameViewController: UIViewController {
                     button.transform = .identity
                     button.alpha = 1.0
                     
-                    // Stagger animation by row (pieces drop from top first)
-                    let animationDelay = Double(row) * 0.08
+                    // Calculate how far this piece needs to fall based on row
+                    // Pieces at top fall further than pieces near bottom
+                    let cellHeight = gridContainer.bounds.height / CGFloat(level.gridHeight)
+                    let fallDistance = cellHeight * CGFloat(row + 2)  // Extra 2 cells from top
                     
-                    // Start with piece above (off-screen) - slow animation
-                    button.transform = CGAffineTransform(translationX: 0, y: -60)
+                    // Much less stagger - only 0.02 per row instead of 0.08
+                    let animationDelay = Double(row) * 0.02
                     
-                    // Animate drop into position (much slower - 2.0 seconds)
+                    // Start with piece above (off-screen) at calculated distance
+                    button.transform = CGAffineTransform(translationX: 0, y: -fallDistance)
+                    
+                    // Animate drop into position (1.0 second instead of 2.0 for better flow)
                     UIView.animate(
-                        withDuration: 2.0,
+                        withDuration: 1.0,
                         delay: animationDelay,
-                        options: .curveEaseOut,
+                        options: .curveEaseIn,
                         animations: {
                             button.transform = CGAffineTransform(translationX: 0, y: 0)
                         },
@@ -1160,17 +1310,25 @@ class MatchGameViewController: UIViewController {
                     switch piece.type {
                     case .verticalArrow:
                         displayText = "↕️"
-                        button.backgroundColor = UIColor(hex: "#FFD700") ?? .yellow // Gold
+                        button.backgroundColor = .clear  // Transparent for powerups
                     case .horizontalArrow:
                         displayText = "↔️"
-                        button.backgroundColor = UIColor(hex: "#FFD700") ?? .yellow // Gold
+                        button.backgroundColor = .clear  // Transparent for powerups
                     case .bomb:
                         displayText = "💣"
-                        button.backgroundColor = UIColor(hex: "#FF6B6B") ?? .red // Red
+                        button.backgroundColor = .clear  // Transparent for powerups
+                    case .flame:
+                        displayText = "🔥"
+                        button.backgroundColor = .clear  // Transparent for powerups
                     case .normal:
                         let itemEmoji = level.items[level.items.firstIndex(where: { $0.id == piece.itemId }) ?? 0].emoji ?? "?"
                         displayText = itemEmoji
-                        button.backgroundColor = UIColor(hex: level.colors[piece.colorIndex]) ?? .gray
+                        // Handle optional colors - nil means transparent background
+                        if let colorHex = level.colors[piece.colorIndex] {
+                            button.backgroundColor = UIColor(hex: colorHex) ?? .gray
+                        } else {
+                            button.backgroundColor = .clear
+                        }
                     }
                     
                     button.setTitle(displayText, for: .normal)

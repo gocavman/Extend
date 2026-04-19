@@ -23,9 +23,7 @@
         }
       ],
       "colors": [
-        "#FF0000",
-        "#FFFF00",
-        "#FFA500"
+        null
       ],
       "gridShape": [
         "XXXXX",
@@ -35,51 +33,47 @@
         "XXXXX"
       ],
       "movesAllowed": 20,
-      "scoreTarget": 1000
+      "scoreTarget": 500
     },
     {
       "id": 2,
-      "name": "Level 2 - L-Shape Challenge",
+      "name": "Level 2 - Warming Up Challenge",
       "gridWidth": 6,
       "gridHeight": 6,
       "items": [
         {
           "id": "apple",
-          "emoji": "🍎",
+          "emoji": "❤️",
           "asset": null
         },
         {
           "id": "banana",
-          "emoji": "🍌",
+          "emoji": "💛",
           "asset": null
         },
         {
           "id": "orange",
-          "emoji": "🍊",
+          "emoji": "🧡",
           "asset": null
         },
         {
           "id": "grapes",
-          "emoji": "🍇",
+          "emoji": "💜",
           "asset": null
         }
       ],
       "colors": [
-        "#FF0000",
-        "#FFFF00",
-        "#FFA500",
-        "#9400D3"
+        null
       ],
       "gridShape": [
-        "XXXXXX",
-        "XXXXXX",
-        "XXXXXX",
-        "XXXXXX",
-        "XXX___",
-        "XXX___"
+          "_XX_XX_",
+          "XXXXXXX",
+          "_XXXXX_",
+          "__XXX__",
+          "___X___"
       ],
       "movesAllowed": 25,
-      "scoreTarget": 1500
+      "scoreTarget": 1000
     },
     {
       "id": 3,
@@ -89,27 +83,27 @@
       "items": [
         {
           "id": "apple",
-          "emoji": "🍎",
+          "emoji": "⚽",
           "asset": null
         },
         {
           "id": "banana",
-          "emoji": "🍌",
+          "emoji": "🎾",
           "asset": null
         },
         {
           "id": "orange",
-          "emoji": "🍊",
+          "emoji": "🏀",
           "asset": null
         },
         {
           "id": "grapes",
-          "emoji": "🍇",
+          "emoji": "🏈",
           "asset": null
         },
         {
           "id": "watermelon",
-          "emoji": "🍉",
+          "emoji": "⚾",
           "asset": null
         }
       ],
@@ -121,16 +115,16 @@
         "#008000"
       ],
       "gridShape": [
+        "_______",
+        "XX___XX",
+        "_XX_XX_",
         "__XXX__",
-        "__XXX__",
-        "XXXXXXX",
-        "XXXXXXX",
-        "XXXXXXX",
-        "__XXX__",
-        "__XXX__"
+        "_XX_XX_",
+        "XX___XX",
+        "_______"
       ],
       "movesAllowed": 30,
-      "scoreTarget": 2000
+      "scoreTarget": 1500
     },
     {
       "id": 4,
