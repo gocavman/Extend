@@ -1293,10 +1293,11 @@ class MatchGameViewController: UIViewController {
             return
         }
         
-        // Get the frame of the button on this specific row
-        let startFrame = gridButton.frame
-        let startY = startFrame.midY  // This is the Y coordinate of the row
-        print("🔥 DEBUG: Horizontal flames at row \(row), startY = \(startY), button.frame = \(startFrame)")
+        // Convert button frame to gridContainer coordinates (not view!)
+        // This gives us the position relative to where we're adding the flames
+        let buttonFrameInContainer = gridButton.convert(gridButton.bounds, to: gridContainer)
+        let startY = buttonFrameInContainer.midY
+        print("🔥 DEBUG: Horizontal flames at row \(row), startY = \(startY), button container frame = \(buttonFrameInContainer)")
         
         // Create flame shooting LEFT
         let flameLabelLeft = UILabel()
@@ -1304,16 +1305,19 @@ class MatchGameViewController: UIViewController {
         flameLabelLeft.font = UIFont.systemFont(ofSize: 40)
         flameLabelLeft.sizeToFit()
         
-        flameLabelLeft.frame = CGRect(x: startFrame.midX - flameLabelLeft.bounds.width/2,
+        // Use the converted frame for the middle button (in container coordinates)
+        let middleButtonFrame = gridButton.convert(gridButton.bounds, to: gridContainer)
+        flameLabelLeft.frame = CGRect(x: middleButtonFrame.midX - flameLabelLeft.bounds.width/2,
                                        y: startY - flameLabelLeft.bounds.height/2,
                                        width: flameLabelLeft.bounds.width,
                                        height: flameLabelLeft.bounds.height)
         
         gridContainer.addSubview(flameLabelLeft)
         
-        // Calculate end position (left side) - stay on same row
-        let leftFrame = gridButtons[row][columns.lowerBound]?.frame ?? startFrame
-        let endXLeft = leftFrame.midX - flameLabelLeft.bounds.width
+        // Calculate end position (left side) - convert the left button frame too
+        let leftButton = gridButtons[row][columns.lowerBound]
+        let leftButtonFrame = leftButton?.convert(leftButton!.bounds, to: gridContainer) ?? middleButtonFrame
+        let endXLeft = leftButtonFrame.midX - flameLabelLeft.bounds.width
         
         var animationsComplete = 0
         let completeAnimation = {
@@ -1338,16 +1342,17 @@ class MatchGameViewController: UIViewController {
         flameLabelRight.font = UIFont.systemFont(ofSize: 40)
         flameLabelRight.sizeToFit()
         
-        flameLabelRight.frame = CGRect(x: startFrame.midX - flameLabelRight.bounds.width/2,
+        flameLabelRight.frame = CGRect(x: middleButtonFrame.midX - flameLabelRight.bounds.width/2,
                                         y: startY - flameLabelRight.bounds.height/2,
                                         width: flameLabelRight.bounds.width,
                                         height: flameLabelRight.bounds.height)
         
         gridContainer.addSubview(flameLabelRight)
         
-        // Calculate end position (right side) - stay on same row
-        let rightFrame = gridButtons[row][columns.upperBound - 1]?.frame ?? startFrame
-        let endXRight = rightFrame.midX + flameLabelRight.bounds.width
+        // Calculate end position (right side) - convert the right button frame too
+        let rightButton = gridButtons[row][columns.upperBound - 1]
+        let rightButtonFrame = rightButton?.convert(rightButton!.bounds, to: gridContainer) ?? middleButtonFrame
+        let endXRight = rightButtonFrame.midX + flameLabelRight.bounds.width
         
         // Animate flame shooting right (keep Y constant, only move X)
         UIView.animate(withDuration: 0.5, delay: 0, options: .curveLinear, animations: {
