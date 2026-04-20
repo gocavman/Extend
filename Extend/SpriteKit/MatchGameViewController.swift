@@ -533,86 +533,88 @@ class MatchGameViewController: UIViewController {
         if let piece = gameGrid[row][col], piece.type != .normal {
             // Powerup activation when tapped directly
             isAnimating = true
+            var clearedTiles: Set<String> = []
             var cascadingPowerups: [(row: Int, col: Int, type: PieceType)] = []
+            
+            let impact = UIImpactFeedbackGenerator(style: .medium)
+            impact.impactOccurred()
             
             switch piece.type {
             case .verticalArrow:
-                // Shoot flames vertically down the column
-                shootFlamesVertically(column: col, rows: 0..<level.gridHeight) {}
-                
-                // ...existing code...
-                let impact = UIImpactFeedbackGenerator(style: .medium)
-                impact.impactOccurred()
+                // Collect all tiles in column
                 for r in 0..<level.gridHeight {
                     if gridShapeMap[r][col] && gameGrid[r][col] != nil {
-                        // Capture cascading powerups before clearing
+                        clearedTiles.insert("\(r),\(col)")
                         if let p = gameGrid[r][col], p.type != .normal && p.type != .verticalArrow {
                             cascadingPowerups.append((row: r, col: col, type: p.type))
                         }
-                        score += 1
-                        gameGrid[r][col] = nil
                     }
                 }
+                // Show flames animation
+                shootFlamesVertically(column: col, rows: 0..<level.gridHeight) {}
                 
             case .horizontalArrow:
-                // Shoot flames horizontally across the row
-                shootFlamesHorizontally(row: row, columns: 0..<level.gridWidth) {}
-                
-                // ...existing code...
-                let impact = UIImpactFeedbackGenerator(style: .medium)
-                impact.impactOccurred()
+                // Collect all tiles in row
                 for c in 0..<level.gridWidth {
                     if gridShapeMap[row][c] && gameGrid[row][c] != nil {
-                        // Capture cascading powerups before clearing
+                        clearedTiles.insert("\(row),\(c)")
                         if let p = gameGrid[row][c], p.type != .normal && p.type != .horizontalArrow {
                             cascadingPowerups.append((row: row, col: c, type: p.type))
                         }
-                        score += 1
-                        gameGrid[row][c] = nil
                     }
                 }
+                // Show flames animation
+                shootFlamesHorizontally(row: row, columns: 0..<level.gridWidth) {}
                 
             case .bomb:
-                // Clear 3x3 area
-                let impact = UIImpactFeedbackGenerator(style: .medium)
-                impact.impactOccurred()
+                // Collect 3x3 area
                 for dr in -1...1 {
                     for dc in -1...1 {
                         let nr = row + dr
                         let nc = col + dc
                         if nr >= 0 && nr < level.gridHeight && nc >= 0 && nc < level.gridWidth &&
                            gridShapeMap[nr][nc] && gameGrid[nr][nc] != nil {
-                            // Capture cascading powerups before clearing
+                            clearedTiles.insert("\(nr),\(nc)")
                             if let p = gameGrid[nr][nc], p.type != .normal && p.type != .bomb {
                                 cascadingPowerups.append((row: nr, col: nc, type: p.type))
                             }
-                            score += 1
-                            gameGrid[nr][nc] = nil
                         }
                     }
                 }
                 
             case .flame:
-                // This shouldn't activate on tap alone - it needs a swap
-                // So do nothing here
-                break
+                // Flame shouldn't activate on tap alone
+                isAnimating = false
+                return
                 
             case .normal:
-                break
+                isAnimating = false
+                return
             }
             
-            selectedPiece = nil
-            updateGridDisplay()
-            updateUI()
-            
-            // Activate cascading powerups if any were captured
-            if !cascadingPowerups.isEmpty {
-                activateCascadingPowerups(cascadingPowerups)
-            } else {
-                // No cascading powerups, apply gravity immediately
-                applyGravity()
+            // Show border highlights before clearing tiles
+            showPowerupBorderHighlight(clearedTiles) { [weak self] in
+                // Clear all collected tiles
+                for posString in clearedTiles {
+                    let parts = posString.split(separator: ",").map { Int($0) ?? 0 }
+                    if parts.count == 2 {
+                        self?.score += 1
+                        self?.gameGrid[parts[0]][parts[1]] = nil
+                    }
+                }
+                
+                self?.updateUI()
+                self?.updateGridDisplay()
+                
+                // Activate cascading powerups if any were captured
+                if !cascadingPowerups.isEmpty {
+                    self?.activateCascadingPowerups(cascadingPowerups)
+                } else {
+                    // No cascading powerups, apply gravity immediately
+                    self?.applyGravity()
+                }
+                self?.isAnimating = false
             }
-            isAnimating = false
             return
         }
         
@@ -785,23 +787,31 @@ class MatchGameViewController: UIViewController {
             let impact = UIImpactFeedbackGenerator(style: .heavy)
             impact.impactOccurred()
             
-            // Clear entire grid and track powerups
+            // Collect all tiles that will be cleared
             for row in 0..<level.gridHeight {
                 for col in 0..<level.gridWidth {
                     if gridShapeMap[row][col] && gameGrid[row][col] != nil {
-                        // Check if this is a powerup BEFORE clearing
+                        clearedTiles.insert("\(row),\(col)")
                         if let piece = gameGrid[row][col], piece.type != .normal {
                             cascadingPowerups.append((row: row, col: col, type: piece.type))
                         }
-                        clearedTiles.insert("\(row),\(col)")
-                        score += 1
-                        gameGrid[row][col] = nil
                     }
                 }
             }
-            updateUI()
-            activateCascadingPowerups(cascadingPowerups)
-            applyGravity()
+            
+            // Show borders first, then clear
+            showPowerupBorderHighlight(clearedTiles) { [weak self] in
+                for posString in clearedTiles {
+                    let parts = posString.split(separator: ",").map { Int($0) ?? 0 }
+                    if parts.count == 2 {
+                        self?.score += 1
+                        self?.gameGrid[parts[0]][parts[1]] = nil
+                    }
+                }
+                self?.updateUI()
+                self?.activateCascadingPowerups(cascadingPowerups)
+                self?.applyGravity()
+            }
             return
         }
         
@@ -814,30 +824,37 @@ class MatchGameViewController: UIViewController {
             let arrowRow = piece1?.type == .verticalArrow ? r1 : r2
             let arrowCol = piece1?.type == .horizontalArrow ? c1 : c2
             
-            // Clear row and column, tracking powerups
+            // Collect tiles that will be cleared
             for col in 0..<level.gridWidth {
                 if gridShapeMap[arrowRow][col] && gameGrid[arrowRow][col] != nil {
+                    clearedTiles.insert("\(arrowRow),\(col)")
                     if let piece = gameGrid[arrowRow][col], piece.type != .normal {
                         cascadingPowerups.append((row: arrowRow, col: col, type: piece.type))
                     }
-                    clearedTiles.insert("\(arrowRow),\(col)")
-                    score += 1
-                    gameGrid[arrowRow][col] = nil
                 }
             }
             for row in 0..<level.gridHeight {
                 if gridShapeMap[row][arrowCol] && gameGrid[row][arrowCol] != nil {
+                    clearedTiles.insert("\(row),\(arrowCol)")
                     if let piece = gameGrid[row][arrowCol], piece.type != .normal {
                         cascadingPowerups.append((row: row, col: arrowCol, type: piece.type))
                     }
-                    clearedTiles.insert("\(row),\(arrowCol)")
-                    score += 1
-                    gameGrid[row][arrowCol] = nil
                 }
             }
-            updateUI()
-            activateCascadingPowerups(cascadingPowerups)
-            applyGravity()
+            
+            // Show borders first, then clear
+            showPowerupBorderHighlight(clearedTiles) { [weak self] in
+                for posString in clearedTiles {
+                    let parts = posString.split(separator: ",").map { Int($0) ?? 0 }
+                    if parts.count == 2 {
+                        self?.score += 1
+                        self?.gameGrid[parts[0]][parts[1]] = nil
+                    }
+                }
+                self?.updateUI()
+                self?.activateCascadingPowerups(cascadingPowerups)
+                self?.applyGravity()
+            }
             return
         }
         
@@ -848,15 +865,12 @@ class MatchGameViewController: UIViewController {
             
             for row in 0..<level.gridHeight {
                 if gridShapeMap[row][c1] && gameGrid[row][c1] != nil {
+                    clearedTiles.insert("\(row),\(c1)")
                     if let piece = gameGrid[row][c1], piece.type != .normal {
                         cascadingPowerups.append((row: row, col: c1, type: piece.type))
                     }
-                    clearedTiles.insert("\(row),\(c1)")
-                    score += 1
-                    gameGrid[row][c1] = nil
                 }
             }
-            gameGrid[r1][c1] = nil
         }
         
         if piece2?.type == .verticalArrow {
@@ -865,15 +879,12 @@ class MatchGameViewController: UIViewController {
             
             for row in 0..<level.gridHeight {
                 if gridShapeMap[row][c2] && gameGrid[row][c2] != nil {
+                    clearedTiles.insert("\(row),\(c2)")
                     if let piece = gameGrid[row][c2], piece.type != .normal {
                         cascadingPowerups.append((row: row, col: c2, type: piece.type))
                     }
-                    clearedTiles.insert("\(row),\(c2)")
-                    score += 1
-                    gameGrid[row][c2] = nil
                 }
             }
-            gameGrid[r2][c2] = nil
         }
         
         if piece1?.type == .horizontalArrow {
@@ -882,15 +893,12 @@ class MatchGameViewController: UIViewController {
             
             for col in 0..<level.gridWidth {
                 if gridShapeMap[r1][col] && gameGrid[r1][col] != nil {
+                    clearedTiles.insert("\(r1),\(col)")
                     if let piece = gameGrid[r1][col], piece.type != .normal {
                         cascadingPowerups.append((row: r1, col: col, type: piece.type))
                     }
-                    clearedTiles.insert("\(r1),\(col)")
-                    score += 1
-                    gameGrid[r1][col] = nil
                 }
             }
-            gameGrid[r1][c1] = nil
         }
         
         if piece2?.type == .horizontalArrow {
@@ -899,15 +907,12 @@ class MatchGameViewController: UIViewController {
             
             for col in 0..<level.gridWidth {
                 if gridShapeMap[r2][col] && gameGrid[r2][col] != nil {
+                    clearedTiles.insert("\(r2),\(col)")
                     if let piece = gameGrid[r2][col], piece.type != .normal {
                         cascadingPowerups.append((row: r2, col: col, type: piece.type))
                     }
-                    clearedTiles.insert("\(r2),\(col)")
-                    score += 1
-                    gameGrid[r2][col] = nil
                 }
             }
-            gameGrid[r2][c2] = nil
         }
         
         if piece1?.type == .bomb {
@@ -920,16 +925,13 @@ class MatchGameViewController: UIViewController {
                     let nc = c1 + dc
                     if nr >= 0 && nr < level.gridHeight && nc >= 0 && nc < level.gridWidth &&
                        gridShapeMap[nr][nc] && gameGrid[nr][nc] != nil {
+                        clearedTiles.insert("\(nr),\(nc)")
                         if let piece = gameGrid[nr][nc], piece.type != .normal {
                             cascadingPowerups.append((row: nr, col: nc, type: piece.type))
                         }
-                        clearedTiles.insert("\(nr),\(nc)")
-                        score += 1
-                        gameGrid[nr][nc] = nil
                     }
                 }
             }
-            gameGrid[r1][c1] = nil
         }
         
         if piece2?.type == .bomb {
@@ -942,16 +944,13 @@ class MatchGameViewController: UIViewController {
                     let nc = c2 + dc
                     if nr >= 0 && nr < level.gridHeight && nc >= 0 && nc < level.gridWidth &&
                        gridShapeMap[nr][nc] && gameGrid[nr][nc] != nil {
+                        clearedTiles.insert("\(nr),\(nc)")
                         if let piece = gameGrid[nr][nc], piece.type != .normal {
                             cascadingPowerups.append((row: nr, col: nc, type: piece.type))
                         }
-                        clearedTiles.insert("\(nr),\(nc)")
-                        score += 1
-                        gameGrid[nr][nc] = nil
                     }
                 }
             }
-            gameGrid[r2][c2] = nil
         }
         
         // Handle flame power-ups - clears ALL matching pieces
@@ -959,23 +958,46 @@ class MatchGameViewController: UIViewController {
             let impact = UIImpactFeedbackGenerator(style: .heavy)
             impact.impactOccurred()
             
+            // Add the flame powerup itself to be cleared
+            clearedTiles.insert("\(r1),\(c1)")
+            
             if let swappedPiece = piece2, swappedPiece.type == .normal {
                 for row in 0..<level.gridHeight {
                     for col in 0..<level.gridWidth {
                         if gridShapeMap[row][col], let piece = gameGrid[row][col] {
                             if piece.itemId == swappedPiece.itemId && piece.colorIndex == swappedPiece.colorIndex {
+                                clearedTiles.insert("\(row),\(col)")
                                 if piece.type != .normal {
                                     cascadingPowerups.append((row: row, col: col, type: piece.type))
                                 }
-                                clearedTiles.insert("\(row),\(col)")
-                                score += 1
-                                gameGrid[row][col] = nil
                             }
                         }
                     }
                 }
             }
-            gameGrid[r1][c1] = nil
+        }
+        
+        if piece2?.type == .flame {
+            let impact = UIImpactFeedbackGenerator(style: .heavy)
+            impact.impactOccurred()
+            
+            // Add the flame powerup itself to be cleared
+            clearedTiles.insert("\(r2),\(c2)")
+            
+            if let swappedPiece = piece1, swappedPiece.type == .normal {
+                for row in 0..<level.gridHeight {
+                    for col in 0..<level.gridWidth {
+                        if gridShapeMap[row][col], let piece = gameGrid[row][col] {
+                            if piece.itemId == swappedPiece.itemId && piece.colorIndex == swappedPiece.colorIndex {
+                                clearedTiles.insert("\(row),\(col)")
+                                if piece.type != .normal {
+                                    cascadingPowerups.append((row: row, col: col, type: piece.type))
+                                }
+                            }
+                        }
+                    }
+                }
+            }
         }
         
         if piece2?.type == .flame {
@@ -987,37 +1009,44 @@ class MatchGameViewController: UIViewController {
                     for col in 0..<level.gridWidth {
                         if gridShapeMap[row][col], let piece = gameGrid[row][col] {
                             if piece.itemId == swappedPiece.itemId && piece.colorIndex == swappedPiece.colorIndex {
+                                clearedTiles.insert("\(row),\(col)")
                                 if piece.type != .normal {
                                     cascadingPowerups.append((row: row, col: col, type: piece.type))
                                 }
-                                clearedTiles.insert("\(row),\(col)")
-                                score += 1
-                                gameGrid[row][col] = nil
                             }
                         }
                     }
                 }
             }
-            gameGrid[r2][c2] = nil
         }
         
-        updateUI()
-        
-        // Activate cascading powerups
-        if !cascadingPowerups.isEmpty {
-            activateCascadingPowerups(cascadingPowerups)
+        // Show borders first for all cleared tiles, then clear and process
+        if !clearedTiles.isEmpty {
+            showPowerupBorderHighlight(clearedTiles) { [weak self] in
+                for posString in clearedTiles {
+                    let parts = posString.split(separator: ",").map { Int($0) ?? 0 }
+                    if parts.count == 2 {
+                        self?.score += 1
+                        self?.gameGrid[parts[0]][parts[1]] = nil
+                    }
+                }
+                self?.updateUI()
+                
+                if !cascadingPowerups.isEmpty {
+                    self?.activateCascadingPowerups(cascadingPowerups)
+                } else {
+                    self?.applyGravity()
+                }
+            }
+        } else {
+            // No tiles to clear, just apply gravity
+            updateUI()
+            applyGravity()
         }
-        
-        applyGravity()
     }
     
     private func activateCascadingPowerups(_ powerups: [(row: Int, col: Int, type: PieceType)]) {
         guard let level = currentLevel else { return }
-        
-        print("🔥 DEBUG activateCascadingPowerups called with \(powerups.count) powerups")
-        for (row, col, type) in powerups {
-            print("🔥 DEBUG: Powerup at (\(row),\(col)) type: \(type)")
-        }
         
         if powerups.isEmpty {
             // No more cascading powerups - apply gravity and check for new matches
@@ -1060,18 +1089,22 @@ class MatchGameViewController: UIViewController {
                     }
                 }
                 
-                // Clear entire column
+                // Clear entire column and capture cascading powerups
+                var cascadingFromArrow: [(row: Int, col: Int, type: PieceType)] = []
                 for r in 0..<level.gridHeight {
                     if gridShapeMap[r][col] && gameGrid[r][col] != nil {
+                        // Capture any powerups in column BEFORE clearing
+                        if let p = gameGrid[r][col], p.type != .normal {
+                            cascadingFromArrow.append((row: r, col: col, type: p.type))
+                        }
                         score += 1
                         gameGrid[r][col] = nil
                     }
                 }
-                print("🔥 Cascading vertical arrow cleared column \(col)")
+                print("🔥 Cascading vertical arrow cleared column \(col). Found \(cascadingFromArrow.count) cascading powerups")
                 
             case .horizontalArrow:
                 // Shoot flames horizontally - fires immediately, completion handler tracks when done
-                print("🔥 DEBUG: Shooting flames horizontally for row \(row)")
                 shootFlamesHorizontally(row: row, columns: 0..<level.gridWidth) {
                     flameAnimationsCompleted += 1
                     if flameAnimationsCompleted == flameAnimationsInProgress {
@@ -1080,34 +1113,51 @@ class MatchGameViewController: UIViewController {
                     }
                 }
                 
-                // Clear entire row
+                // Clear entire row and capture cascading powerups
+                var cascadingFromArrow: [(row: Int, col: Int, type: PieceType)] = []
                 for c in 0..<level.gridWidth {
                     if gridShapeMap[row][c] && gameGrid[row][c] != nil {
+                        // Capture any powerups in row BEFORE clearing
+                        if let p = gameGrid[row][c], p.type != .normal {
+                            cascadingFromArrow.append((row: row, col: c, type: p.type))
+                        }
                         score += 1
                         gameGrid[row][c] = nil
                     }
                 }
-                print("🔥 Cascading horizontal arrow cleared row \(row)")
+                print("🔥 Cascading horizontal arrow cleared row \(row). Found \(cascadingFromArrow.count) cascading powerups")
                 
             case .bomb:
-                // Just clear 3x3 - no flame animation for bombs from cascades
+                // Clear 3x3 area and capture any cascading powerups
+                var cascadingFromBomb: [(row: Int, col: Int, type: PieceType)] = []
                 for dr in -1...1 {
                     for dc in -1...1 {
                         let nr = row + dr
                         let nc = col + dc
                         if nr >= 0 && nr < level.gridHeight && nc >= 0 && nc < level.gridWidth &&
                            gridShapeMap[nr][nc] && gameGrid[nr][nc] != nil {
+                            // Capture any powerups in the 3x3 area BEFORE clearing
+                            if let p = gameGrid[nr][nc], p.type != .normal {
+                                cascadingFromBomb.append((row: nr, col: nc, type: p.type))
+                            }
                             score += 1
                             gameGrid[nr][nc] = nil
                         }
                     }
                 }
-                print("🔥 Cascading bomb cleared 3x3 area around (\(row), \(col))")
+                print("🔥 Cascading bomb cleared 3x3 area around (\(row), \(col)). Found \(cascadingFromBomb.count) cascading powerups")
                 
                 // For bombs, don't wait for animation - just decrement and check if complete
                 flameAnimationsCompleted += 1
                 if flameAnimationsCompleted == flameAnimationsInProgress {
-                    self.applyGravityAfterCascade()
+                    // If this bomb found cascading powerups, process them
+                    if !cascadingFromBomb.isEmpty {
+                        self.updateGridDisplay()
+                        self.updateUI()
+                        self.activateCascadingPowerups(cascadingFromBomb)
+                    } else {
+                        self.applyGravityAfterCascade()
+                    }
                 }
                 
             default:
@@ -1274,12 +1324,10 @@ class MatchGameViewController: UIViewController {
     
     private func shootFlamesHorizontally(row: Int, columns: Range<Int>, completion: @escaping () -> Void) {
         guard row < gridButtons.count else {
-            print("🔥 DEBUG: row \(row) >= gridButtons.count \(gridButtons.count)")
             completion()
             return
         }
         guard !gridButtons[row].isEmpty else {
-            print("🔥 DEBUG: gridButtons[\(row)] is empty")
             completion()
             return
         }
@@ -1288,7 +1336,6 @@ class MatchGameViewController: UIViewController {
         let middleCol = (columns.lowerBound + columns.upperBound) / 2
         guard middleCol < gridButtons[row].count,
               let gridButton = gridButtons[row][middleCol] else {
-            print("🔥 DEBUG: middleCol \(middleCol) out of bounds or no button")
             completion()
             return
         }
@@ -1297,7 +1344,6 @@ class MatchGameViewController: UIViewController {
         // This gives us the position relative to where we're adding the flames
         let buttonFrameInContainer = gridButton.convert(gridButton.bounds, to: gridContainer)
         let startY = buttonFrameInContainer.midY
-        print("🔥 DEBUG: Horizontal flames at row \(row), startY = \(startY), button container frame = \(buttonFrameInContainer)")
         
         // Create flame shooting LEFT
         let flameLabelLeft = UILabel()
@@ -1377,8 +1423,11 @@ class MatchGameViewController: UIViewController {
         var matchesToRemove: Set<String> = []
         var powerUpsToCreate: [(row: Int, col: Int, type: PieceType)] = []
         
+        print("🔍 [DEBUG] Starting match detection scan...")
+        
         // Check horizontal matches (5+ first, then 4, then 3)
-        for row in 0..<level.gridHeight {
+        // SCAN FROM BOTTOM-LEFT: start at row (gridHeight-1) going UP, col 0 going RIGHT
+        for row in (0..<level.gridHeight).reversed() {
             var col = 0
             while col < level.gridWidth {
                 if gridShapeMap[row][col], let piece = gameGrid[row][col], piece.type == .normal {
@@ -1393,6 +1442,10 @@ class MatchGameViewController: UIViewController {
                         checkCol += 1
                     }
                     
+                    if matchCount >= 3 {
+                        print("🔍 [DEBUG] Found horizontal match at row=\(row), col=\(col): count=\(matchCount) item=\(piece.itemId) color=\(piece.colorIndex)")
+                    }
+                    
                     if matchCount >= 5 {
                         // 5+ match: create flame power-up at middle
                         let middleCol = col + matchCount / 2
@@ -1403,10 +1456,21 @@ class MatchGameViewController: UIViewController {
                             matchesToRemove.insert("\(row),\(i)")
                         }
                     } else if matchCount >= 4 {
-                        // 4 match: create horizontal arrow at middle
-                        let middleCol = col + matchCount / 2
-                        powerUpsToCreate.append((row: row, col: middleCol, type: .horizontalArrow))
-                        print("🔥 DEBUG: Created horizontal arrow powerup at row \(row), col \(middleCol)")
+                        // 4+ match: create horizontal arrow
+                        // Try to place at swapped position if it's in the match
+                        var arrowCol = col + matchCount / 2  // Default: middle
+                        
+                        if let ((r1, c1), (r2, c2)) = lastSwappedPositions {
+                            // Check if swapped tile is in this horizontal match
+                            if r1 == row && c1 >= col && c1 < col + matchCount {
+                                arrowCol = c1
+                            } else if r2 == row && c2 >= col && c2 < col + matchCount {
+                                arrowCol = c2
+                            }
+                        }
+                        
+                        powerUpsToCreate.append((row: row, col: arrowCol, type: .horizontalArrow))
+                        print("🔍 [DEBUG] Found 4+ horizontal match at row=\(row), cols \(col) to \(col + matchCount - 1). Arrow placed at (\(row),\(arrowCol))")
                         
                         // Mark all pieces for removal using loop indices, not piece positions
                         for i in col..<col + matchCount {
@@ -1427,50 +1491,66 @@ class MatchGameViewController: UIViewController {
         }
         
         // Check vertical matches (5+ first, then 4, then 3)
+        // SCAN FROM BOTTOM-LEFT: col 0 going RIGHT, start at row (gridHeight-1) going UP
         for col in 0..<level.gridWidth {
-            var row = 0
-            while row < level.gridHeight {
+            var row = level.gridHeight - 1
+            while row >= 0 {
                 if gridShapeMap[row][col], let piece = gameGrid[row][col], piece.type == .normal {
                     var matchCount = 1
-                    var checkRow = row + 1
+                    var checkRow = row - 1
                     
-                    while checkRow < level.gridHeight &&
+                    while checkRow >= 0 &&
                           gridShapeMap[checkRow][col],
                           let nextPiece = gameGrid[checkRow][col],
                           piece.matches(nextPiece) {
                         matchCount += 1
-                        checkRow += 1
+                        checkRow -= 1
+                    }
+                    
+                    if matchCount >= 3 {
+                        print("🔍 [DEBUG] Found vertical match at row=\(row), col=\(col): count=\(matchCount) item=\(piece.itemId) color=\(piece.colorIndex)")
                     }
                     
                     if matchCount >= 5 {
                         // 5+ match: create flame power-up at middle
-                        let middleRow = row + matchCount / 2
+                        let middleRow = row - matchCount / 2
                         powerUpsToCreate.append((row: middleRow, col: col, type: .flame))
                         
                         // Mark all pieces for removal using loop indices
-                        for i in row..<row + matchCount {
+                        for i in (row - matchCount + 1)...row {
                             matchesToRemove.insert("\(i),\(col)")
                         }
                     } else if matchCount >= 4 {
-                        // 4 match: create vertical arrow at middle
-                        let middleRow = row + matchCount / 2
-                        powerUpsToCreate.append((row: middleRow, col: col, type: .verticalArrow))
-                        print("🔥 DEBUG: Created vertical arrow powerup at row \(middleRow), col \(col)")
+                        // 4+ match: create vertical arrow
+                        // Try to place at swapped position if it's in the match
+                        var arrowRow = row - matchCount / 2  // Default: middle
+                        
+                        if let ((r1, c1), (r2, c2)) = lastSwappedPositions {
+                            // Check if swapped tile is in this vertical match
+                            if c1 == col && r1 <= row && r1 > row - matchCount {
+                                arrowRow = r1
+                            } else if c2 == col && r2 <= row && r2 > row - matchCount {
+                                arrowRow = r2
+                            }
+                        }
+                        
+                        powerUpsToCreate.append((row: arrowRow, col: col, type: .verticalArrow))
+                        print("🔍 [DEBUG] Found 4+ vertical match at col=\(col), rows \(row - matchCount + 1) to \(row). Arrow placed at (\(arrowRow),\(col))")
                         
                         // Mark all pieces for removal using loop indices
-                        for i in row..<row + matchCount {
+                        for i in (row - matchCount + 1)...row {
                             matchesToRemove.insert("\(i),\(col)")
                         }
                     } else if matchCount >= 3 {
                         // 3 match: remove pieces using loop indices
-                        for i in row..<row + matchCount {
+                        for i in (row - matchCount + 1)...row {
                             matchesToRemove.insert("\(i),\(col)")
                         }
                     }
                     
-                    row = max(row + 1, checkRow)
+                    row = min(row - 1, checkRow)
                 } else {
-                    row += 1
+                    row -= 1
                 }
             }
         }
@@ -1485,10 +1565,28 @@ class MatchGameViewController: UIViewController {
                    let p3 = gameGrid[row + 1][col], p3.type == .normal,
                    let p4 = gameGrid[row + 1][col + 1], p4.type == .normal,
                    p1.matches(p2) && p2.matches(p3) && p3.matches(p4) {
-                    // Create bomb at center
-                    let bombRow = row + 1
-                    let bombCol = col
+                    // Determine bomb position: place it where the swap happened
+                    var bombRow = row + 1
+                    var bombCol = col + 1
+                    
+                    // Check if a swap created this 2x2 match
+                    if let ((r1, c1), (r2, c2)) = lastSwappedPositions {
+                        // If one of the swapped positions is in the 2x2, put bomb there
+                        if (r1 == row && c1 == col) || (r1 == row && c1 == col + 1) ||
+                           (r1 == row + 1 && c1 == col) || (r1 == row + 1 && c1 == col + 1) {
+                            // First swapped piece is in the 2x2 - use its position
+                            bombRow = r1
+                            bombCol = c1
+                        } else if (r2 == row && c2 == col) || (r2 == row && c2 == col + 1) ||
+                                  (r2 == row + 1 && c2 == col) || (r2 == row + 1 && c2 == col + 1) {
+                            // Second swapped piece is in the 2x2 - use its position
+                            bombRow = r2
+                            bombCol = c2
+                        }
+                    }
+                    
                     powerUpsToCreate.append((row: bombRow, col: bombCol, type: .bomb))
+                    print("🔍 [DEBUG] Found 2x2 bomb pattern at 2x2 square (\(row),\(col)) to (\(row+1),\(col+1)). Bomb placed at (\(bombRow),\(bombCol))")
                     
                     // Mark all 4 pieces for removal using grid indices
                     matchesToRemove.insert("\(row),\(col)")
@@ -1500,6 +1598,9 @@ class MatchGameViewController: UIViewController {
         }
         
         if !matchesToRemove.isEmpty {
+            print("🔍 [DEBUG] Total matches found: \(matchesToRemove.count) tiles to remove")
+            print("🔍 [DEBUG] Matches: \(matchesToRemove.sorted())")
+            
             // Trigger haptic feedback
             let impact = UIImpactFeedbackGenerator(style: .heavy)
             impact.impactOccurred()
@@ -1534,7 +1635,10 @@ class MatchGameViewController: UIViewController {
                 self?.applyGravity()
             }
         } else {
-            // No match found - revert the swap if one was made
+            // No match found
+            print("🔍 [DEBUG] No matches found in current grid")
+            
+            // Revert the swap if one was made
             if let ((r1, c1), (r2, c2)) = lastSwappedPositions {
                 print("⚠️ Invalid move - reverting swap")
                 lastSwappedPositions = nil
@@ -1581,6 +1685,42 @@ class MatchGameViewController: UIViewController {
         }
     }
     
+    private func showPowerupBorderHighlight(_ affectedTiles: Set<String>, then completion: @escaping () -> Void) {
+        guard !affectedTiles.isEmpty else {
+            completion()
+            return
+        }
+        
+        // Show yellow border around all affected tiles
+        for posString in affectedTiles {
+            let parts = posString.split(separator: ",").map { Int($0) ?? 0 }
+            guard parts.count == 2 else { continue }
+            let row = parts[0]
+            let col = parts[1]
+            
+            if let button = gridButtons[row][col] {
+                button.layer.borderWidth = 3
+                button.layer.borderColor = UIColor.yellow.cgColor
+            }
+        }
+        
+        // After 0.2 seconds, clear borders and proceed with completion
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+            for posString in affectedTiles {
+                let parts = posString.split(separator: ",").map { Int($0) ?? 0 }
+                guard parts.count == 2 else { continue }
+                let row = parts[0]
+                let col = parts[1]
+                
+                if let button = self.gridButtons[row][col] {
+                    button.layer.borderWidth = 0
+                }
+            }
+            
+            completion()
+        }
+    }
+    
     private func animateMatchedPieces(_ matchesToRemove: Set<String>, completion: @escaping () -> Void) {
         guard !matchesToRemove.isEmpty else {
             completion()
@@ -1600,33 +1740,43 @@ class MatchGameViewController: UIViewController {
             return
         }
         
-        var animationCount = 0
-        var completedCount = 0
+        // STEP 1: Show yellow border highlight around matched tiles (0.2 seconds)
+        for button in allButtons {
+            button.layer.borderWidth = 2
+            button.layer.borderColor = UIColor.yellow.cgColor
+        }
         
-        for posString in matchesToRemove {
-            let parts = posString.split(separator: ",").map { Int($0) ?? 0 }
-            guard parts.count == 2 else { continue }
-            let row = parts[0]
-            let col = parts[1]
+        // STEP 2: After 0.2 seconds, animate removal and clear border
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) { [weak self] in
+            var animationCount = 0
+            var completedCount = 0
             
-            if let button = gridButtons[row][col] {
-                animationCount += 1
+            for posString in matchesToRemove {
+                let parts = posString.split(separator: ",").map { Int($0) ?? 0 }
+                guard parts.count == 2 else { continue }
+                let row = parts[0]
+                let col = parts[1]
                 
-                // Animate: scale down + fade + rotate
-                UIView.animate(withDuration: 0.2, animations: {
-                    button.transform = CGAffineTransform(scaleX: 0.1, y: 0.1).rotated(by: CGFloat.pi)
-                    button.alpha = 0.0
-                }, completion: { _ in
-                    // Reset transform after animation so new piece displays correctly
-                    button.transform = .identity
-                    button.alpha = 1.0
+                if let button = self?.gridButtons[row][col] {
+                    animationCount += 1
                     
-                    completedCount += 1
-                    // When all animations complete, call the completion handler
-                    if completedCount == animationCount {
-                        completion()
-                    }
-                })
+                    // Animate: scale down + fade + rotate
+                    UIView.animate(withDuration: 0.2, animations: {
+                        button.transform = CGAffineTransform(scaleX: 0.1, y: 0.1).rotated(by: CGFloat.pi)
+                        button.alpha = 0.0
+                    }, completion: { _ in
+                        // Reset transform after animation so new piece displays correctly
+                        button.transform = .identity
+                        button.alpha = 1.0
+                        button.layer.borderWidth = 0  // Clear border
+                        
+                        completedCount += 1
+                        // When all animations complete, call the completion handler
+                        if completedCount == animationCount {
+                            completion()
+                        }
+                    })
+                }
             }
         }
     }
