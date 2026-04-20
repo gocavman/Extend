@@ -1292,35 +1292,31 @@ class MatchGameViewController: UIViewController {
     }
     
     private func shootFlamesVertically(column: Int, arrowRow: Int, rows: Range<Int>, completion: @escaping () -> Void) {
+        guard let level = currentLevel else {
+            completion()
+            return
+        }
         guard column < gridButtons[0].count else {
             completion()
             return
         }
         
-        // Get the actual arrow's position
-        guard arrowRow >= 0 && arrowRow < rows.upperBound,
-              let arrowButton = gridButtons[arrowRow][column] else {
-            completion()
-            return
-        }
+        // Calculate flame positions based on grid geometry
+        let gridHeight = gridContainer.bounds.height
+        let gridWidth = gridContainer.bounds.width
+        let rowHeight = gridHeight / CGFloat(level.gridHeight)
+        let colWidth = gridWidth / CGFloat(level.gridWidth)
         
-        // Get the bounds of the playable grid
-        guard let topButton = gridButtons[rows.lowerBound][column],
-              let bottomButton = gridButtons[rows.upperBound - 1][column] else {
-            completion()
-            return
-        }
+        // Start Y position based on arrow's row
+        let startY = CGFloat(arrowRow) * rowHeight + rowHeight / 2
         
-        let arrowFrame = arrowButton.frame
-        let topGridFrame = topButton.frame
-        let bottomGridFrame = bottomButton.frame
+        // End positions based on grid bounds
+        let endYUp = CGFloat(rows.lowerBound) * rowHeight - 50
+        let endYDown = CGFloat(rows.upperBound) * rowHeight + 50
         
-        // Start flames from the arrow's actual row position
-        let startY = arrowFrame.midY
-        
-        // Flames travel to actual grid edges
-        let endYUp = topGridFrame.midY - 50  // Go well above the top
-        let endYDown = bottomGridFrame.midY + 50  // Go well below the bottom
+        print("🔍 [DEBUG] shootFlamesVertically called: column=\(column), arrowRow=\(arrowRow)")
+        print("🔍 [DEBUG] Grid geometry: gridHeight=\(gridHeight), rowHeight=\(rowHeight)")
+        print("🔍 [DEBUG] Flame positions: startY=\(startY), endYUp=\(endYUp), endYDown=\(endYDown)")
         
         var animationsComplete = 0
         let totalAnimations = 20  // 10 up + 10 down
@@ -1334,21 +1330,20 @@ class MatchGameViewController: UIViewController {
         // Create 10 flames shooting UP (distributed across column width)
         for i in 0..<10 {
             let flameLabelUp = UILabel()
-            flameLabelUp.text = "🔥"  // Pointing up (default orientation)
+            flameLabelUp.text = "🔥"
             flameLabelUp.font = UIFont.systemFont(ofSize: 40)
             flameLabelUp.sizeToFit()
             
             // Distribute flames across the column width
-            let offsetX = (CGFloat(i) / 10.0) * 40 - 20  // Spread from -20 to +20 from center
-            let buttonX = arrowFrame.midX + offsetX
-            flameLabelUp.frame = CGRect(x: buttonX - flameLabelUp.bounds.width/2,
+            let offsetX = (CGFloat(i) / 10.0) * 40 - 20
+            let centerX = CGFloat(column) * colWidth + colWidth / 2
+            flameLabelUp.frame = CGRect(x: centerX + offsetX - flameLabelUp.bounds.width/2,
                                          y: startY - flameLabelUp.bounds.height/2,
                                          width: flameLabelUp.bounds.width,
                                          height: flameLabelUp.bounds.height)
             
             gridContainer.addSubview(flameLabelUp)
             
-            // Animate flame shooting up - NO STAGGER, all at same time
             UIView.animate(withDuration: 0.5, delay: 0, options: .curveLinear, animations: {
                 flameLabelUp.frame.origin.y = endYUp
                 flameLabelUp.alpha = 0
@@ -1370,15 +1365,14 @@ class MatchGameViewController: UIViewController {
             
             // Distribute flames across the column width
             let offsetX = (CGFloat(i) / 10.0) * 40 - 20
-            let buttonX = arrowFrame.midX + offsetX
-            flameLabelDown.frame = CGRect(x: buttonX - flameLabelDown.bounds.width/2,
+            let centerX = CGFloat(column) * colWidth + colWidth / 2
+            flameLabelDown.frame = CGRect(x: centerX + offsetX - flameLabelDown.bounds.width/2,
                                            y: startY - flameLabelDown.bounds.height/2,
                                            width: flameLabelDown.bounds.width,
                                            height: flameLabelDown.bounds.height)
             
             gridContainer.addSubview(flameLabelDown)
             
-            // Animate flame shooting down - NO STAGGER, all at same time
             UIView.animate(withDuration: 0.5, delay: 0, options: .curveLinear, animations: {
                 flameLabelDown.frame.origin.y = endYDown
                 flameLabelDown.alpha = 0
