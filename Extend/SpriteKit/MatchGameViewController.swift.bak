@@ -1,0 +1,2121 @@
+import UIKit
+
+// MARK: - Data Structures
+
+struct MatchGameLevel: Codable {
+    let id: Int
+    let name: String
+    let gridWidth: Int
+    let gridHeight: Int
+    let items: [MatchItem]
+    let colors: [String?]  // Allow null for transparent background
+    let gridShape: [String]
+    let movesAllowed: Int
+    let scoreTarget: Int
+}
+
+struct MatchItem: Codable {
+    let id: String
+    let emoji: String?
+    let asset: String?
+}
+
+struct MatchGameConfig: Codable {
+    let levels: [MatchGameLevel]
+}
+
+// MARK: - Power-Up Types
+
+enum PieceType {
+    case normal
+    case verticalArrow
+    case horizontalArrow
+    case bomb
+    case flame  // NEW: Clears all matching pieces when swapped
+}
+
+// MARK: - Game Piece
+
+class GamePiece {
+    let itemId: String
+    let colorIndex: Int
+    var row: Int
+    var col: Int
+    var type: PieceType = .normal
+    
+    init(itemId: String, colorIndex: Int, row: Int, col: Int, type: PieceType = .normal) {
+        self.itemId = itemId
+        self.colorIndex = colorIndex
+        self.row = row
+        self.col = col
+        self.type = type
+    }
+    
+    func matches(_ other: GamePiece) -> Bool {
+        // Power-ups don't match regular pieces
+        if self.type != .normal || other.type != .normal {
+            return false
+        }
+        return self.itemId == other.itemId && self.colorIndex == other.colorIndex
+    }
+}
+
+// MARK: - Match Game View Controller
+
+class MatchGameViewController: UIViewController {
+    
+    // Delegate for dismissal
+    var presentingController: UIViewController?
+    var mapScene: MapScene?  // Reference to map scene for refreshing
+    var returnDoorId: String?  // Door ID to return to when exiting
+    var onDismissCallback: (() -> Void)?  // Callback for SwiftUI dismissal
+    
+    // UI Components
+    private let containerView = UIView()
+    private let headerView = UIView()
+    private let gridContainer = UIView()
+    private let gridStackView = UIStackView()
+    private let exitButton = UIButton()
+    private let levelLabel = UILabel()
+    private let levelSelectorButton = UIButton()  // NEW: Level selector dropdown
+    private let scoreLabel = UILabel()
+    private let movesLabel = UILabel()
+    private let targetLabel = UILabel()
+    private let highScoreLabel = UILabel()
+    
+    // Game State
+    private var currentLevel: MatchGameLevel?
+    private var gameConfig: MatchGameConfig?
+    private var currentLevelId: Int = 1
+    private var gameGrid: [[GamePiece?]] = []
+    private var gridShapeMap: [[Bool]] = []
+    private var score: Int = 0
+    private var movesRemaining: Int = 0
+    private var selectedPiece: (row: Int, col: Int)? = nil
+    private var gridButtons: [[UIButton?]] = []
+    private var isAnimating = false
+    private var isAnimatingDrop = false  // Flag to prevent transform reset during drop animation
+    private var lastSwappedPositions: ((row: Int, col: Int), (row: Int, col: Int))? = nil
+    private var dragStartPiece: (row: Int, col: Int)? = nil
+    private var dragTargetPiece: (row: Int, col: Int)? = nil
+    private var unlockedLevels: [Int] = [1]  // NEW: Track unlocked levels
+    private var movedPieces: Set<String> = []  // Track which pieces moved during gravity
+    private var fallDistances: [String: Int] = [:]  // Track how far each piece fell (row distance)
+    private var newPieces: Set<String> = []  // Track which pieces are NEW (from refill)
+    
+    // MARK: - Game Logic
+    private let darkBg = UIColor(hex: "#2C3E50") ?? .black
+    private let lightBg = UIColor(hex: "#34495E") ?? .darkGray
+    private let accentColor = UIColor(hex: "#E74C3C") ?? .red
+    
+    override func viewDidLoad() {
+        super.viewDidLoad()
+        setupUI()
+        loadGameConfig()
+        
+        // Load saved game state
+        loadSavedState()
+        
+        startLevel(currentLevelId)
+    }
+    
+    // MARK: - Setup
+    
+    private func setupUI() {
+        view.backgroundColor = darkBg
+        
+        // Container
+        containerView.backgroundColor = darkBg
+        view.addSubview(containerView)
+        containerView.translatesAutoresizingMaskIntoConstraints = false
+        NSLayoutConstraint.activate([
+            containerView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor),
+            containerView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            containerView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            containerView.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor)
+        ])
+        
+        // Header View
+        headerView.backgroundColor = lightBg
+        containerView.addSubview(headerView)
+        headerView.translatesAutoresizingMaskIntoConstraints = false
+        NSLayoutConstraint.activate([
+            headerView.topAnchor.constraint(equalTo: containerView.topAnchor),
+            headerView.leadingAnchor.constraint(equalTo: containerView.leadingAnchor),
+            headerView.trailingAnchor.constraint(equalTo: containerView.trailingAnchor),
+            headerView.heightAnchor.constraint(equalToConstant: 100)
+        ])
+        
+        // Exit Button
+        exitButton.setTitle("✕", for: .normal)
+        exitButton.titleLabel?.font = UIFont.systemFont(ofSize: 32, weight: .bold)
+        exitButton.setTitleColor(.white, for: .normal)
+        exitButton.addTarget(self, action: #selector(exitGame), for: .touchUpInside)
+        headerView.addSubview(exitButton)
+        exitButton.translatesAutoresizingMaskIntoConstraints = false
+        NSLayoutConstraint.activate([
+            exitButton.topAnchor.constraint(equalTo: headerView.topAnchor, constant: 10),
+            exitButton.leadingAnchor.constraint(equalTo: headerView.leadingAnchor, constant: 15),
+            exitButton.widthAnchor.constraint(equalToConstant: 40),
+            exitButton.heightAnchor.constraint(equalToConstant: 40)
+        ])
+        
+        // Level Selector Button (dropdown)
+        levelSelectorButton.setTitle("Level 1 ▼", for: .normal)
+        levelSelectorButton.titleLabel?.font = UIFont.systemFont(ofSize: 14, weight: .semibold)
+        levelSelectorButton.setTitleColor(.white, for: .normal)
+        levelSelectorButton.backgroundColor = UIColor(hex: "#E74C3C")?.withAlphaComponent(0.8) ?? .red.withAlphaComponent(0.8)
+        levelSelectorButton.layer.cornerRadius = 6
+        levelSelectorButton.addTarget(self, action: #selector(showLevelSelector), for: .touchUpInside)
+        headerView.addSubview(levelSelectorButton)
+        levelSelectorButton.translatesAutoresizingMaskIntoConstraints = false
+        NSLayoutConstraint.activate([
+            levelSelectorButton.topAnchor.constraint(equalTo: headerView.topAnchor, constant: 10),
+            levelSelectorButton.centerXAnchor.constraint(equalTo: headerView.centerXAnchor),
+            levelSelectorButton.widthAnchor.constraint(equalToConstant: 100),
+            levelSelectorButton.heightAnchor.constraint(equalToConstant: 40)
+        ])
+        
+        // Keep the old levelLabel hidden for now (still in setup but not visible)
+        levelLabel.font = UIFont.systemFont(ofSize: 18, weight: .bold)
+        levelLabel.textColor = .white
+        levelLabel.text = "Level 1"
+        levelLabel.isHidden = true
+        
+        // Score Label
+        scoreLabel.font = UIFont.systemFont(ofSize: 14, weight: .regular)
+        scoreLabel.textColor = .lightGray
+        scoreLabel.text = "Score: 0"
+        headerView.addSubview(scoreLabel)
+        scoreLabel.translatesAutoresizingMaskIntoConstraints = false
+        NSLayoutConstraint.activate([
+            scoreLabel.topAnchor.constraint(equalTo: levelSelectorButton.bottomAnchor, constant: 5),
+            scoreLabel.leadingAnchor.constraint(equalTo: headerView.leadingAnchor, constant: 15)
+        ])
+        
+        // Moves Label
+        movesLabel.font = UIFont.systemFont(ofSize: 14, weight: .regular)
+        movesLabel.textColor = .lightGray
+        movesLabel.text = "Moves: 0"
+        headerView.addSubview(movesLabel)
+        movesLabel.translatesAutoresizingMaskIntoConstraints = false
+        NSLayoutConstraint.activate([
+            movesLabel.topAnchor.constraint(equalTo: levelSelectorButton.bottomAnchor, constant: 5),
+            movesLabel.trailingAnchor.constraint(equalTo: headerView.trailingAnchor, constant: -15)
+        ])
+        
+        // Target Label
+        targetLabel.font = UIFont.systemFont(ofSize: 12, weight: .regular)
+        targetLabel.textColor = .lightGray
+        targetLabel.text = "Target: 1000"
+        headerView.addSubview(targetLabel)
+        targetLabel.translatesAutoresizingMaskIntoConstraints = false
+        NSLayoutConstraint.activate([
+            targetLabel.topAnchor.constraint(equalTo: scoreLabel.bottomAnchor, constant: 3),
+            targetLabel.leadingAnchor.constraint(equalTo: headerView.leadingAnchor, constant: 15)
+        ])
+        
+        // High Score Label
+        highScoreLabel.font = UIFont.systemFont(ofSize: 12, weight: .regular)
+        highScoreLabel.textColor = .lightGray
+        highScoreLabel.text = "High Score: 0"
+        headerView.addSubview(highScoreLabel)
+        highScoreLabel.translatesAutoresizingMaskIntoConstraints = false
+        NSLayoutConstraint.activate([
+            highScoreLabel.topAnchor.constraint(equalTo: movesLabel.bottomAnchor, constant: 3),
+            highScoreLabel.trailingAnchor.constraint(equalTo: headerView.trailingAnchor, constant: -15)
+        ])
+        
+        // Grid Container
+        gridContainer.backgroundColor = darkBg
+        containerView.addSubview(gridContainer)
+        gridContainer.translatesAutoresizingMaskIntoConstraints = false
+        NSLayoutConstraint.activate([
+            gridContainer.centerYAnchor.constraint(equalTo: containerView.centerYAnchor),
+            gridContainer.centerXAnchor.constraint(equalTo: containerView.centerXAnchor),
+            gridContainer.leadingAnchor.constraint(greaterThanOrEqualTo: containerView.leadingAnchor, constant: 20),
+            gridContainer.trailingAnchor.constraint(lessThanOrEqualTo: containerView.trailingAnchor, constant: -20),
+            // Make gridContainer square - width = height
+            gridContainer.widthAnchor.constraint(equalTo: gridContainer.heightAnchor, multiplier: 1.0),
+            // Set max size to prevent grid from being too large
+            gridContainer.widthAnchor.constraint(lessThanOrEqualToConstant: 400)
+        ])
+    }
+    
+    private func loadGameConfig() {
+        guard let url = Bundle.main.url(forResource: "matchgame", withExtension: "json") else {
+            print("❌ Could not find matchgame.json")
+            return
+        }
+        
+        do {
+            let data = try Data(contentsOf: url)
+            gameConfig = try JSONDecoder().decode(MatchGameConfig.self, from: data)
+            //print("✅ Loaded matchgame.json with \(gameConfig?.levels.count ?? 0) levels")
+        } catch {
+            print("❌ Error loading matchgame.json: \(error)")
+        }
+    }
+    
+    // MARK: - Game Logic
+    
+    private func startLevel(_ levelId: Int) {
+        guard let config = gameConfig,
+              let level = config.levels.first(where: { $0.id == levelId }) else {
+            print("❌ Level \(levelId) not found")
+            return
+        }
+        
+        currentLevel = level
+        score = 0
+        movesRemaining = level.movesAllowed
+        selectedPiece = nil
+        
+        // Build grid shape map from level configuration
+        gridShapeMap = Array(repeating: Array(repeating: false, count: level.gridWidth), count: level.gridHeight)
+        
+        // Parse grid shape strings into boolean grid
+        for (rowIndex, rowString) in level.gridShape.enumerated() {
+            if rowIndex < gridShapeMap.count {
+                for (colIndex, char) in rowString.enumerated() {
+                    if colIndex < gridShapeMap[rowIndex].count {
+                        gridShapeMap[rowIndex][colIndex] = (char == "X")
+                    }
+                }
+            }
+        }
+        
+        // Initialize empty grid
+        gameGrid = Array(repeating: Array(repeating: nil, count: level.gridWidth), count: level.gridHeight)
+        gridButtons = Array(repeating: Array(repeating: nil, count: level.gridWidth), count: level.gridHeight)
+        
+        // Fill grid with random pieces
+        for row in 0..<level.gridHeight {
+            for col in 0..<level.gridWidth {
+                if gridShapeMap[row][col] {
+                    let randomItemIndex = Int.random(in: 0..<level.items.count)
+                    let randomColorIndex = Int.random(in: 0..<level.colors.count)
+                    gameGrid[row][col] = GamePiece(
+                        itemId: level.items[randomItemIndex].id,
+                        colorIndex: randomColorIndex,
+                        row: row,
+                        col: col
+                    )
+                }
+            }
+        }
+        
+        updateUI()
+        renderGrid()
+        
+        // Check for initial matches on level load
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
+            self?.checkForMatches()
+        }
+    }
+    
+    private func updateUI() {
+        guard let level = currentLevel else { return }
+        
+        let highScore = UserDefaults.standard.integer(forKey: "matchGameHighScore")
+        
+        levelLabel.text = level.name
+        scoreLabel.text = "Score: \(score)"
+        movesLabel.text = "Moves: \(movesRemaining)"
+        targetLabel.text = "Target: \(level.scoreTarget)"
+        highScoreLabel.text = "High Score: \(highScore)"
+        
+        // Check if target score is reached
+        if score >= level.scoreTarget && !isAnimating {
+            checkLevelCompletion()
+        }
+    }
+    
+    private func checkLevelCompletion() {
+        guard let level = currentLevel, let config = gameConfig else { return }
+        
+        // Find next level
+        let nextLevelId = level.id + 1
+        if config.levels.contains(where: { $0.id == nextLevelId }) {
+            // Level complete! Show animation and progress to next level
+            print("🎉 LEVEL \(level.id) COMPLETE! Score: \(score) >= Target: \(level.scoreTarget)")
+            
+            // Unlock next level
+            if !unlockedLevels.contains(nextLevelId) {
+                unlockedLevels.append(nextLevelId)
+                unlockedLevels.sort()
+                print("🔓 Unlocked level \(nextLevelId)")
+            }
+            
+            // Disable interactions while animating
+            isAnimating = true
+            
+            // Show completion animation
+            showLevelCompleteAnimation {
+                // After animation, load next level
+                self.currentLevelId = nextLevelId
+                self.levelSelectorButton.setTitle("Level \(nextLevelId) ▼", for: .normal)
+                self.score = 0
+                self.saveGameState()  // Save the new level and unlocked status
+                self.startLevel(nextLevelId)
+                self.isAnimating = false
+            }
+        } else {
+            // All levels complete!
+            print("🎉 ALL LEVELS COMPLETE! Final Score: \(score)")
+            showGameCompleteAnimation {
+                // Return to map after all levels are complete
+                self.exitGame()
+            }
+        }
+    }
+    
+    private func showLevelCompleteAnimation(completion: @escaping () -> Void) {
+        // Create overlay with "Level Complete!" text
+        let overlay = UIView()
+        overlay.backgroundColor = UIColor.black.withAlphaComponent(0.7)
+        view.addSubview(overlay)
+        overlay.translatesAutoresizingMaskIntoConstraints = false
+        NSLayoutConstraint.activate([
+            overlay.topAnchor.constraint(equalTo: view.topAnchor),
+            overlay.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            overlay.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            overlay.bottomAnchor.constraint(equalTo: view.bottomAnchor)
+        ])
+        
+        let label = UILabel()
+        label.text = "LEVEL COMPLETE!"
+        label.font = UIFont.systemFont(ofSize: 48, weight: .bold)
+        label.textColor = .yellow
+        label.textAlignment = .center
+        overlay.addSubview(label)
+        label.translatesAutoresizingMaskIntoConstraints = false
+        NSLayoutConstraint.activate([
+            label.centerXAnchor.constraint(equalTo: overlay.centerXAnchor),
+            label.centerYAnchor.constraint(equalTo: overlay.centerYAnchor)
+        ])
+        
+        // Animate scale
+        label.transform = CGAffineTransform(scaleX: 0.1, y: 0.1)
+        
+        UIView.animate(withDuration: 0.5, delay: 0, options: .curveEaseOut, animations: {
+            label.transform = CGAffineTransform(scaleX: 1.2, y: 1.2)
+        }, completion: { _ in
+            UIView.animate(withDuration: 0.3, delay: 0.5, options: .curveEaseInOut, animations: {
+                overlay.alpha = 0
+            }, completion: { _ in
+                overlay.removeFromSuperview()
+                completion()
+            })
+        })
+    }
+    
+    private func showGameCompleteAnimation(completion: @escaping () -> Void) {
+        // Create overlay with "Game Complete!" text
+        let overlay = UIView()
+        overlay.backgroundColor = UIColor.black.withAlphaComponent(0.7)
+        view.addSubview(overlay)
+        overlay.translatesAutoresizingMaskIntoConstraints = false
+        NSLayoutConstraint.activate([
+            overlay.topAnchor.constraint(equalTo: view.topAnchor),
+            overlay.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            overlay.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            overlay.bottomAnchor.constraint(equalTo: view.bottomAnchor)
+        ])
+        
+        let label = UILabel()
+        label.text = "GAME COMPLETE!"
+        label.font = UIFont.systemFont(ofSize: 48, weight: .bold)
+        label.textColor = .green
+        label.textAlignment = .center
+        overlay.addSubview(label)
+        label.translatesAutoresizingMaskIntoConstraints = false
+        NSLayoutConstraint.activate([
+            label.centerXAnchor.constraint(equalTo: overlay.centerXAnchor),
+            label.centerYAnchor.constraint(equalTo: overlay.centerYAnchor)
+        ])
+        
+        // Animate scale
+        label.transform = CGAffineTransform(scaleX: 0.1, y: 0.1)
+        
+        UIView.animate(withDuration: 0.5, delay: 0, options: .curveEaseOut, animations: {
+            label.transform = CGAffineTransform(scaleX: 1.2, y: 1.2)
+        }, completion: { _ in
+            UIView.animate(withDuration: 0.3, delay: 1.0, options: .curveEaseInOut, animations: {
+                overlay.alpha = 0
+            }, completion: { _ in
+                overlay.removeFromSuperview()
+                completion()
+            })
+        })
+    }
+    
+    private func renderGrid() {
+        guard let level = currentLevel else { return }
+        
+        // Clear existing grid completely
+        gridContainer.subviews.forEach { $0.removeFromSuperview() }
+        gridStackView.removeFromSuperview()
+        
+        // Remove all arranged subviews from the stack view
+        gridStackView.arrangedSubviews.forEach { $0.removeFromSuperview() }
+        
+        // Setup grid stack view - make it fill equally vertically
+        gridStackView.axis = .vertical
+        gridStackView.spacing = 2
+        gridStackView.distribution = .fillEqually  // Each row gets equal height
+        gridContainer.addSubview(gridStackView)
+        gridStackView.translatesAutoresizingMaskIntoConstraints = false
+        
+        // Make grid fill container
+        NSLayoutConstraint.activate([
+            gridStackView.topAnchor.constraint(equalTo: gridContainer.topAnchor),
+            gridStackView.leadingAnchor.constraint(equalTo: gridContainer.leadingAnchor),
+            gridStackView.trailingAnchor.constraint(equalTo: gridContainer.trailingAnchor),
+            gridStackView.bottomAnchor.constraint(equalTo: gridContainer.bottomAnchor)
+        ])
+        
+        // Render rows
+        for row in 0..<level.gridHeight {
+            let rowStack = UIStackView()
+            rowStack.axis = .horizontal
+            rowStack.spacing = 2
+            rowStack.distribution = .fillEqually  // Each button gets equal width
+            gridStackView.addArrangedSubview(rowStack)
+            
+            for col in 0..<level.gridWidth {
+                let button = UIButton()
+                button.tag = row * level.gridWidth + col
+                button.layer.cornerRadius = 8
+                button.clipsToBounds = true
+                
+                // Make buttons square by constraining them to a fixed aspect ratio
+                // Since each row divides available width equally, we just need height = width
+                button.translatesAutoresizingMaskIntoConstraints = false
+                let aspectRatio = NSLayoutConstraint(item: button, attribute: .width, relatedBy: .equal, toItem: button, attribute: .height, multiplier: 1.0, constant: 0)
+                button.addConstraint(aspectRatio)
+                aspectRatio.priority = UILayoutPriority(rawValue: 999)
+                
+                if gridShapeMap[row][col], let piece = gameGrid[row][col] {
+                    // Handle optional colors - nil means transparent background
+                    if let colorHex = level.colors[piece.colorIndex] {
+                        button.backgroundColor = UIColor(hex: colorHex) ?? .gray
+                    } else {
+                        button.backgroundColor = .clear
+                    }
+                    let itemEmoji = level.items[level.items.firstIndex(where: { $0.id == piece.itemId }) ?? 0].emoji ?? "?"
+                    button.setTitle(itemEmoji, for: .normal)
+                    button.titleLabel?.font = UIFont.systemFont(ofSize: 28)
+                    button.addTarget(self, action: #selector(gridButtonTapped(_:)), for: .touchUpInside)
+                    
+                    // Add pan gesture for drag-to-swap
+                    let panGesture = UIPanGestureRecognizer(target: self, action: #selector(handlePanGesture(_:)))
+                    button.addGestureRecognizer(panGesture)
+                    
+                    gridButtons[row][col] = button
+                } else {
+                    button.backgroundColor = darkBg
+                    button.isUserInteractionEnabled = false
+                }
+                
+                rowStack.addArrangedSubview(button)
+            }
+        }
+    }
+    
+    @objc private func gridButtonTapped(_ sender: UIButton) {
+        guard let level = currentLevel, !isAnimating else { return }
+        
+        let index = sender.tag
+        let row = index / level.gridWidth
+        let col = index % level.gridWidth
+        
+        // Check if tapped piece is a powerup - if so, activate it
+        if let piece = gameGrid[row][col], piece.type != .normal {
+            // Powerup activation when tapped directly
+            isAnimating = true
+            var cascadingPowerups: [(row: Int, col: Int, type: PieceType)] = []
+            
+            switch piece.type {
+            case .verticalArrow:
+                // Shoot flames vertically down the column
+                shootFlamesVertically(column: col, rows: 0..<level.gridHeight) {}
+                
+                // ...existing code...
+                let impact = UIImpactFeedbackGenerator(style: .medium)
+                impact.impactOccurred()
+                for r in 0..<level.gridHeight {
+                    if gridShapeMap[r][col] && gameGrid[r][col] != nil {
+                        // Capture cascading powerups before clearing
+                        if let p = gameGrid[r][col], p.type != .normal && p.type != .verticalArrow {
+                            cascadingPowerups.append((row: r, col: col, type: p.type))
+                        }
+                        score += 1
+                        gameGrid[r][col] = nil
+                    }
+                }
+                
+            case .horizontalArrow:
+                // Shoot flames horizontally across the row
+                shootFlamesHorizontally(row: row, columns: 0..<level.gridWidth) {}
+                
+                // ...existing code...
+                let impact = UIImpactFeedbackGenerator(style: .medium)
+                impact.impactOccurred()
+                for c in 0..<level.gridWidth {
+                    if gridShapeMap[row][c] && gameGrid[row][c] != nil {
+                        // Capture cascading powerups before clearing
+                        if let p = gameGrid[row][c], p.type != .normal && p.type != .horizontalArrow {
+                            cascadingPowerups.append((row: row, col: c, type: p.type))
+                        }
+                        score += 1
+                        gameGrid[row][c] = nil
+                    }
+                }
+                
+            case .bomb:
+                // Clear 3x3 area
+                let impact = UIImpactFeedbackGenerator(style: .medium)
+                impact.impactOccurred()
+                for dr in -1...1 {
+                    for dc in -1...1 {
+                        let nr = row + dr
+                        let nc = col + dc
+                        if nr >= 0 && nr < level.gridHeight && nc >= 0 && nc < level.gridWidth &&
+                           gridShapeMap[nr][nc] && gameGrid[nr][nc] != nil {
+                            // Capture cascading powerups before clearing
+                            if let p = gameGrid[nr][nc], p.type != .normal && p.type != .bomb {
+                                cascadingPowerups.append((row: nr, col: nc, type: p.type))
+                            }
+                            score += 1
+                            gameGrid[nr][nc] = nil
+                        }
+                    }
+                }
+                
+            case .flame:
+                // This shouldn't activate on tap alone - it needs a swap
+                // So do nothing here
+                break
+                
+            case .normal:
+                break
+            }
+            
+            selectedPiece = nil
+            updateGridDisplay()
+            updateUI()
+            
+            // Activate cascading powerups if any were captured
+            if !cascadingPowerups.isEmpty {
+                activateCascadingPowerups(cascadingPowerups)
+            } else {
+                // No cascading powerups, apply gravity immediately
+                applyGravity()
+            }
+            isAnimating = false
+            return
+        }
+        
+        if let selected = selectedPiece {
+            // Try to swap
+            if areAdjacent(selected.row, selected.col, row, col) {
+                swapPieces(selected.row, selected.col, row, col)
+                selectedPiece = nil
+            } else {
+                // Select new piece
+                selectedPiece = (row, col)
+                updateGridDisplay()
+            }
+        } else {
+            // Select first piece
+            selectedPiece = (row, col)
+            updateGridDisplay()
+        }
+    }
+    
+    private func areAdjacent(_ r1: Int, _ c1: Int, _ r2: Int, _ c2: Int) -> Bool {
+        let rowDiff = abs(r1 - r2)
+        let colDiff = abs(c1 - c2)
+        return (rowDiff == 1 && colDiff == 0) || (rowDiff == 0 && colDiff == 1)
+    }
+    
+    @objc private func handlePanGesture(_ gesture: UIPanGestureRecognizer) {
+        guard let level = currentLevel, !isAnimating, let button = gesture.view as? UIButton else { return }
+        
+        let translation = gesture.translation(in: gridContainer)
+        let index = button.tag
+        let startRow = index / level.gridWidth
+        let startCol = index % level.gridWidth
+        
+        switch gesture.state {
+        case .began:
+            dragStartPiece = (row: startRow, col: startCol)
+            selectedPiece = (row: startRow, col: startCol)
+            updateGridDisplay()
+            
+        case .changed:
+            // Determine which piece we're dragging towards
+            let distance = sqrt(translation.x * translation.x + translation.y * translation.y)
+            
+            if distance > 30 { // Minimum drag distance
+                var targetRow = startRow
+                var targetCol = startCol
+                
+                // Determine direction based on translation
+                if abs(translation.x) > abs(translation.y) {
+                    // Horizontal drag
+                    if translation.x > 30 && startCol < level.gridWidth - 1 {
+                        targetCol = startCol + 1
+                    } else if translation.x < -30 && startCol > 0 {
+                        targetCol = startCol - 1
+                    }
+                } else {
+                    // Vertical drag
+                    if translation.y > 30 && startRow < level.gridHeight - 1 {
+                        targetRow = startRow + 1
+                    } else if translation.y < -30 && startRow > 0 {
+                        targetRow = startRow - 1
+                    }
+                }
+                
+                if gridShapeMap[targetRow][targetCol] {
+                    dragTargetPiece = (row: targetRow, col: targetCol)
+                    selectedPiece = (row: targetRow, col: targetCol)
+                    updateGridDisplay()
+                }
+            }
+            
+        case .ended, .cancelled:
+            if let startPiece = dragStartPiece, let targetPiece = dragTargetPiece {
+                if areAdjacent(startPiece.row, startPiece.col, targetPiece.row, targetPiece.col) {
+                    swapPieces(startPiece.row, startPiece.col, targetPiece.row, targetPiece.col)
+                }
+            }
+            dragStartPiece = nil
+            dragTargetPiece = nil
+            selectedPiece = nil
+            updateGridDisplay()
+            
+        default:
+            break
+        }
+    }
+    
+    private func swapPieces(_ r1: Int, _ c1: Int, _ r2: Int, _ c2: Int) {
+        isAnimating = true
+        movesRemaining -= 1
+        
+        // Remember the swap for potential revert
+        lastSwappedPositions = ((r1, c1), (r2, c2))
+        
+        guard let button1 = gridButtons[r1][c1],
+              let button2 = gridButtons[r2][c2] else {
+            isAnimating = false
+            lastSwappedPositions = nil
+            return
+        }
+        
+        // Get initial positions
+        let pos1 = button1.convert(CGPoint.zero, to: gridContainer)
+        let pos2 = button2.convert(CGPoint.zero, to: gridContainer)
+        
+        // Calculate the delta between positions
+        let deltaX = pos2.x - pos1.x
+        let deltaY = pos2.y - pos1.y
+        
+        // Animate the swap: button1 moves to button2's position and vice versa
+        UIView.animate(withDuration: 0.3, delay: 0, options: .curveEaseInOut, animations: {
+            button1.transform = CGAffineTransform(translationX: deltaX, y: deltaY)
+            button2.transform = CGAffineTransform(translationX: -deltaX, y: -deltaY)
+            
+            // Bring button1 to front during animation
+            button1.layer.zPosition = 100
+        }, completion: { _ in
+            button1.layer.zPosition = 0
+            button1.transform = .identity
+            button2.transform = .identity
+        })
+        
+        // Perform the actual swap in data after animation
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { [weak self] in
+            guard let self = self else { return }
+            
+            // Swap in data
+            let temp = self.gameGrid[r1][c1]
+            self.gameGrid[r1][c1] = self.gameGrid[r2][c2]
+            self.gameGrid[r2][c2] = temp
+            
+            // Update positions
+            self.gameGrid[r1][c1]?.row = r1
+            self.gameGrid[r1][c1]?.col = c1
+            self.gameGrid[r2][c2]?.row = r2
+            self.gameGrid[r2][c2]?.col = c2
+            
+            self.updateGridDisplay()
+            
+            // Check for power-up activation before checking matches
+            let powerUpAtR1C1 = self.gameGrid[r1][c1]?.type != .normal
+            let powerUpAtR2C2 = self.gameGrid[r2][c2]?.type != .normal
+            
+            if powerUpAtR1C1 || powerUpAtR2C2 {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { [weak self] in
+                    self?.activatePowerUps(r1, c1, r2, c2)
+                }
+            } else {
+                // Check for matches after swap animation
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { [weak self] in
+                    self?.checkForMatches()
+                }
+            }
+        }
+    }
+    
+    private func activatePowerUps(_ r1: Int, _ c1: Int, _ r2: Int, _ c2: Int) {
+        guard let level = currentLevel else { return }
+        
+        let piece1 = gameGrid[r1][c1]
+        let piece2 = gameGrid[r2][c2]
+        
+        // Track tiles that will be cleared AND powerups found in them
+        var clearedTiles: Set<String> = []
+        var cascadingPowerups: [(row: Int, col: Int, type: PieceType)] = []
+        
+        // Handle two bombs merging - clear entire screen
+        if piece1?.type == .bomb && piece2?.type == .bomb {
+            let impact = UIImpactFeedbackGenerator(style: .heavy)
+            impact.impactOccurred()
+            
+            // Clear entire grid and track powerups
+            for row in 0..<level.gridHeight {
+                for col in 0..<level.gridWidth {
+                    if gridShapeMap[row][col] && gameGrid[row][col] != nil {
+                        // Check if this is a powerup BEFORE clearing
+                        if let piece = gameGrid[row][col], piece.type != .normal {
+                            cascadingPowerups.append((row: row, col: col, type: piece.type))
+                        }
+                        clearedTiles.insert("\(row),\(col)")
+                        score += 1
+                        gameGrid[row][col] = nil
+                    }
+                }
+            }
+            updateUI()
+            activateCascadingPowerups(cascadingPowerups)
+            applyGravity()
+            return
+        }
+        
+        // Handle arrow combinations
+        if (piece1?.type == .verticalArrow && piece2?.type == .horizontalArrow) ||
+           (piece1?.type == .horizontalArrow && piece2?.type == .verticalArrow) {
+            let impact = UIImpactFeedbackGenerator(style: .heavy)
+            impact.impactOccurred()
+            
+            let arrowRow = piece1?.type == .verticalArrow ? r1 : r2
+            let arrowCol = piece1?.type == .horizontalArrow ? c1 : c2
+            
+            // Clear row and column, tracking powerups
+            for col in 0..<level.gridWidth {
+                if gridShapeMap[arrowRow][col] && gameGrid[arrowRow][col] != nil {
+                    if let piece = gameGrid[arrowRow][col], piece.type != .normal {
+                        cascadingPowerups.append((row: arrowRow, col: col, type: piece.type))
+                    }
+                    clearedTiles.insert("\(arrowRow),\(col)")
+                    score += 1
+                    gameGrid[arrowRow][col] = nil
+                }
+            }
+            for row in 0..<level.gridHeight {
+                if gridShapeMap[row][arrowCol] && gameGrid[row][arrowCol] != nil {
+                    if let piece = gameGrid[row][arrowCol], piece.type != .normal {
+                        cascadingPowerups.append((row: row, col: arrowCol, type: piece.type))
+                    }
+                    clearedTiles.insert("\(row),\(arrowCol)")
+                    score += 1
+                    gameGrid[row][arrowCol] = nil
+                }
+            }
+            updateUI()
+            activateCascadingPowerups(cascadingPowerups)
+            applyGravity()
+            return
+        }
+        
+        // Handle individual power-ups
+        if piece1?.type == .verticalArrow {
+            let impact = UIImpactFeedbackGenerator(style: .medium)
+            impact.impactOccurred()
+            
+            for row in 0..<level.gridHeight {
+                if gridShapeMap[row][c1] && gameGrid[row][c1] != nil {
+                    if let piece = gameGrid[row][c1], piece.type != .normal {
+                        cascadingPowerups.append((row: row, col: c1, type: piece.type))
+                    }
+                    clearedTiles.insert("\(row),\(c1)")
+                    score += 1
+                    gameGrid[row][c1] = nil
+                }
+            }
+            gameGrid[r1][c1] = nil
+        }
+        
+        if piece2?.type == .verticalArrow {
+            let impact = UIImpactFeedbackGenerator(style: .medium)
+            impact.impactOccurred()
+            
+            for row in 0..<level.gridHeight {
+                if gridShapeMap[row][c2] && gameGrid[row][c2] != nil {
+                    if let piece = gameGrid[row][c2], piece.type != .normal {
+                        cascadingPowerups.append((row: row, col: c2, type: piece.type))
+                    }
+                    clearedTiles.insert("\(row),\(c2)")
+                    score += 1
+                    gameGrid[row][c2] = nil
+                }
+            }
+            gameGrid[r2][c2] = nil
+        }
+        
+        if piece1?.type == .horizontalArrow {
+            let impact = UIImpactFeedbackGenerator(style: .medium)
+            impact.impactOccurred()
+            
+            for col in 0..<level.gridWidth {
+                if gridShapeMap[r1][col] && gameGrid[r1][col] != nil {
+                    if let piece = gameGrid[r1][col], piece.type != .normal {
+                        cascadingPowerups.append((row: r1, col: col, type: piece.type))
+                    }
+                    clearedTiles.insert("\(r1),\(col)")
+                    score += 1
+                    gameGrid[r1][col] = nil
+                }
+            }
+            gameGrid[r1][c1] = nil
+        }
+        
+        if piece2?.type == .horizontalArrow {
+            let impact = UIImpactFeedbackGenerator(style: .medium)
+            impact.impactOccurred()
+            
+            for col in 0..<level.gridWidth {
+                if gridShapeMap[r2][col] && gameGrid[r2][col] != nil {
+                    if let piece = gameGrid[r2][col], piece.type != .normal {
+                        cascadingPowerups.append((row: r2, col: col, type: piece.type))
+                    }
+                    clearedTiles.insert("\(r2),\(col)")
+                    score += 1
+                    gameGrid[r2][col] = nil
+                }
+            }
+            gameGrid[r2][c2] = nil
+        }
+        
+        if piece1?.type == .bomb {
+            let impact = UIImpactFeedbackGenerator(style: .medium)
+            impact.impactOccurred()
+            
+            for dr in -1...1 {
+                for dc in -1...1 {
+                    let nr = r1 + dr
+                    let nc = c1 + dc
+                    if nr >= 0 && nr < level.gridHeight && nc >= 0 && nc < level.gridWidth &&
+                       gridShapeMap[nr][nc] && gameGrid[nr][nc] != nil {
+                        if let piece = gameGrid[nr][nc], piece.type != .normal {
+                            cascadingPowerups.append((row: nr, col: nc, type: piece.type))
+                        }
+                        clearedTiles.insert("\(nr),\(nc)")
+                        score += 1
+                        gameGrid[nr][nc] = nil
+                    }
+                }
+            }
+            gameGrid[r1][c1] = nil
+        }
+        
+        if piece2?.type == .bomb {
+            let impact = UIImpactFeedbackGenerator(style: .medium)
+            impact.impactOccurred()
+            
+            for dr in -1...1 {
+                for dc in -1...1 {
+                    let nr = r2 + dr
+                    let nc = c2 + dc
+                    if nr >= 0 && nr < level.gridHeight && nc >= 0 && nc < level.gridWidth &&
+                       gridShapeMap[nr][nc] && gameGrid[nr][nc] != nil {
+                        if let piece = gameGrid[nr][nc], piece.type != .normal {
+                            cascadingPowerups.append((row: nr, col: nc, type: piece.type))
+                        }
+                        clearedTiles.insert("\(nr),\(nc)")
+                        score += 1
+                        gameGrid[nr][nc] = nil
+                    }
+                }
+            }
+            gameGrid[r2][c2] = nil
+        }
+        
+        // Handle flame power-ups - clears ALL matching pieces
+        if piece1?.type == .flame {
+            let impact = UIImpactFeedbackGenerator(style: .heavy)
+            impact.impactOccurred()
+            
+            if let swappedPiece = piece2, swappedPiece.type == .normal {
+                for row in 0..<level.gridHeight {
+                    for col in 0..<level.gridWidth {
+                        if gridShapeMap[row][col], let piece = gameGrid[row][col] {
+                            if piece.itemId == swappedPiece.itemId && piece.colorIndex == swappedPiece.colorIndex {
+                                if piece.type != .normal {
+                                    cascadingPowerups.append((row: row, col: col, type: piece.type))
+                                }
+                                clearedTiles.insert("\(row),\(col)")
+                                score += 1
+                                gameGrid[row][col] = nil
+                            }
+                        }
+                    }
+                }
+            }
+            gameGrid[r1][c1] = nil
+        }
+        
+        if piece2?.type == .flame {
+            let impact = UIImpactFeedbackGenerator(style: .heavy)
+            impact.impactOccurred()
+            
+            if let swappedPiece = piece1, swappedPiece.type == .normal {
+                for row in 0..<level.gridHeight {
+                    for col in 0..<level.gridWidth {
+                        if gridShapeMap[row][col], let piece = gameGrid[row][col] {
+                            if piece.itemId == swappedPiece.itemId && piece.colorIndex == swappedPiece.colorIndex {
+                                if piece.type != .normal {
+                                    cascadingPowerups.append((row: row, col: col, type: piece.type))
+                                }
+                                clearedTiles.insert("\(row),\(col)")
+                                score += 1
+                                gameGrid[row][col] = nil
+                            }
+                        }
+                    }
+                }
+            }
+            gameGrid[r2][c2] = nil
+        }
+        
+        updateUI()
+        
+        // Activate cascading powerups
+        if !cascadingPowerups.isEmpty {
+            activateCascadingPowerups(cascadingPowerups)
+        }
+        
+        applyGravity()
+    }
+    
+    private func activateCascadingPowerups(_ powerups: [(row: Int, col: Int, type: PieceType)]) {
+        guard let level = currentLevel else { return }
+        
+        print("🔥 DEBUG activateCascadingPowerups called with \(powerups.count) powerups")
+        for (row, col, type) in powerups {
+            print("🔥 DEBUG: Powerup at (\(row),\(col)) type: \(type)")
+        }
+        
+        if powerups.isEmpty {
+            // No more cascading powerups - apply gravity and check for new matches
+            applyGravity()
+            return
+        }
+        
+        // Track all animations to know when they're complete
+        var flameAnimationsInProgress = 0
+        var flameAnimationsCompleted = 0
+        
+        // Count how many powerups will create flame animations
+        for (_, _, type) in powerups {
+            switch type {
+            case .verticalArrow, .horizontalArrow, .bomb:
+                flameAnimationsInProgress += 1
+            default:
+                break
+            }
+        }
+        
+        // If no flame animations, just process and move on
+        guard flameAnimationsInProgress > 0 else {
+            updateGridDisplay()
+            updateUI()
+            applyGravityAfterCascade()
+            return
+        }
+        
+        // Process each cascading powerup
+        for (row, col, type) in powerups {
+            switch type {
+            case .verticalArrow:
+                // Shoot flames vertically - fires immediately, completion handler tracks when done
+                shootFlamesVertically(column: col, rows: 0..<level.gridHeight) {
+                    flameAnimationsCompleted += 1
+                    if flameAnimationsCompleted == flameAnimationsInProgress {
+                        // All flame animations complete - now apply gravity
+                        self.applyGravityAfterCascade()
+                    }
+                }
+                
+                // Clear entire column
+                for r in 0..<level.gridHeight {
+                    if gridShapeMap[r][col] && gameGrid[r][col] != nil {
+                        score += 1
+                        gameGrid[r][col] = nil
+                    }
+                }
+                print("🔥 Cascading vertical arrow cleared column \(col)")
+                
+            case .horizontalArrow:
+                // Shoot flames horizontally - fires immediately, completion handler tracks when done
+                print("🔥 DEBUG: Shooting flames horizontally for row \(row)")
+                shootFlamesHorizontally(row: row, columns: 0..<level.gridWidth) {
+                    flameAnimationsCompleted += 1
+                    if flameAnimationsCompleted == flameAnimationsInProgress {
+                        // All flame animations complete - now apply gravity
+                        self.applyGravityAfterCascade()
+                    }
+                }
+                
+                // Clear entire row
+                for c in 0..<level.gridWidth {
+                    if gridShapeMap[row][c] && gameGrid[row][c] != nil {
+                        score += 1
+                        gameGrid[row][c] = nil
+                    }
+                }
+                print("🔥 Cascading horizontal arrow cleared row \(row)")
+                
+            case .bomb:
+                // Just clear 3x3 - no flame animation for bombs from cascades
+                for dr in -1...1 {
+                    for dc in -1...1 {
+                        let nr = row + dr
+                        let nc = col + dc
+                        if nr >= 0 && nr < level.gridHeight && nc >= 0 && nc < level.gridWidth &&
+                           gridShapeMap[nr][nc] && gameGrid[nr][nc] != nil {
+                            score += 1
+                            gameGrid[nr][nc] = nil
+                        }
+                    }
+                }
+                print("🔥 Cascading bomb cleared 3x3 area around (\(row), \(col))")
+                
+                // For bombs, don't wait for animation - just decrement and check if complete
+                flameAnimationsCompleted += 1
+                if flameAnimationsCompleted == flameAnimationsInProgress {
+                    self.applyGravityAfterCascade()
+                }
+                
+            default:
+                break
+            }
+        }
+        
+        updateGridDisplay()
+        updateUI()
+    }
+    
+    private func applyGravityAfterCascade() {
+        guard let level = currentLevel else { return }
+        
+        // Clear tracking - we track ALL pieces that move (existing + new)
+        movedPieces.removeAll()
+        fallDistances.removeAll()
+        newPieces.removeAll()
+        
+        // STEP 1: Apply gravity - track existing pieces that fall
+        for col in 0..<level.gridWidth {
+            // Collect all non-empty positions
+            var pieces: [(row: Int, piece: GamePiece)] = []
+            
+            for row in 0..<level.gridHeight {
+                if gridShapeMap[row][col], let piece = gameGrid[row][col] {
+                    pieces.append((row: row, piece: piece))
+                    gameGrid[row][col] = nil  // Clear current position
+                }
+            }
+            
+            // Place pieces from bottom up, tracking how far each fell
+            var targetRow = level.gridHeight - 1
+            for (originalRow, piece) in pieces.reversed() {
+                while targetRow >= 0 && (!gridShapeMap[targetRow][col] || gameGrid[targetRow][col] != nil) {
+                    targetRow -= 1
+                }
+                
+                if targetRow >= 0 {
+                    let distance = originalRow - targetRow  // Distance fallen
+                    gameGrid[targetRow][col] = piece
+                    piece.row = targetRow
+                    piece.col = col
+                    
+                    movedPieces.insert("\(targetRow),\(col)")
+                    fallDistances["\(targetRow),\(col)"] = distance
+                    
+                    targetRow -= 1
+                }
+            }
+        }
+        
+        // STEP 2: Refill empty spaces with NEW pieces - track with larger distance
+        for col in 0..<level.gridWidth {
+            for row in 0..<level.gridHeight {
+                if gridShapeMap[row][col] && gameGrid[row][col] == nil {
+                    let randomItemIndex = Int.random(in: 0..<level.items.count)
+                    let randomColorIndex = Int.random(in: 0..<level.colors.count)
+                    let newPiece = GamePiece(
+                        itemId: level.items[randomItemIndex].id,
+                        colorIndex: randomColorIndex,
+                        row: row,
+                        col: col,
+                        type: .normal
+                    )
+                    gameGrid[row][col] = newPiece
+                    
+                    // NEW pieces get larger fall distance (from above grid)
+                    // Only mark as moved if not already tracked as existing piece
+                    if !movedPieces.contains("\(row),\(col)") {
+                        movedPieces.insert("\(row),\(col)")
+                        // Distance for new pieces: from top of screen (larger distance)
+                        fallDistances["\(row),\(col)"] = row + 2
+                        // Mark this as a NEW piece
+                        newPieces.insert("\(row),\(col)")
+                    }
+                }
+            }
+        }
+        
+        // Update grid display IMMEDIATELY
+        updateGridDisplay()
+        
+        // Animate pieces falling, then check for matches when complete
+        animatePiecesDrop() { [weak self] in
+            self?.checkForMatches()
+        }
+    }
+    
+    private func shootFlamesVertically(column: Int, rows: Range<Int>, completion: @escaping () -> Void) {
+        guard column < gridButtons[0].count else {
+            completion()
+            return
+        }
+        
+        // Find the middle row to start flames from
+        let middleRow = (rows.lowerBound + rows.upperBound) / 2
+        guard let gridButton = gridButtons[middleRow][column] else {
+            completion()
+            return
+        }
+        
+        // Create flame shooting UP
+        let flameLabelUp = UILabel()
+        flameLabelUp.text = "🔥"
+        flameLabelUp.font = UIFont.systemFont(ofSize: 40)
+        flameLabelUp.sizeToFit()
+        
+        let startFrame = gridButton.frame
+        flameLabelUp.frame = CGRect(x: startFrame.midX - flameLabelUp.bounds.width/2,
+                                     y: startFrame.midY - flameLabelUp.bounds.height/2,
+                                     width: flameLabelUp.bounds.width,
+                                     height: flameLabelUp.bounds.height)
+        
+        gridContainer.addSubview(flameLabelUp)
+        
+        // Calculate end position (top of column)
+        let topFrame = gridButtons[rows.lowerBound][column]?.frame ?? startFrame
+        let endYUp = topFrame.midY - flameLabelUp.bounds.height
+        
+        var animationsComplete = 0
+        let completeAnimation = {
+            animationsComplete += 1
+            if animationsComplete == 2 {
+                completion()
+            }
+        }
+        
+        // Animate flame shooting up
+        UIView.animate(withDuration: 0.5, delay: 0, options: .curveLinear, animations: {
+            flameLabelUp.frame.origin.y = endYUp
+            flameLabelUp.alpha = 0
+        }, completion: { _ in
+            flameLabelUp.removeFromSuperview()
+            completeAnimation()
+        })
+        
+        // Create flame shooting DOWN
+        let flameLabelDown = UILabel()
+        flameLabelDown.text = "🔥"
+        flameLabelDown.font = UIFont.systemFont(ofSize: 40)
+        flameLabelDown.sizeToFit()
+        
+        flameLabelDown.frame = CGRect(x: startFrame.midX - flameLabelDown.bounds.width/2,
+                                       y: startFrame.midY - flameLabelDown.bounds.height/2,
+                                       width: flameLabelDown.bounds.width,
+                                       height: flameLabelDown.bounds.height)
+        
+        gridContainer.addSubview(flameLabelDown)
+        
+        // Calculate end position (bottom of column)
+        let bottomFrame = gridButtons[rows.upperBound - 1][column]?.frame ?? startFrame
+        let endYDown = bottomFrame.midY + flameLabelDown.bounds.height
+        
+        // Animate flame shooting down
+        UIView.animate(withDuration: 0.5, delay: 0, options: .curveLinear, animations: {
+            flameLabelDown.frame.origin.y = endYDown
+            flameLabelDown.alpha = 0
+        }, completion: { _ in
+            flameLabelDown.removeFromSuperview()
+            completeAnimation()
+        })
+    }
+    
+    private func shootFlamesHorizontally(row: Int, columns: Range<Int>, completion: @escaping () -> Void) {
+        guard row < gridButtons.count else {
+            print("🔥 DEBUG: row \(row) >= gridButtons.count \(gridButtons.count)")
+            completion()
+            return
+        }
+        guard !gridButtons[row].isEmpty else {
+            print("🔥 DEBUG: gridButtons[\(row)] is empty")
+            completion()
+            return
+        }
+        
+        // Find the middle column to start flames from
+        let middleCol = (columns.lowerBound + columns.upperBound) / 2
+        guard middleCol < gridButtons[row].count,
+              let gridButton = gridButtons[row][middleCol] else {
+            print("🔥 DEBUG: middleCol \(middleCol) out of bounds or no button")
+            completion()
+            return
+        }
+        
+        // Convert button frame to gridContainer coordinates (not view!)
+        // This gives us the position relative to where we're adding the flames
+        let buttonFrameInContainer = gridButton.convert(gridButton.bounds, to: gridContainer)
+        let startY = buttonFrameInContainer.midY
+        print("🔥 DEBUG: Horizontal flames at row \(row), startY = \(startY), button container frame = \(buttonFrameInContainer)")
+        
+        // Create flame shooting LEFT
+        let flameLabelLeft = UILabel()
+        flameLabelLeft.text = "🔥"
+        flameLabelLeft.font = UIFont.systemFont(ofSize: 40)
+        flameLabelLeft.sizeToFit()
+        
+        // Use the converted frame for the middle button (in container coordinates)
+        let middleButtonFrame = gridButton.convert(gridButton.bounds, to: gridContainer)
+        flameLabelLeft.frame = CGRect(x: middleButtonFrame.midX - flameLabelLeft.bounds.width/2,
+                                       y: startY - flameLabelLeft.bounds.height/2,
+                                       width: flameLabelLeft.bounds.width,
+                                       height: flameLabelLeft.bounds.height)
+        
+        gridContainer.addSubview(flameLabelLeft)
+        
+        // Calculate end position (left side) - convert the left button frame too
+        let leftButton = gridButtons[row][columns.lowerBound]
+        let leftButtonFrame = leftButton?.convert(leftButton!.bounds, to: gridContainer) ?? middleButtonFrame
+        let endXLeft = leftButtonFrame.midX - flameLabelLeft.bounds.width
+        
+        var animationsComplete = 0
+        let completeAnimation = {
+            animationsComplete += 1
+            if animationsComplete == 2 {
+                completion()
+            }
+        }
+        
+        // Animate flame shooting left (keep Y constant, only move X)
+        UIView.animate(withDuration: 0.5, delay: 0, options: .curveLinear, animations: {
+            flameLabelLeft.frame.origin.x = endXLeft
+            flameLabelLeft.alpha = 0
+        }, completion: { _ in
+            flameLabelLeft.removeFromSuperview()
+            completeAnimation()
+        })
+        
+        // Create flame shooting RIGHT
+        let flameLabelRight = UILabel()
+        flameLabelRight.text = "🔥"
+        flameLabelRight.font = UIFont.systemFont(ofSize: 40)
+        flameLabelRight.sizeToFit()
+        
+        flameLabelRight.frame = CGRect(x: middleButtonFrame.midX - flameLabelRight.bounds.width/2,
+                                        y: startY - flameLabelRight.bounds.height/2,
+                                        width: flameLabelRight.bounds.width,
+                                        height: flameLabelRight.bounds.height)
+        
+        gridContainer.addSubview(flameLabelRight)
+        
+        // Calculate end position (right side) - convert the right button frame too
+        let rightButton = gridButtons[row][columns.upperBound - 1]
+        let rightButtonFrame = rightButton?.convert(rightButton!.bounds, to: gridContainer) ?? middleButtonFrame
+        let endXRight = rightButtonFrame.midX + flameLabelRight.bounds.width
+        
+        // Animate flame shooting right (keep Y constant, only move X)
+        UIView.animate(withDuration: 0.5, delay: 0, options: .curveLinear, animations: {
+            flameLabelRight.frame.origin.x = endXRight
+            flameLabelRight.alpha = 0
+        }, completion: { _ in
+            flameLabelRight.removeFromSuperview()
+            completeAnimation()
+        })
+    }
+    
+    private func checkForMatches() {
+        guard let level = currentLevel else { return }
+        
+        // First, check if there are any valid moves available
+        if !hasValidMoves() {
+            print("🔄 No valid moves available - triggering shuffle")
+            shuffleGrid()
+            return
+        }
+        
+        var matchesToRemove: Set<String> = []
+        var powerUpsToCreate: [(row: Int, col: Int, type: PieceType)] = []
+        
+        // Check horizontal matches (5+ first, then 4, then 3)
+        for row in 0..<level.gridHeight {
+            var col = 0
+            while col < level.gridWidth {
+                if gridShapeMap[row][col], let piece = gameGrid[row][col], piece.type == .normal {
+                    var matchCount = 1
+                    var checkCol = col + 1
+                    
+                    while checkCol < level.gridWidth &&
+                          gridShapeMap[row][checkCol],
+                          let nextPiece = gameGrid[row][checkCol],
+                          piece.matches(nextPiece) {
+                        matchCount += 1
+                        checkCol += 1
+                    }
+                    
+                    if matchCount >= 5 {
+                        // 5+ match: create flame power-up at middle
+                        let middleCol = col + matchCount / 2
+                        powerUpsToCreate.append((row: row, col: middleCol, type: .flame))
+                        
+                        // Mark all pieces for removal using loop indices, not piece positions
+                        for i in col..<col + matchCount {
+                            matchesToRemove.insert("\(row),\(i)")
+                        }
+                    } else if matchCount >= 4 {
+                        // 4 match: create horizontal arrow at middle
+                        let middleCol = col + matchCount / 2
+                        powerUpsToCreate.append((row: row, col: middleCol, type: .horizontalArrow))
+                        print("🔥 DEBUG: Created horizontal arrow powerup at row \(row), col \(middleCol)")
+                        
+                        // Mark all pieces for removal using loop indices, not piece positions
+                        for i in col..<col + matchCount {
+                            matchesToRemove.insert("\(row),\(i)")
+                        }
+                    } else if matchCount >= 3 {
+                        // 3 match: remove pieces using loop indices
+                        for i in col..<col + matchCount {
+                            matchesToRemove.insert("\(row),\(i)")
+                        }
+                    }
+                    
+                    col = max(col + 1, checkCol)
+                } else {
+                    col += 1
+                }
+            }
+        }
+        
+        // Check vertical matches (5+ first, then 4, then 3)
+        for col in 0..<level.gridWidth {
+            var row = 0
+            while row < level.gridHeight {
+                if gridShapeMap[row][col], let piece = gameGrid[row][col], piece.type == .normal {
+                    var matchCount = 1
+                    var checkRow = row + 1
+                    
+                    while checkRow < level.gridHeight &&
+                          gridShapeMap[checkRow][col],
+                          let nextPiece = gameGrid[checkRow][col],
+                          piece.matches(nextPiece) {
+                        matchCount += 1
+                        checkRow += 1
+                    }
+                    
+                    if matchCount >= 5 {
+                        // 5+ match: create flame power-up at middle
+                        let middleRow = row + matchCount / 2
+                        powerUpsToCreate.append((row: middleRow, col: col, type: .flame))
+                        
+                        // Mark all pieces for removal using loop indices
+                        for i in row..<row + matchCount {
+                            matchesToRemove.insert("\(i),\(col)")
+                        }
+                    } else if matchCount >= 4 {
+                        // 4 match: create vertical arrow at middle
+                        let middleRow = row + matchCount / 2
+                        powerUpsToCreate.append((row: middleRow, col: col, type: .verticalArrow))
+                        print("🔥 DEBUG: Created vertical arrow powerup at row \(middleRow), col \(col)")
+                        
+                        // Mark all pieces for removal using loop indices
+                        for i in row..<row + matchCount {
+                            matchesToRemove.insert("\(i),\(col)")
+                        }
+                    } else if matchCount >= 3 {
+                        // 3 match: remove pieces using loop indices
+                        for i in row..<row + matchCount {
+                            matchesToRemove.insert("\(i),\(col)")
+                        }
+                    }
+                    
+                    row = max(row + 1, checkRow)
+                } else {
+                    row += 1
+                }
+            }
+        }
+        
+        // Check for 2x2 bomb patterns
+        for row in 0..<level.gridHeight - 1 {
+            for col in 0..<level.gridWidth - 1 {
+                if gridShapeMap[row][col] && gridShapeMap[row][col + 1] &&
+                   gridShapeMap[row + 1][col] && gridShapeMap[row + 1][col + 1],
+                   let p1 = gameGrid[row][col], p1.type == .normal,
+                   let p2 = gameGrid[row][col + 1], p2.type == .normal,
+                   let p3 = gameGrid[row + 1][col], p3.type == .normal,
+                   let p4 = gameGrid[row + 1][col + 1], p4.type == .normal,
+                   p1.matches(p2) && p2.matches(p3) && p3.matches(p4) {
+                    // Create bomb at center
+                    let bombRow = row + 1
+                    let bombCol = col
+                    powerUpsToCreate.append((row: bombRow, col: bombCol, type: .bomb))
+                    
+                    // Mark all 4 pieces for removal using grid indices
+                    matchesToRemove.insert("\(row),\(col)")
+                    matchesToRemove.insert("\(row),\(col + 1)")
+                    matchesToRemove.insert("\(row + 1),\(col)")
+                    matchesToRemove.insert("\(row + 1),\(col + 1)")
+                }
+            }
+        }
+        
+        if !matchesToRemove.isEmpty {
+            // Trigger haptic feedback
+            let impact = UIImpactFeedbackGenerator(style: .heavy)
+            impact.impactOccurred()
+            
+            // Valid match found - clear lastSwappedPositions
+            lastSwappedPositions = nil
+            
+            // Animate matched pieces, then proceed when animation completes
+            animateMatchedPieces(matchesToRemove) { [weak self] in
+                // Now that animation is complete, remove the pieces from grid
+                for posString in matchesToRemove {
+                    let parts = posString.split(separator: ",").map { Int($0) ?? 0 }
+                    if parts.count == 2 {
+                        self?.score += 1
+                        self?.gameGrid[parts[0]][parts[1]] = nil
+                    }
+                }
+                
+                // Create power-ups
+                for powerUp in powerUpsToCreate {
+                    self?.gameGrid[powerUp.row][powerUp.col] = GamePiece(
+                        itemId: "power_up",
+                        colorIndex: 0,
+                        row: powerUp.row,
+                        col: powerUp.col,
+                        type: powerUp.type
+                    )
+                }
+                
+                self?.updateUI()
+                self?.updateGridDisplay()
+                self?.applyGravity()
+            }
+        } else {
+            // No match found - revert the swap if one was made
+            if let ((r1, c1), (r2, c2)) = lastSwappedPositions {
+                print("⚠️ Invalid move - reverting swap")
+                lastSwappedPositions = nil
+                
+                guard let button1 = gridButtons[r1][c1],
+                      let button2 = gridButtons[r2][c2] else {
+                    isAnimating = false
+                    return
+                }
+                
+                // Get current positions
+                let pos1 = button1.convert(CGPoint.zero, to: gridContainer)
+                let pos2 = button2.convert(CGPoint.zero, to: gridContainer)
+                
+                // Calculate the delta to move back (deltaX not currently used but kept for reference)
+                let _ = pos2.x - pos1.x
+                
+                // Very slow revert animation - pieces slide back very slowly so you can clearly see it
+                UIView.animate(withDuration: 2.5, delay: 0, options: .curveEaseInOut, animations: {
+                    button1.transform = .identity
+                    button2.transform = .identity
+                }, completion: { _ in
+                    // Revert the swap in data
+                    let temp = self.gameGrid[r1][c1]
+                    self.gameGrid[r1][c1] = self.gameGrid[r2][c2]
+                    self.gameGrid[r2][c2] = temp
+                    
+                    // Update positions
+                    self.gameGrid[r1][c1]?.row = r1
+                    self.gameGrid[r1][c1]?.col = c1
+                    self.gameGrid[r2][c2]?.row = r2
+                    self.gameGrid[r2][c2]?.col = c2
+                    
+                    // Refund the move
+                    self.movesRemaining += 1
+                    
+                    self.updateGridDisplay()
+                    self.updateUI()
+                    self.isAnimating = false
+                })
+            } else {
+                isAnimating = false
+            }
+        }
+    }
+    
+    private func animateMatchedPieces(_ matchesToRemove: Set<String>, completion: @escaping () -> Void) {
+        guard !matchesToRemove.isEmpty else {
+            completion()
+            return
+        }
+        
+        let allButtons = matchesToRemove.compactMap { posString -> UIButton? in
+            let parts = posString.split(separator: ",").map { Int($0) ?? 0 }
+            guard parts.count == 2 else { return nil }
+            let row = parts[0]
+            let col = parts[1]
+            return gridButtons[row][col]
+        }
+        
+        guard !allButtons.isEmpty else {
+            completion()
+            return
+        }
+        
+        var animationCount = 0
+        var completedCount = 0
+        
+        for posString in matchesToRemove {
+            let parts = posString.split(separator: ",").map { Int($0) ?? 0 }
+            guard parts.count == 2 else { continue }
+            let row = parts[0]
+            let col = parts[1]
+            
+            if let button = gridButtons[row][col] {
+                animationCount += 1
+                
+                // Animate: scale down + fade + rotate
+                UIView.animate(withDuration: 0.2, animations: {
+                    button.transform = CGAffineTransform(scaleX: 0.1, y: 0.1).rotated(by: CGFloat.pi)
+                    button.alpha = 0.0
+                }, completion: { _ in
+                    // Reset transform after animation so new piece displays correctly
+                    button.transform = .identity
+                    button.alpha = 1.0
+                    
+                    completedCount += 1
+                    // When all animations complete, call the completion handler
+                    if completedCount == animationCount {
+                        completion()
+                    }
+                })
+            }
+        }
+    }
+    
+    private func applyGravity() {
+        guard let level = currentLevel else { return }
+        
+        // Clear tracking - we track ALL pieces that move (existing + new)
+        movedPieces.removeAll()
+        fallDistances.removeAll()
+        newPieces.removeAll()  // Clear the new pieces tracker
+        
+        // STEP 1: Apply gravity - track existing pieces that fall
+        for col in 0..<level.gridWidth {
+            // Collect all non-empty positions
+            var pieces: [(row: Int, piece: GamePiece)] = []
+            
+            for row in 0..<level.gridHeight {
+                if gridShapeMap[row][col], let piece = gameGrid[row][col] {
+                    pieces.append((row: row, piece: piece))
+                    gameGrid[row][col] = nil  // Clear current position
+                }
+            }
+            
+            // Place pieces from bottom up, tracking how far each fell
+            var targetRow = level.gridHeight - 1
+            for (originalRow, piece) in pieces.reversed() {
+                while targetRow >= 0 && (!gridShapeMap[targetRow][col] || gameGrid[targetRow][col] != nil) {
+                    targetRow -= 1
+                }
+                
+                if targetRow >= 0 {
+                    let distance = originalRow - targetRow  // Distance fallen
+                    gameGrid[targetRow][col] = piece
+                    piece.row = targetRow
+                    piece.col = col
+                    
+                    movedPieces.insert("\(targetRow),\(col)")
+                    fallDistances["\(targetRow),\(col)"] = distance
+                    
+                    targetRow -= 1
+                }
+            }
+        }
+        
+        // STEP 2: Refill empty spaces with NEW pieces - track with larger distance
+        for col in 0..<level.gridWidth {
+            for row in 0..<level.gridHeight {
+                if gridShapeMap[row][col] && gameGrid[row][col] == nil {
+                    let randomItemIndex = Int.random(in: 0..<level.items.count)
+                    let randomColorIndex = Int.random(in: 0..<level.colors.count)
+                    let newPiece = GamePiece(
+                        itemId: level.items[randomItemIndex].id,
+                        colorIndex: randomColorIndex,
+                        row: row,
+                        col: col,
+                        type: .normal
+                    )
+                    gameGrid[row][col] = newPiece
+                    
+                    // NEW pieces get larger fall distance (from above grid)
+                    // Only mark as moved if not already tracked as existing piece
+                    if !movedPieces.contains("\(row),\(col)") {
+                        movedPieces.insert("\(row),\(col)")
+                        // Distance for new pieces: from top of screen (larger distance)
+                        fallDistances["\(row),\(col)"] = row + 2
+                        // Mark this as a NEW piece
+                        newPieces.insert("\(row),\(col)")
+                    }
+                }
+            }
+        }
+        
+        // Update grid display IMMEDIATELY
+        updateGridDisplay()
+        
+        // Animate pieces falling, then check for matches when complete
+        animatePiecesDrop() { [weak self] in
+            self?.checkForMatches()
+        }
+    }
+    
+    private func animatePiecesDrop(completion: @escaping () -> Void) {
+        guard let level = currentLevel else {
+            completion()
+            return
+        }
+        
+        // Pieces fall at consistent speed (pixels per second)
+        let fallSpeedPixelsPerSecond: CGFloat = 400
+        
+        var completedAnimations = 0
+        let totalAnimations = movedPieces.count
+        
+        guard totalAnimations > 0 else {
+            completion()
+            return
+        }
+        
+        // For each column, calculate the delays needed so pieces fall in order (bottom to top)
+        // This prevents visual overlap where it looks like pieces are passing through each other
+        var allAnimations: [(button: UIButton, delay: Double, duration: Double)] = []
+        
+        for col in 0..<level.gridWidth {
+            // Collect all pieces in this column and their distances
+            var columnAnimations: [(button: UIButton, row: Int, distance: Int)] = []
+            
+            for row in 0..<level.gridHeight {
+                let key = "\(row),\(col)"
+                if movedPieces.contains(key), gridShapeMap[row][col], let button = gridButtons[row][col], gameGrid[row][col] != nil {
+                    let distance = fallDistances[key] ?? 0
+                    columnAnimations.append((button: button, row: row, distance: distance))
+                }
+            }
+            
+            // Sort by row DESCENDING (bottom pieces first)
+            columnAnimations.sort { $0.row > $1.row }
+            print("📍 Column \(col): \(columnAnimations.count) pieces to animate, order: \(columnAnimations.map { $0.row })")
+            
+            // Calculate delays: each piece starts after the previous one would finish
+            var cumulativeDelay = 0.0
+            for (button, row, distance) in columnAnimations {
+                let cellHeight = gridContainer.bounds.height / CGFloat(level.gridHeight)
+                let fallDistance = cellHeight * CGFloat(distance)
+                let duration = Double(fallDistance / fallSpeedPixelsPerSecond)
+                
+                print("📍 Column \(col): Row \(row) delay=\(cumulativeDelay) duration=\(String(format: "%.3f", duration)) distance=\(distance)")
+                allAnimations.append((button: button, delay: cumulativeDelay, duration: duration))
+                cumulativeDelay += duration  // Next piece starts when this one finishes
+            }
+        }
+        
+        // Now animate all pieces with calculated delays
+        for (button, delay, duration) in allAnimations {
+            let cellHeight = gridContainer.bounds.height / CGFloat(level.gridHeight)
+            
+            // Find the distance for this piece
+            let startTransform: CGAffineTransform
+            if let gamepiece = gameGrid[Int(button.tag / level.gridWidth)][Int(button.tag % level.gridWidth)] {
+                let row = gamepiece.row
+                let col = gamepiece.col
+                let distance = fallDistances["\(row),\(col)"] ?? 0
+                let fallDistance = cellHeight * CGFloat(distance)
+                
+                if newPieces.contains("\(row),\(col)") {
+                    // NEW pieces fall from ABOVE
+                    startTransform = CGAffineTransform(translationX: 0, y: -fallDistance)
+                } else {
+                    // EXISTING pieces fall DOWN
+                    startTransform = CGAffineTransform(translationX: 0, y: fallDistance)
+                }
+            } else {
+                continue
+            }
+            
+            button.transform = startTransform
+            button.alpha = 1.0
+            
+            // Animate with calculated delay so pieces don't visually overlap
+            UIView.animate(
+                withDuration: duration,
+                delay: delay,
+                options: .curveEaseIn,
+                animations: {
+                    button.transform = .identity
+                },
+                completion: { finished in
+                    completedAnimations += 1
+                    if completedAnimations == totalAnimations {
+                        completion()
+                    }
+                }
+            )
+        }
+    }
+    
+    private func updateGridDisplay() {
+        guard let level = currentLevel else { return }
+        
+        for row in 0..<level.gridHeight {
+            for col in 0..<level.gridWidth {
+                guard let button = gridButtons[row][col] else { continue }
+                
+                if let piece = gameGrid[row][col] {
+                    // Display power-ups with special symbols
+                    let displayText: String
+                    switch piece.type {
+                    case .verticalArrow:
+                        displayText = "↕️"
+                        button.backgroundColor = .clear  // Transparent for powerups
+                    case .horizontalArrow:
+                        displayText = "↔️"
+                        button.backgroundColor = .clear  // Transparent for powerups
+                    case .bomb:
+                        displayText = "💣"
+                        button.backgroundColor = .clear  // Transparent for powerups
+                    case .flame:
+                        displayText = "🔥"
+                        button.backgroundColor = .clear  // Transparent for powerups
+                    case .normal:
+                        let itemEmoji = level.items[level.items.firstIndex(where: { $0.id == piece.itemId }) ?? 0].emoji ?? "?"
+                        displayText = itemEmoji
+                        // Handle optional colors - nil means transparent background
+                        if let colorHex = level.colors[piece.colorIndex] {
+                            button.backgroundColor = UIColor(hex: colorHex) ?? .gray
+                        } else {
+                            button.backgroundColor = .clear
+                        }
+                    }
+                    
+                    button.setTitle(displayText, for: .normal)
+                    
+                    // Highlight selected piece
+                    if selectedPiece?.row == row && selectedPiece?.col == col {
+                        button.layer.borderColor = UIColor.yellow.cgColor
+                        button.layer.borderWidth = 3
+                    } else {
+                        button.layer.borderWidth = 0
+                    }
+                } else {
+                    button.backgroundColor = darkBg
+                    button.setTitle("", for: .normal)
+                }
+            }
+        }
+        
+        updateUI()
+    }
+    
+    private func hasValidMoves() -> Bool {
+        guard let level = currentLevel else { return false }
+        
+        // Try each piece and see if swapping with adjacent pieces creates a match
+        for row in 0..<level.gridHeight {
+            for col in 0..<level.gridWidth {
+                if gridShapeMap[row][col], gameGrid[row][col] != nil {
+                    // Try swapping with right neighbor
+                    if col + 1 < level.gridWidth && gridShapeMap[row][col + 1] && gameGrid[row][col + 1] != nil {
+                        if wouldCreateMatch(swappingRow1: row, col1: col, row2: row, col2: col + 1) {
+                            return true
+                        }
+                    }
+                    
+                    // Try swapping with bottom neighbor
+                    if row + 1 < level.gridHeight && gridShapeMap[row + 1][col] && gameGrid[row + 1][col] != nil {
+                        if wouldCreateMatch(swappingRow1: row, col1: col, row2: row + 1, col2: col) {
+                            return true
+                        }
+                    }
+                }
+            }
+        }
+        
+        return false
+    }
+    
+    private func wouldCreateMatch(swappingRow1 r1: Int, col1 c1: Int, row2 r2: Int, col2 c2: Int) -> Bool {
+        // Temporarily swap
+        let temp = gameGrid[r1][c1]
+        gameGrid[r1][c1] = gameGrid[r2][c2]
+        gameGrid[r2][c2] = temp
+        
+        // Check for matches
+        var hasMatch = false
+        
+        // Check horizontal matches around r1, c1
+        if hasMatchesAtPosition(r1, c1) {
+            hasMatch = true
+        }
+        
+        // Check vertical matches around r1, c1
+        if !hasMatch && hasMatchesAtPosition(r1, c1) {
+            hasMatch = true
+        }
+        
+        // Check horizontal matches around r2, c2
+        if !hasMatch && hasMatchesAtPosition(r2, c2) {
+            hasMatch = true
+        }
+        
+        // Check vertical matches around r2, c2
+        if !hasMatch && hasMatchesAtPosition(r2, c2) {
+            hasMatch = true
+        }
+        
+        // Swap back
+        let temp2 = gameGrid[r1][c1]
+        gameGrid[r1][c1] = gameGrid[r2][c2]
+        gameGrid[r2][c2] = temp2
+        
+        return hasMatch
+    }
+    
+    private func hasMatchesAtPosition(_ row: Int, _ col: Int) -> Bool {
+        guard let level = currentLevel else { return false }
+        guard let piece = gameGrid[row][col], piece.type == .normal else { return false }
+        
+        // Check horizontal
+        var matchCount = 1
+        var checkCol = col - 1
+        while checkCol >= 0 && gridShapeMap[row][checkCol],
+              let nextPiece = gameGrid[row][checkCol],
+              piece.matches(nextPiece) {
+            matchCount += 1
+            checkCol -= 1
+        }
+        checkCol = col + 1
+        while checkCol < level.gridWidth && gridShapeMap[row][checkCol],
+              let nextPiece = gameGrid[row][checkCol],
+              piece.matches(nextPiece) {
+            matchCount += 1
+            checkCol += 1
+        }
+        if matchCount >= 3 {
+            return true
+        }
+        
+        // Check vertical
+        matchCount = 1
+        var checkRow = row - 1
+        while checkRow >= 0 && gridShapeMap[checkRow][col],
+              let nextPiece = gameGrid[checkRow][col],
+              piece.matches(nextPiece) {
+            matchCount += 1
+            checkRow -= 1
+        }
+        checkRow = row + 1
+        while checkRow < level.gridHeight && gridShapeMap[checkRow][col],
+              let nextPiece = gameGrid[checkRow][col],
+              piece.matches(nextPiece) {
+            matchCount += 1
+            checkRow += 1
+        }
+        if matchCount >= 3 {
+            return true
+        }
+        
+        return false
+    }
+    
+    private func shuffleGrid() {
+        guard let level = currentLevel else { return }
+        
+        isAnimating = true
+        
+        // Collect all pieces
+        var pieces: [GamePiece] = []
+        for row in 0..<level.gridHeight {
+            for col in 0..<level.gridWidth {
+                if gridShapeMap[row][col], let piece = gameGrid[row][col] {
+                    pieces.append(piece)
+                }
+            }
+        }
+        
+        // Shuffle the pieces array
+        pieces.shuffle()
+        
+        // Animate all pieces shuffling
+        var pieceIndex = 0
+        for row in 0..<level.gridHeight {
+            for col in 0..<level.gridWidth {
+                if gridShapeMap[row][col] && pieceIndex < pieces.count {
+                    let button = gridButtons[row][col]
+                    
+                    // Animate piece moving to new position
+                    UIView.animate(withDuration: 0.5, delay: Double(pieceIndex) * 0.05, options: .curveEaseInOut, animations: {
+                        // Scale and rotate during shuffle
+                        button?.transform = CGAffineTransform(scaleX: 0.5, y: 0.5).rotated(by: CGFloat.pi)
+                    }, completion: { _ in
+                        button?.transform = .identity
+                    })
+                    
+                    // Place the piece in grid
+                    gameGrid[row][col] = pieces[pieceIndex]
+                    pieces[pieceIndex].row = row
+                    pieces[pieceIndex].col = col
+                    pieceIndex += 1
+                }
+            }
+        }
+        
+        // After animation, update display and check for matches
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { [weak self] in
+            self?.updateGridDisplay()
+            self?.checkForMatches()
+        }
+    }
+    
+    @objc private func exitGame() {
+        print("🎮🎮🎮 EXIT BUTTON TAPPED 🎮🎮🎮")
+        // Save high score
+        let currentHighScore = UserDefaults.standard.integer(forKey: "matchGameHighScore")
+        if score > currentHighScore {
+            UserDefaults.standard.set(score, forKey: "matchGameHighScore")
+        }
+        
+        // Save game state before exiting
+        saveGameState()
+        
+        print("💾 Game state saved: Level \(currentLevelId), Score \(score)")
+        
+        // Call the dismiss callback if available (for SwiftUI presentation)
+        if let callback = onDismissCallback {
+            print("🎮 Calling onDismissCallback")
+            callback()
+        }
+        
+        // Then dismiss the view controller
+        self.dismiss(animated: true) {
+            print("🎮 Match game dismissed successfully")
+        }
+    }
+    
+    
+    // MARK: - Level Selector and State Persistence
+    
+    @objc private func showLevelSelector() {
+        let alert = UIAlertController(title: "Select Level", message: "Choose a level to play", preferredStyle: .actionSheet)
+        
+        // Add each unlocked level
+        if let config = gameConfig {
+            for level in config.levels {
+                if unlockedLevels.contains(level.id) {
+                    let title = level.id == currentLevelId ? "✓ Level \(level.id)" : "Level \(level.id)"
+                    alert.addAction(UIAlertAction(title: title, style: .default) { [weak self] _ in
+                        self?.selectLevel(level.id)
+                    })
+                }
+            }
+        }
+        
+        alert.addAction(UIAlertAction(title: "Cancel", style: .cancel))
+        present(alert, animated: true)
+    }
+    
+    private func selectLevel(_ levelId: Int) {
+        // Save current level state
+        saveGameState()
+        
+        // Change level
+        currentLevelId = levelId
+        score = 0
+        
+        // Clear old grid
+        gridContainer.subviews.forEach { $0.removeFromSuperview() }
+        gridStackView.removeFromSuperview()
+        gridStackView.arrangedSubviews.forEach { $0.removeFromSuperview() }
+        
+        // Start new level
+        startLevel(levelId)
+        
+        // Update button text
+        levelSelectorButton.setTitle("Level \(levelId) ▼", for: .normal)
+    }
+    
+    private func saveGameState() {
+        // Save current score and level
+        UserDefaults.standard.set(currentLevelId, forKey: "matchGameCurrentLevel")
+        UserDefaults.standard.set(score, forKey: "matchGameScore_\(currentLevelId)")
+        UserDefaults.standard.set(unlockedLevels, forKey: "matchGameUnlockedLevels")
+        print("💾 Game state saved: Level \(currentLevelId), Score \(score)")
+    }
+    
+    private func loadSavedState() {
+        // Load saved level and score
+        let savedLevel = UserDefaults.standard.integer(forKey: "matchGameCurrentLevel")
+        if savedLevel > 0 {
+            currentLevelId = savedLevel
+            levelSelectorButton.setTitle("Level \(savedLevel) ▼", for: .normal)
+        }
+        
+        // Load saved score for this level
+        let savedScore = UserDefaults.standard.integer(forKey: "matchGameScore_\(currentLevelId)")
+        if savedScore > 0 {
+            score = savedScore
+            //print("📥 Restored: Level \(currentLevelId), Score \(score)")
+        }
+        
+        // Load unlocked levels
+        if let saved = UserDefaults.standard.array(forKey: "matchGameUnlockedLevels") as? [Int] {
+            unlockedLevels = saved
+        }
+    }
+    
+    override func viewWillDisappear(_ animated: Bool) {
+        super.viewWillDisappear(animated)
+        // Save state when exiting
+        saveGameState()
+    }
+}

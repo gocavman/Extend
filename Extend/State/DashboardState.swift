@@ -157,6 +157,31 @@ public final class DashboardState {
                 size: .small
             )
         )
+        order += 1
+
+        // Mini Games Section
+        tiles.append(
+            DashboardTile(
+                title: "Workout Buddy",
+                icon: "gamecontroller.fill",
+                order: order,
+                targetModuleID: ModuleIDs.game1,
+                tileType: .moduleShortcut,
+                size: .small
+            )
+        )
+        order += 1
+
+        tiles.append(
+            DashboardTile(
+                title: "Workout Match",
+                icon: "square.grid.2x2.fill",
+                order: order,
+                targetModuleID: ModuleIDs.matchGame,
+                tileType: .moduleShortcut,
+                size: .small
+            )
+        )
 
         return tiles
     }

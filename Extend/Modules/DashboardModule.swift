@@ -182,9 +182,16 @@ private struct DashboardModuleView: View {
                 
                 Spacer(minLength: 0)
                 
-                // Show Game 1 highest level at bottom
+                // Show game levels at bottom
                 if tile.targetModuleID == ModuleIDs.game1 {
                     let highestLevel = UserDefaults.standard.integer(forKey: "game1_current_level")
+                    let displayLevel = highestLevel > 0 ? highestLevel : 1
+                    Text("Level \(displayLevel)")
+                        .font(.caption2)
+                        .foregroundColor(.gray)
+                        .padding(.bottom, 4)
+                } else if tile.targetModuleID == ModuleIDs.matchGame {
+                    let highestLevel = UserDefaults.standard.integer(forKey: "matchGameCurrentLevel")
                     let displayLevel = highestLevel > 0 ? highestLevel : 1
                     Text("Level \(displayLevel)")
                         .font(.caption2)
@@ -562,7 +569,7 @@ private struct AddTileSheet: View {
     private var moduleQuickOptions: [AnyAppModule] {
         let existingTileModuleIDs = Set(dashboardState.tiles.compactMap { $0.targetModuleID })
         return registry.registeredModules
-            .filter { !existingTileModuleIDs.contains($0.id) && $0.displayName != "Dashboard" && $0.displayName != "Game 1" }
+            .filter { !existingTileModuleIDs.contains($0.id) && $0.displayName != "Dashboard" && $0.displayName != "Workout Buddy" && $0.displayName != "Workout Match" }
             .sorted { $0.displayName.localizedCaseInsensitiveCompare($1.displayName) == .orderedAscending }
     }
 
@@ -666,20 +673,45 @@ private struct AddTileSheet: View {
                 }
 
                 Section("Mini Games") {
-                    if let game1Module = registry.registeredModules.first(where: { $0.displayName == "Game 1" }) {
+                    // Workout Buddy (formerly Game 1)
+                    if let workoutBuddyModule = registry.registeredModules.first(where: { $0.displayName == "Workout Buddy" }) {
                         Button(action: {
                             UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                            if selectedModuleIDs.contains(game1Module.id) {
-                                selectedModuleIDs.remove(game1Module.id)
+                            if selectedModuleIDs.contains(workoutBuddyModule.id) {
+                                selectedModuleIDs.remove(workoutBuddyModule.id)
                             } else {
-                                selectedModuleIDs.insert(game1Module.id)
+                                selectedModuleIDs.insert(workoutBuddyModule.id)
                             }
                         }) {
                             HStack {
-                                Text("Game 1")
+                                Text("Workout Buddy")
                                     .foregroundColor(.primary)
                                 Spacer()
-                                if selectedModuleIDs.contains(game1Module.id) {
+                                if selectedModuleIDs.contains(workoutBuddyModule.id) {
+                                    Image(systemName: "checkmark")
+                                        .foregroundColor(.black)
+                                }
+                            }
+                            .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
+                    }
+                    
+                    // Workout Match
+                    if let workoutMatchModule = registry.registeredModules.first(where: { $0.displayName == "Workout Match" }) {
+                        Button(action: {
+                            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                            if selectedModuleIDs.contains(workoutMatchModule.id) {
+                                selectedModuleIDs.remove(workoutMatchModule.id)
+                            } else {
+                                selectedModuleIDs.insert(workoutMatchModule.id)
+                            }
+                        }) {
+                            HStack {
+                                Text("Workout Match")
+                                    .foregroundColor(.primary)
+                                Spacer()
+                                if selectedModuleIDs.contains(workoutMatchModule.id) {
                                     Image(systemName: "checkmark")
                                         .foregroundColor(.black)
                                 }

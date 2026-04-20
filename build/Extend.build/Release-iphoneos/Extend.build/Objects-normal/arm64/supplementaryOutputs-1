@@ -1,0 +1,12 @@
+{
+  "/Users/cavan/Developer/Extend/Extend/Components/ModuleNavBar.swift" : {
+    "abi-baseline-json" : "/Users/cavan/Developer/Extend/build/Extend.build/Release-iphoneos/Extend.build/Objects-normal/arm64/Extend.abi.json",
+    "const-values" : "/Users/cavan/Developer/Extend/build/Extend.build/Release-iphoneos/Extend.build/Objects-normal/arm64/Extend-primary.swiftconstvalues",
+    "dependencies" : "/Users/cavan/Developer/Extend/build/Extend.build/Release-iphoneos/Extend.build/Objects-normal/arm64/Extend-primary.d",
+    "diagnostics" : "/Users/cavan/Developer/Extend/build/Extend.build/Release-iphoneos/Extend.build/Objects-normal/arm64/Extend-primary.dia",
+    "objc-header" : "/Users/cavan/Developer/Extend/build/Extend.build/Release-iphoneos/Extend.build/Objects-normal/arm64/Extend-Swift.h",
+    "swiftdoc" : "/Users/cavan/Developer/Extend/build/Extend.build/Release-iphoneos/Extend.build/Objects-normal/arm64/Extend.swiftdoc",
+    "swiftmodule" : "/Users/cavan/Developer/Extend/build/Extend.build/Release-iphoneos/Extend.build/Objects-normal/arm64/Extend.swiftmodule",
+    "swiftsourceinfo" : "/Users/cavan/Developer/Extend/build/Extend.build/Release-iphoneos/Extend.build/Objects-normal/arm64/Extend.swiftsourceinfo"
+  }
+}

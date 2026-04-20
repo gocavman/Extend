@@ -48,7 +48,7 @@
 			<key>uniqueIdentifier</key>
 			<string>010CEA77-D4B2-4614-BDD0-0406D6FCF9E7</string>
 		</dict>
-		<key>144EC517-0C00-4E28-A709-0F6F84D6B3A8</key>
+		<key>A42819F8-30CD-4864-9CBA-21D87394E157</key>
 		<dict>
 			<key>className</key>
 			<string>IDECommandLineBuildLog</string>
@@ -57,17 +57,17 @@
 			<key>domainType</key>
 			<string>Xcode.IDEActivityLogDomainType.BuildLog</string>
 			<key>fileName</key>
-			<string>144EC517-0C00-4E28-A709-0F6F84D6B3A8.xcactivitylog</string>
+			<string>A42819F8-30CD-4864-9CBA-21D87394E157.xcactivitylog</string>
 			<key>hasPrimaryLog</key>
 			<true/>
 			<key>primaryObservable</key>
 			<dict>
 				<key>highLevelStatus</key>
-				<string>E</string>
+				<string>S</string>
 				<key>totalNumberOfAnalyzerIssues</key>
 				<integer>0</integer>
 				<key>totalNumberOfErrors</key>
-				<integer>22</integer>
+				<integer>0</integer>
 				<key>totalNumberOfTestFailures</key>
 				<integer>0</integer>
 				<key>totalNumberOfWarnings</key>
@@ -82,13 +82,13 @@
 			<key>signature</key>
 			<string>Building project Extend with scheme Extend and configuration Debug</string>
 			<key>timeStartedRecording</key>
-			<real>798320165.70850503</real>
+			<real>798394298.07574999</real>
 			<key>timeStoppedRecording</key>
-			<real>798320181.66495001</real>
+			<real>798394304.04246294</real>
 			<key>title</key>
 			<string>Building project Extend with scheme Extend and configuration Debug</string>
 			<key>uniqueIdentifier</key>
-			<string>144EC517-0C00-4E28-A709-0F6F84D6B3A8</string>
+			<string>A42819F8-30CD-4864-9CBA-21D87394E157</string>
 		</dict>
 	</dict>
 </dict>

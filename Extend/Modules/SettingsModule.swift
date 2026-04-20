@@ -666,7 +666,7 @@ private struct DashboardAddTileSheet: View {
     private var moduleQuickOptions: [AnyAppModule] {
         let existingTileModuleIDs = Set(dashboardState.tiles.compactMap { $0.targetModuleID })
         return registry.registeredModules
-            .filter { !existingTileModuleIDs.contains($0.id) && $0.displayName != "Dashboard" && $0.displayName != "Game 1" }
+            .filter { !existingTileModuleIDs.contains($0.id) && $0.displayName != "Dashboard" && $0.displayName != "Workout Buddy" && $0.displayName != "Workout Match" }
             .sorted { $0.displayName.localizedCaseInsensitiveCompare($1.displayName) == .orderedAscending }
     }
 
@@ -758,20 +758,21 @@ private struct DashboardAddTileSheet: View {
                 }
 
                 Section("Mini Games") {
-                    if let game1Module = registry.registeredModules.first(where: { $0.displayName == "Game 1" }) {
+                    // Workout Buddy
+                    if let workoutBuddyModule = registry.registeredModules.first(where: { $0.displayName == "Workout Buddy" }) {
                         Button(action: {
                             UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                            if selectedModuleIDs.contains(game1Module.id) {
-                                selectedModuleIDs.remove(game1Module.id)
+                            if selectedModuleIDs.contains(workoutBuddyModule.id) {
+                                selectedModuleIDs.remove(workoutBuddyModule.id)
                             } else {
-                                selectedModuleIDs.insert(game1Module.id)
+                                selectedModuleIDs.insert(workoutBuddyModule.id)
                             }
                         }) {
                             HStack {
-                                Text("Game 1")
+                                Text("Workout Buddy")
                                     .foregroundColor(.primary)
                                 Spacer()
-                                if selectedModuleIDs.contains(game1Module.id) {
+                                if selectedModuleIDs.contains(workoutBuddyModule.id) {
                                     Image(systemName: "checkmark")
                                         .foregroundColor(.black)
                                 }
@@ -779,7 +780,32 @@ private struct DashboardAddTileSheet: View {
                             .contentShape(Rectangle())
                         }
                         .buttonStyle(.plain)
-                        .disabled(!canAddMore && !selectedModuleIDs.contains(game1Module.id))
+                        .disabled(!canAddMore && !selectedModuleIDs.contains(workoutBuddyModule.id))
+                    }
+                    
+                    // Workout Match
+                    if let workoutMatchModule = registry.registeredModules.first(where: { $0.displayName == "Workout Match" }) {
+                        Button(action: {
+                            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                            if selectedModuleIDs.contains(workoutMatchModule.id) {
+                                selectedModuleIDs.remove(workoutMatchModule.id)
+                            } else {
+                                selectedModuleIDs.insert(workoutMatchModule.id)
+                            }
+                        }) {
+                            HStack {
+                                Text("Workout Match")
+                                    .foregroundColor(.primary)
+                                Spacer()
+                                if selectedModuleIDs.contains(workoutMatchModule.id) {
+                                    Image(systemName: "checkmark")
+                                        .foregroundColor(.black)
+                                }
+                            }
+                            .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
+                        .disabled(!canAddMore && !selectedModuleIDs.contains(workoutMatchModule.id))
                     }
                 }
 
@@ -846,13 +872,13 @@ private struct DashboardAddTileSheet: View {
                         }
 
                         for moduleID in selectedModuleIDs {
-                            // Check if this is Game 1 (special case since it's filtered from moduleQuickOptions)
-                            if let game1Module = registry.registeredModules.first(where: { $0.displayName == "Game 1" && $0.id == moduleID }) {
+                            // Check if this is Workout Buddy or Workout Match (mini games)
+                            if let miniGameModule = registry.registeredModules.first(where: { ($0.displayName == "Workout Buddy" || $0.displayName == "Workout Match") && $0.id == moduleID }) {
                                 let tile = DashboardTile(
-                                    title: game1Module.displayName,
-                                    icon: game1Module.iconName,
+                                    title: miniGameModule.displayName,
+                                    icon: miniGameModule.iconName,
                                     order: dashboardState.tiles.count,
-                                    targetModuleID: game1Module.id,
+                                    targetModuleID: miniGameModule.id,
                                     tileType: .moduleShortcut,
                                     size: .small
                                 )

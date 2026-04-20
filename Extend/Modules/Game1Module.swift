@@ -336,7 +336,7 @@ func getLevelsInRoom(_ roomId: String) -> [Int] {
 
 public struct Game1Module: AppModule {
     public let id: UUID = ModuleIDs.game1
-    public let displayName: String = "Game 1"
+    public let displayName: String = "Workout Buddy"
     public let iconName: String = "gamecontroller.fill"
     public let description: String = "Stick figure running game"
 
