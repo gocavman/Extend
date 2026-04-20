@@ -20,6 +20,11 @@
           "id": "orange",
           "emoji": "🍊",
           "asset": null
+        },
+        {
+          "id": "grapes",
+          "emoji": "🍇",
+          "asset": null
         }
       ],
       "colors": [
@@ -66,13 +71,13 @@
         null
       ],
       "gridShape": [
-          "_______",
           "_XX_XX_",
+          "XXX_XXX",
           "XXXXXXX",
           "_XXXXX_",
           "__XXX__",
-          "___X___",
-          "_______"
+          "__XXX__",
+          "___X___"
       ],
       "movesAllowed": 25,
       "scoreTarget": 1000
@@ -110,20 +115,16 @@
         }
       ],
       "colors": [
-        "#FF0000",
-        "#FFFF00",
-        "#FFA500",
-        "#9400D3",
-        "#008000"
+        null
       ],
       "gridShape": [
-        "_______",
+        "XXX_XXX",
         "XX___XX",
         "_XX_XX_",
         "__XXX__",
         "_XX_XX_",
         "XX___XX",
-        "_______"
+        "XXX_XXX"
       ],
       "movesAllowed": 30,
       "scoreTarget": 1500
@@ -166,12 +167,7 @@
         }
       ],
       "colors": [
-        "#FF0000",
-        "#FFFF00",
-        "#FFA500",
-        "#9400D3",
-        "#008000",
-        "#FF69B4"
+        null
       ],
       "gridShape": [
         "___XX___",

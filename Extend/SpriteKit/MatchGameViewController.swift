@@ -95,6 +95,7 @@ class MatchGameViewController: UIViewController {
     private var isAnimating = false
     private var isAnimatingDrop = false  // Flag to prevent transform reset during drop animation
     private var lastSwappedPositions: ((row: Int, col: Int), (row: Int, col: Int))? = nil
+    private var swappedButtons: (UIButton, UIButton)? = nil  // Store swapped buttons for transform reset
     private var dragStartPiece: (row: Int, col: Int)? = nil
     private var dragTargetPiece: (row: Int, col: Int)? = nil
     private var unlockedLevels: [Int] = [1]  // NEW: Track unlocked levels
@@ -732,10 +733,12 @@ class MatchGameViewController: UIViewController {
             
             // Bring button1 to front during animation
             button1.layer.zPosition = 100
-        }, completion: { _ in
+        }, completion: { [weak self] _ in
             button1.layer.zPosition = 0
-            button1.transform = .identity
-            button2.transform = .identity
+            // DON'T reset transforms here - keep them in swapped positions until we know if match is valid
+            // Store references for potential reset later
+            self?.swappedButtons = (button1, button2)
+            print("🔍 [DEBUG] Stored swappedButtons in swap animation completion")
         })
         
         // Perform the actual swap in data after animation
@@ -752,8 +755,6 @@ class MatchGameViewController: UIViewController {
             self.gameGrid[r1][c1]?.col = c1
             self.gameGrid[r2][c2]?.row = r2
             self.gameGrid[r2][c2]?.col = c2
-            
-            self.updateGridDisplay()
             
             // Check for power-up activation before checking matches
             let powerUpAtR1C1 = self.gameGrid[r1][c1]?.type != .normal
@@ -1384,6 +1385,10 @@ class MatchGameViewController: UIViewController {
     }
     
     private func shootFlamesHorizontally(row: Int, columns: Range<Int>, completion: @escaping () -> Void) {
+        guard let level = currentLevel else {
+            completion()
+            return
+        }
         guard row < gridButtons.count else {
             completion()
             return
@@ -1393,27 +1398,25 @@ class MatchGameViewController: UIViewController {
             return
         }
         
-        // Find the middle column to start flames from
-        let middleCol = (columns.lowerBound + columns.upperBound) / 2
-        guard middleCol < gridButtons[row].count,
-              let gridButton = gridButtons[row][middleCol] else {
-            completion()
-            return
-        }
+        // Calculate flame positions based on grid geometry
+        let gridHeight = gridContainer.bounds.height
+        let gridWidth = gridContainer.bounds.width
+        let rowHeight = gridHeight / CGFloat(level.gridHeight)
+        let colWidth = gridWidth / CGFloat(level.gridWidth)
         
-        // Convert button frame to gridContainer coordinates
-        let buttonFrameInContainer = gridButton.convert(gridButton.bounds, to: gridContainer)
-        let startY = buttonFrameInContainer.midY
-        let middleButtonFrame = gridButton.convert(gridButton.bounds, to: gridContainer)
+        // Start X position based on middle column
+        let startX = CGFloat(columns.lowerBound + columns.upperBound) / 2 * colWidth + colWidth / 2
         
-        // Calculate end positions
-        let leftButton = gridButtons[row][columns.lowerBound]
-        let leftButtonFrame = leftButton?.convert(leftButton!.bounds, to: gridContainer) ?? middleButtonFrame
-        let endXLeft = leftButtonFrame.midX - 20
+        // End positions based on grid bounds - extend 50 pixels beyond edges like vertical flames
+        let endXLeft = CGFloat(columns.lowerBound) * colWidth - 50
+        let endXRight = CGFloat(columns.upperBound) * colWidth + 50
         
-        let rightButton = gridButtons[row][columns.upperBound - 1]
-        let rightButtonFrame = rightButton?.convert(rightButton!.bounds, to: gridContainer) ?? middleButtonFrame
-        let endXRight = rightButtonFrame.midX + 20
+        // Center Y based on row
+        let centerY = CGFloat(row) * rowHeight + rowHeight / 2
+        
+        print("🔍 [DEBUG] shootFlamesHorizontally called: row=\(row)")
+        print("🔍 [DEBUG] Grid geometry: gridWidth=\(gridWidth), colWidth=\(colWidth)")
+        print("🔍 [DEBUG] Flame positions: startX=\(startX), endXLeft=\(endXLeft), endXRight=\(endXRight)")
         
         var animationsComplete = 0
         let totalAnimations = 20  // 10 left + 10 right
@@ -1435,15 +1438,14 @@ class MatchGameViewController: UIViewController {
             flameLabelLeft.transform = CGAffineTransform(rotationAngle: CGFloat.pi / 2)
             
             // Distribute flames across the row height
-            let offsetY = (CGFloat(i) / 10.0) * 40 - 20  // Spread from -20 to +20 from center
-            flameLabelLeft.frame = CGRect(x: middleButtonFrame.midX - flameLabelLeft.bounds.width/2,
-                                          y: startY + offsetY - flameLabelLeft.bounds.height/2,
+            let offsetY = (CGFloat(i) / 10.0) * 40 - 20
+            flameLabelLeft.frame = CGRect(x: startX - flameLabelLeft.bounds.width/2,
+                                          y: centerY + offsetY - flameLabelLeft.bounds.height/2,
                                           width: flameLabelLeft.bounds.width,
                                           height: flameLabelLeft.bounds.height)
             
             gridContainer.addSubview(flameLabelLeft)
             
-            // Animate flame shooting left - NO STAGGER, all at same time
             UIView.animate(withDuration: 0.5, delay: 0, options: .curveLinear, animations: {
                 flameLabelLeft.frame.origin.x = endXLeft
                 flameLabelLeft.alpha = 0
@@ -1465,14 +1467,13 @@ class MatchGameViewController: UIViewController {
             
             // Distribute flames across the row height
             let offsetY = (CGFloat(i) / 10.0) * 40 - 20
-            flameLabelRight.frame = CGRect(x: middleButtonFrame.midX - flameLabelRight.bounds.width/2,
-                                           y: startY + offsetY - flameLabelRight.bounds.height/2,
+            flameLabelRight.frame = CGRect(x: startX - flameLabelRight.bounds.width/2,
+                                           y: centerY + offsetY - flameLabelRight.bounds.height/2,
                                            width: flameLabelRight.bounds.width,
                                            height: flameLabelRight.bounds.height)
             
             gridContainer.addSubview(flameLabelRight)
             
-            // Animate flame shooting right - NO STAGGER, all at same time
             UIView.animate(withDuration: 0.5, delay: 0, options: .curveLinear, animations: {
                 flameLabelRight.frame.origin.x = endXRight
                 flameLabelRight.alpha = 0
@@ -1673,13 +1674,26 @@ class MatchGameViewController: UIViewController {
         if !matchesToRemove.isEmpty {
             print("🔍 [DEBUG] Total matches found: \(matchesToRemove.count) tiles to remove")
             print("🔍 [DEBUG] Matches: \(matchesToRemove.sorted())")
+            print("✅ VALID MATCH DETECTED - animating removal")
             
             // Trigger haptic feedback
             let impact = UIImpactFeedbackGenerator(style: .heavy)
             impact.impactOccurred()
             
-            // Valid match found - clear lastSwappedPositions
+            // Valid match found - clear lastSwappedPositions and reset transforms
             lastSwappedPositions = nil
+            
+            // Reset the transforms of swapped buttons so they display correctly
+            if let (button1, button2) = swappedButtons {
+                print("🔍 [DEBUG] Resetting transforms for swapped buttons")
+                button1.transform = .identity
+                button2.transform = .identity
+                swappedButtons = nil
+                // Update display immediately after resetting transforms
+                self.updateGridDisplay()
+            } else {
+                print("🔍 [DEBUG] No swappedButtons found to reset!")
+            }
             
             // Animate matched pieces, then proceed when animation completes
             animateMatchedPieces(matchesToRemove) { [weak self] in
@@ -1710,27 +1724,16 @@ class MatchGameViewController: UIViewController {
         } else {
             // No match found
             print("🔍 [DEBUG] No matches found in current grid")
+            print("❌ INVALID MOVE - starting 3 second revert animation")
             
             // Revert the swap if one was made
-            if let ((r1, c1), (r2, c2)) = lastSwappedPositions {
-                print("⚠️ Invalid move - reverting swap")
+            if let ((r1, c1), (r2, c2)) = lastSwappedPositions, let (button1, button2) = swappedButtons {
+                print("⚠️ Invalid move - reverting swap from (\(r1),\(c1)) and (\(r2),\(c2))")
                 lastSwappedPositions = nil
+                swappedButtons = nil
                 
-                guard let button1 = gridButtons[r1][c1],
-                      let button2 = gridButtons[r2][c2] else {
-                    isAnimating = false
-                    return
-                }
-                
-                // Get current positions
-                let pos1 = button1.convert(CGPoint.zero, to: gridContainer)
-                let pos2 = button2.convert(CGPoint.zero, to: gridContainer)
-                
-                // Calculate the delta to move back (deltaX not currently used but kept for reference)
-                let _ = pos2.x - pos1.x
-                
-                // Very slow revert animation - pieces slide back very slowly so you can clearly see it
-                UIView.animate(withDuration: 2.5, delay: 0, options: .curveEaseInOut, animations: {
+                // Animate revert - pieces slide back with 0.5 second animation
+                UIView.animate(withDuration: 0.5, delay: 0, options: .curveEaseInOut, animations: {
                     button1.transform = .identity
                     button2.transform = .identity
                 }, completion: { _ in
