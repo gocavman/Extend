@@ -1600,9 +1600,7 @@ class MatchGameViewController: UIViewController {
             return
         }
         
-        var animationCount = 0
-        var completedCount = 0
-        
+        // STEP 1: Show border highlight around matched tiles
         for posString in matchesToRemove {
             let parts = posString.split(separator: ",").map { Int($0) ?? 0 }
             guard parts.count == 2 else { continue }
@@ -1610,23 +1608,44 @@ class MatchGameViewController: UIViewController {
             let col = parts[1]
             
             if let button = gridButtons[row][col] {
-                animationCount += 1
+                // Add thin yellow border for visual feedback
+                button.layer.borderWidth = 2
+                button.layer.borderColor = UIColor.yellow.cgColor
+            }
+        }
+        
+        var animationCount = 0
+        var completedCount = 0
+        
+        // STEP 2: After 0.2s, animate removal (fade + scale + rotate)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) { [weak self] in
+            for posString in matchesToRemove {
+                let parts = posString.split(separator: ",").map { Int($0) ?? 0 }
+                guard parts.count == 2 else { continue }
+                let row = parts[0]
+                let col = parts[1]
                 
-                // Animate: scale down + fade + rotate
-                UIView.animate(withDuration: 0.2, animations: {
-                    button.transform = CGAffineTransform(scaleX: 0.1, y: 0.1).rotated(by: CGFloat.pi)
-                    button.alpha = 0.0
-                }, completion: { _ in
-                    // Reset transform after animation so new piece displays correctly
-                    button.transform = .identity
-                    button.alpha = 1.0
+                if let button = self?.gridButtons[row][col] {
+                    animationCount += 1
                     
-                    completedCount += 1
-                    // When all animations complete, call the completion handler
-                    if completedCount == animationCount {
-                        completion()
-                    }
-                })
+                    // Animate: scale down + fade + rotate
+                    UIView.animate(withDuration: 0.2, animations: {
+                        button.transform = CGAffineTransform(scaleX: 0.1, y: 0.1).rotated(by: CGFloat.pi)
+                        button.alpha = 0.0
+                    }, completion: { _ in
+                        // Reset transform and border after animation so new piece displays correctly
+                        button.transform = .identity
+                        button.alpha = 1.0
+                        button.layer.borderWidth = 0
+                        button.layer.borderColor = UIColor.clear.cgColor
+                        
+                        completedCount += 1
+                        // When all animations complete, call the completion handler
+                        if completedCount == animationCount {
+                            completion()
+                        }
+                    })
+                }
             }
         }
     }
