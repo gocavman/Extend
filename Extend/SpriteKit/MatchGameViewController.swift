@@ -551,7 +551,7 @@ class MatchGameViewController: UIViewController {
                     }
                 }
                 // Show flames animation
-                shootFlamesVertically(column: col, rows: 0..<level.gridHeight) {}
+                shootFlamesVertically(column: col, arrowRow: row, rows: 0..<level.gridHeight) {}
                 
             case .horizontalArrow:
                 // Collect all tiles in row
@@ -782,8 +782,50 @@ class MatchGameViewController: UIViewController {
         var clearedTiles: Set<String> = []
         var cascadingPowerups: [(row: Int, col: Int, type: PieceType)] = []
         
-        // Handle two bombs merging - clear entire screen
+        // Handle two bombs merging - clear 4x4 grid around midpoint
         if piece1?.type == .bomb && piece2?.type == .bomb {
+            let impact = UIImpactFeedbackGenerator(style: .heavy)
+            impact.impactOccurred()
+            
+            // Calculate the midpoint between the two bombs
+            let midRow = (r1 + r2) / 2
+            let midCol = (c1 + c2) / 2
+            
+            // Clear a 4x4 grid centered on midpoint (2 in each direction)
+            for dr in -2...1 {
+                for dc in -2...1 {
+                    let nr = midRow + dr
+                    let nc = midCol + dc
+                    if nr >= 0 && nr < level.gridHeight && nc >= 0 && nc < level.gridWidth &&
+                       gridShapeMap[nr][nc] && gameGrid[nr][nc] != nil {
+                        clearedTiles.insert("\(nr),\(nc)")
+                        if let piece = gameGrid[nr][nc], piece.type != .normal {
+                            cascadingPowerups.append((row: nr, col: nc, type: piece.type))
+                        }
+                    }
+                }
+            }
+            
+            print("🔍 [DEBUG] Two bombs merged! Clearing 4x4 grid around (\(midRow),\(midCol)). Found \(cascadingPowerups.count) cascading powerups")
+            
+            // Show borders first, then clear
+            showPowerupBorderHighlight(clearedTiles) { [weak self] in
+                for posString in clearedTiles {
+                    let parts = posString.split(separator: ",").map { Int($0) ?? 0 }
+                    if parts.count == 2 {
+                        self?.score += 1
+                        self?.gameGrid[parts[0]][parts[1]] = nil
+                    }
+                }
+                self?.updateUI()
+                self?.activateCascadingPowerups(cascadingPowerups)
+                self?.applyGravity()
+            }
+            return
+        }
+        
+        // Handle two flames merging - clear entire screen
+        if piece1?.type == .flame && piece2?.type == .flame {
             let impact = UIImpactFeedbackGenerator(style: .heavy)
             impact.impactOccurred()
             
@@ -798,6 +840,8 @@ class MatchGameViewController: UIViewController {
                     }
                 }
             }
+            
+            print("🔍 [DEBUG] Two flames merged! Clearing entire screen. Found \(cascadingPowerups.count) cascading powerups")
             
             // Show borders first, then clear
             showPowerupBorderHighlight(clearedTiles) { [weak self] in
@@ -1081,7 +1125,7 @@ class MatchGameViewController: UIViewController {
             switch type {
             case .verticalArrow:
                 // Shoot flames vertically - fires immediately, completion handler tracks when done
-                shootFlamesVertically(column: col, rows: 0..<level.gridHeight) {
+                shootFlamesVertically(column: col, arrowRow: row, rows: 0..<level.gridHeight) {
                     flameAnimationsCompleted += 1
                     if flameAnimationsCompleted == flameAnimationsInProgress {
                         // All flame animations complete - now apply gravity
@@ -1247,79 +1291,102 @@ class MatchGameViewController: UIViewController {
         }
     }
     
-    private func shootFlamesVertically(column: Int, rows: Range<Int>, completion: @escaping () -> Void) {
+    private func shootFlamesVertically(column: Int, arrowRow: Int, rows: Range<Int>, completion: @escaping () -> Void) {
         guard column < gridButtons[0].count else {
             completion()
             return
         }
         
-        // Find the middle row to start flames from
-        let middleRow = (rows.lowerBound + rows.upperBound) / 2
-        guard let gridButton = gridButtons[middleRow][column] else {
+        // Get the actual arrow's position
+        guard arrowRow >= 0 && arrowRow < rows.upperBound,
+              let arrowButton = gridButtons[arrowRow][column] else {
             completion()
             return
         }
         
-        // Create flame shooting UP
-        let flameLabelUp = UILabel()
-        flameLabelUp.text = "🔥"
-        flameLabelUp.font = UIFont.systemFont(ofSize: 40)
-        flameLabelUp.sizeToFit()
+        // Get the bounds of the playable grid
+        guard let topButton = gridButtons[rows.lowerBound][column],
+              let bottomButton = gridButtons[rows.upperBound - 1][column] else {
+            completion()
+            return
+        }
         
-        let startFrame = gridButton.frame
-        flameLabelUp.frame = CGRect(x: startFrame.midX - flameLabelUp.bounds.width/2,
-                                     y: startFrame.midY - flameLabelUp.bounds.height/2,
-                                     width: flameLabelUp.bounds.width,
-                                     height: flameLabelUp.bounds.height)
+        let arrowFrame = arrowButton.frame
+        let topGridFrame = topButton.frame
+        let bottomGridFrame = bottomButton.frame
         
-        gridContainer.addSubview(flameLabelUp)
+        // Start flames from the arrow's actual row position
+        let startY = arrowFrame.midY
         
-        // Calculate end position (top of column)
-        let topFrame = gridButtons[rows.lowerBound][column]?.frame ?? startFrame
-        let endYUp = topFrame.midY - flameLabelUp.bounds.height
+        // Flames travel to actual grid edges
+        let endYUp = topGridFrame.midY - 50  // Go well above the top
+        let endYDown = bottomGridFrame.midY + 50  // Go well below the bottom
         
         var animationsComplete = 0
+        let totalAnimations = 20  // 10 up + 10 down
         let completeAnimation = {
             animationsComplete += 1
-            if animationsComplete == 2 {
+            if animationsComplete == totalAnimations {
                 completion()
             }
         }
         
-        // Animate flame shooting up
-        UIView.animate(withDuration: 0.5, delay: 0, options: .curveLinear, animations: {
-            flameLabelUp.frame.origin.y = endYUp
-            flameLabelUp.alpha = 0
-        }, completion: { _ in
-            flameLabelUp.removeFromSuperview()
-            completeAnimation()
-        })
+        // Create 10 flames shooting UP (distributed across column width)
+        for i in 0..<10 {
+            let flameLabelUp = UILabel()
+            flameLabelUp.text = "🔥"  // Pointing up (default orientation)
+            flameLabelUp.font = UIFont.systemFont(ofSize: 40)
+            flameLabelUp.sizeToFit()
+            
+            // Distribute flames across the column width
+            let offsetX = (CGFloat(i) / 10.0) * 40 - 20  // Spread from -20 to +20 from center
+            let buttonX = arrowFrame.midX + offsetX
+            flameLabelUp.frame = CGRect(x: buttonX - flameLabelUp.bounds.width/2,
+                                         y: startY - flameLabelUp.bounds.height/2,
+                                         width: flameLabelUp.bounds.width,
+                                         height: flameLabelUp.bounds.height)
+            
+            gridContainer.addSubview(flameLabelUp)
+            
+            // Animate flame shooting up - NO STAGGER, all at same time
+            UIView.animate(withDuration: 0.5, delay: 0, options: .curveLinear, animations: {
+                flameLabelUp.frame.origin.y = endYUp
+                flameLabelUp.alpha = 0
+            }, completion: { _ in
+                flameLabelUp.removeFromSuperview()
+                completeAnimation()
+            })
+        }
         
-        // Create flame shooting DOWN
-        let flameLabelDown = UILabel()
-        flameLabelDown.text = "🔥"
-        flameLabelDown.font = UIFont.systemFont(ofSize: 40)
-        flameLabelDown.sizeToFit()
-        
-        flameLabelDown.frame = CGRect(x: startFrame.midX - flameLabelDown.bounds.width/2,
-                                       y: startFrame.midY - flameLabelDown.bounds.height/2,
-                                       width: flameLabelDown.bounds.width,
-                                       height: flameLabelDown.bounds.height)
-        
-        gridContainer.addSubview(flameLabelDown)
-        
-        // Calculate end position (bottom of column)
-        let bottomFrame = gridButtons[rows.upperBound - 1][column]?.frame ?? startFrame
-        let endYDown = bottomFrame.midY + flameLabelDown.bounds.height
-        
-        // Animate flame shooting down
-        UIView.animate(withDuration: 0.5, delay: 0, options: .curveLinear, animations: {
-            flameLabelDown.frame.origin.y = endYDown
-            flameLabelDown.alpha = 0
-        }, completion: { _ in
-            flameLabelDown.removeFromSuperview()
-            completeAnimation()
-        })
+        // Create 10 flames shooting DOWN (distributed across column width)
+        for i in 0..<10 {
+            let flameLabelDown = UILabel()
+            flameLabelDown.text = "🔥"
+            flameLabelDown.font = UIFont.systemFont(ofSize: 40)
+            flameLabelDown.sizeToFit()
+            
+            // Flip the transform for downward flames
+            flameLabelDown.transform = CGAffineTransform(scaleX: 1, y: -1)
+            
+            // Distribute flames across the column width
+            let offsetX = (CGFloat(i) / 10.0) * 40 - 20
+            let buttonX = arrowFrame.midX + offsetX
+            flameLabelDown.frame = CGRect(x: buttonX - flameLabelDown.bounds.width/2,
+                                           y: startY - flameLabelDown.bounds.height/2,
+                                           width: flameLabelDown.bounds.width,
+                                           height: flameLabelDown.bounds.height)
+            
+            gridContainer.addSubview(flameLabelDown)
+            
+            // Animate flame shooting down - NO STAGGER, all at same time
+            UIView.animate(withDuration: 0.5, delay: 0, options: .curveLinear, animations: {
+                flameLabelDown.frame.origin.y = endYDown
+                flameLabelDown.alpha = 0
+            }, completion: { _ in
+                flameLabelDown.removeFromSuperview()
+                completeAnimation()
+            })
+        }
     }
     
     private func shootFlamesHorizontally(row: Int, columns: Range<Int>, completion: @escaping () -> Void) {
@@ -1340,74 +1407,86 @@ class MatchGameViewController: UIViewController {
             return
         }
         
-        // Convert button frame to gridContainer coordinates (not view!)
-        // This gives us the position relative to where we're adding the flames
+        // Convert button frame to gridContainer coordinates
         let buttonFrameInContainer = gridButton.convert(gridButton.bounds, to: gridContainer)
         let startY = buttonFrameInContainer.midY
-        
-        // Create flame shooting LEFT
-        let flameLabelLeft = UILabel()
-        flameLabelLeft.text = "🔥"
-        flameLabelLeft.font = UIFont.systemFont(ofSize: 40)
-        flameLabelLeft.sizeToFit()
-        
-        // Use the converted frame for the middle button (in container coordinates)
         let middleButtonFrame = gridButton.convert(gridButton.bounds, to: gridContainer)
-        flameLabelLeft.frame = CGRect(x: middleButtonFrame.midX - flameLabelLeft.bounds.width/2,
-                                       y: startY - flameLabelLeft.bounds.height/2,
-                                       width: flameLabelLeft.bounds.width,
-                                       height: flameLabelLeft.bounds.height)
         
-        gridContainer.addSubview(flameLabelLeft)
-        
-        // Calculate end position (left side) - convert the left button frame too
+        // Calculate end positions
         let leftButton = gridButtons[row][columns.lowerBound]
         let leftButtonFrame = leftButton?.convert(leftButton!.bounds, to: gridContainer) ?? middleButtonFrame
-        let endXLeft = leftButtonFrame.midX - flameLabelLeft.bounds.width
+        let endXLeft = leftButtonFrame.midX - 20
+        
+        let rightButton = gridButtons[row][columns.upperBound - 1]
+        let rightButtonFrame = rightButton?.convert(rightButton!.bounds, to: gridContainer) ?? middleButtonFrame
+        let endXRight = rightButtonFrame.midX + 20
         
         var animationsComplete = 0
+        let totalAnimations = 20  // 10 left + 10 right
         let completeAnimation = {
             animationsComplete += 1
-            if animationsComplete == 2 {
+            if animationsComplete == totalAnimations {
                 completion()
             }
         }
         
-        // Animate flame shooting left (keep Y constant, only move X)
-        UIView.animate(withDuration: 0.5, delay: 0, options: .curveLinear, animations: {
-            flameLabelLeft.frame.origin.x = endXLeft
-            flameLabelLeft.alpha = 0
-        }, completion: { _ in
-            flameLabelLeft.removeFromSuperview()
-            completeAnimation()
-        })
+        // Create 10 flames shooting LEFT (distributed across row height)
+        for i in 0..<10 {
+            let flameLabelLeft = UILabel()
+            flameLabelLeft.text = "🔥"
+            flameLabelLeft.font = UIFont.systemFont(ofSize: 40)
+            flameLabelLeft.sizeToFit()
+            
+            // Rotate 90 degrees counterclockwise (pointing left)
+            flameLabelLeft.transform = CGAffineTransform(rotationAngle: CGFloat.pi / 2)
+            
+            // Distribute flames across the row height
+            let offsetY = (CGFloat(i) / 10.0) * 40 - 20  // Spread from -20 to +20 from center
+            flameLabelLeft.frame = CGRect(x: middleButtonFrame.midX - flameLabelLeft.bounds.width/2,
+                                          y: startY + offsetY - flameLabelLeft.bounds.height/2,
+                                          width: flameLabelLeft.bounds.width,
+                                          height: flameLabelLeft.bounds.height)
+            
+            gridContainer.addSubview(flameLabelLeft)
+            
+            // Animate flame shooting left - NO STAGGER, all at same time
+            UIView.animate(withDuration: 0.5, delay: 0, options: .curveLinear, animations: {
+                flameLabelLeft.frame.origin.x = endXLeft
+                flameLabelLeft.alpha = 0
+            }, completion: { _ in
+                flameLabelLeft.removeFromSuperview()
+                completeAnimation()
+            })
+        }
         
-        // Create flame shooting RIGHT
-        let flameLabelRight = UILabel()
-        flameLabelRight.text = "🔥"
-        flameLabelRight.font = UIFont.systemFont(ofSize: 40)
-        flameLabelRight.sizeToFit()
-        
-        flameLabelRight.frame = CGRect(x: middleButtonFrame.midX - flameLabelRight.bounds.width/2,
-                                        y: startY - flameLabelRight.bounds.height/2,
-                                        width: flameLabelRight.bounds.width,
-                                        height: flameLabelRight.bounds.height)
-        
-        gridContainer.addSubview(flameLabelRight)
-        
-        // Calculate end position (right side) - convert the right button frame too
-        let rightButton = gridButtons[row][columns.upperBound - 1]
-        let rightButtonFrame = rightButton?.convert(rightButton!.bounds, to: gridContainer) ?? middleButtonFrame
-        let endXRight = rightButtonFrame.midX + flameLabelRight.bounds.width
-        
-        // Animate flame shooting right (keep Y constant, only move X)
-        UIView.animate(withDuration: 0.5, delay: 0, options: .curveLinear, animations: {
-            flameLabelRight.frame.origin.x = endXRight
-            flameLabelRight.alpha = 0
-        }, completion: { _ in
-            flameLabelRight.removeFromSuperview()
-            completeAnimation()
-        })
+        // Create 10 flames shooting RIGHT (distributed across row height)
+        for i in 0..<10 {
+            let flameLabelRight = UILabel()
+            flameLabelRight.text = "🔥"
+            flameLabelRight.font = UIFont.systemFont(ofSize: 40)
+            flameLabelRight.sizeToFit()
+            
+            // Rotate 90 degrees clockwise (pointing right)
+            flameLabelRight.transform = CGAffineTransform(rotationAngle: -CGFloat.pi / 2)
+            
+            // Distribute flames across the row height
+            let offsetY = (CGFloat(i) / 10.0) * 40 - 20
+            flameLabelRight.frame = CGRect(x: middleButtonFrame.midX - flameLabelRight.bounds.width/2,
+                                           y: startY + offsetY - flameLabelRight.bounds.height/2,
+                                           width: flameLabelRight.bounds.width,
+                                           height: flameLabelRight.bounds.height)
+            
+            gridContainer.addSubview(flameLabelRight)
+            
+            // Animate flame shooting right - NO STAGGER, all at same time
+            UIView.animate(withDuration: 0.5, delay: 0, options: .curveLinear, animations: {
+                flameLabelRight.frame.origin.x = endXRight
+                flameLabelRight.alpha = 0
+            }, completion: { _ in
+                flameLabelRight.removeFromSuperview()
+                completeAnimation()
+            })
+        }
     }
     
     private func checkForMatches() {
@@ -1699,7 +1778,7 @@ class MatchGameViewController: UIViewController {
             let col = parts[1]
             
             if let button = gridButtons[row][col] {
-                button.layer.borderWidth = 3
+                button.layer.borderWidth = 1
                 button.layer.borderColor = UIColor.yellow.cgColor
             }
         }
@@ -1742,7 +1821,7 @@ class MatchGameViewController: UIViewController {
         
         // STEP 1: Show yellow border highlight around matched tiles (0.2 seconds)
         for button in allButtons {
-            button.layer.borderWidth = 2
+            button.layer.borderWidth = 1
             button.layer.borderColor = UIColor.yellow.cgColor
         }
         
@@ -1992,7 +2071,7 @@ class MatchGameViewController: UIViewController {
                     // Highlight selected piece
                     if selectedPiece?.row == row && selectedPiece?.col == col {
                         button.layer.borderColor = UIColor.yellow.cgColor
-                        button.layer.borderWidth = 3
+                        button.layer.borderWidth = 1
                     } else {
                         button.layer.borderWidth = 0
                     }
