@@ -96,6 +96,7 @@ class MatchGameViewController: UIViewController {
     private var isAnimatingDrop = false  // Flag to prevent transform reset during drop animation
     private var lastSwappedPositions: ((row: Int, col: Int), (row: Int, col: Int))? = nil
     private var swappedButtons: (UIButton, UIButton)? = nil  // Store swapped buttons for transform reset
+    private var currentSwapInvolvesAPowerup = false  // Track if current swap involves a powerup
     private var dragStartPiece: (row: Int, col: Int)? = nil
     private var dragTargetPiece: (row: Int, col: Int)? = nil
     private var unlockedLevels: [Int] = [1]  // NEW: Track unlocked levels
@@ -329,6 +330,11 @@ class MatchGameViewController: UIViewController {
         if score >= level.scoreTarget && !isAnimating {
             checkLevelCompletion()
         }
+        
+        // Check if out of moves
+        if movesRemaining <= 0 && !isAnimating {
+            levelFailed()
+        }
     }
     
     private func checkLevelCompletion() {
@@ -534,11 +540,19 @@ class MatchGameViewController: UIViewController {
         if let piece = gameGrid[row][col], piece.type != .normal {
             // Powerup activation when tapped directly
             isAnimating = true
+            movesRemaining -= 1  // Decrease moves when powerup is used
+            
             var clearedTiles: Set<String> = []
             var cascadingPowerups: [(row: Int, col: Int, type: PieceType)] = []
             
             let impact = UIImpactFeedbackGenerator(style: .medium)
             impact.impactOccurred()
+            
+            // Check if out of moves immediately
+            if movesRemaining <= 0 {
+                levelFailed()
+                return
+            }
             
             switch piece.type {
             case .verticalArrow:
@@ -708,6 +722,12 @@ class MatchGameViewController: UIViewController {
         isAnimating = true
         movesRemaining -= 1
         
+        // Check if out of moves immediately
+        if movesRemaining <= 0 {
+            levelFailed()
+            return
+        }
+        
         // Remember the swap for potential revert
         lastSwappedPositions = ((r1, c1), (r2, c2))
         
@@ -760,6 +780,9 @@ class MatchGameViewController: UIViewController {
             let powerUpAtR1C1 = self.gameGrid[r1][c1]?.type != .normal
             let powerUpAtR2C2 = self.gameGrid[r2][c2]?.type != .normal
             
+            // Track if this swap involves a powerup
+            self.currentSwapInvolvesAPowerup = powerUpAtR1C1 || powerUpAtR2C2
+            
             if powerUpAtR1C1 || powerUpAtR2C2 {
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { [weak self] in
                     self?.activatePowerUps(r1, c1, r2, c2)
@@ -809,6 +832,9 @@ class MatchGameViewController: UIViewController {
             
             print("🔍 [DEBUG] Two bombs merged! Clearing 4x4 grid around (\(midRow),\(midCol)). Found \(cascadingPowerups.count) cascading powerups")
             
+            // Update display before showing borders
+            updateGridDisplay()
+            
             // Show borders first, then clear
             showPowerupBorderHighlight(clearedTiles) { [weak self] in
                 for posString in clearedTiles {
@@ -843,6 +869,9 @@ class MatchGameViewController: UIViewController {
             }
             
             print("🔍 [DEBUG] Two flames merged! Clearing entire screen. Found \(cascadingPowerups.count) cascading powerups")
+            
+            // Update display before showing borders
+            updateGridDisplay()
             
             // Show borders first, then clear
             showPowerupBorderHighlight(clearedTiles) { [weak self] in
@@ -886,6 +915,9 @@ class MatchGameViewController: UIViewController {
                     }
                 }
             }
+            
+            // Update display before showing borders so button positions match swapped data
+            updateGridDisplay()
             
             // Show borders first, then clear
             showPowerupBorderHighlight(clearedTiles) { [weak self] in
@@ -1063,6 +1095,11 @@ class MatchGameViewController: UIViewController {
                     }
                 }
             }
+        }
+        
+        // Update display before showing borders so button positions match swapped data
+        if !clearedTiles.isEmpty {
+            updateGridDisplay()
         }
         
         // Show borders first for all cleared tiles, then clear and process
@@ -1748,8 +1785,12 @@ class MatchGameViewController: UIViewController {
                     self.gameGrid[r2][c2]?.row = r2
                     self.gameGrid[r2][c2]?.col = c2
                     
-                    // Refund the move
-                    self.movesRemaining += 1
+                    // Refund the move ONLY if it wasn't a powerup swap
+                    // Powerup swaps always consume a move regardless of outcome
+                    if !self.currentSwapInvolvesAPowerup {
+                        self.movesRemaining += 1
+                    }
+                    self.currentSwapInvolvesAPowerup = false
                     
                     self.updateGridDisplay()
                     self.updateUI()
@@ -2343,9 +2384,66 @@ class MatchGameViewController: UIViewController {
         }
     }
     
-    override func viewWillDisappear(_ animated: Bool) {
-        super.viewWillDisappear(animated)
-        // Save state when exiting
-        saveGameState()
+    // MARK: - Handle Level Failure
+    
+    private func levelFailed() {
+        guard let level = currentLevel else { return }
+        
+        print("❌ LEVEL \(level.id) FAILED! Out of moves. Score: \(score) < Target: \(level.scoreTarget)")
+        
+        // Disable interactions
+        isAnimating = true
+        
+        // Show failure message and restart option
+        showLevelFailedAnimation {
+            // Show restart alert
+            let alert = UIAlertController(title: "Out of Moves!", message: "You ran out of moves before reaching the target score of \(level.scoreTarget).", preferredStyle: .alert)
+            
+            alert.addAction(UIAlertAction(title: "Try Again", style: .default) { _ in
+                // Restart the level
+                self.score = 0
+                self.startLevel(level.id)
+                self.isAnimating = false
+            })
+            
+            alert.addAction(UIAlertAction(title: "Exit", style: .cancel) { _ in
+                // Return to level selection
+                self.exitGame()
+            })
+            
+            self.present(alert, animated: true)
+        }
+    }
+    
+    private func showLevelFailedAnimation(completion: @escaping () -> Void) {
+        // Create overlay with "Out of Moves!" text
+        let overlay = UIView()
+        overlay.backgroundColor = UIColor.black.withAlphaComponent(0.5)
+        overlay.frame = view.bounds
+        view.addSubview(overlay)
+        
+        let label = UILabel()
+        label.text = "Out of Moves!"
+        label.font = UIFont.boldSystemFont(ofSize: 48)
+        label.textColor = .white
+        label.textAlignment = .center
+        label.center = view.center
+        label.alpha = 0
+        view.addSubview(label)
+        
+        UIView.animate(withDuration: 0.5, animations: {
+            label.alpha = 1.0
+        }, completion: { _ in
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+                UIView.animate(withDuration: 0.5, animations: {
+                    overlay.alpha = 0
+                    label.alpha = 0
+                }, completion: { _ in
+                    overlay.removeFromSuperview()
+                    label.removeFromSuperview()
+                    completion()
+                })
+            }
+        })
     }
 }
