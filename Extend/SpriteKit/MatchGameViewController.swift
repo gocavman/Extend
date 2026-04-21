@@ -321,7 +321,7 @@ class MatchGameViewController: UIViewController {
         
         levelLabel.text = level.name
         scoreLabel.text = "Score: \(score)"
-        movesLabel.text = "Moves: \(movesRemaining)"
+        movesLabel.text = "Moves: \(max(0, movesRemaining))"  // Never show negative moves
         targetLabel.text = "Target: \(level.scoreTarget)"
         highScoreLabel.text = "High Score: \(highScore)"
         
@@ -544,11 +544,8 @@ class MatchGameViewController: UIViewController {
             let impact = UIImpactFeedbackGenerator(style: .medium)
             impact.impactOccurred()
             
-            // Check if out of moves immediately
-            if movesRemaining <= 0 {
-                levelFailed()
-                return
-            }
+            // NOTE: Don't check if out of moves here - let powerup activate first
+            // Move check will happen after powerup animation completes
             
             switch piece.type {
             case .verticalArrow:
@@ -625,6 +622,11 @@ class MatchGameViewController: UIViewController {
                     self?.applyGravity()
                 }
                 self?.isAnimating = false
+                
+                // NOW check if out of moves after powerup animation completes
+                if self?.movesRemaining ?? 0 <= 0 {
+                    self?.levelFailed()
+                }
             }
             return
         }
