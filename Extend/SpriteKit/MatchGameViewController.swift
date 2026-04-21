@@ -831,10 +831,17 @@ class MatchGameViewController: UIViewController {
             
             print("🔍 [DEBUG] Two bombs merged! Clearing 4x4 grid around (\(midRow),\(midCol)). Found \(cascadingPowerups.count) cascading powerups")
             
-            // Update display before showing borders
+            // Reset swapped button transforms FIRST so buttons are in correct positions
+            if let (button1, button2) = swappedButtons {
+                button1.transform = .identity
+                button2.transform = .identity
+                self.swappedButtons = nil
+            }
+            
+            // Update display so buttons show correct content at correct positions
             updateGridDisplay()
             
-            // Show borders first, then clear
+            // NOW show borders with correct buttons
             showPowerupBorderHighlight(clearedTiles) { [weak self] in
                 for posString in clearedTiles {
                     let parts = posString.split(separator: ",").map { Int($0) ?? 0 }
@@ -843,9 +850,14 @@ class MatchGameViewController: UIViewController {
                         self?.gameGrid[parts[0]][parts[1]] = nil
                     }
                 }
+                
                 self?.updateUI()
-                self?.activateCascadingPowerups(cascadingPowerups)
-                self?.applyGravity()
+                
+                if !cascadingPowerups.isEmpty {
+                    self?.activateCascadingPowerups(cascadingPowerups)
+                } else {
+                    self?.applyGravity()
+                }
             }
             return
         }
@@ -869,10 +881,17 @@ class MatchGameViewController: UIViewController {
             
             print("🔍 [DEBUG] Two flames merged! Clearing entire screen. Found \(cascadingPowerups.count) cascading powerups")
             
-            // Update display before showing borders
+            // Reset swapped button transforms FIRST so buttons are in correct positions
+            if let (button1, button2) = swappedButtons {
+                button1.transform = .identity
+                button2.transform = .identity
+                self.swappedButtons = nil
+            }
+            
+            // Update display so buttons show correct content at correct positions
             updateGridDisplay()
             
-            // Show borders first, then clear
+            // NOW show borders with correct buttons
             showPowerupBorderHighlight(clearedTiles) { [weak self] in
                 for posString in clearedTiles {
                     let parts = posString.split(separator: ",").map { Int($0) ?? 0 }
@@ -881,9 +900,14 @@ class MatchGameViewController: UIViewController {
                         self?.gameGrid[parts[0]][parts[1]] = nil
                     }
                 }
+                
                 self?.updateUI()
-                self?.activateCascadingPowerups(cascadingPowerups)
-                self?.applyGravity()
+                
+                if !cascadingPowerups.isEmpty {
+                    self?.activateCascadingPowerups(cascadingPowerups)
+                } else {
+                    self?.applyGravity()
+                }
             }
             return
         }
@@ -915,10 +939,17 @@ class MatchGameViewController: UIViewController {
                 }
             }
             
-            // Update display before showing borders so button positions match swapped data
+            // Reset swapped button transforms FIRST so buttons are in correct positions
+            if let (button1, button2) = swappedButtons {
+                button1.transform = .identity
+                button2.transform = .identity
+                self.swappedButtons = nil
+            }
+            
+            // Update display so buttons show correct content at correct positions
             updateGridDisplay()
             
-            // Show borders first, then clear
+            // NOW show borders with correct buttons
             showPowerupBorderHighlight(clearedTiles) { [weak self] in
                 for posString in clearedTiles {
                     let parts = posString.split(separator: ",").map { Int($0) ?? 0 }
@@ -927,9 +958,14 @@ class MatchGameViewController: UIViewController {
                         self?.gameGrid[parts[0]][parts[1]] = nil
                     }
                 }
+                
                 self?.updateUI()
-                self?.activateCascadingPowerups(cascadingPowerups)
-                self?.applyGravity()
+                
+                if !cascadingPowerups.isEmpty {
+                    self?.activateCascadingPowerups(cascadingPowerups)
+                } else {
+                    self?.applyGravity()
+                }
             }
             return
         }
@@ -1096,12 +1132,18 @@ class MatchGameViewController: UIViewController {
             }
         }
         
-        // Update display before showing borders so button positions match swapped data
-        if !clearedTiles.isEmpty {
-            updateGridDisplay()
+        // Show borders first for all cleared tiles, then clear and process (DON'T call updateGridDisplay() yet - it resets transforms!)
+        // Reset swapped button transforms FIRST so buttons are in correct positions
+        if let (button1, button2) = swappedButtons {
+            button1.transform = .identity
+            button2.transform = .identity
+            self.swappedButtons = nil
         }
         
-        // Show borders first for all cleared tiles, then clear and process
+        // Update display so buttons show correct content at correct positions
+        updateGridDisplay()
+        
+        // NOW show borders with correct buttons
         if !clearedTiles.isEmpty {
             showPowerupBorderHighlight(clearedTiles) { [weak self] in
                 for posString in clearedTiles {
@@ -1111,6 +1153,7 @@ class MatchGameViewController: UIViewController {
                         self?.gameGrid[parts[0]][parts[1]] = nil
                     }
                 }
+                
                 self?.updateUI()
                 
                 if !cascadingPowerups.isEmpty {
@@ -1552,6 +1595,155 @@ class MatchGameViewController: UIViewController {
             print("🔄 No valid moves available - triggering shuffle")
             shuffleGrid()
             return
+        }
+        
+        // Check if a power-up was involved in the swap - if so, activate it immediately
+        if let ((r1, c1), (r2, c2)) = lastSwappedPositions {
+            if let piece = gameGrid[r1][c1], piece.type != .normal {
+                print("🎮 Swapped power-up detected at (\(r1),\(c1)): \(piece.type)")
+                // Power-up was swapped - activate it
+                lastSwappedPositions = nil
+                isAnimating = true
+                movesRemaining -= 1
+                
+                var clearedTiles: Set<String> = []
+                var cascadingPowerups: [(row: Int, col: Int, type: PieceType)] = []
+                
+                switch piece.type {
+                case .verticalArrow:
+                    // Collect all tiles in column
+                    for r in 0..<level.gridHeight {
+                        if gridShapeMap[r][r1] && gameGrid[r][r1] != nil {
+                            clearedTiles.insert("\(r),\(r1)")
+                            if let p = gameGrid[r][r1], p.type != .normal && p.type != .verticalArrow {
+                                cascadingPowerups.append((row: r, col: r1, type: p.type))
+                            }
+                        }
+                    }
+                    
+                case .horizontalArrow:
+                    // Collect all tiles in row
+                    for c in 0..<level.gridWidth {
+                        if gridShapeMap[c1][c] && gameGrid[c1][c] != nil {
+                            clearedTiles.insert("\(c1),\(c)")
+                            if let p = gameGrid[c1][c], p.type != .normal && p.type != .horizontalArrow {
+                                cascadingPowerups.append((row: c1, col: c, type: p.type))
+                            }
+                        }
+                    }
+                    
+                case .bomb:
+                    // Collect 3x3 area
+                    for r in max(0, r1-1)...min(level.gridHeight-1, r1+1) {
+                        for c in max(0, c1-1)...min(level.gridWidth-1, c1+1) {
+                            if gridShapeMap[r][c] && gameGrid[r][c] != nil {
+                                clearedTiles.insert("\(r),\(c)")
+                                if let p = gameGrid[r][c], p.type != .normal && p.type != .bomb {
+                                    cascadingPowerups.append((row: r, col: c, type: p.type))
+                                }
+                            }
+                        }
+                    }
+                    
+                case .flame, .normal:
+                    break
+                }
+                
+                if !clearedTiles.isEmpty {
+                    // Show animation with borders, then clear
+                    animateMatchedPieces(clearedTiles) { [weak self] in
+                        for posString in clearedTiles {
+                            let parts = posString.split(separator: ",").map { Int($0) ?? 0 }
+                            if parts.count == 2 {
+                                self?.gameGrid[parts[0]][parts[1]] = nil
+                            }
+                        }
+                        
+                        self?.updateUI()
+                        self?.updateGridDisplay()
+                        
+                        if !cascadingPowerups.isEmpty {
+                            self?.activateCascadingPowerups(cascadingPowerups)
+                        } else {
+                            self?.applyGravity()
+                        }
+                    }
+                }
+                
+                return
+            } else if let piece = gameGrid[r2][c2], piece.type != .normal {
+                print("🎮 Swapped power-up detected at (\(r2),\(c2)): \(piece.type)")
+                // Power-up was swapped - activate it
+                lastSwappedPositions = nil
+                isAnimating = true
+                movesRemaining -= 1
+                
+                var clearedTiles: Set<String> = []
+                var cascadingPowerups: [(row: Int, col: Int, type: PieceType)] = []
+                
+                switch piece.type {
+                case .verticalArrow:
+                    // Collect all tiles in column
+                    for r in 0..<level.gridHeight {
+                        if gridShapeMap[r][r2] && gameGrid[r][r2] != nil {
+                            clearedTiles.insert("\(r),\(r2)")
+                            if let p = gameGrid[r][r2], p.type != .normal && p.type != .verticalArrow {
+                                cascadingPowerups.append((row: r, col: r2, type: p.type))
+                            }
+                        }
+                    }
+                    
+                case .horizontalArrow:
+                    // Collect all tiles in row
+                    for c in 0..<level.gridWidth {
+                        if gridShapeMap[c2][c] && gameGrid[c2][c] != nil {
+                            clearedTiles.insert("\(c2),\(c)")
+                            if let p = gameGrid[c2][c], p.type != .normal && p.type != .horizontalArrow {
+                                cascadingPowerups.append((row: c2, col: c, type: p.type))
+                            }
+                        }
+                    }
+                    
+                case .bomb:
+                    // Collect 3x3 area
+                    for r in max(0, r2-1)...min(level.gridHeight-1, r2+1) {
+                        for c in max(0, c2-1)...min(level.gridWidth-1, c2+1) {
+                            if gridShapeMap[r][c] && gameGrid[r][c] != nil {
+                                clearedTiles.insert("\(r),\(c)")
+                                if let p = gameGrid[r][c], p.type != .normal && p.type != .bomb {
+                                    cascadingPowerups.append((row: r, col: c, type: p.type))
+                                }
+                            }
+                        }
+                    }
+                    
+                case .flame, .normal:
+                    break
+                }
+                
+                if !clearedTiles.isEmpty {
+                    // Show animation with borders, then clear
+                    animateMatchedPieces(clearedTiles) { [weak self] in
+                        for posString in clearedTiles {
+                            let parts = posString.split(separator: ",").map { Int($0) ?? 0 }
+                            if parts.count == 2 {
+                                self?.gameGrid[parts[0]][parts[1]] = nil
+                            }
+                        }
+                        
+                        self?.updateUI()
+                        self?.updateGridDisplay()
+                        
+                        if !cascadingPowerups.isEmpty {
+                            self?.activateCascadingPowerups(cascadingPowerups)
+                        } else {
+                            self?.applyGravity()
+                        }
+                    }
+                }
+                
+                return
+            }
         }
         
         var matchesToRemove: Set<String> = []
