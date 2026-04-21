@@ -321,7 +321,7 @@ class MatchGameViewController: UIViewController {
         
         levelLabel.text = level.name
         scoreLabel.text = "Score: \(score)"
-        movesLabel.text = "Moves: \(max(0, movesRemaining))"  // Never show negative moves
+        movesLabel.text = "Moves: \(max(0, movesRemaining))"  // Never show negative movesining))"  // Never show negative moves
         targetLabel.text = "Target: \(level.scoreTarget)"
         highScoreLabel.text = "High Score: \(highScore)"
         
@@ -1981,6 +1981,8 @@ class MatchGameViewController: UIViewController {
                     )
                 }
                 
+                // Mark animation complete BEFORE updateUI() so level completion check works
+                self?.isAnimating = false
                 self?.updateUI()
                 self?.updateGridDisplay()
                 self?.applyGravity()

@@ -259,6 +259,28 @@ private struct SettingsModuleView: View {
         QuickWorkoutState.shared.resetFavorites()
         WorkoutLogState.shared.resetLogs()
 
+        // Reset Game Progress - Workout Buddy (Game 1)
+        // Remove the entire stats dictionary and let it reinitialize
+        UserDefaults.standard.removeObject(forKey: "game1_stats")
+        
+        // Reset Game Progress - Workout Match (Match Game)
+        UserDefaults.standard.removeObject(forKey: "matchGameCurrentLevel")
+        UserDefaults.standard.set(1, forKey: "matchGameCurrentLevel")
+        UserDefaults.standard.removeObject(forKey: "matchGameUnlockedLevels")
+        UserDefaults.standard.set([1], forKey: "matchGameUnlockedLevels")
+        
+        // Reset high scores for both games
+        UserDefaults.standard.removeObject(forKey: "matchGameHighScore")
+        
+        // Reset any per-level scores
+        if let savedLevels = UserDefaults.standard.array(forKey: "matchGameUnlockedLevels") as? [Int] {
+            for levelId in savedLevels {
+                UserDefaults.standard.removeObject(forKey: "matchGameScore_\(levelId)")
+            }
+        }
+        
+        print("🔄 Game progress reset: Workout Buddy & Workout Match back to level 1")
+
         // Route back to Dashboard after reset
         moduleState.selectModule(ModuleIDs.dashboard)
     }

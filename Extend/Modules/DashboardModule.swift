@@ -49,6 +49,11 @@ private struct DashboardModuleView: View {
     @State private var tileRotations: [UUID: Double] = [:]
     @State private var showBlankAlert = false
     @State private var blankAlertMessage = ""
+    
+    // Track game levels for reactive UI updates
+    @State private var game1Level: Int = 1
+    @State private var matchGameLevel: Int = 1
+    @State private var refreshTrigger: UUID = UUID()
 
     var body: some View {
         VStack(spacing: 0) {
@@ -69,6 +74,30 @@ private struct DashboardModuleView: View {
             Button("OK", role: .cancel) {}
         } message: {
             Text(blankAlertMessage)
+        }
+        .onAppear {
+            // Initialize game levels from UserDefaults
+            if let statsDict = UserDefaults.standard.dictionary(forKey: "game1_stats"),
+               let savedLevel = statsDict["currentLevel"] as? Int {
+                game1Level = savedLevel > 0 ? savedLevel : 1
+            } else {
+                game1Level = 1
+            }
+            
+            matchGameLevel = UserDefaults.standard.integer(forKey: "matchGameCurrentLevel")
+            if matchGameLevel <= 0 { matchGameLevel = 1 }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: UIApplication.didBecomeActiveNotification)) { _ in
+            // Refresh game levels when app becomes active (returning from game)
+            if let statsDict = UserDefaults.standard.dictionary(forKey: "game1_stats"),
+               let savedLevel = statsDict["currentLevel"] as? Int {
+                game1Level = savedLevel > 0 ? savedLevel : 1
+            } else {
+                game1Level = 1
+            }
+            
+            matchGameLevel = UserDefaults.standard.integer(forKey: "matchGameCurrentLevel")
+            if matchGameLevel <= 0 { matchGameLevel = 1 }
         }
     }
     
@@ -184,16 +213,12 @@ private struct DashboardModuleView: View {
                 
                 // Show game levels at bottom
                 if tile.targetModuleID == ModuleIDs.game1 {
-                    let highestLevel = UserDefaults.standard.integer(forKey: "game1_current_level")
-                    let displayLevel = highestLevel > 0 ? highestLevel : 1
-                    Text("Level \(displayLevel)")
+                    Text("Level \(game1Level)")
                         .font(.caption2)
                         .foregroundColor(.gray)
                         .padding(.bottom, 4)
                 } else if tile.targetModuleID == ModuleIDs.matchGame {
-                    let highestLevel = UserDefaults.standard.integer(forKey: "matchGameCurrentLevel")
-                    let displayLevel = highestLevel > 0 ? highestLevel : 1
-                    Text("Level \(displayLevel)")
+                    Text("Level \(matchGameLevel)")
                         .font(.caption2)
                         .foregroundColor(.gray)
                         .padding(.bottom, 4)
