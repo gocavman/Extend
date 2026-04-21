@@ -66,8 +66,7 @@ class MatchGameViewController: UIViewController {
     
     // Delegate for dismissal
     var presentingController: UIViewController?
-    var mapScene: MapScene?  // Reference to map scene for refreshing
-    var returnDoorId: String?  // Door ID to return to when exiting
+    var onDismissGame: (() -> Void)?  // Callback to notify SwiftUI to dismiss
     
     // UI Components
     private let containerView = UIView()
@@ -2293,24 +2292,12 @@ class MatchGameViewController: UIViewController {
         // Save game state before exiting
         saveGameState()
         
-        // If we have the mapScene reference, use it to properly navigate back
-        if let mapScene = mapScene, let returnDoorId = returnDoorId {
-            print("🎮 Exiting match game - calling mapScene to handle return")
-            // Dismiss and let mapScene handle the room transition
-            self.dismiss(animated: true) { [weak mapScene] in
-                mapScene?.handleReturnFromMatchGame(doorId: returnDoorId)
-            }
-        } else {
-            // Fallback: just dismiss and try to show map via gameViewController
-            let gameViewController = presentingController as? GameViewController
-            self.dismiss(animated: true) { [weak gameViewController] in
-                if let gvc = gameViewController {
-                    gvc.view.backgroundColor = .clear
-                    gvc.view.isOpaque = false
-                    gvc.showMapScene()
-                    print("🎮 Match game exited - fallback to direct showMapScene")
-                }
-            }
+        print("🎮 Exiting match game - returning to dashboard")
+        
+        // Call the callback to navigate back via ModuleState
+        DispatchQueue.main.async {
+            print("   ✅ Calling onDismissGame callback")
+            self.onDismissGame?()
         }
     }
     

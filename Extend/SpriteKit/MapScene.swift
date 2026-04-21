@@ -482,8 +482,6 @@ class MapScene: GameScene {
             let matchGameVC = MatchGameViewController()
             matchGameVC.modalPresentationStyle = .fullScreen
             matchGameVC.presentingController = gameViewController
-            matchGameVC.mapScene = self
-            matchGameVC.returnDoorId = fromDoorId  // Pass the door ID for return navigation
             gameViewController?.present(matchGameVC, animated: true)
             return
         }

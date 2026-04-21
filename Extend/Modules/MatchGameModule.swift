@@ -28,13 +28,39 @@ public struct MatchGameModule: AppModule {
 
 private struct MatchGameModuleView: UIViewControllerRepresentable {
     let module: MatchGameModule
+    @Environment(ModuleState.self) var moduleState
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator(moduleState: moduleState)
+    }
 
     func makeUIViewController(context: Context) -> UIViewController {
         let viewController = MatchGameViewController()
+        // Set the callback so the view controller can trigger dismissal by going back to dashboard
+        viewController.onDismissGame = {
+            print("🎮 onDismissGame callback triggered - returning to dashboard")
+            DispatchQueue.main.async {
+                // Navigate back to dashboard
+                context.coordinator.returnToDashboard()
+            }
+        }
         return viewController
     }
 
     func updateUIViewController(_ uiViewController: UIViewController, context: Context) {
         // No updates needed
+    }
+
+    class Coordinator {
+        let moduleState: ModuleState
+
+        init(moduleState: ModuleState) {
+            self.moduleState = moduleState
+        }
+
+        func returnToDashboard() {
+            // Select the dashboard module to go back
+            moduleState.selectModule(ModuleIDs.dashboard)
+        }
     }
 }
