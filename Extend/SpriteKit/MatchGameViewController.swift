@@ -147,7 +147,7 @@ class MatchGameViewController: UIViewController {
             headerView.topAnchor.constraint(equalTo: containerView.topAnchor),
             headerView.leadingAnchor.constraint(equalTo: containerView.leadingAnchor),
             headerView.trailingAnchor.constraint(equalTo: containerView.trailingAnchor),
-            headerView.heightAnchor.constraint(equalToConstant: 100)
+            headerView.heightAnchor.constraint(equalToConstant: 130)
         ])
         
         // Exit Button
@@ -231,17 +231,6 @@ class MatchGameViewController: UIViewController {
         NSLayoutConstraint.activate([
             targetLabel.topAnchor.constraint(equalTo: scoreLabel.bottomAnchor, constant: 3),
             targetLabel.leadingAnchor.constraint(equalTo: headerView.leadingAnchor, constant: 15)
-        ])
-        
-        // High Score Label
-        highScoreLabel.font = UIFont.systemFont(ofSize: 12, weight: .regular)
-        highScoreLabel.textColor = .lightGray
-        highScoreLabel.text = "High Score: 0"
-        headerView.addSubview(highScoreLabel)
-        highScoreLabel.translatesAutoresizingMaskIntoConstraints = false
-        NSLayoutConstraint.activate([
-            highScoreLabel.topAnchor.constraint(equalTo: movesLabel.bottomAnchor, constant: 3),
-            highScoreLabel.trailingAnchor.constraint(equalTo: headerView.trailingAnchor, constant: -15)
         ])
         
         // Grid Container
@@ -339,21 +328,16 @@ class MatchGameViewController: UIViewController {
     private func updateUI() {
         guard let level = currentLevel else { return }
         
-        let highScore = UserDefaults.standard.integer(forKey: "matchGameHighScore")
-        
         levelLabel.text = level.name
         levelNameLabel.text = level.name  // Update level name label
         scoreLabel.text = "Score: \(score)"
-        movesLabel.text = "Moves: \(max(0, movesRemaining))"  // Never show negative movesining))"  // Never show negative moves
+        movesLabel.text = "Moves: \(max(0, movesRemaining))"  // Never show negative moves
         targetLabel.text = "Target: \(level.scoreTarget)"
-        highScoreLabel.text = "High Score: \(highScore)"
         
         // Check if target score is reached
         if score >= level.scoreTarget && !isAnimating {
             checkLevelCompletion()
         }
-        
-        // Don't check for game over here - will be checked at end of checkForMatches()
     }
     
     private func checkLevelCompletion() {
@@ -2534,7 +2518,17 @@ class MatchGameViewController: UIViewController {
         
         isAnimating = true
         
-        // Collect all pieces
+        // Collect all pieces and their current buttons
+        var pieceAnimations: [(button: UIButton, row: Int, col: Int)] = []
+        for row in 0..<level.gridHeight {
+            for col in 0..<level.gridWidth {
+                if gridShapeMap[row][col], let button = gridButtons[row][col] {
+                    pieceAnimations.append((button: button, row: row, col: col))
+                }
+            }
+        }
+        
+        // Collect all pieces to shuffle (don't shuffle yet)
         var pieces: [GamePiece] = []
         for row in 0..<level.gridHeight {
             for col in 0..<level.gridWidth {
@@ -2543,48 +2537,54 @@ class MatchGameViewController: UIViewController {
                 }
             }
         }
-        
-        // Shuffle the pieces array
         pieces.shuffle()
         
-        // Animate all pieces shuffling
-        var pieceIndex = 0
-        for row in 0..<level.gridHeight {
-            for col in 0..<level.gridWidth {
-                if gridShapeMap[row][col] && pieceIndex < pieces.count {
-                    let button = gridButtons[row][col]
-                    
-                    // Animate piece moving to new position
-                    UIView.animate(withDuration: 0.5, delay: Double(pieceIndex) * 0.05, options: .curveEaseInOut, animations: {
-                        // Scale and rotate during shuffle
-                        button?.transform = CGAffineTransform(scaleX: 0.5, y: 0.5).rotated(by: CGFloat.pi)
-                    }, completion: { _ in
-                        button?.transform = .identity
-                    })
-                    
-                    // Place the piece in grid
-                    gameGrid[row][col] = pieces[pieceIndex]
-                    pieces[pieceIndex].row = row
-                    pieces[pieceIndex].col = col
-                    pieceIndex += 1
-                }
-            }
-        }
-        
-        // After animation, update display and check for matches
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { [weak self] in
-            self?.updateGridDisplay()
-            self?.checkForMatches()
+        // Animate tiles flying to random positions then back
+        var animationCount = 0
+        for (index, animation) in pieceAnimations.enumerated() {
+            let button = animation.button
+            animationCount += 1
+            
+            // Generate random offset for flying out
+            let randomX = CGFloat.random(in: -100...100)
+            let randomY = CGFloat.random(in: -100...100)
+            let delay = Double(index) * 0.02  // Stagger animations
+            
+            // Phase 1: Fly out to random position (0.2s)
+            UIView.animate(withDuration: 0.2, delay: delay, options: .curveEaseIn, animations: {
+                button.transform = CGAffineTransform(translationX: randomX, y: randomY)
+                button.alpha = 0.3
+            }, completion: { _ in
+                // Phase 2: Fly back to original position (0.15s)
+                UIView.animate(withDuration: 0.15, delay: 0, options: .curveEaseOut, animations: {
+                    button.transform = .identity
+                    button.alpha = 1.0
+                }, completion: { _ in
+                    animationCount -= 1
+                    // When all animations complete, update the game with shuffled pieces
+                    if animationCount == 0 {
+                        // NOW place the shuffled pieces into the grid
+                        var pieceIndex = 0
+                        for row in 0..<level.gridHeight {
+                            for col in 0..<level.gridWidth {
+                                if self.gridShapeMap[row][col] && pieceIndex < pieces.count {
+                                    self.gameGrid[row][col] = pieces[pieceIndex]
+                                    pieces[pieceIndex].row = row
+                                    pieces[pieceIndex].col = col
+                                    pieceIndex += 1
+                                }
+                            }
+                        }
+                        
+                        self.updateGridDisplay()
+                        self.checkForMatches()
+                    }
+                })
+            })
         }
     }
     
     @objc private func exitGame() {
-        // Save high score
-        let currentHighScore = UserDefaults.standard.integer(forKey: "matchGameHighScore")
-        if score > currentHighScore {
-            UserDefaults.standard.set(score, forKey: "matchGameHighScore")
-        }
-        
         // Save game state before exiting
         saveGameState()
         
@@ -2787,13 +2787,9 @@ class MatchGameViewController: UIViewController {
                             piece2.row = row
                             piece2.col = col
                             
-                            // Check if this creates any matches
-                            var hasMatch = false
-                            
-                            // Check matches at new position of piece1
-                            hasMatch = hasMatch || checkTileForMatches(adjRow, adjCol)
-                            // Check matches at new position of piece2
-                            hasMatch = hasMatch || checkTileForMatches(row, col)
+                            // Check which tile creates a match
+                            let matchAtAdjacent = checkTileForMatches(adjRow, adjCol)
+                            let matchAtOriginal = checkTileForMatches(row, col)
                             
                             // Swap back
                             gameGrid[row][col] = piece1
@@ -2803,10 +2799,17 @@ class MatchGameViewController: UIViewController {
                             piece2.row = adjRow
                             piece2.col = adjCol
                             
-                            if hasMatch {
-                                // Found a good hint! Pulse this tile
-                                hintingTile = (row, col)
-                                pulseButton(gridButtons[row][col]!)
+                            if matchAtAdjacent || matchAtOriginal {
+                                // Pulse the tile that will form the match
+                                // If piece1 at adjRow/adjCol creates the match, pulse it (it moved there)
+                                // If piece2 at row/col creates the match, pulse it (it moved there)
+                                if matchAtAdjacent {
+                                    hintingTile = (adjRow, adjCol)
+                                    pulseButton(gridButtons[adjRow][adjCol]!)
+                                } else {
+                                    hintingTile = (row, col)
+                                    pulseButton(gridButtons[row][col]!)
+                                }
                                 return
                             }
                         }

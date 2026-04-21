@@ -269,9 +269,6 @@ private struct SettingsModuleView: View {
         UserDefaults.standard.removeObject(forKey: "matchGameUnlockedLevels")
         UserDefaults.standard.set([1], forKey: "matchGameUnlockedLevels")
         
-        // Reset high scores for both games
-        UserDefaults.standard.removeObject(forKey: "matchGameHighScore")
-        
         // Reset any per-level scores
         if let savedLevels = UserDefaults.standard.array(forKey: "matchGameUnlockedLevels") as? [Int] {
             for levelId in savedLevels {
