@@ -2,7 +2,7 @@
   "levels": [
     {
       "id": 1,
-      "name": "Level 1 - Getting Started",
+      "name": "Level 1 - Fruit Challenge",
       "gridWidth": 5,
       "gridHeight": 5,
       "items": [
@@ -38,31 +38,31 @@
         "XXXXX"
       ],
       "movesAllowed": 20,
-      "scoreTarget": 250
+      "scoreTarget": 100
     },
     {
       "id": 2,
-      "name": "Level 2 - Warming Up Challenge",
+      "name": "Level 2 - Heart Challenge",
       "gridWidth": 7,
       "gridHeight": 7,
       "items": [
         {
-          "id": "apple",
+          "id": "redheart",
           "emoji": "❤️",
           "asset": null
         },
         {
-          "id": "banana",
+          "id": "yellowheart",
           "emoji": "💛",
           "asset": null
         },
         {
-          "id": "orange",
+          "id": "orangeheart",
           "emoji": "🧡",
           "asset": null
         },
         {
-          "id": "grapes",
+          "id": "purpleheart",
           "emoji": "💜",
           "asset": null
         }
@@ -79,37 +79,37 @@
           "__XXX__",
           "___X___"
       ],
-      "movesAllowed": 25,
-      "scoreTarget": 1000
+      "movesAllowed": 30,
+      "scoreTarget": 150
     },
     {
       "id": 3,
-      "name": "Level 3 - Cross Pattern",
+      "name": "Level 3 - Sports Challenge",
       "gridWidth": 7,
       "gridHeight": 7,
       "items": [
         {
-          "id": "apple",
+          "id": "soccer",
           "emoji": "⚽",
           "asset": null
         },
         {
-          "id": "banana",
+          "id": "tennis",
           "emoji": "🎾",
           "asset": null
         },
         {
-          "id": "orange",
+          "id": "basketball",
           "emoji": "🏀",
           "asset": null
         },
         {
-          "id": "grapes",
+          "id": "football",
           "emoji": "🏈",
           "asset": null
         },
         {
-          "id": "watermelon",
+          "id": "baseball",
           "emoji": "⚾",
           "asset": null
         }
@@ -118,51 +118,46 @@
         null
       ],
       "gridShape": [
-        "XXX_XXX",
-        "XX___XX",
-        "_XX_XX_",
-        "__XXX__",
-        "_XX_XX_",
-        "XX___XX",
-        "XXX_XXX"
+        "_XXXXX_",
+        "XXXXXXX",
+        "XXXXXXX",
+        "XXXXXXX",
+        "XXXXXXX",
+        "XXXXXXX",
+        "_XXXXX_"
       ],
-      "movesAllowed": 30,
-      "scoreTarget": 1500
+      "movesAllowed": 40,
+      "scoreTarget": 200
     },
     {
       "id": 4,
-      "name": "Level 4 - Diamond Challenge",
+      "name": "Level 4 - Veggie Challenge",
       "gridWidth": 8,
       "gridHeight": 8,
       "items": [
         {
-          "id": "apple",
-          "emoji": "🍎",
+          "id": "avocado",
+          "emoji": "🥑",
           "asset": null
         },
         {
-          "id": "banana",
-          "emoji": "🍌",
+          "id": "broccoli",
+          "emoji": "🥦",
           "asset": null
         },
         {
-          "id": "orange",
-          "emoji": "🍊",
+          "id": "carrot",
+          "emoji": "🥕",
           "asset": null
         },
         {
-          "id": "grapes",
-          "emoji": "🍇",
+          "id": "salad",
+          "emoji": "🥗",
           "asset": null
         },
         {
-          "id": "watermelon",
-          "emoji": "🍉",
-          "asset": null
-        },
-        {
-          "id": "strawberry",
-          "emoji": "🍓",
+          "id": "cucumber",
+          "emoji": "🥒",
           "asset": null
         }
       ],
@@ -179,53 +174,44 @@
         "__XXXX__",
         "___XX___"
       ],
-      "movesAllowed": 35,
-      "scoreTarget": 2500
+      "movesAllowed": 50,
+      "scoreTarget": 250
     },
     {
       "id": 5,
-      "name": "Level 5 - Master Challenge",
+      "name": "Level 5 - Achievement Challenge",
       "gridWidth": 8,
       "gridHeight": 8,
       "items": [
         {
-          "id": "apple",
-          "emoji": "🍎",
+          "id": "star",
+          "emoji": "🌟",
           "asset": null
         },
         {
-          "id": "banana",
-          "emoji": "🍌",
+          "id": "trophy",
+          "emoji": "🏆",
           "asset": null
         },
         {
-          "id": "orange",
-          "emoji": "🍊",
+          "id": "gold",
+          "emoji": "🥇",
           "asset": null
         },
         {
-          "id": "grapes",
-          "emoji": "🍇",
+          "id": "silver",
+          "emoji": "🥈",
           "asset": null
         },
         {
-          "id": "watermelon",
-          "emoji": "🍉",
-          "asset": null
-        },
-        {
-          "id": "strawberry",
-          "emoji": "🍓",
+          "id": "bronze",
+          "emoji": "🥉",
           "asset": null
         }
       ],
       "colors": [
         "#FF0000",
-        "#FFFF00",
-        "#FFA500",
-        "#9400D3",
-        "#008000",
-        "#FF69B4"
+        null
       ],
       "gridShape": [
         "XXXXXXXX",
@@ -237,8 +223,8 @@
         "XXXXXXXX",
         "XXXXXXXX"
       ],
-      "movesAllowed": 40,
-      "scoreTarget": 3000
+      "movesAllowed": 60,
+      "scoreTarget": 300
     }
   ]
 }
