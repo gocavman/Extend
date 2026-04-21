@@ -1380,29 +1380,30 @@ class MatchGameViewController: UIViewController {
             }
         }
         
-        // Update grid display IMMEDIATELY
+        // Update grid display to set correct content on buttons BEFORE animation
         updateGridDisplay()
         
-        // Hide all new pieces initially so they don't stack up visually
-        for key in newPieces {
-            let parts = key.split(separator: ",").compactMap { Int($0) }
-            if parts.count == 2 {
-                let row = parts[0]
-                let col = parts[1]
-                if let button = gridButtons[row][col] {
-                    button.alpha = 0  // Hide new pieces - they'll appear as they animate
-                }
-            }
-        }
-        
-        // Hide all new pieces initially so they don't stack up visually
-        for key in newPieces {
-            let parts = key.split(separator: ",").compactMap { Int($0) }
-            if parts.count == 2 {
-                let row = parts[0]
-                let col = parts[1]
-                if let button = gridButtons[row][col] {
-                    button.alpha = 0  // Hide new pieces - they'll appear as they animate
+        // Now set all buttons to their START positions before animation
+        // This is critical: buttons must be visually where the piece currently is, not where it's going
+        for col in 0..<level.gridWidth {
+            for row in 0..<level.gridHeight {
+                let key = "\(row),\(col)"
+                guard movedPieces.contains(key), let button = gridButtons[row][col] else { continue }
+                
+                let distance = fallDistances[key] ?? 0
+                let cellHeight = gridContainer.bounds.height / CGFloat(level.gridHeight)
+                
+                // Set button to START position (before gravity)
+                if newPieces.contains(key) {
+                    // NEW pieces start OFF-SCREEN (above)
+                    let fallDistance = cellHeight * CGFloat(distance)
+                    button.transform = CGAffineTransform(translationX: 0, y: -fallDistance)
+                    button.alpha = 0  // Start hidden
+                } else {
+                    // EXISTING pieces start DOWN from where they'll end (they fell down, so we move them up visually)
+                    let fallDistance = cellHeight * CGFloat(distance)
+                    button.transform = CGAffineTransform(translationX: 0, y: fallDistance)
+                    button.alpha = 1.0
                 }
             }
         }
@@ -2206,17 +2207,30 @@ class MatchGameViewController: UIViewController {
             }
         }
         
-        // Update grid display IMMEDIATELY
+        // Update grid display to set correct content on buttons BEFORE animation
         updateGridDisplay()
         
-        // Hide all new pieces initially so they don't stack up visually
-        for key in newPieces {
-            let parts = key.split(separator: ",").compactMap { Int($0) }
-            if parts.count == 2 {
-                let row = parts[0]
-                let col = parts[1]
-                if let button = gridButtons[row][col] {
-                    button.alpha = 0  // Hide new pieces - they'll appear as they animate
+        // Now set all buttons to their START positions before animation
+        // This is critical: buttons must be visually where the piece currently is, not where it's going
+        for col in 0..<level.gridWidth {
+            for row in 0..<level.gridHeight {
+                let key = "\(row),\(col)"
+                guard movedPieces.contains(key), let button = gridButtons[row][col] else { continue }
+                
+                let distance = fallDistances[key] ?? 0
+                let cellHeight = gridContainer.bounds.height / CGFloat(level.gridHeight)
+                
+                // Set button to START position (before gravity)
+                if newPieces.contains(key) {
+                    // NEW pieces start OFF-SCREEN (above)
+                    let fallDistance = cellHeight * CGFloat(distance)
+                    button.transform = CGAffineTransform(translationX: 0, y: -fallDistance)
+                    button.alpha = 0  // Start hidden
+                } else {
+                    // EXISTING pieces start DOWN from where they'll end (they fell down, so we move them up visually)
+                    let fallDistance = cellHeight * CGFloat(distance)
+                    button.transform = CGAffineTransform(translationX: 0, y: fallDistance)
+                    button.alpha = 1.0
                 }
             }
         }
@@ -2240,113 +2254,114 @@ class MatchGameViewController: UIViewController {
             return
         }
         
-        // Pieces fall at consistent speed (pixels per second)
         let fallSpeedPixelsPerSecond: CGFloat = 400
         
-        var completedAnimations = 0
-        let totalAnimations = movedPieces.count
-        
-        guard totalAnimations > 0 else {
-            completion()
-            return
-        }
-        
-        // For each column, calculate the delays needed so pieces fall in order (bottom to top)
-        // This prevents visual overlap where it looks like pieces are passing through each other
-        var allAnimations: [(button: UIButton, delay: Double, duration: Double)] = []
+        // Build list of pieces to animate per column, sorted bottom to top
+        var columnPieces: [[AnimatingPiece]] = Array(repeating: [], count: level.gridWidth)
         
         for col in 0..<level.gridWidth {
-            // Collect all pieces in this column and their distances
-            var columnAnimations: [(button: UIButton, row: Int, distance: Int)] = []
+            var pieces: [AnimatingPiece] = []
             
             for row in 0..<level.gridHeight {
                 let key = "\(row),\(col)"
                 if movedPieces.contains(key), gridShapeMap[row][col], let button = gridButtons[row][col], gameGrid[row][col] != nil {
                     let distance = fallDistances[key] ?? 0
-                    columnAnimations.append((button: button, row: row, distance: distance))
+                    let isNewPiece = newPieces.contains(key)
+                    pieces.append(AnimatingPiece(button: button, row: row, distance: distance, isNew: isNewPiece))
                 }
             }
             
-            // Sort by row DESCENDING (bottom pieces first)
-            columnAnimations.sort { $0.row > $1.row }
-            print("📍 Column \(col): \(columnAnimations.count) pieces to animate, order: \(columnAnimations.map { $0.row })")
-            
-            // Calculate delay based on time to fall one cell - this ensures proper sequencing
-            // Pieces are offset by one cell-fall duration so they don't collide
-            let cellHeight = gridContainer.bounds.height / CGFloat(level.gridHeight)
-            let oneRowFallTime = Double(cellHeight / fallSpeedPixelsPerSecond)
-            
-            // Find the longest distance in this column to use as uniform duration
-            var maxDistance = 0
-            for (_, _, distance) in columnAnimations {
-                maxDistance = max(maxDistance, distance)
-            }
-            let fallDistance = cellHeight * CGFloat(maxDistance)
-            let uniformDuration = Double(fallDistance / fallSpeedPixelsPerSecond)
-            
-            var cumulativeDelay = 0.0
-            
-            for (button, row, distance) in columnAnimations {
-                print("📍 Column \(col): Row \(row) delay=\(String(format: "%.3f", cumulativeDelay)) duration=\(String(format: "%.3f", uniformDuration)) distance=\(distance)")
-                allAnimations.append((button: button, delay: cumulativeDelay, duration: uniformDuration))
-                cumulativeDelay += oneRowFallTime  // Stagger by time to fall one row
-            }
+            // Sort by row DESCENDING (bottom first) - pieces will animate sequentially
+            pieces.sort { $0.row > $1.row }
+            columnPieces[col] = pieces
+            print("📍 Column \(col): \(pieces.count) pieces to animate bottom-to-top, rows: \(pieces.map { $0.row })")
         }
         
-        // Now animate all pieces with calculated delays
-        for (button, delay, duration) in allAnimations {
-            let cellHeight = gridContainer.bounds.height / CGFloat(level.gridHeight)
+        let cellHeight = gridContainer.bounds.height / CGFloat(level.gridHeight)
+        
+        // Animate each column sequentially: animate bottom piece, when done animate next, etc.
+        var completedColumns = 0
+        let totalColumns = columnPieces.count
+        
+        for col in 0..<level.gridWidth {
+            let pieces = columnPieces[col]
             
-            // Find the distance for this piece
-            let startTransform: CGAffineTransform
-            var pieceRow = 0
-            var pieceCol = 0
-            
-            if let gamepiece = gameGrid[Int(button.tag / level.gridWidth)][Int(button.tag % level.gridWidth)] {
-                let row = gamepiece.row
-                let col = gamepiece.col
-                pieceRow = row
-                pieceCol = col
-                let distance = fallDistances["\(row),\(col)"] ?? 0
-                let fallDistance = cellHeight * CGFloat(distance)
-                
-                if newPieces.contains("\(row),\(col)") {
-                    // NEW pieces fall from ABOVE
-                    startTransform = CGAffineTransform(translationX: 0, y: -fallDistance)
-                } else {
-                    // EXISTING pieces fall DOWN
-                    startTransform = CGAffineTransform(translationX: 0, y: fallDistance)
+            guard !pieces.isEmpty else {
+                completedColumns += 1
+                if completedColumns == totalColumns {
+                    completion()
                 }
-            } else {
                 continue
             }
             
-            button.transform = startTransform
-            
-            // For new pieces, start with alpha=0 so they fade in as they fall (one at a time appearance)
-            if newPieces.contains("\(pieceRow),\(pieceCol)") {
-                button.alpha = 0  // Start hidden
-            } else {
-                button.alpha = 1.0  // Existing pieces are visible
-            }
-            
-            // Animate with calculated delay so pieces don't visually overlap
-            UIView.animate(
-                withDuration: duration,
-                delay: delay,
-                options: .curveEaseIn,
-                animations: {
-                    button.transform = .identity
-                    button.alpha = 1.0  // Fade in as it falls
-                },
-                completion: { finished in
-                    completedAnimations += 1
-                    if completedAnimations == totalAnimations {
-                        completion()
-                    }
+            // Animate pieces in this column sequentially using chained completion handlers
+            animateColumnPiecesSequentially(pieces: pieces, index: 0, cellHeight: cellHeight, fallSpeed: fallSpeedPixelsPerSecond, col: col) {
+                completedColumns += 1
+                if completedColumns == totalColumns {
+                    completion()
                 }
-            )
+            }
         }
+    }
+    
+    // Helper struct for animation tracking
+    private struct AnimatingPiece {
+        let button: UIButton
+        let row: Int
+        let distance: Int
+        let isNew: Bool
+    }
+    
+    // Recursively animate pieces in a column one by one
+    private func animateColumnPiecesSequentially(
+        pieces: [AnimatingPiece],
+        index: Int,
+        cellHeight: CGFloat,
+        fallSpeed: CGFloat,
+        col: Int,
+        completion: @escaping () -> Void
+    ) {
+        guard index < pieces.count else {
+            completion()
+            return
+        }
+        
+        let piece = pieces[index]
+        let fallDistance = cellHeight * CGFloat(piece.distance)
+        let duration = Double(fallDistance / fallSpeed)
+        
+        // Set starting position
+        if piece.isNew {
+            piece.button.transform = CGAffineTransform(translationX: 0, y: -fallDistance)
+            piece.button.alpha = 0
+        } else {
+            piece.button.transform = CGAffineTransform(translationX: 0, y: fallDistance)
+            piece.button.alpha = 1.0
+        }
+        
+        print("📍 Column \(col) Row \(piece.row): Animating distance=\(piece.distance) duration=\(String(format: "%.3f", duration))s")
+        
+        // Animate this piece
+        UIView.animate(
+            withDuration: duration,
+            delay: 0,  // No delay - start immediately after previous piece
+            options: .curveEaseIn,
+            animations: {
+                piece.button.transform = .identity
+                piece.button.alpha = 1.0
+            },
+            completion: { _ in
+                // When this piece finishes, animate the next one
+                self.animateColumnPiecesSequentially(
+                    pieces: pieces,
+                    index: index + 1,
+                    cellHeight: cellHeight,
+                    fallSpeed: fallSpeed,
+                    col: col,
+                    completion: completion
+                )
+            }
+        )
     }
     
     private func updateGridDisplay() {
