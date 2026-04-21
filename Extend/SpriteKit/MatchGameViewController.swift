@@ -2512,23 +2512,12 @@ class MatchGameViewController: UIViewController {
         
         return false
     }
-    
     private func shuffleGrid() {
         guard let level = currentLevel else { return }
         
         isAnimating = true
         
-        // Collect all pieces and their current buttons
-        var pieceAnimations: [(button: UIButton, row: Int, col: Int)] = []
-        for row in 0..<level.gridHeight {
-            for col in 0..<level.gridWidth {
-                if gridShapeMap[row][col], let button = gridButtons[row][col] {
-                    pieceAnimations.append((button: button, row: row, col: col))
-                }
-            }
-        }
-        
-        // Collect all pieces to shuffle (don't shuffle yet)
+        // Collect all pieces to shuffle
         var pieces: [GamePiece] = []
         for row in 0..<level.gridHeight {
             for col in 0..<level.gridWidth {
@@ -2539,48 +2528,65 @@ class MatchGameViewController: UIViewController {
         }
         pieces.shuffle()
         
-        // Animate tiles flying to random positions then back
-        var animationCount = 0
-        for (index, animation) in pieceAnimations.enumerated() {
-            let button = animation.button
-            animationCount += 1
-            
-            // Generate random offset for flying out
-            let randomX = CGFloat.random(in: -100...100)
-            let randomY = CGFloat.random(in: -100...100)
-            let delay = Double(index) * 0.02  // Stagger animations
-            
-            // Phase 1: Fly out to random position (0.2s)
-            UIView.animate(withDuration: 0.2, delay: delay, options: .curveEaseIn, animations: {
-                button.transform = CGAffineTransform(translationX: randomX, y: randomY)
-                button.alpha = 0.3
-            }, completion: { _ in
-                // Phase 2: Fly back to original position (0.15s)
-                UIView.animate(withDuration: 0.15, delay: 0, options: .curveEaseOut, animations: {
-                    button.transform = .identity
-                    button.alpha = 1.0
-                }, completion: { _ in
-                    animationCount -= 1
-                    // When all animations complete, update the game with shuffled pieces
-                    if animationCount == 0 {
-                        // NOW place the shuffled pieces into the grid
-                        var pieceIndex = 0
-                        for row in 0..<level.gridHeight {
-                            for col in 0..<level.gridWidth {
-                                if self.gridShapeMap[row][col] && pieceIndex < pieces.count {
-                                    self.gameGrid[row][col] = pieces[pieceIndex]
-                                    pieces[pieceIndex].row = row
-                                    pieces[pieceIndex].col = col
-                                    pieceIndex += 1
-                                }
-                            }
-                        }
-                        
-                        self.updateGridDisplay()
-                        self.checkForMatches()
+        // Create mapping: which button should go to which position
+        var buttonToNewPosition: [UIButton: (row: Int, col: Int)] = [:]
+        var newGridData: [[GamePiece?]] = Array(repeating: Array(repeating: nil, count: level.gridWidth), count: level.gridHeight)
+        
+        var pieceIndex = 0
+        for row in 0..<level.gridHeight {
+            for col in 0..<level.gridWidth {
+                if gridShapeMap[row][col] && pieceIndex < pieces.count {
+                    newGridData[row][col] = pieces[pieceIndex]
+                    pieces[pieceIndex].row = row
+                    pieces[pieceIndex].col = col
+                    
+                    // Find which button currently has this piece (before shuffle)
+                    if let originalPiece = gameGrid[row][col], let button = gridButtons[row][col] {
+                        // We'll animate from current position to new position
+                        // but we need to know where this button should end up
                     }
-                })
-            })
+                    pieceIndex += 1
+                }
+            }
+        }
+        
+        // Now animate each button to fly out, then update content, then fly back
+        var animationCount = 0
+        for row in 0..<level.gridHeight {
+            for col in 0..<level.gridWidth {
+                if gridShapeMap[row][col], let button = gridButtons[row][col] {
+                    animationCount += 1
+                    let delay = Double(row * level.gridWidth + col) * 0.02
+                    
+                    // Generate random offset
+                    let randomX = CGFloat.random(in: -100...100)
+                    let randomY = CGFloat.random(in: -100...100)
+                    
+                    // Phase 1: Fly out
+                    UIView.animate(withDuration: 0.2, delay: delay, options: .curveEaseIn, animations: {
+                        button.transform = CGAffineTransform(translationX: randomX, y: randomY)
+                        button.alpha = 0.3
+                    }, completion: { _ in
+                        // Phase 2: Update the grid display while button is off-screen
+                        // Put the NEW shuffled piece in the grid
+                        if row < newGridData.count && col < newGridData[row].count {
+                            self.gameGrid[row][col] = newGridData[row][col]
+                        }
+                        self.updateGridDisplay()
+                        
+                        // Phase 3: Fly back
+                        UIView.animate(withDuration: 0.15, delay: 0, options: .curveEaseOut, animations: {
+                            button.transform = .identity
+                            button.alpha = 1.0
+                        }, completion: { _ in
+                            animationCount -= 1
+                            if animationCount == 0 {
+                                self.checkForMatches()
+                            }
+                        })
+                    })
+                }
+            }
         }
     }
     
@@ -2762,7 +2768,13 @@ class MatchGameViewController: UIViewController {
     private func showIdleHint() {
         guard let level = currentLevel, !isAnimating else { return }
         
+        // Don't show a new hint if one is already showing
+        if hintingTile != nil {
+            return
+        }
+        
         // Find a valid swap that would create a match (hint to the player)
+        // We want to pulse the tile that will be part of the match after swap
         for row in 0..<level.gridHeight {
             for col in 0..<level.gridWidth {
                 guard gridShapeMap[row][col], gridButtons[row][col] != nil else { continue }
@@ -2779,6 +2791,9 @@ class MatchGameViewController: UIViewController {
                         
                         // Simulate swap to check if it creates a match
                         if let piece1 = gameGrid[row][col], let piece2 = gameGrid[adjRow][adjCol] {
+                            // Only check regular pieces (powerups can't form matches this way)
+                            guard piece1.type == .normal && piece2.type == .normal else { continue }
+                            
                             // Swap in data (temporarily)
                             gameGrid[row][col] = piece2
                             gameGrid[adjRow][adjCol] = piece1
@@ -2799,17 +2814,16 @@ class MatchGameViewController: UIViewController {
                             piece2.row = adjRow
                             piece2.col = adjCol
                             
-                            if matchAtAdjacent || matchAtOriginal {
-                                // Pulse the tile that will form the match
-                                // If piece1 at adjRow/adjCol creates the match, pulse it (it moved there)
-                                // If piece2 at row/col creates the match, pulse it (it moved there)
-                                if matchAtAdjacent {
-                                    hintingTile = (adjRow, adjCol)
-                                    pulseButton(gridButtons[adjRow][adjCol]!)
-                                } else {
-                                    hintingTile = (row, col)
-                                    pulseButton(gridButtons[row][col]!)
-                                }
+                            // Prefer pulsing the tile at the original position if it creates a match
+                            // because that's the more intuitive hint (user sees the tile in its current spot)
+                            if matchAtOriginal {
+                                hintingTile = (row, col)
+                                pulseButton(gridButtons[row][col]!)
+                                return
+                            } else if matchAtAdjacent {
+                                // If only the adjacent creates a match, pulse that
+                                hintingTile = (adjRow, adjCol)
+                                pulseButton(gridButtons[adjRow][adjCol]!)
                                 return
                             }
                         }
