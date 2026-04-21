@@ -2256,16 +2256,25 @@ class MatchGameViewController: UIViewController {
             columnAnimations.sort { $0.row > $1.row }
             print("📍 Column \(col): \(columnAnimations.count) pieces to animate, order: \(columnAnimations.map { $0.row })")
             
-            // Calculate delays: each piece starts after the previous one would finish
+            // Calculate delay based on time to fall one cell - this ensures proper sequencing
+            // Pieces are offset by one cell-fall duration so they don't collide
+            let cellHeight = gridContainer.bounds.height / CGFloat(level.gridHeight)
+            let oneRowFallTime = Double(cellHeight / fallSpeedPixelsPerSecond)
+            
+            // Find the longest distance in this column to use as uniform duration
+            var maxDistance = 0
+            for (_, _, distance) in columnAnimations {
+                maxDistance = max(maxDistance, distance)
+            }
+            let fallDistance = cellHeight * CGFloat(maxDistance)
+            let uniformDuration = Double(fallDistance / fallSpeedPixelsPerSecond)
+            
             var cumulativeDelay = 0.0
+            
             for (button, row, distance) in columnAnimations {
-                let cellHeight = gridContainer.bounds.height / CGFloat(level.gridHeight)
-                let fallDistance = cellHeight * CGFloat(distance)
-                let duration = Double(fallDistance / fallSpeedPixelsPerSecond)
-                
-                print("📍 Column \(col): Row \(row) delay=\(cumulativeDelay) duration=\(String(format: "%.3f", duration)) distance=\(distance)")
-                allAnimations.append((button: button, delay: cumulativeDelay, duration: duration))
-                cumulativeDelay += duration  // Next piece starts when this one finishes
+                print("📍 Column \(col): Row \(row) delay=\(String(format: "%.3f", cumulativeDelay)) duration=\(String(format: "%.3f", uniformDuration)) distance=\(distance)")
+                allAnimations.append((button: button, delay: cumulativeDelay, duration: uniformDuration))
+                cumulativeDelay += oneRowFallTime  // Stagger by time to fall one row
             }
         }
         
