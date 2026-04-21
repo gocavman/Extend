@@ -2341,18 +2341,14 @@ class MatchGameViewController: UIViewController {
         
         print("📍 Column \(col) Row \(piece.row): Animating distance=\(piece.distance) duration=\(String(format: "%.3f", duration))s")
         
-        // Animate this piece
-        UIView.animate(
-            withDuration: duration,
-            delay: 0,  // No delay - start immediately after previous piece
-            options: .curveEaseIn,
-            animations: {
-                piece.button.transform = .identity
-                piece.button.alpha = 1.0
-            },
-            completion: { _ in
-                // When this piece finishes, animate the next one
-                self.animateColumnPiecesSequentially(
+        // Calculate when to start next piece (at 50% completion of this piece)
+        let percentToWait = 0.5  // Change this value: 0.25 = 25%, 0.5 = 50%, 0.75 = 75%, etc.
+        let delayForNextPiece = duration * percentToWait
+        
+        // Start next piece animation after percentage completion of current piece
+        if index + 1 < pieces.count {
+            DispatchQueue.main.asyncAfter(deadline: .now() + delayForNextPiece) { [weak self] in
+                self?.animateColumnPiecesSequentially(
                     pieces: pieces,
                     index: index + 1,
                     cellHeight: cellHeight,
@@ -2360,6 +2356,23 @@ class MatchGameViewController: UIViewController {
                     col: col,
                     completion: completion
                 )
+            }
+        }
+        
+        // Animate this piece
+        UIView.animate(
+            withDuration: duration,
+            delay: 0,
+            options: .curveEaseIn,
+            animations: {
+                piece.button.transform = .identity
+                piece.button.alpha = 1.0
+            },
+            completion: { _ in
+                // Only call completion if this is the last piece
+                if index == pieces.count - 1 {
+                    completion()
+                }
             }
         )
     }
