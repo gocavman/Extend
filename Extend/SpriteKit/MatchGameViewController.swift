@@ -75,6 +75,7 @@ class MatchGameViewController: UIViewController {
     private let gridStackView = UIStackView()
     private let exitButton = UIButton()
     private let levelLabel = UILabel()
+    private let levelNameLabel = UILabel()  // NEW: Display level name
     private let levelSelectorButton = UIButton()  // NEW: Level selector dropdown
     private let scoreLabel = UILabel()
     private let movesLabel = UILabel()
@@ -83,6 +84,9 @@ class MatchGameViewController: UIViewController {
     
     // Game State
     private var currentLevel: MatchGameLevel?
+    private var lastMoveTime: Date = Date()  // Track last move time for idle detection
+    private var idleTimer: Timer?  // Timer for idle hint pulsing
+    private var hintingTile: (row: Int, col: Int)?  // Current tile being pulsed as hint
     private var gameConfig: MatchGameConfig?
     private var currentLevelId: Int = 1
     private var gameGrid: [[GamePiece?]] = []
@@ -160,6 +164,20 @@ class MatchGameViewController: UIViewController {
             exitButton.heightAnchor.constraint(equalToConstant: 40)
         ])
         
+        // Level Name Label (centered, above level selector)
+        levelNameLabel.font = UIFont.systemFont(ofSize: 16, weight: .semibold)
+        levelNameLabel.textColor = .white
+        levelNameLabel.text = "Level 1 - Fruit Challenge"
+        levelNameLabel.textAlignment = .center
+        headerView.addSubview(levelNameLabel)
+        levelNameLabel.translatesAutoresizingMaskIntoConstraints = false
+        NSLayoutConstraint.activate([
+            levelNameLabel.topAnchor.constraint(equalTo: headerView.topAnchor, constant: 10),
+            levelNameLabel.centerXAnchor.constraint(equalTo: headerView.centerXAnchor),
+            levelNameLabel.leadingAnchor.constraint(greaterThanOrEqualTo: headerView.leadingAnchor, constant: 60),
+            levelNameLabel.trailingAnchor.constraint(lessThanOrEqualTo: headerView.trailingAnchor, constant: -60)
+        ])
+        
         // Level Selector Button (dropdown)
         levelSelectorButton.setTitle("Level 1 ▼", for: .normal)
         levelSelectorButton.titleLabel?.font = UIFont.systemFont(ofSize: 14, weight: .semibold)
@@ -170,7 +188,7 @@ class MatchGameViewController: UIViewController {
         headerView.addSubview(levelSelectorButton)
         levelSelectorButton.translatesAutoresizingMaskIntoConstraints = false
         NSLayoutConstraint.activate([
-            levelSelectorButton.topAnchor.constraint(equalTo: headerView.topAnchor, constant: 10),
+            levelSelectorButton.topAnchor.constraint(equalTo: levelNameLabel.bottomAnchor, constant: 8),
             levelSelectorButton.centerXAnchor.constraint(equalTo: headerView.centerXAnchor),
             levelSelectorButton.widthAnchor.constraint(equalToConstant: 100),
             levelSelectorButton.heightAnchor.constraint(equalToConstant: 40)
@@ -308,6 +326,10 @@ class MatchGameViewController: UIViewController {
         updateUI()
         renderGrid()
         
+        // Reset idle hint timer
+        lastMoveTime = Date()
+        resetIdleHintTimer()
+        
         // Check for initial matches on level load
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
             self?.checkForMatches()
@@ -320,6 +342,7 @@ class MatchGameViewController: UIViewController {
         let highScore = UserDefaults.standard.integer(forKey: "matchGameHighScore")
         
         levelLabel.text = level.name
+        levelNameLabel.text = level.name  // Update level name label
         scoreLabel.text = "Score: \(score)"
         movesLabel.text = "Moves: \(max(0, movesRemaining))"  // Never show negative movesining))"  // Never show negative moves
         targetLabel.text = "Target: \(level.scoreTarget)"
@@ -718,6 +741,10 @@ class MatchGameViewController: UIViewController {
     
     private func swapPieces(_ r1: Int, _ c1: Int, _ r2: Int, _ c2: Int) {
         isAnimating = true
+        
+        // Reset idle timer on move
+        lastMoveTime = Date()
+        resetIdleHintTimer()
         
         // Don't decrement moves yet - wait until we validate the swap creates a match or uses a powerup
         // Remember the swap for potential revert
@@ -2709,5 +2736,145 @@ class MatchGameViewController: UIViewController {
                 completion()
             })
         })
+    }
+    
+    // MARK: - Idle Hint System
+    
+    private func resetIdleHintTimer() {
+        // Cancel existing timer
+        idleTimer?.invalidate()
+        idleTimer = nil
+        
+        // Stop current hint animation if any
+        if let (hRow, hCol) = hintingTile,
+           let button = gridButtons[hRow][hCol] {
+            button.layer.removeAllAnimations()
+            button.alpha = 1.0
+        }
+        hintingTile = nil
+        
+        // Start new timer - show hint after 10 seconds of inactivity
+        idleTimer = Timer.scheduledTimer(withTimeInterval: 10.0, repeats: false) { [weak self] _ in
+            self?.showIdleHint()
+        }
+    }
+    
+    private func showIdleHint() {
+        guard let level = currentLevel, !isAnimating else { return }
+        
+        // Find a valid swap that would create a match (hint to the player)
+        for row in 0..<level.gridHeight {
+            for col in 0..<level.gridWidth {
+                guard gridShapeMap[row][col], gridButtons[row][col] != nil else { continue }
+                
+                // Try swapping with adjacent tiles
+                let directions = [(0, 1), (1, 0), (0, -1), (-1, 0)]
+                for (dRow, dCol) in directions {
+                    let adjRow = row + dRow
+                    let adjCol = col + dCol
+                    
+                    if adjRow >= 0 && adjRow < level.gridHeight &&
+                       adjCol >= 0 && adjCol < level.gridWidth &&
+                       gridShapeMap[adjRow][adjCol] {
+                        
+                        // Simulate swap to check if it creates a match
+                        if let piece1 = gameGrid[row][col], let piece2 = gameGrid[adjRow][adjCol] {
+                            // Swap in data (temporarily)
+                            gameGrid[row][col] = piece2
+                            gameGrid[adjRow][adjCol] = piece1
+                            piece1.row = adjRow
+                            piece1.col = adjCol
+                            piece2.row = row
+                            piece2.col = col
+                            
+                            // Check if this creates any matches
+                            var hasMatch = false
+                            
+                            // Check matches at new position of piece1
+                            hasMatch = hasMatch || checkTileForMatches(adjRow, adjCol)
+                            // Check matches at new position of piece2
+                            hasMatch = hasMatch || checkTileForMatches(row, col)
+                            
+                            // Swap back
+                            gameGrid[row][col] = piece1
+                            gameGrid[adjRow][adjCol] = piece2
+                            piece1.row = row
+                            piece1.col = col
+                            piece2.row = adjRow
+                            piece2.col = adjCol
+                            
+                            if hasMatch {
+                                // Found a good hint! Pulse this tile
+                                hintingTile = (row, col)
+                                pulseButton(gridButtons[row][col]!)
+                                return
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        
+        // If no match-creating swap found, just pulse a random tile
+        let validTiles = (0..<level.gridHeight).flatMap { row in
+            (0..<level.gridWidth).compactMap { col -> (Int, Int)? in
+                gridShapeMap[row][col] && gridButtons[row][col] != nil ? (row, col) : nil
+            }
+        }
+        
+        if let randomTile = validTiles.randomElement() {
+            hintingTile = randomTile
+            pulseButton(gridButtons[randomTile.0][randomTile.1]!)
+        }
+    }
+    
+    private func checkTileForMatches(_ row: Int, _ col: Int) -> Bool {
+        guard let level = currentLevel, let piece = gameGrid[row][col] else { return false }
+        
+        // Check horizontal match
+        var count = 1
+        // Check left
+        var c = col - 1
+        while c >= 0 && gridShapeMap[row][c] && gameGrid[row][c]?.matches(piece) ?? false {
+            count += 1
+            c -= 1
+        }
+        // Check right
+        c = col + 1
+        while c < level.gridWidth && gridShapeMap[row][c] && gameGrid[row][c]?.matches(piece) ?? false {
+            count += 1
+            c += 1
+        }
+        if count >= 3 { return true }
+        
+        // Check vertical match
+        count = 1
+        // Check up
+        var r = row - 1
+        while r >= 0 && gridShapeMap[r][col] && gameGrid[r][col]?.matches(piece) ?? false {
+            count += 1
+            r -= 1
+        }
+        // Check down
+        r = row + 1
+        while r < level.gridHeight && gridShapeMap[r][col] && gameGrid[r][col]?.matches(piece) ?? false {
+            count += 1
+            r += 1
+        }
+        
+        return count >= 3
+    }
+    
+    private func pulseButton(_ button: UIButton) {
+        // Create a pulsing animation
+        let pulseAnimation = CABasicAnimation(keyPath: "opacity")
+        pulseAnimation.fromValue = 1.0
+        pulseAnimation.toValue = 0.4
+        pulseAnimation.duration = 0.6
+        pulseAnimation.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
+        pulseAnimation.repeatCount = .infinity
+        pulseAnimation.autoreverses = true
+        
+        button.layer.add(pulseAnimation, forKey: "pulse")
     }
 }
