@@ -106,6 +106,7 @@ class MatchGameViewController: UIViewController {
     private var movedPieces: Set<String> = []  // Track which pieces moved during gravity
     private var fallDistances: [String: Int] = [:]  // Track how far each piece fell (row distance)
     private var newPieces: Set<String> = []  // Track which pieces are NEW (from refill)
+    private var levelCompletionTriggered: Bool = false  // Prevent multiple level completion triggers
     
     // MARK: - Game Logic
     private let darkBg = UIColor(hex: "#2C3E50") ?? .black
@@ -277,8 +278,9 @@ class MatchGameViewController: UIViewController {
         score = 0
         movesRemaining = level.movesAllowed
         selectedPiece = nil
+        levelCompletionTriggered = false  // Reset flag for new level
         
-        // Build grid shape map from level configuration
+        // ...existing code...
         gridShapeMap = Array(repeating: Array(repeating: false, count: level.gridWidth), count: level.gridHeight)
         
         // Parse grid shape strings into boolean grid
@@ -334,8 +336,9 @@ class MatchGameViewController: UIViewController {
         movesLabel.text = "Moves: \(max(0, movesRemaining))"  // Never show negative moves
         targetLabel.text = "Target: \(level.scoreTarget)"
         
-        // Check if target score is reached
-        if score >= level.scoreTarget && !isAnimating {
+        // Check if target score is reached (only trigger once per level)
+        if score >= level.scoreTarget && !levelCompletionTriggered {
+            levelCompletionTriggered = true
             checkLevelCompletion()
         }
     }
@@ -356,6 +359,9 @@ class MatchGameViewController: UIViewController {
                 print("🔓 Unlocked level \(nextLevelId)")
             }
             
+            // Reset all button transforms before showing completion animation
+            resetAllButtonTransforms()
+            
             // Disable interactions while animating
             isAnimating = true
             
@@ -372,9 +378,26 @@ class MatchGameViewController: UIViewController {
         } else {
             // All levels complete!
             print("🎉 ALL LEVELS COMPLETE! Final Score: \(score)")
+            
+            // Reset all button transforms before showing completion animation
+            resetAllButtonTransforms()
+            
             showGameCompleteAnimation {
                 // Return to map after all levels are complete
                 self.exitGame()
+            }
+        }
+    }
+    
+    private func resetAllButtonTransforms() {
+        guard let level = currentLevel else { return }
+        
+        for row in 0..<level.gridHeight {
+            for col in 0..<level.gridWidth {
+                if let button = gridButtons[row][col] {
+                    button.transform = .identity
+                    button.alpha = 1.0
+                }
             }
         }
     }
