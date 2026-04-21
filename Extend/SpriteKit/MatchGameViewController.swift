@@ -330,10 +330,7 @@ class MatchGameViewController: UIViewController {
             checkLevelCompletion()
         }
         
-        // Check if out of moves
-        if movesRemaining <= 0 && !isAnimating {
-            levelFailed()
-        }
+        // Don't check for game over here - will be checked at end of checkForMatches()
     }
     
     private func checkLevelCompletion() {
@@ -719,14 +716,8 @@ class MatchGameViewController: UIViewController {
     
     private func swapPieces(_ r1: Int, _ c1: Int, _ r2: Int, _ c2: Int) {
         isAnimating = true
-        movesRemaining -= 1
         
-        // Check if out of moves immediately
-        if movesRemaining <= 0 {
-            levelFailed()
-            return
-        }
-        
+        // Don't decrement moves yet - wait until we validate the swap creates a match or uses a powerup
         // Remember the swap for potential revert
         lastSwappedPositions = ((r1, c1), (r2, c2))
         
@@ -831,6 +822,9 @@ class MatchGameViewController: UIViewController {
             
             print("🔍 [DEBUG] Two bombs merged! Clearing 4x4 grid around (\(midRow),\(midCol)). Found \(cascadingPowerups.count) cascading powerups")
             
+            // Decrement moves for this valid swap
+            movesRemaining -= 1
+            
             // Reset swapped button transforms FIRST so buttons are in correct positions
             if let (button1, button2) = swappedButtons {
                 button1.transform = .identity
@@ -881,6 +875,9 @@ class MatchGameViewController: UIViewController {
             
             print("🔍 [DEBUG] Two flames merged! Clearing entire screen. Found \(cascadingPowerups.count) cascading powerups")
             
+            // Decrement moves for this valid swap
+            movesRemaining -= 1
+            
             // Reset swapped button transforms FIRST so buttons are in correct positions
             if let (button1, button2) = swappedButtons {
                 button1.transform = .identity
@@ -917,6 +914,9 @@ class MatchGameViewController: UIViewController {
            (piece1?.type == .horizontalArrow && piece2?.type == .verticalArrow) {
             let impact = UIImpactFeedbackGenerator(style: .heavy)
             impact.impactOccurred()
+            
+            // Decrement moves for this valid swap
+            movesRemaining -= 1
             
             let arrowRow = piece1?.type == .verticalArrow ? r1 : r2
             let arrowCol = piece1?.type == .horizontalArrow ? c1 : c2
@@ -1133,6 +1133,11 @@ class MatchGameViewController: UIViewController {
         }
         
         // Show borders first for all cleared tiles, then clear and process (DON'T call updateGridDisplay() yet - it resets transforms!)
+        // Decrement moves for this valid swap (if clearedTiles are not empty)
+        if !clearedTiles.isEmpty {
+            movesRemaining -= 1
+        }
+        
         // Reset swapped button transforms FIRST so buttons are in correct positions
         if let (button1, button2) = swappedButtons {
             button1.transform = .identity
@@ -1604,7 +1609,7 @@ class MatchGameViewController: UIViewController {
                 // Power-up was swapped - activate it
                 lastSwappedPositions = nil
                 isAnimating = true
-                movesRemaining -= 1
+                // Don't decrement here - activatePowerUps() handles it
                 
                 var clearedTiles: Set<String> = []
                 var cascadingPowerups: [(row: Int, col: Int, type: PieceType)] = []
@@ -1676,7 +1681,7 @@ class MatchGameViewController: UIViewController {
                 // Power-up was swapped - activate it
                 lastSwappedPositions = nil
                 isAnimating = true
-                movesRemaining -= 1
+                // Don't decrement here - activatePowerUps() handles it
                 
                 var clearedTiles: Set<String> = []
                 var cascadingPowerups: [(row: Int, col: Int, type: PieceType)] = []
@@ -1932,7 +1937,12 @@ class MatchGameViewController: UIViewController {
             let impact = UIImpactFeedbackGenerator(style: .heavy)
             impact.impactOccurred()
             
-            // Valid match found - clear lastSwappedPositions and reset transforms
+            // Only decrement moves if this was a user swap (initial move), not a cascade
+            if lastSwappedPositions != nil {
+                movesRemaining -= 1
+            }
+            
+            // Clear lastSwappedPositions and reset transforms
             lastSwappedPositions = nil
             
             // Reset the transforms of swapped buttons so they display correctly
@@ -2000,19 +2010,18 @@ class MatchGameViewController: UIViewController {
                     self.gameGrid[r2][c2]?.row = r2
                     self.gameGrid[r2][c2]?.col = c2
                     
-                    // Refund the move ONLY if it wasn't a powerup swap
-                    // Powerup swaps always consume a move regardless of outcome
-                    if !self.currentSwapInvolvesAPowerup {
-                        self.movesRemaining += 1
-                    }
+                    // No move refund needed - we never decremented for invalid moves
                     self.currentSwapInvolvesAPowerup = false
                     
                     self.updateGridDisplay()
                     self.updateUI()
                     self.isAnimating = false
+                    self.checkGameOver()  // Check for game over after revert completes
                 })
             } else {
                 isAnimating = false
+                // Check for game over after invalid move revert completes
+                checkGameOver()
             }
         }
     }
@@ -2200,6 +2209,13 @@ class MatchGameViewController: UIViewController {
         // Animate pieces falling, then check for matches when complete
         animatePiecesDrop() { [weak self] in
             self?.checkForMatches()
+        }
+    }
+    
+    // Helper function to check if game should end
+    private func checkGameOver() {
+        if movesRemaining <= 0 && !isAnimating {
+            levelFailed()
         }
     }
     
@@ -2627,10 +2643,20 @@ class MatchGameViewController: UIViewController {
             let alert = UIAlertController(title: "Out of Moves!", message: "You ran out of moves before reaching the target score of \(level.scoreTarget).", preferredStyle: .alert)
             
             alert.addAction(UIAlertAction(title: "Try Again", style: .default) { _ in
-                // Restart the level
+                // Completely reset level for full refresh
+                self.isAnimating = false
+                self.lastSwappedPositions = nil
+                self.swappedButtons = nil
+                self.selectedPiece = nil
+                self.dragStartPiece = nil
+                self.dragTargetPiece = nil
+                self.movedPieces.removeAll()
+                self.fallDistances.removeAll()
+                self.newPieces.removeAll()
+                
+                // Now restart the level
                 self.score = 0
                 self.startLevel(level.id)
-                self.isAnimating = false
             })
             
             alert.addAction(UIAlertAction(title: "Exit", style: .cancel) { _ in
@@ -2661,16 +2687,14 @@ class MatchGameViewController: UIViewController {
         UIView.animate(withDuration: 0.5, animations: {
             label.alpha = 1.0
         }, completion: { _ in
-            DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
-                UIView.animate(withDuration: 0.5, animations: {
-                    overlay.alpha = 0
-                    label.alpha = 0
-                }, completion: { _ in
-                    overlay.removeFromSuperview()
-                    label.removeFromSuperview()
-                    completion()
-                })
-            }
+            UIView.animate(withDuration: 0.5, animations: {
+                overlay.alpha = 0
+                label.alpha = 0
+            }, completion: { _ in
+                overlay.removeFromSuperview()
+                label.removeFromSuperview()
+                completion()
+            })
         })
     }
 }
