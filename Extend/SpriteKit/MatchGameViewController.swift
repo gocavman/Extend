@@ -1968,7 +1968,45 @@ class MatchGameViewController: UIViewController {
         if !matchesToRemove.isEmpty {
             print("🔍 [DEBUG] Total matches found: \(matchesToRemove.count) tiles to remove")
             print("🔍 [DEBUG] Matches: \(matchesToRemove.sorted())")
+            print("🔍 [DEBUG] Initial powerups to create: \(powerUpsToCreate.count)")
+            
+            // PRIORITIZE POWERUPS: flame > arrow > bomb
+            // If multiple powerups target the same location, keep only the highest priority
+            var prioritizedPowerups: [(row: Int, col: Int, type: PieceType)] = []
+            var powerupLocations: [String: PieceType] = [:]  // Track (row,col) -> highest priority type
+            
+            for powerup in powerUpsToCreate {
+                let key = "\(powerup.row),\(powerup.col)"
+                let existingType = powerupLocations[key]
+                
+                // Determine priority: flame (3) > arrow (2) > bomb (1) > nil (0)
+                let newPriority = powerup.type == .flame ? 3 : (powerup.type == .verticalArrow || powerup.type == .horizontalArrow ? 2 : 1)
+                let existingPriority: Int
+                if let existing = existingType {
+                    existingPriority = existing == .flame ? 3 : (existing == .verticalArrow || existing == .horizontalArrow ? 2 : 1)
+                } else {
+                    existingPriority = 0  // No existing powerup at this location
+                }
+                
+                // Add powerup if no existing one or if new one has higher priority
+                if existingPriority == 0 || newPriority > existingPriority {
+                    powerupLocations[key] = powerup.type
+                }
+            }
+            
+            // Convert back to array
+            for (key, type) in powerupLocations {
+                let parts = key.split(separator: ",").map { Int($0) ?? 0 }
+                if parts.count == 2 {
+                    prioritizedPowerups.append((row: parts[0], col: parts[1], type: type))
+                }
+            }
+            
             print("✅ VALID MATCH DETECTED - animating removal")
+            print("🔍 [DEBUG] Prioritized powerups to create: \(prioritizedPowerups.count)")
+            
+            // Use prioritized powerups instead
+            powerUpsToCreate = prioritizedPowerups
             
             // Trigger haptic feedback
             let impact = UIImpactFeedbackGenerator(style: .heavy)
@@ -2025,7 +2063,6 @@ class MatchGameViewController: UIViewController {
         } else {
             // No match found
             print("🔍 [DEBUG] No matches found in current grid")
-            print("❌ INVALID MOVE - starting 3 second revert animation")
             
             // Revert the swap if one was made
             if let ((r1, c1), (r2, c2)) = lastSwappedPositions, let (button1, button2) = swappedButtons {
@@ -2362,7 +2399,7 @@ class MatchGameViewController: UIViewController {
             piece.button.alpha = 1.0
         }
         
-        print("📍 Column \(col) Row \(piece.row): Animating distance=\(piece.distance) duration=\(String(format: "%.3f", duration))s")
+        //print("📍 Column \(col) Row \(piece.row): Animating distance=\(piece.distance) duration=\(String(format: "%.3f", duration))s")
         
         // Calculate when to start next piece (at 50% completion of this piece)
         let percentToWait = 0.5  // Change this value: 0.25 = 25%, 0.5 = 50%, 0.75 = 75%, etc.
@@ -2589,12 +2626,6 @@ class MatchGameViewController: UIViewController {
                     newGridData[row][col] = pieces[pieceIndex]
                     pieces[pieceIndex].row = row
                     pieces[pieceIndex].col = col
-                    
-                    // Find which button currently has this piece (before shuffle)
-                    if let originalPiece = gameGrid[row][col], let button = gridButtons[row][col] {
-                        // We'll animate from current position to new position
-                        // but we need to know where this button should end up
-                    }
                     pieceIndex += 1
                 }
             }
@@ -2823,6 +2854,15 @@ class MatchGameViewController: UIViewController {
             return
         }
         
+        // IMPORTANT: Don't show hints if there are cascading matches currently on the board
+        // This prevents pulsing while new matches are being processed
+        if hasCascadingMatches() {
+            print("🔍 [DEBUG] Skipping hint - cascading matches detected on board")
+            // Reschedule hint check after cascades settle
+            resetIdleHintTimer()
+            return
+        }
+        
         // Find a valid swap that would create a match (hint to the player)
         // We want to pulse the tile that will be part of the match after swap
         for row in 0..<level.gridHeight {
@@ -2895,6 +2935,67 @@ class MatchGameViewController: UIViewController {
             hintingTile = randomTile
             pulseButton(gridButtons[randomTile.0][randomTile.1]!)
         }
+    }
+    
+    private func hasCascadingMatches() -> Bool {
+        guard let level = currentLevel else { return false }
+        
+        // Check if there are any 3+ matches currently on the board
+        // This helps prevent showing hints while cascading matches are being processed
+        
+        // Check horizontal matches
+        for row in 0..<level.gridHeight {
+            var col = 0
+            while col < level.gridWidth {
+                if gridShapeMap[row][col], let piece = gameGrid[row][col], piece.type == .normal {
+                    var matchCount = 1
+                    var checkCol = col + 1
+                    
+                    while checkCol < level.gridWidth &&
+                          gridShapeMap[row][checkCol],
+                          let nextPiece = gameGrid[row][checkCol],
+                          piece.matches(nextPiece) {
+                        matchCount += 1
+                        checkCol += 1
+                    }
+                    
+                    if matchCount >= 3 {
+                        return true
+                    }
+                    col = max(col + 1, checkCol)
+                } else {
+                    col += 1
+                }
+            }
+        }
+        
+        // Check vertical matches
+        for col in 0..<level.gridWidth {
+            var row = level.gridHeight - 1
+            while row >= 0 {
+                if gridShapeMap[row][col], let piece = gameGrid[row][col], piece.type == .normal {
+                    var matchCount = 1
+                    var checkRow = row - 1
+                    
+                    while checkRow >= 0 &&
+                          gridShapeMap[checkRow][col],
+                          let nextPiece = gameGrid[checkRow][col],
+                          piece.matches(nextPiece) {
+                        matchCount += 1
+                        checkRow -= 1
+                    }
+                    
+                    if matchCount >= 3 {
+                        return true
+                    }
+                    row = min(row - 1, checkRow)
+                } else {
+                    row -= 1
+                }
+            }
+        }
+        
+        return false
     }
     
     private func checkTileForMatches(_ row: Int, _ col: Int) -> Bool {
