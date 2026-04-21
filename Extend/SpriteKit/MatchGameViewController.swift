@@ -2528,8 +2528,7 @@ class MatchGameViewController: UIViewController {
         }
         pieces.shuffle()
         
-        // Create mapping: which button should go to which position
-        var buttonToNewPosition: [UIButton: (row: Int, col: Int)] = [:]
+        // Create grid data with shuffled pieces
         var newGridData: [[GamePiece?]] = Array(repeating: Array(repeating: nil, count: level.gridWidth), count: level.gridHeight)
         
         var pieceIndex = 0
@@ -2814,14 +2813,16 @@ class MatchGameViewController: UIViewController {
                             piece2.row = adjRow
                             piece2.col = adjCol
                             
-                            // Prefer pulsing the tile at the original position if it creates a match
-                            // because that's the more intuitive hint (user sees the tile in its current spot)
-                            if matchAtOriginal {
+                            // Pulse the tile that will create the match after swap
+                            // matchAtAdjacent means piece1 (currently at row,col) will create match at adjRow,adjCol
+                            // matchAtOriginal means piece2 (currently at adjRow,adjCol) will create match at row,col
+                            if matchAtAdjacent {
+                                // piece1 is currently at (row, col), will move to (adjRow, adjCol) and match there
                                 hintingTile = (row, col)
                                 pulseButton(gridButtons[row][col]!)
                                 return
-                            } else if matchAtAdjacent {
-                                // If only the adjacent creates a match, pulse that
+                            } else if matchAtOriginal {
+                                // piece2 is currently at (adjRow, adjCol), will move to (row, col) and match there
                                 hintingTile = (adjRow, adjCol)
                                 pulseButton(gridButtons[adjRow][adjCol]!)
                                 return
