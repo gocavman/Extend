@@ -1322,6 +1322,30 @@ class MatchGameViewController: UIViewController {
         // Update grid display IMMEDIATELY
         updateGridDisplay()
         
+        // Hide all new pieces initially so they don't stack up visually
+        for key in newPieces {
+            let parts = key.split(separator: ",").compactMap { Int($0) }
+            if parts.count == 2 {
+                let row = parts[0]
+                let col = parts[1]
+                if let button = gridButtons[row][col] {
+                    button.alpha = 0  // Hide new pieces - they'll appear as they animate
+                }
+            }
+        }
+        
+        // Hide all new pieces initially so they don't stack up visually
+        for key in newPieces {
+            let parts = key.split(separator: ",").compactMap { Int($0) }
+            if parts.count == 2 {
+                let row = parts[0]
+                let col = parts[1]
+                if let button = gridButtons[row][col] {
+                    button.alpha = 0  // Hide new pieces - they'll appear as they animate
+                }
+            }
+        }
+        
         // Animate pieces falling, then check for matches when complete
         animatePiecesDrop() { [weak self] in
             self?.checkForMatches()
@@ -1969,6 +1993,18 @@ class MatchGameViewController: UIViewController {
         // Update grid display IMMEDIATELY
         updateGridDisplay()
         
+        // Hide all new pieces initially so they don't stack up visually
+        for key in newPieces {
+            let parts = key.split(separator: ",").compactMap { Int($0) }
+            if parts.count == 2 {
+                let row = parts[0]
+                let col = parts[1]
+                if let button = gridButtons[row][col] {
+                    button.alpha = 0  // Hide new pieces - they'll appear as they animate
+                }
+            }
+        }
+        
         // Animate pieces falling, then check for matches when complete
         animatePiecesDrop() { [weak self] in
             self?.checkForMatches()
@@ -2031,9 +2067,14 @@ class MatchGameViewController: UIViewController {
             
             // Find the distance for this piece
             let startTransform: CGAffineTransform
+            var pieceRow = 0
+            var pieceCol = 0
+            
             if let gamepiece = gameGrid[Int(button.tag / level.gridWidth)][Int(button.tag % level.gridWidth)] {
                 let row = gamepiece.row
                 let col = gamepiece.col
+                pieceRow = row
+                pieceCol = col
                 let distance = fallDistances["\(row),\(col)"] ?? 0
                 let fallDistance = cellHeight * CGFloat(distance)
                 
@@ -2049,7 +2090,13 @@ class MatchGameViewController: UIViewController {
             }
             
             button.transform = startTransform
-            button.alpha = 1.0
+            
+            // For new pieces, start with alpha=0 so they fade in as they fall (one at a time appearance)
+            if newPieces.contains("\(pieceRow),\(pieceCol)") {
+                button.alpha = 0  // Start hidden
+            } else {
+                button.alpha = 1.0  // Existing pieces are visible
+            }
             
             // Animate with calculated delay so pieces don't visually overlap
             UIView.animate(
@@ -2058,6 +2105,7 @@ class MatchGameViewController: UIViewController {
                 options: .curveEaseIn,
                 animations: {
                     button.transform = .identity
+                    button.alpha = 1.0  // Fade in as it falls
                 },
                 completion: { finished in
                     completedAnimations += 1
