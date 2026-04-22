@@ -210,7 +210,6 @@
         }
       ],
       "colors": [
-        "#FF0000",
         null
       ],
       "gridShape": [
@@ -225,6 +224,56 @@
       ],
       "movesAllowed": 60,
       "scoreTarget": 300
+    },
+    {
+      "id": 6,
+      "name": "Level 6 - Weight Challenge",
+      "gridWidth": 10,
+      "gridHeight": 10,
+      "items": [
+        {
+          "id": "dumbbell",
+          "emoji": null,
+          "asset": "Dumbbell"
+        },
+        {
+          "id": "kettlebell",
+          "emoji": null,
+          "asset": "Kettlebell"
+        },
+        {
+          "id": "shaker",
+          "emoji": null,
+          "asset": "Shaker"
+        },
+        {
+          "id": "bicep",
+          "emoji": "💪",
+          "asset": null
+        },
+        {
+          "id": "lift",
+          "emoji": "🏋️",
+          "asset": null
+        }
+      ],
+      "colors": [
+          null
+      ],
+      "gridShape": [
+        "XXXXXXXXXX",
+        "XXXXXXXXXX",
+        "XXXXXXXXXX",
+        "XXXXXXXXXX",
+        "XXXXXXXXXX",
+        "XXXXXXXXXX",
+        "XXXXXXXXXX",
+        "XXXXXXXXXX",
+        "XXXXXXXXXX",
+        "XXXXXXXXXX"
+      ],
+      "movesAllowed": 70,
+      "scoreTarget": 350
     }
   ]
 }
