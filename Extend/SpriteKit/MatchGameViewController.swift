@@ -109,6 +109,7 @@ class MatchGameViewController: UIViewController {
     private var levelCompletionTriggered: Bool = false  // Prevent multiple level completion triggers
     
     // MARK: - Game Logic
+    private var gridAspectRatioConstraint: NSLayoutConstraint?
     private let darkBg = UIColor(hex: "#2C3E50") ?? .black
     private let lightBg = UIColor(hex: "#34495E") ?? .darkGray
     private let accentColor = UIColor(hex: "#E74C3C") ?? .red
@@ -238,16 +239,25 @@ class MatchGameViewController: UIViewController {
         gridContainer.backgroundColor = darkBg
         containerView.addSubview(gridContainer)
         gridContainer.translatesAutoresizingMaskIntoConstraints = false
+        // Create a layout guide for the area below the header
+        let gridAreaGuide = UILayoutGuide()
+        containerView.addLayoutGuide(gridAreaGuide)
         NSLayoutConstraint.activate([
-            gridContainer.centerYAnchor.constraint(equalTo: containerView.centerYAnchor),
-            gridContainer.centerXAnchor.constraint(equalTo: containerView.centerXAnchor),
-            gridContainer.topAnchor.constraint(greaterThanOrEqualTo: headerView.bottomAnchor, constant: 10),
-            gridContainer.bottomAnchor.constraint(lessThanOrEqualTo: containerView.bottomAnchor, constant: -10),
-            gridContainer.leadingAnchor.constraint(greaterThanOrEqualTo: containerView.leadingAnchor, constant: 10),
-            gridContainer.trailingAnchor.constraint(lessThanOrEqualTo: containerView.trailingAnchor, constant: -10),
-            // Make gridContainer square - width = height
-            gridContainer.widthAnchor.constraint(equalTo: gridContainer.heightAnchor, multiplier: 1.0)
+            gridAreaGuide.topAnchor.constraint(equalTo: headerView.bottomAnchor),
+            gridAreaGuide.bottomAnchor.constraint(equalTo: containerView.bottomAnchor),
+            gridAreaGuide.leadingAnchor.constraint(equalTo: containerView.leadingAnchor),
+            gridAreaGuide.trailingAnchor.constraint(equalTo: containerView.trailingAnchor)
         ])
+        
+        NSLayoutConstraint.activate([
+            gridContainer.centerXAnchor.constraint(equalTo: gridAreaGuide.centerXAnchor),
+            gridContainer.centerYAnchor.constraint(equalTo: gridAreaGuide.centerYAnchor),
+            gridContainer.topAnchor.constraint(greaterThanOrEqualTo: gridAreaGuide.topAnchor, constant: 5),
+            gridContainer.bottomAnchor.constraint(lessThanOrEqualTo: gridAreaGuide.bottomAnchor, constant: -5),
+            gridContainer.leadingAnchor.constraint(greaterThanOrEqualTo: gridAreaGuide.leadingAnchor, constant: 5),
+            gridContainer.trailingAnchor.constraint(lessThanOrEqualTo: gridAreaGuide.trailingAnchor, constant: -5)
+        ])
+        // Aspect ratio constraint is set dynamically in renderGrid() based on level dimensions
     }
     
     private func loadGameConfig() {
@@ -490,6 +500,25 @@ class MatchGameViewController: UIViewController {
         
         print("🎨 [RENDERGRID] Rendering grid: \(level.gridWidth)x\(level.gridHeight)")
         
+        // Update grid container aspect ratio to match level dimensions
+        // This ensures tiles remain square for any grid size (e.g. 10x11, 10x15)
+        if let existing = gridAspectRatioConstraint {
+            existing.isActive = false
+        }
+        let gridSpacing: CGFloat = 2
+        // For square tiles: containerW / containerH = (cols*tile + (cols-1)*sp) / (rows*tile + (rows-1)*sp)
+        // We approximate with a reasonable tile size; the constraint will adapt.
+        // Using the exact formula with tile size factored out:
+        // ratio = (cols + (cols-1)*sp/tile) / (rows + (rows-1)*sp/tile)
+        // For sp/tile ≈ 2/35 ≈ 0.057, this is very close to cols/rows
+        let cols = CGFloat(level.gridWidth)
+        let rows = CGFloat(level.gridHeight)
+        let approxTile: CGFloat = 35
+        let aspectRatio = (cols * approxTile + (cols - 1) * gridSpacing) / (rows * approxTile + (rows - 1) * gridSpacing)
+        gridAspectRatioConstraint = gridContainer.widthAnchor.constraint(equalTo: gridContainer.heightAnchor, multiplier: aspectRatio)
+        gridAspectRatioConstraint?.priority = UILayoutPriority(rawValue: 999)
+        gridAspectRatioConstraint?.isActive = true
+        
         // Clear existing grid completely
         gridContainer.subviews.forEach { $0.removeFromSuperview() }
         gridStackView.removeFromSuperview()
@@ -546,49 +575,23 @@ class MatchGameViewController: UIViewController {
                     
                     // Try to use asset image first, fall back to emoji
                     if let assetName = item.asset, !assetName.isEmpty {
-                        // Use asset image
-                        var image = UIImage(named: assetName)
-                        
-                        // Resize image to fit button while preserving aspect ratio
-                        if let originalImage = image {
-                            let maxSize: CGFloat = 60  // Max dimension
-                            let aspectRatio = originalImage.size.width / originalImage.size.height
-                            
-                            let targetWidth: CGFloat
-                            let targetHeight: CGFloat
-                            
-                            if aspectRatio > 1 {
-                                // Wider than tall
-                                targetWidth = maxSize
-                                targetHeight = maxSize / aspectRatio
-                            } else {
-                                // Taller than wide
-                                targetWidth = maxSize * aspectRatio
-                                targetHeight = maxSize
-                            }
-                            
-                            let renderer = UIGraphicsImageRenderer(size: CGSize(width: targetWidth, height: targetHeight))
-                            image = renderer.image { _ in
-                                originalImage.draw(in: CGRect(x: 0, y: 0, width: targetWidth, height: targetHeight))
-                            }
-                        }
-                        
-                        print("🔍 [RENDER] Loading asset '\(assetName)' for item '\(piece.itemId)' at (\(row),\(col)): image=\(image != nil ? "LOADED" : "FAILED")")
+                        // Use asset image - let scaleAspectFit handle sizing within button
+                        let image = UIImage(named: assetName)
                         
                         // Configure button for image display
                         button.setImage(image, for: .normal)
                         button.setTitle("", for: .normal)
                         button.imageView?.contentMode = .scaleAspectFit
                         button.imageView?.clipsToBounds = true
-                        button.imageEdgeInsets = UIEdgeInsets(top: 2, left: 2, bottom: 2, right: 2)
-                        button.titleEdgeInsets = UIEdgeInsets(top: 0, left: 0, bottom: 0, right: 0)
                     } else {
-                        // Fall back to emoji
+                        // Fall back to emoji - scale font based on grid size
                         let itemEmoji = item.emoji ?? "?"
-                        print("🔍 [RENDER] Using emoji '\(itemEmoji)' for item '\(piece.itemId)' at (\(row),\(col))")
+                        let emojiFontSize = max(12, min(28, 280 / CGFloat(max(level.gridWidth, level.gridHeight))))
                         button.setTitle(itemEmoji, for: .normal)
                         button.setImage(nil, for: .normal)
-                        button.titleLabel?.font = UIFont.systemFont(ofSize: 28)
+                        button.titleLabel?.font = UIFont.systemFont(ofSize: emojiFontSize)
+                        button.titleLabel?.adjustsFontSizeToFitWidth = true
+                        button.titleLabel?.minimumScaleFactor = 0.5
                     }
                     
                     button.addTarget(self, action: #selector(gridButtonTapped(_:)), for: .touchUpInside)
@@ -1426,26 +1429,6 @@ class MatchGameViewController: UIViewController {
             }
         }
         
-        if piece2?.type == .flame {
-            let impact = UIImpactFeedbackGenerator(style: .heavy)
-            impact.impactOccurred()
-            
-            if let swappedPiece = piece1, swappedPiece.type == .normal {
-                for row in 0..<level.gridHeight {
-                    for col in 0..<level.gridWidth {
-                        if gridShapeMap[row][col], let piece = gameGrid[row][col] {
-                            if piece.itemId == swappedPiece.itemId && piece.colorIndex == swappedPiece.colorIndex {
-                                clearedTiles.insert("\(row),\(col)")
-                                if piece.type != .normal {
-                                    cascadingPowerups.append((row: row, col: col, type: piece.type))
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-        
         // Show borders first for all cleared tiles, then clear and process (DON'T call updateGridDisplay() yet - it resets transforms!)
         // Decrement moves for this valid swap (if clearedTiles are not empty)
         if !clearedTiles.isEmpty {
@@ -1462,23 +1445,61 @@ class MatchGameViewController: UIViewController {
         // Update display so buttons show correct content at correct positions
         updateGridDisplay()
         
-        // NOW show borders with correct buttons
+        // Determine if a flame powerup was involved in this swap
+        let flameRow: Int?
+        let flameCol: Int?
+        if piece1?.type == .flame {
+            flameRow = r1
+            flameCol = c1
+        } else if piece2?.type == .flame {
+            flameRow = r2
+            flameCol = c2
+        } else {
+            flameRow = nil
+            flameCol = nil
+        }
+        
+        // NOW show animation and borders with correct buttons
         if !clearedTiles.isEmpty {
-            showPowerupBorderHighlight(clearedTiles) { [weak self] in
-                for posString in clearedTiles {
-                    let parts = posString.split(separator: ",").map { Int($0) ?? 0 }
-                    if parts.count == 2 {
-                        self?.score += 1
-                        self?.gameGrid[parts[0]][parts[1]] = nil
+            if let fRow = flameRow, let fCol = flameCol {
+                // Flame powerup: shoot lines to targets first, then border highlight, then clear
+                self.shootFlamesAtTiles(fromRow: fRow, fromCol: fCol, targetTiles: clearedTiles) { [weak self] in
+                    self?.showPowerupBorderHighlight(clearedTiles) { [weak self] in
+                        for posString in clearedTiles {
+                            let parts = posString.split(separator: ",").map { Int($0) ?? 0 }
+                            if parts.count == 2 {
+                                self?.score += 1
+                                self?.gameGrid[parts[0]][parts[1]] = nil
+                            }
+                        }
+                        
+                        self?.updateUI()
+                        
+                        if !cascadingPowerups.isEmpty {
+                            self?.activateCascadingPowerups(cascadingPowerups)
+                        } else {
+                            self?.applyGravity()
+                        }
                     }
                 }
-                
-                self?.updateUI()
-                
-                if !cascadingPowerups.isEmpty {
-                    self?.activateCascadingPowerups(cascadingPowerups)
-                } else {
-                    self?.applyGravity()
+            } else {
+                // Non-flame powerups: border highlight then clear
+                showPowerupBorderHighlight(clearedTiles) { [weak self] in
+                    for posString in clearedTiles {
+                        let parts = posString.split(separator: ",").map { Int($0) ?? 0 }
+                        if parts.count == 2 {
+                            self?.score += 1
+                            self?.gameGrid[parts[0]][parts[1]] = nil
+                        }
+                    }
+                    
+                    self?.updateUI()
+                    
+                    if !cascadingPowerups.isEmpty {
+                        self?.activateCascadingPowerups(cascadingPowerups)
+                    } else {
+                        self?.applyGravity()
+                    }
                 }
             }
         } else {
@@ -2912,48 +2933,23 @@ class MatchGameViewController: UIViewController {
                         
                         // Try to use asset image first, fall back to emoji
                         if let assetName = item.asset, !assetName.isEmpty {
-                            // Use asset image
-                            var image = UIImage(named: assetName)
-                            
-                            // Resize image to fit button while preserving aspect ratio
-                            if let originalImage = image {
-                                let maxSize: CGFloat = 60  // Max dimension
-                                let aspectRatio = originalImage.size.width / originalImage.size.height
-                                
-                                let targetWidth: CGFloat
-                                let targetHeight: CGFloat
-                                
-                                if aspectRatio > 1 {
-                                    // Wider than tall
-                                    targetWidth = maxSize
-                                    targetHeight = maxSize / aspectRatio
-                                } else {
-                                    // Taller than wide
-                                    targetWidth = maxSize * aspectRatio
-                                    targetHeight = maxSize
-                                }
-                                
-                                let renderer = UIGraphicsImageRenderer(size: CGSize(width: targetWidth, height: targetHeight))
-                                image = renderer.image { _ in
-                                    originalImage.draw(in: CGRect(x: 0, y: 0, width: targetWidth, height: targetHeight))
-                                }
-                            }
-                            
-                            print("🔍 [UPDATE] Loading asset '\(assetName)' for item '\(piece.itemId)' at (\(row),\(col)): image=\(image != nil ? "LOADED" : "FAILED")")
+                            // Use asset image - let scaleAspectFit handle sizing within button
+                            let image = UIImage(named: assetName)
                             
                             // Configure button for image display
                             button.setImage(image, for: .normal)
                             button.setTitle("", for: .normal)
                             button.imageView?.contentMode = .scaleAspectFit
                             button.imageView?.clipsToBounds = true
-                            button.imageEdgeInsets = UIEdgeInsets(top: 2, left: 2, bottom: 2, right: 2)
-                            button.titleEdgeInsets = UIEdgeInsets(top: 0, left: 0, bottom: 0, right: 0)
                         } else {
-                            // Fall back to emoji
+                            // Fall back to emoji - scale font based on grid size
                             let itemEmoji = item.emoji ?? "?"
-                            print("🔍 [UPDATE] Using emoji '\(itemEmoji)' for item '\(piece.itemId)' at (\(row),\(col))")
+                            let emojiFontSize = max(12, min(28, 280 / CGFloat(max(level.gridWidth, level.gridHeight))))
                             button.setTitle(itemEmoji, for: .normal)
                             button.setImage(nil, for: .normal)
+                            button.titleLabel?.font = UIFont.systemFont(ofSize: emojiFontSize)
+                            button.titleLabel?.adjustsFontSizeToFitWidth = true
+                            button.titleLabel?.minimumScaleFactor = 0.5
                         }
                         
                         // Handle optional colors - nil means transparent background

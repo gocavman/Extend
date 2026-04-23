@@ -229,7 +229,7 @@
       "id": 6,
       "name": "Level 6 - Weight Challenge",
       "gridWidth": 10,
-      "gridHeight": 10,
+      "gridHeight": 15,
       "items": [
         {
           "id": "dumbbell",
@@ -261,6 +261,11 @@
           null
       ],
       "gridShape": [
+        "XXXXXXXXXX",
+        "XXXXXXXXXX",
+        "XXXXXXXXXX",
+        "XXXXXXXXXX",
+        "XXXXXXXXXX",
         "XXXXXXXXXX",
         "XXXXXXXXXX",
         "XXXXXXXXXX",
