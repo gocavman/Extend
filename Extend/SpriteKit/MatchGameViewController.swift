@@ -31,7 +31,8 @@ enum PieceType {
     case verticalArrow
     case horizontalArrow
     case bomb
-    case flame  // NEW: Clears all matching pieces when swapped
+    case flame
+    case rocket  // L-shape pattern: flies across grid clearing path
 }
 
 // MARK: - Game Piece
@@ -728,6 +729,16 @@ class MatchGameViewController: UIViewController {
                     }
                 }
                 
+            case .rocket:
+                // Rocket tapped directly: animate rocket path, handles its own clearing
+                animateRocketPath(fromRow: row, fromCol: col) { [weak self] in
+                    self?.isAnimating = false
+                    if self?.movesRemaining ?? 0 <= 0 {
+                        self?.levelFailed()
+                    }
+                }
+                return  // animateRocketPath handles everything
+                
             case .normal:
                 isAnimating = false
                 return
@@ -894,18 +905,12 @@ class MatchGameViewController: UIViewController {
             return
         }
         
-        // Check if this is a powerup-to-powerup overlap scenario BEFORE animating
+        // Check if this is a powerup-to-powerup swap
         let piece1 = gameGrid[r1][c1]
         let piece2 = gameGrid[r2][c2]
         
-        let isSpecialCombo = (piece1?.type == .bomb && piece2?.type == .bomb) ||
-                             (piece1?.type == .flame && piece2?.type == .flame) ||
-                             (piece1?.type == .verticalArrow && piece2?.type == .horizontalArrow) ||
-                             (piece1?.type == .horizontalArrow && piece2?.type == .verticalArrow)
-        
-        let bothAreNonNormalPowerups = piece1?.type != .normal && piece1?.type != nil &&
-                                       piece2?.type != .normal && piece2?.type != nil &&
-                                       !isSpecialCombo
+        let bothArePowerups = piece1?.type != .normal && piece1?.type != nil &&
+                              piece2?.type != .normal && piece2?.type != nil
         
         // Get initial positions
         let pos1 = button1.convert(CGPoint.zero, to: gridContainer)
@@ -915,30 +920,24 @@ class MatchGameViewController: UIViewController {
         let deltaX = pos2.x - pos1.x
         let deltaY = pos2.y - pos1.y
         
-        if bothAreNonNormalPowerups {
-            // Powerup overlap: only button1 moves to button2, button2 stays in place
-            print("🔍 [DEBUG] Powerup overlap animation: only button1 moves to button2")
+        if bothArePowerups {
+            // ALL powerup-to-powerup swaps: piece1 slides onto piece2, piece2 stays
             UIView.animate(withDuration: 0.3, delay: 0, options: .curveEaseInOut, animations: {
                 button1.transform = CGAffineTransform(translationX: deltaX, y: deltaY)
-                // button2 stays in place - NO movement
+                button1.layer.zPosition = 100
             }, completion: { [weak self] _ in
+                button1.layer.zPosition = 0
                 self?.swappedButtons = (button1, button2)
-                print("🔍 [DEBUG] Powerup overlap animation complete")
             })
         } else {
             // Normal swap: both buttons swap positions
             UIView.animate(withDuration: 0.3, delay: 0, options: .curveEaseInOut, animations: {
                 button1.transform = CGAffineTransform(translationX: deltaX, y: deltaY)
                 button2.transform = CGAffineTransform(translationX: -deltaX, y: -deltaY)
-                
-                // Bring button1 to front during animation
                 button1.layer.zPosition = 100
             }, completion: { [weak self] _ in
                 button1.layer.zPosition = 0
-                // DON'T reset transforms here - keep them in swapped positions until we know if match is valid
-                // Store references for potential reset later
                 self?.swappedButtons = (button1, button2)
-                print("🔍 [DEBUG] Stored swappedButtons in swap animation completion")
             })
         }
         
@@ -946,50 +945,44 @@ class MatchGameViewController: UIViewController {
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { [weak self] in
             guard let self = self else { return }
             
-            // Check if this is a powerup-to-powerup overlap scenario BEFORE swapping
             let piece1 = self.gameGrid[r1][c1]
             let piece2 = self.gameGrid[r2][c2]
-            
-            let isSpecialCombo = (piece1?.type == .bomb && piece2?.type == .bomb) ||
-                                 (piece1?.type == .flame && piece2?.type == .flame) ||
-                                 (piece1?.type == .verticalArrow && piece2?.type == .horizontalArrow) ||
-                                 (piece1?.type == .horizontalArrow && piece2?.type == .verticalArrow)
-            
-            let bothAreNonNormalPowerups = piece1?.type != .normal && piece1?.type != nil &&
-                                           piece2?.type != .normal && piece2?.type != nil &&
-                                           !isSpecialCombo
-            
-            // For powerup overlaps, DON'T swap the data - just move piece1 on top of piece2
-            // For special combos and normal swaps, DO swap the data
-            if !bothAreNonNormalPowerups {
+
+            // Capture original types BEFORE the data swap for activatePowerUps
+            let originalType1 = piece1?.type ?? .normal
+            let originalType2 = piece2?.type ?? .normal
+
+            let bothArePowerups = piece1?.type != .normal && piece1?.type != nil &&
+                                  piece2?.type != .normal && piece2?.type != nil
+
+            if bothArePowerups {
+                // ALL powerup-to-powerup: piece1 moves on top of piece2, original space emptied
+                self.gameGrid[r2][c2] = piece1
+                self.gameGrid[r1][c1] = nil
+                piece1?.row = r2
+                piece1?.col = c2
+            } else {
                 // Normal swap: swap in data
                 let temp = self.gameGrid[r1][c1]
                 self.gameGrid[r1][c1] = self.gameGrid[r2][c2]
                 self.gameGrid[r2][c2] = temp
-                
-                // Update positions
+
                 self.gameGrid[r1][c1]?.row = r1
                 self.gameGrid[r1][c1]?.col = c1
                 self.gameGrid[r2][c2]?.row = r2
                 self.gameGrid[r2][c2]?.col = c2
-            } else {
-                // Powerup overlap: piece1 moves on top of piece2, original space emptied
-                self.gameGrid[r2][c2] = piece1  // piece1 goes to r2,c2
-                self.gameGrid[r1][c1] = nil     // original space cleared
-                piece1?.row = r2
-                piece1?.col = c2
             }
-            
+
             // Check for power-up activation before checking matches
             let powerUpAtR1C1 = self.gameGrid[r1][c1]?.type != .normal
             let powerUpAtR2C2 = self.gameGrid[r2][c2]?.type != .normal
-            
+
             // Track if this swap involves a powerup
             self.currentSwapInvolvesAPowerup = powerUpAtR1C1 || powerUpAtR2C2
-            
+
             if powerUpAtR1C1 || powerUpAtR2C2 {
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { [weak self] in
-                    self?.activatePowerUps(r1, c1, r2, c2)
+                    self?.activatePowerUps(r1, c1, r2, c2, type1: originalType1, type2: originalType2)
                 }
             } else {
                 // Check for matches after swap animation
@@ -1000,312 +993,625 @@ class MatchGameViewController: UIViewController {
         }
     }
     
-    private func activatePowerUps(_ r1: Int, _ c1: Int, _ r2: Int, _ c2: Int) {
+    // MARK: - Power-Up Activation (Dispatcher)
+
+    /// Main entry point for power-up activation after a swap.
+    /// `type1` and `type2` are the ORIGINAL piece types before the data swap occurred.
+    /// For powerup+powerup swaps: piece1 overlapped onto piece2 at (r2,c2), and (r1,c1) is nil.
+    /// For normal swaps: pieces exchanged positions normally.
+    private func activatePowerUps(_ r1: Int, _ c1: Int, _ r2: Int, _ c2: Int, type1: PieceType, type2: PieceType) {
+        guard currentLevel != nil else { return }
+
+        let bothArePowerups = type1 != .normal && type2 != .normal
+
+        if bothArePowerups {
+            // Classify the powerup+powerup combo and dispatch to the appropriate handler.
+            // The pieces overlapped at (r2, c2), and (r1, c1) is nil.
+            switch (type1, type2) {
+            // --- Two identical special types ---
+            case (.bomb, .bomb):
+                handleBombBombCombo(r1: r1, c1: c1, r2: r2, c2: c2)
+            case (.flame, .flame):
+                handleFlameFlameCombo(r1: r1, c1: c1, r2: r2, c2: c2)
+            case (.rocket, .rocket):
+                handleRocketRocketCombo(r1: r1, c1: c1, r2: r2, c2: c2)
+
+            // --- Cross arrows (horizontal + vertical) ---
+            case (.horizontalArrow, .verticalArrow), (.verticalArrow, .horizontalArrow):
+                handleCrossArrowCombo(r1: r1, c1: c1, r2: r2, c2: c2)
+
+            // --- Bomb + arrow ---
+            case (.bomb, .horizontalArrow), (.horizontalArrow, .bomb):
+                handleBombArrowCombo(r1: r1, c1: c1, r2: r2, c2: c2, isHorizontal: true)
+            case (.bomb, .verticalArrow), (.verticalArrow, .bomb):
+                handleBombArrowCombo(r1: r1, c1: c1, r2: r2, c2: c2, isHorizontal: false)
+
+            // --- Two same-direction arrows ---
+            case (.horizontalArrow, .horizontalArrow):
+                handleTwoHorizontalArrows(r1: r1, c1: c1, r2: r2, c2: c2)
+            case (.verticalArrow, .verticalArrow):
+                handleTwoVerticalArrows(r1: r1, c1: c1, r2: r2, c2: c2)
+
+            // --- Flame + any other powerup ---
+            case (.flame, _):
+                handleFlamePowerupCombo(r1: r1, c1: c1, r2: r2, c2: c2, otherType: type2)
+            case (_, .flame):
+                handleFlamePowerupCombo(r1: r1, c1: c1, r2: r2, c2: c2, otherType: type1)
+
+            // --- Rocket + any other powerup ---
+            case (.rocket, _):
+                handleRocketPowerupCombo(r1: r1, c1: c1, r2: r2, c2: c2, otherType: type2)
+            case (_, .rocket):
+                handleRocketPowerupCombo(r1: r1, c1: c1, r2: r2, c2: c2, otherType: type1)
+
+            default:
+                // Fallback: activate both individually at their positions
+                handleIndividualPowerupActivation(r1: r1, c1: c1, r2: r2, c2: c2, type1: type1, type2: type2)
+            }
+        } else {
+            // One normal + one powerup (standard swap positions)
+            handleIndividualPowerupActivation(r1: r1, c1: c1, r2: r2, c2: c2, type1: type1, type2: type2)
+        }
+    }
+
+    // MARK: - Finalize Helpers
+
+    /// Eliminates the repeated pattern across all combo handlers:
+    /// reset transforms -> updateGridDisplay -> (optional flame animation) -> showBorderHighlight -> clear tiles -> cascade or gravity.
+    private func finalizePowerupCombo(
+        clearedTiles: Set<String>,
+        cascadingPowerups: [(row: Int, col: Int, type: PieceType)],
+        decrementMoves: Bool = true,
+        flameSource: (row: Int, col: Int)? = nil
+    ) {
+        // Reset swapped button transforms so buttons are in correct positions
+        if let (button1, button2) = swappedButtons {
+            button1.transform = .identity
+            button2.transform = .identity
+            self.swappedButtons = nil
+        }
+
+        // Update display so buttons show correct content at correct positions
+        updateGridDisplay()
+
+        if decrementMoves {
+            movesRemaining -= 1
+        }
+
+        if !clearedTiles.isEmpty {
+            if let source = flameSource {
+                // Flame powerup: shoot lines to targets first, then border highlight, then clear
+                shootFlamesAtTiles(fromRow: source.row, fromCol: source.col, targetTiles: clearedTiles) { [weak self] in
+                    self?.showPowerupBorderHighlight(clearedTiles) { [weak self] in
+                        self?.clearTilesAndCascade(clearedTiles, cascadingPowerups: cascadingPowerups)
+                    }
+                }
+            } else {
+                // Non-flame powerups: border highlight then clear
+                showPowerupBorderHighlight(clearedTiles) { [weak self] in
+                    self?.clearTilesAndCascade(clearedTiles, cascadingPowerups: cascadingPowerups)
+                }
+            }
+        } else {
+            // No tiles to clear, just apply gravity
+            updateUI()
+            applyGravity()
+        }
+    }
+
+    /// Clears tiles from the grid, awards score, then activates cascading powerups or applies gravity.
+    private func clearTilesAndCascade(_ clearedTiles: Set<String>, cascadingPowerups: [(row: Int, col: Int, type: PieceType)]) {
+        for posString in clearedTiles {
+            let parts = posString.split(separator: ",").map { Int($0) ?? 0 }
+            if parts.count == 2 {
+                score += 1
+                gameGrid[parts[0]][parts[1]] = nil
+            }
+        }
+
+        updateUI()
+
+        if !cascadingPowerups.isEmpty {
+            activateCascadingPowerups(cascadingPowerups)
+        } else {
+            applyGravity()
+        }
+    }
+
+    // MARK: - Combo Handlers
+
+    /// Collects cascading powerups from a set of cleared tiles, excluding the source positions.
+    private func collectCascadingPowerups(
+        in clearedTiles: Set<String>,
+        excludePositions: [(row: Int, col: Int)]
+    ) -> [(row: Int, col: Int, type: PieceType)] {
+        var cascading: [(row: Int, col: Int, type: PieceType)] = []
+        let excludeSet = Set(excludePositions.map { "\($0.row),\($0.col)" })
+
+        for posString in clearedTiles {
+            if excludeSet.contains(posString) { continue }
+            let parts = posString.split(separator: ",").map { Int($0) ?? 0 }
+            if parts.count == 2 {
+                if let piece = gameGrid[parts[0]][parts[1]], piece.type != .normal {
+                    cascading.append((row: parts[0], col: parts[1], type: piece.type))
+                }
+            }
+        }
+        return cascading
+    }
+
+    /// Bomb + Bomb: 4x4 clear at midpoint between the two bombs.
+    private func handleBombBombCombo(r1: Int, c1: Int, r2: Int, c2: Int) {
         guard let level = currentLevel else { return }
-        
-        let piece1 = gameGrid[r1][c1]
-        let piece2 = gameGrid[r2][c2]
-        
-        // Track tiles that will be cleared AND powerups found in them
+
+        let impact = UIImpactFeedbackGenerator(style: .heavy)
+        impact.impactOccurred()
+
+        var clearedTiles: Set<String> = []
+
+        // Calculate the midpoint between the two bombs
+        let midRow = (r1 + r2) / 2
+        let midCol = (c1 + c2) / 2
+
+        // Clear a 4x4 grid centered on midpoint (2 in each direction)
+        for dr in -2...1 {
+            for dc in -2...1 {
+                let nr = midRow + dr
+                let nc = midCol + dc
+                if nr >= 0 && nr < level.gridHeight && nc >= 0 && nc < level.gridWidth &&
+                   gridShapeMap[nr][nc] && gameGrid[nr][nc] != nil {
+                    clearedTiles.insert("\(nr),\(nc)")
+                }
+            }
+        }
+
+        let cascadingPowerups = collectCascadingPowerups(
+            in: clearedTiles,
+            excludePositions: [(row: r1, col: c1), (row: r2, col: c2)]
+        )
+
+        print("🔍 [DEBUG] Two bombs merged! Clearing 4x4 grid around (\(midRow),\(midCol)). Found \(cascadingPowerups.count) cascading powerups")
+
+        finalizePowerupCombo(
+            clearedTiles: clearedTiles,
+            cascadingPowerups: cascadingPowerups,
+            decrementMoves: true
+        )
+    }
+
+    /// Flame + Flame: Clear the entire screen.
+    private func handleFlameFlameCombo(r1: Int, c1: Int, r2: Int, c2: Int) {
+        guard let level = currentLevel else { return }
+
+        let impact = UIImpactFeedbackGenerator(style: .heavy)
+        impact.impactOccurred()
+
+        var clearedTiles: Set<String> = []
+
+        // Collect ALL tiles on the board
+        for row in 0..<level.gridHeight {
+            for col in 0..<level.gridWidth {
+                if gridShapeMap[row][col] && gameGrid[row][col] != nil {
+                    clearedTiles.insert("\(row),\(col)")
+                }
+            }
+        }
+
+        let cascadingPowerups = collectCascadingPowerups(
+            in: clearedTiles,
+            excludePositions: [(row: r1, col: c1), (row: r2, col: c2)]
+        )
+
+        print("🔍 [DEBUG] Two flames merged! Clearing entire screen. Found \(cascadingPowerups.count) cascading powerups")
+
+        finalizePowerupCombo(
+            clearedTiles: clearedTiles,
+            cascadingPowerups: cascadingPowerups,
+            decrementMoves: true,
+            flameSource: (row: r2, col: c2)
+        )
+    }
+
+    /// Cross arrows (horizontal + vertical): Clear 2 rows + 2 columns forming a cross pattern.
+    /// Clears row at r1 AND row at r2, plus column at c1 AND column at c2.
+    private func handleCrossArrowCombo(r1: Int, c1: Int, r2: Int, c2: Int) {
+        guard let level = currentLevel else { return }
+
+        let impact = UIImpactFeedbackGenerator(style: .heavy)
+        impact.impactOccurred()
+
+        var clearedTiles: Set<String> = []
+
+        // Clear both rows (r1 and r2)
+        for col in 0..<level.gridWidth {
+            if gridShapeMap[r1][col] && gameGrid[r1][col] != nil {
+                clearedTiles.insert("\(r1),\(col)")
+            }
+            if gridShapeMap[r2][col] && gameGrid[r2][col] != nil {
+                clearedTiles.insert("\(r2),\(col)")
+            }
+        }
+
+        // Clear both columns (c1 and c2)
+        for row in 0..<level.gridHeight {
+            if gridShapeMap[row][c1] && gameGrid[row][c1] != nil {
+                clearedTiles.insert("\(row),\(c1)")
+            }
+            if gridShapeMap[row][c2] && gameGrid[row][c2] != nil {
+                clearedTiles.insert("\(row),\(c2)")
+            }
+        }
+
+        let cascadingPowerups = collectCascadingPowerups(
+            in: clearedTiles,
+            excludePositions: [(row: r1, col: c1), (row: r2, col: c2)]
+        )
+
+        print("🔍 [DEBUG] Cross arrows! Clearing rows \(r1),\(r2) and cols \(c1),\(c2). Tiles: \(clearedTiles.count), cascading: \(cascadingPowerups.count)")
+
+        finalizePowerupCombo(
+            clearedTiles: clearedTiles,
+            cascadingPowerups: cascadingPowerups,
+            decrementMoves: true
+        )
+    }
+
+    /// Bomb + Arrow: Clear 3 full rows (if horizontal) or 3 full columns (if vertical) centered on the bomb location.
+    private func handleBombArrowCombo(r1: Int, c1: Int, r2: Int, c2: Int, isHorizontal: Bool) {
+        guard let level = currentLevel else { return }
+
+        let impact = UIImpactFeedbackGenerator(style: .heavy)
+        impact.impactOccurred()
+
+        var clearedTiles: Set<String> = []
+
+        if isHorizontal {
+            // Clear 3 full rows centered on r2 (the overlap location)
+            for dr in -1...1 {
+                let targetRow = r2 + dr
+                if targetRow >= 0 && targetRow < level.gridHeight {
+                    for col in 0..<level.gridWidth {
+                        if gridShapeMap[targetRow][col] && gameGrid[targetRow][col] != nil {
+                            clearedTiles.insert("\(targetRow),\(col)")
+                        }
+                    }
+                }
+            }
+        } else {
+            // Clear 3 full columns centered on c2 (the overlap location)
+            for dc in -1...1 {
+                let targetCol = c2 + dc
+                if targetCol >= 0 && targetCol < level.gridWidth {
+                    for row in 0..<level.gridHeight {
+                        if gridShapeMap[row][targetCol] && gameGrid[row][targetCol] != nil {
+                            clearedTiles.insert("\(row),\(targetCol)")
+                        }
+                    }
+                }
+            }
+        }
+
+        let cascadingPowerups = collectCascadingPowerups(
+            in: clearedTiles,
+            excludePositions: [(row: r1, col: c1), (row: r2, col: c2)]
+        )
+
+        let direction = isHorizontal ? "horizontal" : "vertical"
+        print("🔍 [DEBUG] Bomb + \(direction) arrow! Clearing 3 \(isHorizontal ? "rows" : "columns") centered on (\(r2),\(c2)). Tiles: \(clearedTiles.count), cascading: \(cascadingPowerups.count)")
+
+        finalizePowerupCombo(
+            clearedTiles: clearedTiles,
+            cascadingPowerups: cascadingPowerups,
+            decrementMoves: true
+        )
+    }
+
+    /// Two horizontal arrows: Clear both rows (r1 and r2).
+    private func handleTwoHorizontalArrows(r1: Int, c1: Int, r2: Int, c2: Int) {
+        guard let level = currentLevel else { return }
+
+        let impact = UIImpactFeedbackGenerator(style: .heavy)
+        impact.impactOccurred()
+
+        var clearedTiles: Set<String> = []
+
+        // Clear row r1 and row r2
+        for col in 0..<level.gridWidth {
+            if gridShapeMap[r1][col] && gameGrid[r1][col] != nil {
+                clearedTiles.insert("\(r1),\(col)")
+            }
+            if gridShapeMap[r2][col] && gameGrid[r2][col] != nil {
+                clearedTiles.insert("\(r2),\(col)")
+            }
+        }
+
+        let cascadingPowerups = collectCascadingPowerups(
+            in: clearedTiles,
+            excludePositions: [(row: r1, col: c1), (row: r2, col: c2)]
+        )
+
+        print("🔍 [DEBUG] Two horizontal arrows! Clearing rows \(r1) and \(r2). Tiles: \(clearedTiles.count), cascading: \(cascadingPowerups.count)")
+
+        finalizePowerupCombo(
+            clearedTiles: clearedTiles,
+            cascadingPowerups: cascadingPowerups,
+            decrementMoves: true
+        )
+    }
+
+    /// Two vertical arrows: Clear both columns (c1 and c2).
+    private func handleTwoVerticalArrows(r1: Int, c1: Int, r2: Int, c2: Int) {
+        guard let level = currentLevel else { return }
+
+        let impact = UIImpactFeedbackGenerator(style: .heavy)
+        impact.impactOccurred()
+
+        var clearedTiles: Set<String> = []
+
+        // Clear column c1 and column c2
+        for row in 0..<level.gridHeight {
+            if gridShapeMap[row][c1] && gameGrid[row][c1] != nil {
+                clearedTiles.insert("\(row),\(c1)")
+            }
+            if gridShapeMap[row][c2] && gameGrid[row][c2] != nil {
+                clearedTiles.insert("\(row),\(c2)")
+            }
+        }
+
+        let cascadingPowerups = collectCascadingPowerups(
+            in: clearedTiles,
+            excludePositions: [(row: r1, col: c1), (row: r2, col: c2)]
+        )
+
+        print("🔍 [DEBUG] Two vertical arrows! Clearing cols \(c1) and \(c2). Tiles: \(clearedTiles.count), cascading: \(cascadingPowerups.count)")
+
+        finalizePowerupCombo(
+            clearedTiles: clearedTiles,
+            cascadingPowerups: cascadingPowerups,
+            decrementMoves: true
+        )
+    }
+
+    /// Flame + another powerup type: Spawn 5-8 copies of the other powerup at random normal tiles,
+    /// animate flames shooting to each, then activate all spawned powerups as cascading.
+    private func handleFlamePowerupCombo(r1: Int, c1: Int, r2: Int, c2: Int, otherType: PieceType) {
+        guard let level = currentLevel else { return }
+
+        let impact = UIImpactFeedbackGenerator(style: .heavy)
+        impact.impactOccurred()
+
+        // Reset transforms and update display first
+        if let (button1, button2) = swappedButtons {
+            button1.transform = .identity
+            button2.transform = .identity
+            self.swappedButtons = nil
+        }
+        updateGridDisplay()
+        movesRemaining -= 1
+
+        // Find all normal tiles that can be converted
+        var normalTilePositions: [(row: Int, col: Int)] = []
+        for row in 0..<level.gridHeight {
+            for col in 0..<level.gridWidth {
+                if gridShapeMap[row][col],
+                   let piece = gameGrid[row][col],
+                   piece.type == .normal,
+                   !(row == r1 && col == c1),
+                   !(row == r2 && col == c2) {
+                    normalTilePositions.append((row: row, col: col))
+                }
+            }
+        }
+
+        // Pick 5-8 random positions
+        let spawnCount = min(Int.random(in: 5...8), normalTilePositions.count)
+        let shuffled = normalTilePositions.shuffled()
+        let spawnPositions = Array(shuffled.prefix(spawnCount))
+
+        print("🔍 [DEBUG] Flame + \(otherType) combo! Spawning \(spawnPositions.count) copies of \(otherType)")
+
+        // Build target tile set for flame animation
+        var targetTiles: Set<String> = []
+        for pos in spawnPositions {
+            targetTiles.insert("\(pos.row),\(pos.col)")
+        }
+
+        // Also clear the combo tile itself at r2,c2
+        var clearedTiles: Set<String> = ["\(r2),\(c2)"]
+        if gameGrid[r1][c1] != nil {
+            clearedTiles.insert("\(r1),\(c1)")
+        }
+
+        // Animate flames shooting from the overlap point to each target
+        shootFlamesAtTiles(fromRow: r2, fromCol: c2, targetTiles: targetTiles) { [weak self] in
+            guard let self = self else { return }
+
+            // Convert the random tiles to the other powerup type
+            var cascadingPowerups: [(row: Int, col: Int, type: PieceType)] = []
+            for pos in spawnPositions {
+                if let piece = self.gameGrid[pos.row][pos.col] {
+                    piece.type = otherType
+                    cascadingPowerups.append((row: pos.row, col: pos.col, type: otherType))
+                }
+            }
+
+            // Clear the source combo tiles
+            for posString in clearedTiles {
+                let parts = posString.split(separator: ",").map { Int($0) ?? 0 }
+                if parts.count == 2 {
+                    self.score += 1
+                    self.gameGrid[parts[0]][parts[1]] = nil
+                }
+            }
+
+            self.updateGridDisplay()
+            self.updateUI()
+
+            // Activate all spawned powerups as cascading
+            if !cascadingPowerups.isEmpty {
+                self.activateCascadingPowerups(cascadingPowerups)
+            } else {
+                self.applyGravity()
+            }
+        }
+    }
+
+    /// Rocket + another powerup type: Spawn copies of the other powerup at random normal tiles,
+    /// animate the rocket flying to each, then activate all spawned powerups as cascading.
+    private func handleRocketPowerupCombo(r1: Int, c1: Int, r2: Int, c2: Int, otherType: PieceType) {
+        guard let level = currentLevel else { return }
+
+        let impact = UIImpactFeedbackGenerator(style: .heavy)
+        impact.impactOccurred()
+
+        // Reset transforms and update display first
+        if let (button1, button2) = swappedButtons {
+            button1.transform = .identity
+            button2.transform = .identity
+            self.swappedButtons = nil
+        }
+        updateGridDisplay()
+        movesRemaining -= 1
+
+        // Find all normal tiles that can be converted
+        var normalTilePositions: [(row: Int, col: Int)] = []
+        for row in 0..<level.gridHeight {
+            for col in 0..<level.gridWidth {
+                if gridShapeMap[row][col],
+                   let piece = gameGrid[row][col],
+                   piece.type == .normal,
+                   !(row == r1 && col == c1),
+                   !(row == r2 && col == c2) {
+                    normalTilePositions.append((row: row, col: col))
+                }
+            }
+        }
+
+        // Pick 5-8 random positions
+        let spawnCount = min(Int.random(in: 5...8), normalTilePositions.count)
+        let shuffled = normalTilePositions.shuffled()
+        let spawnPositions = Array(shuffled.prefix(spawnCount))
+
+        print("🔍 [DEBUG] Rocket + \(otherType) combo! Spawning \(spawnPositions.count) copies of \(otherType)")
+
+        // Build target tile set for animation
+        var targetTiles: Set<String> = []
+        for pos in spawnPositions {
+            targetTiles.insert("\(pos.row),\(pos.col)")
+        }
+
+        // Also clear the combo tile itself at r2,c2
+        var clearedTiles: Set<String> = ["\(r2),\(c2)"]
+        if gameGrid[r1][c1] != nil {
+            clearedTiles.insert("\(r1),\(c1)")
+        }
+
+        // Use shootFlamesAtTiles for now (animateRocketPath will be implemented later)
+        shootFlamesAtTiles(fromRow: r2, fromCol: c2, targetTiles: targetTiles) { [weak self] in
+            guard let self = self else { return }
+
+            // Convert the random tiles to the other powerup type
+            var cascadingPowerups: [(row: Int, col: Int, type: PieceType)] = []
+            for pos in spawnPositions {
+                if let piece = self.gameGrid[pos.row][pos.col] {
+                    piece.type = otherType
+                    cascadingPowerups.append((row: pos.row, col: pos.col, type: otherType))
+                }
+            }
+
+            // Clear the source combo tiles
+            for posString in clearedTiles {
+                let parts = posString.split(separator: ",").map { Int($0) ?? 0 }
+                if parts.count == 2 {
+                    self.score += 1
+                    self.gameGrid[parts[0]][parts[1]] = nil
+                }
+            }
+
+            self.updateGridDisplay()
+            self.updateUI()
+
+            // Activate all spawned powerups as cascading
+            if !cascadingPowerups.isEmpty {
+                self.activateCascadingPowerups(cascadingPowerups)
+            } else {
+                self.applyGravity()
+            }
+        }
+    }
+
+    /// Rocket + Rocket: Two rockets fly independent paths, clearing everything they cross.
+    private func handleRocketRocketCombo(r1: Int, c1: Int, r2: Int, c2: Int) {
+        guard let level = currentLevel else { return }
+
+        let impact = UIImpactFeedbackGenerator(style: .heavy)
+        impact.impactOccurred()
+
+        // Reset transforms and update display first
+        if let (button1, button2) = swappedButtons {
+            button1.transform = .identity
+            button2.transform = .identity
+            self.swappedButtons = nil
+        }
+        updateGridDisplay()
+        movesRemaining -= 1
+
+        print("🔍 [DEBUG] Two rockets merged! Launching dual rocket paths from (\(r2),\(c2))")
+
+        // Collect all tiles on the board (rockets clear everything they cross)
+        var clearedTiles: Set<String> = []
+        for row in 0..<level.gridHeight {
+            for col in 0..<level.gridWidth {
+                if gridShapeMap[row][col] && gameGrid[row][col] != nil {
+                    clearedTiles.insert("\(row),\(col)")
+                }
+            }
+        }
+
+        let cascadingPowerups = collectCascadingPowerups(
+            in: clearedTiles,
+            excludePositions: [(row: r1, col: c1), (row: r2, col: c2)]
+        )
+
+        // Launch two independent rocket animations, then clear
+        var completionCount = 0
+        let totalAnimations = 2
+
+        let onAnimationComplete: () -> Void = { [weak self] in
+            completionCount += 1
+            if completionCount >= totalAnimations {
+                // Both rockets done, show border highlight and clear
+                self?.showPowerupBorderHighlight(clearedTiles) { [weak self] in
+                    self?.clearTilesAndCascade(clearedTiles, cascadingPowerups: cascadingPowerups)
+                }
+            }
+        }
+
+        animateRocketPath(fromRow: r2, fromCol: c2, completion: onAnimationComplete)
+        animateRocketPath(fromRow: r2, fromCol: c2, completion: onAnimationComplete)
+    }
+
+    // MARK: - Individual Power-Up Activation
+
+    /// Handles one-normal + one-powerup swaps, or fallback for unrecognized powerup+powerup combos.
+    /// After a normal swap: original piece from (r1,c1) with type1 is now at (r2,c2),
+    /// and original piece from (r2,c2) with type2 is now at (r1,c1).
+    /// For powerup+powerup fallback: piece is at (r2,c2), (r1,c1) is nil.
+    private func handleIndividualPowerupActivation(r1: Int, c1: Int, r2: Int, c2: Int, type1: PieceType, type2: PieceType) {
+        guard let level = currentLevel else { return }
+
         var clearedTiles: Set<String> = []
         var cascadingPowerups: [(row: Int, col: Int, type: PieceType)] = []
-        
-        // Handle powerup-to-powerup swaps (non-combination types)
-        // When swapping two powerups that don't have a special combo:
-        // - Don't swap places
-        // - Moving powerup overlaps stationary one
-        // - Original space stays blank
-        // - Both activate at new location
-        let isSpecialCombo = (piece1?.type == .bomb && piece2?.type == .bomb) ||
-                             (piece1?.type == .flame && piece2?.type == .flame) ||
-                             (piece1?.type == .verticalArrow && piece2?.type == .horizontalArrow) ||
-                             (piece1?.type == .horizontalArrow && piece2?.type == .verticalArrow)
-        
-        let bothAreNonNormalPowerups = piece1?.type != .normal && piece1?.type != nil &&
-                                       piece2?.type != .normal && piece2?.type != nil &&
-                                       !isSpecialCombo
-        
-        if bothAreNonNormalPowerups {
-            print("🔍 [DEBUG] Powerup-to-powerup overlap: \(piece1!.type) at (\(r2),\(c2)) overlaps \(piece2!.type)")
+        var flameSource: (row: Int, col: Int)? = nil
+
+        // type1 was originally at (r1,c1), now at (r2,c2) after swap
+        // type2 was originally at (r2,c2), now at (r1,c1) after swap
+        // For powerup+powerup fallback: type1 is at (r2,c2), (r1,c1) is nil
+
+        // --- Activate type1 at its current position (r2, c2) ---
+        if type1 == .verticalArrow {
             let impact = UIImpactFeedbackGenerator(style: .medium)
             impact.impactOccurred()
-            
-            // Don't decrement moves for non-damaging powerup swaps yet
-            // Determine which powerup to keep at which location
-            // For now, both activate at r2, c2 (where the swap target is)
-            
-            // Collect tiles for piece1 at r2, c2
-            if piece1?.type == .verticalArrow {
-                for row in 0..<level.gridHeight {
-                    if gridShapeMap[row][c2] && gameGrid[row][c2] != nil {
-                        clearedTiles.insert("\(row),\(c2)")
-                        // Don't count the overlapping powerups themselves
-                        if !(row == r2 && c2 == c2) && !(row == r1 && c2 == c1) {
-                            if let piece = gameGrid[row][c2], piece.type != .normal {
-                                cascadingPowerups.append((row: row, col: c2, type: piece.type))
-                            }
-                        }
-                    }
-                }
-            } else if piece1?.type == .horizontalArrow {
-                for col in 0..<level.gridWidth {
-                    if gridShapeMap[r2][col] && gameGrid[r2][col] != nil {
-                        clearedTiles.insert("\(r2),\(col)")
-                        // Don't count the overlapping powerups themselves
-                        if !(r2 == r2 && col == c2) && !(r2 == r1 && col == c1) {
-                            if let piece = gameGrid[r2][col], piece.type != .normal {
-                                cascadingPowerups.append((row: r2, col: col, type: piece.type))
-                            }
-                        }
-                    }
-                }
-            } else if piece1?.type == .bomb {
-                for dr in -1...1 {
-                    for dc in -1...1 {
-                        let nr = r2 + dr
-                        let nc = c2 + dc
-                        if nr >= 0 && nr < level.gridHeight && nc >= 0 && nc < level.gridWidth &&
-                           gridShapeMap[nr][nc] && gameGrid[nr][nc] != nil {
-                            clearedTiles.insert("\(nr),\(nc)")
-                            // Don't count the overlapping powerups themselves
-                            if !(nr == r2 && nc == c2) && !(nr == r1 && nc == c1) {
-                                if let piece = gameGrid[nr][nc], piece.type != .normal {
-                                    cascadingPowerups.append((row: nr, col: nc, type: piece.type))
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-            
-            // Now clear the original location of piece1
-            gameGrid[r1][c1] = nil
-            
-            // Reset swapped button transforms
-            if let (button1, button2) = swappedButtons {
-                button1.transform = .identity
-                button2.transform = .identity
-                self.swappedButtons = nil
-            }
-            
-            // Update display
-            updateGridDisplay()
-            
-            // Show borders and activate
-            showPowerupBorderHighlight(clearedTiles) { [weak self] in
-                for posString in clearedTiles {
-                    let parts = posString.split(separator: ",").map { Int($0) ?? 0 }
-                    if parts.count == 2 {
-                        self?.score += 1
-                        self?.gameGrid[parts[0]][parts[1]] = nil
-                    }
-                }
-                
-                self?.movesRemaining -= 1
-                self?.updateUI()
-                
-                if !cascadingPowerups.isEmpty {
-                    self?.activateCascadingPowerups(cascadingPowerups)
-                } else {
-                    self?.applyGravity()
-                }
-            }
-            return
-        }
-        
-        // ...existing code...
-        if piece1?.type == .bomb && piece2?.type == .bomb {
-            let impact = UIImpactFeedbackGenerator(style: .heavy)
-            impact.impactOccurred()
-            
-            // Calculate the midpoint between the two bombs
-            let midRow = (r1 + r2) / 2
-            let midCol = (c1 + c2) / 2
-            
-            // Clear a 4x4 grid centered on midpoint (2 in each direction)
-            for dr in -2...1 {
-                for dc in -2...1 {
-                    let nr = midRow + dr
-                    let nc = midCol + dc
-                    if nr >= 0 && nr < level.gridHeight && nc >= 0 && nc < level.gridWidth &&
-                       gridShapeMap[nr][nc] && gameGrid[nr][nc] != nil {
-                        clearedTiles.insert("\(nr),\(nc)")
-                        if let piece = gameGrid[nr][nc], piece.type != .normal {
-                            cascadingPowerups.append((row: nr, col: nc, type: piece.type))
-                        }
-                    }
-                }
-            }
-            
-            print("🔍 [DEBUG] Two bombs merged! Clearing 4x4 grid around (\(midRow),\(midCol)). Found \(cascadingPowerups.count) cascading powerups")
-            
-            // Decrement moves for this valid swap
-            movesRemaining -= 1
-            
-            // Reset swapped button transforms FIRST so buttons are in correct positions
-            if let (button1, button2) = swappedButtons {
-                button1.transform = .identity
-                button2.transform = .identity
-                self.swappedButtons = nil
-            }
-            
-            // Update display so buttons show correct content at correct positions
-            updateGridDisplay()
-            
-            // NOW show borders with correct buttons
-            showPowerupBorderHighlight(clearedTiles) { [weak self] in
-                for posString in clearedTiles {
-                    let parts = posString.split(separator: ",").map { Int($0) ?? 0 }
-                    if parts.count == 2 {
-                        self?.score += 1
-                        self?.gameGrid[parts[0]][parts[1]] = nil
-                    }
-                }
-                
-                self?.updateUI()
-                
-                if !cascadingPowerups.isEmpty {
-                    self?.activateCascadingPowerups(cascadingPowerups)
-                } else {
-                    self?.applyGravity()
-                }
-            }
-            return
-        }
-        
-        // Handle two flames merging - clear entire screen
-        if piece1?.type == .flame && piece2?.type == .flame {
-            let impact = UIImpactFeedbackGenerator(style: .heavy)
-            impact.impactOccurred()
-            
-            // Collect all tiles that will be cleared
-            for row in 0..<level.gridHeight {
-                for col in 0..<level.gridWidth {
-                    if gridShapeMap[row][col] && gameGrid[row][col] != nil {
-                        clearedTiles.insert("\(row),\(col)")
-                        if let piece = gameGrid[row][col], piece.type != .normal {
-                            cascadingPowerups.append((row: row, col: col, type: piece.type))
-                        }
-                    }
-                }
-            }
-            
-            print("🔍 [DEBUG] Two flames merged! Clearing entire screen. Found \(cascadingPowerups.count) cascading powerups")
-            
-            // Decrement moves for this valid swap
-            movesRemaining -= 1
-            
-            // Reset swapped button transforms FIRST so buttons are in correct positions
-            if let (button1, button2) = swappedButtons {
-                button1.transform = .identity
-                button2.transform = .identity
-                self.swappedButtons = nil
-            }
-            
-            // Update display so buttons show correct content at correct positions
-            updateGridDisplay()
-            
-            // NOW show borders with correct buttons
-            showPowerupBorderHighlight(clearedTiles) { [weak self] in
-                for posString in clearedTiles {
-                    let parts = posString.split(separator: ",").map { Int($0) ?? 0 }
-                    if parts.count == 2 {
-                        self?.score += 1
-                        self?.gameGrid[parts[0]][parts[1]] = nil
-                    }
-                }
-                
-                self?.updateUI()
-                
-                if !cascadingPowerups.isEmpty {
-                    self?.activateCascadingPowerups(cascadingPowerups)
-                } else {
-                    self?.applyGravity()
-                }
-            }
-            return
-        }
-        
-        // Handle arrow combinations
-        if (piece1?.type == .verticalArrow && piece2?.type == .horizontalArrow) ||
-           (piece1?.type == .horizontalArrow && piece2?.type == .verticalArrow) {
-            let impact = UIImpactFeedbackGenerator(style: .heavy)
-            impact.impactOccurred()
-            
-            // Decrement moves for this valid swap
-            movesRemaining -= 1
-            
-            let arrowRow = piece1?.type == .verticalArrow ? r1 : r2
-            let arrowCol = piece1?.type == .horizontalArrow ? c1 : c2
-            
-            // Collect tiles that will be cleared
-            for col in 0..<level.gridWidth {
-                if gridShapeMap[arrowRow][col] && gameGrid[arrowRow][col] != nil {
-                    clearedTiles.insert("\(arrowRow),\(col)")
-                    if let piece = gameGrid[arrowRow][col], piece.type != .normal {
-                        cascadingPowerups.append((row: arrowRow, col: col, type: piece.type))
-                    }
-                }
-            }
-            for row in 0..<level.gridHeight {
-                if gridShapeMap[row][arrowCol] && gameGrid[row][arrowCol] != nil {
-                    clearedTiles.insert("\(row),\(arrowCol)")
-                    if let piece = gameGrid[row][arrowCol], piece.type != .normal {
-                        cascadingPowerups.append((row: row, col: arrowCol, type: piece.type))
-                    }
-                }
-            }
-            
-            // Reset swapped button transforms FIRST so buttons are in correct positions
-            if let (button1, button2) = swappedButtons {
-                button1.transform = .identity
-                button2.transform = .identity
-                self.swappedButtons = nil
-            }
-            
-            // Update display so buttons show correct content at correct positions
-            updateGridDisplay()
-            
-            // NOW show borders with correct buttons
-            showPowerupBorderHighlight(clearedTiles) { [weak self] in
-                for posString in clearedTiles {
-                    let parts = posString.split(separator: ",").map { Int($0) ?? 0 }
-                    if parts.count == 2 {
-                        self?.score += 1
-                        self?.gameGrid[parts[0]][parts[1]] = nil
-                    }
-                }
-                
-                self?.updateUI()
-                
-                if !cascadingPowerups.isEmpty {
-                    self?.activateCascadingPowerups(cascadingPowerups)
-                } else {
-                    self?.applyGravity()
-                }
-            }
-            return
-        }
-        
-        // Handle individual power-ups
-        if piece1?.type == .verticalArrow {
-            let impact = UIImpactFeedbackGenerator(style: .medium)
-            impact.impactOccurred()
-            
-            for row in 0..<level.gridHeight {
-                if gridShapeMap[row][c1] && gameGrid[row][c1] != nil {
-                    clearedTiles.insert("\(row),\(c1)")
-                    if let piece = gameGrid[row][c1], piece.type != .normal {
-                        cascadingPowerups.append((row: row, col: c1, type: piece.type))
-                    }
-                }
-            }
-        }
-        
-        if piece2?.type == .verticalArrow {
-            let impact = UIImpactFeedbackGenerator(style: .medium)
-            impact.impactOccurred()
-            
             for row in 0..<level.gridHeight {
                 if gridShapeMap[row][c2] && gameGrid[row][c2] != nil {
                     clearedTiles.insert("\(row),\(c2)")
@@ -1314,26 +1620,9 @@ class MatchGameViewController: UIViewController {
                     }
                 }
             }
-        }
-        
-        if piece1?.type == .horizontalArrow {
+        } else if type1 == .horizontalArrow {
             let impact = UIImpactFeedbackGenerator(style: .medium)
             impact.impactOccurred()
-            
-            for col in 0..<level.gridWidth {
-                if gridShapeMap[r1][col] && gameGrid[r1][col] != nil {
-                    clearedTiles.insert("\(r1),\(col)")
-                    if let piece = gameGrid[r1][col], piece.type != .normal {
-                        cascadingPowerups.append((row: r1, col: col, type: piece.type))
-                    }
-                }
-            }
-        }
-        
-        if piece2?.type == .horizontalArrow {
-            let impact = UIImpactFeedbackGenerator(style: .medium)
-            impact.impactOccurred()
-            
             for col in 0..<level.gridWidth {
                 if gridShapeMap[r2][col] && gameGrid[r2][col] != nil {
                     clearedTiles.insert("\(r2),\(col)")
@@ -1342,31 +1631,9 @@ class MatchGameViewController: UIViewController {
                     }
                 }
             }
-        }
-        
-        if piece1?.type == .bomb {
+        } else if type1 == .bomb {
             let impact = UIImpactFeedbackGenerator(style: .medium)
             impact.impactOccurred()
-            
-            for dr in -1...1 {
-                for dc in -1...1 {
-                    let nr = r1 + dr
-                    let nc = c1 + dc
-                    if nr >= 0 && nr < level.gridHeight && nc >= 0 && nc < level.gridWidth &&
-                       gridShapeMap[nr][nc] && gameGrid[nr][nc] != nil {
-                        clearedTiles.insert("\(nr),\(nc)")
-                        if let piece = gameGrid[nr][nc], piece.type != .normal {
-                            cascadingPowerups.append((row: nr, col: nc, type: piece.type))
-                        }
-                    }
-                }
-            }
-        }
-        
-        if piece2?.type == .bomb {
-            let impact = UIImpactFeedbackGenerator(style: .medium)
-            impact.impactOccurred()
-            
             for dr in -1...1 {
                 for dc in -1...1 {
                     let nr = r2 + dr
@@ -1380,40 +1647,15 @@ class MatchGameViewController: UIViewController {
                     }
                 }
             }
-        }
-        
-        // Handle flame power-ups - clears ALL matching pieces
-        if piece1?.type == .flame {
+        } else if type1 == .flame {
             let impact = UIImpactFeedbackGenerator(style: .heavy)
             impact.impactOccurred()
-            
-            // Add the flame powerup itself to be cleared
-            clearedTiles.insert("\(r1),\(c1)")
-            
-            if let swappedPiece = piece2, swappedPiece.type == .normal {
-                for row in 0..<level.gridHeight {
-                    for col in 0..<level.gridWidth {
-                        if gridShapeMap[row][col], let piece = gameGrid[row][col] {
-                            if piece.itemId == swappedPiece.itemId && piece.colorIndex == swappedPiece.colorIndex {
-                                clearedTiles.insert("\(row),\(col)")
-                                if piece.type != .normal {
-                                    cascadingPowerups.append((row: row, col: col, type: piece.type))
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-        
-        if piece2?.type == .flame {
-            let impact = UIImpactFeedbackGenerator(style: .heavy)
-            impact.impactOccurred()
-            
             // Add the flame powerup itself to be cleared
             clearedTiles.insert("\(r2),\(c2)")
-            
-            if let swappedPiece = piece1, swappedPiece.type == .normal {
+            flameSource = (row: r2, col: c2)
+            // Clear all pieces matching the color of the piece that was swapped with the flame
+            // The swapped piece (type2) is now at (r1,c1)
+            if let swappedPiece = gameGrid[r1][c1], swappedPiece.type == .normal {
                 for row in 0..<level.gridHeight {
                     for col in 0..<level.gridWidth {
                         if gridShapeMap[row][col], let piece = gameGrid[row][col] {
@@ -1427,86 +1669,87 @@ class MatchGameViewController: UIViewController {
                     }
                 }
             }
+        } else if type1 == .rocket {
+            let impact = UIImpactFeedbackGenerator(style: .medium)
+            impact.impactOccurred()
+            // Rocket clears its own tile; animateRocketPath handles the path clearing
+            clearedTiles.insert("\(r2),\(c2)")
         }
-        
-        // Show borders first for all cleared tiles, then clear and process (DON'T call updateGridDisplay() yet - it resets transforms!)
-        // Decrement moves for this valid swap (if clearedTiles are not empty)
-        if !clearedTiles.isEmpty {
-            movesRemaining -= 1
-        }
-        
-        // Reset swapped button transforms FIRST so buttons are in correct positions
-        if let (button1, button2) = swappedButtons {
-            button1.transform = .identity
-            button2.transform = .identity
-            self.swappedButtons = nil
-        }
-        
-        // Update display so buttons show correct content at correct positions
-        updateGridDisplay()
-        
-        // Determine if a flame powerup was involved in this swap
-        let flameRow: Int?
-        let flameCol: Int?
-        if piece1?.type == .flame {
-            flameRow = r1
-            flameCol = c1
-        } else if piece2?.type == .flame {
-            flameRow = r2
-            flameCol = c2
-        } else {
-            flameRow = nil
-            flameCol = nil
-        }
-        
-        // NOW show animation and borders with correct buttons
-        if !clearedTiles.isEmpty {
-            if let fRow = flameRow, let fCol = flameCol {
-                // Flame powerup: shoot lines to targets first, then border highlight, then clear
-                self.shootFlamesAtTiles(fromRow: fRow, fromCol: fCol, targetTiles: clearedTiles) { [weak self] in
-                    self?.showPowerupBorderHighlight(clearedTiles) { [weak self] in
-                        for posString in clearedTiles {
-                            let parts = posString.split(separator: ",").map { Int($0) ?? 0 }
-                            if parts.count == 2 {
-                                self?.score += 1
-                                self?.gameGrid[parts[0]][parts[1]] = nil
-                            }
-                        }
-                        
-                        self?.updateUI()
-                        
-                        if !cascadingPowerups.isEmpty {
-                            self?.activateCascadingPowerups(cascadingPowerups)
-                        } else {
-                            self?.applyGravity()
-                        }
-                    }
-                }
-            } else {
-                // Non-flame powerups: border highlight then clear
-                showPowerupBorderHighlight(clearedTiles) { [weak self] in
-                    for posString in clearedTiles {
-                        let parts = posString.split(separator: ",").map { Int($0) ?? 0 }
-                        if parts.count == 2 {
-                            self?.score += 1
-                            self?.gameGrid[parts[0]][parts[1]] = nil
-                        }
-                    }
-                    
-                    self?.updateUI()
-                    
-                    if !cascadingPowerups.isEmpty {
-                        self?.activateCascadingPowerups(cascadingPowerups)
-                    } else {
-                        self?.applyGravity()
+
+        // --- Activate type2 at its current position (r1, c1) ---
+        if type2 == .verticalArrow {
+            let impact = UIImpactFeedbackGenerator(style: .medium)
+            impact.impactOccurred()
+            for row in 0..<level.gridHeight {
+                if gridShapeMap[row][c1] && gameGrid[row][c1] != nil {
+                    clearedTiles.insert("\(row),\(c1)")
+                    if let piece = gameGrid[row][c1], piece.type != .normal {
+                        cascadingPowerups.append((row: row, col: c1, type: piece.type))
                     }
                 }
             }
-        } else {
-            // No tiles to clear, just apply gravity
-            updateUI()
-            applyGravity()
+        } else if type2 == .horizontalArrow {
+            let impact = UIImpactFeedbackGenerator(style: .medium)
+            impact.impactOccurred()
+            for col in 0..<level.gridWidth {
+                if gridShapeMap[r1][col] && gameGrid[r1][col] != nil {
+                    clearedTiles.insert("\(r1),\(col)")
+                    if let piece = gameGrid[r1][col], piece.type != .normal {
+                        cascadingPowerups.append((row: r1, col: col, type: piece.type))
+                    }
+                }
+            }
+        } else if type2 == .bomb {
+            let impact = UIImpactFeedbackGenerator(style: .medium)
+            impact.impactOccurred()
+            for dr in -1...1 {
+                for dc in -1...1 {
+                    let nr = r1 + dr
+                    let nc = c1 + dc
+                    if nr >= 0 && nr < level.gridHeight && nc >= 0 && nc < level.gridWidth &&
+                       gridShapeMap[nr][nc] && gameGrid[nr][nc] != nil {
+                        clearedTiles.insert("\(nr),\(nc)")
+                        if let piece = gameGrid[nr][nc], piece.type != .normal {
+                            cascadingPowerups.append((row: nr, col: nc, type: piece.type))
+                        }
+                    }
+                }
+            }
+        } else if type2 == .flame {
+            let impact = UIImpactFeedbackGenerator(style: .heavy)
+            impact.impactOccurred()
+            // Add the flame powerup itself to be cleared
+            clearedTiles.insert("\(r1),\(c1)")
+            flameSource = (row: r1, col: c1)
+            // Clear all pieces matching the color of the piece that was swapped with the flame
+            // The swapped piece (type1) is now at (r2,c2)
+            if let swappedPiece = gameGrid[r2][c2], swappedPiece.type == .normal {
+                for row in 0..<level.gridHeight {
+                    for col in 0..<level.gridWidth {
+                        if gridShapeMap[row][col], let piece = gameGrid[row][col] {
+                            if piece.itemId == swappedPiece.itemId && piece.colorIndex == swappedPiece.colorIndex {
+                                clearedTiles.insert("\(row),\(col)")
+                                if piece.type != .normal {
+                                    cascadingPowerups.append((row: row, col: col, type: piece.type))
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        } else if type2 == .rocket {
+            let impact = UIImpactFeedbackGenerator(style: .medium)
+            impact.impactOccurred()
+            // Rocket clears its own tile; animateRocketPath handles the path clearing
+            clearedTiles.insert("\(r1),\(c1)")
         }
+
+        finalizePowerupCombo(
+            clearedTiles: clearedTiles,
+            cascadingPowerups: cascadingPowerups,
+            decrementMoves: !clearedTiles.isEmpty,
+            flameSource: flameSource
+        )
     }
     
     private func activateCascadingPowerups(_ powerups: [(row: Int, col: Int, type: PieceType)]) {
@@ -1522,13 +1765,14 @@ class MatchGameViewController: UIViewController {
         var flameAnimationsInProgress = 0
         var flameAnimationsCompleted = 0
         
-        // Count how many powerups will create flame animations
+        // Count how many powerups will create animations
         for (_, _, type) in powerups {
             switch type {
             case .verticalArrow, .horizontalArrow, .bomb:
                 flameAnimationsInProgress += 1
             case .flame:
-                // Flame powerups also create flame animations
+                flameAnimationsInProgress += 1
+            case .rocket:
                 flameAnimationsInProgress += 1
             default:
                 break
@@ -1718,6 +1962,16 @@ class MatchGameViewController: UIViewController {
                         self.updateUI()
                         self.activateCascadingPowerups(cascadingFromFlame)
                     } else {
+                        self.applyGravityAfterCascade()
+                    }
+                }
+                
+            case .rocket:
+                // Rocket cascading: animate rocket path, completion tracks when done
+                print("🚀 Cascading rocket at (\(row), \(col))")
+                animateRocketPath(fromRow: row, fromCol: col) {
+                    flameAnimationsCompleted += 1
+                    if flameAnimationsCompleted == flameAnimationsInProgress {
                         self.applyGravityAfterCascade()
                     }
                 }
@@ -2093,6 +2347,234 @@ class MatchGameViewController: UIViewController {
         }
     }
     
+    /// Animates a rocket flying a looping path across the grid, clearing all tiles it crosses.
+    /// The rocket visits 8-12 random waypoints, highlights crossed tiles with yellow borders, then clears them.
+    private func animateRocketPath(fromRow: Int, fromCol: Int, completion: @escaping () -> Void) {
+        guard let level = currentLevel else {
+            completion()
+            return
+        }
+        
+        // Calculate grid geometry
+        let gridHeight = gridContainer.bounds.height
+        let gridWidth = gridContainer.bounds.width
+        let rowHeight = gridHeight / CGFloat(level.gridHeight)
+        let colWidth = gridWidth / CGFloat(level.gridWidth)
+        
+        // Starting position (rocket location)
+        let startX = CGFloat(fromCol) * colWidth + colWidth / 2
+        let startY = CGFloat(fromRow) * rowHeight + rowHeight / 2
+        
+        // Generate 8-12 random waypoints across the grid
+        let waypointCount = Int.random(in: 8...12)
+        var waypoints: [CGPoint] = [CGPoint(x: startX, y: startY)]
+        
+        for _ in 0..<waypointCount {
+            let randCol = Int.random(in: 0..<level.gridWidth)
+            let randRow = Int.random(in: 0..<level.gridHeight)
+            let wpX = CGFloat(randCol) * colWidth + colWidth / 2
+            let wpY = CGFloat(randRow) * rowHeight + rowHeight / 2
+            waypoints.append(CGPoint(x: wpX, y: wpY))
+        }
+        
+        // End point: fly off the top-right of the grid
+        waypoints.append(CGPoint(x: gridWidth + 50, y: -50))
+        
+        // Determine which grid cells the path crosses by sampling points along each segment
+        var crossedTileSet: Set<String> = []
+        
+        for i in 0..<(waypoints.count - 1) {
+            let from = waypoints[i]
+            let to = waypoints[i + 1]
+            let distance = hypot(to.x - from.x, to.y - from.y)
+            let steps = max(Int(distance / 4), 5) // sample every ~4 points
+            
+            for step in 0...steps {
+                let t = CGFloat(step) / CGFloat(steps)
+                let sampleX = from.x + (to.x - from.x) * t
+                let sampleY = from.y + (to.y - from.y) * t
+                
+                let col = Int(sampleX / colWidth)
+                let row = Int(sampleY / rowHeight)
+                
+                if row >= 0 && row < level.gridHeight && col >= 0 && col < level.gridWidth &&
+                   gridShapeMap[row][col] && gameGrid[row][col] != nil {
+                    crossedTileSet.insert("\(row),\(col)")
+                }
+            }
+        }
+        
+        // Also include the starting tile
+        if gridShapeMap[fromRow][fromCol] && gameGrid[fromRow][fromCol] != nil {
+            crossedTileSet.insert("\(fromRow),\(fromCol)")
+        }
+        
+        // Collect cascading powerups from crossed tiles (exclude the rocket itself)
+        var cascadingPowerups: [(row: Int, col: Int, type: PieceType)] = []
+        for posString in crossedTileSet {
+            let parts = posString.split(separator: ",").map { Int($0) ?? 0 }
+            if parts.count == 2 {
+                let r = parts[0], c = parts[1]
+                if !(r == fromRow && c == fromCol) {
+                    if let piece = gameGrid[r][c], piece.type != .normal {
+                        cascadingPowerups.append((row: r, col: c, type: piece.type))
+                    }
+                }
+            }
+        }
+        
+        print("🚀 [DEBUG] Rocket path from (\(fromRow),\(fromCol)) crossing \(crossedTileSet.count) tiles, \(cascadingPowerups.count) cascading powerups")
+        
+        // Build the bezier path through all waypoints with curves
+        let path = UIBezierPath()
+        path.move(to: waypoints[0])
+        
+        for i in 1..<waypoints.count {
+            let prev = waypoints[i - 1]
+            let curr = waypoints[i]
+            // Add a curve with control points offset perpendicular to the line
+            let midX = (prev.x + curr.x) / 2
+            let midY = (prev.y + curr.y) / 2
+            let dx = curr.x - prev.x
+            let dy = curr.y - prev.y
+            // Alternate curve direction for a looping effect
+            let curveOffset: CGFloat = (i % 2 == 0) ? 30 : -30
+            let controlX = midX + dy * curveOffset / max(hypot(dx, dy), 1)
+            let controlY = midY - dx * curveOffset / max(hypot(dx, dy), 1)
+            path.addQuadCurve(to: curr, controlPoint: CGPoint(x: controlX, y: controlY))
+        }
+        
+        // Create the rocket emoji label
+        let rocketLabel = UILabel()
+        rocketLabel.text = "🚀"
+        rocketLabel.font = UIFont.systemFont(ofSize: 28)
+        rocketLabel.sizeToFit()
+        rocketLabel.frame = CGRect(
+            x: startX - rocketLabel.bounds.width / 2,
+            y: startY - rocketLabel.bounds.height / 2,
+            width: rocketLabel.bounds.width,
+            height: rocketLabel.bounds.height
+        )
+        gridContainer.addSubview(rocketLabel)
+        
+        // Use CAKeyframeAnimation to animate along the path
+        let animation = CAKeyframeAnimation(keyPath: "position")
+        animation.path = path.cgPath
+        animation.duration = Double(waypoints.count) * 0.12 // ~0.12s per segment
+        animation.rotationMode = .rotateAuto
+        animation.fillMode = .forwards
+        animation.isRemovedOnCompletion = false
+        animation.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
+        
+        // Track animation completion
+        CATransaction.begin()
+        CATransaction.setCompletionBlock { [weak self] in
+            rocketLabel.removeFromSuperview()
+            
+            guard let self = self else {
+                completion()
+                return
+            }
+            
+            // Show yellow borders on crossed tiles, then clear
+            self.showPowerupBorderHighlight(crossedTileSet) { [weak self] in
+                guard let self = self else {
+                    completion()
+                    return
+                }
+                
+                // Clear all crossed tiles
+                for posString in crossedTileSet {
+                    let parts = posString.split(separator: ",").map { Int($0) ?? 0 }
+                    if parts.count == 2 {
+                        self.score += 1
+                        self.gameGrid[parts[0]][parts[1]] = nil
+                    }
+                }
+                
+                self.updateGridDisplay()
+                self.updateUI()
+                
+                // Activate cascading powerups or apply gravity
+                if !cascadingPowerups.isEmpty {
+                    self.activateCascadingPowerups(cascadingPowerups)
+                } else {
+                    self.applyGravity()
+                }
+                
+                completion()
+            }
+        }
+        
+        // Progressively highlight tiles as the rocket passes them
+        // Use a timer that samples the rocket's position during animation
+        let animationDuration = Double(waypoints.count) * 0.12
+        let highlightInterval = 0.05
+        var highlightedTiles: Set<String> = []
+        var elapsed: Double = 0
+        
+        let displayLink = Timer.scheduledTimer(withTimeInterval: highlightInterval, repeats: true) { [weak self] timer in
+            guard let self = self else {
+                timer.invalidate()
+                return
+            }
+            
+            elapsed += highlightInterval
+            if elapsed >= animationDuration {
+                timer.invalidate()
+                return
+            }
+            
+            // Sample position along the path at the current time fraction
+            let fraction = CGFloat(elapsed / animationDuration)
+            let totalLength = self.approximatePathLength(waypoints: waypoints)
+            let targetLength = totalLength * fraction
+            var accumulated: CGFloat = 0
+            var samplePoint = waypoints[0]
+            
+            for i in 0..<(waypoints.count - 1) {
+                let segLen = hypot(waypoints[i + 1].x - waypoints[i].x, waypoints[i + 1].y - waypoints[i].y)
+                if accumulated + segLen >= targetLength {
+                    let segFraction = (targetLength - accumulated) / max(segLen, 1)
+                    samplePoint = CGPoint(
+                        x: waypoints[i].x + (waypoints[i + 1].x - waypoints[i].x) * segFraction,
+                        y: waypoints[i].y + (waypoints[i + 1].y - waypoints[i].y) * segFraction
+                    )
+                    break
+                }
+                accumulated += segLen
+            }
+            
+            let col = Int(samplePoint.x / colWidth)
+            let row = Int(samplePoint.y / rowHeight)
+            let key = "\(row),\(col)"
+            
+            if row >= 0 && row < level.gridHeight && col >= 0 && col < level.gridWidth &&
+               crossedTileSet.contains(key) && !highlightedTiles.contains(key) {
+                highlightedTiles.insert(key)
+                // Show yellow border on this tile
+                if let button = self.gridButtons[row][col] {
+                    button.layer.borderColor = UIColor.yellow.cgColor
+                    button.layer.borderWidth = 3
+                }
+            }
+        }
+        // Keep timer reference alive via the animation duration
+        _ = displayLink
+        
+        rocketLabel.layer.add(animation, forKey: "rocketPath")
+        CATransaction.commit()
+    }
+    
+    /// Approximates total length of a polyline through waypoints.
+    private func approximatePathLength(waypoints: [CGPoint]) -> CGFloat {
+        var total: CGFloat = 0
+        for i in 0..<(waypoints.count - 1) {
+            total += hypot(waypoints[i + 1].x - waypoints[i].x, waypoints[i + 1].y - waypoints[i].y)
+        }
+        return total
+    }
+    
     private func checkForMatches() {
         guard let level = currentLevel else { return }
         
@@ -2150,6 +2632,13 @@ class MatchGameViewController: UIViewController {
                             }
                         }
                     }
+                    
+                case .rocket:
+                    // Rocket activated via swap: animate path
+                    animateRocketPath(fromRow: r1, fromCol: c1) { [weak self] in
+                        self?.isAnimating = false
+                    }
+                    return
                     
                 case .flame, .normal:
                     break
@@ -2222,6 +2711,13 @@ class MatchGameViewController: UIViewController {
                             }
                         }
                     }
+                    
+                case .rocket:
+                    // Rocket activated via match-created powerup in swap
+                    animateRocketPath(fromRow: r2, fromCol: c2) { [weak self] in
+                        self?.isAnimating = false
+                    }
+                    return
                     
                 case .flame, .normal:
                     break
@@ -2429,12 +2925,80 @@ class MatchGameViewController: UIViewController {
             }
         }
         
+        // Check for L-shape patterns → rocket powerup
+        // An L-shape is 3 tiles horizontal + 3 tiles vertical sharing a corner (5 unique tiles)
+        // Check all 4 rotations: right+down, left+down, right+up, left+up
+        for row in 0..<level.gridHeight {
+            for col in 0..<level.gridWidth {
+                guard gridShapeMap[row][col],
+                      let cornerPiece = gameGrid[row][col],
+                      cornerPiece.type == .normal else { continue }
+                
+                // Check each of the 4 L-shape orientations
+                let orientations: [(hDir: Int, vDir: Int)] = [
+                    (1, 1),   // right + down
+                    (-1, 1),  // left + down
+                    (1, -1),  // right + up
+                    (-1, -1)  // left + up
+                ]
+                
+                for (hDir, vDir) in orientations {
+                    // Horizontal arm: (row, col), (row, col+hDir), (row, col+2*hDir)
+                    let h1 = (row, col + hDir)
+                    let h2 = (row, col + 2 * hDir)
+                    // Vertical arm: (row, col), (row+vDir, col), (row+2*vDir, col)
+                    let v1 = (row + vDir, col)
+                    let v2 = (row + 2 * vDir, col)
+                    
+                    // Bounds check
+                    guard h1.1 >= 0 && h1.1 < level.gridWidth &&
+                          h2.1 >= 0 && h2.1 < level.gridWidth &&
+                          v1.0 >= 0 && v1.0 < level.gridHeight &&
+                          v2.0 >= 0 && v2.0 < level.gridHeight else { continue }
+                    
+                    // Shape check
+                    guard gridShapeMap[h1.0][h1.1] && gridShapeMap[h2.0][h2.1] &&
+                          gridShapeMap[v1.0][v1.1] && gridShapeMap[v2.0][v2.1] else { continue }
+                    
+                    // Piece check - all must be normal and matching
+                    guard let pH1 = gameGrid[h1.0][h1.1], pH1.type == .normal, cornerPiece.matches(pH1),
+                          let pH2 = gameGrid[h2.0][h2.1], pH2.type == .normal, cornerPiece.matches(pH2),
+                          let pV1 = gameGrid[v1.0][v1.1], pV1.type == .normal, cornerPiece.matches(pV1),
+                          let pV2 = gameGrid[v2.0][v2.1], pV2.type == .normal, cornerPiece.matches(pV2) else { continue }
+                    
+                    // Found an L-shape! Place rocket at the corner tile
+                    // Determine rocket position: prefer the swap position if it's in the L
+                    var rocketRow = row
+                    var rocketCol = col
+                    
+                    let lTiles = [(row, col), h1, h2, v1, v2]
+                    if let ((r1, c1), (r2, c2)) = lastSwappedPositions {
+                        if lTiles.contains(where: { $0.0 == r1 && $0.1 == c1 }) {
+                            rocketRow = r1
+                            rocketCol = c1
+                        } else if lTiles.contains(where: { $0.0 == r2 && $0.1 == c2 }) {
+                            rocketRow = r2
+                            rocketCol = c2
+                        }
+                    }
+                    
+                    powerUpsToCreate.append((row: rocketRow, col: rocketCol, type: .rocket))
+                    print("🔍 [DEBUG] Found L-shape pattern at corner (\(row),\(col)) orientation h:\(hDir) v:\(vDir). Rocket at (\(rocketRow),\(rocketCol))")
+                    
+                    // Mark all 5 tiles for removal
+                    for tile in lTiles {
+                        matchesToRemove.insert("\(tile.0),\(tile.1)")
+                    }
+                }
+            }
+        }
+        
         if !matchesToRemove.isEmpty {
             print("🔍 [DEBUG] Total matches found: \(matchesToRemove.count) tiles to remove")
             print("🔍 [DEBUG] Matches: \(matchesToRemove.sorted())")
             print("🔍 [DEBUG] Initial powerups to create: \(powerUpsToCreate.count)")
             
-            // PRIORITIZE POWERUPS: flame > arrow > bomb
+            // PRIORITIZE POWERUPS: flame > rocket > arrow > bomb
             // If multiple powerups target the same location, keep only the highest priority
             var prioritizedPowerups: [(row: Int, col: Int, type: PieceType)] = []
             var powerupLocations: [String: PieceType] = [:]  // Track (row,col) -> highest priority type
@@ -2443,14 +3007,18 @@ class MatchGameViewController: UIViewController {
                 let key = "\(powerup.row),\(powerup.col)"
                 let existingType = powerupLocations[key]
                 
-                // Determine priority: flame (3) > arrow (2) > bomb (1) > nil (0)
-                let newPriority = powerup.type == .flame ? 3 : (powerup.type == .verticalArrow || powerup.type == .horizontalArrow ? 2 : 1)
-                let existingPriority: Int
-                if let existing = existingType {
-                    existingPriority = existing == .flame ? 3 : (existing == .verticalArrow || existing == .horizontalArrow ? 2 : 1)
-                } else {
-                    existingPriority = 0  // No existing powerup at this location
+                // Determine priority: flame (4) > rocket (3) > arrow (2) > bomb (1) > nil (0)
+                func typePriority(_ t: PieceType) -> Int {
+                    switch t {
+                    case .flame: return 4
+                    case .rocket: return 3
+                    case .verticalArrow, .horizontalArrow: return 2
+                    case .bomb: return 1
+                    default: return 0
+                    }
                 }
+                let newPriority = typePriority(powerup.type)
+                let existingPriority = existingType.map { typePriority($0) } ?? 0
                 
                 // Add powerup if no existing one or if new one has higher priority
                 if existingPriority == 0 || newPriority > existingPriority {
@@ -2925,6 +3493,10 @@ class MatchGameViewController: UIViewController {
                         button.backgroundColor = .clear  // Transparent for powerups
                     case .flame:
                         button.setTitle("🔥", for: .normal)
+                        button.setImage(nil, for: .normal)
+                        button.backgroundColor = .clear  // Transparent for powerups
+                    case .rocket:
+                        button.setTitle("🚀", for: .normal)
                         button.setImage(nil, for: .normal)
                         button.backgroundColor = .clear  // Transparent for powerups
                     case .normal:
