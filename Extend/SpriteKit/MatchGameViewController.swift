@@ -514,7 +514,7 @@ class MatchGameViewController: UIViewController {
         // For sp/tile ≈ 2/35 ≈ 0.057, this is very close to cols/rows
         let cols = CGFloat(level.gridWidth)
         let rows = CGFloat(level.gridHeight)
-        let approxTile: CGFloat = 35
+        let approxTile: CGFloat = 40
         let aspectRatio = (cols * approxTile + (cols - 1) * gridSpacing) / (rows * approxTile + (rows - 1) * gridSpacing)
         gridAspectRatioConstraint = gridContainer.widthAnchor.constraint(equalTo: gridContainer.heightAnchor, multiplier: aspectRatio)
         gridAspectRatioConstraint?.priority = UILayoutPriority(rawValue: 999)
@@ -556,6 +556,11 @@ class MatchGameViewController: UIViewController {
                 button.layer.cornerRadius = 8
                 button.clipsToBounds = true
                 
+                // Remove all internal padding so content fills the button edge-to-edge
+                //button.contentEdgeInsets = .zero
+                //button.imageEdgeInsets = .zero
+                //button.titleEdgeInsets = .zero
+                
                 // Make buttons square by constraining them to a fixed aspect ratio
                 // Since each row divides available width equally, we just need height = width
                 button.translatesAutoresizingMaskIntoConstraints = false
@@ -576,23 +581,31 @@ class MatchGameViewController: UIViewController {
                     
                     // Try to use asset image first, fall back to emoji
                     if let assetName = item.asset, !assetName.isEmpty {
-                        // Use asset image - let scaleAspectFit handle sizing within button
+                        // Use asset image - pin imageView to fill the button
                         let image = UIImage(named: assetName)
                         
-                        // Configure button for image display
                         button.setImage(image, for: .normal)
                         button.setTitle("", for: .normal)
                         button.imageView?.contentMode = .scaleAspectFit
                         button.imageView?.clipsToBounds = true
+                        if let imageView = button.imageView {
+                            imageView.translatesAutoresizingMaskIntoConstraints = false
+                            NSLayoutConstraint.activate([
+                                imageView.topAnchor.constraint(equalTo: button.topAnchor, constant: 2),
+                                imageView.bottomAnchor.constraint(equalTo: button.bottomAnchor, constant: -2),
+                                imageView.leadingAnchor.constraint(equalTo: button.leadingAnchor, constant: 2),
+                                imageView.trailingAnchor.constraint(equalTo: button.trailingAnchor, constant: -2)
+                            ])
+                        }
                     } else {
-                        // Fall back to emoji - scale font based on grid size
+                        // Fall back to emoji - scale font to nearly fill the tile
                         let itemEmoji = item.emoji ?? "?"
-                        let emojiFontSize = max(12, min(28, 280 / CGFloat(max(level.gridWidth, level.gridHeight))))
+                        let emojiFontSize = max(16, min(40, 420 / CGFloat(max(level.gridWidth, level.gridHeight))))
                         button.setTitle(itemEmoji, for: .normal)
                         button.setImage(nil, for: .normal)
                         button.titleLabel?.font = UIFont.systemFont(ofSize: emojiFontSize)
                         button.titleLabel?.adjustsFontSizeToFitWidth = true
-                        button.titleLabel?.minimumScaleFactor = 0.5
+                        button.titleLabel?.minimumScaleFactor = 0.7
                     }
                     
                     button.addTarget(self, action: #selector(gridButtonTapped(_:)), for: .touchUpInside)
@@ -3541,14 +3554,14 @@ class MatchGameViewController: UIViewController {
                             button.imageView?.contentMode = .scaleAspectFit
                             button.imageView?.clipsToBounds = true
                         } else {
-                            // Fall back to emoji - scale font based on grid size
+                            // Fall back to emoji - scale font to nearly fill the tile
                             let itemEmoji = item.emoji ?? "?"
-                            let emojiFontSize = max(12, min(28, 280 / CGFloat(max(level.gridWidth, level.gridHeight))))
+                            let emojiFontSize = max(16, min(40, 420 / CGFloat(max(level.gridWidth, level.gridHeight))))
                             button.setTitle(itemEmoji, for: .normal)
                             button.setImage(nil, for: .normal)
                             button.titleLabel?.font = UIFont.systemFont(ofSize: emojiFontSize)
                             button.titleLabel?.adjustsFontSizeToFitWidth = true
-                            button.titleLabel?.minimumScaleFactor = 0.5
+                            button.titleLabel?.minimumScaleFactor = 0.7
                         }
                         
                         // Handle optional colors - nil means transparent background
