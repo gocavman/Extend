@@ -192,4 +192,4 @@ If you want to create a fitness-themed match game level, here are some great emo
 ---
 
 **All emojis are copy-paste ready!** Feel free to use any of these in your fitness-themed match game levels. 🎮💪
-
+ 🟥🟪🟫🟦🟨🟧🟩⬜⬛

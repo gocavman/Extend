@@ -279,6 +279,58 @@
       ],
       "movesAllowed": 70,
       "scoreTarget": 350
+    },
+    {
+      "id": 7,
+      "name": "Level 7 - Testing Challenge",
+      "gridWidth": 9,
+      "gridHeight": 12,
+      "items": [
+        {
+          "id": "dumbbell",
+          "emoji": "🟥",
+          "asset": null
+        },
+        {
+          "id": "kettlebell",
+          "emoji": "🟧",
+          "asset": null
+        },
+        {
+          "id": "shaker",
+          "emoji": "🟨",
+          "asset": null
+        },
+        {
+          "id": "bicep",
+          "emoji": "🟩",
+          "asset": null
+        },
+        {
+          "id": "lift",
+          "emoji": "🟦",
+          "asset": null
+        }
+      ],
+      "colors": [
+          null
+      ],
+      "gridShape": [
+        "XXXXXXXXX",
+        "XXXXXXXXX",
+        "XXXXXXXXX",
+        "XXXXXXXXX",
+        "XXXXXXXXX",
+        "XXXXXXXXX",
+        "XXXXXXXXX",
+        "XXXXXXXXX",
+        "XXXXXXXXX",
+        "XXXXXXXXX",
+        "XXXXXXXXX",
+        "XXXXXXXXX"
+      ],
+      "movesAllowed": 80,
+      "scoreTarget": 500
     }
   ]
 }

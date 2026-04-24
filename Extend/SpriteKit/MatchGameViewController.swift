@@ -981,12 +981,12 @@ class MatchGameViewController: UIViewController {
             self.currentSwapInvolvesAPowerup = powerUpAtR1C1 || powerUpAtR2C2
 
             if powerUpAtR1C1 || powerUpAtR2C2 {
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { [weak self] in
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) { [weak self] in
                     self?.activatePowerUps(r1, c1, r2, c2, type1: originalType1, type2: originalType2)
                 }
             } else {
                 // Check for matches after swap animation
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { [weak self] in
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) { [weak self] in
                     self?.checkForMatches()
                 }
             }
@@ -2046,8 +2046,11 @@ class MatchGameViewController: UIViewController {
                     piece.row = targetRow
                     piece.col = col
                     
-                    movedPieces.insert("\(targetRow),\(col)")
-                    fallDistances["\(targetRow),\(col)"] = distance
+                    // Only track pieces that actually moved
+                    if distance > 0 {
+                        movedPieces.insert("\(targetRow),\(col)")
+                        fallDistances["\(targetRow),\(col)"] = distance
+                    }
                     
                     targetRow -= 1
                 }
@@ -2474,7 +2477,7 @@ class MatchGameViewController: UIViewController {
         
         // Create the rocket emoji label
         let rocketLabel = UILabel()
-        rocketLabel.text = "🚀"
+        rocketLabel.text = "🌟"
         rocketLabel.font = UIFont.systemFont(ofSize: 28)
         rocketLabel.sizeToFit()
         rocketLabel.frame = CGRect(
@@ -3080,17 +3083,14 @@ class MatchGameViewController: UIViewController {
             // Clear lastSwappedPositions and reset transforms
             lastSwappedPositions = nil
             
-            // Reset the transforms of swapped buttons so they display correctly
+            // Reset the transforms of swapped buttons and update display so buttons
+            // show the correct post-swap content before the match animation starts
             if let (button1, button2) = swappedButtons {
-                print("🔍 [DEBUG] Resetting transforms for swapped buttons")
                 button1.transform = .identity
                 button2.transform = .identity
                 swappedButtons = nil
-                // Update display immediately after resetting transforms
-                self.updateGridDisplay()
-            } else {
-                print("🔍 [DEBUG] No swappedButtons found to reset!")
             }
+            updateGridDisplay()
             
             // Animate matched pieces, then proceed when animation completes
             animateMatchedPieces(matchesToRemove) { [weak self] in
@@ -3116,8 +3116,7 @@ class MatchGameViewController: UIViewController {
                 
                 // Mark animation complete BEFORE updateUI() so level completion check works
                 self?.isAnimating = false
-                self?.updateUI()
-                self?.updateGridDisplay()
+                // applyGravity() calls updateGridDisplay() internally — no need to call it here
                 self?.applyGravity()
             }
         } else {
@@ -3181,8 +3180,8 @@ class MatchGameViewController: UIViewController {
             }
         }
         
-        // After 0.2 seconds, clear borders and proceed with completion
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+        // After brief highlight, clear borders and proceed with completion
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
             for posString in affectedTiles {
                 let parts = posString.split(separator: ",").map { Int($0) ?? 0 }
                 guard parts.count == 2 else { continue }
@@ -3223,8 +3222,8 @@ class MatchGameViewController: UIViewController {
             button.layer.borderColor = UIColor.yellow.cgColor
         }
         
-        // STEP 2: After 0.2 seconds, animate removal and clear border
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) { [weak self] in
+        // STEP 2: After brief highlight, animate removal and clear border
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.12) { [weak self] in
             var animationCount = 0
             var completedCount = 0
             
@@ -3238,7 +3237,7 @@ class MatchGameViewController: UIViewController {
                     animationCount += 1
                     
                     // Animate: scale down + fade + rotate
-                    UIView.animate(withDuration: 0.2, animations: {
+                    UIView.animate(withDuration: 0.15, animations: {
                         button.transform = CGAffineTransform(scaleX: 0.1, y: 0.1).rotated(by: CGFloat.pi)
                         button.alpha = 0.0
                     }, completion: { _ in
@@ -3397,7 +3396,6 @@ class MatchGameViewController: UIViewController {
             // Sort by row DESCENDING (bottom first) - pieces will animate sequentially
             pieces.sort { $0.row > $1.row }
             columnPieces[col] = pieces
-            print("📍 Column \(col): \(pieces.count) pieces to animate bottom-to-top, rows: \(pieces.map { $0.row })")
         }
         
         let cellHeight = gridContainer.bounds.height / CGFloat(level.gridHeight)
@@ -3525,7 +3523,7 @@ class MatchGameViewController: UIViewController {
                         button.setImage(nil, for: .normal)
                         button.backgroundColor = .clear  // Transparent for powerups
                     case .rocket:
-                        button.setTitle("🚀", for: .normal)
+                        button.setTitle("🌟", for: .normal)
                         button.setImage(nil, for: .normal)
                         button.backgroundColor = .clear  // Transparent for powerups
                     case .normal:
