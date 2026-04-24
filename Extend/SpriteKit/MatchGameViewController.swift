@@ -3626,34 +3626,40 @@ class MatchGameViewController: UIViewController {
                 
                 if let piece = gameGrid[row][col] {
                     // Display power-ups with special symbols
+                    let powerupFontSize = max(16, min(40, 420 / CGFloat(max(level.gridWidth, level.gridHeight))))
                     switch piece.type {
                     case .verticalArrow:
                         button.setTitle("↕️", for: .normal)
                         button.setImage(nil, for: .normal)
-                        button.backgroundColor = .clear  // Transparent for powerups
+                        button.titleLabel?.font = UIFont.systemFont(ofSize: powerupFontSize)
+                        button.backgroundColor = .clear
                     case .horizontalArrow:
                         button.setTitle("↔️", for: .normal)
                         button.setImage(nil, for: .normal)
-                        button.backgroundColor = .clear  // Transparent for powerups
+                        button.titleLabel?.font = UIFont.systemFont(ofSize: powerupFontSize)
+                        button.backgroundColor = .clear
                     case .bomb:
                         button.setTitle("💣", for: .normal)
                         button.setImage(nil, for: .normal)
-                        button.backgroundColor = .clear  // Transparent for powerups
+                        button.titleLabel?.font = UIFont.systemFont(ofSize: powerupFontSize)
+                        button.backgroundColor = .clear
                     case .flame:
                         button.setTitle("🔥", for: .normal)
                         button.setImage(nil, for: .normal)
-                        button.backgroundColor = .clear  // Transparent for powerups
+                        button.titleLabel?.font = UIFont.systemFont(ofSize: powerupFontSize)
+                        button.backgroundColor = .clear
                     case .rocket:
                         button.setTitle("🌟", for: .normal)
                         button.setImage(nil, for: .normal)
-                        button.backgroundColor = .clear  // Transparent for powerups
+                        button.titleLabel?.font = UIFont.systemFont(ofSize: powerupFontSize)
+                        button.backgroundColor = .clear
                     case .normal:
                         let itemIndex = level.items.firstIndex(where: { $0.id == piece.itemId }) ?? 0
                         let item = level.items[itemIndex]
                         
                         // Try to use asset image first, fall back to emoji
                         if let assetName = item.asset, !assetName.isEmpty {
-                            // Use asset image - let scaleAspectFit handle sizing within button
+                            // Use asset image - pin imageView to fill the button
                             let image = UIImage(named: assetName)
                             
                             // Configure button for image display
@@ -3661,6 +3667,26 @@ class MatchGameViewController: UIViewController {
                             button.setTitle("", for: .normal)
                             button.imageView?.contentMode = .scaleAspectFit
                             button.imageView?.clipsToBounds = true
+                            // Pin imageView to fill button (matching renderGrid setup)
+                            if let imageView = button.imageView {
+                                imageView.translatesAutoresizingMaskIntoConstraints = false
+                                // Only add pinning constraints if not already present
+                                // Check by looking for a constraint with the imageView pinned to button top
+                                let alreadyPinned = button.constraints.contains { constraint in
+                                    (constraint.firstItem === imageView && constraint.secondItem === button &&
+                                     constraint.firstAttribute == .top) ||
+                                    (constraint.secondItem === imageView && constraint.firstItem === button &&
+                                     constraint.secondAttribute == .top)
+                                }
+                                if !alreadyPinned {
+                                    NSLayoutConstraint.activate([
+                                        imageView.topAnchor.constraint(equalTo: button.topAnchor, constant: 2),
+                                        imageView.bottomAnchor.constraint(equalTo: button.bottomAnchor, constant: -2),
+                                        imageView.leadingAnchor.constraint(equalTo: button.leadingAnchor, constant: 2),
+                                        imageView.trailingAnchor.constraint(equalTo: button.trailingAnchor, constant: -2)
+                                    ])
+                                }
+                            }
                         } else {
                             // Fall back to emoji - scale font to nearly fill the tile
                             let itemEmoji = item.emoji ?? "?"
