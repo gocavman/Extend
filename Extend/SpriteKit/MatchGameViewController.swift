@@ -1672,8 +1672,22 @@ class MatchGameViewController: UIViewController {
         } else if type1 == .rocket {
             let impact = UIImpactFeedbackGenerator(style: .medium)
             impact.impactOccurred()
-            // Rocket clears its own tile; animateRocketPath handles the path clearing
-            clearedTiles.insert("\(r2),\(c2)")
+            // Rocket handles its own clearing via animateRocketPath — bypass finalizePowerupCombo
+            if let (button1, button2) = swappedButtons {
+                button1.transform = .identity
+                button2.transform = .identity
+                self.swappedButtons = nil
+            }
+            updateGridDisplay()
+            movesRemaining -= 1
+            updateUI()
+            animateRocketPath(fromRow: r2, fromCol: c2) { [weak self] in
+                self?.isAnimating = false
+                if self?.movesRemaining ?? 0 <= 0 {
+                    self?.levelFailed()
+                }
+            }
+            return
         }
 
         // --- Activate type2 at its current position (r1, c1) ---
@@ -1740,8 +1754,22 @@ class MatchGameViewController: UIViewController {
         } else if type2 == .rocket {
             let impact = UIImpactFeedbackGenerator(style: .medium)
             impact.impactOccurred()
-            // Rocket clears its own tile; animateRocketPath handles the path clearing
-            clearedTiles.insert("\(r1),\(c1)")
+            // Rocket handles its own clearing via animateRocketPath — bypass finalizePowerupCombo
+            if let (button1, button2) = swappedButtons {
+                button1.transform = .identity
+                button2.transform = .identity
+                self.swappedButtons = nil
+            }
+            updateGridDisplay()
+            movesRemaining -= 1
+            updateUI()
+            animateRocketPath(fromRow: r1, fromCol: c1) { [weak self] in
+                self?.isAnimating = false
+                if self?.movesRemaining ?? 0 <= 0 {
+                    self?.levelFailed()
+                }
+            }
+            return
         }
 
         finalizePowerupCombo(
@@ -3346,7 +3374,10 @@ class MatchGameViewController: UIViewController {
             return
         }
         
-        let fallSpeedPixelsPerSecond: CGFloat = 400
+        // Scale fall speed with grid size so larger grids don't feel sluggish
+        let baseFallSpeed: CGFloat = 400
+        let gridScale = CGFloat(max(level.gridHeight, 10)) / 10.0
+        let fallSpeedPixelsPerSecond: CGFloat = baseFallSpeed * gridScale
         
         // Build list of pieces to animate per column, sorted bottom to top
         var columnPieces: [[AnimatingPiece]] = Array(repeating: [], count: level.gridWidth)
@@ -3420,7 +3451,7 @@ class MatchGameViewController: UIViewController {
         
         let piece = pieces[index]
         let fallDistance = cellHeight * CGFloat(piece.distance)
-        let duration = Double(fallDistance / fallSpeed)
+        let duration = min(Double(fallDistance / fallSpeed), 0.45) // Cap at 0.45s so long falls stay snappy
         
         // Set starting position
         if piece.isNew {
@@ -3431,11 +3462,9 @@ class MatchGameViewController: UIViewController {
             piece.button.alpha = 1.0
         }
         
-        //print("📍 Column \(col) Row \(piece.row): Animating distance=\(piece.distance) duration=\(String(format: "%.3f", duration))s")
-        
-        // Calculate when to start next piece (at 50% completion of this piece)
-        let percentToWait = 0.5  // Change this value: 0.25 = 25%, 0.5 = 50%, 0.75 = 75%, etc.
-        let delayForNextPiece = duration * percentToWait
+        // Calculate when to start next piece — tighter overlap on bigger grids
+        let percentToWait = 0.3  // 30% overlap: next piece starts when current is 30% done
+        let delayForNextPiece = max(duration * percentToWait, 0.04) // Minimum 40ms gap to stay ordered
         
         // Start next piece animation after percentage completion of current piece
         if index + 1 < pieces.count {
