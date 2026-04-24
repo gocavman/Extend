@@ -285,27 +285,22 @@
       "items": [
         {
           "id": "dumbbell",
-          "emoji": "🟥",
-          "asset": null
-        },
-        {
-          "id": "kettlebell",
-          "emoji": "🟧",
+          "emoji": "🔴",
           "asset": null
         },
         {
           "id": "shaker",
-          "emoji": "🟨",
+          "emoji": "🟡",
           "asset": null
         },
         {
           "id": "bicep",
-          "emoji": "🟩",
+          "emoji": "🟢",
           "asset": null
         },
         {
           "id": "lift",
-          "emoji": "🟦",
+          "emoji": "🔵",
           "asset": null
         }
       ],

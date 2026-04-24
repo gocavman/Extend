@@ -1435,8 +1435,8 @@ class MatchGameViewController: UIViewController {
             clearedTiles.insert("\(r1),\(c1)")
         }
 
-        // Animate flames shooting from the overlap point to each target
-        shootFlamesAtTiles(fromRow: r2, fromCol: c2, targetTiles: targetTiles) { [weak self] in
+        // Animate powerup copies flying from the overlap point to each target
+        shootPowerupCopiesToTiles(fromRow: r2, fromCol: c2, powerupType: otherType, targetTiles: targetTiles) { [weak self] in
             guard let self = self else { return }
 
             // Convert the random tiles to the other powerup type
@@ -1519,8 +1519,8 @@ class MatchGameViewController: UIViewController {
             clearedTiles.insert("\(r1),\(c1)")
         }
 
-        // Use shootFlamesAtTiles for now (animateRocketPath will be implemented later)
-        shootFlamesAtTiles(fromRow: r2, fromCol: c2, targetTiles: targetTiles) { [weak self] in
+        // Animate powerup copies flying from the rocket to each target
+        shootPowerupCopiesToTiles(fromRow: r2, fromCol: c2, powerupType: otherType, targetTiles: targetTiles) { [weak self] in
             guard let self = self else { return }
 
             // Convert the random tiles to the other powerup type
@@ -1601,7 +1601,7 @@ class MatchGameViewController: UIViewController {
         }
 
         animateRocketPath(fromRow: r2, fromCol: c2, completion: onAnimationComplete)
-        animateRocketPath(fromRow: r2, fromCol: c2, completion: onAnimationComplete)
+        //animateRocketPath(fromRow: r2, fromCol: c2, completion: onAnimationComplete)
     }
 
     // MARK: - Individual Power-Up Activation
@@ -1628,22 +1628,28 @@ class MatchGameViewController: UIViewController {
             for row in 0..<level.gridHeight {
                 if gridShapeMap[row][c2] && gameGrid[row][c2] != nil {
                     clearedTiles.insert("\(row),\(c2)")
-                    if let piece = gameGrid[row][c2], piece.type != .normal {
+                    // Don't add the arrow itself to cascading (it's at r2,c2)
+                    if row != r2, let piece = gameGrid[row][c2], piece.type != .normal {
                         cascadingPowerups.append((row: row, col: c2, type: piece.type))
                     }
                 }
             }
+            // Fire-and-forget flame animation for visual effect
+            shootFlamesVertically(column: c2, arrowRow: r2, rows: 0..<level.gridHeight) {}
         } else if type1 == .horizontalArrow {
             let impact = UIImpactFeedbackGenerator(style: .medium)
             impact.impactOccurred()
             for col in 0..<level.gridWidth {
                 if gridShapeMap[r2][col] && gameGrid[r2][col] != nil {
                     clearedTiles.insert("\(r2),\(col)")
-                    if let piece = gameGrid[r2][col], piece.type != .normal {
+                    // Don't add the arrow itself to cascading (it's at r2,c2)
+                    if col != c2, let piece = gameGrid[r2][col], piece.type != .normal {
                         cascadingPowerups.append((row: r2, col: col, type: piece.type))
                     }
                 }
             }
+            // Fire-and-forget flame animation for visual effect
+            shootFlamesHorizontally(row: r2, columns: 0..<level.gridWidth) {}
         } else if type1 == .bomb {
             let impact = UIImpactFeedbackGenerator(style: .medium)
             impact.impactOccurred()
@@ -1654,7 +1660,8 @@ class MatchGameViewController: UIViewController {
                     if nr >= 0 && nr < level.gridHeight && nc >= 0 && nc < level.gridWidth &&
                        gridShapeMap[nr][nc] && gameGrid[nr][nc] != nil {
                         clearedTiles.insert("\(nr),\(nc)")
-                        if let piece = gameGrid[nr][nc], piece.type != .normal {
+                        // Don't add the bomb itself to cascading (it's at r2,c2)
+                        if !(nr == r2 && nc == c2), let piece = gameGrid[nr][nc], piece.type != .normal {
                             cascadingPowerups.append((row: nr, col: nc, type: piece.type))
                         }
                     }
@@ -1710,22 +1717,28 @@ class MatchGameViewController: UIViewController {
             for row in 0..<level.gridHeight {
                 if gridShapeMap[row][c1] && gameGrid[row][c1] != nil {
                     clearedTiles.insert("\(row),\(c1)")
-                    if let piece = gameGrid[row][c1], piece.type != .normal {
+                    // Don't add the arrow itself to cascading (it's at r1,c1)
+                    if row != r1, let piece = gameGrid[row][c1], piece.type != .normal {
                         cascadingPowerups.append((row: row, col: c1, type: piece.type))
                     }
                 }
             }
+            // Fire-and-forget flame animation for visual effect
+            shootFlamesVertically(column: c1, arrowRow: r1, rows: 0..<level.gridHeight) {}
         } else if type2 == .horizontalArrow {
             let impact = UIImpactFeedbackGenerator(style: .medium)
             impact.impactOccurred()
             for col in 0..<level.gridWidth {
                 if gridShapeMap[r1][col] && gameGrid[r1][col] != nil {
                     clearedTiles.insert("\(r1),\(col)")
-                    if let piece = gameGrid[r1][col], piece.type != .normal {
+                    // Don't add the arrow itself to cascading (it's at r1,c1)
+                    if col != c1, let piece = gameGrid[r1][col], piece.type != .normal {
                         cascadingPowerups.append((row: r1, col: col, type: piece.type))
                     }
                 }
             }
+            // Fire-and-forget flame animation for visual effect
+            shootFlamesHorizontally(row: r1, columns: 0..<level.gridWidth) {}
         } else if type2 == .bomb {
             let impact = UIImpactFeedbackGenerator(style: .medium)
             impact.impactOccurred()
@@ -1736,7 +1749,8 @@ class MatchGameViewController: UIViewController {
                     if nr >= 0 && nr < level.gridHeight && nc >= 0 && nc < level.gridWidth &&
                        gridShapeMap[nr][nc] && gameGrid[nr][nc] != nil {
                         clearedTiles.insert("\(nr),\(nc)")
-                        if let piece = gameGrid[nr][nc], piece.type != .normal {
+                        // Don't add the bomb itself to cascading (it's at r1,c1)
+                        if !(nr == r1 && nc == c1), let piece = gameGrid[nr][nc], piece.type != .normal {
                             cascadingPowerups.append((row: nr, col: nc, type: piece.type))
                         }
                     }
@@ -1828,56 +1842,72 @@ class MatchGameViewController: UIViewController {
             return
         }
         
+        // Update display before launching animations so buttons show correct state
+        updateGridDisplay()
+        updateUI()
+        
         // Process each cascading powerup
         for (row, col, type) in powerups {
             switch type {
             case .verticalArrow:
-                // Shoot flames vertically - fires immediately, completion handler tracks when done
-                shootFlamesVertically(column: col, arrowRow: row, rows: 0..<level.gridHeight) {
-                    flameAnimationsCompleted += 1
-                    if flameAnimationsCompleted == flameAnimationsInProgress {
-                        // All flame animations complete - now apply gravity
-                        self.applyGravityAfterCascade()
-                    }
-                }
-                
-                // Clear entire column and capture cascading powerups
-                var cascadingFromArrow: [(row: Int, col: Int, type: PieceType)] = []
+                // Clear entire column and capture cascading powerups BEFORE animation
+                var cascadingFromVertArrow: [(row: Int, col: Int, type: PieceType)] = []
                 for r in 0..<level.gridHeight {
                     if gridShapeMap[r][col] && gameGrid[r][col] != nil {
-                        // Capture any powerups in column BEFORE clearing
-                        if let p = gameGrid[r][col], p.type != .normal {
-                            cascadingFromArrow.append((row: r, col: col, type: p.type))
+                        // Capture any powerups in column BEFORE clearing (exclude the arrow itself)
+                        if r != row, let p = gameGrid[r][col], p.type != .normal {
+                            cascadingFromVertArrow.append((row: r, col: col, type: p.type))
                         }
                         score += 1
                         gameGrid[r][col] = nil
                     }
                 }
-                print("🔥 Cascading vertical arrow cleared column \(col). Found \(cascadingFromArrow.count) cascading powerups")
+                print("🔥 Cascading vertical arrow cleared column \(col). Found \(cascadingFromVertArrow.count) cascading powerups")
                 
-            case .horizontalArrow:
-                // Shoot flames horizontally - fires immediately, completion handler tracks when done
-                shootFlamesHorizontally(row: row, columns: 0..<level.gridWidth) {
+                // Shoot flames vertically - completion triggers next cascade or gravity
+                let vertCascading = cascadingFromVertArrow
+                shootFlamesVertically(column: col, arrowRow: row, rows: 0..<level.gridHeight) {
                     flameAnimationsCompleted += 1
                     if flameAnimationsCompleted == flameAnimationsInProgress {
-                        // All flame animations complete - now apply gravity
-                        self.applyGravityAfterCascade()
+                        if !vertCascading.isEmpty {
+                            self.updateGridDisplay()
+                            self.updateUI()
+                            self.activateCascadingPowerups(vertCascading)
+                        } else {
+                            self.applyGravityAfterCascade()
+                        }
                     }
                 }
                 
-                // Clear entire row and capture cascading powerups
-                var cascadingFromArrow: [(row: Int, col: Int, type: PieceType)] = []
+            case .horizontalArrow:
+                // Clear entire row and capture cascading powerups BEFORE animation
+                var cascadingFromHorizArrow: [(row: Int, col: Int, type: PieceType)] = []
                 for c in 0..<level.gridWidth {
                     if gridShapeMap[row][c] && gameGrid[row][c] != nil {
-                        // Capture any powerups in row BEFORE clearing
-                        if let p = gameGrid[row][c], p.type != .normal {
-                            cascadingFromArrow.append((row: row, col: c, type: p.type))
+                        // Capture any powerups in row BEFORE clearing (exclude the arrow itself)
+                        if c != col, let p = gameGrid[row][c], p.type != .normal {
+                            cascadingFromHorizArrow.append((row: row, col: c, type: p.type))
                         }
                         score += 1
                         gameGrid[row][c] = nil
                     }
                 }
-                print("🔥 Cascading horizontal arrow cleared row \(row). Found \(cascadingFromArrow.count) cascading powerups")
+                print("🔥 Cascading horizontal arrow cleared row \(row). Found \(cascadingFromHorizArrow.count) cascading powerups")
+                
+                // Shoot flames horizontally - completion triggers next cascade or gravity
+                let horizCascading = cascadingFromHorizArrow
+                shootFlamesHorizontally(row: row, columns: 0..<level.gridWidth) {
+                    flameAnimationsCompleted += 1
+                    if flameAnimationsCompleted == flameAnimationsInProgress {
+                        if !horizCascading.isEmpty {
+                            self.updateGridDisplay()
+                            self.updateUI()
+                            self.activateCascadingPowerups(horizCascading)
+                        } else {
+                            self.applyGravityAfterCascade()
+                        }
+                    }
+                }
                 
             case .bomb:
                 // Clear 3x3 area and capture cascading powerups
@@ -2021,9 +2051,6 @@ class MatchGameViewController: UIViewController {
                 break
             }
         }
-        
-        updateGridDisplay()
-        updateUI()
     }
     
     private func applyGravityAfterCascade() {
@@ -2155,12 +2182,8 @@ class MatchGameViewController: UIViewController {
         let endYUp = CGFloat(rows.lowerBound) * rowHeight - 50
         let endYDown = CGFloat(rows.upperBound) * rowHeight + 50
         
-        print("🔍 [DEBUG] shootFlamesVertically called: column=\(column), arrowRow=\(arrowRow)")
-        print("🔍 [DEBUG] Grid geometry: gridHeight=\(gridHeight), rowHeight=\(rowHeight)")
-        print("🔍 [DEBUG] Flame positions: startY=\(startY), endYUp=\(endYUp), endYDown=\(endYDown)")
-        
         var animationsComplete = 0
-        let totalAnimations = 20  // 10 up + 10 down
+        let totalAnimations = 10  // 5 up + 5 down
         let completeAnimation = {
             animationsComplete += 1
             if animationsComplete == totalAnimations {
@@ -2168,8 +2191,8 @@ class MatchGameViewController: UIViewController {
             }
         }
         
-        // Create 10 flames shooting UP (distributed across column width)
-        for i in 0..<10 {
+        // Create 5 flames shooting UP (distributed across column width)
+        for i in 0..<5 {
             let flameLabelUp = UILabel()
             flameLabelUp.text = "🔥"
             flameLabelUp.font = UIFont.systemFont(ofSize: 40)
@@ -2194,8 +2217,8 @@ class MatchGameViewController: UIViewController {
             })
         }
         
-        // Create 10 flames shooting DOWN (distributed across column width)
-        for i in 0..<10 {
+        // Create 5 flames shooting DOWN (distributed across column width)
+        for i in 0..<5 {
             let flameLabelDown = UILabel()
             flameLabelDown.text = "🔥"
             flameLabelDown.font = UIFont.systemFont(ofSize: 40)
@@ -2259,7 +2282,7 @@ class MatchGameViewController: UIViewController {
         print("🔍 [DEBUG] Flame positions: startX=\(startX), endXLeft=\(endXLeft), endXRight=\(endXRight)")
         
         var animationsComplete = 0
-        let totalAnimations = 20  // 10 left + 10 right
+        let totalAnimations = 10  // 5 left + 5 right
         let completeAnimation = {
             animationsComplete += 1
             if animationsComplete == totalAnimations {
@@ -2267,8 +2290,8 @@ class MatchGameViewController: UIViewController {
             }
         }
         
-        // Create 10 flames shooting LEFT (distributed across row height)
-        for i in 0..<10 {
+        // Create 5 flames shooting LEFT (distributed across row height)
+        for i in 0..<5 {
             let flameLabelLeft = UILabel()
             flameLabelLeft.text = "🔥"
             flameLabelLeft.font = UIFont.systemFont(ofSize: 40)
@@ -2295,8 +2318,8 @@ class MatchGameViewController: UIViewController {
             })
         }
         
-        // Create 10 flames shooting RIGHT (distributed across row height)
-        for i in 0..<10 {
+        // Create 5 flames shooting RIGHT (distributed across row height)
+        for i in 0..<5 {
             let flameLabelRight = UILabel()
             flameLabelRight.text = "🔥"
             flameLabelRight.font = UIFont.systemFont(ofSize: 40)
@@ -2391,6 +2414,91 @@ class MatchGameViewController: UIViewController {
         }
     }
     
+    /// Shoots copies of a powerup emoji from a source position to target tile positions.
+    /// Used for flame+powerup and rocket+powerup combos to show powerup copies flying to targets.
+    private func shootPowerupCopiesToTiles(fromRow: Int, fromCol: Int, powerupType: PieceType, targetTiles: Set<String>, completion: @escaping () -> Void) {
+        guard let level = currentLevel else {
+            completion()
+            return
+        }
+        
+        // Determine the emoji for this powerup type
+        let emoji: String
+        switch powerupType {
+        case .verticalArrow: emoji = "↕️"
+        case .horizontalArrow: emoji = "↔️"
+        case .bomb: emoji = "💣"
+        case .flame: emoji = "🔥"
+        case .rocket: emoji = "🌟"
+        case .normal: emoji = "❓"
+        }
+        
+        // Calculate grid geometry
+        let gridHeight = gridContainer.bounds.height
+        let gridWidth = gridContainer.bounds.width
+        let rowHeight = gridHeight / CGFloat(level.gridHeight)
+        let colWidth = gridWidth / CGFloat(level.gridWidth)
+        
+        // Starting position
+        let startX = CGFloat(fromCol) * colWidth + colWidth / 2
+        let startY = CGFloat(fromRow) * rowHeight + rowHeight / 2
+        
+        // Parse target tile positions
+        var targetPositions: [(x: CGFloat, y: CGFloat)] = []
+        for posString in targetTiles {
+            let parts = posString.split(separator: ",").map { Int($0) ?? 0 }
+            if parts.count == 2 {
+                let tRow = parts[0]
+                let tCol = parts[1]
+                let targetX = CGFloat(tCol) * colWidth + colWidth / 2
+                let targetY = CGFloat(tRow) * rowHeight + rowHeight / 2
+                targetPositions.append((x: targetX, y: targetY))
+            }
+        }
+        
+        guard !targetPositions.isEmpty else {
+            completion()
+            return
+        }
+        
+        var copiesComplete = 0
+        let completeCopy = {
+            copiesComplete += 1
+            if copiesComplete == targetPositions.count {
+                completion()
+            }
+        }
+        
+        // Shoot a copy of the powerup emoji at each target tile
+        for (targetX, targetY) in targetPositions {
+            let copyLabel = UILabel()
+            copyLabel.text = emoji
+            copyLabel.font = UIFont.systemFont(ofSize: 28)
+            copyLabel.sizeToFit()
+            copyLabel.frame = CGRect(x: startX - copyLabel.bounds.width/2,
+                                      y: startY - copyLabel.bounds.height/2,
+                                      width: copyLabel.bounds.width,
+                                      height: copyLabel.bounds.height)
+            
+            gridContainer.addSubview(copyLabel)
+            
+            // Animate copy moving toward target with a slight arc
+            UIView.animate(withDuration: 0.35, delay: 0, options: .curveEaseOut, animations: {
+                copyLabel.frame.origin.x = targetX - copyLabel.bounds.width/2
+                copyLabel.frame.origin.y = targetY - copyLabel.bounds.height/2
+            }, completion: { _ in
+                // Brief flash at landing position
+                UIView.animate(withDuration: 0.1, animations: {
+                    copyLabel.transform = CGAffineTransform(scaleX: 1.3, y: 1.3)
+                    copyLabel.alpha = 0.7
+                }, completion: { _ in
+                    copyLabel.removeFromSuperview()
+                    completeCopy()
+                })
+            })
+        }
+    }
+    
     /// Animates a rocket flying a looping path across the grid, clearing all tiles it crosses.
     /// The rocket visits 8-12 random waypoints, highlights crossed tiles with yellow borders, then clears them.
     private func animateRocketPath(fromRow: Int, fromCol: Int, completion: @escaping () -> Void) {
@@ -2410,7 +2518,7 @@ class MatchGameViewController: UIViewController {
         let startY = CGFloat(fromRow) * rowHeight + rowHeight / 2
         
         // Generate 8-12 random waypoints across the grid
-        let waypointCount = Int.random(in: 8...12)
+        let waypointCount = Int.random(in: 1...3)
         var waypoints: [CGPoint] = [CGPoint(x: startX, y: startY)]
         
         for _ in 0..<waypointCount {
