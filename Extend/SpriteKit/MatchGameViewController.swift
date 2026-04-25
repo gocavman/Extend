@@ -82,6 +82,7 @@ class MatchGameViewController: UIViewController {
     private let movesLabel = UILabel()
     private let targetLabel = UILabel()
     private let highScoreLabel = UILabel()
+    private let armorLabel = UILabel()
     
     // Game State
     private var currentLevel: MatchGameLevel?
@@ -108,6 +109,9 @@ class MatchGameViewController: UIViewController {
     private var fallDistances: [String: Int] = [:]  // Track how far each piece fell (row distance)
     private var newPieces: Set<String> = []  // Track which pieces are NEW (from refill)
     private var levelCompletionTriggered: Bool = false  // Prevent multiple level completion triggers
+    private var armorGrid: [[Int]] = []  // Armor hits remaining per grid position (0 = no armor)
+    private var armorOverlays: [[UILabel?]] = []  // Overlay labels showing armor count
+    private var isApplyingGravity = false  // Guard flag to prevent updateGridDisplay during gravity setup
     
     // MARK: - Game Logic
     private var gridAspectRatioConstraint: NSLayoutConstraint?
@@ -236,6 +240,18 @@ class MatchGameViewController: UIViewController {
             targetLabel.leadingAnchor.constraint(equalTo: headerView.leadingAnchor, constant: 15)
         ])
         
+        // Armor/Shields Label (below moves, right-aligned)
+        armorLabel.font = UIFont.systemFont(ofSize: 12, weight: .regular)
+        armorLabel.textColor = .cyan
+        armorLabel.text = ""
+        armorLabel.isHidden = true
+        headerView.addSubview(armorLabel)
+        armorLabel.translatesAutoresizingMaskIntoConstraints = false
+        NSLayoutConstraint.activate([
+            armorLabel.topAnchor.constraint(equalTo: movesLabel.bottomAnchor, constant: 3),
+            armorLabel.trailingAnchor.constraint(equalTo: headerView.trailingAnchor, constant: -15)
+        ])
+        
         // Grid Container
         gridContainer.backgroundColor = darkBg
         containerView.addSubview(gridContainer)
@@ -296,13 +312,39 @@ class MatchGameViewController: UIViewController {
         
         // ...existing code...
         gridShapeMap = Array(repeating: Array(repeating: false, count: level.gridWidth), count: level.gridHeight)
+        armorGrid = Array(repeating: Array(repeating: 0, count: level.gridWidth), count: level.gridHeight)
+        armorOverlays = Array(repeating: Array(repeating: nil, count: level.gridWidth), count: level.gridHeight)
         
-        // Parse grid shape strings into boolean grid
+        // Parse grid shape strings into boolean grid + armor values
+        // Format: X = active tile, _ = inactive, digits after X = armor value
+        // Example: "X5XX3X" -> col0: active armor=5, col1: active armor=0, col2: active armor=3, col3: active armor=0
         for (rowIndex, rowString) in level.gridShape.enumerated() {
             if rowIndex < gridShapeMap.count {
-                for (colIndex, char) in rowString.enumerated() {
-                    if colIndex < gridShapeMap[rowIndex].count {
-                        gridShapeMap[rowIndex][colIndex] = (char == "X")
+                var col = 0
+                var charIndex = rowString.startIndex
+                while charIndex < rowString.endIndex && col < level.gridWidth {
+                    let char = rowString[charIndex]
+                    if char == "X" {
+                        gridShapeMap[rowIndex][col] = true
+                        // Peek ahead for digits (armor value)
+                        var numberStr = ""
+                        var peekIndex = rowString.index(after: charIndex)
+                        while peekIndex < rowString.endIndex && rowString[peekIndex].isNumber {
+                            numberStr.append(rowString[peekIndex])
+                            peekIndex = rowString.index(after: peekIndex)
+                        }
+                        if let armorValue = Int(numberStr) {
+                            armorGrid[rowIndex][col] = armorValue
+                        }
+                        charIndex = peekIndex  // Skip past the digits
+                        col += 1
+                    } else if char == "_" {
+                        gridShapeMap[rowIndex][col] = false
+                        charIndex = rowString.index(after: charIndex)
+                        col += 1
+                    } else {
+                        // Skip unexpected characters
+                        charIndex = rowString.index(after: charIndex)
                     }
                 }
             }
@@ -350,8 +392,25 @@ class MatchGameViewController: UIViewController {
         movesLabel.text = "Moves: \(max(0, movesRemaining))"  // Never show negative moves
         targetLabel.text = "Target: \(level.scoreTarget)"
         
-        // Check if target score is reached (only trigger once per level)
-        if score >= level.scoreTarget && !levelCompletionTriggered {
+        // Update shields counter
+        let shieldsRemaining = armorGrid.flatMap { $0 }.reduce(0) { $0 + ($1 > 0 ? 1 : 0) }
+        if shieldsRemaining > 0 {
+            armorLabel.text = "Shields: \(shieldsRemaining)"
+            armorLabel.isHidden = false
+        } else {
+            // Check if this level ever had armor
+            let levelHasArmor = level.gridShape.contains { $0.contains(where: { $0.isNumber }) }
+            if levelHasArmor {
+                armorLabel.text = "Shields: 0"
+                armorLabel.isHidden = false
+            } else {
+                armorLabel.isHidden = true
+            }
+        }
+        
+        // Check if target score is reached AND all armor cleared (only trigger once per level)
+        let allArmorCleared = !armorGrid.contains(where: { $0.contains(where: { $0 > 0 }) })
+        if score >= level.scoreTarget && allArmorCleared && !levelCompletionTriggered {
             levelCompletionTriggered = true
             checkLevelCompletion()
         }
@@ -615,6 +674,35 @@ class MatchGameViewController: UIViewController {
                     button.addGestureRecognizer(panGesture)
                     
                     gridButtons[row][col] = button
+                    
+                    // Add armor visual indicator
+                    if armorGrid[row][col] > 0 {
+                        button.layer.borderColor = UIColor.cyan.withAlphaComponent(0.7).cgColor
+                        button.layer.borderWidth = 2
+                    }
+                    
+                    // Add armor overlay if this cell has armor > 1
+                    if armorGrid[row][col] > 1 {
+                        let armorLabel = UILabel()
+                        armorLabel.text = "\(armorGrid[row][col])"
+                        armorLabel.font = UIFont.boldSystemFont(ofSize: 14)
+                        armorLabel.textColor = .white
+                        armorLabel.textAlignment = .center
+                        armorLabel.layer.shadowColor = UIColor.black.cgColor
+                        armorLabel.layer.shadowOffset = CGSize(width: 1, height: 1)
+                        armorLabel.layer.shadowOpacity = 1.0
+                        armorLabel.layer.shadowRadius = 2
+                        armorLabel.translatesAutoresizingMaskIntoConstraints = false
+                        button.addSubview(armorLabel)
+                        NSLayoutConstraint.activate([
+                            armorLabel.trailingAnchor.constraint(equalTo: button.trailingAnchor, constant: -2),
+                            armorLabel.bottomAnchor.constraint(equalTo: button.bottomAnchor, constant: -1)
+                        ])
+                        armorOverlays[row][col] = armorLabel
+                    } else if armorGrid[row][col] == 1 {
+                        // Invisible armor (1 hit) - no visible label but store nil overlay
+                        armorOverlays[row][col] = nil
+                    }
                 } else {
                     button.backgroundColor = darkBg
                     button.isUserInteractionEnabled = false
@@ -766,8 +854,7 @@ class MatchGameViewController: UIViewController {
                         for posString in clearedTiles {
                             let parts = posString.split(separator: ",").map { Int($0) ?? 0 }
                             if parts.count == 2 {
-                                self?.score += 1
-                                self?.gameGrid[parts[0]][parts[1]] = nil
+                                self?.hitTile(row: parts[0], col: parts[1])
                             }
                         }
                         
@@ -789,8 +876,7 @@ class MatchGameViewController: UIViewController {
                     for posString in clearedTiles {
                         let parts = posString.split(separator: ",").map { Int($0) ?? 0 }
                         if parts.count == 2 {
-                            self?.score += 1
-                            self?.gameGrid[parts[0]][parts[1]] = nil
+                            self?.hitTile(row: parts[0], col: parts[1])
                         }
                     }
                     
@@ -1112,13 +1198,68 @@ class MatchGameViewController: UIViewController {
         }
     }
 
+    /// Attempts to clear a tile. If armored, decrements armor instead.
+    /// Returns true if the tile was actually removed, false if armor absorbed the hit.
+    @discardableResult
+    private func hitTile(row: Int, col: Int) -> Bool {
+        guard gameGrid[row][col] != nil else { return false }
+
+        if armorGrid[row][col] > 0 {
+            armorGrid[row][col] -= 1
+            score += 1
+            // Animate a brief shake on the tile
+            if let button = gridButtons[row][col] {
+                shakeTile(button)
+            }
+            updateArmorOverlay(row: row, col: col)
+            return false  // Tile survives
+        }
+
+        score += 1
+        gameGrid[row][col] = nil
+        return true
+    }
+
+    /// Brief horizontal shake animation for armor hit feedback.
+    private func shakeTile(_ button: UIButton) {
+        let animation = CAKeyframeAnimation(keyPath: "transform.translation.x")
+        animation.timingFunction = CAMediaTimingFunction(name: .linear)
+        animation.duration = 0.3
+        animation.values = [-4, 4, -3, 3, -2, 2, 0]
+        button.layer.add(animation, forKey: "shake")
+    }
+
+    /// Updates the armor overlay label and border for a specific cell.
+    private func updateArmorOverlay(row: Int, col: Int) {
+        guard row < armorOverlays.count && col < armorOverlays[row].count else { return }
+        guard let button = gridButtons[row][col] else { return }
+
+        if armorGrid[row][col] > 1 {
+            // Show/update the label
+            if let label = armorOverlays[row][col] {
+                label.text = "\(armorGrid[row][col])"
+                label.isHidden = false
+            }
+            button.layer.borderColor = UIColor.cyan.withAlphaComponent(0.7).cgColor
+            button.layer.borderWidth = 2
+        } else if armorGrid[row][col] == 1 {
+            // Invisible armor — hide label but keep border
+            armorOverlays[row][col]?.isHidden = true
+            button.layer.borderColor = UIColor.cyan.withAlphaComponent(0.7).cgColor
+            button.layer.borderWidth = 2
+        } else {
+            // Armor cleared — remove label and border
+            armorOverlays[row][col]?.isHidden = true
+            button.layer.borderWidth = 0
+        }
+    }
+
     /// Clears tiles from the grid, awards score, then activates cascading powerups or applies gravity.
     private func clearTilesAndCascade(_ clearedTiles: Set<String>, cascadingPowerups: [(row: Int, col: Int, type: PieceType)]) {
         for posString in clearedTiles {
             let parts = posString.split(separator: ",").map { Int($0) ?? 0 }
             if parts.count == 2 {
-                score += 1
-                gameGrid[parts[0]][parts[1]] = nil
+                hitTile(row: parts[0], col: parts[1])
             }
         }
 
@@ -1452,8 +1593,7 @@ class MatchGameViewController: UIViewController {
             for posString in clearedTiles {
                 let parts = posString.split(separator: ",").map { Int($0) ?? 0 }
                 if parts.count == 2 {
-                    self.score += 1
-                    self.gameGrid[parts[0]][parts[1]] = nil
+                    self.hitTile(row: parts[0], col: parts[1])
                 }
             }
 
@@ -1536,8 +1676,7 @@ class MatchGameViewController: UIViewController {
             for posString in clearedTiles {
                 let parts = posString.split(separator: ",").map { Int($0) ?? 0 }
                 if parts.count == 2 {
-                    self.score += 1
-                    self.gameGrid[parts[0]][parts[1]] = nil
+                    self.hitTile(row: parts[0], col: parts[1])
                 }
             }
 
@@ -1858,8 +1997,7 @@ class MatchGameViewController: UIViewController {
                         if r != row, let p = gameGrid[r][col], p.type != .normal {
                             cascadingFromVertArrow.append((row: r, col: col, type: p.type))
                         }
-                        score += 1
-                        gameGrid[r][col] = nil
+                        hitTile(row: r, col: col)
                     }
                 }
                 print("🔥 Cascading vertical arrow cleared column \(col). Found \(cascadingFromVertArrow.count) cascading powerups")
@@ -1888,8 +2026,7 @@ class MatchGameViewController: UIViewController {
                         if c != col, let p = gameGrid[row][c], p.type != .normal {
                             cascadingFromHorizArrow.append((row: row, col: c, type: p.type))
                         }
-                        score += 1
-                        gameGrid[row][c] = nil
+                        hitTile(row: row, col: c)
                     }
                 }
                 print("🔥 Cascading horizontal arrow cleared row \(row). Found \(cascadingFromHorizArrow.count) cascading powerups")
@@ -1922,8 +2059,7 @@ class MatchGameViewController: UIViewController {
                             if let p = gameGrid[nr][nc], p.type != .normal {
                                 cascadingFromBomb.append((row: nr, col: nc, type: p.type))
                             }
-                            score += 1
-                            gameGrid[nr][nc] = nil
+                            hitTile(row: nr, col: nc)
                         }
                     }
                 }
@@ -1991,8 +2127,7 @@ class MatchGameViewController: UIViewController {
                         for posString in tilesToClear {
                             let parts = posString.split(separator: ",").map { Int($0) ?? 0 }
                             if parts.count == 2 {
-                                self.score += 1
-                                self.gameGrid[parts[0]][parts[1]] = nil
+                                self.hitTile(row: parts[0], col: parts[1])
                             }
                         }
                         
@@ -2017,8 +2152,7 @@ class MatchGameViewController: UIViewController {
                                 if piece.type != .normal {
                                     cascadingFromFlame.append((row: r, col: c, type: piece.type))
                                 }
-                                score += 1
-                                gameGrid[r][c] = nil
+                                hitTile(row: r, col: c)
                             }
                         }
                     }
@@ -2125,8 +2259,13 @@ class MatchGameViewController: UIViewController {
             }
         }
         
+        // Guard against updateGridDisplay calls resetting transforms during setup
+        isApplyingGravity = true
+        
         // Update grid display to set correct content on buttons BEFORE animation
+        isApplyingGravity = false
         updateGridDisplay()
+        isApplyingGravity = true
         
         // Now set all buttons to their START positions before animation
         // This is critical: buttons must be visually where the piece currently is, not where it's going
@@ -2152,6 +2291,8 @@ class MatchGameViewController: UIViewController {
                 }
             }
         }
+        
+        isApplyingGravity = false
         
         // Animate pieces falling, then check for matches when complete
         animatePiecesDrop() { [weak self] in
@@ -2639,8 +2780,7 @@ class MatchGameViewController: UIViewController {
                 for posString in crossedTileSet {
                     let parts = posString.split(separator: ",").map { Int($0) ?? 0 }
                     if parts.count == 2 {
-                        self.score += 1
-                        self.gameGrid[parts[0]][parts[1]] = nil
+                        self.hitTile(row: parts[0], col: parts[1])
                     }
                 }
                 
@@ -2802,7 +2942,7 @@ class MatchGameViewController: UIViewController {
                         for posString in clearedTiles {
                             let parts = posString.split(separator: ",").map { Int($0) ?? 0 }
                             if parts.count == 2 {
-                                self?.gameGrid[parts[0]][parts[1]] = nil
+                                self?.hitTile(row: parts[0], col: parts[1])
                             }
                         }
                         
@@ -2881,7 +3021,7 @@ class MatchGameViewController: UIViewController {
                         for posString in clearedTiles {
                             let parts = posString.split(separator: ",").map { Int($0) ?? 0 }
                             if parts.count == 2 {
-                                self?.gameGrid[parts[0]][parts[1]] = nil
+                                self?.hitTile(row: parts[0], col: parts[1])
                             }
                         }
                         
@@ -3219,8 +3359,7 @@ class MatchGameViewController: UIViewController {
                 for posString in matchesToRemove {
                     let parts = posString.split(separator: ",").map { Int($0) ?? 0 }
                     if parts.count == 2 {
-                        self?.score += 1
-                        self?.gameGrid[parts[0]][parts[1]] = nil
+                        self?.hitTile(row: parts[0], col: parts[1])
                     }
                 }
                 
@@ -3619,6 +3758,8 @@ class MatchGameViewController: UIViewController {
     
     private func updateGridDisplay() {
         guard let level = currentLevel else { return }
+        // Skip display updates while gravity is setting up start transforms
+        guard !isApplyingGravity else { return }
         
         for row in 0..<level.gridHeight {
             for col in 0..<level.gridWidth {
@@ -3709,13 +3850,31 @@ class MatchGameViewController: UIViewController {
                     // Highlight selected piece
                     if selectedPiece?.row == row && selectedPiece?.col == col {
                         button.layer.borderColor = UIColor.yellow.cgColor
-                        button.layer.borderWidth = 1
+                        button.layer.borderWidth = 2
+                    } else if row < armorGrid.count && col < armorGrid[row].count && armorGrid[row][col] > 0 {
+                        // Show armor border
+                        button.layer.borderColor = UIColor.cyan.withAlphaComponent(0.7).cgColor
+                        button.layer.borderWidth = 2
                     } else {
                         button.layer.borderWidth = 0
+                    }
+                    
+                    // Update armor overlay visibility
+                    if row < armorOverlays.count && col < armorOverlays[row].count {
+                        if armorGrid[row][col] > 1 {
+                            armorOverlays[row][col]?.isHidden = false
+                            armorOverlays[row][col]?.text = "\(armorGrid[row][col])"
+                        } else {
+                            armorOverlays[row][col]?.isHidden = true
+                        }
                     }
                 } else {
                     button.backgroundColor = darkBg
                     button.setTitle("", for: .normal)
+                    // Clear armor border on empty cells
+                    if row < armorGrid.count && col < armorGrid[row].count && armorGrid[row][col] == 0 {
+                        button.layer.borderWidth = 0
+                    }
                 }
             }
         }
@@ -3999,8 +4158,15 @@ class MatchGameViewController: UIViewController {
         
         // Show failure message and restart option
         showLevelFailedAnimation {
+            // Build failure message
+            let shieldsRemaining = self.armorGrid.flatMap { $0 }.reduce(0) { $0 + ($1 > 0 ? 1 : 0) }
+            var message = "You ran out of moves before reaching the target score of \(level.scoreTarget)."
+            if shieldsRemaining > 0 {
+                message += " \(shieldsRemaining) shield(s) remaining."
+            }
+            
             // Show restart alert
-            let alert = UIAlertController(title: "Out of Moves!", message: "You ran out of moves before reaching the target score of \(level.scoreTarget).", preferredStyle: .alert)
+            let alert = UIAlertController(title: "Out of Moves!", message: message, preferredStyle: .alert)
             
             alert.addAction(UIAlertAction(title: "Try Again", style: .default) { _ in
                 // Completely reset level for full refresh

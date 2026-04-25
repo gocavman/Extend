@@ -309,12 +309,12 @@
       ],
       "gridShape": [
         "XXXXXXXXX",
+        "XXXXX5XXXX",
+        "XXXXXXXXX",
+        "XXXXX10XXXX",
         "XXXXXXXXX",
         "XXXXXXXXX",
-        "XXXXXXXXX",
-        "XXXXXXXXX",
-        "XXXXXXXXX",
-        "XXXXXXXXX",
+        "XXXXX7XXXX",
         "XXXXXXXXX",
         "XXXXXXXXX",
         "XXXXXXXXX",
@@ -323,6 +323,48 @@
       ],
       "movesAllowed": 80,
       "scoreTarget": 500
+    },
+    {
+      "id": 8,
+      "name": "Level 8 - Shield Challenge",
+      "gridWidth": 7,
+      "gridHeight": 7,
+      "items": [
+        {
+          "id": "red",
+          "emoji": "🔴",
+          "asset": null
+        },
+        {
+          "id": "yellow",
+          "emoji": "🟡",
+          "asset": null
+        },
+        {
+          "id": "green",
+          "emoji": "🟢",
+          "asset": null
+        },
+        {
+          "id": "blue",
+          "emoji": "🔵",
+          "asset": null
+        }
+      ],
+      "colors": [
+        null
+      ],
+      "gridShape": [
+        "XXXXXXX",
+        "XXX3XX3XX",
+        "XXXXXXX",
+        "XXX5XX5XX",
+        "XXXXXXX",
+        "XXX3XX3XX",
+        "XXXXXXX"
+      ],
+      "movesAllowed": 50,
+      "scoreTarget": 200
     }
   ]
 }
