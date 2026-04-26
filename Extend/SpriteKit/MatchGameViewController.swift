@@ -2148,8 +2148,8 @@ class MatchGameViewController: UIViewController {
             guard let self = self else { return }
             if flameAnimationsCompleted == flameAnimationsInProgress {
                 if !allCascadingPowerups.isEmpty {
-                    // Brief pause before next cascade round
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
+                    // Brief pause before next cascade round - speed related
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
                         self.updateGridDisplay()
                         self.updateUI()
                         self.activateCascadingPowerups(allCascadingPowerups)

@@ -165,14 +165,14 @@
         null
       ],
       "gridShape": [
-        "___XX___",
+        "X__XX__X",
         "__XXXX__",
         "_XXXXXX_",
         "XXXXXXXX",
         "XXXXXXXX",
         "_XXXXXX_",
         "__XXXX__",
-        "___XX___"
+        "X__XX__X"
       ],
       "movesAllowed": 50,
       "scoreTarget": 250
@@ -185,7 +185,7 @@
       "items": [
         {
           "id": "star",
-          "emoji": "🌟",
+          "emoji": "💪",
           "asset": null
         },
         {
@@ -279,27 +279,32 @@
     },
     {
       "id": 7,
-      "name": "Level 7 - Testing Challenge",
+      "name": "Level 7 - Circle Challenge",
       "gridWidth": 9,
       "gridHeight": 12,
       "items": [
         {
-          "id": "dumbbell",
+          "id": "red",
           "emoji": "🔴",
           "asset": null
         },
         {
-          "id": "shaker",
+          "id": "yel",
           "emoji": "🟡",
           "asset": null
         },
         {
-          "id": "bicep",
+          "id": "gre",
           "emoji": "🟢",
           "asset": null
         },
         {
-          "id": "lift",
+          "id": "purp",
+          "emoji": "🟣",
+          "asset": null
+        },
+        {
+          "id": "blu",
           "emoji": "🔵",
           "asset": null
         }
