@@ -2931,7 +2931,14 @@ class MatchGameViewController: UIViewController {
                 return
             }
             
-            // Show yellow borders on crossed tiles, then clear
+            // Clear any trail borders from the rocket flight
+            for posString in crossedTileSet {
+                let parts = posString.split(separator: ",").map { Int($0) ?? 0 }
+                if parts.count == 2, let btn = self.gridButtons[parts[0]][parts[1]] {
+                    btn.layer.borderWidth = 0
+                }
+            }
+            // Show smoke poof on crossed tiles, then clear
             self.showPowerupBorderHighlight(crossedTileSet) { [weak self] in
                 guard let self = self else {
                     completion()
@@ -3592,55 +3599,48 @@ class MatchGameViewController: UIViewController {
             return
         }
         
-        // Show yellow border around all affected tiles (with bounds check)
+        let poofDuration: TimeInterval = 0.25
+        
         for posString in affectedTiles {
             let parts = posString.split(separator: ",").map { Int($0) ?? 0 }
             guard parts.count == 2 else { continue }
             let row = parts[0]
             let col = parts[1]
             guard row >= 0 && row < level.gridHeight && col >= 0 && col < level.gridWidth else { continue }
+            guard let button = gridButtons[row][col] else { continue }
             
-            if let button = gridButtons[row][col] {
-                button.layer.borderWidth = 1
-                button.layer.borderColor = UIColor.yellow.cgColor
-            }
-            // Also highlight the armor border overlay so yellow is visible above it
-            if row < armorBorderViews.count && col < armorBorderViews[row].count,
-               let armorBorder = armorBorderViews[row][col], !armorBorder.isHidden {
-                armorBorder.layer.borderColor = UIColor.yellow.cgColor
-                armorBorder.layer.borderWidth = 2
+            // Convert button center to gridContainer coordinate space
+            let centerInContainer = button.superview?.convert(button.center, to: gridContainer) ?? button.center
+            let particleCount = 5
+            let particleSize: CGFloat = CGFloat.random(in: 6...10)
+            
+            for i in 0..<particleCount {
+                let particle = UIView()
+                particle.bounds = CGRect(x: 0, y: 0, width: particleSize, height: particleSize)
+                particle.center = centerInContainer
+                particle.layer.cornerRadius = particleSize / 2
+                particle.backgroundColor = UIColor.white.withAlphaComponent(0.8)
+                particle.alpha = 0.9
+                gridContainer.addSubview(particle)
+                
+                // Each particle drifts in a different direction
+                let angle = (CGFloat.pi * 2 / CGFloat(particleCount)) * CGFloat(i) + CGFloat.random(in: -0.3...0.3)
+                let distance: CGFloat = CGFloat.random(in: 10...18)
+                let dx = cos(angle) * distance
+                let dy = sin(angle) * distance
+                
+                UIView.animate(withDuration: poofDuration, delay: 0, options: .curveEaseOut) {
+                    particle.center = CGPoint(x: centerInContainer.x + dx, y: centerInContainer.y + dy)
+                    particle.transform = CGAffineTransform(scaleX: 2.0, y: 2.0)
+                    particle.alpha = 0
+                } completion: { _ in
+                    particle.removeFromSuperview()
+                }
             }
         }
         
-        // After brief highlight, clear borders and proceed with completion
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) { [weak self] in
-            guard let self = self, let level = self.currentLevel else {
-                completion()
-                return
-            }
-            // Bail out if level transitioned during the delay
-            guard !self.levelCompletionTriggered else {
-                completion()
-                return
-            }
-            for posString in affectedTiles {
-                let parts = posString.split(separator: ",").map { Int($0) ?? 0 }
-                guard parts.count == 2 else { continue }
-                let row = parts[0]
-                let col = parts[1]
-                guard row >= 0 && row < level.gridHeight && col >= 0 && col < level.gridWidth else { continue }
-                
-                if let button = self.gridButtons[row][col] {
-                    button.layer.borderWidth = 0
-                }
-                // Restore armor border color back to cyan
-                if row < self.armorBorderViews.count && col < self.armorBorderViews[row].count,
-                   let armorBorder = self.armorBorderViews[row][col], !armorBorder.isHidden {
-                    armorBorder.layer.borderColor = UIColor.cyan.withAlphaComponent(0.7).cgColor
-                    armorBorder.layer.borderWidth = 2
-                }
-            }
-            
+        // Call completion after the poof finishes
+        DispatchQueue.main.asyncAfter(deadline: .now() + poofDuration + 0.02) {
             completion()
         }
     }
@@ -3665,13 +3665,45 @@ class MatchGameViewController: UIViewController {
             return
         }
         
-        // STEP 1: Show yellow border highlight around matched tiles (0.2 seconds)
-        for button in allButtons {
-            button.layer.borderWidth = 1
-            button.layer.borderColor = UIColor.yellow.cgColor
+        // STEP 1: Show smoke poof on matched tiles
+        for posString in matchesToRemove {
+            let parts = posString.split(separator: ",").map { Int($0) ?? 0 }
+            guard parts.count == 2 else { continue }
+            let row = parts[0]
+            let col = parts[1]
+            guard row >= 0 && row < level.gridHeight && col >= 0 && col < level.gridWidth else { continue }
+            guard let button = gridButtons[row][col] else { continue }
+            
+            // Convert button center to gridContainer coordinate space
+            let centerInContainer = button.superview?.convert(button.center, to: gridContainer) ?? button.center
+            let particleCount = 5
+            let particleSize: CGFloat = CGFloat.random(in: 6...10)
+            
+            for i in 0..<particleCount {
+                let particle = UIView()
+                particle.bounds = CGRect(x: 0, y: 0, width: particleSize, height: particleSize)
+                particle.center = centerInContainer
+                particle.layer.cornerRadius = particleSize / 2
+                particle.backgroundColor = UIColor.white.withAlphaComponent(0.8)
+                particle.alpha = 0.9
+                gridContainer.addSubview(particle)
+                
+                let angle = (CGFloat.pi * 2 / CGFloat(particleCount)) * CGFloat(i) + CGFloat.random(in: -0.3...0.3)
+                let distance: CGFloat = CGFloat.random(in: 10...18)
+                let dx = cos(angle) * distance
+                let dy = sin(angle) * distance
+                
+                UIView.animate(withDuration: 0.2, delay: 0, options: .curveEaseOut) {
+                    particle.center = CGPoint(x: centerInContainer.x + dx, y: centerInContainer.y + dy)
+                    particle.transform = CGAffineTransform(scaleX: 2.0, y: 2.0)
+                    particle.alpha = 0
+                } completion: { _ in
+                    particle.removeFromSuperview()
+                }
+            }
         }
         
-        // STEP 2: After brief highlight, animate removal using CAAnimations
+        // STEP 2: After brief poof, animate removal using CAAnimations
         // We use CAAnimations (not UIView.animate with transform) so that scale effects
         // don't conflict with gravity's use of button.transform for translation.
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.12) { [weak self] in
@@ -3690,8 +3722,6 @@ class MatchGameViewController: UIViewController {
                 guard row >= 0 && row < level.gridHeight && col >= 0 && col < level.gridWidth else { continue }
                 
                 if let button = self.gridButtons[row][col] {
-                    button.layer.borderWidth = 0
-                    
                     // Pop-then-shrink scale animation via CAKeyframeAnimation
                     let scaleAnim = CAKeyframeAnimation(keyPath: "transform.scale")
                     scaleAnim.values = [1.0, 1.15, 0.01]
