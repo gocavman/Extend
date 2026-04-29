@@ -1598,6 +1598,12 @@ class MatchGameViewController: UIViewController {
 
         print("🔍 [DEBUG] Cross arrows! Clearing rows \(r1),\(r2) and cols \(c1),\(c2). Tiles: \(clearedTiles.count), cascading: \(cascadingPowerups.count)")
 
+        // Fire flame animations for both rows and both columns
+        shootFlamesHorizontally(row: r1, arrowCol: c1, columns: 0..<level.gridWidth) {}
+        shootFlamesHorizontally(row: r2, arrowCol: c2, columns: 0..<level.gridWidth) {}
+        shootFlamesVertically(column: c1, arrowRow: r1, rows: 0..<level.gridHeight) {}
+        shootFlamesVertically(column: c2, arrowRow: r2, rows: 0..<level.gridHeight) {}
+
         finalizePowerupCombo(
             clearedTiles: clearedTiles,
             cascadingPowerups: cascadingPowerups,
@@ -1648,6 +1654,23 @@ class MatchGameViewController: UIViewController {
         let direction = isHorizontal ? "horizontal" : "vertical"
         print("🔍 [DEBUG] Bomb + \(direction) arrow! Clearing 3 \(isHorizontal ? "rows" : "columns") centered on (\(r2),\(c2)). Tiles: \(clearedTiles.count), cascading: \(cascadingPowerups.count)")
 
+        // Fire flame animations for the 3 rows or 3 columns
+        if isHorizontal {
+            for dr in -1...1 {
+                let targetRow = r2 + dr
+                if targetRow >= 0 && targetRow < level.gridHeight {
+                    shootFlamesHorizontally(row: targetRow, arrowCol: c2, columns: 0..<level.gridWidth) {}
+                }
+            }
+        } else {
+            for dc in -1...1 {
+                let targetCol = c2 + dc
+                if targetCol >= 0 && targetCol < level.gridWidth {
+                    shootFlamesVertically(column: targetCol, arrowRow: r2, rows: 0..<level.gridHeight) {}
+                }
+            }
+        }
+
         finalizePowerupCombo(
             clearedTiles: clearedTiles,
             cascadingPowerups: cascadingPowerups,
@@ -1682,6 +1705,10 @@ class MatchGameViewController: UIViewController {
 
         print("🔍 [DEBUG] Two horizontal arrows! Clearing rows \(r1) and \(r2). Tiles: \(clearedTiles.count), cascading: \(cascadingPowerups.count)")
 
+        // Fire flame animations for both rows
+        shootFlamesHorizontally(row: r1, arrowCol: c1, columns: 0..<level.gridWidth) {}
+        shootFlamesHorizontally(row: r2, arrowCol: c2, columns: 0..<level.gridWidth) {}
+
         finalizePowerupCombo(
             clearedTiles: clearedTiles,
             cascadingPowerups: cascadingPowerups,
@@ -1714,6 +1741,10 @@ class MatchGameViewController: UIViewController {
         )
 
         print("🔍 [DEBUG] Two vertical arrows! Clearing cols \(c1) and \(c2). Tiles: \(clearedTiles.count), cascading: \(cascadingPowerups.count)")
+
+        // Fire flame animations for both columns
+        shootFlamesVertically(column: c1, arrowRow: r1, rows: 0..<level.gridHeight) {}
+        shootFlamesVertically(column: c2, arrowRow: r2, rows: 0..<level.gridHeight) {}
 
         finalizePowerupCombo(
             clearedTiles: clearedTiles,
@@ -2921,23 +2952,106 @@ class MatchGameViewController: UIViewController {
         animation.isRemovedOnCompletion = false
         animation.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
         
+        // Build a jagged lightning path along the rocket's route
+        let lightningPath = UIBezierPath()
+        let totalLength = approximatePathLength(waypoints: waypoints)
+        let jagSegmentLength: CGFloat = 8  // length between jag points
+        let jagAmount: CGFloat = 4  // max perpendicular offset
+        let numSegments = max(Int(totalLength / jagSegmentLength), 2)
+        
+        for s in 0...numSegments {
+            let fraction = CGFloat(s) / CGFloat(numSegments)
+            let targetLen = totalLength * fraction
+            var accumulated: CGFloat = 0
+            var point = waypoints[0]
+            var segDx: CGFloat = 1
+            var segDy: CGFloat = 0
+            
+            for i in 0..<(waypoints.count - 1) {
+                let segLen = hypot(waypoints[i + 1].x - waypoints[i].x, waypoints[i + 1].y - waypoints[i].y)
+                if accumulated + segLen >= targetLen {
+                    let segFraction = (targetLen - accumulated) / max(segLen, 1)
+                    point = CGPoint(
+                        x: waypoints[i].x + (waypoints[i + 1].x - waypoints[i].x) * segFraction,
+                        y: waypoints[i].y + (waypoints[i + 1].y - waypoints[i].y) * segFraction
+                    )
+                    segDx = waypoints[i + 1].x - waypoints[i].x
+                    segDy = waypoints[i + 1].y - waypoints[i].y
+                    let segMag = max(hypot(segDx, segDy), 1)
+                    segDx /= segMag
+                    segDy /= segMag
+                    break
+                }
+                accumulated += segLen
+            }
+            
+            // Add perpendicular jag (not on first or last point)
+            if s > 0 && s < numSegments {
+                let perpX = -segDy
+                let perpY = segDx
+                let jag = CGFloat.random(in: -jagAmount...jagAmount)
+                point.x += perpX * jag
+                point.y += perpY * jag
+            }
+            
+            if s == 0 {
+                lightningPath.move(to: point)
+            } else {
+                lightningPath.addLine(to: point)
+            }
+        }
+        
+        // Create the lightning shape layer
+        let lightningLayer = CAShapeLayer()
+        lightningLayer.path = lightningPath.cgPath
+        lightningLayer.strokeColor = UIColor.white.cgColor
+        lightningLayer.lineWidth = 2.0
+        lightningLayer.fillColor = nil
+        lightningLayer.lineCap = .round
+        lightningLayer.lineJoin = .round
+        lightningLayer.shadowColor = UIColor.cyan.cgColor
+        lightningLayer.shadowRadius = 4
+        lightningLayer.shadowOpacity = 0.8
+        lightningLayer.shadowOffset = .zero
+        gridContainer.layer.addSublayer(lightningLayer)
+        
+        // Animate the lightning drawing progressively (stroke follows the rocket)
+        let animationDuration = Double(waypoints.count) * 0.12
+        lightningLayer.strokeEnd = 0
+        let strokeAnim = CABasicAnimation(keyPath: "strokeEnd")
+        strokeAnim.fromValue = 0
+        strokeAnim.toValue = 1
+        strokeAnim.duration = animationDuration
+        strokeAnim.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
+        strokeAnim.fillMode = .forwards
+        strokeAnim.isRemovedOnCompletion = false
+        lightningLayer.add(strokeAnim, forKey: "drawLightning")
+        
         // Track animation completion
         CATransaction.begin()
         CATransaction.setCompletionBlock { [weak self] in
             rocketLabel.removeFromSuperview()
+            
+            // Fade out the lightning trail
+            let fadeAnim = CABasicAnimation(keyPath: "opacity")
+            fadeAnim.fromValue = 1.0
+            fadeAnim.toValue = 0.0
+            fadeAnim.duration = 0.2
+            fadeAnim.fillMode = .forwards
+            fadeAnim.isRemovedOnCompletion = false
+            
+            CATransaction.begin()
+            CATransaction.setCompletionBlock {
+                lightningLayer.removeFromSuperlayer()
+            }
+            lightningLayer.add(fadeAnim, forKey: "fadeLightning")
+            CATransaction.commit()
             
             guard let self = self else {
                 completion()
                 return
             }
             
-            // Clear any trail borders from the rocket flight
-            for posString in crossedTileSet {
-                let parts = posString.split(separator: ",").map { Int($0) ?? 0 }
-                if parts.count == 2, let btn = self.gridButtons[parts[0]][parts[1]] {
-                    btn.layer.borderWidth = 0
-                }
-            }
             // Show smoke poof on crossed tiles, then clear
             self.showPowerupBorderHighlight(crossedTileSet) { [weak self] in
                 guard let self = self else {
@@ -2966,62 +3080,6 @@ class MatchGameViewController: UIViewController {
                 completion()
             }
         }
-        
-        // Progressively highlight tiles as the rocket passes them
-        // Use a timer that samples the rocket's position during animation
-        let animationDuration = Double(waypoints.count) * 0.12
-        let highlightInterval = 0.05
-        var highlightedTiles: Set<String> = []
-        var elapsed: Double = 0
-        
-        let displayLink = Timer.scheduledTimer(withTimeInterval: highlightInterval, repeats: true) { [weak self] timer in
-            guard let self = self else {
-                timer.invalidate()
-                return
-            }
-            
-            elapsed += highlightInterval
-            if elapsed >= animationDuration {
-                timer.invalidate()
-                return
-            }
-            
-            // Sample position along the path at the current time fraction
-            let fraction = CGFloat(elapsed / animationDuration)
-            let totalLength = self.approximatePathLength(waypoints: waypoints)
-            let targetLength = totalLength * fraction
-            var accumulated: CGFloat = 0
-            var samplePoint = waypoints[0]
-            
-            for i in 0..<(waypoints.count - 1) {
-                let segLen = hypot(waypoints[i + 1].x - waypoints[i].x, waypoints[i + 1].y - waypoints[i].y)
-                if accumulated + segLen >= targetLength {
-                    let segFraction = (targetLength - accumulated) / max(segLen, 1)
-                    samplePoint = CGPoint(
-                        x: waypoints[i].x + (waypoints[i + 1].x - waypoints[i].x) * segFraction,
-                        y: waypoints[i].y + (waypoints[i + 1].y - waypoints[i].y) * segFraction
-                    )
-                    break
-                }
-                accumulated += segLen
-            }
-            
-            let col = Int(samplePoint.x / colWidth)
-            let row = Int(samplePoint.y / rowHeight)
-            let key = "\(row),\(col)"
-            
-            if row >= 0 && row < level.gridHeight && col >= 0 && col < level.gridWidth &&
-               crossedTileSet.contains(key) && !highlightedTiles.contains(key) {
-                highlightedTiles.insert(key)
-                // Show yellow border on this tile
-                if let button = self.gridButtons[row][col] {
-                    button.layer.borderColor = UIColor.yellow.cgColor
-                    button.layer.borderWidth = 3
-                }
-            }
-        }
-        // Keep timer reference alive via the animation duration
-        _ = displayLink
         
         rocketLabel.layer.add(animation, forKey: "rocketPath")
         CATransaction.commit()
