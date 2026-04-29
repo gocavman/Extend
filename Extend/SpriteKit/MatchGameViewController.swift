@@ -473,8 +473,13 @@ class MatchGameViewController: UIViewController {
         for row in 0..<level.gridHeight {
             for col in 0..<level.gridWidth {
                 if let button = gridButtons[row][col] {
+                    // Remove all in-flight animations (both UIView and CA)
+                    button.layer.removeAllAnimations()
+                    // Reset the view-level transform (used for gravity translation)
                     button.transform = .identity
+                    // Reset alpha at both UIView and CALayer level
                     button.alpha = 1.0
+                    button.layer.opacity = 1.0
                 }
             }
         }
@@ -868,31 +873,34 @@ class MatchGameViewController: UIViewController {
                     }
                 }
             } else if piece.type == .bomb {
-                // Bomb: pulse + screen shake, then clear
-                var bombButtons: [UIButton] = []
-                for posString in clearedTiles {
-                    let parts = posString.split(separator: ",").map { Int($0) ?? 0 }
-                    if parts.count == 2, let btn = gridButtons[parts[0]][parts[1]] {
-                        bombButtons.append(btn)
-                    }
-                }
-                animateBombExplosion(centerRow: row, centerCol: col, affectedButtons: bombButtons) { [weak self] in
+                // Bomb: yellow border highlight, then pulse + screen shake, then clear
+                showPowerupBorderHighlight(clearedTiles) { [weak self] in
+                    guard let self = self else { return }
+                    var bombButtons: [UIButton] = []
                     for posString in clearedTiles {
                         let parts = posString.split(separator: ",").map { Int($0) ?? 0 }
-                        if parts.count == 2 {
-                            self?.hitTile(row: parts[0], col: parts[1])
+                        if parts.count == 2, let btn = self.gridButtons[parts[0]][parts[1]] {
+                            bombButtons.append(btn)
                         }
                     }
-                    self?.updateUI()
-                    self?.updateGridDisplay()
-                    if !cascadingPowerups.isEmpty {
-                        self?.activateCascadingPowerups(cascadingPowerups)
-                    } else {
-                        self?.applyGravity()
-                    }
-                    self?.isAnimating = false
-                    if self?.movesRemaining ?? 0 <= 0 {
-                        self?.levelFailed()
+                    self.animateBombExplosion(centerRow: row, centerCol: col, affectedButtons: bombButtons) { [weak self] in
+                        for posString in clearedTiles {
+                            let parts = posString.split(separator: ",").map { Int($0) ?? 0 }
+                            if parts.count == 2 {
+                                self?.hitTile(row: parts[0], col: parts[1])
+                            }
+                        }
+                        self?.updateUI()
+                        self?.updateGridDisplay()
+                        if !cascadingPowerups.isEmpty {
+                            self?.activateCascadingPowerups(cascadingPowerups)
+                        } else {
+                            self?.applyGravity()
+                        }
+                        self?.isAnimating = false
+                        if self?.movesRemaining ?? 0 <= 0 {
+                            self?.levelFailed()
+                        }
                     }
                 }
             } else {
@@ -955,7 +963,9 @@ class MatchGameViewController: UIViewController {
         case .began:
             dragStartPiece = (row: startRow, col: startCol)
             selectedPiece = (row: startRow, col: startCol)
-            updateGridDisplay()
+            if !isAnimating {
+                updateGridDisplay()
+            }
             
         case .changed:
             // Determine which piece we're dragging towards
@@ -985,12 +995,14 @@ class MatchGameViewController: UIViewController {
                 if gridShapeMap[targetRow][targetCol] {
                     dragTargetPiece = (row: targetRow, col: targetCol)
                     selectedPiece = (row: targetRow, col: targetCol)
-                    updateGridDisplay()
+                    if !isAnimating {
+                        updateGridDisplay()
+                    }
                 }
             }
             
         case .ended, .cancelled:
-            if let startPiece = dragStartPiece, let targetPiece = dragTargetPiece {
+            if !isAnimating, let startPiece = dragStartPiece, let targetPiece = dragTargetPiece {
                 if areAdjacent(startPiece.row, startPiece.col, targetPiece.row, targetPiece.col) {
                     swapPieces(startPiece.row, startPiece.col, targetPiece.row, targetPiece.col)
                 }
@@ -998,7 +1010,9 @@ class MatchGameViewController: UIViewController {
             dragStartPiece = nil
             dragTargetPiece = nil
             selectedPiece = nil
-            updateGridDisplay()
+            if !isAnimating {
+                updateGridDisplay()
+            }
             
         default:
             break
@@ -1180,7 +1194,8 @@ class MatchGameViewController: UIViewController {
         clearedTiles: Set<String>,
         cascadingPowerups: [(row: Int, col: Int, type: PieceType)],
         decrementMoves: Bool = true,
-        flameSource: (row: Int, col: Int)? = nil
+        flameSource: (row: Int, col: Int)? = nil,
+        bombShake: Bool = false
     ) {
         // Reset swapped button transforms so buttons are in correct positions
         if let (button1, button2) = swappedButtons {
@@ -1194,6 +1209,15 @@ class MatchGameViewController: UIViewController {
 
         if decrementMoves {
             movesRemaining -= 1
+        }
+
+        // Bomb screen shake
+        if bombShake {
+            let shakeAnim = CAKeyframeAnimation(keyPath: "transform.translation.x")
+            shakeAnim.timingFunction = CAMediaTimingFunction(name: .easeOut)
+            shakeAnim.duration = 0.35
+            shakeAnim.values = [-6, 6, -5, 5, -3, 3, 0]
+            gridContainer.layer.add(shakeAnim, forKey: "bombShake")
         }
 
         if !clearedTiles.isEmpty {
@@ -1257,7 +1281,7 @@ class MatchGameViewController: UIViewController {
     
     /// Bomb explosion visual: pulses affected tiles outward then clears them, with a brief screen shake.
     private func animateBombExplosion(centerRow: Int, centerCol: Int, affectedButtons: [UIButton], completion: @escaping () -> Void) {
-        guard let level = currentLevel else { completion(); return }
+        guard currentLevel != nil else { completion(); return }
         
         // Screen shake on gridContainer
         let shakeAnim = CAKeyframeAnimation(keyPath: "transform.translation.x")
@@ -1266,25 +1290,41 @@ class MatchGameViewController: UIViewController {
         shakeAnim.values = [-6, 6, -5, 5, -3, 3, 0]
         gridContainer.layer.add(shakeAnim, forKey: "bombShake")
         
-        // Pulse each affected button outward from center then shrink to clear
+        // Pulse each affected button using CAAnimations (not UIView.animate with transform)
+        // so that scale effects don't conflict with gravity's use of button.transform
+        let totalDuration: TimeInterval = 0.27  // 0.12 pop + 0.15 shrink
         for button in affectedButtons {
-            // Phase 1: quick scale-up pulse
-            UIView.animate(withDuration: 0.12, delay: 0, options: .curveEaseOut, animations: {
-                button.transform = CGAffineTransform(scaleX: 1.3, y: 1.3)
-            }, completion: { _ in
-                // Phase 2: shrink and fade out
-                UIView.animate(withDuration: 0.15, delay: 0, options: .curveEaseIn, animations: {
-                    button.transform = CGAffineTransform(scaleX: 0.1, y: 0.1)
-                    button.alpha = 0
-                }, completion: { _ in
-                    button.transform = .identity
-                    button.alpha = 1.0
-                })
-            })
+            // Pop-then-shrink scale animation
+            let scaleAnim = CAKeyframeAnimation(keyPath: "transform.scale")
+            scaleAnim.values = [1.0, 1.3, 0.1]
+            scaleAnim.keyTimes = [0, 0.44, 1.0]  // 0.12/0.27 ≈ 0.44
+            scaleAnim.timingFunctions = [
+                CAMediaTimingFunction(name: .easeOut),
+                CAMediaTimingFunction(name: .easeIn)
+            ]
+            scaleAnim.duration = totalDuration
+            scaleAnim.fillMode = .forwards
+            scaleAnim.isRemovedOnCompletion = false
+            button.layer.add(scaleAnim, forKey: "bombPop")
+            
+            // Fade out
+            let fadeAnim = CABasicAnimation(keyPath: "opacity")
+            fadeAnim.fromValue = 1.0
+            fadeAnim.toValue = 0.0
+            fadeAnim.beginTime = CACurrentMediaTime() + 0.12
+            fadeAnim.duration = 0.15
+            fadeAnim.fillMode = .forwards
+            fadeAnim.isRemovedOnCompletion = false
+            button.layer.add(fadeAnim, forKey: "bombFade")
         }
         
-        // Total animation: 0.12 + 0.15 = 0.27s, give a bit of buffer
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + totalDuration + 0.03) {
+            // Clean up CA animations and restore visual state
+            for button in affectedButtons {
+                button.layer.removeAnimation(forKey: "bombPop")
+                button.layer.removeAnimation(forKey: "bombFade")
+                button.layer.opacity = 1.0
+            }
             completion()
         }
     }
@@ -1483,7 +1523,8 @@ class MatchGameViewController: UIViewController {
         finalizePowerupCombo(
             clearedTiles: clearedTiles,
             cascadingPowerups: cascadingPowerups,
-            decrementMoves: true
+            decrementMoves: true,
+            bombShake: true
         )
     }
 
@@ -1610,7 +1651,8 @@ class MatchGameViewController: UIViewController {
         finalizePowerupCombo(
             clearedTiles: clearedTiles,
             cascadingPowerups: cascadingPowerups,
-            decrementMoves: true
+            decrementMoves: true,
+            bombShake: true
         )
     }
 
@@ -2096,7 +2138,8 @@ class MatchGameViewController: UIViewController {
             clearedTiles: clearedTiles,
             cascadingPowerups: cascadingPowerups,
             decrementMoves: !clearedTiles.isEmpty,
-            flameSource: flameSource
+            flameSource: flameSource,
+            bombShake: type1 == .bomb || type2 == .bomb
         )
     }
     
@@ -3561,6 +3604,12 @@ class MatchGameViewController: UIViewController {
                 button.layer.borderWidth = 1
                 button.layer.borderColor = UIColor.yellow.cgColor
             }
+            // Also highlight the armor border overlay so yellow is visible above it
+            if row < armorBorderViews.count && col < armorBorderViews[row].count,
+               let armorBorder = armorBorderViews[row][col], !armorBorder.isHidden {
+                armorBorder.layer.borderColor = UIColor.yellow.cgColor
+                armorBorder.layer.borderWidth = 2
+            }
         }
         
         // After brief highlight, clear borders and proceed with completion
@@ -3583,6 +3632,12 @@ class MatchGameViewController: UIViewController {
                 
                 if let button = self.gridButtons[row][col] {
                     button.layer.borderWidth = 0
+                }
+                // Restore armor border color back to cyan
+                if row < self.armorBorderViews.count && col < self.armorBorderViews[row].count,
+                   let armorBorder = self.armorBorderViews[row][col], !armorBorder.isHidden {
+                    armorBorder.layer.borderColor = UIColor.cyan.withAlphaComponent(0.7).cgColor
+                    armorBorder.layer.borderWidth = 2
                 }
             }
             
@@ -3616,14 +3671,16 @@ class MatchGameViewController: UIViewController {
             button.layer.borderColor = UIColor.yellow.cgColor
         }
         
-        // STEP 2: After brief highlight, animate removal and clear border
+        // STEP 2: After brief highlight, animate removal using CAAnimations
+        // We use CAAnimations (not UIView.animate with transform) so that scale effects
+        // don't conflict with gravity's use of button.transform for translation.
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.12) { [weak self] in
             guard let self = self, let level = self.currentLevel else {
                 completion()
                 return
             }
-            var animationCount = 0
-            var completedCount = 0
+            
+            let totalDuration: TimeInterval = 0.23  // 0.08 pop + 0.15 shrink
             
             for posString in matchesToRemove {
                 let parts = posString.split(separator: ",").map { Int($0) ?? 0 }
@@ -3633,32 +3690,48 @@ class MatchGameViewController: UIViewController {
                 guard row >= 0 && row < level.gridHeight && col >= 0 && col < level.gridWidth else { continue }
                 
                 if let button = self.gridButtons[row][col] {
-                    animationCount += 1
+                    button.layer.borderWidth = 0
                     
-                    // Animate: pop up slightly, then shrink and fade
-                    UIView.animate(withDuration: 0.08, delay: 0, options: .curveEaseOut, animations: {
-                        button.transform = CGAffineTransform(scaleX: 1.15, y: 1.15)
-                    }, completion: { _ in
-                        UIView.animate(withDuration: 0.15, delay: 0, options: .curveEaseIn, animations: {
-                            button.transform = CGAffineTransform(scaleX: 0.01, y: 0.01)
-                            button.alpha = 0.0
-                        }, completion: { _ in
-                            // Reset transform after animation
-                            button.transform = .identity
-                            button.alpha = 1.0
-                            button.layer.borderWidth = 0
-                            
-                            completedCount += 1
-                            if completedCount == animationCount {
-                                completion()
-                            }
-                        })
-                    })
+                    // Pop-then-shrink scale animation via CAKeyframeAnimation
+                    let scaleAnim = CAKeyframeAnimation(keyPath: "transform.scale")
+                    scaleAnim.values = [1.0, 1.15, 0.01]
+                    scaleAnim.keyTimes = [0, 0.35, 1.0]  // 0.08/0.23 ≈ 0.35
+                    scaleAnim.timingFunctions = [
+                        CAMediaTimingFunction(name: .easeOut),
+                        CAMediaTimingFunction(name: .easeIn)
+                    ]
+                    scaleAnim.duration = totalDuration
+                    scaleAnim.fillMode = .forwards
+                    scaleAnim.isRemovedOnCompletion = false
+                    button.layer.add(scaleAnim, forKey: "matchPop")
+                    
+                    // Fade out animation
+                    let fadeAnim = CABasicAnimation(keyPath: "opacity")
+                    fadeAnim.fromValue = 1.0
+                    fadeAnim.toValue = 0.0
+                    fadeAnim.beginTime = CACurrentMediaTime() + 0.08
+                    fadeAnim.duration = 0.15
+                    fadeAnim.fillMode = .forwards
+                    fadeAnim.isRemovedOnCompletion = false
+                    button.layer.add(fadeAnim, forKey: "matchFade")
                 }
             }
             
-            // If no animations were started (all buttons out of bounds), call completion immediately
-            if animationCount == 0 {
+            // Single timer for the total animation duration
+            DispatchQueue.main.asyncAfter(deadline: .now() + totalDuration + 0.02) {
+                // Clean up: remove CA animations and reset visual state
+                for posString in matchesToRemove {
+                    let parts = posString.split(separator: ",").map { Int($0) ?? 0 }
+                    guard parts.count == 2 else { continue }
+                    let row = parts[0]
+                    let col = parts[1]
+                    guard row >= 0 && row < level.gridHeight && col >= 0 && col < level.gridWidth else { continue }
+                    if let button = self.gridButtons[row][col] {
+                        button.layer.removeAnimation(forKey: "matchPop")
+                        button.layer.removeAnimation(forKey: "matchFade")
+                        button.layer.opacity = 1.0
+                    }
+                }
                 completion()
             }
         }
@@ -4299,9 +4372,18 @@ class MatchGameViewController: UIViewController {
         showLevelFailedAnimation {
             // Build failure message
             let shieldsRemaining = self.armorGrid.flatMap { $0 }.reduce(0) { $0 + ($1 > 0 ? 1 : 0) }
-            var message = "You ran out of moves before reaching the target score of \(level.scoreTarget)."
-            if shieldsRemaining > 0 {
-                message += " \(shieldsRemaining) shield(s) remaining."
+            let scoreMet = self.score >= level.scoreTarget
+            let hasShieldsLeft = shieldsRemaining > 0
+            
+            var message: String
+            if !scoreMet && hasShieldsLeft {
+                message = "You needed \(level.scoreTarget - self.score) more points and had \(shieldsRemaining) shield\(shieldsRemaining == 1 ? "" : "s") remaining."
+            } else if !scoreMet {
+                message = "You needed \(level.scoreTarget - self.score) more points to reach the target score of \(level.scoreTarget)."
+            } else if hasShieldsLeft {
+                message = "You reached the target score, but \(shieldsRemaining) shield\(shieldsRemaining == 1 ? " was" : "s were") still standing."
+            } else {
+                message = "You ran out of moves before completing the level."
             }
             
             // Show restart alert

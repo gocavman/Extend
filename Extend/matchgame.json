@@ -200,12 +200,12 @@
         },
         {
           "id": "silver",
-          "emoji": "🥈",
+          "emoji": "🟨",
           "asset": null
         },
         {
           "id": "bronze",
-          "emoji": "🥉",
+          "emoji": "🟡",
           "asset": null
         }
       ],
@@ -229,7 +229,7 @@
       "id": 6,
       "name": "Level 6 - Weight Challenge",
       "gridWidth": 9,
-      "gridHeight": 12,
+      "gridHeight": 11,
       "items": [
         {
           "id": "dumbbell",
@@ -261,7 +261,6 @@
           null
       ],
       "gridShape": [
-        "XXXXXXXXX",
         "XXXXXXXXX",
         "XXXXXXXXX",
         "XXXXXXXXX",
@@ -313,18 +312,17 @@
           null
       ],
       "gridShape": [
+        "X1XX1XX1XX1XX1",
         "XXXXXXXXX",
-        "XXXXX5XXXX",
+        "_________",
+        "X4X4X4X4X4X4X4X4X4",
+        "X5X5X5X5X5X5X5X5X5",
+        "_________",
+        "X7X7X7X7X7X7X7X7X7",
+        "X8X8X8X8X8X8X8X8X8",
+        "_________",
         "XXXXXXXXX",
-        "XXXXX10XXXX",
-        "XXXXXXXXX",
-        "XXXXXXXXX",
-        "XXXXX7XXXX",
-        "XXXXXXXXX",
-        "XXXXXXXXX",
-        "XXXXXXXXX",
-        "XXXXXXXXX",
-        "XXXXXXXXX"
+        "X11XX11XX11XX11XX11"
       ],
       "movesAllowed": 80,
       "scoreTarget": 500
