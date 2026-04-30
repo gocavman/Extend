@@ -1945,14 +1945,14 @@ class MatchGameViewController: UIViewController {
             excludePositions: [(row: r1, col: c1), (row: r2, col: c2)]
         )
 
-        // Launch two independent rocket animations, then clear
+        // Launch three independent rocket animations, then clear
         var completionCount = 0
-        let totalAnimations = 2
+        let totalAnimations = 3
 
         let onAnimationComplete: () -> Void = { [weak self] in
             completionCount += 1
             if completionCount >= totalAnimations {
-                // Both rockets done, show border highlight and clear
+                // All rockets done, show border highlight and clear
                 self?.showPowerupBorderHighlight(clearedTiles) { [weak self] in
                     self?.clearTilesAndCascade(clearedTiles, cascadingPowerups: cascadingPowerups)
                 }
@@ -1960,7 +1960,8 @@ class MatchGameViewController: UIViewController {
         }
 
         animateRocketPath(fromRow: r2, fromCol: c2, completion: onAnimationComplete)
-        //animateRocketPath(fromRow: r2, fromCol: c2, completion: onAnimationComplete)
+        animateRocketPath(fromRow: r2, fromCol: c2, completion: onAnimationComplete)
+        animateRocketPath(fromRow: r2, fromCol: c2, completion: onAnimationComplete)
     }
 
     // MARK: - Individual Power-Up Activation
@@ -3925,8 +3926,8 @@ class MatchGameViewController: UIViewController {
         }
         
         let cellHeight = gridContainer.bounds.height / CGFloat(level.gridHeight)
-        let fallSpeed: CGFloat = 480  // pixels per second
-        let arrivalGap: TimeInterval = 0.035  // 35ms between each piece landing in a column
+        let fallSpeed: CGFloat = 100  // pixels per second (invalid swap revert is ~0.5s per cell × 1.5)
+        let arrivalGap: TimeInterval = 0.04  // 40ms between each piece landing in a column
         
         var maxEndTime: TimeInterval = 0
         
@@ -3955,8 +3956,8 @@ class MatchGameViewController: UIViewController {
             var durations: [TimeInterval] = []
             for piece in pieces {
                 let fallDistance = cellHeight * CGFloat(piece.distance)
-                let duration = min(Double(abs(fallDistance) / fallSpeed), 0.35)
-                durations.append(max(duration, 0.05))
+                let duration = min(Double(abs(fallDistance) / fallSpeed), 0.55)
+                durations.append(max(duration, 0.15))
             }
             
             guard !pieces.isEmpty else { continue }
