@@ -1236,26 +1236,31 @@ class MatchGameViewController: UIViewController {
 
     /// Attempts to clear a tile. If armored, decrements armor instead.
     /// Returns true if the tile was actually removed, false if armor absorbed the hit.
-    /// Powerup pieces always get removed (armor only protects normal tiles).
+    /// - Normal tile on armor: armor decrements by 1, tile stays (armor absorbs the hit).
+    /// - Powerup tile on armor: powerup is removed, armor decrements by 1 (powerups don't get protected).
+    /// - Any tile, no armor: tile is removed.
     @discardableResult
     private func hitTile(row: Int, col: Int) -> Bool {
         guard let piece = gameGrid[row][col] else { return false }
 
-        if armorGrid[row][col] > 0 && piece.type == .normal {
-            armorGrid[row][col] -= 1
-            score += 1
-            // Animate a brief shake on the tile
-            if let button = gridButtons[row][col] {
-                shakeTile(button)
-            }
-            updateArmorOverlay(row: row, col: col)
-            return false  // Tile survives
-        }
-
-        // Clear any remaining armor on this cell when the piece is removed
         if armorGrid[row][col] > 0 {
-            armorGrid[row][col] = 0
-            updateArmorOverlay(row: row, col: col)
+            if piece.type == .normal {
+                // Armor absorbs the hit — tile survives, armor decrements
+                armorGrid[row][col] -= 1
+                score += 1
+                if let button = gridButtons[row][col] {
+                    shakeTile(button)
+                }
+                updateArmorOverlay(row: row, col: col)
+                return false  // Tile survives
+            } else {
+                // Powerup on armored cell — remove the powerup, decrement armor by 1
+                armorGrid[row][col] -= 1
+                updateArmorOverlay(row: row, col: col)
+                score += 1
+                gameGrid[row][col] = nil
+                return true
+            }
         }
 
         score += 1
@@ -1829,9 +1834,24 @@ class MatchGameViewController: UIViewController {
         }
     }
 
-    /// Rocket + another powerup type: Spawn copies of the other powerup at random normal tiles,
-    /// animate the rocket flying to each, then activate all spawned powerups as cascading.
+    /// Rocket + another powerup type: dispatches to Lightning Surge (arrow) or Lightning Storm (bomb).
     private func handleRocketPowerupCombo(r1: Int, c1: Int, r2: Int, c2: Int, otherType: PieceType) {
+        switch otherType {
+        case .horizontalArrow:
+            handleRocketArrowCombo(r1: r1, c1: c1, r2: r2, c2: c2, isHorizontal: true)
+        case .verticalArrow:
+            handleRocketArrowCombo(r1: r1, c1: c1, r2: r2, c2: c2, isHorizontal: false)
+        case .bomb:
+            handleRocketBombCombo(r1: r1, c1: c1, r2: r2, c2: c2)
+        default:
+            // Fallback for rocket+flame or other — use flame combo path
+            handleFlamePowerupCombo(r1: r1, c1: c1, r2: r2, c2: c2, otherType: otherType)
+        }
+    }
+    
+    /// Rocket + Arrow: "Lightning Surge" — lightning traces the arrow's row/col,
+    /// then forks perpendicularly at every cell, clearing everything in the cross pattern.
+    private func handleRocketArrowCombo(r1: Int, c1: Int, r2: Int, c2: Int, isHorizontal: Bool) {
         guard let level = currentLevel else { return }
 
         let impact = UIImpactFeedbackGenerator(style: .heavy)
@@ -1846,68 +1866,96 @@ class MatchGameViewController: UIViewController {
         updateGridDisplay()
         movesRemaining -= 1
 
-        // Find all normal tiles that can be converted
-        var normalTilePositions: [(row: Int, col: Int)] = []
+        print("🔍 [DEBUG] Rocket + Arrow combo! Lightning Surge from (\(r2),\(c2)), horizontal: \(isHorizontal)")
+
+        // Collect ALL tiles on the board (lightning surge clears everything)
+        var clearedTiles: Set<String> = []
         for row in 0..<level.gridHeight {
             for col in 0..<level.gridWidth {
-                if gridShapeMap[row][col],
-                   let piece = gameGrid[row][col],
-                   piece.type == .normal,
-                   !(row == r1 && col == c1),
-                   !(row == r2 && col == c2) {
-                    normalTilePositions.append((row: row, col: col))
+                if gridShapeMap[row][col] && gameGrid[row][col] != nil {
+                    clearedTiles.insert("\(row),\(col)")
                 }
             }
         }
 
-        // Pick 5-8 random positions
-        let spawnCount = min(Int.random(in: 5...8), normalTilePositions.count)
-        let shuffled = normalTilePositions.shuffled()
-        let spawnPositions = Array(shuffled.prefix(spawnCount))
+        let cascadingPowerups = collectCascadingPowerups(
+            in: clearedTiles,
+            excludePositions: [(row: r1, col: c1), (row: r2, col: c2)]
+        )
 
-        print("🔍 [DEBUG] Rocket + \(otherType) combo! Spawning \(spawnPositions.count) copies of \(otherType)")
+        // Animate the lightning surge, then clear
+        animateLightningSurge(row: r2, col: c2, isHorizontal: isHorizontal) { [weak self] in
+            guard let self = self else { return }
 
-        // Build target tile set for animation
-        var targetTiles: Set<String> = []
-        for pos in spawnPositions {
-            targetTiles.insert("\(pos.row),\(pos.col)")
+            self.showPowerupBorderHighlight(clearedTiles) { [weak self] in
+                self?.clearTilesAndCascade(clearedTiles, cascadingPowerups: cascadingPowerups)
+            }
         }
+    }
+    
+    /// Rocket + Bomb: "Lightning Storm" — lightning bolts strike down from the top
+    /// to 4-5 random positions, each creating a 3x3 bomb explosion.
+    private func handleRocketBombCombo(r1: Int, c1: Int, r2: Int, c2: Int) {
+        guard let level = currentLevel else { return }
 
-        // Also clear the combo tile itself at r2,c2
+        let impact = UIImpactFeedbackGenerator(style: .heavy)
+        impact.impactOccurred()
+
+        // Reset transforms and update display first
+        if let (button1, button2) = swappedButtons {
+            button1.transform = .identity
+            button2.transform = .identity
+            self.swappedButtons = nil
+        }
+        updateGridDisplay()
+        movesRemaining -= 1
+
+        // Pick 4-5 random strike positions
+        var candidatePositions: [(row: Int, col: Int)] = []
+        for row in 0..<level.gridHeight {
+            for col in 0..<level.gridWidth {
+                if gridShapeMap[row][col] && gameGrid[row][col] != nil &&
+                   !(row == r1 && col == c1) && !(row == r2 && col == c2) {
+                    candidatePositions.append((row: row, col: col))
+                }
+            }
+        }
+        
+        let strikeCount = min(Int.random(in: 4...5), candidatePositions.count)
+        let strikePositions = Array(candidatePositions.shuffled().prefix(strikeCount))
+
+        print("🔍 [DEBUG] Rocket + Bomb combo! Lightning Storm with \(strikePositions.count) strikes")
+
+        // Collect all tiles in 3x3 zones around each strike, plus the combo source tiles
         var clearedTiles: Set<String> = ["\(r2),\(c2)"]
         if gameGrid[r1][c1] != nil {
             clearedTiles.insert("\(r1),\(c1)")
         }
+        
+        for pos in strikePositions {
+            for dr in -1...1 {
+                for dc in -1...1 {
+                    let r = pos.row + dr
+                    let c = pos.col + dc
+                    if r >= 0 && r < level.gridHeight && c >= 0 && c < level.gridWidth &&
+                       gridShapeMap[r][c] && gameGrid[r][c] != nil {
+                        clearedTiles.insert("\(r),\(c)")
+                    }
+                }
+            }
+        }
 
-        // Animate powerup copies flying from the rocket to each target
-        shootPowerupCopiesToTiles(fromRow: r2, fromCol: c2, powerupType: otherType, targetTiles: targetTiles) { [weak self] in
+        let cascadingPowerups = collectCascadingPowerups(
+            in: clearedTiles,
+            excludePositions: [(row: r1, col: c1), (row: r2, col: c2)]
+        )
+
+        // Animate lightning storm, then clear
+        animateLightningStorm(fromRow: r2, fromCol: c2, strikePositions: strikePositions) { [weak self] in
             guard let self = self else { return }
 
-            // Convert the random tiles to the other powerup type
-            var cascadingPowerups: [(row: Int, col: Int, type: PieceType)] = []
-            for pos in spawnPositions {
-                if let piece = self.gameGrid[pos.row][pos.col] {
-                    piece.type = otherType
-                    cascadingPowerups.append((row: pos.row, col: pos.col, type: otherType))
-                }
-            }
-
-            // Clear the source combo tiles
-            for posString in clearedTiles {
-                let parts = posString.split(separator: ",").map { Int($0) ?? 0 }
-                if parts.count == 2 {
-                    self.hitTile(row: parts[0], col: parts[1])
-                }
-            }
-
-            self.updateGridDisplay()
-            self.updateUI()
-
-            // Activate all spawned powerups as cascading
-            if !cascadingPowerups.isEmpty {
-                self.activateCascadingPowerups(cascadingPowerups)
-            } else {
-                self.applyGravity()
+            self.showPowerupBorderHighlight(clearedTiles) { [weak self] in
+                self?.clearTilesAndCascade(clearedTiles, cascadingPowerups: cascadingPowerups)
             }
         }
     }
@@ -3086,6 +3134,289 @@ class MatchGameViewController: UIViewController {
             total += hypot(waypoints[i + 1].x - waypoints[i].x, waypoints[i + 1].y - waypoints[i].y)
         }
         return total
+    }
+    
+    /// Builds a jagged lightning bolt CAShapeLayer between two points.
+    private func buildLightningBolt(from start: CGPoint, to end: CGPoint, jagSegmentLength: CGFloat = 8, jagAmount: CGFloat = 4, lineWidth: CGFloat = 2.0, color: UIColor = .cyan) -> CAShapeLayer {
+        let path = UIBezierPath()
+        let totalLength = hypot(end.x - start.x, end.y - start.y)
+        let numSegments = max(Int(totalLength / jagSegmentLength), 2)
+        let dx = (end.x - start.x) / max(totalLength, 1)
+        let dy = (end.y - start.y) / max(totalLength, 1)
+        
+        for s in 0...numSegments {
+            let fraction = CGFloat(s) / CGFloat(numSegments)
+            var point = CGPoint(
+                x: start.x + (end.x - start.x) * fraction,
+                y: start.y + (end.y - start.y) * fraction
+            )
+            
+            if s > 0 && s < numSegments {
+                let perpX = -dy
+                let perpY = dx
+                let jag = CGFloat.random(in: -jagAmount...jagAmount)
+                point.x += perpX * jag
+                point.y += perpY * jag
+            }
+            
+            if s == 0 {
+                path.move(to: point)
+            } else {
+                path.addLine(to: point)
+            }
+        }
+        
+        let layer = CAShapeLayer()
+        layer.path = path.cgPath
+        layer.strokeColor = UIColor.white.cgColor
+        layer.lineWidth = lineWidth
+        layer.fillColor = nil
+        layer.lineCap = .round
+        layer.lineJoin = .round
+        layer.shadowColor = color.cgColor
+        layer.shadowRadius = 4
+        layer.shadowOpacity = 0.8
+        layer.shadowOffset = .zero
+        return layer
+    }
+    
+    /// Lightning Surge: A main bolt traces the arrow's row/col, then forks perpendicularly at each cell.
+    private func animateLightningSurge(row: Int, col: Int, isHorizontal: Bool, completion: @escaping () -> Void) {
+        guard let level = currentLevel else { completion(); return }
+        
+        let cellWidth = gridContainer.bounds.width / CGFloat(level.gridWidth)
+        let cellHeight = gridContainer.bounds.height / CGFloat(level.gridHeight)
+        let originX = CGFloat(col) * cellWidth + cellWidth / 2
+        let originY = CGFloat(row) * cellHeight + cellHeight / 2
+        
+        // Main bolt along the arrow's direction (full row or full column)
+        let mainStart: CGPoint
+        let mainEnd: CGPoint
+        if isHorizontal {
+            mainStart = CGPoint(x: -10, y: originY)
+            mainEnd = CGPoint(x: gridContainer.bounds.width + 10, y: originY)
+        } else {
+            mainStart = CGPoint(x: originX, y: -10)
+            mainEnd = CGPoint(x: originX, y: gridContainer.bounds.height + 10)
+        }
+        
+        let mainBolt = buildLightningBolt(from: mainStart, to: mainEnd, lineWidth: 2.5, color: .cyan)
+        gridContainer.layer.addSublayer(mainBolt)
+        
+        // Animate main bolt drawing
+        mainBolt.strokeEnd = 0
+        let mainStroke = CABasicAnimation(keyPath: "strokeEnd")
+        mainStroke.fromValue = 0
+        mainStroke.toValue = 1
+        mainStroke.duration = 0.25
+        mainStroke.timingFunction = CAMediaTimingFunction(name: .easeOut)
+        mainStroke.fillMode = .forwards
+        mainStroke.isRemovedOnCompletion = false
+        mainBolt.add(mainStroke, forKey: "drawMain")
+        
+        // Fork bolts perpendicular at each cell along the main line
+        var forkBolts: [CAShapeLayer] = []
+        let forkDelay: TimeInterval = 0.15  // start forks slightly after main begins
+        
+        DispatchQueue.main.asyncAfter(deadline: .now() + forkDelay) { [weak self] in
+            guard let self = self else { return }
+            
+            if isHorizontal {
+                // Main goes along the row; fork vertically at each column
+                for c in 0..<level.gridWidth {
+                    let forkX = CGFloat(c) * cellWidth + cellWidth / 2
+                    let forkStart = CGPoint(x: forkX, y: originY)
+                    let forkEndTop = CGPoint(x: forkX, y: -10)
+                    let forkEndBottom = CGPoint(x: forkX, y: self.gridContainer.bounds.height + 10)
+                    
+                    let boltUp = self.buildLightningBolt(from: forkStart, to: forkEndTop, jagSegmentLength: 6, jagAmount: 3, lineWidth: 1.5, color: .cyan)
+                    let boltDown = self.buildLightningBolt(from: forkStart, to: forkEndBottom, jagSegmentLength: 6, jagAmount: 3, lineWidth: 1.5, color: .cyan)
+                    
+                    self.gridContainer.layer.addSublayer(boltUp)
+                    self.gridContainer.layer.addSublayer(boltDown)
+                    forkBolts.append(contentsOf: [boltUp, boltDown])
+                    
+                    // Stagger each fork slightly
+                    let stagger = Double(c) * 0.02
+                    for bolt in [boltUp, boltDown] {
+                        bolt.strokeEnd = 0
+                        let stroke = CABasicAnimation(keyPath: "strokeEnd")
+                        stroke.fromValue = 0
+                        stroke.toValue = 1
+                        stroke.duration = 0.2
+                        stroke.beginTime = CACurrentMediaTime() + stagger
+                        stroke.timingFunction = CAMediaTimingFunction(name: .easeOut)
+                        stroke.fillMode = .forwards
+                        stroke.isRemovedOnCompletion = false
+                        bolt.add(stroke, forKey: "drawFork")
+                    }
+                }
+            } else {
+                // Main goes along the column; fork horizontally at each row
+                for r in 0..<level.gridHeight {
+                    let forkY = CGFloat(r) * cellHeight + cellHeight / 2
+                    let forkStart = CGPoint(x: originX, y: forkY)
+                    let forkEndLeft = CGPoint(x: -10, y: forkY)
+                    let forkEndRight = CGPoint(x: self.gridContainer.bounds.width + 10, y: forkY)
+                    
+                    let boltLeft = self.buildLightningBolt(from: forkStart, to: forkEndLeft, jagSegmentLength: 6, jagAmount: 3, lineWidth: 1.5, color: .cyan)
+                    let boltRight = self.buildLightningBolt(from: forkStart, to: forkEndRight, jagSegmentLength: 6, jagAmount: 3, lineWidth: 1.5, color: .cyan)
+                    
+                    self.gridContainer.layer.addSublayer(boltLeft)
+                    self.gridContainer.layer.addSublayer(boltRight)
+                    forkBolts.append(contentsOf: [boltLeft, boltRight])
+                    
+                    let stagger = Double(r) * 0.02
+                    for bolt in [boltLeft, boltRight] {
+                        bolt.strokeEnd = 0
+                        let stroke = CABasicAnimation(keyPath: "strokeEnd")
+                        stroke.fromValue = 0
+                        stroke.toValue = 1
+                        stroke.duration = 0.2
+                        stroke.beginTime = CACurrentMediaTime() + stagger
+                        stroke.timingFunction = CAMediaTimingFunction(name: .easeOut)
+                        stroke.fillMode = .forwards
+                        stroke.isRemovedOnCompletion = false
+                        bolt.add(stroke, forKey: "drawFork")
+                    }
+                }
+            }
+        }
+        
+        // Fade everything out and clean up
+        let totalVisibleTime: TimeInterval = 0.55
+        DispatchQueue.main.asyncAfter(deadline: .now() + totalVisibleTime) { [weak self] in
+            let fadeDuration: TimeInterval = 0.2
+            
+            let fadeMain = CABasicAnimation(keyPath: "opacity")
+            fadeMain.fromValue = 1.0
+            fadeMain.toValue = 0.0
+            fadeMain.duration = fadeDuration
+            fadeMain.fillMode = .forwards
+            fadeMain.isRemovedOnCompletion = false
+            mainBolt.add(fadeMain, forKey: "fade")
+            
+            for bolt in forkBolts {
+                let fade = CABasicAnimation(keyPath: "opacity")
+                fade.fromValue = 1.0
+                fade.toValue = 0.0
+                fade.duration = fadeDuration
+                fade.fillMode = .forwards
+                fade.isRemovedOnCompletion = false
+                bolt.add(fade, forKey: "fade")
+            }
+            
+            DispatchQueue.main.asyncAfter(deadline: .now() + fadeDuration + 0.02) {
+                mainBolt.removeFromSuperlayer()
+                for bolt in forkBolts {
+                    bolt.removeFromSuperlayer()
+                }
+                
+                // Screen shake for dramatic effect
+                let shakeAnim = CAKeyframeAnimation(keyPath: "transform.translation.x")
+                shakeAnim.timingFunction = CAMediaTimingFunction(name: .easeOut)
+                shakeAnim.duration = 0.35
+                shakeAnim.values = [-6, 6, -5, 5, -3, 3, 0]
+                self?.gridContainer.layer.add(shakeAnim, forKey: "surgeShake")
+                
+                completion()
+            }
+        }
+    }
+    
+    /// Lightning Storm: Lightning bolts strike down from the top edge to random positions, each causing a 3x3 explosion.
+    private func animateLightningStorm(fromRow: Int, fromCol: Int, strikePositions: [(row: Int, col: Int)], completion: @escaping () -> Void) {
+        guard let level = currentLevel else { completion(); return }
+        
+        let cellWidth = gridContainer.bounds.width / CGFloat(level.gridWidth)
+        let cellHeight = gridContainer.bounds.height / CGFloat(level.gridHeight)
+        
+        var allBolts: [CAShapeLayer] = []
+        var completedStrikes = 0
+        let totalStrikes = strikePositions.count
+        
+        guard totalStrikes > 0 else { completion(); return }
+        
+        // Screen shake
+        let shakeAnim = CAKeyframeAnimation(keyPath: "transform.translation.x")
+        shakeAnim.timingFunction = CAMediaTimingFunction(name: .easeOut)
+        shakeAnim.duration = 0.5
+        shakeAnim.values = [-8, 8, -6, 6, -4, 4, -2, 2, 0]
+        gridContainer.layer.add(shakeAnim, forKey: "stormShake")
+        
+        for (index, pos) in strikePositions.enumerated() {
+            let targetX = CGFloat(pos.col) * cellWidth + cellWidth / 2
+            let targetY = CGFloat(pos.row) * cellHeight + cellHeight / 2
+            
+            // Lightning starts from a random x along the top edge
+            let startX = targetX + CGFloat.random(in: -30...30)
+            let start = CGPoint(x: startX, y: -10)
+            let end = CGPoint(x: targetX, y: targetY)
+            
+            let bolt = buildLightningBolt(from: start, to: end, jagSegmentLength: 10, jagAmount: 6, lineWidth: 2.5, color: .cyan)
+            gridContainer.layer.addSublayer(bolt)
+            allBolts.append(bolt)
+            
+            // Stagger each strike
+            let stagger = Double(index) * 0.08
+            
+            bolt.strokeEnd = 0
+            let strokeAnim = CABasicAnimation(keyPath: "strokeEnd")
+            strokeAnim.fromValue = 0
+            strokeAnim.toValue = 1
+            strokeAnim.duration = 0.15
+            strokeAnim.beginTime = CACurrentMediaTime() + stagger
+            strokeAnim.timingFunction = CAMediaTimingFunction(name: .easeIn)
+            strokeAnim.fillMode = .forwards
+            strokeAnim.isRemovedOnCompletion = false
+            bolt.add(strokeAnim, forKey: "drawStrike")
+            
+            // Flash at impact point
+            DispatchQueue.main.asyncAfter(deadline: .now() + stagger + 0.15) { [weak self] in
+                guard let self = self else { return }
+                
+                // Brief white flash circle at impact
+                let flash = UIView()
+                let flashSize: CGFloat = max(cellWidth, cellHeight) * 2.5
+                flash.frame = CGRect(x: targetX - flashSize / 2, y: targetY - flashSize / 2, width: flashSize, height: flashSize)
+                flash.backgroundColor = UIColor.white.withAlphaComponent(0.5)
+                flash.layer.cornerRadius = flashSize / 2
+                self.gridContainer.addSubview(flash)
+                
+                UIView.animate(withDuration: 0.2, animations: {
+                    flash.transform = CGAffineTransform(scaleX: 1.3, y: 1.3)
+                    flash.alpha = 0
+                }, completion: { _ in
+                    flash.removeFromSuperview()
+                })
+                
+                // Haptic for each strike
+                let impact = UIImpactFeedbackGenerator(style: .heavy)
+                impact.impactOccurred()
+                
+                completedStrikes += 1
+                if completedStrikes >= totalStrikes {
+                    // All strikes landed — fade out bolts then complete
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
+                        for bolt in allBolts {
+                            let fade = CABasicAnimation(keyPath: "opacity")
+                            fade.fromValue = 1.0
+                            fade.toValue = 0.0
+                            fade.duration = 0.2
+                            fade.fillMode = .forwards
+                            fade.isRemovedOnCompletion = false
+                            bolt.add(fade, forKey: "fade")
+                        }
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.22) {
+                            for bolt in allBolts {
+                                bolt.removeFromSuperlayer()
+                            }
+                            completion()
+                        }
+                    }
+                }
+            }
+        }
     }
     
     private func checkForMatches() {
