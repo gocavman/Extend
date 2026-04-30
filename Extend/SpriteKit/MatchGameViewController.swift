@@ -359,18 +359,12 @@ class MatchGameViewController: UIViewController {
         gameGrid = Array(repeating: Array(repeating: nil, count: level.gridWidth), count: level.gridHeight)
         gridButtons = Array(repeating: Array(repeating: nil, count: level.gridWidth), count: level.gridHeight)
         
-        // Fill grid with random pieces
+        // Fill grid with non-matching pieces so no matches exist at start
         for row in 0..<level.gridHeight {
             for col in 0..<level.gridWidth {
                 if gridShapeMap[row][col] {
-                    let randomItemIndex = Int.random(in: 0..<level.items.count)
-                    let randomColorIndex = Int.random(in: 0..<level.colors.count)
-                    gameGrid[row][col] = GamePiece(
-                        itemId: level.items[randomItemIndex].id,
-                        colorIndex: randomColorIndex,
-                        row: row,
-                        col: col
-                    )
+                    let piece = generateNonMatchingPiece(row: row, col: col, level: level, avoidMatches: true)
+                    gameGrid[row][col] = piece
                 }
             }
         }
@@ -381,11 +375,6 @@ class MatchGameViewController: UIViewController {
         // Reset idle hint timer
         lastMoveTime = Date()
         resetIdleHintTimer()
-        
-        // Check for initial matches on level load
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
-            self?.checkForMatches()
-        }
     }
     
     private func updateUI() {
@@ -469,6 +458,9 @@ class MatchGameViewController: UIViewController {
     
     private func resetAllButtonTransforms() {
         guard let level = currentLevel else { return }
+        
+        // Remove any leftover animation sublayers (e.g. lightning CAShapeLayers)
+        gridContainer.layer.sublayers?.removeAll(where: { $0 is CAShapeLayer })
         
         for row in 0..<level.gridHeight {
             for col in 0..<level.gridWidth {
@@ -570,8 +562,9 @@ class MatchGameViewController: UIViewController {
         gridAspectRatioConstraint?.priority = UILayoutPriority(rawValue: 999)
         gridAspectRatioConstraint?.isActive = true
         
-        // Clear existing grid completely
+        // Clear existing grid completely (subviews AND any leftover animation sublayers)
         gridContainer.subviews.forEach { $0.removeFromSuperview() }
+        gridContainer.layer.sublayers?.removeAll(where: { $0 is CAShapeLayer })
         gridStackView.removeFromSuperview()
         
         // Remove all arranged subviews from the stack view
@@ -3657,7 +3650,7 @@ class MatchGameViewController: UIViewController {
             return
         }
         
-        let poofDuration: TimeInterval = 0.25
+        let poofDuration: TimeInterval = 0.18
         
         for posString in affectedTiles {
             let parts = posString.split(separator: ",").map { Int($0) ?? 0 }
@@ -3723,7 +3716,9 @@ class MatchGameViewController: UIViewController {
             return
         }
         
-        // STEP 1: Show smoke poof on matched tiles
+        // Launch smoke poof and scale/fade simultaneously — no stacked asyncAfter delays
+        let totalDuration: TimeInterval = 0.22
+        
         for posString in matchesToRemove {
             let parts = posString.split(separator: ",").map { Int($0) ?? 0 }
             guard parts.count == 2 else { continue }
@@ -3734,9 +3729,10 @@ class MatchGameViewController: UIViewController {
             
             // Convert button center to gridContainer coordinate space
             let centerInContainer = button.superview?.convert(button.center, to: gridContainer) ?? button.center
+            
+            // Smoke poof particles (fire and forget)
             let particleCount = 5
             let particleSize: CGFloat = CGFloat.random(in: 6...10)
-            
             for i in 0..<particleCount {
                 let particle = UIView()
                 particle.bounds = CGRect(x: 0, y: 0, width: particleSize, height: particleSize)
@@ -3751,7 +3747,7 @@ class MatchGameViewController: UIViewController {
                 let dx = cos(angle) * distance
                 let dy = sin(angle) * distance
                 
-                UIView.animate(withDuration: 0.2, delay: 0, options: .curveEaseOut) {
+                UIView.animate(withDuration: 0.18, delay: 0, options: .curveEaseOut) {
                     particle.center = CGPoint(x: centerInContainer.x + dx, y: centerInContainer.y + dy)
                     particle.transform = CGAffineTransform(scaleX: 2.0, y: 2.0)
                     particle.alpha = 0
@@ -3759,74 +3755,63 @@ class MatchGameViewController: UIViewController {
                     particle.removeFromSuperview()
                 }
             }
+            
+            // Pop-then-shrink scale animation (starts immediately, concurrent with poof)
+            let scaleAnim = CAKeyframeAnimation(keyPath: "transform.scale")
+            scaleAnim.values = [1.0, 1.12, 0.01]
+            scaleAnim.keyTimes = [0, 0.3, 1.0]
+            scaleAnim.timingFunctions = [
+                CAMediaTimingFunction(name: .easeOut),
+                CAMediaTimingFunction(name: .easeIn)
+            ]
+            scaleAnim.duration = totalDuration
+            scaleAnim.fillMode = .forwards
+            scaleAnim.isRemovedOnCompletion = false
+            button.layer.add(scaleAnim, forKey: "matchPop")
+            
+            // Fade out starts slightly after scale begins
+            let fadeAnim = CABasicAnimation(keyPath: "opacity")
+            fadeAnim.fromValue = 1.0
+            fadeAnim.toValue = 0.0
+            fadeAnim.beginTime = CACurrentMediaTime() + 0.06
+            fadeAnim.duration = 0.14
+            fadeAnim.fillMode = .forwards
+            fadeAnim.isRemovedOnCompletion = false
+            button.layer.add(fadeAnim, forKey: "matchFade")
         }
         
-        // STEP 2: After brief poof, animate removal using CAAnimations
-        // We use CAAnimations (not UIView.animate with transform) so that scale effects
-        // don't conflict with gravity's use of button.transform for translation.
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.12) { [weak self] in
-            guard let self = self, let level = self.currentLevel else {
-                completion()
-                return
-            }
-            
-            let totalDuration: TimeInterval = 0.23  // 0.08 pop + 0.15 shrink
-            
+        // Single timer — no nested asyncAfter
+        DispatchQueue.main.asyncAfter(deadline: .now() + totalDuration) {
+            // Clean up: remove CA animations and reset visual state
             for posString in matchesToRemove {
                 let parts = posString.split(separator: ",").map { Int($0) ?? 0 }
                 guard parts.count == 2 else { continue }
                 let row = parts[0]
                 let col = parts[1]
                 guard row >= 0 && row < level.gridHeight && col >= 0 && col < level.gridWidth else { continue }
-                
                 if let button = self.gridButtons[row][col] {
-                    // Pop-then-shrink scale animation via CAKeyframeAnimation
-                    let scaleAnim = CAKeyframeAnimation(keyPath: "transform.scale")
-                    scaleAnim.values = [1.0, 1.15, 0.01]
-                    scaleAnim.keyTimes = [0, 0.35, 1.0]  // 0.08/0.23 ≈ 0.35
-                    scaleAnim.timingFunctions = [
-                        CAMediaTimingFunction(name: .easeOut),
-                        CAMediaTimingFunction(name: .easeIn)
-                    ]
-                    scaleAnim.duration = totalDuration
-                    scaleAnim.fillMode = .forwards
-                    scaleAnim.isRemovedOnCompletion = false
-                    button.layer.add(scaleAnim, forKey: "matchPop")
-                    
-                    // Fade out animation
-                    let fadeAnim = CABasicAnimation(keyPath: "opacity")
-                    fadeAnim.fromValue = 1.0
-                    fadeAnim.toValue = 0.0
-                    fadeAnim.beginTime = CACurrentMediaTime() + 0.08
-                    fadeAnim.duration = 0.15
-                    fadeAnim.fillMode = .forwards
-                    fadeAnim.isRemovedOnCompletion = false
-                    button.layer.add(fadeAnim, forKey: "matchFade")
+                    button.layer.removeAnimation(forKey: "matchPop")
+                    button.layer.removeAnimation(forKey: "matchFade")
+                    button.layer.opacity = 1.0
                 }
             }
-            
-            // Single timer for the total animation duration
-            DispatchQueue.main.asyncAfter(deadline: .now() + totalDuration + 0.02) {
-                // Clean up: remove CA animations and reset visual state
-                for posString in matchesToRemove {
-                    let parts = posString.split(separator: ",").map { Int($0) ?? 0 }
-                    guard parts.count == 2 else { continue }
-                    let row = parts[0]
-                    let col = parts[1]
-                    guard row >= 0 && row < level.gridHeight && col >= 0 && col < level.gridWidth else { continue }
-                    if let button = self.gridButtons[row][col] {
-                        button.layer.removeAnimation(forKey: "matchPop")
-                        button.layer.removeAnimation(forKey: "matchFade")
-                        button.layer.opacity = 1.0
-                    }
-                }
-                completion()
-            }
+            completion()
         }
     }
     
     private func applyGravity() {
         guard let level = currentLevel else { return }
+        
+        // Sweep any stray animation subviews (poof particles, flame labels, beam views)
+        // that should have been removed by animation completions but may have leaked
+        let keepViews: Set<ObjectIdentifier> = [ObjectIdentifier(gridStackView)]
+        let armorViews = Set(armorBorderViews.flatMap { $0 }.compactMap { $0.map { ObjectIdentifier($0) } })
+        for subview in gridContainer.subviews {
+            let id = ObjectIdentifier(subview)
+            if !keepViews.contains(id) && !armorViews.contains(id) {
+                subview.removeFromSuperview()
+            }
+        }
         
         // Reset all button transforms before gravity to clear any leftover scale/rotation from animations
         resetAllButtonTransforms()
@@ -3939,127 +3924,75 @@ class MatchGameViewController: UIViewController {
             return
         }
         
-        // Scale fall speed with grid size so larger grids don't feel sluggish
-        let baseFallSpeed: CGFloat = 400
-        let gridScale = CGFloat(max(level.gridHeight, 10)) / 10.0
-        let fallSpeedPixelsPerSecond: CGFloat = baseFallSpeed * gridScale
+        let cellHeight = gridContainer.bounds.height / CGFloat(level.gridHeight)
+        let fallSpeed: CGFloat = 480  // pixels per second
+        let arrivalGap: TimeInterval = 0.035  // 35ms between each piece landing in a column
         
-        // Build list of pieces to animate per column, sorted bottom to top
-        var columnPieces: [[AnimatingPiece]] = Array(repeating: [], count: level.gridWidth)
+        var maxEndTime: TimeInterval = 0
         
         for col in 0..<level.gridWidth {
-            var pieces: [AnimatingPiece] = []
+            // Collect pieces that need to animate in this column, sorted bottom-first
+            var pieces: [(button: UIButton, row: Int, distance: Int, isNew: Bool)] = []
             
             for row in 0..<level.gridHeight {
                 let key = "\(row),\(col)"
                 if movedPieces.contains(key), gridShapeMap[row][col], let button = gridButtons[row][col], gameGrid[row][col] != nil {
                     let distance = fallDistances[key] ?? 0
-                    let isNewPiece = newPieces.contains(key)
-                    pieces.append(AnimatingPiece(button: button, row: row, distance: distance, isNew: isNewPiece))
+                    pieces.append((button: button, row: row, distance: distance, isNew: newPieces.contains(key)))
                 }
             }
             
-            // Sort by row DESCENDING (bottom first) - pieces will animate sequentially
+            // Sort bottom-first (highest row number = bottom of grid)
             pieces.sort { $0.row > $1.row }
-            columnPieces[col] = pieces
-        }
-        
-        let cellHeight = gridContainer.bounds.height / CGFloat(level.gridHeight)
-        
-        // Animate each column sequentially: animate bottom piece, when done animate next, etc.
-        var completedColumns = 0
-        let totalColumns = columnPieces.count
-        
-        for col in 0..<level.gridWidth {
-            let pieces = columnPieces[col]
             
-            guard !pieces.isEmpty else {
-                completedColumns += 1
-                if completedColumns == totalColumns {
-                    completion()
-                }
-                continue
+            // Calculate start delays so pieces ARRIVE in bottom-to-top order.
+            // Bottom piece (index 0) arrives first, next piece arrives arrivalGap later, etc.
+            // arrivalTime[i] = arrivalTime[0] + i * arrivalGap
+            // startDelay[i] = arrivalTime[i] - duration[i]
+            // We want the bottom piece to start immediately (or near-immediately).
+            
+            // First pass: compute natural durations
+            var durations: [TimeInterval] = []
+            for piece in pieces {
+                let fallDistance = cellHeight * CGFloat(piece.distance)
+                let duration = min(Double(abs(fallDistance) / fallSpeed), 0.35)
+                durations.append(max(duration, 0.05))
             }
             
-            // Animate pieces in this column sequentially using chained completion handlers
-            animateColumnPiecesSequentially(pieces: pieces, index: 0, cellHeight: cellHeight, fallSpeed: fallSpeedPixelsPerSecond, col: col) {
-                completedColumns += 1
-                if completedColumns == totalColumns {
-                    completion()
-                }
-            }
-        }
-    }
-    
-    // Helper struct for animation tracking
-    private struct AnimatingPiece {
-        let button: UIButton
-        let row: Int
-        let distance: Int
-        let isNew: Bool
-    }
-    
-    // Recursively animate pieces in a column one by one
-    private func animateColumnPiecesSequentially(
-        pieces: [AnimatingPiece],
-        index: Int,
-        cellHeight: CGFloat,
-        fallSpeed: CGFloat,
-        col: Int,
-        completion: @escaping () -> Void
-    ) {
-        guard index < pieces.count else {
-            completion()
-            return
-        }
-        
-        let piece = pieces[index]
-        let fallDistance = cellHeight * CGFloat(piece.distance)
-        let duration = min(Double(abs(fallDistance) / fallSpeed), 0.45) // Cap at 0.45s so long falls stay snappy
-        
-        // Set starting position
-        if piece.isNew {
-            piece.button.transform = CGAffineTransform(translationX: 0, y: -fallDistance)
-            piece.button.alpha = 0
-        } else {
-            piece.button.transform = CGAffineTransform(translationX: 0, y: fallDistance)
-            piece.button.alpha = 1.0
-        }
-        
-        // Calculate when to start next piece — tighter overlap on bigger grids
-        let percentToWait = 0.3  // 30% overlap: next piece starts when current is 30% done
-        let delayForNextPiece = max(duration * percentToWait, 0.04) // Minimum 40ms gap to stay ordered
-        
-        // Start next piece animation after percentage completion of current piece
-        if index + 1 < pieces.count {
-            DispatchQueue.main.asyncAfter(deadline: .now() + delayForNextPiece) { [weak self] in
-                self?.animateColumnPiecesSequentially(
-                    pieces: pieces,
-                    index: index + 1,
-                    cellHeight: cellHeight,
-                    fallSpeed: fallSpeed,
-                    col: col,
-                    completion: completion
+            guard !pieces.isEmpty else { continue }
+            
+            // Bottom piece (index 0) starts at delay 0, arrives at durations[0]
+            let baseArrival = durations[0]
+            
+            for (i, piece) in pieces.enumerated() {
+                let targetArrival = baseArrival + Double(i) * arrivalGap
+                let startDelay = max(targetArrival - durations[i], 0)
+                let endTime = startDelay + durations[i]
+                if endTime > maxEndTime { maxEndTime = endTime }
+                
+                UIView.animate(
+                    withDuration: durations[i],
+                    delay: startDelay,
+                    usingSpringWithDamping: 0.7,
+                    initialSpringVelocity: 0.5,
+                    options: [],
+                    animations: {
+                        piece.button.transform = .identity
+                        piece.button.alpha = 1.0
+                    },
+                    completion: nil
                 )
             }
         }
         
-        // Animate this piece
-        UIView.animate(
-            withDuration: duration,
-            delay: 0,
-            options: .curveEaseIn,
-            animations: {
-                piece.button.transform = .identity
-                piece.button.alpha = 1.0
-            },
-            completion: { _ in
-                // Only call completion if this is the last piece
-                if index == pieces.count - 1 {
-                    completion()
-                }
+        // Single completion after all animations finish (extra buffer for spring settling)
+        if maxEndTime > 0 {
+            DispatchQueue.main.asyncAfter(deadline: .now() + maxEndTime + 0.04) {
+                completion()
             }
-        )
+        } else {
+            completion()
+        }
     }
     
     private func updateGridDisplay() {
@@ -4405,8 +4338,9 @@ class MatchGameViewController: UIViewController {
         currentLevelId = levelId
         score = 0
         
-        // Clear old grid
+        // Clear old grid (subviews AND any leftover animation sublayers)
         gridContainer.subviews.forEach { $0.removeFromSuperview() }
+        gridContainer.layer.sublayers?.removeAll(where: { $0 is CAShapeLayer })
         gridStackView.removeFromSuperview()
         gridStackView.arrangedSubviews.forEach { $0.removeFromSuperview() }
         

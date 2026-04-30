@@ -312,17 +312,18 @@
           null
       ],
       "gridShape": [
-        "X1XX1XX1XX1XX1",
+        "XXXXXXXXX",
+        "XXXXXXXXX",
+        "XXXXXXXXX",
+        "XXXXXXXXX",
         "XXXXXXXXX",
         "_________",
-        "X4X4X4X4X4X4X4X4X4",
-        "X5X5X5X5X5X5X5X5X5",
-        "_________",
-        "X7X7X7X7X7X7X7X7X7",
-        "X8X8X8X8X8X8X8X8X8",
-        "_________",
         "XXXXXXXXX",
-        "X11XX11XX11XX11XX11"
+        "XXXXXXXXX",
+        "XXXXXXXXX",
+        "XXXXXXXXX",
+        "XXXXXXXXX",
+        "X12XX12XX12XX12XX12"
       ],
       "movesAllowed": 80,
       "scoreTarget": 500
