@@ -121,6 +121,7 @@ class MatchGameViewController: UIViewController {
     private var armorOverlays: [[UILabel?]] = []  // Overlay labels showing armor count
     private var armorBorderViews: [[UIView?]] = []  // Static border overlays for armored cells
     private var isApplyingGravity = false  // Guard flag to prevent updateGridDisplay during gravity setup
+    private var activeAnimationViews: Set<ObjectIdentifier> = []  // Views currently used by in-flight animations (ball, rocket, etc.) — excluded from gravity cleanup
     private var levelCompleteCompletion: (() -> Void)?  // Stored completion for level complete modal
     
     // MARK: - Game Logic
@@ -3118,6 +3119,9 @@ class MatchGameViewController: UIViewController {
         ballLabel.frame = CGRect(x: startX - ballSize / 2, y: startY - ballSize / 2, width: ballSize, height: ballSize)
         gridContainer.addSubview(ballLabel)
         
+        // Protect ball label from gravity's stray-subview cleanup
+        activeAnimationViews.insert(ObjectIdentifier(ballLabel))
+        
         // Create dotted trail layer — trail starts AFTER fly-up, not during
         let trailLayer = CAShapeLayer()
         trailLayer.strokeColor = UIColor.white.withAlphaComponent(0.7).cgColor
@@ -3140,8 +3144,8 @@ class MatchGameViewController: UIViewController {
         
         for r in 0..<level.gridHeight {
             // Look for an occupied tile in this row near currentCol
-            // Try currentCol first, then one step in bounceDir
-            let candidates = [currentCol, currentCol + bounceDir, currentCol - bounceDir]
+            // Always prefer bouncing left or right first, only go straight down as last resort
+            let candidates = [currentCol + bounceDir, currentCol - bounceDir, currentCol]
             var found = false
             for c in candidates {
                 if c >= 0 && c < level.gridWidth && gridShapeMap[r][c] && gameGrid[r][c] != nil {
@@ -3180,6 +3184,7 @@ class MatchGameViewController: UIViewController {
                 completion()
                 return
             }
+            self.activeAnimationViews.remove(ObjectIdentifier(ballLabel))
             
             // Start the trail from the top position
             trailPath.move(to: CGPoint(x: centerX, y: topY))
@@ -3214,7 +3219,14 @@ class MatchGameViewController: UIViewController {
                         ballLabel.center = CGPoint(x: exitX, y: exitY)
                         ballLabel.transform = CGAffineTransform(scaleX: 0.8, y: 0.8).rotated(by: CGFloat.pi * 3)
                     }
-                }) { _ in
+                }) { [weak self] _ in
+                    guard let self = self else {
+                        ballLabel.removeFromSuperview()
+                        trailLayer.removeFromSuperlayer()
+                        completion()
+                        return
+                    }
+                    self.activeAnimationViews.remove(ObjectIdentifier(ballLabel))
                     ballLabel.removeFromSuperview()
                     
                     // Fade out the trail
@@ -3226,7 +3238,12 @@ class MatchGameViewController: UIViewController {
                     fadeOut.isRemovedOnCompletion = false
                     trailLayer.add(fadeOut, forKey: "trailFade")
                     
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) { [weak self] in
+                        guard let self = self else {
+                            trailLayer.removeFromSuperlayer()
+                            completion()
+                            return
+                        }
                         trailLayer.removeFromSuperlayer()
                         self.updateGridDisplay()
                         self.updateUI()
@@ -3272,7 +3289,7 @@ class MatchGameViewController: UIViewController {
         
         // Duration based on vertical drop distance — longer drops take more time
         let verticalDrop = targetY - arcPeakY
-        let duration: TimeInterval = max(0.3, min(0.5, Double(verticalDrop / (rowHeight * 6)) * 0.4))
+        let duration: TimeInterval = max(0.3, min(0.7, Double(verticalDrop / (rowHeight * 6)) * 0.4))
         
         // Build the trail curve BEFORE the animation so it's visible during flight
         // Use a quadratic bezier curve through the arc peak
@@ -3286,13 +3303,13 @@ class MatchGameViewController: UIViewController {
         
         UIView.animateKeyframes(withDuration: duration, delay: 0, options: [], animations: {
             // Rise phase: slow (decelerating upward) — 30% of time
-            UIView.addKeyframe(withRelativeStartTime: 0, relativeDuration: 0.30) {
+            UIView.addKeyframe(withRelativeStartTime: 0, relativeDuration: 0.50) {
                 ballLabel.center = CGPoint(x: arcPeakX, y: arcPeakY)
                 ballLabel.transform = CGAffineTransform(scaleX: 1.05, y: 1.05)
                     .rotated(by: currentRotation + spinAmount * 0.3)
             }
             // Fall phase: fast (accelerating downward) — 70% of time
-            UIView.addKeyframe(withRelativeStartTime: 0.30, relativeDuration: 0.70) {
+            UIView.addKeyframe(withRelativeStartTime: 0.50, relativeDuration: 0.70) {
                 ballLabel.center = CGPoint(x: targetX, y: targetY)
                 ballLabel.transform = CGAffineTransform(scaleX: 1.0, y: 1.0)
                     .rotated(by: currentRotation + spinAmount)
@@ -4464,17 +4481,32 @@ class MatchGameViewController: UIViewController {
             
             // Animate matched pieces, then proceed when animation completes
             animateMatchedPieces(matchesToRemove) { [weak self] in
+                guard let self = self else { return }
+                
+                // Collect any existing powerups caught in the match BEFORE clearing them
+                // These should cascade (activate) rather than being silently destroyed
+                var cascadingPowerups: [(row: Int, col: Int, type: PieceType)] = []
+                let powerUpPositions = Set(powerUpsToCreate.map { "\($0.row),\($0.col)" })
+                for posString in matchesToRemove {
+                    // Skip positions where we're about to place a new powerup
+                    if powerUpPositions.contains(posString) { continue }
+                    let parts = posString.split(separator: ",").map { Int($0) ?? 0 }
+                    if parts.count == 2, let piece = self.gameGrid[parts[0]][parts[1]], piece.type != .normal {
+                        cascadingPowerups.append((row: parts[0], col: parts[1], type: piece.type))
+                    }
+                }
+                
                 // Now that animation is complete, remove the pieces from grid
                 for posString in matchesToRemove {
                     let parts = posString.split(separator: ",").map { Int($0) ?? 0 }
                     if parts.count == 2 {
-                        self?.hitTile(row: parts[0], col: parts[1])
+                        self.hitTile(row: parts[0], col: parts[1])
                     }
                 }
                 
                 // Create power-ups
                 for powerUp in powerUpsToCreate {
-                    self?.gameGrid[powerUp.row][powerUp.col] = GamePiece(
+                    self.gameGrid[powerUp.row][powerUp.col] = GamePiece(
                         itemId: "power_up",
                         colorIndex: 0,
                         row: powerUp.row,
@@ -4484,9 +4516,15 @@ class MatchGameViewController: UIViewController {
                 }
                 
                 // Mark animation complete BEFORE updateUI() so level completion check works
-                self?.isAnimating = false
-                // applyGravity() calls updateGridDisplay() internally — no need to call it here
-                self?.applyGravity()
+                self.isAnimating = false
+                
+                // If powerups were caught in the match, activate them as cascading
+                if !cascadingPowerups.isEmpty {
+                    self.activateCascadingPowerups(cascadingPowerups)
+                } else {
+                    // applyGravity() calls updateGridDisplay() internally — no need to call it here
+                    self.applyGravity()
+                }
             }
         } else {
             // No match found
@@ -4698,7 +4736,7 @@ class MatchGameViewController: UIViewController {
         let armorViews = Set(armorBorderViews.flatMap { $0 }.compactMap { $0.map { ObjectIdentifier($0) } })
         for subview in gridContainer.subviews {
             let id = ObjectIdentifier(subview)
-            if !keepViews.contains(id) && !armorViews.contains(id) {
+            if !keepViews.contains(id) && !armorViews.contains(id) && !activeAnimationViews.contains(id) {
                 subview.removeFromSuperview()
             }
         }
@@ -4875,9 +4913,21 @@ class MatchGameViewController: UIViewController {
             }
         }
         
+        // Reverse the z-order of row stacks so that top rows (which bounce down)
+        // appear in front of the rows below them during the spring overshoot
+        for arrangedView in gridStackView.arrangedSubviews {
+            gridStackView.sendSubviewToBack(arrangedView)
+        }
+        
         // Single completion after all animations finish (extra buffer for spring settling)
         if maxEndTime > 0 {
-            DispatchQueue.main.asyncAfter(deadline: .now() + maxEndTime + 0.04) {
+            DispatchQueue.main.asyncAfter(deadline: .now() + maxEndTime + 0.04) { [weak self] in
+                // Restore normal z-order after animation settles
+                if let stackView = self?.gridStackView {
+                    for arrangedView in stackView.arrangedSubviews.reversed() {
+                        stackView.sendSubviewToBack(arrangedView)
+                    }
+                }
                 completion()
             }
         } else {
@@ -4956,7 +5006,7 @@ class MatchGameViewController: UIViewController {
                             let bounce = CAKeyframeAnimation(keyPath: "transform.translation.y")
                             bounce.values = [0, -3, 0, -1.5, 0]
                             bounce.keyTimes = [0, 0.3, 0.5, 0.75, 1.0]
-                            bounce.duration = 0.6
+                            bounce.duration = 0.8
                             bounce.repeatCount = .infinity
                             button.layer.add(bounce, forKey: "ballBounce")
                         }
@@ -5416,7 +5466,14 @@ class MatchGameViewController: UIViewController {
     }
     
     private func showIdleHint() {
-        guard let level = currentLevel, !isAnimating else { return }
+        guard let level = currentLevel else { return }
+        
+        // If animations are still running, restart the timer so the hint
+        // shows after animations finish + the full idle interval
+        if isAnimating {
+            resetIdleHintTimer()
+            return
+        }
         
         // Don't show a new hint if one is already showing
         if hintingTile != nil {
