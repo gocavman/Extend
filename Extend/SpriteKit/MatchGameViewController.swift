@@ -33,16 +33,21 @@ enum PieceType {
     case bomb
     case flame
     case rocket  // L-shape pattern: flies across grid clearing path
+    case ball    // T-shape pattern: bouncing ball that clears tiles it hits
 }
 
 // MARK: - Game Piece
 
 class GamePiece {
+    static let ballEmojis = ["⚽", "🏀", "🏈", "🏐", "🎾", "⚾"]
+    
     let itemId: String
     let colorIndex: Int
     var row: Int
     var col: Int
     var type: PieceType = .normal
+    /// Fixed emoji index for ball powerups, assigned once on creation so it doesn't change when the piece moves
+    var ballEmojiIndex: Int = 0
     
     init(itemId: String, colorIndex: Int, row: Int, col: Int, type: PieceType = .normal) {
         self.itemId = itemId
@@ -50,6 +55,9 @@ class GamePiece {
         self.row = row
         self.col = col
         self.type = type
+        if type == .ball {
+            self.ballEmojiIndex = Int.random(in: 0..<GamePiece.ballEmojis.count)
+        }
     }
     
     func matches(_ other: GamePiece) -> Bool {
@@ -840,6 +848,16 @@ class MatchGameViewController: UIViewController {
                 }
                 return  // animateRocketPath handles everything
                 
+            case .ball:
+                // Ball tapped directly: animate bouncing ball, handles its own clearing
+                animateBouncingBall(fromRow: row, fromCol: col) { [weak self] in
+                    self?.isAnimating = false
+                    if self?.movesRemaining ?? 0 <= 0 {
+                        self?.levelFailed()
+                    }
+                }
+                return  // animateBouncingBall handles everything
+                
             case .normal:
                 isAnimating = false
                 return
@@ -1275,6 +1293,106 @@ class MatchGameViewController: UIViewController {
         animation.duration = 0.3
         animation.values = [-4, 4, -3, 3, -2, 2, 0]
         button.layer.add(animation, forKey: "shake")
+    }
+    
+    /// Checks if the normal tile at (row, col) participates in a match pattern that would create a powerup.
+    /// Returns the powerup type if so, nil otherwise. Uses the same logic as checkForMatches.
+    private func detectPowerupAtPosition(row: Int, col: Int) -> PieceType? {
+        guard let level = currentLevel else { return nil }
+        guard row >= 0 && row < level.gridHeight && col >= 0 && col < level.gridWidth else { return nil }
+        guard gridShapeMap[row][col], let piece = gameGrid[row][col], piece.type == .normal else { return nil }
+        
+        // Count horizontal run containing this position
+        var hLeft = col
+        while hLeft > 0 && gridShapeMap[row][hLeft - 1],
+              let p = gameGrid[row][hLeft - 1], p.type == .normal, piece.matches(p) {
+            hLeft -= 1
+        }
+        var hRight = col
+        while hRight < level.gridWidth - 1 && gridShapeMap[row][hRight + 1],
+              let p = gameGrid[row][hRight + 1], p.type == .normal, piece.matches(p) {
+            hRight += 1
+        }
+        let hCount = hRight - hLeft + 1
+        
+        // Count vertical run containing this position
+        var vTop = row
+        while vTop > 0 && gridShapeMap[vTop - 1][col],
+              let p = gameGrid[vTop - 1][col], p.type == .normal, piece.matches(p) {
+            vTop -= 1
+        }
+        var vBottom = row
+        while vBottom < level.gridHeight - 1 && gridShapeMap[vBottom + 1][col],
+              let p = gameGrid[vBottom + 1][col], p.type == .normal, piece.matches(p) {
+            vBottom += 1
+        }
+        let vCount = vBottom - vTop + 1
+        
+        // 5+ in a line → flame
+        if hCount >= 5 || vCount >= 5 {
+            return .flame
+        }
+        
+        // T-shape vs L-shape: both require 3+ in one direction AND 2+ perpendicular.
+        // T-shape: intersection is in the MIDDLE of the longer run (not at an end)
+        // L-shape: intersection is at the END/corner of a run
+        if hCount >= 3 && vCount >= 3 {
+            let hIsMiddle = (col > hLeft && col < hRight)  // not at either end of horizontal run
+            let vIsMiddle = (row > vTop && row < vBottom)   // not at either end of vertical run
+            if hIsMiddle || vIsMiddle {
+                return .ball  // T-shape
+            }
+            return .rocket  // L-shape (corner intersection)
+        }
+        
+        // T-shape can also be: 3+ in one direction, 2 perpendicular from middle
+        if hCount >= 3 && vCount >= 2 {
+            let hIsMiddle = (col > hLeft && col < hRight)
+            if hIsMiddle {
+                return .ball
+            }
+        }
+        if vCount >= 3 && hCount >= 2 {
+            let vIsMiddle = (row > vTop && row < vBottom)
+            if vIsMiddle {
+                return .ball
+            }
+        }
+        
+        // 4 in a line → arrow
+        if hCount >= 4 {
+            return .horizontalArrow
+        }
+        if vCount >= 4 {
+            return .verticalArrow
+        }
+        
+        // Check 2x2 bomb: see if this position is part of a 2x2 of matching tiles
+        for dr in 0...1 {
+            for dc in 0...1 {
+                let topRow = row - dr
+                let leftCol = col - dc
+                guard topRow >= 0 && topRow + 1 < level.gridHeight &&
+                      leftCol >= 0 && leftCol + 1 < level.gridWidth else { continue }
+                guard gridShapeMap[topRow][leftCol] && gridShapeMap[topRow][leftCol + 1] &&
+                      gridShapeMap[topRow + 1][leftCol] && gridShapeMap[topRow + 1][leftCol + 1] else { continue }
+                
+                var allMatch = true
+                for r in topRow...topRow + 1 {
+                    for c in leftCol...leftCol + 1 {
+                        if r == row && c == col { continue }
+                        guard let p = gameGrid[r][c], p.type == .normal, piece.matches(p) else {
+                            allMatch = false
+                            break
+                        }
+                    }
+                    if !allMatch { break }
+                }
+                if allMatch { return .bomb }
+            }
+        }
+        
+        return nil
     }
     
     /// Bomb explosion visual: pulses affected tiles outward then clears them, with a brief screen shake.
@@ -1810,6 +1928,9 @@ class MatchGameViewController: UIViewController {
             for pos in spawnPositions {
                 if let piece = self.gameGrid[pos.row][pos.col] {
                     piece.type = otherType
+                    if otherType == .ball {
+                        piece.ballEmojiIndex = Int.random(in: 0..<GamePiece.ballEmojis.count)
+                    }
                     cascadingPowerups.append((row: pos.row, col: pos.col, type: otherType))
                 }
             }
@@ -2207,10 +2328,37 @@ class MatchGameViewController: UIViewController {
             return
         }
 
+        // Before clearing, check if the swapped normal tile's new position forms a powerup-worthy match.
+        // If so, convert it to a powerup and exclude it from clearedTiles so it survives the blast.
+        var mutableCleared = clearedTiles
+        var mutableCascading = cascadingPowerups
+        
+        // Determine which position has the normal tile (if any)
+        let normalPositions: [(row: Int, col: Int)] = [
+            type1 == .normal ? (row: r2, col: c2) : (row: -1, col: -1),
+            type2 == .normal ? (row: r1, col: c1) : (row: -1, col: -1)
+        ].filter { $0.row >= 0 }
+        
+        for pos in normalPositions {
+            let key = "\(pos.row),\(pos.col)"
+            if mutableCleared.contains(key), let powerupType = detectPowerupAtPosition(row: pos.row, col: pos.col) {
+                // Convert this tile to a powerup — it survives the blast
+                if let piece = gameGrid[pos.row][pos.col] {
+                    piece.type = powerupType
+                    if powerupType == .ball {
+                        piece.ballEmojiIndex = Int.random(in: 0..<GamePiece.ballEmojis.count)
+                    }
+                    mutableCleared.remove(key)
+                    mutableCascading.append((row: pos.row, col: pos.col, type: powerupType))
+                    print("🔍 [DEBUG] Normal tile at (\(pos.row),\(pos.col)) forms a \(powerupType) — promoted and excluded from blast")
+                }
+            }
+        }
+        
         finalizePowerupCombo(
-            clearedTiles: clearedTiles,
-            cascadingPowerups: cascadingPowerups,
-            decrementMoves: !clearedTiles.isEmpty,
+            clearedTiles: mutableCleared,
+            cascadingPowerups: mutableCascading,
+            decrementMoves: !mutableCleared.isEmpty || !clearedTiles.isEmpty,
             flameSource: flameSource,
             bombShake: type1 == .bomb || type2 == .bomb
         )
@@ -2239,7 +2387,7 @@ class MatchGameViewController: UIViewController {
         // Count how many powerups will create animations
         for (_, _, type) in powerups {
             switch type {
-            case .verticalArrow, .horizontalArrow, .bomb, .flame, .rocket:
+            case .verticalArrow, .horizontalArrow, .bomb, .flame, .rocket, .ball:
                 flameAnimationsInProgress += 1
             default:
                 break
@@ -2430,6 +2578,14 @@ class MatchGameViewController: UIViewController {
                 // Rocket cascading: animate rocket path, completion tracks when done
                 print("🚀 Cascading rocket at (\(row), \(col))")
                 animateRocketPath(fromRow: row, fromCol: col) {
+                    flameAnimationsCompleted += 1
+                    checkAllComplete()
+                }
+                
+            case .ball:
+                // Ball cascading: animate bouncing ball
+                print("🏀 Cascading ball at (\(row), \(col))")
+                animateBouncingBall(fromRow: row, fromCol: col) {
                     flameAnimationsCompleted += 1
                     checkAllComplete()
                 }
@@ -2806,6 +2962,7 @@ class MatchGameViewController: UIViewController {
         case .bomb: emoji = "💣"
         case .flame: emoji = "🔥"
         case .rocket: emoji = "🌟"
+        case .ball: emoji = "⚽"
         case .normal: emoji = "❓"
         }
         
@@ -2872,6 +3029,179 @@ class MatchGameViewController: UIViewController {
                     completeCopy()
                 })
             })
+        }
+    }
+    
+    /// Animates a bouncing ball powerup. The ball flies up above the grid, then falls with gravity,
+    /// bouncing across tiles and clearing each one it hits, before flying off screen.
+    private func animateBouncingBall(fromRow: Int, fromCol: Int, completion: @escaping () -> Void) {
+        guard let level = currentLevel else {
+            completion()
+            return
+        }
+        
+        // Grab the emoji from the piece before removing it
+        let ballEmoji: String
+        if let piece = gameGrid[fromRow][fromCol] {
+            ballEmoji = GamePiece.ballEmojis[piece.ballEmojiIndex]
+        } else {
+            ballEmoji = "⚽"
+        }
+        
+        // Capture cascading powerups from bounce targets BEFORE clearing
+        var cascadingPowerups: [(row: Int, col: Int, type: PieceType)] = []
+        
+        // Remove the ball piece from the grid and clear the button immediately
+        gameGrid[fromRow][fromCol] = nil
+        score += 1
+        if let button = gridButtons[fromRow][fromCol] {
+            button.setTitle("", for: .normal)
+            button.setImage(nil, for: .normal)
+            button.backgroundColor = .clear
+        }
+        
+        // Grid geometry
+        let gridHeight = gridContainer.bounds.height
+        let gridWidth = gridContainer.bounds.width
+        let rowHeight = gridHeight / CGFloat(level.gridHeight)
+        let colWidth = gridWidth / CGFloat(level.gridWidth)
+        
+        // Starting position (center of the ball's tile)
+        let startX = CGFloat(fromCol) * colWidth + colWidth / 2
+        let startY = CGFloat(fromRow) * rowHeight + rowHeight / 2
+        
+        // Create the ball label using the piece's fixed emoji
+        let ballSize = min(colWidth, rowHeight) * 0.9
+        let ballLabel = UILabel()
+        ballLabel.text = ballEmoji
+        ballLabel.font = UIFont.systemFont(ofSize: ballSize)
+        ballLabel.textAlignment = .center
+        ballLabel.frame = CGRect(x: startX - ballSize / 2, y: startY - ballSize / 2, width: ballSize, height: ballSize)
+        gridContainer.addSubview(ballLabel)
+        
+        // Phase 1: Ball flies up above the grid center
+        let topY: CGFloat = -ballSize  // Just above the grid
+        let centerX = gridWidth / 2
+        
+        // Determine bounce targets: pick 5-8 random occupied tiles
+        var occupiedTiles: [(row: Int, col: Int)] = []
+        for r in 0..<level.gridHeight {
+            for c in 0..<level.gridWidth {
+                if gridShapeMap[r][c] && gameGrid[r][c] != nil && !(r == fromRow && c == fromCol) {
+                    occupiedTiles.append((row: r, col: c))
+                }
+            }
+        }
+        occupiedTiles.shuffle()
+        let bounceCount = min(Int.random(in: 5...8), occupiedTiles.count)
+        let bounceTiles = Array(occupiedTiles.prefix(bounceCount))
+        
+        // Pre-capture powerups in bounce targets before any clearing happens
+        for tile in bounceTiles {
+            if let piece = gameGrid[tile.row][tile.col], piece.type != .normal {
+                cascadingPowerups.append((row: tile.row, col: tile.col, type: piece.type))
+            }
+        }
+        
+        // Sort bounce tiles roughly top-to-bottom, left-to-right for natural bounce path
+        let sortedBounces = bounceTiles.sorted { a, b in
+            if a.row != b.row { return a.row < b.row }
+            return a.col < b.col
+        }
+        
+        // Phase 1: Animate ball flying up
+        UIView.animate(withDuration: 0.5, delay: 0, options: .curveEaseOut, animations: {
+            ballLabel.center = CGPoint(x: centerX, y: topY)
+            ballLabel.transform = CGAffineTransform(scaleX: 1.3, y: 1.3)
+        }) { [weak self] _ in
+            guard let self = self else { ballLabel.removeFromSuperview(); completion(); return }
+            
+            // Phase 2: Ball drops and bounces across tiles
+            self.animateBallBounces(ballLabel: ballLabel, bounces: sortedBounces, index: 0,
+                                    level: level, rowHeight: rowHeight, colWidth: colWidth,
+                                    gridWidth: gridWidth, gridHeight: gridHeight) {
+                // Phase 3: Ball flies off screen
+                let exitX = Bool.random() ? gridWidth + ballSize : -ballSize
+                let exitY = gridHeight + ballSize
+                UIView.animate(withDuration: 0.4, delay: 0, options: .curveEaseIn, animations: {
+                    ballLabel.center = CGPoint(x: exitX, y: exitY)
+                    ballLabel.transform = CGAffineTransform(scaleX: 0.5, y: 0.5)
+                    ballLabel.alpha = 0.3
+                }) { _ in
+                    ballLabel.removeFromSuperview()
+                    self.updateGridDisplay()
+                    self.updateUI()
+                    
+                    // Handle cascading powerups or apply gravity (same pattern as rocket)
+                    if !cascadingPowerups.isEmpty {
+                        self.activateCascadingPowerups(cascadingPowerups)
+                    } else {
+                        self.applyGravity()
+                    }
+                    
+                    completion()
+                }
+            }
+        }
+    }
+    
+    /// Recursively animates ball bouncing to each target tile, clearing it on impact.
+    private func animateBallBounces(ballLabel: UILabel, bounces: [(row: Int, col: Int)], index: Int,
+                                     level: MatchGameLevel, rowHeight: CGFloat, colWidth: CGFloat,
+                                     gridWidth: CGFloat, gridHeight: CGFloat, completion: @escaping () -> Void) {
+        guard index < bounces.count else {
+            completion()
+            return
+        }
+        
+        let target = bounces[index]
+        let targetX = CGFloat(target.col) * colWidth + colWidth / 2
+        let targetY = CGFloat(target.row) * rowHeight + rowHeight / 2
+        
+        // Arc bounce: ball travels in a parabolic arc to the target
+        let currentPos = ballLabel.center
+        let midX = (currentPos.x + targetX) / 2
+        let arcHeight = min(currentPos.y, targetY) - rowHeight * 1.5  // Peak of arc above both points
+        
+        // Use keyframe animation for the arc
+        let duration: TimeInterval = 0.3 + Double(index) * 0.01  // Slightly slower over time
+        
+        UIView.animateKeyframes(withDuration: duration, delay: 0, options: [], animations: {
+            // Arc up
+            UIView.addKeyframe(withRelativeStartTime: 0, relativeDuration: 0.5) {
+                ballLabel.center = CGPoint(x: midX, y: arcHeight)
+                ballLabel.transform = CGAffineTransform(scaleX: 1.2, y: 1.2).rotated(by: CGFloat.pi * 0.5)
+            }
+            // Arc down to target
+            UIView.addKeyframe(withRelativeStartTime: 0.5, relativeDuration: 0.5) {
+                ballLabel.center = CGPoint(x: targetX, y: targetY)
+                ballLabel.transform = CGAffineTransform(scaleX: 1.0, y: 1.0).rotated(by: CGFloat.pi)
+            }
+        }) { [weak self] _ in
+            guard let self = self else { completion(); return }
+            
+            // Impact: clear the tile
+            if self.gameGrid[target.row][target.col] != nil {
+                let _ = self.hitTile(row: target.row, col: target.col)
+                
+                // Clear the button display on impact
+                if let button = self.gridButtons[target.row][target.col] {
+                    button.setTitle("", for: .normal)
+                    button.setImage(nil, for: .normal)
+                    button.backgroundColor = .clear
+                }
+                
+                // Haptic feedback
+                let impact = UIImpactFeedbackGenerator(style: .light)
+                impact.impactOccurred()
+            }
+            
+            // Brief pause then bounce to next target
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.08) {
+                self.animateBallBounces(ballLabel: ballLabel, bounces: bounces, index: index + 1,
+                                        level: level, rowHeight: rowHeight, colWidth: colWidth,
+                                        gridWidth: gridWidth, gridHeight: gridHeight, completion: completion)
+            }
         }
     }
     
@@ -3494,6 +3824,13 @@ class MatchGameViewController: UIViewController {
                     }
                     return
                     
+                case .ball:
+                    // Ball activated via swap: animate bouncing ball
+                    animateBouncingBall(fromRow: r1, fromCol: c1) { [weak self] in
+                        self?.isAnimating = false
+                    }
+                    return
+                    
                 case .flame, .normal:
                     break
                 }
@@ -3563,6 +3900,13 @@ class MatchGameViewController: UIViewController {
                 case .rocket:
                     // Rocket activated via match-created powerup in swap
                     animateRocketPath(fromRow: r2, fromCol: c2) { [weak self] in
+                        self?.isAnimating = false
+                    }
+                    return
+                    
+                case .ball:
+                    // Ball activated via match-created powerup in swap
+                    animateBouncingBall(fromRow: r2, fromCol: c2) { [weak self] in
                         self?.isAnimating = false
                     }
                     return
@@ -3836,12 +4180,103 @@ class MatchGameViewController: UIViewController {
             }
         }
         
+        // Check for T-shape patterns → ball powerup
+        // A T-shape is 3 tiles in a line, with 2 perpendicular tiles extending from the CENTER tile (5 unique tiles)
+        // Check all orientations: horizontal bar with stem up, down; vertical bar with stem left, right
+        for row in 0..<level.gridHeight {
+            for col in 0..<level.gridWidth {
+                guard gridShapeMap[row][col],
+                      let centerPiece = gameGrid[row][col],
+                      centerPiece.type == .normal else { continue }
+                
+                // T-shape with horizontal bar (3 horizontal) + vertical stem (2 tiles up or down from center)
+                // Center of horizontal bar is at (row, col)
+                let hLeft = col - 1
+                let hRight = col + 1
+                if hLeft >= 0 && hRight < level.gridWidth &&
+                   gridShapeMap[row][hLeft] && gridShapeMap[row][hRight],
+                   let pL = gameGrid[row][hLeft], pL.type == .normal, centerPiece.matches(pL),
+                   let pR = gameGrid[row][hRight], pR.type == .normal, centerPiece.matches(pR) {
+                    // Stem going down
+                    let s1 = row + 1, s2 = row + 2
+                    if s2 < level.gridHeight &&
+                       gridShapeMap[s1][col] && gridShapeMap[s2][col],
+                       let pS1 = gameGrid[s1][col], pS1.type == .normal, centerPiece.matches(pS1),
+                       let pS2 = gameGrid[s2][col], pS2.type == .normal, centerPiece.matches(pS2) {
+                        let tTiles = [(row, hLeft), (row, col), (row, hRight), (s1, col), (s2, col)]
+                        var ballRow = row; var ballCol = col
+                        if let ((r1, c1), (r2, c2)) = lastSwappedPositions {
+                            if tTiles.contains(where: { $0.0 == r1 && $0.1 == c1 }) { ballRow = r1; ballCol = c1 }
+                            else if tTiles.contains(where: { $0.0 == r2 && $0.1 == c2 }) { ballRow = r2; ballCol = c2 }
+                        }
+                        powerUpsToCreate.append((row: ballRow, col: ballCol, type: .ball))
+                        for tile in tTiles { matchesToRemove.insert("\(tile.0),\(tile.1)") }
+                    }
+                    // Stem going up
+                    let u1 = row - 1, u2 = row - 2
+                    if u2 >= 0 &&
+                       gridShapeMap[u1][col] && gridShapeMap[u2][col],
+                       let pU1 = gameGrid[u1][col], pU1.type == .normal, centerPiece.matches(pU1),
+                       let pU2 = gameGrid[u2][col], pU2.type == .normal, centerPiece.matches(pU2) {
+                        let tTiles = [(row, hLeft), (row, col), (row, hRight), (u1, col), (u2, col)]
+                        var ballRow = row; var ballCol = col
+                        if let ((r1, c1), (r2, c2)) = lastSwappedPositions {
+                            if tTiles.contains(where: { $0.0 == r1 && $0.1 == c1 }) { ballRow = r1; ballCol = c1 }
+                            else if tTiles.contains(where: { $0.0 == r2 && $0.1 == c2 }) { ballRow = r2; ballCol = c2 }
+                        }
+                        powerUpsToCreate.append((row: ballRow, col: ballCol, type: .ball))
+                        for tile in tTiles { matchesToRemove.insert("\(tile.0),\(tile.1)") }
+                    }
+                }
+                
+                // T-shape with vertical bar (3 vertical) + horizontal stem (2 tiles left or right from center)
+                // Center of vertical bar is at (row, col)
+                let vTop = row - 1
+                let vBottom = row + 1
+                if vTop >= 0 && vBottom < level.gridHeight &&
+                   gridShapeMap[vTop][col] && gridShapeMap[vBottom][col],
+                   let pT = gameGrid[vTop][col], pT.type == .normal, centerPiece.matches(pT),
+                   let pB = gameGrid[vBottom][col], pB.type == .normal, centerPiece.matches(pB) {
+                    // Stem going right
+                    let r1c = col + 1, r2c = col + 2
+                    if r2c < level.gridWidth &&
+                       gridShapeMap[row][r1c] && gridShapeMap[row][r2c],
+                       let pR1 = gameGrid[row][r1c], pR1.type == .normal, centerPiece.matches(pR1),
+                       let pR2 = gameGrid[row][r2c], pR2.type == .normal, centerPiece.matches(pR2) {
+                        let tTiles = [(vTop, col), (row, col), (vBottom, col), (row, r1c), (row, r2c)]
+                        var ballRow = row; var ballCol = col
+                        if let ((r1, c1), (r2, c2)) = lastSwappedPositions {
+                            if tTiles.contains(where: { $0.0 == r1 && $0.1 == c1 }) { ballRow = r1; ballCol = c1 }
+                            else if tTiles.contains(where: { $0.0 == r2 && $0.1 == c2 }) { ballRow = r2; ballCol = c2 }
+                        }
+                        powerUpsToCreate.append((row: ballRow, col: ballCol, type: .ball))
+                        for tile in tTiles { matchesToRemove.insert("\(tile.0),\(tile.1)") }
+                    }
+                    // Stem going left
+                    let l1c = col - 1, l2c = col - 2
+                    if l2c >= 0 &&
+                       gridShapeMap[row][l1c] && gridShapeMap[row][l2c],
+                       let pL1 = gameGrid[row][l1c], pL1.type == .normal, centerPiece.matches(pL1),
+                       let pL2 = gameGrid[row][l2c], pL2.type == .normal, centerPiece.matches(pL2) {
+                        let tTiles = [(vTop, col), (row, col), (vBottom, col), (row, l1c), (row, l2c)]
+                        var ballRow = row; var ballCol = col
+                        if let ((r1, c1), (r2, c2)) = lastSwappedPositions {
+                            if tTiles.contains(where: { $0.0 == r1 && $0.1 == c1 }) { ballRow = r1; ballCol = c1 }
+                            else if tTiles.contains(where: { $0.0 == r2 && $0.1 == c2 }) { ballRow = r2; ballCol = c2 }
+                        }
+                        powerUpsToCreate.append((row: ballRow, col: ballCol, type: .ball))
+                        for tile in tTiles { matchesToRemove.insert("\(tile.0),\(tile.1)") }
+                    }
+                }
+            }
+        }
+        
         if !matchesToRemove.isEmpty {
             print("🔍 [DEBUG] Total matches found: \(matchesToRemove.count) tiles to remove")
             print("🔍 [DEBUG] Matches: \(matchesToRemove.sorted())")
             print("🔍 [DEBUG] Initial powerups to create: \(powerUpsToCreate.count)")
             
-            // PRIORITIZE POWERUPS: flame > rocket > arrow > bomb
+            // PRIORITIZE POWERUPS: ball > flame > rocket > arrow > bomb
             // If multiple powerups target the same location, keep only the highest priority
             var prioritizedPowerups: [(row: Int, col: Int, type: PieceType)] = []
             var powerupLocations: [String: PieceType] = [:]  // Track (row,col) -> highest priority type
@@ -3850,9 +4285,10 @@ class MatchGameViewController: UIViewController {
                 let key = "\(powerup.row),\(powerup.col)"
                 let existingType = powerupLocations[key]
                 
-                // Determine priority: flame (4) > rocket (3) > arrow (2) > bomb (1) > nil (0)
+                // Determine priority: ball (5) > flame (4) > rocket (3) > arrow (2) > bomb (1) > nil (0)
                 func typePriority(_ t: PieceType) -> Int {
                     switch t {
+                    case .ball: return 5
                     case .flame: return 4
                     case .rocket: return 3
                     case .verticalArrow, .horizontalArrow: return 2
@@ -4360,11 +4796,48 @@ class MatchGameViewController: UIViewController {
                         button.setImage(nil, for: .normal)
                         button.titleLabel?.font = UIFont.systemFont(ofSize: powerupFontSize)
                         button.backgroundColor = .clear
+                        // Flame flicker animation
+                        if button.layer.animation(forKey: "flameFlicker") == nil {
+                            let flicker = CAKeyframeAnimation(keyPath: "transform")
+                            flicker.values = [
+                                NSValue(caTransform3D: CATransform3DMakeScale(1.0, 1.0, 1.0)),
+                                NSValue(caTransform3D: CATransform3DConcat(
+                                    CATransform3DMakeScale(1.08, 0.94, 1.0),
+                                    CATransform3DMakeRotation(0.06, 0, 0, 1))),
+                                NSValue(caTransform3D: CATransform3DConcat(
+                                    CATransform3DMakeScale(0.95, 1.06, 1.0),
+                                    CATransform3DMakeRotation(-0.04, 0, 0, 1))),
+                                NSValue(caTransform3D: CATransform3DConcat(
+                                    CATransform3DMakeScale(1.05, 0.97, 1.0),
+                                    CATransform3DMakeRotation(0.03, 0, 0, 1))),
+                                NSValue(caTransform3D: CATransform3DMakeScale(1.0, 1.0, 1.0))
+                            ]
+                            flicker.keyTimes = [0, 0.25, 0.5, 0.75, 1.0]
+                            flicker.duration = 0.4
+                            flicker.repeatCount = .infinity
+                            flicker.autoreverses = false
+                            button.layer.add(flicker, forKey: "flameFlicker")
+                        }
                     case .rocket:
                         button.setTitle("🌟", for: .normal)
                         button.setImage(nil, for: .normal)
                         button.titleLabel?.font = UIFont.systemFont(ofSize: powerupFontSize)
                         button.backgroundColor = .clear
+                    case .ball:
+                        // Use the piece's fixed emoji index so it doesn't change when the piece moves
+                        button.setTitle(GamePiece.ballEmojis[piece.ballEmojiIndex], for: .normal)
+                        button.setImage(nil, for: .normal)
+                        button.titleLabel?.font = UIFont.systemFont(ofSize: powerupFontSize)
+                        button.backgroundColor = .clear
+                        // Ball bounce animation
+                        if button.layer.animation(forKey: "ballBounce") == nil {
+                            let bounce = CAKeyframeAnimation(keyPath: "transform.translation.y")
+                            bounce.values = [0, -3, 0, -1.5, 0]
+                            bounce.keyTimes = [0, 0.3, 0.5, 0.75, 1.0]
+                            bounce.duration = 0.6
+                            bounce.repeatCount = .infinity
+                            button.layer.add(bounce, forKey: "ballBounce")
+                        }
                     case .normal:
                         let itemIndex = level.items.firstIndex(where: { $0.id == piece.itemId }) ?? 0
                         let item = level.items[itemIndex]
