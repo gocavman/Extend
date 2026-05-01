@@ -2237,6 +2237,25 @@ class MatchGameViewController: UIViewController {
                 }
             }
             return
+        } else if type1 == .ball {
+            let impact = UIImpactFeedbackGenerator(style: .medium)
+            impact.impactOccurred()
+            // Ball handles its own clearing via animateBouncingBall — bypass finalizePowerupCombo
+            if let (button1, button2) = swappedButtons {
+                button1.transform = .identity
+                button2.transform = .identity
+                self.swappedButtons = nil
+            }
+            updateGridDisplay()
+            movesRemaining -= 1
+            updateUI()
+            animateBouncingBall(fromRow: r2, fromCol: c2) { [weak self] in
+                self?.isAnimating = false
+                if self?.movesRemaining ?? 0 <= 0 {
+                    self?.levelFailed()
+                }
+            }
+            return
         }
 
         // --- Activate type2 at its current position (r1, c1) ---
@@ -2320,6 +2339,25 @@ class MatchGameViewController: UIViewController {
             movesRemaining -= 1
             updateUI()
             animateRocketPath(fromRow: r1, fromCol: c1) { [weak self] in
+                self?.isAnimating = false
+                if self?.movesRemaining ?? 0 <= 0 {
+                    self?.levelFailed()
+                }
+            }
+            return
+        } else if type2 == .ball {
+            let impact = UIImpactFeedbackGenerator(style: .medium)
+            impact.impactOccurred()
+            // Ball handles its own clearing via animateBouncingBall — bypass finalizePowerupCombo
+            if let (button1, button2) = swappedButtons {
+                button1.transform = .identity
+                button2.transform = .identity
+                self.swappedButtons = nil
+            }
+            updateGridDisplay()
+            movesRemaining -= 1
+            updateUI()
+            animateBouncingBall(fromRow: r1, fromCol: c1) { [weak self] in
                 self?.isAnimating = false
                 if self?.movesRemaining ?? 0 <= 0 {
                     self?.levelFailed()
@@ -3033,7 +3071,8 @@ class MatchGameViewController: UIViewController {
     }
     
     /// Animates a bouncing ball powerup. The ball flies up above the grid, then falls with gravity,
-    /// bouncing across tiles and clearing each one it hits, before flying off screen.
+    /// bouncing one column left/right and one row down each time, leaving a dotted trail,
+    /// before doing a final bounce off the bottom of the screen.
     private func animateBouncingBall(fromRow: Int, fromCol: Int, completion: @escaping () -> Void) {
         guard let level = currentLevel else {
             completion()
@@ -3079,22 +3118,49 @@ class MatchGameViewController: UIViewController {
         ballLabel.frame = CGRect(x: startX - ballSize / 2, y: startY - ballSize / 2, width: ballSize, height: ballSize)
         gridContainer.addSubview(ballLabel)
         
+        // Create dotted trail layer — trail starts AFTER fly-up, not during
+        let trailLayer = CAShapeLayer()
+        trailLayer.strokeColor = UIColor.white.withAlphaComponent(0.7).cgColor
+        trailLayer.fillColor = nil
+        trailLayer.lineWidth = 2.0
+        trailLayer.lineDashPattern = [4, 6]
+        trailLayer.lineCap = .round
+        gridContainer.layer.addSublayer(trailLayer)
+        let trailPath = UIBezierPath()
+        
         // Phase 1: Ball flies up above the grid center
-        let topY: CGFloat = -ballSize  // Just above the grid
+        let topY: CGFloat = -ballSize
         let centerX = gridWidth / 2
         
-        // Determine bounce targets: pick 5-8 random occupied tiles
-        var occupiedTiles: [(row: Int, col: Int)] = []
+        // Build bounce targets: step one row down and one column left/right each time.
+        // Start from row 0 (top of grid) after the fly-up.
+        var bounceTiles: [(row: Int, col: Int)] = []
+        var currentCol = Int.random(in: 0..<level.gridWidth)  // Random starting column
+        var bounceDir = Bool.random() ? 1 : -1  // Initial direction: +1 right, -1 left
+        
         for r in 0..<level.gridHeight {
-            for c in 0..<level.gridWidth {
-                if gridShapeMap[r][c] && gameGrid[r][c] != nil && !(r == fromRow && c == fromCol) {
-                    occupiedTiles.append((row: r, col: c))
+            // Look for an occupied tile in this row near currentCol
+            // Try currentCol first, then one step in bounceDir
+            let candidates = [currentCol, currentCol + bounceDir, currentCol - bounceDir]
+            var found = false
+            for c in candidates {
+                if c >= 0 && c < level.gridWidth && gridShapeMap[r][c] && gameGrid[r][c] != nil {
+                    bounceTiles.append((row: r, col: c))
+                    // Bounce direction: move toward the column we landed on, then alternate
+                    if c != currentCol {
+                        bounceDir = (c > currentCol) ? 1 : -1
+                    } else {
+                        bounceDir = -bounceDir  // Alternate if staying in same column
+                    }
+                    currentCol = c
+                    found = true
+                    break
                 }
             }
+            // If nothing found in this row, skip it (ball falls past)
+            if !found { continue }
+            if bounceTiles.count >= 8 { break }
         }
-        occupiedTiles.shuffle()
-        let bounceCount = min(Int.random(in: 5...8), occupiedTiles.count)
-        let bounceTiles = Array(occupiedTiles.prefix(bounceCount))
         
         // Pre-capture powerups in bounce targets before any clearing happens
         for tile in bounceTiles {
@@ -3103,52 +3169,89 @@ class MatchGameViewController: UIViewController {
             }
         }
         
-        // Sort bounce tiles roughly top-to-bottom, left-to-right for natural bounce path
-        let sortedBounces = bounceTiles.sorted { a, b in
-            if a.row != b.row { return a.row < b.row }
-            return a.col < b.col
-        }
-        
-        // Phase 1: Animate ball flying up
+        // Phase 1: Animate ball flying up (no trail during this phase)
         UIView.animate(withDuration: 0.5, delay: 0, options: .curveEaseOut, animations: {
             ballLabel.center = CGPoint(x: centerX, y: topY)
             ballLabel.transform = CGAffineTransform(scaleX: 1.3, y: 1.3)
         }) { [weak self] _ in
-            guard let self = self else { ballLabel.removeFromSuperview(); completion(); return }
+            guard let self = self else {
+                trailLayer.removeFromSuperlayer()
+                ballLabel.removeFromSuperview()
+                completion()
+                return
+            }
             
-            // Phase 2: Ball drops and bounces across tiles
-            self.animateBallBounces(ballLabel: ballLabel, bounces: sortedBounces, index: 0,
+            // Start the trail from the top position
+            trailPath.move(to: CGPoint(x: centerX, y: topY))
+            trailLayer.path = trailPath.cgPath
+            
+            // Phase 2: Ball drops and bounces across tiles (downward only)
+            self.animateBallBounces(ballLabel: ballLabel, bounces: bounceTiles, index: 0,
                                     level: level, rowHeight: rowHeight, colWidth: colWidth,
-                                    gridWidth: gridWidth, gridHeight: gridHeight) {
-                // Phase 3: Ball flies off screen
-                let exitX = Bool.random() ? gridWidth + ballSize : -ballSize
-                let exitY = gridHeight + ballSize
-                UIView.animate(withDuration: 0.4, delay: 0, options: .curveEaseIn, animations: {
-                    ballLabel.center = CGPoint(x: exitX, y: exitY)
-                    ballLabel.transform = CGAffineTransform(scaleX: 0.5, y: 0.5)
-                    ballLabel.alpha = 0.3
+                                    gridWidth: gridWidth, gridHeight: gridHeight,
+                                    trailPath: trailPath, trailLayer: trailLayer) {
+                // Phase 3: Final bounce off the bottom of the screen
+                let lastPos = ballLabel.center
+                let exitDir: CGFloat = Bool.random() ? 1 : -1
+                let exitX = lastPos.x + exitDir * colWidth * 1.5
+                let exitY = gridHeight + ballSize * 2
+                let arcPeakY = lastPos.y - rowHeight * 0.8
+                let arcPeakX = lastPos.x + exitDir * colWidth * 0.4
+                
+                // Add curved trail to exit
+                trailPath.addQuadCurve(to: CGPoint(x: exitX, y: exitY),
+                                       controlPoint: CGPoint(x: arcPeakX, y: arcPeakY))
+                trailLayer.path = trailPath.cgPath
+                
+                UIView.animateKeyframes(withDuration: 0.5, delay: 0, options: [], animations: {
+                    // Bounce up (slow rise)
+                    UIView.addKeyframe(withRelativeStartTime: 0, relativeDuration: 0.30) {
+                        ballLabel.center = CGPoint(x: arcPeakX, y: arcPeakY)
+                        ballLabel.transform = CGAffineTransform(scaleX: 1.05, y: 1.05).rotated(by: CGFloat.pi * 1.5)
+                    }
+                    // Fall off bottom (fast drop)
+                    UIView.addKeyframe(withRelativeStartTime: 0.30, relativeDuration: 0.70) {
+                        ballLabel.center = CGPoint(x: exitX, y: exitY)
+                        ballLabel.transform = CGAffineTransform(scaleX: 0.8, y: 0.8).rotated(by: CGFloat.pi * 3)
+                    }
                 }) { _ in
                     ballLabel.removeFromSuperview()
-                    self.updateGridDisplay()
-                    self.updateUI()
                     
-                    // Handle cascading powerups or apply gravity (same pattern as rocket)
-                    if !cascadingPowerups.isEmpty {
-                        self.activateCascadingPowerups(cascadingPowerups)
-                    } else {
-                        self.applyGravity()
+                    // Fade out the trail
+                    let fadeOut = CABasicAnimation(keyPath: "opacity")
+                    fadeOut.fromValue = 0.7
+                    fadeOut.toValue = 0.0
+                    fadeOut.duration = 0.4
+                    fadeOut.fillMode = .forwards
+                    fadeOut.isRemovedOnCompletion = false
+                    trailLayer.add(fadeOut, forKey: "trailFade")
+                    
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
+                        trailLayer.removeFromSuperlayer()
+                        self.updateGridDisplay()
+                        self.updateUI()
+                        
+                        // Handle cascading powerups or apply gravity (same pattern as rocket)
+                        if !cascadingPowerups.isEmpty {
+                            self.activateCascadingPowerups(cascadingPowerups)
+                        } else {
+                            self.applyGravity()
+                        }
+                        
+                        completion()
                     }
-                    
-                    completion()
                 }
             }
         }
     }
     
-    /// Recursively animates ball bouncing to each target tile, clearing it on impact.
+    /// Recursively animates ball bouncing downward to each target tile, clearing it on impact.
+    /// Uses parabolic arcs with curved dotted trail. Rise is slow, fall is fast (gravity feel).
     private func animateBallBounces(ballLabel: UILabel, bounces: [(row: Int, col: Int)], index: Int,
                                      level: MatchGameLevel, rowHeight: CGFloat, colWidth: CGFloat,
-                                     gridWidth: CGFloat, gridHeight: CGFloat, completion: @escaping () -> Void) {
+                                     gridWidth: CGFloat, gridHeight: CGFloat,
+                                     trailPath: UIBezierPath, trailLayer: CAShapeLayer,
+                                     completion: @escaping () -> Void) {
         guard index < bounces.count else {
             completion()
             return
@@ -3158,24 +3261,41 @@ class MatchGameViewController: UIViewController {
         let targetX = CGFloat(target.col) * colWidth + colWidth / 2
         let targetY = CGFloat(target.row) * rowHeight + rowHeight / 2
         
-        // Arc bounce: ball travels in a parabolic arc to the target
         let currentPos = ballLabel.center
-        let midX = (currentPos.x + targetX) / 2
-        let arcHeight = min(currentPos.y, targetY) - rowHeight * 1.5  // Peak of arc above both points
         
-        // Use keyframe animation for the arc
-        let duration: TimeInterval = 0.3 + Double(index) * 0.01  // Slightly slower over time
+        // Arc peak: rises above the current position proportional to horizontal distance
+        let horizontalDist = abs(targetX - currentPos.x)
+        let arcRise = max(rowHeight * 1.2, horizontalDist * 0.4 + rowHeight * 0.8)
+        let arcPeakY = currentPos.y - arcRise
+        // The arc peak drifts slightly toward the target horizontally
+        let arcPeakX = currentPos.x + (targetX - currentPos.x) * 0.3
+        
+        // Duration based on vertical drop distance — longer drops take more time
+        let verticalDrop = targetY - arcPeakY
+        let duration: TimeInterval = max(0.3, min(0.5, Double(verticalDrop / (rowHeight * 6)) * 0.4))
+        
+        // Build the trail curve BEFORE the animation so it's visible during flight
+        // Use a quadratic bezier curve through the arc peak
+        trailPath.addQuadCurve(to: CGPoint(x: targetX, y: targetY),
+                               controlPoint: CGPoint(x: arcPeakX, y: arcPeakY))
+        trailLayer.path = trailPath.cgPath
+        
+        // Rotation amount — spin more on longer bounces
+        let spinAmount = CGFloat.pi * (0.8 + horizontalDist / gridWidth)
+        let currentRotation = CGFloat(index) * CGFloat.pi * 0.8
         
         UIView.animateKeyframes(withDuration: duration, delay: 0, options: [], animations: {
-            // Arc up
-            UIView.addKeyframe(withRelativeStartTime: 0, relativeDuration: 0.5) {
-                ballLabel.center = CGPoint(x: midX, y: arcHeight)
-                ballLabel.transform = CGAffineTransform(scaleX: 1.2, y: 1.2).rotated(by: CGFloat.pi * 0.5)
+            // Rise phase: slow (decelerating upward) — 30% of time
+            UIView.addKeyframe(withRelativeStartTime: 0, relativeDuration: 0.30) {
+                ballLabel.center = CGPoint(x: arcPeakX, y: arcPeakY)
+                ballLabel.transform = CGAffineTransform(scaleX: 1.05, y: 1.05)
+                    .rotated(by: currentRotation + spinAmount * 0.3)
             }
-            // Arc down to target
-            UIView.addKeyframe(withRelativeStartTime: 0.5, relativeDuration: 0.5) {
+            // Fall phase: fast (accelerating downward) — 70% of time
+            UIView.addKeyframe(withRelativeStartTime: 0.30, relativeDuration: 0.70) {
                 ballLabel.center = CGPoint(x: targetX, y: targetY)
-                ballLabel.transform = CGAffineTransform(scaleX: 1.0, y: 1.0).rotated(by: CGFloat.pi)
+                ballLabel.transform = CGAffineTransform(scaleX: 1.0, y: 1.0)
+                    .rotated(by: currentRotation + spinAmount)
             }
         }) { [weak self] _ in
             guard let self = self else { completion(); return }
@@ -3197,10 +3317,12 @@ class MatchGameViewController: UIViewController {
             }
             
             // Brief pause then bounce to next target
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.08) {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.06) {
                 self.animateBallBounces(ballLabel: ballLabel, bounces: bounces, index: index + 1,
                                         level: level, rowHeight: rowHeight, colWidth: colWidth,
-                                        gridWidth: gridWidth, gridHeight: gridHeight, completion: completion)
+                                        gridWidth: gridWidth, gridHeight: gridHeight,
+                                        trailPath: trailPath, trailLayer: trailLayer,
+                                        completion: completion)
             }
         }
     }
