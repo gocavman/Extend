@@ -1847,7 +1847,7 @@ class MatchGameViewController: UIViewController {
         )
     }
 
-    /// Two horizontal arrows: Clear both rows (r1 and r2).
+    /// Two horizontal arrows: Clear an "X" (both diagonals) from the swap point (r2, c2).
     private func handleTwoHorizontalArrows(r1: Int, c1: Int, r2: Int, c2: Int) {
         guard let level = currentLevel else { return }
 
@@ -1856,14 +1856,22 @@ class MatchGameViewController: UIViewController {
 
         var clearedTiles: Set<String> = []
 
-        // Clear row r1 and row r2
-        for col in 0..<level.gridWidth {
-            if gridShapeMap[r1][col] && gameGrid[r1][col] != nil {
-                clearedTiles.insert("\(r1),\(col)")
+        // Clear all 4 diagonals from (r2, c2)
+        let maxSteps = max(level.gridHeight, level.gridWidth)
+        let diagonalDeltas = [(-1, -1), (-1, 1), (1, -1), (1, 1)]
+        for (dr, dc) in diagonalDeltas {
+            for step in 1...maxSteps {
+                let nr = r2 + dr * step
+                let nc = c2 + dc * step
+                guard nr >= 0 && nr < level.gridHeight && nc >= 0 && nc < level.gridWidth else { break }
+                if gridShapeMap[nr][nc] && gameGrid[nr][nc] != nil {
+                    clearedTiles.insert("\(nr),\(nc)")
+                }
             }
-            if gridShapeMap[r2][col] && gameGrid[r2][col] != nil {
-                clearedTiles.insert("\(r2),\(col)")
-            }
+        }
+        // Also clear the center tile itself
+        if gridShapeMap[r2][c2] && gameGrid[r2][c2] != nil {
+            clearedTiles.insert("\(r2),\(c2)")
         }
 
         let cascadingPowerups = collectCascadingPowerups(
@@ -1871,11 +1879,10 @@ class MatchGameViewController: UIViewController {
             excludePositions: [(row: r1, col: c1), (row: r2, col: c2)]
         )
 
-        print("🔍 [DEBUG] Two horizontal arrows! Clearing rows \(r1) and \(r2). Tiles: \(clearedTiles.count), cascading: \(cascadingPowerups.count)")
+        print("🔍 [DEBUG] Two horizontal arrows (X)! Center (\(r2),\(c2)). Tiles: \(clearedTiles.count), cascading: \(cascadingPowerups.count)")
 
-        // Fire flame animations for both rows
-        shootFlamesHorizontally(row: r1, arrowCol: c1, columns: 0..<level.gridWidth) {}
-        shootFlamesHorizontally(row: r2, arrowCol: c2, columns: 0..<level.gridWidth) {}
+        // Fire diagonal beam animations
+        shootFlamesDiagonally(centerRow: r2, centerCol: c2) {}
 
         finalizePowerupCombo(
             clearedTiles: clearedTiles,
@@ -1884,7 +1891,7 @@ class MatchGameViewController: UIViewController {
         )
     }
 
-    /// Two vertical arrows: Clear both columns (c1 and c2).
+    /// Two vertical arrows: Clear an "X" (both diagonals) from the swap point (r2, c2).
     private func handleTwoVerticalArrows(r1: Int, c1: Int, r2: Int, c2: Int) {
         guard let level = currentLevel else { return }
 
@@ -1893,14 +1900,22 @@ class MatchGameViewController: UIViewController {
 
         var clearedTiles: Set<String> = []
 
-        // Clear column c1 and column c2
-        for row in 0..<level.gridHeight {
-            if gridShapeMap[row][c1] && gameGrid[row][c1] != nil {
-                clearedTiles.insert("\(row),\(c1)")
+        // Clear all 4 diagonals from (r2, c2)
+        let maxSteps = max(level.gridHeight, level.gridWidth)
+        let diagonalDeltas = [(-1, -1), (-1, 1), (1, -1), (1, 1)]
+        for (dr, dc) in diagonalDeltas {
+            for step in 1...maxSteps {
+                let nr = r2 + dr * step
+                let nc = c2 + dc * step
+                guard nr >= 0 && nr < level.gridHeight && nc >= 0 && nc < level.gridWidth else { break }
+                if gridShapeMap[nr][nc] && gameGrid[nr][nc] != nil {
+                    clearedTiles.insert("\(nr),\(nc)")
+                }
             }
-            if gridShapeMap[row][c2] && gameGrid[row][c2] != nil {
-                clearedTiles.insert("\(row),\(c2)")
-            }
+        }
+        // Also clear the center tile itself
+        if gridShapeMap[r2][c2] && gameGrid[r2][c2] != nil {
+            clearedTiles.insert("\(r2),\(c2)")
         }
 
         let cascadingPowerups = collectCascadingPowerups(
@@ -1908,11 +1923,10 @@ class MatchGameViewController: UIViewController {
             excludePositions: [(row: r1, col: c1), (row: r2, col: c2)]
         )
 
-        print("🔍 [DEBUG] Two vertical arrows! Clearing cols \(c1) and \(c2). Tiles: \(clearedTiles.count), cascading: \(cascadingPowerups.count)")
+        print("🔍 [DEBUG] Two vertical arrows (X)! Center (\(r2),\(c2)). Tiles: \(clearedTiles.count), cascading: \(cascadingPowerups.count)")
 
-        // Fire flame animations for both columns
-        shootFlamesVertically(column: c1, arrowRow: r1, rows: 0..<level.gridHeight) {}
-        shootFlamesVertically(column: c2, arrowRow: r2, rows: 0..<level.gridHeight) {}
+        // Fire diagonal beam animations
+        shootFlamesDiagonally(centerRow: r2, centerCol: c2) {}
 
         finalizePowerupCombo(
             clearedTiles: clearedTiles,
@@ -2939,6 +2953,78 @@ class MatchGameViewController: UIViewController {
         })
     }
     
+    /// Shoots four diagonal beams from (centerRow, centerCol), forming an "X" pattern.
+    /// Uses CAShapeLayer strokeEnd animation — same visual language as the row/column beams.
+    private func shootFlamesDiagonally(centerRow: Int, centerCol: Int, completion: @escaping () -> Void) {
+        guard let level = currentLevel else { completion(); return }
+
+        let cellWidth  = gridContainer.bounds.width  / CGFloat(level.gridWidth)
+        let cellHeight = gridContainer.bounds.height / CGFloat(level.gridHeight)
+        let ox = CGFloat(centerCol) * cellWidth  + cellWidth  / 2
+        let oy = CGFloat(centerRow) * cellHeight + cellHeight / 2
+
+        // Diagonal end-points: go far enough to exit the grid in each diagonal direction
+        let farDist: CGFloat = max(gridContainer.bounds.width, gridContainer.bounds.height) * 1.5
+        let directions: [(dx: CGFloat, dy: CGFloat)] = [(-1, -1), (1, -1), (-1, 1), (1, 1)]
+
+        let beamWidth: CGFloat = cellWidth * 0.18
+        let animDuration: CFTimeInterval = 0.3
+        var doneCount = 0
+
+        for dir in directions {
+            let endX = ox + dir.dx * farDist / sqrt(2)
+            let endY = oy + dir.dy * farDist / sqrt(2)
+
+            // Outer beam (orange)
+            let path = UIBezierPath()
+            path.move(to: CGPoint(x: ox, y: oy))
+            path.addLine(to: CGPoint(x: endX, y: endY))
+
+            let beamLayer = CAShapeLayer()
+            beamLayer.path = path.cgPath
+            beamLayer.strokeColor = UIColor.orange.cgColor
+            beamLayer.lineWidth = beamWidth
+            beamLayer.lineCap = .round
+            beamLayer.strokeEnd = 0
+            gridContainer.layer.addSublayer(beamLayer)
+
+            // Inner glow (yellow, thinner)
+            let glowLayer = CAShapeLayer()
+            glowLayer.path = path.cgPath
+            glowLayer.strokeColor = UIColor.yellow.withAlphaComponent(0.8).cgColor
+            glowLayer.lineWidth = beamWidth * 0.4
+            glowLayer.lineCap = .round
+            glowLayer.strokeEnd = 0
+            gridContainer.layer.addSublayer(glowLayer)
+
+            // Animate strokeEnd 0 → 1
+            let grow = CABasicAnimation(keyPath: "strokeEnd")
+            grow.fromValue = 0
+            grow.toValue = 1
+            grow.duration = animDuration
+            grow.timingFunction = CAMediaTimingFunction(name: .easeOut)
+            grow.fillMode = .forwards
+            grow.isRemovedOnCompletion = false
+            beamLayer.add(grow, forKey: "grow")
+            glowLayer.add(grow, forKey: "grow")
+
+            // Fade out after beam fully extends
+            DispatchQueue.main.asyncAfter(deadline: .now() + animDuration) {
+                UIView.animate(withDuration: 0.2, animations: {
+                    beamLayer.opacity = 0
+                    glowLayer.opacity = 0
+                }, completion: { _ in
+                    beamLayer.removeFromSuperlayer()
+                    glowLayer.removeFromSuperlayer()
+                    doneCount += 1
+                    if doneCount == directions.count {
+                        completion()
+                    }
+                })
+            }
+        }
+    }
+
     private func shootFlamesHorizontally(row: Int, arrowCol: Int? = nil, columns: Range<Int>, completion: @escaping () -> Void) {
         guard let level = currentLevel else {
             completion()
