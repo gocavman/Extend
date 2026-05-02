@@ -1591,6 +1591,20 @@ class MatchGameViewController: UIViewController {
                 wouldMatch = true
             }
             
+            // Check 2x2 bomb pattern: (row,col) is the bottom-right corner.
+            // At fill time, only cells above and to the left exist, so this is the
+            // only 2x2 we can pre-empt.
+            if row >= 1 && col >= 1,
+               gridShapeMap[row - 1][col - 1], gridShapeMap[row - 1][col], gridShapeMap[row][col - 1],
+               let p1 = gameGrid[row - 1][col - 1], p1.type == .normal,
+               let p2 = gameGrid[row - 1][col],     p2.type == .normal,
+               let p3 = gameGrid[row][col - 1],     p3.type == .normal,
+               p1.itemId == itemId && p1.colorIndex == randomColorIndex &&
+               p2.itemId == itemId && p2.colorIndex == randomColorIndex &&
+               p3.itemId == itemId && p3.colorIndex == randomColorIndex {
+                wouldMatch = true
+            }
+            
             if !wouldMatch {
                 return GamePiece(itemId: itemId, colorIndex: randomColorIndex, row: row, col: col, type: .normal)
             }
@@ -3276,7 +3290,8 @@ class MatchGameViewController: UIViewController {
                 completion()
                 return
             }
-            self.activeAnimationViews.remove(ObjectIdentifier(ballLabel))
+            // Keep ballLabel in activeAnimationViews — it's still active through Phase 2 & 3.
+            // Removal happens in Phase 3 completion when the ball truly exits the screen.
             
             // Start the trail from the top position
             trailPath.move(to: CGPoint(x: centerX, y: topY))
@@ -4511,6 +4526,11 @@ class MatchGameViewController: UIViewController {
         }
         
         if !matchesToRemove.isEmpty {
+            // Keep isAnimating = true for the entire match→cascade→gravity chain so user
+            // taps cannot accidentally activate (and silently destroy) powerup tiles while
+            // the board is mid-animation.  Only set false again in the no-match branch.
+            isAnimating = true
+
             print("🔍 [DEBUG] Total matches found: \(matchesToRemove.count) tiles to remove")
             print("🔍 [DEBUG] Matches: \(matchesToRemove.sorted())")
             print("🔍 [DEBUG] Initial powerups to create: \(powerUpsToCreate.count)")
@@ -4615,9 +4635,16 @@ class MatchGameViewController: UIViewController {
                     )
                 }
                 
-                // Mark animation complete BEFORE updateUI() so level completion check works
-                self.isAnimating = false
-                
+                // Do NOT reset isAnimating here — the cascade/gravity chain must complete
+                // before user input is accepted again (prevents accidental powerup activation).
+                // isAnimating will be set to false in the "no match found" branch once the
+                // board has fully settled.
+
+                // Update score/moves display and check for level completion now that tiles
+                // have been scored.  (activateCascadingPowerups calls updateUI internally,
+                // but the gravity-only path doesn't, so call it here for both paths.)
+                self.updateUI()
+
                 // If powerups were caught in the match, activate them as cascading
                 if !cascadingPowerups.isEmpty {
                     self.activateCascadingPowerups(cascadingPowerups)
