@@ -1219,6 +1219,12 @@ class MatchGameViewController: UIViewController {
             case (_, .rocket):
                 handleRocketPowerupCombo(r1: r1, c1: c1, r2: r2, c2: c2, otherType: type1)
 
+            // --- Ball + arrow ---
+            case (.ball, .horizontalArrow), (.horizontalArrow, .ball):
+                handleBallArrowCombo(r1: r1, c1: c1, r2: r2, c2: c2, isHorizontal: true)
+            case (.ball, .verticalArrow), (.verticalArrow, .ball):
+                handleBallArrowCombo(r1: r1, c1: c1, r2: r2, c2: c2, isHorizontal: false)
+
             default:
                 // Fallback: activate both individually at their positions
                 handleIndividualPowerupActivation(r1: r1, c1: c1, r2: r2, c2: c2, type1: type1, type2: type2)
@@ -1901,6 +1907,70 @@ class MatchGameViewController: UIViewController {
         )
     }
 
+    /// Ball + Arrow combo: Fire the arrow first (clear row or column), then animate the bouncing ball.
+    /// Both effects originate from r2,c2 (the combined swap position in a powerup+powerup swap).
+    private func handleBallArrowCombo(r1: Int, c1: Int, r2: Int, c2: Int, isHorizontal: Bool) {
+        guard let level = currentLevel else { return }
+
+        let impact = UIImpactFeedbackGenerator(style: .heavy)
+        impact.impactOccurred()
+
+        // Reset swapped button transforms
+        if let (button1, button2) = swappedButtons {
+            button1.transform = .identity
+            button2.transform = .identity
+            self.swappedButtons = nil
+        }
+
+        // Collect arrow tiles to clear (the entire row or column at r2,c2, excluding r2,c2 itself so ball stays)
+        var arrowClearedTiles: Set<String> = []
+        if isHorizontal {
+            for col in 0..<level.gridWidth {
+                guard !(col == c2) else { continue }
+                if gridShapeMap[r2][col] && gameGrid[r2][col] != nil {
+                    arrowClearedTiles.insert("\(r2),\(col)")
+                }
+            }
+            shootFlamesHorizontally(row: r2, arrowCol: c2, columns: 0..<level.gridWidth) {}
+        } else {
+            for row in 0..<level.gridHeight {
+                guard !(row == r2) else { continue }
+                if gridShapeMap[row][c2] && gameGrid[row][c2] != nil {
+                    arrowClearedTiles.insert("\(row),\(c2)")
+                }
+            }
+            shootFlamesVertically(column: c2, arrowRow: r2, rows: 0..<level.gridHeight) {}
+        }
+
+        // Collect cascading powerups from the arrow's cleared tiles (not the ball position)
+        let arrowCascades = collectCascadingPowerups(
+            in: arrowClearedTiles,
+            excludePositions: [(row: r2, col: c2)]
+        )
+
+        // Clear arrow tiles from the grid immediately so ball doesn't bounce on them
+        for tileKey in arrowClearedTiles {
+            let parts = tileKey.split(separator: ",").map { Int($0) ?? 0 }
+            if parts.count == 2 {
+                let _ = hitTile(row: parts[0], col: parts[1])
+            }
+        }
+
+        print("🔍 [DEBUG] Ball + \(isHorizontal ? "horizontal" : "vertical") arrow combo! Arrow cleared \(arrowClearedTiles.count) tiles, \(arrowCascades.count) cascading. Ball fires from (\(r2),\(c2)).")
+
+        updateGridDisplay()
+        movesRemaining -= 1
+        updateUI()
+
+        // Now animate the bouncing ball from r2,c2, merging any arrow cascades at the end
+        animateBouncingBall(fromRow: r2, fromCol: c2, extraCascades: arrowCascades) { [weak self] in
+            self?.isAnimating = false
+            if self?.movesRemaining ?? 0 <= 0 {
+                self?.levelFailed()
+            }
+        }
+    }
+
     /// Flame + another powerup type: Spawn 5-8 copies of the other powerup at random normal tiles,
     /// animate flames shooting to each, then activate all spawned powerups as cascading.
     private func handleFlamePowerupCombo(r1: Int, c1: Int, r2: Int, c2: Int, otherType: PieceType) {
@@ -2495,13 +2565,18 @@ class MatchGameViewController: UIViewController {
         }
         
         // Process each cascading powerup
-        for (row, col, type) in powerups {
+        // Data is cleared synchronously first (all hitTile calls), then animations fire staggered
+        // to prevent visual chaos when many powerups cascade at once.
+        
+        // PASS 1: Clear all grid data synchronously so tile removal is consistent
+        var bombButtons: [Int: [UIButton]] = [:]  // index → affected buttons
+        var flameTargets: [Int: Set<String>] = [:]  // index → tiles to clear
+        
+        for (index, (row, col, type)) in powerups.enumerated() {
             switch type {
             case .verticalArrow:
-                // Clear entire column and capture cascading powerups BEFORE animation
                 for r in 0..<level.gridHeight {
                     if gridShapeMap[r][col] && gameGrid[r][col] != nil {
-                        // Capture any powerups in column BEFORE clearing (exclude the arrow itself)
                         if r != row, let p = gameGrid[r][col], p.type != .normal {
                             allCascadingPowerups.append((row: r, col: col, type: p.type))
                         }
@@ -2509,18 +2584,10 @@ class MatchGameViewController: UIViewController {
                     }
                 }
                 print("🔥 Cascading vertical arrow cleared column \(col)")
-                
-                // Shoot flames vertically - completion triggers next cascade or gravity
-                shootFlamesVertically(column: col, arrowRow: row, rows: 0..<level.gridHeight) {
-                    flameAnimationsCompleted += 1
-                    checkAllComplete()
-                }
-                
+
             case .horizontalArrow:
-                // Clear entire row and capture cascading powerups BEFORE animation
                 for c in 0..<level.gridWidth {
                     if gridShapeMap[row][c] && gameGrid[row][c] != nil {
-                        // Capture any powerups in row BEFORE clearing (exclude the arrow itself)
                         if c != col, let p = gameGrid[row][c], p.type != .normal {
                             allCascadingPowerups.append((row: row, col: c, type: p.type))
                         }
@@ -2528,144 +2595,138 @@ class MatchGameViewController: UIViewController {
                     }
                 }
                 print("🔥 Cascading horizontal arrow cleared row \(row)")
-                
-                // Shoot flames horizontally - completion triggers next cascade or gravity
-                shootFlamesHorizontally(row: row, arrowCol: col, columns: 0..<level.gridWidth) {
-                    flameAnimationsCompleted += 1
-                    checkAllComplete()
-                }
-                
+
             case .bomb:
-                // Collect affected buttons for animation BEFORE clearing
-                var bombAffectedButtons: [UIButton] = []
+                var affected: [UIButton] = []
                 for dr in -1...1 {
                     for dc in -1...1 {
-                        let nr = row + dr
-                        let nc = col + dc
+                        let nr = row + dr; let nc = col + dc
                         if nr >= 0 && nr < level.gridHeight && nc >= 0 && nc < level.gridWidth &&
                            gridShapeMap[nr][nc] && gameGrid[nr][nc] != nil {
-                            // Capture any powerups in the 3x3 area BEFORE clearing
                             if let p = gameGrid[nr][nc], p.type != .normal {
                                 allCascadingPowerups.append((row: nr, col: nc, type: p.type))
                             }
-                            if let btn = gridButtons[nr][nc] {
-                                bombAffectedButtons.append(btn)
-                            }
+                            if let btn = gridButtons[nr][nc] { affected.append(btn) }
                             hitTile(row: nr, col: nc)
                         }
                     }
                 }
+                bombButtons[index] = affected
                 print("🔥 Cascading bomb cleared 3x3 area around (\(row), \(col))")
-                
-                // Animate bomb explosion then complete
-                animateBombExplosion(centerRow: row, centerCol: col, affectedButtons: bombAffectedButtons) {
-                    flameAnimationsCompleted += 1
-                    checkAllComplete()
-                }
-                
+
             case .flame:
-                // Flame powerup cascades: pick random adjacent tile and clear all matching pieces
                 var tilesToClear: Set<String> = []
-                
-                // Find all adjacent tiles
-                let adjacentPositions = [
-                    (row - 1, col),      // up
-                    (row + 1, col),      // down
-                    (row, col - 1),      // left
-                    (row, col + 1)       // right
-                ]
-                
+                let adjacentPositions = [(row - 1, col), (row + 1, col), (row, col - 1), (row, col + 1)]
                 var validAdjacentTiles: [(row: Int, col: Int, itemId: String, colorIndex: Int)] = []
                 for (adjRow, adjCol) in adjacentPositions {
-                    if adjRow >= 0 && adjRow < level.gridHeight &&
-                       adjCol >= 0 && adjCol < level.gridWidth &&
-                       gridShapeMap[adjRow][adjCol],
-                       let piece = gameGrid[adjRow][adjCol],
-                       piece.type == .normal {
+                    if adjRow >= 0 && adjRow < level.gridHeight && adjCol >= 0 && adjCol < level.gridWidth &&
+                       gridShapeMap[adjRow][adjCol], let piece = gameGrid[adjRow][adjCol], piece.type == .normal {
                         validAdjacentTiles.append((row: adjRow, col: adjCol, itemId: piece.itemId, colorIndex: piece.colorIndex))
                     }
                 }
-                
                 if let randomTile = validAdjacentTiles.randomElement() {
-                    // Collect all matching pieces first
                     for r in 0..<level.gridHeight {
                         for c in 0..<level.gridWidth {
                             if gridShapeMap[r][c], let piece = gameGrid[r][c],
-                               piece.type == .normal &&
-                               piece.itemId == randomTile.itemId &&
-                               piece.colorIndex == randomTile.colorIndex {
+                               piece.type == .normal && piece.itemId == randomTile.itemId && piece.colorIndex == randomTile.colorIndex {
                                 tilesToClear.insert("\(r),\(c)")
                             }
                         }
                     }
-                    
-                    print("🔥 Cascading flame will clear \(tilesToClear.count) matching \(randomTile.itemId)")
-                    
-                    // Capture powerups from tiles about to be cleared
                     for posString in tilesToClear {
                         let parts = posString.split(separator: ",").map { Int($0) ?? 0 }
                         if parts.count == 2, let p = gameGrid[parts[0]][parts[1]], p.type != .normal {
                             allCascadingPowerups.append((row: parts[0], col: parts[1], type: p.type))
                         }
                     }
-                    
-                    // Animate flames shooting to each tile, then clear them
-                    self.shootFlamesAtTiles(fromRow: row, fromCol: col, targetTiles: tilesToClear) {
-                        // Clear the tiles
-                        for posString in tilesToClear {
-                            let parts = posString.split(separator: ",").map { Int($0) ?? 0 }
-                            if parts.count == 2 {
-                                self.hitTile(row: parts[0], col: parts[1])
-                            }
-                        }
-                        
-                        flameAnimationsCompleted += 1
-                        checkAllComplete()
-                    }
-                    // Don't fall through to the synchronous completion below
-                    continue
-                } else {
-                    // No adjacent normal tiles - clear all normal pieces on board
-                    print("🔥 Cascading flame: no adjacent normal tiles, clearing all normal pieces")
-                    for r in 0..<level.gridHeight {
-                        for c in 0..<level.gridWidth {
-                            if gridShapeMap[r][c], let piece = gameGrid[r][c],
-                               piece.type == .normal {
-                                if piece.type != .normal {
-                                    allCascadingPowerups.append((row: r, col: c, type: piece.type))
-                                }
-                                hitTile(row: r, col: c)
-                            }
-                        }
+                    print("🔥 Cascading flame will clear \(tilesToClear.count) matching \(randomTile.itemId)")
+                    for posString in tilesToClear {
+                        let parts = posString.split(separator: ",").map { Int($0) ?? 0 }
+                        if parts.count == 2 { let _ = hitTile(row: parts[0], col: parts[1]) }
                     }
                 }
-                
-                // Synchronous flame (no adjacent tiles case)
-                flameAnimationsCompleted += 1
-                checkAllComplete()
-                
+                flameTargets[index] = tilesToClear
+
             case .rocket:
-                // Rocket cascading: animate rocket path, completion tracks when done
-                print("🚀 Cascading rocket at (\(row), \(col))")
-                animateRocketPath(fromRow: row, fromCol: col) {
-                    flameAnimationsCompleted += 1
-                    checkAllComplete()
-                }
-                
+                print("🚀 Cascading rocket at (\(row), \(col)) — data cleared on impact")
             case .ball:
-                // Ball cascading: animate bouncing ball
-                print("🏀 Cascading ball at (\(row), \(col))")
-                animateBouncingBall(fromRow: row, fromCol: col) {
-                    flameAnimationsCompleted += 1
-                    checkAllComplete()
-                }
-                
+                print("🏀 Cascading ball at (\(row), \(col)) — data cleared on impact")
             default:
                 break
             }
         }
         
-        print("🔥 Cascading powerups: \(flameAnimationsInProgress) total, \(allCascadingPowerups.count) sub-cascading found so far")
+        // PASS 2: Fire staggered visual animations (0.12 s gap between each)
+        // This prevents the visual chaos of many simultaneous beams/effects.
+        updateGridDisplay()
+        updateUI()
+        
+        for (index, (row, col, type)) in powerups.enumerated() {
+            let staggerDelay = Double(index) * 0.12
+            switch type {
+            case .verticalArrow:
+                DispatchQueue.main.asyncAfter(deadline: .now() + staggerDelay) { [weak self] in
+                    guard let self = self else { flameAnimationsCompleted += 1; checkAllComplete(); return }
+                    self.shootFlamesVertically(column: col, arrowRow: row, rows: 0..<level.gridHeight) {
+                        flameAnimationsCompleted += 1
+                        checkAllComplete()
+                    }
+                }
+            case .horizontalArrow:
+                DispatchQueue.main.asyncAfter(deadline: .now() + staggerDelay) { [weak self] in
+                    guard let self = self else { flameAnimationsCompleted += 1; checkAllComplete(); return }
+                    self.shootFlamesHorizontally(row: row, arrowCol: col, columns: 0..<level.gridWidth) {
+                        flameAnimationsCompleted += 1
+                        checkAllComplete()
+                    }
+                }
+            case .bomb:
+                let affectedButtons = bombButtons[index] ?? []
+                DispatchQueue.main.asyncAfter(deadline: .now() + staggerDelay) { [weak self] in
+                    guard let self = self else { flameAnimationsCompleted += 1; checkAllComplete(); return }
+                    self.animateBombExplosion(centerRow: row, centerCol: col, affectedButtons: affectedButtons) {
+                        flameAnimationsCompleted += 1
+                        checkAllComplete()
+                    }
+                }
+            case .flame:
+                let tilesToClear = flameTargets[index] ?? []
+                if tilesToClear.isEmpty {
+                    // No targets — count as complete immediately
+                    flameAnimationsCompleted += 1
+                    checkAllComplete()
+                } else {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + staggerDelay) { [weak self] in
+                        guard let self = self else { flameAnimationsCompleted += 1; checkAllComplete(); return }
+                        // Tiles already cleared in Pass 1 — just animate the visual flames
+                        self.shootFlamesAtTiles(fromRow: row, fromCol: col, targetTiles: tilesToClear) {
+                            flameAnimationsCompleted += 1
+                            checkAllComplete()
+                        }
+                    }
+                }
+            case .rocket:
+                DispatchQueue.main.asyncAfter(deadline: .now() + staggerDelay) { [weak self] in
+                    guard let self = self else { flameAnimationsCompleted += 1; checkAllComplete(); return }
+                    self.animateRocketPath(fromRow: row, fromCol: col) {
+                        flameAnimationsCompleted += 1
+                        checkAllComplete()
+                    }
+                }
+            case .ball:
+                DispatchQueue.main.asyncAfter(deadline: .now() + staggerDelay) { [weak self] in
+                    guard let self = self else { flameAnimationsCompleted += 1; checkAllComplete(); return }
+                    self.animateBouncingBall(fromRow: row, fromCol: col) {
+                        flameAnimationsCompleted += 1
+                        checkAllComplete()
+                    }
+                }
+            default:
+                break
+            }
+        }
+        
+        print("🔥 Cascading powerups: \(flameAnimationsInProgress) total, \(allCascadingPowerups.count) sub-cascading, staggered \(powerups.count > 1 ? "by 0.12s each" : "immediately")")
     }
     
     private func applyGravityAfterCascade() {
@@ -3105,7 +3166,7 @@ class MatchGameViewController: UIViewController {
     /// Animates a bouncing ball powerup. The ball flies up above the grid, then falls with gravity,
     /// bouncing one column left/right and one row down each time, leaving a dotted trail,
     /// before doing a final bounce off the bottom of the screen.
-    private func animateBouncingBall(fromRow: Int, fromCol: Int, completion: @escaping () -> Void) {
+    private func animateBouncingBall(fromRow: Int, fromCol: Int, extraCascades: [(row: Int, col: Int, type: PieceType)] = [], completion: @escaping () -> Void) {
         guard let level = currentLevel else {
             completion()
             return
@@ -3283,8 +3344,10 @@ class MatchGameViewController: UIViewController {
                         self.updateUI()
                         
                         // Handle cascading powerups or apply gravity (same pattern as rocket)
-                        if !cascadingPowerups.isEmpty {
-                            self.activateCascadingPowerups(cascadingPowerups)
+                        // Merge any extra cascades (e.g. from a ball+arrow combo's arrow tiles)
+                        let allCascades = cascadingPowerups + extraCascades
+                        if !allCascades.isEmpty {
+                            self.activateCascadingPowerups(allCascades)
                         } else {
                             self.applyGravity()
                         }
