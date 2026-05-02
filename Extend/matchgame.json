@@ -298,6 +298,11 @@
           "asset": null
         },
         {
+          "id": "purp",
+          "emoji": "🟣",
+          "asset": null
+        },
+        {
           "id": "blu",
           "emoji": "🔵",
           "asset": null
@@ -313,7 +318,7 @@
         "XXXXXXXXX",
         "XXXXXXXXX",
         "_________",
-        "XXXXXXXXX",
+        "_________",
         "XXXXXXXXX",
         "XXXXXXXXX",
         "XXXXXXXXX",

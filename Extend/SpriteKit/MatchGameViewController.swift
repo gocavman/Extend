@@ -122,6 +122,7 @@ class MatchGameViewController: UIViewController {
     private var armorBorderViews: [[UIView?]] = []  // Static border overlays for armored cells
     private var isApplyingGravity = false  // Guard flag to prevent updateGridDisplay during gravity setup
     private var activeAnimationViews: Set<ObjectIdentifier> = []  // Views currently used by in-flight animations (ball, rocket, etc.) — excluded from gravity cleanup
+    private var blankTileOverlays: [UIView] = []  // Overlay views covering blank grid positions (sit above gridStackView to hide pieces sliding through)
     private var levelCompleteCompletion: (() -> Void)?  // Stored completion for level complete modal
     
     // MARK: - Game Logic
@@ -718,6 +719,36 @@ class MatchGameViewController: UIViewController {
                     armorLabel.bottomAnchor.constraint(equalTo: borderView.bottomAnchor, constant: -1)
                 ])
                 armorOverlays[row][col] = armorLabel
+            }
+        }
+        
+        // Add overlay views on top of blank (inactive) grid positions so pieces
+        // sliding through during gravity animations are hidden behind them
+        blankTileOverlays.forEach { $0.removeFromSuperview() }
+        blankTileOverlays.removeAll()
+        for row in 0..<level.gridHeight {
+            for col in 0..<level.gridWidth {
+                guard !gridShapeMap[row][col] else { continue }
+                // Get the blank button at this position from the row stack
+                let rowStack = gridStackView.arrangedSubviews[row]
+                guard let stack = rowStack as? UIStackView else { continue }
+                let button = stack.arrangedSubviews[col]
+                
+                let overlay = UIView()
+                overlay.backgroundColor = darkBg
+                overlay.isUserInteractionEnabled = false
+                overlay.translatesAutoresizingMaskIntoConstraints = false
+                gridContainer.addSubview(overlay)
+                
+                // Match the blank button's position, with slight expansion to cover
+                // the spacing gaps between tiles
+                NSLayoutConstraint.activate([
+                    overlay.topAnchor.constraint(equalTo: button.topAnchor, constant: -1),
+                    overlay.bottomAnchor.constraint(equalTo: button.bottomAnchor, constant: 1),
+                    overlay.leadingAnchor.constraint(equalTo: button.leadingAnchor, constant: -1),
+                    overlay.trailingAnchor.constraint(equalTo: button.trailingAnchor, constant: 1)
+                ])
+                blankTileOverlays.append(overlay)
             }
         }
     }
@@ -3203,10 +3234,7 @@ class MatchGameViewController: UIViewController {
                 let arcPeakY = lastPos.y - rowHeight * 0.8
                 let arcPeakX = lastPos.x + exitDir * colWidth * 0.4
                 
-                // Add curved trail to exit
-                trailPath.addQuadCurve(to: CGPoint(x: exitX, y: exitY),
-                                       controlPoint: CGPoint(x: arcPeakX, y: arcPeakY))
-                trailLayer.path = trailPath.cgPath
+                // Exit trail segment will be added after the ball exits (in completion)
                 
                 UIView.animateKeyframes(withDuration: 0.5, delay: 0, options: [], animations: {
                     // Bounce up (slow rise)
@@ -3228,6 +3256,12 @@ class MatchGameViewController: UIViewController {
                     }
                     self.activeAnimationViews.remove(ObjectIdentifier(ballLabel))
                     ballLabel.removeFromSuperview()
+                    
+                    // Draw the exit trail segment now that the ball has exited
+                    trailPath.addQuadCurve(to: CGPoint(x: exitX, y: exitY),
+                                           controlPoint: CGPoint(x: arcPeakX, y: arcPeakY))
+                    trailLayer.path = trailPath.cgPath
+                    trailLayer.strokeEnd = 1.0
                     
                     // Fade out the trail
                     let fadeOut = CABasicAnimation(keyPath: "opacity")
@@ -3291,11 +3325,8 @@ class MatchGameViewController: UIViewController {
         let verticalDrop = targetY - arcPeakY
         let duration: TimeInterval = max(0.3, min(0.7, Double(verticalDrop / (rowHeight * 6)) * 0.4))
         
-        // Build the trail curve BEFORE the animation so it's visible during flight
-        // Use a quadratic bezier curve through the arc peak
-        trailPath.addQuadCurve(to: CGPoint(x: targetX, y: targetY),
-                               controlPoint: CGPoint(x: arcPeakX, y: arcPeakY))
-        trailLayer.path = trailPath.cgPath
+        // Trail segment will be added AFTER the ball lands (in completion), not before
+        // This way the trail appears behind the ball showing where it's been
         
         // Rotation amount — spin more on longer bounces
         let spinAmount = CGFloat.pi * (0.8 + horizontalDist / gridWidth)
@@ -3303,19 +3334,25 @@ class MatchGameViewController: UIViewController {
         
         UIView.animateKeyframes(withDuration: duration, delay: 0, options: [], animations: {
             // Rise phase: slow (decelerating upward) — 30% of time
-            UIView.addKeyframe(withRelativeStartTime: 0, relativeDuration: 0.50) {
+            UIView.addKeyframe(withRelativeStartTime: 0, relativeDuration: 0.70) {
                 ballLabel.center = CGPoint(x: arcPeakX, y: arcPeakY)
                 ballLabel.transform = CGAffineTransform(scaleX: 1.05, y: 1.05)
                     .rotated(by: currentRotation + spinAmount * 0.3)
             }
             // Fall phase: fast (accelerating downward) — 70% of time
-            UIView.addKeyframe(withRelativeStartTime: 0.50, relativeDuration: 0.70) {
+            UIView.addKeyframe(withRelativeStartTime: 0.70, relativeDuration: 0.70) {
                 ballLabel.center = CGPoint(x: targetX, y: targetY)
                 ballLabel.transform = CGAffineTransform(scaleX: 1.0, y: 1.0)
                     .rotated(by: currentRotation + spinAmount)
             }
         }) { [weak self] _ in
             guard let self = self else { completion(); return }
+            
+            // Draw the trail segment now that the ball has landed
+            trailPath.addQuadCurve(to: CGPoint(x: targetX, y: targetY),
+                                   controlPoint: CGPoint(x: arcPeakX, y: arcPeakY))
+            trailLayer.path = trailPath.cgPath
+            trailLayer.strokeEnd = 1.0
             
             // Impact: clear the tile
             if self.gameGrid[target.row][target.col] != nil {
@@ -4732,11 +4769,14 @@ class MatchGameViewController: UIViewController {
         
         // Sweep any stray animation subviews (poof particles, flame labels, beam views)
         // that should have been removed by animation completions but may have leaked
-        let keepViews: Set<ObjectIdentifier> = [ObjectIdentifier(gridStackView)]
+        var keepViews: Set<ObjectIdentifier> = [ObjectIdentifier(gridStackView)]
         let armorViews = Set(armorBorderViews.flatMap { $0 }.compactMap { $0.map { ObjectIdentifier($0) } })
+        let blankViews = Set(blankTileOverlays.map { ObjectIdentifier($0) })
+        keepViews.formUnion(armorViews)
+        keepViews.formUnion(blankViews)
+        keepViews.formUnion(activeAnimationViews)
         for subview in gridContainer.subviews {
-            let id = ObjectIdentifier(subview)
-            if !keepViews.contains(id) && !armorViews.contains(id) && !activeAnimationViews.contains(id) {
+            if !keepViews.contains(ObjectIdentifier(subview)) {
                 subview.removeFromSuperview()
             }
         }
@@ -5674,3 +5714,4 @@ class MatchGameViewController: UIViewController {
         button.layer.add(pulseAnimation, forKey: "pulse")
     }
 }
+
