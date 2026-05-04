@@ -118,6 +118,8 @@ class MatchGameViewController: UIViewController {
     private var newPieces: Set<String> = []  // Track which pieces are NEW (from refill)
     private var levelCompletionTriggered: Bool = false  // Prevent multiple level completion triggers
     private var pendingCascades: [(row: Int, col: Int, type: PieceType)] = []  // Cascades queued while checkForMatches runs between cascade steps
+    private var cascadeDepth: Int = 0            // How many cascading powerups have fired this chain
+    private let maxCascadeDepth: Int = 6         // Cap: stop cascading after this many powerup detonations in one chain
     private var armorGrid: [[Int]] = []  // Armor hits remaining per grid position (0 = no armor)
     private var armorOverlays: [[UILabel?]] = []  // Overlay labels showing armor count
     private var armorBorderViews: [[UIView?]] = []  // Static border overlays for armored cells
@@ -772,6 +774,7 @@ class MatchGameViewController: UIViewController {
             
             let impact = UIImpactFeedbackGenerator(style: .medium)
             impact.impactOccurred()
+            cascadeDepth = 0  // Reset cascade depth for direct-tap activation
             
             // NOTE: Don't check if out of moves here - let powerup activate first
             // Move check will happen after powerup animation completes
@@ -1067,6 +1070,7 @@ class MatchGameViewController: UIViewController {
         // Reset idle timer on move
         lastMoveTime = Date()
         resetIdleHintTimer()
+        cascadeDepth = 0  // Reset cascade depth counter for this new move
         
         // Don't decrement moves yet - wait until we validate the swap creates a match or uses a powerup
         // Remember the swap for potential revert
@@ -1155,12 +1159,12 @@ class MatchGameViewController: UIViewController {
             self.currentSwapInvolvesAPowerup = powerUpAtR1C1 || powerUpAtR2C2
 
             if powerUpAtR1C1 || powerUpAtR2C2 {
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) { [weak self] in
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) { [weak self] in
                     self?.activatePowerUps(r1, c1, r2, c2, type1: originalType1, type2: originalType2)
                 }
             } else {
                 // Check for matches after swap animation
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) { [weak self] in
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) { [weak self] in
                     self?.checkForMatches()
                 }
             }
@@ -2539,6 +2543,16 @@ class MatchGameViewController: UIViewController {
             applyGravityAfterCascade()
             return
         }
+
+        // Enforce cascade depth cap — stop the chain if too many powerups have already fired
+        if cascadeDepth >= maxCascadeDepth {
+            print("🛑 Cascade depth cap (\(maxCascadeDepth)) reached — stopping chain with \(powerups.count) powerup(s) remaining.")
+            pendingCascades = []
+            applyGravityAfterCascade()
+            return
+        }
+        cascadeDepth += 1
+        print("⚡ Cascade depth \(cascadeDepth)/\(maxCascadeDepth)")
 
         // Reset stale transforms before each new powerup fires
         resetAllButtonTransforms()
