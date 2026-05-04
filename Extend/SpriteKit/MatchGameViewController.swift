@@ -2576,9 +2576,12 @@ class MatchGameViewController: UIViewController {
         
         // Helper closure: called when each animation completes
         // Adds a brief pause between cascade rounds so the player can follow what's happening
+        var cascadeCompleteTriggered = false   // guard against double-firing
         let checkAllComplete = { [weak self] in
             guard let self = self else { return }
+            guard !cascadeCompleteTriggered else { return }
             if flameAnimationsCompleted == flameAnimationsInProgress {
+                cascadeCompleteTriggered = true
                 if !allCascadingPowerups.isEmpty {
                     // Brief pause before next cascade round - speed related
                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
@@ -5069,8 +5072,8 @@ class MatchGameViewController: UIViewController {
         }
         
         let cellHeight = gridContainer.bounds.height / CGFloat(level.gridHeight)
-        let fallSpeed: CGFloat = 100  // pixels per second (invalid swap revert is ~0.5s per cell × 1.5)
-        let arrivalGap: TimeInterval = 0.04  // 40ms between each piece landing in a column
+        let fallSpeed: CGFloat = 50  // pixels per second (invalid swap revert is ~0.5s per cell × 1.5)
+        let arrivalGap: TimeInterval = 0.08  // 40ms between each piece landing in a column
         
         var maxEndTime: TimeInterval = 0
         
@@ -5136,17 +5139,14 @@ class MatchGameViewController: UIViewController {
         }
         
         // Single completion after all animations finish (extra buffer for spring settling)
-        if maxEndTime > 0 {
-            DispatchQueue.main.asyncAfter(deadline: .now() + maxEndTime + 0.04) { [weak self] in
-                // Restore normal z-order after animation settles
-                if let stackView = self?.gridStackView {
-                    for arrangedView in stackView.arrangedSubviews.reversed() {
-                        stackView.sendSubviewToBack(arrangedView)
-                    }
+        let completionDelay = max(maxEndTime + 0.15, 0.2)  // never fire < 0.2s, generous spring buffer
+        DispatchQueue.main.asyncAfter(deadline: .now() + completionDelay) { [weak self] in
+            // Restore normal z-order after animation settles
+            if let stackView = self?.gridStackView {
+                for arrangedView in stackView.arrangedSubviews.reversed() {
+                    stackView.sendSubviewToBack(arrangedView)
                 }
-                completion()
             }
-        } else {
             completion()
         }
     }
