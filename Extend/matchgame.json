@@ -88,31 +88,26 @@
       "gridWidth": 7,
       "gridHeight": 7,
       "items": [
-        {
-          "id": "soccer",
-          "emoji": "⚽",
-          "asset": null
-        },
-        {
-          "id": "tennis",
-          "emoji": "🎾",
-          "asset": null
-        },
-        {
-          "id": "basketball",
-          "emoji": "🏀",
-          "asset": null
-        },
-        {
-          "id": "football",
-          "emoji": "🏈",
-          "asset": null
-        },
-        {
-          "id": "baseball",
-          "emoji": "⚾",
-          "asset": null
-        }
+          {
+            "id": "red",
+            "emoji": "🔴",
+            "asset": null
+          },
+          {
+            "id": "yel",
+            "emoji": "🟡",
+            "asset": null
+          },
+          {
+            "id": "gre",
+            "emoji": "🟢",
+            "asset": null
+          },
+          {
+            "id": "blu",
+            "emoji": "🔵",
+            "asset": null
+          }
       ],
       "colors": [
         null
@@ -132,8 +127,8 @@
     {
       "id": 4,
       "name": "Level 4 - Veggie Challenge",
-      "gridWidth": 8,
-      "gridHeight": 8,
+      "gridWidth": 10,
+      "gridHeight": 10,
       "items": [
         {
           "id": "avocado",
@@ -165,14 +160,16 @@
         null
       ],
       "gridShape": [
-        "X__XX__X",
-        "__XXXX__",
-        "_XXXXXX_",
-        "XXXXXXXX",
-        "XXXXXXXX",
-        "_XXXXXX_",
-        "__XXXX__",
-        "X__XX__X"
+        "XX__XX__XX",
+        "___XXXX___",
+        "_XXXXXXXX_",
+        "XXXXXXXXXX",
+        "XXXXXXXXXX",
+        "XXXXXXXXXX",
+        "XXXXXXXXXX",
+        "_XXXXXXXX_",
+        "___XXXX___",
+        "XX__XX__XX"
       ],
       "movesAllowed": 50,
       "scoreTarget": 250
@@ -213,14 +210,14 @@
         null
       ],
       "gridShape": [
+        "__XXXXXX",
+        "__XXXXXX",
         "XXXXXXXX",
         "XXXXXXXX",
         "XXXXXXXX",
         "XXXXXXXX",
-        "XXXXXXXX",
-        "XXXXXXXX",
-        "XXXXXXXX",
-        "XXXXXXXX"
+        "XXXXXX__",
+        "XXXXXX__"
       ],
       "movesAllowed": 60,
       "scoreTarget": 300
@@ -261,26 +258,26 @@
           null
       ],
       "gridShape": [
+        "__XXXXX__",
+        "__XXXXX__",
+        "XXXXXXXXX",
+        "XXXXXXXXX",
+        "XXXX_XXXX",
+        "XXXX_XXXX",
         "XXXXXXXXX",
         "XXXXXXXXX",
         "XXXXXXXXX",
-        "XXXXXXXXX",
-        "XXXXXXXXX",
-        "XXXXXXXXX",
-        "XXXXXXXXX",
-        "XXXXXXXXX",
-        "XXXXXXXXX",
-        "XXXXXXXXX",
-        "XXXXXXXXX"
+        "__XXXXX__",
+        "__XXXXX__"
       ],
       "movesAllowed": 70,
       "scoreTarget": 350
     },
     {
       "id": 7,
-      "name": "Level 7 - Circle Challenge",
+      "name": "Level 7 - Dot Challenge",
       "gridWidth": 9,
-      "gridHeight": 12,
+      "gridHeight": 11,
       "items": [
         {
           "id": "red",
@@ -307,12 +304,11 @@
           null
       ],
       "gridShape": [
+        "X1XX1XX1XX1XX1",
         "XXXXXXXXX",
         "XXXXXXXXX",
         "XXXXXXXXX",
         "XXXXXXXXX",
-        "XXXXXXXXX",
-        "_________",
         "_________",
         "XXXXXXXXX",
         "XXXXXXXXX",
@@ -326,8 +322,8 @@
     {
       "id": 8,
       "name": "Level 8 - Shield Challenge",
-      "gridWidth": 7,
-      "gridHeight": 7,
+      "gridWidth": 9,
+      "gridHeight": 12,
       "items": [
         {
           "id": "red",
@@ -354,13 +350,18 @@
         null
       ],
       "gridShape": [
-        "XXXXXXX",
-        "XXX3XX3XX",
-        "XXXXXXX",
-        "XXX5XX5XX",
-        "XXXXXXX",
-        "XXX3XX3XX",
-        "XXXXXXX"
+        "X1XXXXXXXX1",
+        "X2XXXXXXXX2",
+        "X3XXXXXXXX3",
+        "X4XXXXXXXX4",
+        "X5XXXX20XXXX5",
+        "X6XXXX20XXXX6",
+        "X7XXXX20XXXX7",
+        "X8XXXX20XXXX8",
+        "X9XXXXXXXX9",
+        "X10XXXXXXXX10",
+        "X11XXXXXXXX11",
+        "X12XXXXXXXX12"
       ],
       "movesAllowed": 50,
       "scoreTarget": 200
