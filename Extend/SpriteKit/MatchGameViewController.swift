@@ -2689,7 +2689,9 @@ class MatchGameViewController: UIViewController {
         
         // PASS 2: Fire staggered visual animations (0.12 s gap between each)
         // This prevents the visual chaos of many simultaneous beams/effects.
-        updateGridDisplay()
+        // NOTE: Do NOT call updateGridDisplay() here — tiles must remain visible on screen
+        // while the laser/beam animations play. The display is updated after animations complete
+        // (in checkAllComplete → applyGravityAfterCascade).
         updateUI()
         
         for (index, (row, col, type)) in powerups.enumerated() {
@@ -5090,7 +5092,7 @@ class MatchGameViewController: UIViewController {
 
         let cellHeight = gridContainer.bounds.height / CGFloat(level.gridHeight)
         let fallSpeed: CGFloat = 600   // pixels per second
-        let minDuration: TimeInterval = 0.15
+        let minDuration: TimeInterval = 0.25
         let maxDuration: TimeInterval = 0.45
 
         var maxEndTime: TimeInterval = 0
