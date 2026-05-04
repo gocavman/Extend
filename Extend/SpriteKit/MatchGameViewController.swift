@@ -2739,7 +2739,9 @@ class MatchGameViewController: UIViewController {
             case .rocket:
                 DispatchQueue.main.asyncAfter(deadline: .now() + staggerDelay) { [weak self] in
                     guard let self = self else { flameAnimationsCompleted += 1; checkAllComplete(); return }
-                    self.animateRocketPath(fromRow: row, fromCol: col) {
+                    self.animateRocketPath(fromRow: row, fromCol: col, managedExternally: true, subCascadeCallback: { subs in
+                        allCascadingPowerups.append(contentsOf: subs)
+                    }) {
                         flameAnimationsCompleted += 1
                         checkAllComplete()
                     }
@@ -2747,7 +2749,9 @@ class MatchGameViewController: UIViewController {
             case .ball:
                 DispatchQueue.main.asyncAfter(deadline: .now() + staggerDelay) { [weak self] in
                     guard let self = self else { flameAnimationsCompleted += 1; checkAllComplete(); return }
-                    self.animateBouncingBall(fromRow: row, fromCol: col) {
+                    self.animateBouncingBall(fromRow: row, fromCol: col, managedExternally: true, subCascadeCallback: { subs in
+                        allCascadingPowerups.append(contentsOf: subs)
+                    }) {
                         flameAnimationsCompleted += 1
                         checkAllComplete()
                     }
@@ -2807,28 +2811,29 @@ class MatchGameViewController: UIViewController {
             }
         }
         
-        // STEP 2: Refill empty spaces with NEW pieces - track with larger distance
-        // If valid moves already exist, avoid creating instant matches with new pieces
+        // STEP 2: Refill empty spaces with NEW pieces using stacked start positions.
+        // All new pieces in a column share the same fall distance so they land simultaneously.
         let gridHasValidMoves = hasValidMoves()
         for col in 0..<level.gridWidth {
+            var emptyRows: [Int] = []
             for row in 0..<level.gridHeight {
                 if gridShapeMap[row][col] && gameGrid[row][col] == nil {
-                    let newPiece = generateNonMatchingPiece(row: row, col: col, level: level, avoidMatches: gridHasValidMoves)
-                    gameGrid[row][col] = newPiece
-                    
-                    // NEW pieces get larger fall distance (from above grid)
-                    // Only mark as moved if not already tracked as existing piece
-                    if !movedPieces.contains("\(row),\(col)") {
-                        movedPieces.insert("\(row),\(col)")
-                        // Distance for new pieces: from top of screen (larger distance)
-                        fallDistances["\(row),\(col)"] = row + 2
-                        // Mark this as a NEW piece
-                        newPieces.insert("\(row),\(col)")
-                    }
+                    emptyRows.append(row)
+                }
+            }
+            let n = emptyRows.count
+            for (idx, row) in emptyRows.enumerated() {
+                let newPiece = generateNonMatchingPiece(row: row, col: col, level: level, avoidMatches: gridHasValidMoves)
+                gameGrid[row][col] = newPiece
+                if !movedPieces.contains("\(row),\(col)") {
+                    movedPieces.insert("\(row),\(col)")
+                    let slotFromBottom = n - 1 - idx  // 0 = bottommost empty row
+                    fallDistances["\(row),\(col)"] = row + slotFromBottom + 1
+                    newPieces.insert("\(row),\(col)")
                 }
             }
         }
-        
+
         // Update grid display to set correct content on buttons BEFORE setting start transforms
         updateGridDisplay()
         
@@ -3269,7 +3274,7 @@ class MatchGameViewController: UIViewController {
     /// Animates a bouncing ball powerup. The ball flies up above the grid, then falls with gravity,
     /// bouncing one column left/right and one row down each time, leaving a dotted trail,
     /// before doing a final bounce off the bottom of the screen.
-    private func animateBouncingBall(fromRow: Int, fromCol: Int, extraCascades: [(row: Int, col: Int, type: PieceType)] = [], completion: @escaping () -> Void) {
+    private func animateBouncingBall(fromRow: Int, fromCol: Int, extraCascades: [(row: Int, col: Int, type: PieceType)] = [], managedExternally: Bool = false, subCascadeCallback: @escaping ([(row: Int, col: Int, type: PieceType)]) -> Void = { _ in }, completion: @escaping () -> Void) {
         guard let level = currentLevel else {
             completion()
             return
@@ -3450,13 +3455,18 @@ class MatchGameViewController: UIViewController {
                         // Handle cascading powerups or apply gravity (same pattern as rocket)
                         // Merge any extra cascades (e.g. from a ball+arrow combo's arrow tiles)
                         let allCascades = cascadingPowerups + extraCascades
-                        if !allCascades.isEmpty {
-                            self.activateCascadingPowerups(allCascades)
+                        if managedExternally {
+                            // Cascade system is managing gravity — report sub-cascades and return
+                            subCascadeCallback(allCascades)
+                            completion()
                         } else {
-                            self.applyGravity()
+                            if !allCascades.isEmpty {
+                                self.activateCascadingPowerups(allCascades)
+                            } else {
+                                self.applyGravity()
+                            }
+                            completion()
                         }
-                        
-                        completion()
                     }
                 }
             }
@@ -3550,7 +3560,7 @@ class MatchGameViewController: UIViewController {
     
     /// Animates a rocket flying a looping path across the grid, clearing all tiles it crosses.
     /// The rocket visits 8-12 random waypoints, highlights crossed tiles with yellow borders, then clears them.
-    private func animateRocketPath(fromRow: Int, fromCol: Int, completion: @escaping () -> Void) {
+    private func animateRocketPath(fromRow: Int, fromCol: Int, managedExternally: Bool = false, subCascadeCallback: @escaping ([(row: Int, col: Int, type: PieceType)]) -> Void = { _ in }, completion: @escaping () -> Void) {
         guard let level = currentLevel else {
             completion()
             return
@@ -3786,13 +3796,17 @@ class MatchGameViewController: UIViewController {
                 self.updateUI()
                 
                 // Activate cascading powerups or apply gravity
-                if !cascadingPowerups.isEmpty {
+                if managedExternally {
+                    // Cascade system is managing gravity — report sub-cascades and return
+                    subCascadeCallback(cascadingPowerups)
+                    completion()
+                } else if !cascadingPowerups.isEmpty {
                     self.activateCascadingPowerups(cascadingPowerups)
+                    completion()
                 } else {
                     self.applyGravity()
+                    completion()
                 }
-                
-                completion()
             }
         }
         
@@ -4992,37 +5006,40 @@ class MatchGameViewController: UIViewController {
                     gameGrid[targetRow][col] = piece
                     piece.row = targetRow
                     piece.col = col
-                    
-                    movedPieces.insert("\(targetRow),\(col)")
-                    fallDistances["\(targetRow),\(col)"] = distance
-                    
+
+                    if distance != 0 {
+                        movedPieces.insert("\(targetRow),\(col)")
+                        fallDistances["\(targetRow),\(col)"] = distance
+                    }
+
                     targetRow -= 1
                 }
             }
         }
         
-        // STEP 2: Refill empty spaces with NEW pieces - track with larger distance
-        // If valid moves already exist, avoid creating instant matches with new pieces
+        // STEP 2: Refill empty spaces with NEW pieces using stacked start positions.
+        // All new pieces in a column share the same fall distance so they land simultaneously.
         let gridHasValidMoves = hasValidMoves()
         for col in 0..<level.gridWidth {
+            var emptyRows: [Int] = []
             for row in 0..<level.gridHeight {
                 if gridShapeMap[row][col] && gameGrid[row][col] == nil {
-                    let newPiece = generateNonMatchingPiece(row: row, col: col, level: level, avoidMatches: gridHasValidMoves)
-                    gameGrid[row][col] = newPiece
-                    
-                    // NEW pieces get larger fall distance (from above grid)
-                    // Only mark as moved if not already tracked as existing piece
-                    if !movedPieces.contains("\(row),\(col)") {
-                        movedPieces.insert("\(row),\(col)")
-                        // Distance for new pieces: from top of screen (larger distance)
-                        fallDistances["\(row),\(col)"] = row + 2
-                        // Mark this as a NEW piece
-                        newPieces.insert("\(row),\(col)")
-                    }
+                    emptyRows.append(row)
+                }
+            }
+            let n = emptyRows.count
+            for (idx, row) in emptyRows.enumerated() {
+                let newPiece = generateNonMatchingPiece(row: row, col: col, level: level, avoidMatches: gridHasValidMoves)
+                gameGrid[row][col] = newPiece
+                if !movedPieces.contains("\(row),\(col)") {
+                    movedPieces.insert("\(row),\(col)")
+                    let slotFromBottom = n - 1 - idx  // 0 = bottommost empty row
+                    fallDistances["\(row),\(col)"] = row + slotFromBottom + 1
+                    newPieces.insert("\(row),\(col)")
                 }
             }
         }
-        
+
         // Update grid display to set correct content on buttons BEFORE animation
         updateGridDisplay()
         
@@ -5070,83 +5087,53 @@ class MatchGameViewController: UIViewController {
             completion()
             return
         }
-        
+
         let cellHeight = gridContainer.bounds.height / CGFloat(level.gridHeight)
-        let fallSpeed: CGFloat = 50  // pixels per second (invalid swap revert is ~0.5s per cell × 1.5)
-        let arrivalGap: TimeInterval = 0.08  // 40ms between each piece landing in a column
-        
+        let fallSpeed: CGFloat = 600   // pixels per second
+        let minDuration: TimeInterval = 0.15
+        let maxDuration: TimeInterval = 0.45
+
         var maxEndTime: TimeInterval = 0
-        
+
         for col in 0..<level.gridWidth {
-            // Collect pieces that need to animate in this column, sorted bottom-first
-            var pieces: [(button: UIButton, row: Int, distance: Int, isNew: Bool)] = []
-            
             for row in 0..<level.gridHeight {
                 let key = "\(row),\(col)"
-                if movedPieces.contains(key), gridShapeMap[row][col], let button = gridButtons[row][col], gameGrid[row][col] != nil {
-                    let distance = fallDistances[key] ?? 0
-                    pieces.append((button: button, row: row, distance: distance, isNew: newPieces.contains(key)))
-                }
-            }
-            
-            // Sort bottom-first (highest row number = bottom of grid)
-            pieces.sort { $0.row > $1.row }
-            
-            // Calculate start delays so pieces ARRIVE in bottom-to-top order.
-            // Bottom piece (index 0) arrives first, next piece arrives arrivalGap later, etc.
-            // arrivalTime[i] = arrivalTime[0] + i * arrivalGap
-            // startDelay[i] = arrivalTime[i] - duration[i]
-            // We want the bottom piece to start immediately (or near-immediately).
-            
-            // First pass: compute natural durations
-            var durations: [TimeInterval] = []
-            for piece in pieces {
-                let fallDistance = cellHeight * CGFloat(piece.distance)
-                let duration = min(Double(abs(fallDistance) / fallSpeed), 0.55)
-                durations.append(max(duration, 0.15))
-            }
-            
-            guard !pieces.isEmpty else { continue }
-            
-            // Bottom piece (index 0) starts at delay 0, arrives at durations[0]
-            let baseArrival = durations[0]
-            
-            for (i, piece) in pieces.enumerated() {
-                let targetArrival = baseArrival + Double(i) * arrivalGap
-                let startDelay = max(targetArrival - durations[i], 0)
-                let endTime = startDelay + durations[i]
-                if endTime > maxEndTime { maxEndTime = endTime }
-                
+                guard movedPieces.contains(key),
+                      gridShapeMap[row][col],
+                      let button = gridButtons[row][col],
+                      gameGrid[row][col] != nil else { continue }
+
+                let distance = fallDistances[key] ?? 0
+                let fallPixels = cellHeight * CGFloat(distance)
+                let duration = min(max(Double(fallPixels / fallSpeed), minDuration), maxDuration)
+                if duration > maxEndTime { maxEndTime = duration }
+
                 UIView.animate(
-                    withDuration: durations[i],
-                    delay: startDelay,
-                    usingSpringWithDamping: 0.7,
-                    initialSpringVelocity: 0.5,
-                    options: [],
+                    withDuration: duration,
+                    delay: 0,
+                    options: [.curveEaseIn],
                     animations: {
-                        piece.button.transform = .identity
-                        piece.button.alpha = 1.0
+                        button.transform = .identity
+                        button.alpha = 1.0
                     },
-                    completion: nil
+                    completion: { _ in
+                        guard distance > 0 else { return }
+                        // Squash-on-land: briefly squish flat then snap back
+                        UIView.animate(withDuration: 0.07, delay: 0, options: [.curveEaseOut]) {
+                            button.transform = CGAffineTransform(scaleX: 1.18, y: 0.65)
+                        } completion: { _ in
+                            UIView.animate(withDuration: 0.09, delay: 0, options: [.curveEaseInOut]) {
+                                button.transform = .identity
+                            }
+                        }
+                    }
                 )
             }
         }
-        
-        // Reverse the z-order of row stacks so that top rows (which bounce down)
-        // appear in front of the rows below them during the spring overshoot
-        for arrangedView in gridStackView.arrangedSubviews {
-            gridStackView.sendSubviewToBack(arrangedView)
-        }
-        
-        // Single completion after all animations finish (extra buffer for spring settling)
-        let completionDelay = max(maxEndTime + 0.15, 0.2)  // never fire < 0.2s, generous spring buffer
-        DispatchQueue.main.asyncAfter(deadline: .now() + completionDelay) { [weak self] in
-            // Restore normal z-order after animation settles
-            if let stackView = self?.gridStackView {
-                for arrangedView in stackView.arrangedSubviews.reversed() {
-                    stackView.sendSubviewToBack(arrangedView)
-                }
-            }
+
+        // Wait for fall + squash to finish before triggering next action
+        let completionDelay = max(maxEndTime + 0.22, 0.2)
+        DispatchQueue.main.asyncAfter(deadline: .now() + completionDelay) {
             completion()
         }
     }
