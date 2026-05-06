@@ -127,7 +127,7 @@ class MatchGameViewController: UIViewController {
     private var levelCompletionTriggered: Bool = false  // Prevent multiple level completion triggers
     private var pendingCascades: [(row: Int, col: Int, type: PieceType)] = []  // Cascades queued while checkForMatches runs between cascade steps
     private var cascadeDepth: Int = 0            // How many cascading powerups have fired this chain
-    private let maxCascadeDepth: Int = 6         // Cap: stop cascading after this many powerup detonations in one chain
+    private let maxCascadeDepth: Int = 3         // Cap: stop cascading after this many powerup detonations in one chain
     private var armorGrid: [[Int]] = []  // Armor hits remaining per grid position (0 = no armor)
     private var armorOverlays: [[UILabel?]] = []  // Overlay labels showing armor count
     private var armorBorderViews: [[UIView?]] = []  // Static border overlays for armored cells
@@ -1763,8 +1763,6 @@ class MatchGameViewController: UIViewController {
             excludePositions: [(row: r1, col: c1), (row: r2, col: c2)]
         )
 
-        print("🔍 [DEBUG] Two bombs merged! Clearing 4x4 grid around (\(midRow),\(midCol)). Found \(cascadingPowerups.count) cascading powerups")
-
         finalizePowerupCombo(
             clearedTiles: clearedTiles,
             cascadingPowerups: cascadingPowerups,
@@ -1795,8 +1793,6 @@ class MatchGameViewController: UIViewController {
             in: clearedTiles,
             excludePositions: [(row: r1, col: c1), (row: r2, col: c2)]
         )
-
-        print("🔍 [DEBUG] Two flames merged! Clearing entire screen. Found \(cascadingPowerups.count) cascading powerups")
 
         finalizePowerupCombo(
             clearedTiles: clearedTiles,
@@ -1840,8 +1836,6 @@ class MatchGameViewController: UIViewController {
             in: clearedTiles,
             excludePositions: [(row: r1, col: c1), (row: r2, col: c2)]
         )
-
-        print("🔍 [DEBUG] Cross arrows! Clearing rows \(r1),\(r2) and cols \(c1),\(c2). Tiles: \(clearedTiles.count), cascading: \(cascadingPowerups.count)")
 
         // Fire flame animations for both rows and both columns
         shootFlamesHorizontally(row: r1, arrowCol: c1, columns: 0..<level.gridWidth) {}
@@ -1896,8 +1890,7 @@ class MatchGameViewController: UIViewController {
             excludePositions: [(row: r1, col: c1), (row: r2, col: c2)]
         )
 
-        let direction = isHorizontal ? "horizontal" : "vertical"
-        print("🔍 [DEBUG] Bomb + \(direction) arrow! Clearing 3 \(isHorizontal ? "rows" : "columns") centered on (\(r2),\(c2)). Tiles: \(clearedTiles.count), cascading: \(cascadingPowerups.count)")
+        //let direction = isHorizontal ? "horizontal" : "vertical"
 
         // Fire flame animations for the 3 rows or 3 columns
         if isHorizontal {
@@ -1956,8 +1949,6 @@ class MatchGameViewController: UIViewController {
             excludePositions: [(row: r1, col: c1), (row: r2, col: c2)]
         )
 
-        print("🔍 [DEBUG] Two horizontal arrows (X)! Center (\(r2),\(c2)). Tiles: \(clearedTiles.count), cascading: \(cascadingPowerups.count)")
-
         // Fire diagonal beam animations
         shootFlamesDiagonally(centerRow: r2, centerCol: c2) {}
 
@@ -1999,8 +1990,6 @@ class MatchGameViewController: UIViewController {
             in: clearedTiles,
             excludePositions: [(row: r1, col: c1), (row: r2, col: c2)]
         )
-
-        print("🔍 [DEBUG] Two vertical arrows (X)! Center (\(r2),\(c2)). Tiles: \(clearedTiles.count), cascading: \(cascadingPowerups.count)")
 
         // Fire diagonal beam animations
         shootFlamesDiagonally(centerRow: r2, centerCol: c2) {}
@@ -2061,8 +2050,6 @@ class MatchGameViewController: UIViewController {
             }
         }
 
-        print("🔍 [DEBUG] Ball + \(isHorizontal ? "horizontal" : "vertical") arrow combo! Arrow cleared \(arrowClearedTiles.count) tiles, \(arrowCascades.count) cascading. Ball fires from (\(r2),\(c2)).")
-
         updateGridDisplay()
         movesRemaining -= 1
         updateUI()
@@ -2108,11 +2095,9 @@ class MatchGameViewController: UIViewController {
         }
 
         // Pick 5-8 random positions
-        let spawnCount = min(Int.random(in: 5...8), normalTilePositions.count)
+        let spawnCount = min(Int.random(in: 3...5), normalTilePositions.count)
         let shuffled = normalTilePositions.shuffled()
         let spawnPositions = Array(shuffled.prefix(spawnCount))
-
-        print("🔍 [DEBUG] Flame + \(otherType) combo! Spawning \(spawnPositions.count) copies of \(otherType)")
 
         // Build target tile set for flame animation
         var targetTiles: Set<String> = []
@@ -2194,8 +2179,6 @@ class MatchGameViewController: UIViewController {
         updateGridDisplay()
         movesRemaining -= 1
 
-        print("🔍 [DEBUG] Rocket + Arrow combo! Lightning Surge from (\(r2),\(c2)), horizontal: \(isHorizontal)")
-
         // Collect ALL tiles on the board (lightning surge clears everything)
         var clearedTiles: Set<String> = []
         for row in 0..<level.gridHeight {
@@ -2252,8 +2235,6 @@ class MatchGameViewController: UIViewController {
         let strikeCount = min(Int.random(in: 4...5), candidatePositions.count)
         let strikePositions = Array(candidatePositions.shuffled().prefix(strikeCount))
 
-        print("🔍 [DEBUG] Rocket + Bomb combo! Lightning Storm with \(strikePositions.count) strikes")
-
         // Collect all tiles in 3x3 zones around each strike, plus the combo source tiles
         var clearedTiles: Set<String> = ["\(r2),\(c2)"]
         if gameGrid[r1][c1] != nil {
@@ -2303,8 +2284,6 @@ class MatchGameViewController: UIViewController {
         }
         updateGridDisplay()
         movesRemaining -= 1
-
-        print("🔍 [DEBUG] Two rockets merged! Launching dual rocket paths from (\(r2),\(c2))")
 
         // Collect all tiles on the board (rockets clear everything they cross)
         var clearedTiles: Set<String> = []
@@ -2595,7 +2574,6 @@ class MatchGameViewController: UIViewController {
                     }
                     mutableCleared.remove(key)
                     mutableCascading.append((row: pos.row, col: pos.col, type: powerupType))
-                    print("🔍 [DEBUG] Normal tile at (\(pos.row),\(pos.col)) forms a \(powerupType) — promoted and excluded from blast")
                 }
             }
         }
@@ -2684,6 +2662,10 @@ class MatchGameViewController: UIViewController {
             print("🔥 Cascading bomb cleared 3x3 area around (\(row), \(col))")
 
         case .flame:
+            // Clear the flame tile itself from the board if it's still present
+            // (it may already be nil if cleared by the parent cascade, but if not, remove it now)
+            let _ = hitTile(row: row, col: col)
+
             let adjacentPositions = [(row - 1, col), (row + 1, col), (row, col - 1), (row, col + 1)]
             var validAdjacentTiles: [(row: Int, col: Int, itemId: String, colorIndex: Int)] = []
             for (adjRow, adjCol) in adjacentPositions {
@@ -3649,8 +3631,6 @@ class MatchGameViewController: UIViewController {
             }
         }
         
-        print("🚀 [DEBUG] Rocket path from (\(fromRow),\(fromCol)) crossing \(crossedTileSet.count) tiles, \(cascadingPowerups.count) cascading powerups")
-        
         // Build the bezier path through all waypoints with curves
         let path = UIBezierPath()
         path.move(to: waypoints[0])
@@ -4204,6 +4184,10 @@ class MatchGameViewController: UIViewController {
                     return
                     
                 case .flame, .normal:
+                    // Flame powerup at swap position (e.g. newly created by a match): don't
+                    // auto-activate here — let the user trigger it manually. But we must
+                    // release isAnimating so the game doesn't hang.
+                    isAnimating = false
                     break
                 }
                 
@@ -4221,9 +4205,17 @@ class MatchGameViewController: UIViewController {
                     showPowerupBorderHighlight(clearedTiles) { [weak self] in
                         self?.clearTilesAndCascade(clearedTiles, cascadingPowerups: cascadingPowerups)
                     }
+                } else {
+                    // Nothing was collected (flame/normal case) — fall through to match detection
+                    // by letting execution continue past this block instead of returning early.
+                    // Re-enter checkForMatches to scan for normal matches now that isAnimating is false.
                 }
                 
-                return
+                if piece.type == .flame || piece.type == .normal {
+                    // Fall through: continue to normal match detection below
+                } else {
+                    return
+                }
             } else if let piece = gameGrid[r2][c2], piece.type != .normal {
                 print("🎮 Swapped power-up detected at (\(r2),\(c2)): \(piece.type)")
                 // Power-up was swapped - activate it
@@ -4284,6 +4276,10 @@ class MatchGameViewController: UIViewController {
                     return
                     
                 case .flame, .normal:
+                    // Flame powerup at swap position (e.g. newly created by a match): don't
+                    // auto-activate here — let the user trigger it manually. But we must
+                    // release isAnimating so the game doesn't hang.
+                    isAnimating = false
                     break
                 }
                 
@@ -4303,14 +4299,16 @@ class MatchGameViewController: UIViewController {
                     }
                 }
                 
-                return
+                if piece.type == .flame || piece.type == .normal {
+                    // Fall through to normal match detection below
+                } else {
+                    return
+                }
             }
         }
         
         var matchesToRemove: Set<String> = []
         var powerUpsToCreate: [(row: Int, col: Int, type: PieceType)] = []
-        
-        print("🔍 [DEBUG] Starting match detection scan...")
         
         // Check horizontal matches (5+ first, then 4, then 3)
         // SCAN FROM BOTTOM-LEFT: start at row (gridHeight-1) going UP, col 0 going RIGHT
@@ -4327,10 +4325,6 @@ class MatchGameViewController: UIViewController {
                           piece.matches(nextPiece) {
                         matchCount += 1
                         checkCol += 1
-                    }
-                    
-                    if matchCount >= 3 {
-                        print("🔍 [DEBUG] Found horizontal match at row=\(row), col=\(col): count=\(matchCount) item=\(piece.itemId) color=\(piece.colorIndex)")
                     }
                     
                     if matchCount >= 5 {
@@ -4357,7 +4351,6 @@ class MatchGameViewController: UIViewController {
                         }
                         
                         powerUpsToCreate.append((row: row, col: arrowCol, type: .horizontalArrow))
-                        print("🔍 [DEBUG] Found 4+ horizontal match at row=\(row), cols \(col) to \(col + matchCount - 1). Arrow placed at (\(row),\(arrowCol))")
                         
                         // Mark all pieces for removal using loop indices, not piece positions
                         for i in col..<col + matchCount {
@@ -4394,10 +4387,6 @@ class MatchGameViewController: UIViewController {
                         checkRow -= 1
                     }
                     
-                    if matchCount >= 3 {
-                        print("🔍 [DEBUG] Found vertical match at row=\(row), col=\(col): count=\(matchCount) item=\(piece.itemId) color=\(piece.colorIndex)")
-                    }
-                    
                     if matchCount >= 5 {
                         // 5+ match: create flame power-up at middle
                         let middleRow = row - matchCount / 2
@@ -4422,7 +4411,6 @@ class MatchGameViewController: UIViewController {
                         }
                         
                         powerUpsToCreate.append((row: arrowRow, col: col, type: .verticalArrow))
-                        print("🔍 [DEBUG] Found 4+ vertical match at col=\(col), rows \(row - matchCount + 1) to \(row). Arrow placed at (\(arrowRow),\(col))")
                         
                         // Mark all pieces for removal using loop indices
                         for i in (row - matchCount + 1)...row {
@@ -4473,7 +4461,6 @@ class MatchGameViewController: UIViewController {
                     }
                     
                     powerUpsToCreate.append((row: bombRow, col: bombCol, type: .bomb))
-                    print("🔍 [DEBUG] Found 2x2 bomb pattern at 2x2 square (\(row),\(col)) to (\(row+1),\(col+1)). Bomb placed at (\(bombRow),\(bombCol))")
                     
                     // Mark all 4 pieces for removal using grid indices
                     matchesToRemove.insert("\(row),\(col)")
@@ -4542,7 +4529,6 @@ class MatchGameViewController: UIViewController {
                     }
                     
                     powerUpsToCreate.append((row: rocketRow, col: rocketCol, type: .rocket))
-                    print("🔍 [DEBUG] Found L-shape pattern at corner (\(row),\(col)) orientation h:\(hDir) v:\(vDir). Rocket at (\(rocketRow),\(rocketCol))")
                     
                     // Mark all 5 tiles for removal
                     for tile in lTiles {
@@ -4648,10 +4634,6 @@ class MatchGameViewController: UIViewController {
             // taps cannot accidentally activate (and silently destroy) powerup tiles while
             // the board is mid-animation.  Only set false again in the no-match branch.
             isAnimating = true
-
-            print("🔍 [DEBUG] Total matches found: \(matchesToRemove.count) tiles to remove")
-            print("🔍 [DEBUG] Matches: \(matchesToRemove.sorted())")
-            print("🔍 [DEBUG] Initial powerups to create: \(powerUpsToCreate.count)")
             
             // PRIORITIZE POWERUPS: ball > flame > rocket > arrow > bomb
             // If multiple powerups target the same location, keep only the highest priority
@@ -4689,9 +4671,6 @@ class MatchGameViewController: UIViewController {
                     prioritizedPowerups.append((row: parts[0], col: parts[1], type: type))
                 }
             }
-            
-            print("✅ VALID MATCH DETECTED - animating removal")
-            print("🔍 [DEBUG] Prioritized powerups to create: \(prioritizedPowerups.count)")
             
             // Use prioritized powerups instead
             powerUpsToCreate = prioritizedPowerups
@@ -4780,7 +4759,6 @@ class MatchGameViewController: UIViewController {
             }
         } else {
             // No match found
-            print("🔍 [DEBUG] No matches found in current grid")
 
             // If there are pending cascades queued (from sequential powerup cascade steps),
             // process them now that the board has settled with no new matches.
@@ -5319,6 +5297,7 @@ class MatchGameViewController: UIViewController {
                 } else {
                     button.backgroundColor = darkBg
                     button.setTitle("", for: .normal)
+                    button.setImage(nil, for: .normal)
                 }
             }
         }
@@ -5955,7 +5934,6 @@ class MatchGameViewController: UIViewController {
         // IMPORTANT: Don't show hints if there are cascading matches currently on the board
         // This prevents pulsing while new matches are being processed
         if hasCascadingMatches() {
-            print("🔍 [DEBUG] Skipping hint - cascading matches detected on board")
             // Reschedule hint check after cascades settle
             resetIdleHintTimer()
             return
