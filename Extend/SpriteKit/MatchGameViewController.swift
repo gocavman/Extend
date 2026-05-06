@@ -91,6 +91,14 @@ class MatchGameViewController: UIViewController {
     private let targetLabel = UILabel()
     private let highScoreLabel = UILabel()
     private let armorLabel = UILabel()
+    private let sessionTimeLabel = UILabel()
+    private let totalTimeLabel = UILabel()
+
+    // MARK: - Timer State
+    private var sessionTimer: Timer?
+    private var sessionElapsed: TimeInterval = 0       // seconds elapsed this session
+    private var totalElapsed: TimeInterval = 0         // cumulative seconds across all sessions
+    private var timerSessionStart: Date?               // when the current session began
     
     // Game State
     private var currentLevel: MatchGameLevel?
@@ -138,11 +146,19 @@ class MatchGameViewController: UIViewController {
         super.viewDidLoad()
         setupUI()
         loadGameConfig()
-        
-        // Load saved game state
-        loadSavedState()
-        
+        loadSavedState()      // loads currentLevelId, score, unlockedLevels, AND totalElapsed
+        startSessionTimer()
         startLevel(currentLevelId)
+    }
+
+    override func viewWillAppear(_ animated: Bool) {
+        super.viewWillAppear(animated)
+        startSessionTimer()
+    }
+
+    override func viewWillDisappear(_ animated: Bool) {
+        super.viewWillDisappear(animated)
+        pauseSessionTimer()
     }
     
     // MARK: - Setup
@@ -266,6 +282,30 @@ class MatchGameViewController: UIViewController {
             armorLabel.topAnchor.constraint(equalTo: movesLabel.bottomAnchor, constant: 3),
             armorLabel.trailingAnchor.constraint(equalTo: headerView.trailingAnchor, constant: -15)
         ])
+
+        // Session Time label (top-right, opposite the ✕)
+        sessionTimeLabel.font = UIFont.monospacedDigitSystemFont(ofSize: 11, weight: .regular)
+        sessionTimeLabel.textColor = UIColor.white.withAlphaComponent(0.65)
+        sessionTimeLabel.textAlignment = .right
+        sessionTimeLabel.text = "Session  0:00"
+        headerView.addSubview(sessionTimeLabel)
+        sessionTimeLabel.translatesAutoresizingMaskIntoConstraints = false
+        NSLayoutConstraint.activate([
+            sessionTimeLabel.topAnchor.constraint(equalTo: headerView.topAnchor, constant: 12),
+            sessionTimeLabel.trailingAnchor.constraint(equalTo: headerView.trailingAnchor, constant: -15)
+        ])
+
+        // Total Time label (below session time, right-aligned)
+        totalTimeLabel.font = UIFont.monospacedDigitSystemFont(ofSize: 11, weight: .regular)
+        totalTimeLabel.textColor = UIColor.white.withAlphaComponent(0.45)
+        totalTimeLabel.textAlignment = .right
+        totalTimeLabel.text = "Total  0:00"
+        headerView.addSubview(totalTimeLabel)
+        totalTimeLabel.translatesAutoresizingMaskIntoConstraints = false
+        NSLayoutConstraint.activate([
+            totalTimeLabel.topAnchor.constraint(equalTo: sessionTimeLabel.bottomAnchor, constant: 3),
+            totalTimeLabel.trailingAnchor.constraint(equalTo: headerView.trailingAnchor, constant: -15)
+        ])
         
         // Grid Container
         gridContainer.backgroundColor = darkBg
@@ -381,9 +421,16 @@ class MatchGameViewController: UIViewController {
                 }
             }
         }
-        
+
         updateUI()
         renderGrid()
+
+        // Attempt to restore a mid-level snapshot (overrides the fresh grid above)
+        if restoreMidLevelState(levelId: levelId) {
+            renderGrid()         // rebuild buttons at correct positions
+            updateGridDisplay()  // overwrite normal emoji icons with powerup icons where needed
+            updateUI()
+        }
         
         // Reset idle hint timer
         lastMoveTime = Date()
@@ -448,6 +495,7 @@ class MatchGameViewController: UIViewController {
             // Show completion animation
             showLevelCompleteAnimation {
                 // After animation, load next level
+                self.clearMidLevelState(levelId: level.id)  // level done — wipe snapshot
                 self.currentLevelId = nextLevelId
                 self.levelSelectorButton.setTitle("Level \(nextLevelId) ▼", for: .normal)
                 self.score = 0
@@ -496,18 +544,27 @@ class MatchGameViewController: UIViewController {
             message: "Score: \(score)",
             preferredStyle: .alert
         )
-        
+
         alert.addAction(UIAlertAction(title: "Next Level", style: .default) { _ in
             completion()
         })
-        
+
         alert.addAction(UIAlertAction(title: "Exit", style: .cancel) { [weak self] _ in
             guard let self = self else { return }
             self.levelCompleteCompletion = nil
             self.isAnimating = false
+            // Advance to next level before saving so the player resumes there on reopen
+            let completedId = self.currentLevelId
+            self.clearMidLevelState(levelId: completedId)
+            if let config = self.gameConfig,
+               config.levels.contains(where: { $0.id == completedId + 1 }) {
+                self.currentLevelId = completedId + 1
+                self.score = 0
+            }
+            self.saveGameState()
             self.exitGame()
         })
-        
+
         present(alert, animated: true)
     }
     
@@ -634,7 +691,24 @@ class MatchGameViewController: UIViewController {
                     
                     let itemIndex = level.items.firstIndex(where: { $0.id == piece.itemId }) ?? 0
                     let item = level.items[itemIndex]
-                    
+
+                    // If this piece is a powerup, show the powerup icon directly
+                    let powerupFontSize = max(16, min(40, 420 / CGFloat(max(level.gridWidth, level.gridHeight))))
+                    if piece.type != .normal {
+                        let powerupEmoji: String
+                        switch piece.type {
+                        case .verticalArrow:   powerupEmoji = "↕️"
+                        case .horizontalArrow: powerupEmoji = "↔️"
+                        case .bomb:            powerupEmoji = "💣"
+                        case .flame:           powerupEmoji = "🔥"
+                        case .rocket:          powerupEmoji = "🌟"
+                        case .ball:            powerupEmoji = GamePiece.ballEmojis[piece.ballEmojiIndex]
+                        default:               powerupEmoji = "?"
+                        }
+                        button.setTitle(powerupEmoji, for: .normal)
+                        button.setImage(nil, for: .normal)
+                        button.titleLabel?.font = UIFont.systemFont(ofSize: powerupFontSize)
+                    } else
                     // Try to use asset image first, fall back to emoji
                     if let assetName = item.asset, !assetName.isEmpty {
                         // Use asset image - pin imageView to fill the button
@@ -5434,12 +5508,9 @@ class MatchGameViewController: UIViewController {
     }
     
     @objc private func exitGame() {
-        // Save game state before exiting
-        saveGameState()
-        
+        pauseSessionTimer()   // flush session seconds into totalElapsed
+        saveGameState()       // persists mid-level grid + totalElapsed
         print("🎮 Exiting match game - returning to dashboard")
-        
-        // Call the callback to navigate back via ModuleState
         DispatchQueue.main.async {
             print("   ✅ Calling onDismissGame callback")
             self.onDismissGame?()
@@ -5489,34 +5560,195 @@ class MatchGameViewController: UIViewController {
     }
     
     private func saveGameState() {
-        // Save current score and level
+        // Flush current session elapsed into totalElapsed before saving
+        if let start = timerSessionStart {
+            totalElapsed += Date().timeIntervalSince(start)
+            timerSessionStart = Date()   // reset reference so we don't double-count
+        }
         UserDefaults.standard.set(currentLevelId, forKey: "matchGameCurrentLevel")
         UserDefaults.standard.set(score, forKey: "matchGameScore_\(currentLevelId)")
         UserDefaults.standard.set(unlockedLevels, forKey: "matchGameUnlockedLevels")
-        print("💾 Game state saved: Level \(currentLevelId), Score \(score)")
+        UserDefaults.standard.set(totalElapsed, forKey: "matchGameTotalTime")
+        // Save mid-level grid state
+        saveMidLevelState()
+        print("💾 Game state saved: Level \(currentLevelId), Score \(score), TotalTime \(Int(totalElapsed))s")
     }
     
     private func loadSavedState() {
-        // Load saved level and score
         let savedLevel = UserDefaults.standard.integer(forKey: "matchGameCurrentLevel")
         if savedLevel > 0 {
             currentLevelId = savedLevel
             levelSelectorButton.setTitle("Level \(savedLevel) ▼", for: .normal)
         }
-        
-        // Load saved score for this level
         let savedScore = UserDefaults.standard.integer(forKey: "matchGameScore_\(currentLevelId)")
-        if savedScore > 0 {
-            score = savedScore
-            //print("📥 Restored: Level \(currentLevelId), Score \(score)")
-        }
-        
-        // Load unlocked levels
+        if savedScore > 0 { score = savedScore }
         if let saved = UserDefaults.standard.array(forKey: "matchGameUnlockedLevels") as? [Int] {
             unlockedLevels = saved
         }
+        // Restore total elapsed time
+        totalElapsed = UserDefaults.standard.double(forKey: "matchGameTotalTime")
     }
     
+    // MARK: - Session / Total Timer
+
+    private func startSessionTimer() {
+        guard sessionTimer == nil else { return }
+        sessionElapsed = 0
+        timerSessionStart = Date()
+        sessionTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] _ in
+            self?.tickTimer()
+        }
+    }
+
+    private func pauseSessionTimer() {
+        sessionTimer?.invalidate()
+        sessionTimer = nil
+        if let start = timerSessionStart {
+            totalElapsed += Date().timeIntervalSince(start)
+            timerSessionStart = nil
+        }
+        UserDefaults.standard.set(totalElapsed, forKey: "matchGameTotalTime")
+    }
+
+    private func tickTimer() {
+        if let start = timerSessionStart {
+            sessionElapsed = Date().timeIntervalSince(start)
+        }
+        totalElapsed = (UserDefaults.standard.double(forKey: "matchGameTotalTime"))
+            + sessionElapsed
+        updateTimerLabels()
+    }
+
+    private func updateTimerLabels() {
+        sessionTimeLabel.text = "Session  \(formatTime(sessionElapsed))"
+        let saved = UserDefaults.standard.double(forKey: "matchGameTotalTime")
+        totalTimeLabel.text  = "Total  \(formatTime(saved + sessionElapsed))"
+    }
+
+    private func formatTime(_ t: TimeInterval) -> String {
+        let s = Int(t)
+        let h = s / 3600
+        let m = (s % 3600) / 60
+        let sec = s % 60
+        if h > 0 { return String(format: "%d:%02d:%02d", h, m, sec) }
+        return String(format: "%d:%02d", m, sec)
+    }
+
+    // MARK: - Mid-Level State Persistence
+
+    /// Saves the current board so the player can resume exactly where they left off.
+    private func saveMidLevelState() {
+        let key = "matchGameMidLevel_\(currentLevelId)"
+        // Encode each cell as "itemId|typeRaw|colorIndex|ballEmojiIndex", empty string for nil
+        var flat: [String] = []
+        for row in gameGrid {
+            for piece in row {
+                if let p = piece {
+                    flat.append("\(p.itemId)|\(pieceTypeRaw(p.type))|\(p.colorIndex)|\(p.ballEmojiIndex)")
+                } else {
+                    flat.append("")
+                }
+            }
+        }
+        // JSON-encode the flat string array — avoids plist cast ambiguity on read-back
+        if let data = try? JSONEncoder().encode(flat) {
+            UserDefaults.standard.set(data, forKey: key)
+        }
+        // Armor, moves, score stored as primitives (plist-safe)
+        UserDefaults.standard.set(armorGrid.flatMap { $0 }, forKey: "\(key)_armor")
+        UserDefaults.standard.set(movesRemaining, forKey: "\(key)_moves")
+        UserDefaults.standard.set(score, forKey: "\(key)_score")
+        UserDefaults.standard.set(gameGrid.count, forKey: "\(key)_rows")
+        UserDefaults.standard.set(gameGrid.first?.count ?? 0, forKey: "\(key)_cols")
+        print("💾 Mid-level grid saved: level \(currentLevelId), \(flat.filter { !$0.isEmpty }.count) pieces")
+    }
+
+    private func restoreMidLevelState(levelId: Int) -> Bool {
+        let key = "matchGameMidLevel_\(levelId)"
+        guard let data = UserDefaults.standard.data(forKey: key),
+              let flat = try? JSONDecoder().decode([String].self, from: data),
+              let level = currentLevel else {
+            print("📥 No saved mid-level data for level \(levelId)")
+            return false
+        }
+        let savedRows = UserDefaults.standard.integer(forKey: "\(key)_rows")
+        let savedCols = UserDefaults.standard.integer(forKey: "\(key)_cols")
+        guard savedRows == level.gridHeight,
+              savedCols == level.gridWidth,
+              flat.count == level.gridHeight * level.gridWidth else {
+            print("⚠️ Saved grid size \(savedRows)x\(savedCols) doesn't match level \(level.gridHeight)x\(level.gridWidth) — discarding")
+            clearMidLevelState(levelId: levelId)
+            return false
+        }
+        let armorRaw = UserDefaults.standard.array(forKey: "\(key)_armor") as? [Int] ?? []
+        let savedMoves = UserDefaults.standard.integer(forKey: "\(key)_moves")
+        let savedScore = UserDefaults.standard.integer(forKey: "\(key)_score")
+
+        var powerupCount = 0
+        for r in 0..<level.gridHeight {
+            for c in 0..<level.gridWidth {
+                let idx = r * level.gridWidth + c
+                let cell = flat[idx]
+                if cell.isEmpty {
+                    gameGrid[r][c] = nil
+                } else {
+                    let parts = cell.split(separator: "|", omittingEmptySubsequences: false).map(String.init)
+                    guard parts.count == 4,
+                          let typeRaw   = Int(parts[1]),
+                          let colorIdx  = Int(parts[2]),
+                          let ballIdx   = Int(parts[3]) else { continue }
+                    let itemId = parts[0]
+                    let piece = GamePiece(itemId: itemId, colorIndex: colorIdx, row: r, col: c)
+                    piece.type = pieceTypeFromRaw(typeRaw)
+                    piece.ballEmojiIndex = ballIdx
+                    gameGrid[r][c] = piece
+                    if piece.type != .normal { powerupCount += 1 }
+                    let flatIdx = r * level.gridWidth + c
+                    if flatIdx < armorRaw.count {
+                        armorGrid[r][c] = armorRaw[flatIdx]
+                    }
+                }
+            }
+        }
+        movesRemaining = savedMoves > 0 ? savedMoves : level.movesAllowed
+        score = savedScore
+        print("📥 Restored level \(levelId): \(powerupCount) powerups, moves=\(movesRemaining), score=\(score)")
+        return true
+    }
+
+    /// Clears the saved mid-level state (call on level completion or when starting fresh).
+    private func clearMidLevelState(levelId: Int) {
+        let key = "matchGameMidLevel_\(levelId)"
+        UserDefaults.standard.removeObject(forKey: key)
+        UserDefaults.standard.removeObject(forKey: "\(key)_armor")
+        UserDefaults.standard.removeObject(forKey: "\(key)_moves")
+        UserDefaults.standard.removeObject(forKey: "\(key)_score")
+    }
+
+    private func pieceTypeRaw(_ t: PieceType) -> Int {
+        switch t {
+        case .normal: return 0
+        case .horizontalArrow: return 1
+        case .verticalArrow: return 2
+        case .bomb: return 3
+        case .flame: return 4
+        case .rocket: return 5
+        case .ball: return 6
+        }
+    }
+
+    private func pieceTypeFromRaw(_ r: Int) -> PieceType {
+        switch r {
+        case 1: return .horizontalArrow
+        case 2: return .verticalArrow
+        case 3: return .bomb
+        case 4: return .flame
+        case 5: return .rocket
+        case 6: return .ball
+        default: return .normal
+        }
+    }
+
     // MARK: - Handle Level Failure
     
     private func levelFailed() {
@@ -5559,10 +5791,16 @@ class MatchGameViewController: UIViewController {
                 self.movedPieces.removeAll()
                 self.fallDistances.removeAll()
                 self.newPieces.removeAll()
-                
-                // Now restart the level
+
+                // Clear any saved mid-level snapshot so we start truly fresh
+                self.clearMidLevelState(levelId: level.id)
+
+                // Restart the level, then drop in 2 bonus rockets
                 self.score = 0
                 self.startLevel(level.id)
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) {
+                    self.dropInBonusRockets()
+                }
             })
             
             alert.addAction(UIAlertAction(title: "Exit", style: .cancel) { _ in
@@ -5574,6 +5812,80 @@ class MatchGameViewController: UIViewController {
         }
     }
     
+    /// After a failed retry, two rocket powerups fly in from off-screen and land on random adjacent tiles.
+    private func dropInBonusRockets() {
+        guard let level = currentLevel else { return }
+
+        // Pick two adjacent occupied normal tiles (prefer middle rows so the animation is visible)
+        var candidates: [(row: Int, col: Int)] = []
+        let midRow = level.gridHeight / 2
+        for r in stride(from: midRow, through: 0, by: -1) {
+            for c in 0..<(level.gridWidth - 1) {
+                if gridShapeMap[r][c] && gridShapeMap[r][c+1],
+                   let p1 = gameGrid[r][c], p1.type == .normal,
+                   let p2 = gameGrid[r][c+1], p2.type == .normal {
+                    candidates.append((r, c))
+                }
+            }
+            if !candidates.isEmpty { break }
+        }
+        // Fallback: any two valid adjacent cells
+        if candidates.isEmpty {
+            for r in 0..<level.gridHeight {
+                for c in 0..<(level.gridWidth - 1) {
+                    if gridShapeMap[r][c] && gridShapeMap[r][c+1] {
+                        candidates.append((r, c))
+                    }
+                }
+            }
+        }
+        guard let chosen = candidates.randomElement() else { return }
+        let positions = [(chosen.row, chosen.col), (chosen.row, chosen.col + 1)]
+
+        let gridH = gridContainer.bounds.height
+        let gridW = gridContainer.bounds.width
+        let rowH = gridH / CGFloat(level.gridHeight)
+        let colW = gridW / CGFloat(level.gridWidth)
+
+        for (idx, (r, c)) in positions.enumerated() {
+            let landX = CGFloat(c) * colW + colW / 2
+            let landY = CGFloat(r) * rowH + rowH / 2
+
+            // Create a flying rocket label
+            let rocketLabel = UILabel()
+            rocketLabel.text = "🔥"
+            let sz = min(colW, rowH) * 1.1
+            rocketLabel.font = UIFont.systemFont(ofSize: sz)
+            rocketLabel.textAlignment = .center
+            rocketLabel.frame = CGRect(x: landX - sz/2, y: -sz * 2, width: sz, height: sz)
+            // Stagger the two slightly
+            rocketLabel.frame.origin.x += CGFloat(idx == 0 ? -sz * 0.3 : sz * 0.3)
+            gridContainer.addSubview(rocketLabel)
+            activeAnimationViews.insert(ObjectIdentifier(rocketLabel))
+
+            let delay = Double(idx) * 0.18
+            UIView.animate(withDuration: 0.55, delay: delay,
+                           usingSpringWithDamping: 0.6, initialSpringVelocity: 0.8,
+                           options: [], animations: {
+                rocketLabel.center = CGPoint(x: landX, y: landY)
+            }, completion: { [weak self] _ in
+                guard let self = self else { return }
+                // Plant the rocket in the grid
+                if let piece = self.gameGrid[r][c] {
+                    piece.type = .flame
+                    self.updateGridDisplay()
+                }
+                rocketLabel.removeFromSuperview()
+                self.activeAnimationViews.remove(ObjectIdentifier(rocketLabel))
+                // Flash the button to highlight the new powerup
+                if let btn = self.gridButtons[r][c] {
+                    UIView.animate(withDuration: 0.15, animations: { btn.transform = CGAffineTransform(scaleX: 1.35, y: 1.35) },
+                                   completion: { _ in UIView.animate(withDuration: 0.15) { btn.transform = .identity } })
+                }
+            })
+        }
+    }
+
     private func showLevelFailedAnimation(completion: @escaping () -> Void) {
         // Create overlay with "Out of Moves!" text
         let overlay = UIView()
