@@ -3698,6 +3698,19 @@ class MatchGameViewController: UIViewController {
                     button.backgroundColor = .clear
                 }
                 
+                // Small orange impact flash on the single tile
+                let flashSize = min(colWidth, rowHeight) * 0.85
+                let flashView = UIView()
+                flashView.backgroundColor = UIColor.orange.withAlphaComponent(0.75)
+                flashView.layer.cornerRadius = flashSize / 2
+                flashView.frame = CGRect(x: targetX - flashSize / 2, y: targetY - flashSize / 2,
+                                         width: flashSize, height: flashSize)
+                self.gridContainer.addSubview(flashView)
+                UIView.animate(withDuration: 0.6, delay: 0, options: .curveEaseOut, animations: {
+                    flashView.transform = CGAffineTransform(scaleX: 1.5, y: 1.5)
+                    flashView.alpha = 0
+                }) { _ in flashView.removeFromSuperview() }
+                
                 // Haptic feedback
                 let impact = UIImpactFeedbackGenerator(style: .light)
                 impact.impactOccurred()
