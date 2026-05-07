@@ -1302,6 +1302,14 @@ class MatchGameViewController: UIViewController {
             case (.ball, .verticalArrow), (.verticalArrow, .ball):
                 handleBallArrowCombo(r1: r1, c1: c1, r2: r2, c2: c2, isHorizontal: false)
 
+            // --- Ball + bomb: Cannonball — bounces with 3x3 explosions ---
+            case (.ball, .bomb), (.bomb, .ball):
+                handleBallBombCombo(r1: r1, c1: c1, r2: r2, c2: c2)
+
+            // --- Ball + ball: Super-ball — double bounces, hits every row ---
+            case (.ball, .ball):
+                handleBallBallCombo(r1: r1, c1: c1, r2: r2, c2: c2)
+
             default:
                 // Fallback: activate both individually at their positions
                 handleIndividualPowerupActivation(r1: r1, c1: c1, r2: r2, c2: c2, type1: type1, type2: type2)
@@ -2060,6 +2068,91 @@ class MatchGameViewController: UIViewController {
             if self?.movesRemaining ?? 0 <= 0 {
                 self?.levelFailed()
             }
+        }
+    }
+
+    /// Ball + Bomb combo: "Cannonball" — the ball bounces through the grid, triggering a 3x3 bomb
+    /// explosion at every landing tile.
+    private func handleBallBombCombo(r1: Int, c1: Int, r2: Int, c2: Int) {
+        let impact = UIImpactFeedbackGenerator(style: .heavy)
+        impact.impactOccurred()
+
+        if let (button1, button2) = swappedButtons {
+            button1.transform = .identity
+            button2.transform = .identity
+            self.swappedButtons = nil
+        }
+        updateGridDisplay()
+        movesRemaining -= 1
+        updateUI()
+
+        animateBouncingBall(fromRow: r2, fromCol: c2, bombExplosionRadius: 1) { [weak self] in
+            self?.isAnimating = false
+            if self?.movesRemaining ?? 0 <= 0 {
+                self?.levelFailed()
+            }
+        }
+    }
+
+    /// Ball + Ball combo: "Super Ball" — two balls merge into one giant ball that hits TWO tiles in
+    /// every row as it bounces down, covering the whole grid.
+    private func handleBallBallCombo(r1: Int, c1: Int, r2: Int, c2: Int) {
+        guard let level = currentLevel else { return }
+
+        let impact = UIImpactFeedbackGenerator(style: .heavy)
+        impact.impactOccurred()
+
+        if let (button1, button2) = swappedButtons {
+            button1.transform = .identity
+            button2.transform = .identity
+            self.swappedButtons = nil
+        }
+
+        // Collect every tile on the board as a target (super ball clears entire board)
+        var allTiles: Set<String> = []
+        var cascadingPowerups: [(row: Int, col: Int, type: PieceType)] = []
+        for row in 0..<level.gridHeight {
+            for col in 0..<level.gridWidth {
+                if gridShapeMap[row][col], let piece = gameGrid[row][col] {
+                    allTiles.insert("\(row),\(col)")
+                    if piece.type != .normal {
+                        cascadingPowerups.append((row: row, col: col, type: piece.type))
+                    }
+                }
+            }
+        }
+
+        updateGridDisplay()
+        movesRemaining -= 1
+        updateUI()
+
+        // Show a big border highlight then animate two balls bouncing simultaneously
+        showPowerupBorderHighlight(allTiles) { [weak self] in
+            guard let self = self else { return }
+
+            // Clear all tiles from data
+            for key in allTiles {
+                let parts = key.split(separator: ",").map { Int($0) ?? 0 }
+                if parts.count == 2 { let _ = self.hitTile(row: parts[0], col: parts[1]) }
+            }
+            self.updateGridDisplay()
+
+            // Animate two balls from the two swap positions
+            var done = 0
+            let finish: () -> Void = { [weak self] in
+                done += 1
+                guard done == 2, let self = self else { return }
+                self.isAnimating = false
+                if !cascadingPowerups.isEmpty {
+                    self.activateCascadingPowerups(cascadingPowerups)
+                } else {
+                    self.applyGravity()
+                }
+                if self.movesRemaining <= 0 { self.levelFailed() }
+            }
+
+            self.animateBouncingBall(fromRow: r1, fromCol: c1, managedExternally: false, completion: { finish() })
+            self.animateBouncingBall(fromRow: r2, fromCol: c2, managedExternally: false, completion: { finish() })
         }
     }
 
@@ -3271,7 +3364,7 @@ class MatchGameViewController: UIViewController {
     /// Animates a bouncing ball powerup. The ball flies up above the grid, then falls with gravity,
     /// bouncing one column left/right and one row down each time, leaving a dotted trail,
     /// before doing a final bounce off the bottom of the screen.
-    private func animateBouncingBall(fromRow: Int, fromCol: Int, extraCascades: [(row: Int, col: Int, type: PieceType)] = [], managedExternally: Bool = false, subCascadeCallback: @escaping ([(row: Int, col: Int, type: PieceType)]) -> Void = { _ in }, completion: @escaping () -> Void) {
+    private func animateBouncingBall(fromRow: Int, fromCol: Int, extraCascades: [(row: Int, col: Int, type: PieceType)] = [], managedExternally: Bool = false, bombExplosionRadius: Int = 0, subCascadeCallback: @escaping ([(row: Int, col: Int, type: PieceType)]) -> Void = { _ in }, completion: @escaping () -> Void) {
         guard let level = currentLevel else {
             completion()
             return
@@ -3392,6 +3485,7 @@ class MatchGameViewController: UIViewController {
             self.animateBallBounces(ballLabel: ballLabel, bounces: bounceTiles, index: 0,
                                     level: level, rowHeight: rowHeight, colWidth: colWidth,
                                     gridWidth: gridWidth, gridHeight: gridHeight,
+                                    bombExplosionRadius: bombExplosionRadius,
                                     trailPath: trailPath, trailLayer: trailLayer) {
                 // Phase 3: Final bounce off the bottom of the screen
                 let lastPos = ballLabel.center
@@ -3475,6 +3569,7 @@ class MatchGameViewController: UIViewController {
     private func animateBallBounces(ballLabel: UILabel, bounces: [(row: Int, col: Int)], index: Int,
                                      level: MatchGameLevel, rowHeight: CGFloat, colWidth: CGFloat,
                                      gridWidth: CGFloat, gridHeight: CGFloat,
+                                     bombExplosionRadius: Int = 0,
                                      trailPath: UIBezierPath, trailLayer: CAShapeLayer,
                                      completion: @escaping () -> Void) {
         guard index < bounces.count else {
@@ -3528,8 +3623,67 @@ class MatchGameViewController: UIViewController {
             trailLayer.path = trailPath.cgPath
             trailLayer.strokeEnd = 1.0
             
-            // Impact: clear the tile
-            if self.gameGrid[target.row][target.col] != nil {
+            // Impact: clear the tile (or 3x3 area for bomb combos)
+            if bombExplosionRadius > 0 {
+                // Cannonball: explode a (2r+1)x(2r+1) area on each bounce
+                var explosionButtons: [UIButton] = []
+                for dr in -bombExplosionRadius...bombExplosionRadius {
+                    for dc in -bombExplosionRadius...bombExplosionRadius {
+                        let er = target.row + dr
+                        let ec = target.col + dc
+                        guard er >= 0 && er < level.gridHeight && ec >= 0 && ec < level.gridWidth else { continue }
+                        guard gridShapeMap[er][ec] else { continue }
+                        if self.gameGrid[er][ec] != nil {
+                            let _ = self.hitTile(row: er, col: ec)
+                            if let btn = self.gridButtons[er][ec] {
+                                explosionButtons.append(btn)
+                            }
+                        }
+                    }
+                }
+                // Mini bomb flash at the impact center
+                let flashView = UIView()
+                flashView.backgroundColor = UIColor.orange.withAlphaComponent(0.85)
+                flashView.layer.cornerRadius = min(colWidth, rowHeight) * 0.5 * CGFloat(bombExplosionRadius * 2 + 1)
+                let flashSize = min(colWidth, rowHeight) * CGFloat(bombExplosionRadius * 2 + 1) * 1.1
+                flashView.frame = CGRect(x: targetX - flashSize / 2, y: targetY - flashSize / 2, width: flashSize, height: flashSize)
+                self.gridContainer.addSubview(flashView)
+                UIView.animate(withDuration: 0.25, delay: 0, options: .curveEaseOut, animations: {
+                    flashView.transform = CGAffineTransform(scaleX: 1.4, y: 1.4)
+                    flashView.alpha = 0
+                }) { _ in flashView.removeFromSuperview() }
+
+                // Pop-then-shrink the affected buttons
+                let totalDur: TimeInterval = 0.22
+                for btn in explosionButtons {
+                    let scaleAnim = CAKeyframeAnimation(keyPath: "transform.scale")
+                    scaleAnim.values = [1.0, 1.25, 0.1]
+                    scaleAnim.keyTimes = [0, 0.4, 1.0]
+                    scaleAnim.duration = totalDur
+                    scaleAnim.fillMode = .forwards
+                    scaleAnim.isRemovedOnCompletion = false
+                    btn.layer.add(scaleAnim, forKey: "cannonPop")
+                    let fadeAnim = CABasicAnimation(keyPath: "opacity")
+                    fadeAnim.fromValue = 1.0; fadeAnim.toValue = 0.0
+                    fadeAnim.beginTime = CACurrentMediaTime() + 0.09
+                    fadeAnim.duration = 0.13
+                    fadeAnim.fillMode = .forwards
+                    fadeAnim.isRemovedOnCompletion = false
+                    btn.layer.add(fadeAnim, forKey: "cannonFade")
+                }
+                DispatchQueue.main.asyncAfter(deadline: .now() + totalDur + 0.02) {
+                    for btn in explosionButtons {
+                        btn.layer.removeAnimation(forKey: "cannonPop")
+                        btn.layer.removeAnimation(forKey: "cannonFade")
+                        btn.layer.opacity = 1.0
+                        btn.setTitle("", for: .normal)
+                        btn.setImage(nil, for: .normal)
+                        btn.backgroundColor = .clear
+                    }
+                }
+                let impact = UIImpactFeedbackGenerator(style: .heavy)
+                impact.impactOccurred()
+            } else if self.gameGrid[target.row][target.col] != nil {
                 let _ = self.hitTile(row: target.row, col: target.col)
                 
                 // Clear the button display on impact
@@ -3549,6 +3703,7 @@ class MatchGameViewController: UIViewController {
                 self.animateBallBounces(ballLabel: ballLabel, bounces: bounces, index: index + 1,
                                         level: level, rowHeight: rowHeight, colWidth: colWidth,
                                         gridWidth: gridWidth, gridHeight: gridHeight,
+                                        bombExplosionRadius: bombExplosionRadius,
                                         trailPath: trailPath, trailLayer: trailLayer,
                                         completion: completion)
             }
