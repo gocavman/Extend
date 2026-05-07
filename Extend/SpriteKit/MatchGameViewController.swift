@@ -521,7 +521,11 @@ class MatchGameViewController: UIViewController {
         guard let level = currentLevel else { return }
         
         // Remove any leftover animation sublayers (e.g. lightning CAShapeLayers)
-        gridContainer.layer.sublayers?.removeAll(where: { $0 is CAShapeLayer })
+        // but preserve named layers (e.g. "ballTrail") that belong to in-flight animations
+        gridContainer.layer.sublayers?.removeAll(where: { layer in
+            guard let shapeLayer = layer as? CAShapeLayer else { return false }
+            return shapeLayer.name == nil || shapeLayer.name?.isEmpty == true
+        })
         
         for row in 0..<level.gridHeight {
             for col in 0..<level.gridWidth {
@@ -3414,6 +3418,7 @@ class MatchGameViewController: UIViewController {
         
         // Create dotted trail layer — trail starts AFTER fly-up, not during
         let trailLayer = CAShapeLayer()
+        trailLayer.name = "ballTrail"
         trailLayer.strokeColor = UIColor.white.withAlphaComponent(0.7).cgColor
         trailLayer.fillColor = nil
         trailLayer.lineWidth = 2.0
