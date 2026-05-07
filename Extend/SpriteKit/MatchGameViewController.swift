@@ -439,13 +439,54 @@ class MatchGameViewController: UIViewController {
         resetIdleHintTimer()
     }
     
+    private var lastDisplayedScore: Int = -1
+    private var lastDisplayedMoves: Int = -1
+
     private func updateUI() {
         guard let level = currentLevel else { return }
         
         levelLabel.text = level.name
-        levelNameLabel.text = level.name  // Update level name label
-        scoreLabel.text = "Score: \(score)"
-        movesLabel.text = "Moves: \(max(0, movesRemaining))"  // Never show negative moves
+        levelNameLabel.text = level.name
+
+        // Score pop when it increases
+        let newScore = score
+        if newScore != lastDisplayedScore {
+            scoreLabel.text = "Score: \(newScore)"
+            if newScore > lastDisplayedScore && lastDisplayedScore >= 0 {
+                UIView.animate(withDuration: 0.1, animations: {
+                    self.scoreLabel.transform = CGAffineTransform(scaleX: 1.35, y: 1.35)
+                    self.scoreLabel.textColor = UIColor(red: 1.0, green: 0.85, blue: 0.2, alpha: 1)
+                }, completion: { _ in
+                    UIView.animate(withDuration: 0.15) {
+                        self.scoreLabel.transform = .identity
+                        self.scoreLabel.textColor = .lightGray
+                    }
+                })
+            }
+            lastDisplayedScore = newScore
+        }
+
+        // Moves label — flash red when low
+        let newMoves = max(0, movesRemaining)
+        movesLabel.text = "Moves: \(newMoves)"
+        if newMoves != lastDisplayedMoves {
+            lastDisplayedMoves = newMoves
+            if newMoves <= 3 && newMoves > 0 {
+                // Urgent pulse: white → red → white
+                UIView.animate(withDuration: 0.12, animations: {
+                    self.movesLabel.textColor = UIColor(red: 1.0, green: 0.25, blue: 0.25, alpha: 1)
+                    self.movesLabel.transform = CGAffineTransform(scaleX: 1.3, y: 1.3)
+                }, completion: { _ in
+                    UIView.animate(withDuration: 0.18) {
+                        self.movesLabel.transform = .identity
+                        self.movesLabel.textColor = newMoves == 1 ? UIColor(red: 1.0, green: 0.25, blue: 0.25, alpha: 1) : .lightGray
+                    }
+                })
+            } else {
+                movesLabel.textColor = .lightGray
+            }
+        }
+
         targetLabel.text = "Target: \(level.scoreTarget)"
         
         // Update shields counter
@@ -1071,6 +1112,8 @@ class MatchGameViewController: UIViewController {
             // Select first piece
             selectedPiece = (row, col)
             updateGridDisplay()
+            // Ripple from selected tile
+            if let btn = gridButtons[row][col] { animateTileSelectionRipple(from: btn) }
         }
     }
     
@@ -1184,19 +1227,19 @@ class MatchGameViewController: UIViewController {
         
         if bothArePowerups {
             // ALL powerup-to-powerup swaps: piece1 slides onto piece2 with spring bounce
+            button1.layer.zPosition = 100  // Raise BEFORE animation so it's on top from frame 1
             UIView.animate(withDuration: 0.35, delay: 0, usingSpringWithDamping: 0.7, initialSpringVelocity: 0.8, options: [], animations: {
                 button1.transform = CGAffineTransform(translationX: deltaX, y: deltaY)
-                button1.layer.zPosition = 100
             }, completion: { [weak self] _ in
                 button1.layer.zPosition = 0
                 self?.swappedButtons = (button1, button2)
             })
         } else {
             // Normal swap: both buttons swap positions with spring bounce
+            button1.layer.zPosition = 100  // Raise BEFORE animation so it's on top from frame 1
             UIView.animate(withDuration: 0.35, delay: 0, usingSpringWithDamping: 0.7, initialSpringVelocity: 0.8, options: [], animations: {
                 button1.transform = CGAffineTransform(translationX: deltaX, y: deltaY)
                 button2.transform = CGAffineTransform(translationX: -deltaX, y: -deltaY)
-                button1.layer.zPosition = 100
             }, completion: { [weak self] _ in
                 button1.layer.zPosition = 0
                 self?.swappedButtons = (button1, button2)
@@ -4914,6 +4957,8 @@ class MatchGameViewController: UIViewController {
                         col: powerUp.col,
                         type: powerUp.type
                     )
+                    // Sparkle burst to celebrate the new powerup
+                    self.animatePowerupCreationSparkle(row: powerUp.row, col: powerUp.col)
                 }
                 
                 // Do NOT reset isAnimating here — the cascade/gravity chain must complete
@@ -5344,16 +5389,46 @@ class MatchGameViewController: UIViewController {
                         button.setImage(nil, for: .normal)
                         button.titleLabel?.font = UIFont.systemFont(ofSize: powerupFontSize)
                         button.backgroundColor = .clear
+                        // Vertical arrow pulse up-down
+                        if button.layer.animation(forKey: "arrowPulse") == nil {
+                            let nudge = CAKeyframeAnimation(keyPath: "transform.translation.y")
+                            nudge.values = [0, -4, 0, 4, 0]
+                            nudge.keyTimes = [0, 0.25, 0.5, 0.75, 1.0]
+                            nudge.duration = 0.9
+                            nudge.repeatCount = .infinity
+                            nudge.beginTime = CACurrentMediaTime() + Double(row) * 0.1
+                            button.layer.add(nudge, forKey: "arrowPulse")
+                        }
                     case .horizontalArrow:
                         button.setTitle("↔️", for: .normal)
                         button.setImage(nil, for: .normal)
                         button.titleLabel?.font = UIFont.systemFont(ofSize: powerupFontSize)
                         button.backgroundColor = .clear
+                        // Horizontal arrow pulse left-right
+                        if button.layer.animation(forKey: "arrowPulse") == nil {
+                            let nudge = CAKeyframeAnimation(keyPath: "transform.translation.x")
+                            nudge.values = [0, -4, 0, 4, 0]
+                            nudge.keyTimes = [0, 0.25, 0.5, 0.75, 1.0]
+                            nudge.duration = 0.9
+                            nudge.repeatCount = .infinity
+                            nudge.beginTime = CACurrentMediaTime() + Double(col) * 0.1
+                            button.layer.add(nudge, forKey: "arrowPulse")
+                        }
                     case .bomb:
                         button.setTitle("💣", for: .normal)
                         button.setImage(nil, for: .normal)
                         button.titleLabel?.font = UIFont.systemFont(ofSize: powerupFontSize)
                         button.backgroundColor = .clear
+                        // Bomb tick-wobble animation
+                        if button.layer.animation(forKey: "bombWobble") == nil {
+                            let wobble = CAKeyframeAnimation(keyPath: "transform.rotation.z")
+                            wobble.values = [0, 0.12, -0.10, 0.07, -0.05, 0]
+                            wobble.keyTimes = [0, 0.2, 0.45, 0.65, 0.82, 1.0]
+                            wobble.duration = 1.6
+                            wobble.repeatCount = .infinity
+                            wobble.beginTime = CACurrentMediaTime() + Double(row * 3 + col) * 0.18
+                            button.layer.add(wobble, forKey: "bombWobble")
+                        }
                     case .flame:
                         button.setTitle("🔥", for: .normal)
                         button.setImage(nil, for: .normal)
@@ -5386,6 +5461,17 @@ class MatchGameViewController: UIViewController {
                         button.setImage(nil, for: .normal)
                         button.titleLabel?.font = UIFont.systemFont(ofSize: powerupFontSize)
                         button.backgroundColor = .clear
+                        // Rocket idle spin
+                        if button.layer.animation(forKey: "rocketSpin") == nil {
+                            let spin = CABasicAnimation(keyPath: "transform.rotation.z")
+                            spin.fromValue = 0
+                            spin.toValue = CGFloat.pi * 2
+                            spin.duration = 2.4
+                            spin.repeatCount = .infinity
+                            spin.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
+                            spin.beginTime = CACurrentMediaTime() + Double(col) * 0.3
+                            button.layer.add(spin, forKey: "rocketSpin")
+                        }
                     case .ball:
                         // Use the piece's fixed emoji index so it doesn't change when the piece moves
                         button.setTitle(GamePiece.ballEmojis[piece.ballEmojiIndex], for: .normal)
@@ -5994,20 +6080,20 @@ class MatchGameViewController: UIViewController {
 
         let tiers: [Int: HelpTier] = [
             1: HelpTier(powerups: [.flame, .flame],
-                        bonusMoves: 0,
-                        bannerText: "🔥 Bonus Powerups!"),
-            2: HelpTier(powerups: [.flame, .flame, .bomb],
-                        bonusMoves: 1,
-                        bannerText: "💣 Extra Help! +1 Move"),
-            3: HelpTier(powerups: [.flame, .flame, .flame, .bomb, .rocket],
-                        bonusMoves: 3,
-                        bannerText: "🚀 Power Surge! +3 Moves"),
-            4: HelpTier(powerups: [.flame, .flame, .flame, .bomb, .bomb, .rocket, .ball],
                         bonusMoves: 5,
-                        bannerText: "⚡ Mega Boost! +5 Moves"),
+                        bannerText: "🔥 Bonus Powerups! +5 Moves"),
+            2: HelpTier(powerups: [.flame, .flame, .bomb],
+                        bonusMoves: 10,
+                        bannerText: "💣 Extra Help! +10 Moves"),
+            3: HelpTier(powerups: [.flame, .flame, .flame, .bomb, .rocket],
+                        bonusMoves: 15,
+                        bannerText: "🚀 Power Surge! +15 Moves"),
+            4: HelpTier(powerups: [.flame, .flame, .flame, .bomb, .bomb, .rocket, .ball],
+                        bonusMoves: 20,
+                        bannerText: "⚡ Mega Boost! +20 Moves"),
             5: HelpTier(powerups: [.flame, .flame, .flame, .flame, .bomb, .bomb, .rocket, .ball],
-                        bonusMoves: 8,
-                        bannerText: "🌟 Maximum Power! +8 Moves"),
+                        bonusMoves: 25,
+                        bannerText: "🌟 Maximum Power! +25 Moves"),
         ]
 
         guard let help = tiers[tier] else { return }
@@ -6469,6 +6555,71 @@ class MatchGameViewController: UIViewController {
         pulseAnimation.autoreverses = true
         
         button.layer.add(pulseAnimation, forKey: "pulse")
+    }
+
+    /// Expanding ring ripple that radiates from the center of a tapped tile.
+    private func animateTileSelectionRipple(from button: UIButton) {
+        guard let level = currentLevel else { return }
+        let cellW = gridContainer.bounds.width / CGFloat(level.gridWidth)
+        let cellH = gridContainer.bounds.height / CGFloat(level.gridHeight)
+        let size = min(cellW, cellH) * 0.85
+        let center = button.convert(CGPoint(x: button.bounds.midX, y: button.bounds.midY), to: gridContainer)
+
+        let ring = UIView()
+        ring.frame = CGRect(x: center.x - size / 2, y: center.y - size / 2, width: size, height: size)
+        ring.layer.cornerRadius = size / 2
+        ring.layer.borderWidth = 2.5
+        ring.layer.borderColor = UIColor.white.withAlphaComponent(0.85).cgColor
+        ring.backgroundColor = .clear
+        ring.isUserInteractionEnabled = false
+        gridContainer.addSubview(ring)
+
+        UIView.animate(withDuration: 0.38, delay: 0, options: .curveEaseOut, animations: {
+            ring.transform = CGAffineTransform(scaleX: 1.9, y: 1.9)
+            ring.alpha = 0
+        }) { _ in ring.removeFromSuperview() }
+    }
+
+    /// Starburst sparkle emitted when a match creates a new powerup tile.
+    private func animatePowerupCreationSparkle(row: Int, col: Int) {
+        guard let level = currentLevel else { return }
+        let cellW = gridContainer.bounds.width / CGFloat(level.gridWidth)
+        let cellH = gridContainer.bounds.height / CGFloat(level.gridHeight)
+        let centerX = CGFloat(col) * cellW + cellW / 2
+        let centerY = CGFloat(row) * cellH + cellH / 2
+
+        let colors: [UIColor] = [.yellow, .orange, UIColor(red: 1, green: 0.85, blue: 0.2, alpha: 1), .white, .cyan]
+        let particleCount = 10
+        for i in 0..<particleCount {
+            let angle = (CGFloat(i) / CGFloat(particleCount)) * CGFloat.pi * 2
+            let distance = CGFloat.random(in: cellW * 0.5 ... cellW * 1.1)
+            let particle = UIView()
+            let sz = CGFloat.random(in: 4...8)
+            particle.frame = CGRect(x: centerX - sz / 2, y: centerY - sz / 2, width: sz, height: sz)
+            particle.layer.cornerRadius = sz / 2
+            particle.backgroundColor = colors[i % colors.count]
+            particle.alpha = 1
+            gridContainer.addSubview(particle)
+
+            let dx = cos(angle) * distance
+            let dy = sin(angle) * distance
+            let delay = Double.random(in: 0...0.05)
+            UIView.animate(withDuration: 0.45, delay: delay, options: .curveEaseOut, animations: {
+                particle.center = CGPoint(x: centerX + dx, y: centerY + dy)
+                particle.transform = CGAffineTransform(scaleX: 0.2, y: 0.2)
+                particle.alpha = 0
+            }) { _ in particle.removeFromSuperview() }
+        }
+
+        // Brief white flash at the cell
+        let flash = UIView()
+        flash.frame = CGRect(x: centerX - cellW * 0.45, y: centerY - cellH * 0.45,
+                             width: cellW * 0.9, height: cellH * 0.9)
+        flash.layer.cornerRadius = 6
+        flash.backgroundColor = UIColor.white.withAlphaComponent(0.55)
+        flash.isUserInteractionEnabled = false
+        gridContainer.addSubview(flash)
+        UIView.animate(withDuration: 0.25, animations: { flash.alpha = 0 }) { _ in flash.removeFromSuperview() }
     }
 }
 
