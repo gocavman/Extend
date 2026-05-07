@@ -127,7 +127,7 @@ class MatchGameViewController: UIViewController {
     private var levelCompletionTriggered: Bool = false  // Prevent multiple level completion triggers
     private var pendingCascades: [(row: Int, col: Int, type: PieceType)] = []  // Cascades queued while checkForMatches runs between cascade steps
     private var cascadeDepth: Int = 0            // How many cascading powerups have fired this chain
-    private let maxCascadeDepth: Int = 3         // Cap: stop cascading after this many powerup detonations in one chain
+    private let maxCascadeDepth: Int = 4         // Cap: stop cascading after this many powerup detonations in one chain
     private var armorGrid: [[Int]] = []  // Armor hits remaining per grid position (0 = no armor)
     private var armorOverlays: [[UILabel?]] = []  // Overlay labels showing armor count
     private var armorBorderViews: [[UIView?]] = []  // Static border overlays for armored cells
@@ -135,6 +135,8 @@ class MatchGameViewController: UIViewController {
     private var activeAnimationViews: Set<ObjectIdentifier> = []  // Views currently used by in-flight animations (ball, rocket, etc.) — excluded from gravity cleanup
     private var blankTileOverlays: [UIView] = []  // Overlay views covering blank grid positions (sit above gridStackView to hide pieces sliding through)
     private var levelCompleteCompletion: (() -> Void)?  // Stored completion for level complete modal
+    private var retryCount: Int = 0  // Consecutive retries on the current level (progressive help)
+    private var retryLevelId: Int = -1  // Which level the retryCount applies to
     
     // MARK: - Game Logic
     private var gridAspectRatioConstraint: NSLayoutConstraint?
@@ -488,6 +490,10 @@ class MatchGameViewController: UIViewController {
             
             // Reset all button transforms before showing completion animation
             resetAllButtonTransforms()
+            
+            // Level beaten — reset retry count for this level
+            retryCount = 0
+            retryLevelId = -1
             
             // Disable interactions while animating
             isAnimating = true
@@ -5947,11 +5953,18 @@ class MatchGameViewController: UIViewController {
                 // Clear any saved mid-level snapshot so we start truly fresh
                 self.clearMidLevelState(levelId: level.id)
 
-                // Restart the level, then drop in 2 bonus rockets
+                // Track retry count for progressive help
+                if self.retryLevelId != level.id {
+                    self.retryLevelId = level.id
+                    self.retryCount = 0
+                }
+                self.retryCount += 1
+
+                // Restart the level, then drop in progressive bonus help
                 self.score = 0
                 self.startLevel(level.id)
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) {
-                    self.dropInBonusRockets()
+                    self.dropInProgressiveHelp()
                 }
             })
             
@@ -5964,7 +5977,168 @@ class MatchGameViewController: UIViewController {
         }
     }
     
+    /// Progressive help system: each consecutive retry on the same level adds more powerups and bonus moves.
+    /// Retry 1 → 2 flames | Retry 2 → 2 flames + bomb + 1 move | Retry 3 → 3 flames + bomb + rocket + 3 moves
+    /// Retry 4 → 3 flames + 2 bombs + rocket + ball + 5 moves | Retry 5+ → 4 flames + 2 bombs + rocket + ball + 8 moves
+    private func dropInProgressiveHelp() {
+        guard let level = currentLevel else { return }
+
+        // Determine tier from retry count
+        let tier = min(retryCount, 5)
+
+        struct HelpTier {
+            let powerups: [PieceType]
+            let bonusMoves: Int
+            let bannerText: String
+        }
+
+        let tiers: [Int: HelpTier] = [
+            1: HelpTier(powerups: [.flame, .flame],
+                        bonusMoves: 0,
+                        bannerText: "🔥 Bonus Powerups!"),
+            2: HelpTier(powerups: [.flame, .flame, .bomb],
+                        bonusMoves: 1,
+                        bannerText: "💣 Extra Help! +1 Move"),
+            3: HelpTier(powerups: [.flame, .flame, .flame, .bomb, .rocket],
+                        bonusMoves: 3,
+                        bannerText: "🚀 Power Surge! +3 Moves"),
+            4: HelpTier(powerups: [.flame, .flame, .flame, .bomb, .bomb, .rocket, .ball],
+                        bonusMoves: 5,
+                        bannerText: "⚡ Mega Boost! +5 Moves"),
+            5: HelpTier(powerups: [.flame, .flame, .flame, .flame, .bomb, .bomb, .rocket, .ball],
+                        bonusMoves: 8,
+                        bannerText: "🌟 Maximum Power! +8 Moves"),
+        ]
+
+        guard let help = tiers[tier] else { return }
+
+        // Apply bonus moves immediately
+        if help.bonusMoves > 0 {
+            movesRemaining += help.bonusMoves
+            updateUI()
+        }
+
+        // Show a brief animated banner describing what's been added
+        showRetryHelpBanner(help.bannerText)
+
+        // Gather all valid normal tiles, shuffle them, pick first N
+        var candidates: [(row: Int, col: Int)] = []
+        for r in 0..<level.gridHeight {
+            for c in 0..<level.gridWidth {
+                if gridShapeMap[r][c], let piece = gameGrid[r][c], piece.type == .normal {
+                    candidates.append((r, c))
+                }
+            }
+        }
+        candidates.shuffle()
+
+        let dropCount = min(help.powerups.count, candidates.count)
+        let chosenPositions = Array(candidates.prefix(dropCount))
+
+        let gridH = gridContainer.bounds.height
+        let gridW = gridContainer.bounds.width
+        let rowH = gridH / CGFloat(level.gridHeight)
+        let colW = gridW / CGFloat(level.gridWidth)
+
+        for (idx, pos) in chosenPositions.enumerated() {
+            let powerupType = help.powerups[idx]
+            let (r, c) = (pos.row, pos.col)
+            let landX = CGFloat(c) * colW + colW / 2
+            let landY = CGFloat(r) * rowH + rowH / 2
+
+            let emoji = emojiForPowerupType(powerupType)
+            let dropLabel = UILabel()
+            dropLabel.text = emoji
+            let sz = min(colW, rowH) * 1.15
+            dropLabel.font = UIFont.systemFont(ofSize: sz)
+            dropLabel.textAlignment = .center
+            // Start above the grid, slightly staggered horizontally
+            let offsetX = CGFloat(idx % 3 - 1) * colW * 0.25
+            dropLabel.frame = CGRect(x: landX - sz / 2 + offsetX, y: -sz * 2.5, width: sz, height: sz)
+            gridContainer.addSubview(dropLabel)
+            activeAnimationViews.insert(ObjectIdentifier(dropLabel))
+
+            let delay = Double(idx) * 0.14
+            UIView.animate(withDuration: 0.55, delay: delay,
+                           usingSpringWithDamping: 0.55, initialSpringVelocity: 0.9,
+                           options: [], animations: {
+                dropLabel.center = CGPoint(x: landX, y: landY)
+            }, completion: { [weak self] _ in
+                guard let self = self else { return }
+                // Plant the powerup in the grid
+                if let piece = self.gameGrid[r][c] {
+                    piece.type = powerupType
+                    if powerupType == .ball {
+                        piece.ballEmojiIndex = Int.random(in: 0..<GamePiece.ballEmojis.count)
+                    }
+                    self.updateGridDisplay()
+                }
+                dropLabel.removeFromSuperview()
+                self.activeAnimationViews.remove(ObjectIdentifier(dropLabel))
+                // Pulse the button to highlight the new powerup
+                if let btn = self.gridButtons[r][c] {
+                    UIView.animate(withDuration: 0.12, animations: {
+                        btn.transform = CGAffineTransform(scaleX: 1.4, y: 1.4)
+                    }, completion: { _ in
+                        UIView.animate(withDuration: 0.12) { btn.transform = .identity }
+                    })
+                }
+            })
+        }
+    }
+
+    /// Returns the display emoji for a powerup type, used in drop animation labels.
+    private func emojiForPowerupType(_ type: PieceType) -> String {
+        switch type {
+        case .flame:          return "🔥"
+        case .bomb:           return "💣"
+        case .horizontalArrow: return "➡️"
+        case .verticalArrow:  return "⬆️"
+        case .rocket:         return "🚀"
+        case .ball:           return GamePiece.ballEmojis[Int.random(in: 0..<GamePiece.ballEmojis.count)]
+        default:              return "⭐"
+        }
+    }
+
+    /// Shows a brief animated banner at the top of the grid describing the retry help tier.
+    private func showRetryHelpBanner(_ text: String) {
+        let banner = UILabel()
+        banner.text = text
+        banner.font = UIFont.systemFont(ofSize: 16, weight: .bold)
+        banner.textColor = .white
+        banner.textAlignment = .center
+        banner.backgroundColor = UIColor(red: 0.15, green: 0.15, blue: 0.15, alpha: 0.88)
+        banner.layer.cornerRadius = 10
+        banner.layer.masksToBounds = true
+        banner.alpha = 0
+        banner.translatesAutoresizingMaskIntoConstraints = false
+        view.addSubview(banner)
+        NSLayoutConstraint.activate([
+            banner.centerXAnchor.constraint(equalTo: gridContainer.centerXAnchor),
+            banner.topAnchor.constraint(equalTo: gridContainer.topAnchor, constant: 8),
+            banner.widthAnchor.constraint(lessThanOrEqualTo: gridContainer.widthAnchor, constant: -16),
+            banner.heightAnchor.constraint(equalToConstant: 36)
+        ])
+        // Force layout so constraints are resolved
+        view.layoutIfNeeded()
+
+        UIView.animate(withDuration: 0.3, animations: {
+            banner.alpha = 1
+            banner.transform = CGAffineTransform(scaleX: 1.05, y: 1.05)
+        }, completion: { _ in
+            UIView.animate(withDuration: 0.15, animations: {
+                banner.transform = .identity
+            })
+            DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+                UIView.animate(withDuration: 0.4, animations: { banner.alpha = 0 }) { _ in
+                    banner.removeFromSuperview()
+                }
+            }
+        })
+    }
+
     /// After a failed retry, two rocket powerups fly in from off-screen and land on random adjacent tiles.
+    /// Kept for backward compatibility — now superseded by dropInProgressiveHelp().
     private func dropInBonusRockets() {
         guard let level = currentLevel else { return }
 
