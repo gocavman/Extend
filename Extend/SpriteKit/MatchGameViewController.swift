@@ -5392,7 +5392,7 @@ class MatchGameViewController: UIViewController {
                         // Vertical arrow pulse up-down
                         if button.layer.animation(forKey: "arrowPulse") == nil {
                             let nudge = CAKeyframeAnimation(keyPath: "transform.translation.y")
-                            nudge.values = [0, -4, 0, 4, 0]
+                            nudge.values = [0, -2, 0, 2, 0]
                             nudge.keyTimes = [0, 0.25, 0.5, 0.75, 1.0]
                             nudge.duration = 0.9
                             nudge.repeatCount = .infinity
@@ -5407,7 +5407,7 @@ class MatchGameViewController: UIViewController {
                         // Horizontal arrow pulse left-right
                         if button.layer.animation(forKey: "arrowPulse") == nil {
                             let nudge = CAKeyframeAnimation(keyPath: "transform.translation.x")
-                            nudge.values = [0, -4, 0, 4, 0]
+                            nudge.values = [0, -2, 0, 2, 0]
                             nudge.keyTimes = [0, 0.25, 0.5, 0.75, 1.0]
                             nudge.duration = 0.9
                             nudge.repeatCount = .infinity
@@ -6188,36 +6188,50 @@ class MatchGameViewController: UIViewController {
 
     /// Shows a brief animated banner at the top of the grid describing the retry help tier.
     private func showRetryHelpBanner(_ text: String) {
-        let banner = UILabel()
-        banner.text = text
-        banner.font = UIFont.systemFont(ofSize: 16, weight: .bold)
-        banner.textColor = .white
-        banner.textAlignment = .center
-        banner.backgroundColor = UIColor(red: 0.15, green: 0.15, blue: 0.15, alpha: 0.88)
-        banner.layer.cornerRadius = 10
-        banner.layer.masksToBounds = true
-        banner.alpha = 0
-        banner.translatesAutoresizingMaskIntoConstraints = false
-        view.addSubview(banner)
+        // Container provides rounded background + padding
+        let container = UIView()
+        container.backgroundColor = UIColor(red: 0.15, green: 0.15, blue: 0.15, alpha: 0.88)
+        container.layer.cornerRadius = 10
+        container.layer.masksToBounds = true
+        container.alpha = 0
+        container.translatesAutoresizingMaskIntoConstraints = false
+
+        let label = UILabel()
+        label.text = text
+        label.font = UIFont.systemFont(ofSize: 15, weight: .bold)
+        label.textColor = .white
+        label.textAlignment = .center
+        label.numberOfLines = 0
+        label.lineBreakMode = .byWordWrapping
+        label.translatesAutoresizingMaskIntoConstraints = false
+
+        container.addSubview(label)
         NSLayoutConstraint.activate([
-            banner.centerXAnchor.constraint(equalTo: gridContainer.centerXAnchor),
-            banner.topAnchor.constraint(equalTo: gridContainer.topAnchor, constant: 8),
-            banner.widthAnchor.constraint(lessThanOrEqualTo: gridContainer.widthAnchor, constant: -16),
-            banner.heightAnchor.constraint(equalToConstant: 36)
+            label.topAnchor.constraint(equalTo: container.topAnchor, constant: 8),
+            label.bottomAnchor.constraint(equalTo: container.bottomAnchor, constant: -8),
+            label.leadingAnchor.constraint(equalTo: container.leadingAnchor, constant: 14),
+            label.trailingAnchor.constraint(equalTo: container.trailingAnchor, constant: -14),
+        ])
+
+        view.addSubview(container)
+        NSLayoutConstraint.activate([
+            container.centerXAnchor.constraint(equalTo: view.centerXAnchor),
+            container.topAnchor.constraint(equalTo: gridContainer.topAnchor, constant: 8),
+            container.widthAnchor.constraint(lessThanOrEqualTo: view.widthAnchor, constant: -32),
         ])
         // Force layout so constraints are resolved
         view.layoutIfNeeded()
 
         UIView.animate(withDuration: 0.3, animations: {
-            banner.alpha = 1
-            banner.transform = CGAffineTransform(scaleX: 1.05, y: 1.05)
+            container.alpha = 1
+            container.transform = CGAffineTransform(scaleX: 1.05, y: 1.05)
         }, completion: { _ in
             UIView.animate(withDuration: 0.15, animations: {
-                banner.transform = .identity
+                container.transform = .identity
             })
             DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
-                UIView.animate(withDuration: 0.4, animations: { banner.alpha = 0 }) { _ in
-                    banner.removeFromSuperview()
+                UIView.animate(withDuration: 0.4, animations: { container.alpha = 0 }) { _ in
+                    container.removeFromSuperview()
                 }
             }
         })
