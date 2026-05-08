@@ -2262,8 +2262,8 @@ class MatchGameViewController: UIViewController {
         }
     }
 
-    /// Ball + Ball combo: "Super Ball" — two balls merge into one giant ball that hits TWO tiles in
-    /// every row as it bounces down, covering the whole grid.
+    /// Ball + Ball combo: "Quad Ball" — 4 balls launch from the grid corners simultaneously,
+    /// each bouncing independently and clearing tiles with per-column gravity as they go.
     private func handleBallBallCombo(r1: Int, c1: Int, r2: Int, c2: Int) {
         guard let level = currentLevel else { return }
 
@@ -2276,51 +2276,60 @@ class MatchGameViewController: UIViewController {
             self.swappedButtons = nil
         }
 
-        // Collect every tile on the board as a target (super ball clears entire board)
-        var allTiles: Set<String> = []
-        var cascadingPowerups: [(row: Int, col: Int, type: PieceType)] = []
-        for row in 0..<level.gridHeight {
-            for col in 0..<level.gridWidth {
-                if gridShapeMap[row][col], let piece = gameGrid[row][col] {
-                    allTiles.insert("\(row),\(col)")
-                    if piece.type != .normal {
-                        cascadingPowerups.append((row: row, col: col, type: piece.type))
+        updateGridDisplay()
+        movesRemaining -= 1
+        updateUI()
+
+        // Flash all 4 corner tiles briefly as a "charge up" cue
+        let corners = [
+            (row: 0,                  col: 0),
+            (row: 0,                  col: level.gridWidth  - 1),
+            (row: level.gridHeight - 1, col: 0),
+            (row: level.gridHeight - 1, col: level.gridWidth  - 1)
+        ]
+        for corner in corners {
+            if let btn = gridButtons[corner.row][corner.col] {
+                UIView.animate(withDuration: 0.15, animations: {
+                    btn.transform = CGAffineTransform(scaleX: 1.3, y: 1.3)
+                    btn.alpha = 0.4
+                }) { _ in
+                    UIView.animate(withDuration: 0.15) {
+                        btn.transform = .identity
+                        btn.alpha = 1.0
                     }
                 }
             }
         }
 
-        updateGridDisplay()
-        movesRemaining -= 1
-        updateUI()
-
-        // Show a big border highlight then animate two balls bouncing simultaneously
-        showPowerupBorderHighlight(allTiles) { [weak self] in
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) { [weak self] in
             guard let self = self else { return }
 
-            // Clear all tiles from data
-            for key in allTiles {
-                let parts = key.split(separator: ",").map { Int($0) ?? 0 }
-                if parts.count == 2 { let _ = self.hitTile(row: parts[0], col: parts[1]) }
-            }
-            self.updateGridDisplay()
-
-            // Animate two balls from the two swap positions
             var done = 0
             let finish: () -> Void = { [weak self] in
                 done += 1
-                guard done == 2, let self = self else { return }
+                guard done == 4, let self = self else { return }
                 self.isAnimating = false
-                if !cascadingPowerups.isEmpty {
-                    self.activateCascadingPowerups(cascadingPowerups)
-                } else {
-                    self.applyGravity()
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
+                    self.checkForMatches()
                 }
                 if self.movesRemaining <= 0 { self.levelFailed() }
             }
 
-            self.animateBouncingBall(fromRow: r1, fromCol: c1, managedExternally: false, completion: { finish() })
-            self.animateBouncingBall(fromRow: r2, fromCol: c2, managedExternally: false, completion: { finish() })
+            // Launch one ball from each corner
+            for corner in corners {
+                // Place a temporary ball piece at the corner so animateBouncingBall
+                // can read the emoji — use the swapped pieces' ball emoji index
+                if self.gameGrid[corner.row][corner.col] == nil {
+                    // Corner is empty — inject a ghost ball piece just for the launch emoji
+                    // animateBouncingBall removes it immediately on start
+                    let ghost = GamePiece(itemId: "ball", colorIndex: 0, row: corner.row, col: corner.col)
+                    ghost.type = .ball
+                    ghost.ballEmojiIndex = Int.random(in: 0..<GamePiece.ballEmojis.count)
+                    self.gameGrid[corner.row][corner.col] = ghost
+                }
+                self.animateBouncingBall(fromRow: corner.row, fromCol: corner.col,
+                                         managedExternally: false, completion: { finish() })
+            }
         }
     }
 
@@ -4266,10 +4275,28 @@ class MatchGameViewController: UIViewController {
             crossedTileSet.insert("\(fromRow),\(fromCol)")
         }
 
-        // Build the path: start at rocket origin → trace all 5 lines
+        // Build the path: start at rocket origin → trace all 5 lines with lightning jags
         let path = UIBezierPath()
         path.move(to: CGPoint(x: startX, y: startY))
-        for pt in starWaypoints { path.addLine(to: pt) }
+        for pt in starWaypoints {
+            let prev  = path.currentPoint
+            let dx    = pt.x - prev.x
+            let dy    = pt.y - prev.y
+            let mag   = max(hypot(dx, dy), 1)
+            let perpX = -dy / mag
+            let perpY =  dx / mag
+            // Subdivide into 6-10 jag segments with random perpendicular offsets
+            let jagSteps = Int.random(in: 5...8)
+            let jagScale = mag * CGFloat.random(in: 0.01...0.03)  // jag intensity relative to arm length
+            for s in 1...jagSteps {
+                let t    = CGFloat(s) / CGFloat(jagSteps)
+                let px   = prev.x + dx * t
+                let py   = prev.y + dy * t
+                // No jag on final point so lines meet cleanly at the tips
+                let jag  = s < jagSteps ? CGFloat.random(in: -jagScale...jagScale) : 0
+                path.addLine(to: CGPoint(x: px + perpX * jag, y: py + perpY * jag))
+            }
+        }
 
         // Keep waypoints array for animation duration calculation
         let waypoints = [CGPoint(x: startX, y: startY)] + starWaypoints
@@ -4315,14 +4342,14 @@ class MatchGameViewController: UIViewController {
         // The star path IS the lightning — reuse it with a cyan glow layer
         let lightningLayer = CAShapeLayer()
         lightningLayer.path = path.cgPath
-        lightningLayer.strokeColor = UIColor.white.cgColor
-        lightningLayer.lineWidth = 2.0
+        lightningLayer.strokeColor = UIColor(white: 0.95, alpha: 1).cgColor
+        lightningLayer.lineWidth = 2.5
         lightningLayer.fillColor = nil
         lightningLayer.lineCap = .round
         lightningLayer.lineJoin = .round
-        lightningLayer.shadowColor = UIColor.cyan.cgColor
-        lightningLayer.shadowRadius = 4
-        lightningLayer.shadowOpacity = 0.8
+        lightningLayer.shadowColor = UIColor.yellow.cgColor
+        lightningLayer.shadowRadius = 6
+        lightningLayer.shadowOpacity = 1.0
         lightningLayer.shadowOffset = .zero
         gridContainer.layer.addSublayer(lightningLayer)
         
