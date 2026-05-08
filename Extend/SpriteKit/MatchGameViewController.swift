@@ -26,7 +26,7 @@ struct MatchGameConfig: Codable {
 
 // MARK: - Power-Up Types
 
-enum PieceType {
+enum PieceType: Equatable {
     case normal
     case verticalArrow
     case horizontalArrow
@@ -1909,7 +1909,7 @@ class MatchGameViewController: UIViewController {
         return cascading
     }
 
-    /// Bomb + Bomb: 4x4 clear at midpoint between the two bombs.
+    /// Bomb + Bomb: 5x5 clear centered on the midpoint between the two bombs.
     private func handleBombBombCombo(r1: Int, c1: Int, r2: Int, c2: Int) {
         guard let level = currentLevel else { return }
 
@@ -1918,13 +1918,13 @@ class MatchGameViewController: UIViewController {
 
         var clearedTiles: Set<String> = []
 
-        // Calculate the midpoint between the two bombs
+        // Midpoint between the two bombs
         let midRow = (r1 + r2) / 2
         let midCol = (c1 + c2) / 2
 
-        // Clear a 4x4 grid centered on midpoint (2 in each direction)
-        for dr in -2...1 {
-            for dc in -2...1 {
+        // Clear a true 5x5 grid centered on midpoint (-2…+2 in each direction)
+        for dr in -2...2 {
+            for dc in -2...2 {
                 let nr = midRow + dr
                 let nc = midCol + dc
                 if nr >= 0 && nr < level.gridHeight && nc >= 0 && nc < level.gridWidth &&
@@ -3662,7 +3662,7 @@ class MatchGameViewController: UIViewController {
         }
         
         // Capture cascading powerups from bounce targets BEFORE clearing
-        var cascadingPowerups: [(row: Int, col: Int, type: PieceType)] = []
+        let cascadingPowerups: [(row: Int, col: Int, type: PieceType)] = []
         
         // Remove the ball piece from the grid and clear the button immediately
         gameGrid[fromRow][fromCol] = nil
@@ -3710,43 +3710,11 @@ class MatchGameViewController: UIViewController {
         let topY: CGFloat = -ballSize
         let centerX = gridWidth / 2
         
-        // Build bounce targets: step one row down and one column left/right each time.
-        // Start from row 0 (top of grid) after the fly-up.
-        var bounceTiles: [(row: Int, col: Int)] = []
-        var currentCol = Int.random(in: 0..<level.gridWidth)  // Random starting column
-        var bounceDir = Bool.random() ? 1 : -1  // Initial direction: +1 right, -1 left
-        
-        for r in 0..<level.gridHeight {
-            // Look for an occupied tile in this row near currentCol
-            // Always prefer bouncing left or right first, only go straight down as last resort
-            let candidates = [currentCol + bounceDir, currentCol - bounceDir, currentCol]
-            var found = false
-            for c in candidates {
-                if c >= 0 && c < level.gridWidth && gridShapeMap[r][c] && gameGrid[r][c] != nil {
-                    bounceTiles.append((row: r, col: c))
-                    // Bounce direction: move toward the column we landed on, then alternate
-                    if c != currentCol {
-                        bounceDir = (c > currentCol) ? 1 : -1
-                    } else {
-                        bounceDir = -bounceDir  // Alternate if staying in same column
-                    }
-                    currentCol = c
-                    found = true
-                    break
-                }
-            }
-            // If nothing found in this row, skip it (ball falls past)
-            if !found { continue }
-            if bounceTiles.count >= 8 { break }
-        }
-        
-        // Pre-capture powerups in bounce targets before any clearing happens
-        for tile in bounceTiles {
-            if let piece = gameGrid[tile.row][tile.col], piece.type != .normal {
-                cascadingPowerups.append((row: tile.row, col: tile.col, type: piece.type))
-            }
-        }
-        
+        // Dynamic bounce state — calculated fresh at each step from live gameGrid
+        let currentCol = Int.random(in: 0..<level.gridWidth)
+        let bounceDir  = Bool.random() ? 1 : -1
+        let bouncesLeft = 8
+
         // Phase 1: Animate ball flying up (no trail during this phase)
         UIView.animate(withDuration: 0.5, delay: 0, options: .curveEaseOut, animations: {
             ballLabel.center = CGPoint(x: centerX, y: topY)
@@ -3758,19 +3726,21 @@ class MatchGameViewController: UIViewController {
                 completion()
                 return
             }
-            // Keep ballLabel in activeAnimationViews — it's still active through Phase 2 & 3.
-            // Removal happens in Phase 3 completion when the ball truly exits the screen.
-            
-            // Start the trail from the top position
             trailPath.move(to: CGPoint(x: centerX, y: topY))
             trailLayer.path = trailPath.cgPath
-            
-            // Phase 2: Ball drops and bounces across tiles (downward only)
-            self.animateBallBounces(ballLabel: ballLabel, bounces: bounceTiles, index: 0,
-                                    level: level, rowHeight: rowHeight, colWidth: colWidth,
-                                    gridWidth: gridWidth, gridHeight: gridHeight,
-                                    bombExplosionRadius: bombExplosionRadius,
-                                    trailPath: trailPath, trailLayer: trailLayer) {
+
+            // Phase 2: Dynamic bouncing — recalculate target each step
+            self.animateBallBounceDynamic(
+                ballLabel: ballLabel,
+                trailPath: trailPath, trailLayer: trailLayer,
+                level: level, rowHeight: rowHeight, colWidth: colWidth,
+                gridWidth: gridWidth, gridHeight: gridHeight,
+                currentRow: -1, currentCol: currentCol, bounceDir: bounceDir,
+                bouncesLeft: bouncesLeft,
+                bombExplosionRadius: bombExplosionRadius,
+                cascadingPowerups: cascadingPowerups
+            ) { [weak self] finalCascades in
+                guard let self = self else { completion(); return }
                 // Phase 3: Final bounce off the bottom of the screen
                 let lastPos = ballLabel.center
                 let exitDir: CGFloat = Bool.random() ? 1 : -1
@@ -3826,19 +3796,21 @@ class MatchGameViewController: UIViewController {
                         trailLayer.removeFromSuperlayer()
                         self.updateGridDisplay()
                         self.updateUI()
-                        
-                        // Handle cascading powerups or apply gravity (same pattern as rocket)
-                        // Merge any extra cascades (e.g. from a ball+arrow combo's arrow tiles)
-                        let allCascades = cascadingPowerups + extraCascades
+
+                        // Handle cascading powerups or check for matches.
+                        // Per-bounce gravity already filled all columns, so skip full applyGravity.
+                        let allCascades = finalCascades + extraCascades
                         if managedExternally {
-                            // Cascade system is managing gravity — report sub-cascades and return
                             subCascadeCallback(allCascades)
                             completion()
                         } else {
                             if !allCascades.isEmpty {
                                 self.activateCascadingPowerups(allCascades)
                             } else {
-                                self.applyGravity()
+                                // Small settle delay then check for new matches formed by dropped tiles
+                                DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
+                                    self.checkForMatches()
+                                }
                             }
                             completion()
                         }
@@ -3848,6 +3820,238 @@ class MatchGameViewController: UIViewController {
         }
     }
     
+    /// Dynamic ball bounce: calculates ONE target at a time from live gameGrid,
+    /// runs per-column gravity after each hit, then recurses. Tiles fall immediately.
+    private func animateBallBounceDynamic(
+        ballLabel: UILabel,
+        trailPath: UIBezierPath, trailLayer: CAShapeLayer,
+        level: MatchGameLevel, rowHeight: CGFloat, colWidth: CGFloat,
+        gridWidth: CGFloat, gridHeight: CGFloat,
+        currentRow: Int, currentCol: Int, bounceDir: Int,
+        bouncesLeft: Int,
+        bombExplosionRadius: Int,
+        cascadingPowerups: [(row: Int, col: Int, type: PieceType)],
+        completion: @escaping ([(row: Int, col: Int, type: PieceType)]) -> Void
+    ) {
+        guard bouncesLeft > 0 else { completion(cascadingPowerups); return }
+        guard let _ = currentLevel else { completion(cascadingPowerups); return }
+
+        // --- Find next target row below currentRow ---
+        var nextTarget: (row: Int, col: Int)? = nil
+        var nextDir = bounceDir
+        var nextCol = currentCol
+
+        for r in (currentRow + 1)..<level.gridHeight {
+            let candidates = [nextCol + bounceDir, nextCol - bounceDir, nextCol]
+            var found = false
+            for c in candidates {
+                if c >= 0 && c < level.gridWidth && gridShapeMap[r][c] && gameGrid[r][c] != nil {
+                    nextTarget = (row: r, col: c)
+                    nextDir = (c != nextCol) ? (c > nextCol ? 1 : -1) : -bounceDir
+                    nextCol = c
+                    found = true
+                    break
+                }
+            }
+            if found { break }
+        }
+
+        guard let target = nextTarget else {
+            // No more tiles below — done bouncing
+            completion(cascadingPowerups)
+            return
+        }
+
+        let targetX = CGFloat(target.col) * colWidth + colWidth / 2
+        let targetY = CGFloat(target.row) * rowHeight + rowHeight / 2
+        let currentPos = ballLabel.center
+        let horizontalDist = abs(targetX - currentPos.x)
+        let arcRise = max(rowHeight * 1.2, horizontalDist * 0.4 + rowHeight * 0.8)
+        let arcPeakY = currentPos.y - arcRise
+        let arcPeakX = currentPos.x + (targetX - currentPos.x) * 0.3
+        let verticalDrop = targetY - arcPeakY
+        let duration: TimeInterval = max(0.22, min(0.45, Double(verticalDrop / (rowHeight * 6)) * 0.4))
+        let spinAmount = CGFloat.pi * (0.8 + horizontalDist / gridWidth)
+        let currentRotation = CGFloat(8 - bouncesLeft) * CGFloat.pi * 0.8
+
+        UIView.animateKeyframes(withDuration: duration, delay: 0, options: [], animations: {
+            UIView.addKeyframe(withRelativeStartTime: 0, relativeDuration: 0.70) {
+                ballLabel.center = CGPoint(x: arcPeakX, y: arcPeakY)
+                ballLabel.transform = CGAffineTransform(scaleX: 1.05, y: 1.05)
+                    .rotated(by: currentRotation + spinAmount * 0.3)
+            }
+            UIView.addKeyframe(withRelativeStartTime: 0.70, relativeDuration: 0.30) {
+                ballLabel.center = CGPoint(x: targetX, y: targetY)
+                ballLabel.transform = CGAffineTransform(scaleX: 1.0, y: 1.0)
+                    .rotated(by: currentRotation + spinAmount)
+            }
+        }) { [weak self] _ in
+            guard let self = self else { completion(cascadingPowerups); return }
+
+            // Draw trail segment
+            trailPath.addQuadCurve(to: CGPoint(x: targetX, y: targetY),
+                                   controlPoint: CGPoint(x: arcPeakX, y: arcPeakY))
+            trailLayer.path = trailPath.cgPath
+            trailLayer.strokeEnd = 1.0
+
+            var newCascades = cascadingPowerups
+
+            // --- Impact: clear tile(s) and collect cascades ---
+            if bombExplosionRadius > 0 {
+                var explosionButtons: [UIButton] = []
+                for dr in -bombExplosionRadius...bombExplosionRadius {
+                    for dc in -bombExplosionRadius...bombExplosionRadius {
+                        let er = target.row + dr; let ec = target.col + dc
+                        guard er >= 0 && er < level.gridHeight && ec >= 0 && ec < level.gridWidth,
+                              gridShapeMap[er][ec], self.gameGrid[er][ec] != nil else { continue }
+                        if let p = self.gameGrid[er][ec] {
+                            let pt = p.type; if case .normal = pt {} else { newCascades.append((row: er, col: ec, type: pt)) }
+                        }
+                        let _ = self.hitTile(row: er, col: ec)
+                        if let btn = self.gridButtons[er][ec] { explosionButtons.append(btn) }
+                    }
+                }
+                // Flash
+                let flashSize = min(colWidth, rowHeight) * CGFloat(bombExplosionRadius * 2 + 1) * 1.1
+                let flash = UIView(frame: CGRect(x: targetX - flashSize/2, y: targetY - flashSize/2, width: flashSize, height: flashSize))
+                flash.backgroundColor = UIColor.orange.withAlphaComponent(0.85)
+                flash.layer.cornerRadius = flashSize / 2
+                self.gridContainer.addSubview(flash)
+                UIView.animate(withDuration: 0.25, animations: { flash.transform = CGAffineTransform(scaleX: 1.4, y: 1.4); flash.alpha = 0 }) { _ in flash.removeFromSuperview() }
+                for btn in explosionButtons {
+                    let s = CAKeyframeAnimation(keyPath: "transform.scale"); s.values = [1.0,1.25,0.1]; s.keyTimes = [0,0.4,1]; s.duration = 0.22; s.fillMode = .forwards; s.isRemovedOnCompletion = false
+                    btn.layer.add(s, forKey: "pop")
+                }
+                UIImpactFeedbackGenerator(style: .heavy).impactOccurred()
+                // (gravity fires after ball departs — see below)
+            } else if self.gameGrid[target.row][target.col] != nil {
+                if let p = self.gameGrid[target.row][target.col] {
+                    let pt = p.type; if case .normal = pt {} else { newCascades.append((row: target.row, col: target.col, type: pt)) }
+                }
+                let _ = self.hitTile(row: target.row, col: target.col)
+                // Clear button visually
+                if let btn = self.gridButtons[target.row][target.col] {
+                    btn.setTitle("", for: .normal); btn.setImage(nil, for: .normal); btn.backgroundColor = .clear
+                }
+                // Small orange flash
+                let flashSize = min(colWidth, rowHeight) * 0.85
+                let flash = UIView(frame: CGRect(x: targetX - flashSize/2, y: targetY - flashSize/2, width: flashSize, height: flashSize))
+                flash.backgroundColor = UIColor.orange.withAlphaComponent(0.35)
+                flash.layer.cornerRadius = flashSize / 2
+                self.gridContainer.addSubview(flash)
+                UIView.animate(withDuration: 0.6, animations: { flash.transform = CGAffineTransform(scaleX: 1.5, y: 1.5); flash.alpha = 0 }) { _ in flash.removeFromSuperview() }
+                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                // (gravity fires after ball departs — see below)
+            }
+
+            // Start next bounce immediately after impact — don't wait for gravity
+            // Gravity fires slightly after so tiles fill in while ball is already mid-arc
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.06) { [weak self] in
+                guard let self = self else { completion(newCascades); return }
+
+                // Fire gravity slightly after ball departs so it visually fills in behind it
+                let colsToFill: Set<Int>
+                if bombExplosionRadius > 0 {
+                    colsToFill = Set((max(0, target.col - bombExplosionRadius)...min(level.gridWidth - 1, target.col + bombExplosionRadius)).map { $0 })
+                } else {
+                    colsToFill = [target.col]
+                }
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.08) { [weak self] in
+                    self?.applyColumnGravityData(cols: colsToFill, level: level, rowHeight: rowHeight, colWidth: colWidth)
+                }
+
+                self.animateBallBounceDynamic(
+                    ballLabel: ballLabel,
+                    trailPath: trailPath, trailLayer: trailLayer,
+                    level: level, rowHeight: rowHeight, colWidth: colWidth,
+                    gridWidth: gridWidth, gridHeight: gridHeight,
+                    currentRow: target.row, currentCol: nextCol, bounceDir: nextDir,
+                    bouncesLeft: bouncesLeft - 1,
+                    bombExplosionRadius: bombExplosionRadius,
+                    cascadingPowerups: newCascades,
+                    completion: completion
+                )
+            }
+        }
+    }
+
+    /// Applies gravity data + animations for specific columns only (used during ball bounce).
+    /// Compacts existing tiles AND drops new tiles from above — no checkForMatches call.
+    private func applyColumnGravityData(cols: Set<Int>, level: MatchGameLevel, rowHeight: CGFloat, colWidth: CGFloat) {
+        let fallSpeed: CGFloat = 80  // ← tune this: lower = slower tile drop during ball bounce
+        let gridHasValidMoves = hasValidMoves()
+
+        var allMoves: [(col: Int, to: Int, dist: Int, isNew: Bool)] = []
+
+        for col in cols {
+            guard col >= 0 && col < level.gridWidth else { continue }
+
+            // Compact existing pieces downward
+            var pieces: [(row: Int, piece: GamePiece)] = []
+            for row in 0..<level.gridHeight {
+                if gridShapeMap[row][col], let piece = gameGrid[row][col] {
+                    pieces.append((row: row, piece: piece))
+                    gameGrid[row][col] = nil
+                }
+            }
+            var targetRow = level.gridHeight - 1
+            for (originalRow, piece) in pieces.reversed() {
+                while targetRow >= 0 && (!gridShapeMap[targetRow][col] || gameGrid[targetRow][col] != nil) { targetRow -= 1 }
+                if targetRow >= 0 {
+                    let dist = originalRow - targetRow
+                    gameGrid[targetRow][col] = piece
+                    piece.row = targetRow; piece.col = col
+                    if dist != 0 { allMoves.append((col: col, to: targetRow, dist: dist, isNew: false)) }
+                    targetRow -= 1
+                }
+            }
+
+            // Generate new pieces for empty slots — stacked above grid
+            var emptyRows: [Int] = []
+            for row in 0..<level.gridHeight {
+                if gridShapeMap[row][col] && gameGrid[row][col] == nil { emptyRows.append(row) }
+            }
+            let n = emptyRows.count
+            for (idx, row) in emptyRows.enumerated() {
+                let newPiece = generateNonMatchingPiece(row: row, col: col, level: level, avoidMatches: gridHasValidMoves)
+                gameGrid[row][col] = newPiece
+                let slotFromBottom = n - 1 - idx
+                allMoves.append((col: col, to: row, dist: row + slotFromBottom + 1, isNew: true))
+            }
+        }
+
+        guard !allMoves.isEmpty else { return }
+
+        // Set button content first, then immediately offset each button to its START position
+        // before the next render frame — so pieces are visually above their destination
+        // when the ball lands, and animate down from there (no tile appearing "under" the ball)
+        updateGridDisplay()
+        isApplyingGravity = true  // Prevent updateGridDisplay from resetting transforms mid-setup
+
+        for move in allMoves {
+            guard let btn = gridButtons[move.to][move.col] else { continue }
+            let fallPx = rowHeight * CGFloat(move.dist)
+            btn.transform = CGAffineTransform(translationX: 0, y: -fallPx)
+        }
+
+        isApplyingGravity = false
+
+        for move in allMoves {
+            guard let btn = gridButtons[move.to][move.col] else { continue }
+            let fallPx = rowHeight * CGFloat(move.dist)
+            let dur = max(0.15, min(0.40, Double(fallPx) / Double(fallSpeed)))
+            UIView.animate(withDuration: dur, delay: 0, options: [.curveEaseIn]) {
+                btn.transform = .identity
+            } completion: { _ in
+                UIView.animate(withDuration: 0.07) {
+                    btn.transform = CGAffineTransform(scaleX: 1.18, y: 0.65)
+                } completion: { _ in
+                    UIView.animate(withDuration: 0.09) { btn.transform = .identity }
+                }
+            }
+        }
+    }
+
     /// Recursively animates ball bouncing downward to each target tile, clearing it on impact.
     /// Uses parabolic arcs with curved dotted trail. Rise is slow, fall is fast (gravity feel).
     private func animateBallBounces(ballLabel: UILabel, bounces: [(row: Int, col: Int)], index: Int,
@@ -4025,49 +4229,50 @@ class MatchGameViewController: UIViewController {
         let startX = CGFloat(fromCol) * colWidth + colWidth / 2
         let startY = CGFloat(fromRow) * rowHeight + rowHeight / 2
         
-        // Generate 8-12 random waypoints across the grid
-        let waypointCount = Int.random(in: 1...3)
-        var waypoints: [CGPoint] = [CGPoint(x: startX, y: startY)]
-        
-        for _ in 0..<waypointCount {
-            let randCol = Int.random(in: 0..<level.gridWidth)
-            let randRow = Int.random(in: 0..<level.gridHeight)
-            let wpX = CGFloat(randCol) * colWidth + colWidth / 2
-            let wpY = CGFloat(randRow) * rowHeight + rowHeight / 2
-            waypoints.append(CGPoint(x: wpX, y: wpY))
+        // Build 5-pointed star drawn without lifting the pencil.
+        // Each tip has its own random radius so no two activations look the same.
+        let baseRadius = min(gridWidth, gridHeight) * CGFloat.random(in: 0.28...0.42)
+        let baseAngle  = CGFloat.random(in: 0...(2 * .pi / 5))
+        var tips = [CGPoint]()
+        for i in 0..<5 {
+            let angle  = baseAngle + CGFloat(i) * (2 * .pi / 5) - .pi / 2
+            let radius = baseRadius * CGFloat.random(in: 0.55...1.45)  // each arm a different length
+            tips.append(CGPoint(x: startX + cos(angle) * radius,
+                                y: startY + sin(angle) * radius))
         }
-        
-        // End point: fly off the top-right of the grid
-        waypoints.append(CGPoint(x: gridWidth + 50, y: -50))
-        
-        // Determine which grid cells the path crosses by sampling points along each segment
+        // Visit order that draws the star without lifting the pencil
+        let order = [0, 2, 4, 1, 3, 0]
+        let starWaypoints = order.map { tips[$0] }
+
+        // Collect all grid cells crossed by the 5 star lines
         var crossedTileSet: Set<String> = []
-        
-        for i in 0..<(waypoints.count - 1) {
-            let from = waypoints[i]
-            let to = waypoints[i + 1]
-            let distance = hypot(to.x - from.x, to.y - from.y)
-            let steps = max(Int(distance / 4), 5) // sample every ~4 points
-            
-            for step in 0...steps {
-                let t = CGFloat(step) / CGFloat(steps)
-                let sampleX = from.x + (to.x - from.x) * t
-                let sampleY = from.y + (to.y - from.y) * t
-                
-                let col = Int(sampleX / colWidth)
-                let row = Int(sampleY / rowHeight)
-                
+        var prevPt = CGPoint(x: startX, y: startY)
+        for pt in starWaypoints {
+            let dist  = hypot(pt.x - prevPt.x, pt.y - prevPt.y)
+            let steps = max(Int(dist / 4), 5)
+            for s in 0...steps {
+                let t  = CGFloat(s) / CGFloat(steps)
+                let sx = prevPt.x + (pt.x - prevPt.x) * t
+                let sy = prevPt.y + (pt.y - prevPt.y) * t
+                let col = Int(sx / colWidth); let row = Int(sy / rowHeight)
                 if row >= 0 && row < level.gridHeight && col >= 0 && col < level.gridWidth &&
                    gridShapeMap[row][col] && gameGrid[row][col] != nil {
                     crossedTileSet.insert("\(row),\(col)")
                 }
             }
+            prevPt = pt
         }
-        
-        // Also include the starting tile
         if gridShapeMap[fromRow][fromCol] && gameGrid[fromRow][fromCol] != nil {
             crossedTileSet.insert("\(fromRow),\(fromCol)")
         }
+
+        // Build the path: start at rocket origin → trace all 5 lines
+        let path = UIBezierPath()
+        path.move(to: CGPoint(x: startX, y: startY))
+        for pt in starWaypoints { path.addLine(to: pt) }
+
+        // Keep waypoints array for animation duration calculation
+        let waypoints = [CGPoint(x: startX, y: startY)] + starWaypoints
         
         // Collect cascading powerups from crossed tiles (exclude the rocket itself)
         var cascadingPowerups: [(row: Int, col: Int, type: PieceType)] = []
@@ -4083,26 +4288,9 @@ class MatchGameViewController: UIViewController {
             }
         }
         
-        // Build the bezier path through all waypoints with curves
-        let path = UIBezierPath()
-        path.move(to: waypoints[0])
+        // (star path already built above — no secondary bezier needed)
         
-        for i in 1..<waypoints.count {
-            let prev = waypoints[i - 1]
-            let curr = waypoints[i]
-            // Add a curve with control points offset perpendicular to the line
-            let midX = (prev.x + curr.x) / 2
-            let midY = (prev.y + curr.y) / 2
-            let dx = curr.x - prev.x
-            let dy = curr.y - prev.y
-            // Alternate curve direction for a looping effect
-            let curveOffset: CGFloat = (i % 2 == 0) ? 30 : -30
-            let controlX = midX + dy * curveOffset / max(hypot(dx, dy), 1)
-            let controlY = midY - dx * curveOffset / max(hypot(dx, dy), 1)
-            path.addQuadCurve(to: curr, controlPoint: CGPoint(x: controlX, y: controlY))
-        }
-        
-        // Create the rocket emoji label
+        // Create the rocket emoji label — animates along the star path
         let rocketLabel = UILabel()
         rocketLabel.text = "🌟"
         rocketLabel.font = UIFont.systemFont(ofSize: 28)
@@ -4114,68 +4302,19 @@ class MatchGameViewController: UIViewController {
             height: rocketLabel.bounds.height
         )
         gridContainer.addSubview(rocketLabel)
-        
-        // Use CAKeyframeAnimation to animate along the path
+
+        // Animate along the full star path
         let animation = CAKeyframeAnimation(keyPath: "position")
         animation.path = path.cgPath
-        animation.duration = Double(waypoints.count) * 0.12 // ~0.12s per segment
+        animation.duration = Double(starWaypoints.count) * 0.13  // ~0.13s per star line
         animation.rotationMode = .rotateAuto
         animation.fillMode = .forwards
         animation.isRemovedOnCompletion = false
         animation.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
-        
-        // Build a jagged lightning path along the rocket's route
-        let lightningPath = UIBezierPath()
-        let totalLength = approximatePathLength(waypoints: waypoints)
-        let jagSegmentLength: CGFloat = 8  // length between jag points
-        let jagAmount: CGFloat = 4  // max perpendicular offset
-        let numSegments = max(Int(totalLength / jagSegmentLength), 2)
-        
-        for s in 0...numSegments {
-            let fraction = CGFloat(s) / CGFloat(numSegments)
-            let targetLen = totalLength * fraction
-            var accumulated: CGFloat = 0
-            var point = waypoints[0]
-            var segDx: CGFloat = 1
-            var segDy: CGFloat = 0
-            
-            for i in 0..<(waypoints.count - 1) {
-                let segLen = hypot(waypoints[i + 1].x - waypoints[i].x, waypoints[i + 1].y - waypoints[i].y)
-                if accumulated + segLen >= targetLen {
-                    let segFraction = (targetLen - accumulated) / max(segLen, 1)
-                    point = CGPoint(
-                        x: waypoints[i].x + (waypoints[i + 1].x - waypoints[i].x) * segFraction,
-                        y: waypoints[i].y + (waypoints[i + 1].y - waypoints[i].y) * segFraction
-                    )
-                    segDx = waypoints[i + 1].x - waypoints[i].x
-                    segDy = waypoints[i + 1].y - waypoints[i].y
-                    let segMag = max(hypot(segDx, segDy), 1)
-                    segDx /= segMag
-                    segDy /= segMag
-                    break
-                }
-                accumulated += segLen
-            }
-            
-            // Add perpendicular jag (not on first or last point)
-            if s > 0 && s < numSegments {
-                let perpX = -segDy
-                let perpY = segDx
-                let jag = CGFloat.random(in: -jagAmount...jagAmount)
-                point.x += perpX * jag
-                point.y += perpY * jag
-            }
-            
-            if s == 0 {
-                lightningPath.move(to: point)
-            } else {
-                lightningPath.addLine(to: point)
-            }
-        }
-        
-        // Create the lightning shape layer
+
+        // The star path IS the lightning — reuse it with a cyan glow layer
         let lightningLayer = CAShapeLayer()
-        lightningLayer.path = lightningPath.cgPath
+        lightningLayer.path = path.cgPath
         lightningLayer.strokeColor = UIColor.white.cgColor
         lightningLayer.lineWidth = 2.0
         lightningLayer.fillColor = nil
