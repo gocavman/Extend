@@ -1104,21 +1104,42 @@ class MatchGameViewController: UIViewController {
         }
         
         if let selected = selectedPiece {
-            // Try to swap
+            // Try to swap — block if either tile is armored
             if areAdjacent(selected.row, selected.col, row, col) {
-                swapPieces(selected.row, selected.col, row, col)
-                selectedPiece = nil
+                let selectedArmored = armorGrid[selected.row][selected.col] > 0
+                let targetArmored  = armorGrid[row][col] > 0
+                if selectedArmored || targetArmored {
+                    // Can't swap armored tiles — shake the armored one and deselect
+                    let shakeRow = selectedArmored ? selected.row : row
+                    let shakeCol = selectedArmored ? selected.col : col
+                    if let btn = gridButtons[shakeRow][shakeCol] { shakeTile(btn) }
+                    selectedPiece = nil
+                    updateGridDisplay()
+                } else {
+                    swapPieces(selected.row, selected.col, row, col)
+                    selectedPiece = nil
+                }
             } else {
-                // Select new piece
-                selectedPiece = (row, col)
-                updateGridDisplay()
+                // Select new piece — skip if armored
+                if armorGrid[row][col] > 0 {
+                    if let btn = gridButtons[row][col] { shakeTile(btn) }
+                    selectedPiece = nil
+                    updateGridDisplay()
+                } else {
+                    selectedPiece = (row, col)
+                    updateGridDisplay()
+                }
             }
         } else {
-            // Select first piece
-            selectedPiece = (row, col)
-            updateGridDisplay()
-            // Ripple from selected tile
-            if let btn = gridButtons[row][col] { animateTileSelectionRipple(from: btn) }
+            // Select first piece — block armored tiles
+            if armorGrid[row][col] > 0 {
+                if let btn = gridButtons[row][col] { shakeTile(btn) }
+            } else {
+                selectedPiece = (row, col)
+                updateGridDisplay()
+                // Ripple from selected tile
+                if let btn = gridButtons[row][col] { animateTileSelectionRipple(from: btn) }
+            }
         }
     }
     
@@ -1181,7 +1202,16 @@ class MatchGameViewController: UIViewController {
         case .ended, .cancelled:
             if !isAnimating, let startPiece = dragStartPiece, let targetPiece = dragTargetPiece {
                 if areAdjacent(startPiece.row, startPiece.col, targetPiece.row, targetPiece.col) {
-                    swapPieces(startPiece.row, startPiece.col, targetPiece.row, targetPiece.col)
+                    // Block swap if either tile is armored
+                    let startArmored  = armorGrid[startPiece.row][startPiece.col] > 0
+                    let targetArmored = armorGrid[targetPiece.row][targetPiece.col] > 0
+                    if startArmored || targetArmored {
+                        let shakeRow = startArmored ? startPiece.row : targetPiece.row
+                        let shakeCol = startArmored ? startPiece.col : targetPiece.col
+                        if let btn = gridButtons[shakeRow][shakeCol] { shakeTile(btn) }
+                    } else {
+                        swapPieces(startPiece.row, startPiece.col, targetPiece.row, targetPiece.col)
+                    }
                 }
             }
             dragStartPiece = nil
@@ -1661,7 +1691,9 @@ class MatchGameViewController: UIViewController {
     /// Fires ice/crystal chip particles off a shielded tile when it takes a hit.
     private func animateShieldChip(row: Int, col: Int) {
         guard let button = gridButtons[row][col] else { return }
-        let origin = gridContainer.convert(button.center, from: button.superview)
+        // Convert button center to self.view coordinates so chips render above all grid content
+        // and are never swept by grid rebuilds or gravity passes
+        let originInView = view.convert(button.center, from: button.superview)
 
         // Colour palette varies by shield type for visual consistency
         let colors: [UIColor]
@@ -1676,27 +1708,59 @@ class MatchGameViewController: UIViewController {
 
         let particleCount = Int.random(in: 5...9)
         for i in 0..<particleCount {
-            let size = CGFloat.random(in: 4...9)
-            let chip = UIView(frame: CGRect(x: origin.x - size/2, y: origin.y - size/2, width: size, height: size))
+            let size = CGFloat.random(in: 2...5)
+            let chip = UIView(frame: CGRect(x: originInView.x - size/2, y: originInView.y - size/2,
+                                           width: size, height: size))
             chip.backgroundColor = colors.randomElement()!
-            // Alternate between tiny squares and diamond rotations for variety
             chip.layer.cornerRadius = i % 2 == 0 ? 1 : size / 2
-            chip.transform = CGAffineTransform(rotationAngle: CGFloat.random(in: 0...(2 * .pi)))
             chip.alpha = 1.0
-            gridContainer.addSubview(chip)
+            chip.isUserInteractionEnabled = false
+            view.addSubview(chip)
 
-            // Random outward burst trajectory — biased downward (gravity feel)
-            let angle = CGFloat.random(in: (.pi * 0.15)...(.pi * 0.85))  // lower half arc
-            let speed = CGFloat.random(in: 28...60)
-            let dx = cos(angle - .pi/2) * speed  // offset so 0° = up; bias toward sides+down
-            let dy = sin(angle) * speed + CGFloat.random(in: 10...25)  // gravity pull down
+            // Parabolic arc: shoot out at an angle, gravity pulls down
+            // Each chip gets a random horizontal spread and upward launch velocity
+            let dx     = CGFloat.random(in: -50...50)
+            let launchY = CGFloat.random(in: -60 ... -25)   // upward initial kick
+            let landY   = CGFloat.random(in: 120...220)     // final resting point below origin
+            let peakX   = originInView.x + dx * 0.4         // peak is partway through horizontal travel
+            let peakY   = originInView.y + launchY          // peak is at max upward height
+            let endX    = originInView.x + dx
+            let endY    = originInView.y + landY
 
-            UIView.animate(withDuration: Double.random(in: 0.35...0.55),
-                           delay: Double.random(in: 0...0.06),
-                           options: [.curveEaseIn]) {
-                chip.transform = chip.transform.translatedBy(x: dx, y: dy).scaledBy(x: 0.3, y: 0.3)
-                chip.alpha = 0
-            } completion: { _ in
+            // Build quadratic Bezier path: start → peak → end
+            let path = CGMutablePath()
+            path.move(to: originInView)
+            path.addQuadCurve(to: CGPoint(x: endX, y: endY),
+                              control: CGPoint(x: peakX, y: peakY))
+
+            let posAnim = CAKeyframeAnimation(keyPath: "position")
+            posAnim.path = path
+            posAnim.duration = Double.random(in: 1.1...1.6)
+            posAnim.beginTime = CACurrentMediaTime() + Double.random(in: 0...0.07)
+            posAnim.timingFunction = CAMediaTimingFunction(name: .easeIn)
+
+            // Fade — hold full opacity until near the end, then fade
+            let fadeAnim = CAKeyframeAnimation(keyPath: "opacity")
+            fadeAnim.values   = [1.0, 1.0, 0.0]
+            fadeAnim.keyTimes = [0.0, 0.65, 1.0]
+            fadeAnim.duration  = posAnim.duration
+            fadeAnim.beginTime = posAnim.beginTime
+            fadeAnim.fillMode  = .forwards
+            fadeAnim.isRemovedOnCompletion = false
+
+            // Spin as it flies
+            let spinAnim = CABasicAnimation(keyPath: "transform.rotation.z")
+            spinAnim.byValue  = CGFloat.random(in: -.pi*3 ... .pi*3)
+            spinAnim.duration = posAnim.duration
+            spinAnim.beginTime = posAnim.beginTime
+            spinAnim.fillMode  = .forwards
+            spinAnim.isRemovedOnCompletion = false
+
+            chip.layer.add(posAnim, forKey: "chipPos")
+            chip.layer.add(fadeAnim, forKey: "chipFade")
+            chip.layer.add(spinAnim, forKey: "chipSpin")
+
+            DispatchQueue.main.asyncAfter(deadline: .now() + posAnim.beginTime - CACurrentMediaTime() + posAnim.duration + 0.05) {
                 chip.removeFromSuperview()
             }
         }
