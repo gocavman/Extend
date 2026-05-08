@@ -3018,6 +3018,121 @@ class MatchGameViewController: UIViewController {
         print("🔥 Sequential cascade: processing \(type) at (\(row),\(col)), \(remaining.count) remaining in queue")
     }
     
+    /// Immediately drops tiles in the given columns to fill gaps left by the ball,
+    /// without blocking the ball animation or triggering checkForMatches.
+    private func applyGravityForColumns(_ cols: Set<Int>) {
+        guard let level = currentLevel, !cols.isEmpty else { return }
+
+        var localMoved: Set<String> = []
+        var localDist  = [String: Int]()
+        var localNew:   Set<String> = []
+
+        let gridHasValidMoves = hasValidMoves()
+
+        for col in cols {
+            guard col >= 0 && col < level.gridWidth else { continue }
+
+            // --- existing pieces fall ---
+            var pieces: [(row: Int, piece: GamePiece)] = []
+            for row in 0..<level.gridHeight {
+                if gridShapeMap[row][col], let piece = gameGrid[row][col] {
+                    pieces.append((row: row, piece: piece))
+                    gameGrid[row][col] = nil
+                }
+            }
+            var targetRow = level.gridHeight - 1
+            for (originalRow, piece) in pieces.reversed() {
+                while targetRow >= 0 && (!gridShapeMap[targetRow][col] || gameGrid[targetRow][col] != nil) {
+                    targetRow -= 1
+                }
+                if targetRow >= 0 {
+                    let distance = originalRow - targetRow
+                    gameGrid[targetRow][col] = piece
+                    piece.row = targetRow; piece.col = col
+                    if distance != 0 {
+                        localMoved.insert("\(targetRow),\(col)")
+                        localDist["\(targetRow),\(col)"] = distance
+                    }
+                    targetRow -= 1
+                }
+            }
+
+            // --- refill new pieces from above ---
+            var emptyRows: [Int] = []
+            for row in 0..<level.gridHeight {
+                if gridShapeMap[row][col] && gameGrid[row][col] == nil { emptyRows.append(row) }
+            }
+            let n = emptyRows.count
+            for (idx, row) in emptyRows.enumerated() {
+                let newPiece = generateNonMatchingPiece(row: row, col: col, level: level, avoidMatches: gridHasValidMoves)
+                gameGrid[row][col] = newPiece
+                localMoved.insert("\(row),\(col)")
+                let slotFromBottom = n - 1 - idx
+                localDist["\(row),\(col)"] = row + slotFromBottom + 1
+                localNew.insert("\(row),\(col)")
+            }
+        }
+
+        guard !localMoved.isEmpty else { return }
+
+        // Set button content then animate — reuse animatePiecesDrop machinery
+        updateGridDisplay()
+        isApplyingGravity = true
+
+        let cellHeight = gridContainer.bounds.height / CGFloat(level.gridHeight)
+        let cellWidth  = gridContainer.bounds.width  / CGFloat(level.gridWidth)
+
+        for key in localMoved {
+            let parts = key.split(separator: ",")
+            guard parts.count == 2,
+                  let row = Int(parts[0]), let col = Int(parts[1]),
+                  let button = gridButtons[row][col] else { continue }
+            let dist = localDist[key] ?? 0
+            if localNew.contains(key) {
+                let fallPx = cellHeight * CGFloat(dist)
+                button.transform = CGAffineTransform(translationX: 0, y: -fallPx)
+            } else if dist > 0 {
+                let fallPx = cellHeight * CGFloat(dist)
+                button.transform = CGAffineTransform(translationX: 0, y: -fallPx)
+            }
+            _ = cellWidth  // suppress unused warning
+        }
+
+        isApplyingGravity = false
+
+        // Build piece array for animatePiecesDrop
+        struct ColPiece { let row: Int; let col: Int; let distance: Int; let isNew: Bool }
+        var toAnimate: [ColPiece] = []
+        for key in localMoved {
+            let parts = key.split(separator: ",")
+            guard parts.count == 2, let row = Int(parts[0]), let col = Int(parts[1]) else { continue }
+            let dist = localDist[key] ?? 0
+            toAnimate.append(ColPiece(row: row, col: col, distance: dist, isNew: localNew.contains(key)))
+        }
+
+        // Animate — no completion handler needed; ball manages final state
+        let fallSpeed: CGFloat = 800
+        var maxEnd: Double = 0
+        // Sort within each column: bottom rows first (largest row index first)
+        let sorted = toAnimate.sorted { $0.row > $1.row }
+        for piece in sorted {
+            guard let button = gridButtons[piece.row][piece.col] else { continue }
+            let dist = max(piece.distance, 1)
+            let duration = max(0.08, min(0.45, Double(cellHeight * CGFloat(dist)) / Double(fallSpeed)))
+            UIView.animate(withDuration: duration, delay: 0, options: [.curveEaseIn]) {
+                button.transform = .identity
+            } completion: { _ in
+                guard button.transform == .identity else { return }
+                UIView.animate(withDuration: 0.07) {
+                    button.transform = CGAffineTransform(scaleX: 1.18, y: 0.65)
+                } completion: { _ in
+                    UIView.animate(withDuration: 0.09) { button.transform = .identity }
+                }
+            }
+            maxEnd = max(maxEnd, duration)
+        }
+    }
+
     private func applyGravityAfterCascade(then completion: (() -> Void)? = nil) {
         guard let level = currentLevel else { return }
         
@@ -3854,7 +3969,7 @@ class MatchGameViewController: UIViewController {
                 impact.impactOccurred()
             } else if self.gameGrid[target.row][target.col] != nil {
                 let _ = self.hitTile(row: target.row, col: target.col)
-                
+
                 // Clear the button display on impact
                 if let button = self.gridButtons[target.row][target.col] {
                     button.setTitle("", for: .normal)
@@ -6060,6 +6175,10 @@ class MatchGameViewController: UIViewController {
         for r in 0..<level.gridHeight {
             for c in 0..<level.gridWidth {
                 let idx = r * level.gridWidth + c
+                // Always restore armor value for every cell, regardless of whether tile is present
+                if idx < armorRaw.count {
+                    armorGrid[r][c] = armorRaw[idx]
+                }
                 let cell = flat[idx]
                 if cell.isEmpty {
                     gameGrid[r][c] = nil
@@ -6075,10 +6194,6 @@ class MatchGameViewController: UIViewController {
                     piece.ballEmojiIndex = ballIdx
                     gameGrid[r][c] = piece
                     if piece.type != .normal { powerupCount += 1 }
-                    let flatIdx = r * level.gridWidth + c
-                    if flatIdx < armorRaw.count {
-                        armorGrid[r][c] = armorRaw[flatIdx]
-                    }
                 }
             }
         }
