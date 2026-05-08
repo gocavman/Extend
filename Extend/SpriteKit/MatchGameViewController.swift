@@ -137,6 +137,8 @@ class MatchGameViewController: UIViewController {
     private var levelCompleteCompletion: (() -> Void)?  // Stored completion for level complete modal
     private var retryCount: Int = 0  // Consecutive retries on the current level (progressive help)
     private var retryLevelId: Int = -1  // Which level the retryCount applies to
+    private var levelShieldEmoji: String = "🛡️"  // Per-level shield emoji, randomised in startLevel
+    private static let shieldEmojiPool: [String] = ["🛡️", "🔒", "💠"]
     
     // MARK: - Game Logic
     private var gridAspectRatioConstraint: NSLayoutConstraint?
@@ -368,7 +370,8 @@ class MatchGameViewController: UIViewController {
         lastSwappedPositions = nil
         swappedButtons = nil
         levelCompletionTriggered = false  // Reset flag for new level
-        
+        levelShieldEmoji = MatchGameViewController.shieldEmojiPool.randomElement() ?? "🛡️"
+
         // ...existing code...
         gridShapeMap = Array(repeating: Array(repeating: false, count: level.gridWidth), count: level.gridHeight)
         armorGrid = Array(repeating: Array(repeating: 0, count: level.gridWidth), count: level.gridHeight)
@@ -833,7 +836,9 @@ class MatchGameViewController: UIViewController {
                 // Add number label to the border overlay view
                 let armorLabel = UILabel()
                 armorLabel.text = "\(armorGrid[row][col])"
-                armorLabel.font = UIFont.boldSystemFont(ofSize: 14)
+                armorLabel.font = UIFont.boldSystemFont(ofSize: 12)
+                armorLabel.adjustsFontSizeToFitWidth = true
+                armorLabel.minimumScaleFactor = 0.5
                 armorLabel.textColor = .white
                 armorLabel.textAlignment = .center
                 armorLabel.layer.shadowColor = UIColor.black.cgColor
@@ -1445,11 +1450,13 @@ class MatchGameViewController: UIViewController {
                 if let button = gridButtons[row][col] {
                     shakeTile(button)
                 }
+                animateShieldChip(row: row, col: col)
                 updateArmorOverlay(row: row, col: col)
                 return false  // Tile survives
             } else {
                 // Powerup on armored cell — remove the powerup, decrement armor by 1
                 armorGrid[row][col] -= 1
+                animateShieldChip(row: row, col: col)
                 updateArmorOverlay(row: row, col: col)
                 score += 1
                 gameGrid[row][col] = nil
@@ -1648,6 +1655,50 @@ class MatchGameViewController: UIViewController {
             // Armor cleared — hide border overlay and label
             armorOverlays[row][col]?.isHidden = true
             armorBorderViews[row][col]?.isHidden = true
+        }
+    }
+
+    /// Fires ice/crystal chip particles off a shielded tile when it takes a hit.
+    private func animateShieldChip(row: Int, col: Int) {
+        guard let button = gridButtons[row][col] else { return }
+        let origin = gridContainer.convert(button.center, from: button.superview)
+
+        // Colour palette varies by shield type for visual consistency
+        let colors: [UIColor]
+        switch levelShieldEmoji {
+        case "🔒":
+            colors = [.systemYellow, .systemOrange, UIColor(white: 0.9, alpha: 1), .systemBrown]
+        case "💠":
+            colors = [.cyan, .systemTeal, UIColor(white: 0.95, alpha: 1), .systemBlue]
+        default: // 🛡️
+            colors = [.systemBlue, .cyan, UIColor(white: 0.85, alpha: 1), .systemIndigo]
+        }
+
+        let particleCount = Int.random(in: 5...9)
+        for i in 0..<particleCount {
+            let size = CGFloat.random(in: 4...9)
+            let chip = UIView(frame: CGRect(x: origin.x - size/2, y: origin.y - size/2, width: size, height: size))
+            chip.backgroundColor = colors.randomElement()!
+            // Alternate between tiny squares and diamond rotations for variety
+            chip.layer.cornerRadius = i % 2 == 0 ? 1 : size / 2
+            chip.transform = CGAffineTransform(rotationAngle: CGFloat.random(in: 0...(2 * .pi)))
+            chip.alpha = 1.0
+            gridContainer.addSubview(chip)
+
+            // Random outward burst trajectory — biased downward (gravity feel)
+            let angle = CGFloat.random(in: (.pi * 0.15)...(.pi * 0.85))  // lower half arc
+            let speed = CGFloat.random(in: 28...60)
+            let dx = cos(angle - .pi/2) * speed  // offset so 0° = up; bias toward sides+down
+            let dy = sin(angle) * speed + CGFloat.random(in: 10...25)  // gravity pull down
+
+            UIView.animate(withDuration: Double.random(in: 0.35...0.55),
+                           delay: Double.random(in: 0...0.06),
+                           options: [.curveEaseIn]) {
+                chip.transform = chip.transform.translatedBy(x: dx, y: dy).scaledBy(x: 0.3, y: 0.3)
+                chip.alpha = 0
+            } completion: { _ in
+                chip.removeFromSuperview()
+            }
         }
     }
 
@@ -5548,10 +5599,21 @@ class MatchGameViewController: UIViewController {
                         button.layer.borderWidth = 0
                     }
                     
+                    // If armored (shielded), show the level's shield emoji — hides actual content for mystery/strategy
+                    if armorGrid[row][col] >= 1 {
+                        button.setImage(nil, for: .normal)
+                        let shieldSize = max(14, min(32, 360 / CGFloat(max(level.gridWidth, level.gridHeight))))
+                        button.setTitle(levelShieldEmoji, for: .normal)
+                        button.titleLabel?.font = UIFont.systemFont(ofSize: shieldSize)
+                        button.titleLabel?.adjustsFontSizeToFitWidth = false
+                        button.backgroundColor = UIColor.systemBlue.withAlphaComponent(0.28)
+                    }
+
                     // Update armor overlay visibility (static overlays in gridContainer)
                     if row < armorBorderViews.count && col < armorBorderViews[row].count {
                         if armorGrid[row][col] >= 1 {
                             armorBorderViews[row][col]?.isHidden = false
+                            // Always show hit count numerically — even 1 so player knows exactly how many hits remain
                             armorOverlays[row][col]?.isHidden = false
                             armorOverlays[row][col]?.text = "\(armorGrid[row][col])"
                         } else {
@@ -6094,6 +6156,12 @@ class MatchGameViewController: UIViewController {
             5: HelpTier(powerups: [.flame, .flame, .flame, .flame, .bomb, .bomb, .rocket, .ball],
                         bonusMoves: 25,
                         bannerText: "🌟 Maximum Power! +25 Moves"),
+            6: HelpTier(powerups: [.flame, .verticalArrow, .horizontalArrow, .flame, .bomb, .rocket, .rocket, .ball],
+                        bonusMoves: 50,
+                        bannerText: "🌟 Extra Maximum Power! +50 Moves"),
+            7: HelpTier(powerups: [.flame, .verticalArrow, .horizontalArrow, .flame, .flame, .bomb, .rocket, .ball],
+                        bonusMoves: 100,
+                        bannerText: "🌟 Super Extra Maximum Power! +100 Moves"),
         ]
 
         guard let help = tiers[tier] else { return }
