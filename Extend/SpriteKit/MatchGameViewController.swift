@@ -6008,6 +6008,8 @@ class MatchGameViewController: UIViewController {
 
     /// Saves the current board so the player can resume exactly where they left off.
     private func saveMidLevelState() {
+        // Never save a failed/terminal state — if moves are exhausted there's nothing to restore
+        guard movesRemaining > 0 else { return }
         let key = "matchGameMidLevel_\(currentLevelId)"
         // Encode each cell as "itemId|typeRaw|colorIndex|ballEmojiIndex", empty string for nil
         var flat: [String] = []
@@ -6181,7 +6183,8 @@ class MatchGameViewController: UIViewController {
             })
             
             alert.addAction(UIAlertAction(title: "Exit", style: .cancel) { _ in
-                // Return to level selection
+                // Wipe the failed board snapshot so reopening starts the level fresh
+                self.clearMidLevelState(levelId: level.id)
                 self.exitGame()
             })
             
