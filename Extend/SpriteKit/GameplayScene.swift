@@ -19,6 +19,9 @@ struct FallingItem: Identifiable, Equatable {
 
 /// SpriteKit scene for gameplay with character movement and interactions
 class GameplayScene: GameScene {
+    // Change this single value to resize the stick figure character
+    private let characterRenderScale: CGFloat = 1.2
+
 private var characterNode: SKNode?
 var levelLabel: SKLabelNode?
 var pointsTextLabel: SKLabelNode?  // Label for "Points: " text
@@ -48,8 +51,16 @@ private var lastGlobalSpawnTime: TimeInterval = 0  // Global spawn timer for wei
 // Boost properties
 private var boostEndTime: TimeInterval = 0
 private var boostTimerLabel: SKLabelNode?
+private var boostBadgeBackground: SKShapeNode?   // Orange badge behind boost text
 private var floatingTexts: [FloatingText] = []
 private let floatingTextContainer = SKNode()  // Container for floating text
+
+// Info bar properties (below button row)
+private var infoBarBackground: SKShapeNode?
+private var progressBarBg: SKShapeNode?
+private var progressBarFill: SKShapeNode?
+private var progressBarMaxWidth: CGFloat = 0
+private var pointsNeededLabel: SKLabelNode?  // "/ 1100" target display
 
 // Countdown properties
 private var countdownTimerLabel: SKLabelNode?
@@ -124,7 +135,8 @@ override func didMove(to view: SKView) {
     
     // Set up callback for level up notification
     gameState.onLevelUp = { [weak self] newLevel in
-        self?.levelLabel?.text = "Level: \(newLevel)"
+        self?.levelLabel?.text = "LVL \(newLevel)"
+        self?.updateProgressBar()
     }
     
     // Auto-select action from gameState if available
@@ -237,46 +249,122 @@ private func setupUI() {
         addChild(appearanceButtonNode!)
     }
     
-    // Level display - top center left (level ONLY, no points)
-    let infoBarY = topBarY - 50  // Below the HUD buttons
+    // ── INFO BAR ──────────────────────────────────────────────────────────────
+    // Sits below the button row with a clear visual separation
+    let infoBarHeight: CGFloat = 44
+    let infoBarCenterY = topBarY - 20 - infoBarHeight / 2  // 20pt gap below buttons
+    let infoBarPadX: CGFloat = 10
 
-    levelLabel = SKLabelNode(fontNamed: "Arial")
-    levelLabel?.fontSize = 12
-    levelLabel?.fontColor = .black
-    levelLabel?.position = CGPoint(x: size.width / 2 - 80, y: infoBarY)
-    levelLabel?.text = "Level: \(gameState?.currentLevel ?? 1)"
+    // Frosted-glass style background
+    let infoBarBg = SKShapeNode(
+        path: UIBezierPath(
+            roundedRect: CGRect(x: infoBarPadX, y: infoBarCenterY - infoBarHeight / 2,
+                                width: size.width - infoBarPadX * 2, height: infoBarHeight),
+            cornerRadius: 10
+        ).cgPath
+    )
+    infoBarBg.fillColor = SKColor(white: 0.0, alpha: 0.45)
+    infoBarBg.strokeColor = SKColor(white: 1.0, alpha: 0.15)
+    infoBarBg.lineWidth = 1
+    infoBarBg.zPosition = 99
+    addChild(infoBarBg)
+    infoBarBackground = infoBarBg
+
+    // ── LEFT: Level badge ────────────────────────────────────────────────────
+    let lvlBadge = SKShapeNode(
+        path: UIBezierPath(roundedRect: CGRect(x: 0, y: -12, width: 62, height: 24), cornerRadius: 6).cgPath
+    )
+    lvlBadge.fillColor = SKColor(red: 0.25, green: 0.55, blue: 1.0, alpha: 0.9)
+    lvlBadge.strokeColor = .clear
+    lvlBadge.position = CGPoint(x: infoBarPadX + 12, y: infoBarCenterY)
+    lvlBadge.zPosition = 100
+    addChild(lvlBadge)
+
+    levelLabel = SKLabelNode(fontNamed: "Arial-BoldMT")
+    levelLabel?.fontSize = 13
+    levelLabel?.fontColor = .white
+    levelLabel?.verticalAlignmentMode = .center
+    levelLabel?.position = CGPoint(x: infoBarPadX + 43, y: infoBarCenterY + 1)
+    levelLabel?.text = "LVL \(gameState?.currentLevel ?? 1)"
     levelLabel?.zPosition = 101
     if let label = levelLabel { addChild(label) }
-    
-    // Points label text - "Points: " (static)
-    pointsTextLabel = SKLabelNode(fontNamed: "Arial")
-    pointsTextLabel?.fontSize = 12
-    pointsTextLabel?.fontColor = .black
-    pointsTextLabel?.position = CGPoint(x: size.width / 2 - 5, y: infoBarY)
-    pointsTextLabel?.text = "Points: "
-    pointsTextLabel?.zPosition = 101
-    if let label = pointsTextLabel { addChild(label) }
-    
-    // Points display - separate value label (animates separately, close to "Points:" label)
-    pointsValueLabel = SKLabelNode(fontNamed: "Arial")
-    pointsValueLabel?.fontSize = 12
-    pointsValueLabel?.fontColor = .black
-    pointsValueLabel?.position = CGPoint(x: size.width / 2 + 40, y: infoBarY)
-    pointsValueLabel?.text = "\(gameState?.currentPoints ?? 0)"
+
+    // ── CENTER: Points "current / needed" ────────────────────────────────────
+    let currentPts = gameState?.currentPoints ?? 0
+    let neededPts  = gameState?.pointsNeeded(forLevel: gameState?.currentLevel ?? 1) ?? 50
+
+    // "current" value — the animated one
+    pointsValueLabel = SKLabelNode(fontNamed: "Arial-BoldMT")
+    pointsValueLabel?.fontSize = 14
+    pointsValueLabel?.fontColor = SKColor(red: 0.95, green: 0.95, blue: 0.0, alpha: 1.0)  // Yellow
+    pointsValueLabel?.horizontalAlignmentMode = .right
+    pointsValueLabel?.verticalAlignmentMode = .center
+    pointsValueLabel?.position = CGPoint(x: size.width / 2 - 4, y: infoBarCenterY + 8)
+    pointsValueLabel?.text = "\(currentPts)"
     pointsValueLabel?.zPosition = 101
     if let label = pointsValueLabel { addChild(label) }
-    
-    // Boost timer - top center below level label
-    boostTimerLabel = SKLabelNode(fontNamed: "Arial")
-    boostTimerLabel?.fontSize = 11
-    boostTimerLabel?.fontColor = SKColor(red: 1.0, green: 0.6, blue: 0.0, alpha: 1.0)  // Orange
-    boostTimerLabel?.position = CGPoint(x: size.width / 2, y: topBarY - 25)
-    boostTimerLabel?.text = ""
+
+    // Static slash + target
+    pointsTextLabel = SKLabelNode(fontNamed: "Arial")
+    pointsTextLabel?.fontSize = 11
+    pointsTextLabel?.fontColor = SKColor(white: 0.85, alpha: 1.0)
+    pointsTextLabel?.horizontalAlignmentMode = .left
+    pointsTextLabel?.verticalAlignmentMode = .center
+    pointsTextLabel?.position = CGPoint(x: size.width / 2 + 2, y: infoBarCenterY + 8)
+    pointsTextLabel?.text = "/ \(neededPts)"
+    pointsTextLabel?.zPosition = 101
+    if let label = pointsTextLabel { addChild(label) }
+
+    // Progress bar
+    let barW: CGFloat = size.width * 0.42
+    let barH: CGFloat = 7
+    let barX = size.width / 2 - barW / 2
+    let barY = infoBarCenterY - 9
+    progressBarMaxWidth = barW
+
+    let barBg = SKShapeNode(
+        path: UIBezierPath(roundedRect: CGRect(x: barX, y: barY - barH / 2, width: barW, height: barH), cornerRadius: 3).cgPath
+    )
+    barBg.fillColor = SKColor(white: 0.3, alpha: 0.8)
+    barBg.strokeColor = .clear
+    barBg.zPosition = 100
+    addChild(barBg)
+    progressBarBg = barBg
+
+    let fillW = neededPts > 0 ? barW * CGFloat(currentPts) / CGFloat(neededPts) : 0
+    let fill = SKShapeNode(
+        path: UIBezierPath(roundedRect: CGRect(x: barX, y: barY - barH / 2, width: max(0, fillW), height: barH), cornerRadius: 3).cgPath
+    )
+    fill.fillColor = SKColor(red: 0.2, green: 0.85, blue: 0.4, alpha: 1.0)  // Bright green
+    fill.strokeColor = .clear
+    fill.zPosition = 100
+    addChild(fill)
+    progressBarFill = fill
+
+    // ── RIGHT: Boost badge (hidden until active) ──────────────────────────────
+    let boostBg = SKShapeNode(
+        path: UIBezierPath(roundedRect: CGRect(x: 0, y: -12, width: 72, height: 24), cornerRadius: 6).cgPath
+    )
+    boostBg.fillColor = SKColor(red: 1.0, green: 0.55, blue: 0.0, alpha: 0.9)
+    boostBg.strokeColor = .clear
+    boostBg.position = CGPoint(x: size.width - infoBarPadX - 84, y: infoBarCenterY)
+    boostBg.zPosition = 100
+    boostBg.isHidden = true
+    addChild(boostBg)
+    boostBadgeBackground = boostBg
+
+    boostTimerLabel = SKLabelNode(fontNamed: "Arial-BoldMT")
+    boostTimerLabel?.fontSize = 12
+    boostTimerLabel?.fontColor = .white
+    boostTimerLabel?.verticalAlignmentMode = .center
+    boostTimerLabel?.position = CGPoint(x: size.width - infoBarPadX - 48, y: infoBarCenterY + 1)
+    boostTimerLabel?.text = "⚡ 0s"
     boostTimerLabel?.zPosition = 101
     boostTimerLabel?.isHidden = true
     if let label = boostTimerLabel { addChild(label) }
-    
-    // Countdown timer - positioned above stick figure (will be updated during updateCountdownTimer)
+
+    // Countdown timer (above character, unchanged position)
+
     countdownTimerLabel = SKLabelNode(fontNamed: "Arial-BoldMT")
     countdownTimerLabel?.fontSize = 14
     countdownTimerLabel?.fontColor = SKColor(red: 0.2, green: 0.8, blue: 0.2, alpha: 1.0)  // Green
@@ -309,11 +397,11 @@ private func setupUI() {
             
             // Use renderStickFigure with proper scale and figure offsets
             let offsetPosition = CGPoint(x: frameWithAppearance.figureOffsetX, y: frameWithAppearance.figureOffsetY)
-            let stickFigureNode = renderStickFigure(frameWithAppearance, at: offsetPosition, scale: 1.2, flipped: false, jointShapeSize: frameWithAppearance.jointShapeSize)
+            let stickFigureNode = renderStickFigure(frameWithAppearance, at: offsetPosition, scale: characterRenderScale, flipped: false, jointShapeSize: frameWithAppearance.jointShapeSize)
             characterContainer.addChild(stickFigureNode)
             
             // Render stand frame objects
-            renderFrameObjects(gameState.standFrameObjects, on: characterContainer, scale: 1.2, figureOffsetX: frameWithAppearance.figureOffsetX, figureOffsetY: frameWithAppearance.figureOffsetY, shouldFlip: false)
+            renderFrameObjects(gameState.standFrameObjects, on: characterContainer, scale: characterRenderScale, figureOffsetX: frameWithAppearance.figureOffsetX, figureOffsetY: frameWithAppearance.figureOffsetY, shouldFlip: false)
             
             addChild(characterContainer)
             characterNode = characterContainer
@@ -730,12 +818,12 @@ private func updateGameLogic() {
             offsetPosition.x = -offsetPosition.x
         }
         
-        let stickFigureNode = renderStickFigure(frameWithAppearance, at: offsetPosition, scale: 1.2, flipped: shouldFlip, jointShapeSize: frameWithAppearance.jointShapeSize)
+        let stickFigureNode = renderStickFigure(frameWithAppearance, at: offsetPosition, scale: characterRenderScale, flipped: shouldFlip, jointShapeSize: frameWithAppearance.jointShapeSize)
         character.addChild(stickFigureNode)
         
         // Render action frame objects with flip applied
         if gameState.currentFrameIndex < gameState.actionStickFigureObjects.count {
-            renderFrameObjects(gameState.actionStickFigureObjects[gameState.currentFrameIndex], on: character, scale: 1.2, figureOffsetX: offsetPosition.x, figureOffsetY: offsetPosition.y, shouldFlip: shouldFlip)
+            renderFrameObjects(gameState.actionStickFigureObjects[gameState.currentFrameIndex], on: character, scale: characterRenderScale, figureOffsetX: offsetPosition.x, figureOffsetY: offsetPosition.y, shouldFlip: shouldFlip)
         }
         
     } else if gameState.isMovingLeft || gameState.isMovingRight {
@@ -771,11 +859,11 @@ private func updateGameLogic() {
             character.removeAllChildren()
             let shouldFlip = !gameState.facingRight
             let offsetPosition = CGPoint(x: frameWithAppearance.figureOffsetX, y: frameWithAppearance.figureOffsetY)
-            let stickFigureNode = renderStickFigure(frameWithAppearance, at: offsetPosition, scale: 1.2, flipped: shouldFlip, jointShapeSize: frameWithAppearance.jointShapeSize)
+            let stickFigureNode = renderStickFigure(frameWithAppearance, at: offsetPosition, scale: characterRenderScale, flipped: shouldFlip, jointShapeSize: frameWithAppearance.jointShapeSize)
             character.addChild(stickFigureNode)
             
             // Render stand frame objects
-            renderFrameObjects(gameState.standFrameObjects, on: character, scale: 1.2, figureOffsetX: frameWithAppearance.figureOffsetX, figureOffsetY: frameWithAppearance.figureOffsetY, shouldFlip: shouldFlip)
+            renderFrameObjects(gameState.standFrameObjects, on: character, scale: characterRenderScale, figureOffsetX: frameWithAppearance.figureOffsetX, figureOffsetY: frameWithAppearance.figureOffsetY, shouldFlip: shouldFlip)
         }
     }
     
@@ -802,8 +890,8 @@ private func updateGameLogic() {
     // ⭐ Check and regenerate bricks if needed
     checkAndRegenerateBricks(characterPosition: character.position)
     
-    // Update level label (level ONLY, no points)
-    levelLabel?.text = "Level: \(gameState.currentLevel)"
+    // Update level badge
+    levelLabel?.text = "LVL \(gameState.currentLevel)"
     
     // NOTE: pointsValueLabel is updated only by animateHeaderPointsCounter during animation
     // Do NOT update it here - let the animation handle all points label updates
@@ -811,8 +899,9 @@ private func updateGameLogic() {
     // Update floating text
     updateFloatingText()
     
-    // Update boost timer
+    // Update boost timer and progress bar
     updateBoostTimer()
+    updateProgressBar()
     
     // Update countdown timer
     updateCountdownTimer()
@@ -901,12 +990,12 @@ private func startMovementAnimation() {
                 frameWithAppearance.isSideView = true
                 
                 let offsetPosition = CGPoint(x: frameWithAppearance.figureOffsetX, y: frameWithAppearance.figureOffsetY)
-                let stickFigureNode = self.renderStickFigure(frameWithAppearance, at: offsetPosition, scale: 1.2, flipped: shouldFlip, jointShapeSize: frameWithAppearance.jointShapeSize)
+                let stickFigureNode = self.renderStickFigure(frameWithAppearance, at: offsetPosition, scale: characterRenderScale, flipped: shouldFlip, jointShapeSize: frameWithAppearance.jointShapeSize)
                 characterContainer.addChild(stickFigureNode)
                 
                 // Render move frame objects
                 if moveFrameIndex < gameState.moveFrameObjects.count {
-                    self.renderFrameObjects(gameState.moveFrameObjects[moveFrameIndex], on: characterContainer, scale: 1.2, figureOffsetX: frameWithAppearance.figureOffsetX, figureOffsetY: frameWithAppearance.figureOffsetY, shouldFlip: shouldFlip)
+                    self.renderFrameObjects(gameState.moveFrameObjects[moveFrameIndex], on: characterContainer, scale: characterRenderScale, figureOffsetX: frameWithAppearance.figureOffsetX, figureOffsetY: frameWithAppearance.figureOffsetY, shouldFlip: shouldFlip)
                 }
             }
         })
@@ -944,11 +1033,11 @@ private func stopMovementAnimation() {
             var frameWithAppearance = scaledFrame
             StickFigureAppearance.shared.applyToStickFigure(&frameWithAppearance)
             let offsetPosition = CGPoint(x: frameWithAppearance.figureOffsetX, y: frameWithAppearance.figureOffsetY)
-            let stickFigureNode = renderStickFigure(frameWithAppearance, at: offsetPosition, scale: 1.2, flipped: shouldFlip, jointShapeSize: frameWithAppearance.jointShapeSize)
+            let stickFigureNode = renderStickFigure(frameWithAppearance, at: offsetPosition, scale: characterRenderScale, flipped: shouldFlip, jointShapeSize: frameWithAppearance.jointShapeSize)
             characterContainer.addChild(stickFigureNode)
             
             // Render stand frame objects
-            renderFrameObjects(gameState.standFrameObjects, on: characterContainer, scale: 1.2, figureOffsetX: frameWithAppearance.figureOffsetX, figureOffsetY: frameWithAppearance.figureOffsetY, shouldFlip: shouldFlip)
+            renderFrameObjects(gameState.standFrameObjects, on: characterContainer, scale: characterRenderScale, figureOffsetX: frameWithAppearance.figureOffsetX, figureOffsetY: frameWithAppearance.figureOffsetY, shouldFlip: shouldFlip)
         }
     }
 }
@@ -1017,12 +1106,12 @@ func refreshCharacterAppearance() {
             frameWithAppearance.isSideView = true
             
             let offsetPosition = CGPoint(x: frameWithAppearance.figureOffsetX, y: frameWithAppearance.figureOffsetY)
-            let stickFigureNode = renderStickFigure(frameWithAppearance, at: offsetPosition, scale: 1.2, flipped: shouldFlip, jointShapeSize: frameWithAppearance.jointShapeSize)
+            let stickFigureNode = renderStickFigure(frameWithAppearance, at: offsetPosition, scale: characterRenderScale, flipped: shouldFlip, jointShapeSize: frameWithAppearance.jointShapeSize)
             characterContainer.addChild(stickFigureNode)
             
             // Render move frame objects
             if animationFrameIndex < gameState.moveFrameObjects.count {
-                renderFrameObjects(gameState.moveFrameObjects[animationFrameIndex], on: characterContainer, scale: 1.2, figureOffsetX: frameWithAppearance.figureOffsetX, figureOffsetY: frameWithAppearance.figureOffsetY, shouldFlip: shouldFlip)
+                renderFrameObjects(gameState.moveFrameObjects[animationFrameIndex], on: characterContainer, scale: characterRenderScale, figureOffsetX: frameWithAppearance.figureOffsetX, figureOffsetY: frameWithAppearance.figureOffsetY, shouldFlip: shouldFlip)
             }
         }
     } else {
@@ -1038,11 +1127,11 @@ func refreshCharacterAppearance() {
             // No need to set isSideView - defaults to false for front view
             
             let offsetPosition = CGPoint(x: frameWithAppearance.figureOffsetX, y: frameWithAppearance.figureOffsetY)
-            let stickFigureNode = renderStickFigure(frameWithAppearance, at: offsetPosition, scale: 1.2, flipped: shouldFlip, jointShapeSize: frameWithAppearance.jointShapeSize)
+            let stickFigureNode = renderStickFigure(frameWithAppearance, at: offsetPosition, scale: characterRenderScale, flipped: shouldFlip, jointShapeSize: frameWithAppearance.jointShapeSize)
             characterContainer.addChild(stickFigureNode)
             
             // Render stand frame objects
-            renderFrameObjects(gameState.standFrameObjects, on: characterContainer, scale: 1.2, figureOffsetX: frameWithAppearance.figureOffsetX, figureOffsetY: frameWithAppearance.figureOffsetY, shouldFlip: shouldFlip)
+            renderFrameObjects(gameState.standFrameObjects, on: characterContainer, scale: characterRenderScale, figureOffsetX: frameWithAppearance.figureOffsetX, figureOffsetY: frameWithAppearance.figureOffsetY, shouldFlip: shouldFlip)
         }
     }
     
@@ -1731,8 +1820,11 @@ private func addFloatingText(_ text: String, x: CGFloat, y: CGFloat, color: UICo
                 timer?.invalidate()
                 // Set final value - return to normal formatting
                 pointsValueLabel.text = "\(endPoints)"
-                pointsValueLabel.fontSize = 12  // Return to normal size
-                pointsValueLabel.fontName = "Arial"  // Return to normal (not bold)
+                pointsValueLabel.fontSize = 14  // Keep bold size
+                pointsValueLabel.fontName = "Arial-BoldMT"
+                
+                // Update progress bar to reflect final value
+                self?.updateProgressBar()
                 
                 // Trigger fireworks effect at the score location
                 self?.createFireworksAtScore()
@@ -1875,13 +1967,40 @@ private func updateBoostTimer() {
     let timeRemaining = boostEndTime - currentTime
     
     if timeRemaining > 0 {
-        let seconds = Int(timeRemaining)
-        boostTimerLabel?.text = "⚡ Boost: \(seconds)s"
+        let seconds = Int(ceil(timeRemaining))
+        boostTimerLabel?.text = "⚡ \(seconds)s"
         boostTimerLabel?.isHidden = false
+        boostBadgeBackground?.isHidden = false
     } else {
         boostTimerLabel?.isHidden = true
+        boostBadgeBackground?.isHidden = true
         boostEndTime = 0
     }
+}
+
+private func updateProgressBar() {
+    guard let gameState = gameState else { return }
+    let current = gameState.currentPoints
+    let needed  = gameState.pointsNeeded(forLevel: gameState.currentLevel)
+
+    // Refresh "/ needed" label
+    pointsTextLabel?.text = "/ \(needed)"
+
+    // Rebuild fill bar path anchored at same left edge
+    guard let barBg = progressBarBg, let barPath = barBg.path else { return }
+    let barRect = barPath.boundingBox
+    let barX = barRect.origin.x
+    let barY = barRect.midY
+    let barH = barRect.height
+    let barW = progressBarMaxWidth
+
+    let fillFraction = needed > 0 ? min(1.0, CGFloat(current) / CGFloat(needed)) : 0
+    let fillW = barW * fillFraction
+
+    progressBarFill?.path = UIBezierPath(
+        roundedRect: CGRect(x: barX, y: barY - barH / 2, width: max(0, fillW), height: barH),
+        cornerRadius: 3
+    ).cgPath
 }
 
 private func isBoostActive() -> Bool {
