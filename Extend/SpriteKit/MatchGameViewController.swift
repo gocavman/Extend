@@ -6171,22 +6171,75 @@ class MatchGameViewController: UIViewController {
     // MARK: - Level Selector and State Persistence
     
     @objc private func showLevelSelector() {
-        let alert = UIAlertController(title: "Select Level", message: "Choose a level to play", preferredStyle: .actionSheet)
-        
-        // Add each unlocked level
-        if let config = gameConfig {
-            for level in config.levels {
-                if unlockedLevels.contains(level.id) {
-                    let title = level.id == currentLevelId ? "✓ Level \(level.id)" : "Level \(level.id)"
-                    alert.addAction(UIAlertAction(title: title, style: .default) { [weak self] _ in
-                        self?.selectLevel(level.id)
-                    })
-                }
+        guard let config = gameConfig else { return }
+
+        let unlockedSorted = config.levels.filter { unlockedLevels.contains($0.id) }
+        let currentIndex   = unlockedSorted.firstIndex(where: { $0.id == currentLevelId }) ?? 0
+
+        // Build a simple table-based picker so we can scroll to the current level
+        let vc = UITableViewController(style: .plain)
+        vc.tableView.register(UITableViewCell.self, forCellReuseIdentifier: "cell")
+        vc.title = "Select Level"
+        vc.preferredContentSize = CGSize(width: 260, height: min(CGFloat(unlockedSorted.count) * 44 + 44, 440))
+
+        // Data source / delegate via closures captured in a lightweight helper
+        let levels = unlockedSorted
+        let currentId = currentLevelId
+
+        class LevelDataSource: NSObject, UITableViewDataSource, UITableViewDelegate {
+            let levels: [MatchGameLevel]
+            let currentId: Int
+            var onSelect: ((Int) -> Void)?
+            init(_ levels: [MatchGameLevel], current: Int) { self.levels = levels; self.currentId = current }
+
+            func tableView(_ tv: UITableView, numberOfRowsInSection _: Int) -> Int { levels.count }
+            func tableView(_ tv: UITableView, cellForRowAt ip: IndexPath) -> UITableViewCell {
+                let cell = tv.dequeueReusableCell(withIdentifier: "cell", for: ip)
+                let lvl  = levels[ip.row]
+                var cfg  = cell.defaultContentConfiguration()
+                cfg.text = lvl.id == currentId ? "✓  Level \(lvl.id)" : "Level \(lvl.id)"
+                cfg.textProperties.font       = UIFont.systemFont(ofSize: 16,
+                                                    weight: lvl.id == currentId ? .bold : .regular)
+                cfg.textProperties.color      = lvl.id == currentId ? UIColor.black : UIColor.label
+                cell.contentConfiguration     = cfg
+                cell.backgroundColor          = lvl.id == currentId
+                    ? UIColor.systemYellow.withAlphaComponent(0.12) : .systemBackground
+                return cell
+            }
+            func tableView(_ tv: UITableView, didSelectRowAt ip: IndexPath) {
+                tv.deselectRow(at: ip, animated: true)
+                onSelect?(levels[ip.row].id)
             }
         }
-        
-        alert.addAction(UIAlertAction(title: "Cancel", style: .cancel))
-        present(alert, animated: true)
+
+        // Retain data source on the table view controller via objc association
+        let ds = LevelDataSource(levels, current: currentId)
+        ds.onSelect = { [weak self, weak vc] selectedId in
+            vc?.dismiss(animated: true) { self?.selectLevel(selectedId) }
+        }
+        objc_setAssociatedObject(vc, "ds", ds, .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
+        vc.tableView.dataSource = ds
+        vc.tableView.delegate   = ds
+
+        // Add a close button in the nav bar
+        let nav = UINavigationController(rootViewController: vc)
+        nav.modalPresentationStyle = .pageSheet
+        if let sheet = nav.sheetPresentationController {
+            sheet.detents = [.medium(), .large()]
+            sheet.prefersGrabberVisible = true
+        }
+        vc.navigationItem.rightBarButtonItem = UIBarButtonItem(
+            systemItem: .close,
+            primaryAction: UIAction { [weak nav] _ in nav?.dismiss(animated: true) }
+        )
+
+        present(nav, animated: true) {
+            // Scroll to the current level after presentation completes
+            if currentIndex < levels.count {
+                let ip = IndexPath(row: currentIndex, section: 0)
+                vc.tableView.scrollToRow(at: ip, at: .middle, animated: true)
+            }
+        }
     }
     
     private func selectLevel(_ levelId: Int) {

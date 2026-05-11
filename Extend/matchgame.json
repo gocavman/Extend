@@ -2,7 +2,7 @@
   "levels": [
     {
       "id": 1,
-      "name": "Level 1 - Fruit Challenge",
+      "name": "Fruit Challenge",
       "gridWidth": 5,
       "gridHeight": 5,
       "items": [
@@ -42,7 +42,7 @@
     },
     {
       "id": 2,
-      "name": "Level 2 - Heart Challenge",
+      "name": "Heart Challenge",
       "gridWidth": 7,
       "gridHeight": 7,
       "items": [
@@ -84,7 +84,7 @@
     },
     {
       "id": 3,
-      "name": "Level 3 - Sports Challenge",
+      "name": "Sports Challenge",
       "gridWidth": 7,
       "gridHeight": 7,
       "items": [
@@ -126,7 +126,7 @@
     },
     {
       "id": 4,
-      "name": "Level 4 - Veggie Challenge",
+      "name": "Veggie Challenge",
       "gridWidth": 10,
       "gridHeight": 10,
       "items": [
@@ -176,7 +176,7 @@
     },
     {
       "id": 5,
-      "name": "Level 5 - Achievement Challenge",
+      "name": "Achievement Challenge",
       "gridWidth": 8,
       "gridHeight": 8,
       "items": [
@@ -224,7 +224,7 @@
     },
     {
       "id": 6,
-      "name": "Level 6 - Weight Challenge",
+      "name": "Weight Challenge",
       "gridWidth": 9,
       "gridHeight": 11,
       "items": [
@@ -275,7 +275,7 @@
     },
     {
       "id": 7,
-      "name": "Level 7 - Dot Challenge",
+      "name": "Dot Challenge",
       "gridWidth": 9,
       "gridHeight": 11,
       "items": [
@@ -321,7 +321,7 @@
     },
     {
       "id": 8,
-      "name": "Level 8 - Shield Challenge",
+      "name": "Shield Challenge",
       "gridWidth": 9,
       "gridHeight": 12,
       "items": [
@@ -368,7 +368,7 @@
     },
     {
       "id": 9,
-      "name": "Level 9 - Strength Challenge",
+      "name": "Strength Challenge",
       "gridWidth": 7,
       "gridHeight": 7,
       "items": [
@@ -410,7 +410,7 @@
     },
     {
       "id": 10,
-      "name": "Level 10 - Balance Challenge",
+      "name": "Balance Challenge",
       "gridWidth": 7,
       "gridHeight": 7,
       "items": [
@@ -452,7 +452,7 @@
     },
     {
       "id": 11,
-      "name": "Level 11 - Power Challenge",
+      "name": "Power Challenge",
       "gridWidth": 7,
       "gridHeight": 8,
       "items": [
@@ -482,7 +482,7 @@
       ],
       "gridShape": [
         "XXXXXXX",
-        "_XXXXX_",
+        "_XXXX1X_",
         "__XXX__",
         "XXXXXXX",
         "XXXXXXX",
@@ -495,7 +495,7 @@
     },
     {
       "id": 12,
-      "name": "Level 12 - Agility Challenge",
+      "name": "Agility Challenge",
       "gridWidth": 7,
       "gridHeight": 7,
       "items": [
@@ -537,7 +537,7 @@
     },
     {
       "id": 13,
-      "name": "Level 13 - Focus Challenge",
+      "name": "Focus Challenge",
       "gridWidth": 7,
       "gridHeight": 7,
       "items": [
@@ -567,7 +567,7 @@
       ],
       "gridShape": [
         "XXXXXXX",
-        "XXXXXX_",
+        "XXXXXX1_",
         "XXXXX__",
         "XXXX___",
         "XXX____",
@@ -579,7 +579,7 @@
     },
     {
       "id": 14,
-      "name": "Level 14 - Energy Challenge",
+      "name": "Energy Challenge",
       "gridWidth": 7,
       "gridHeight": 7,
       "items": [
@@ -621,7 +621,7 @@
     },
     {
       "id": 15,
-      "name": "Level 15 - Vitality Challenge",
+      "name": "Vitality Challenge",
       "gridWidth": 8,
       "gridHeight": 8,
       "items": [
@@ -664,7 +664,7 @@
     },
     {
       "id": 16,
-      "name": "Level 16 - Circuit Challenge",
+      "name": "Circuit Challenge",
       "gridWidth": 7,
       "gridHeight": 7,
       "items": [
@@ -706,7 +706,7 @@
     },
     {
       "id": 17,
-      "name": "Level 17 - Sprint Challenge",
+      "name": "Sprint Challenge",
       "gridWidth": 7,
       "gridHeight": 7,
       "items": [
@@ -748,7 +748,7 @@
     },
     {
       "id": 18,
-      "name": "Level 18 - Recovery Challenge",
+      "name": "Recovery Challenge",
       "gridWidth": 7,
       "gridHeight": 8,
       "items": [
@@ -779,7 +779,7 @@
       "gridShape": [
         "XXXXXXX",
         "XXXXXXX",
-        "XXXXXXX",
+        "XXXXXX1X",
         "XXXXXXX",
         "XXXXXXX",
         "XXXXXXX",
@@ -791,7 +791,7 @@
     },
     {
       "id": 19,
-      "name": "Level 19 - Peak Challenge",
+      "name": "Peak Challenge",
       "gridWidth": 7,
       "gridHeight": 7,
       "items": [
@@ -824,7 +824,7 @@
         "XXXXXXX",
         "XXXXXXX",
         "XXXXXXX",
-        "XXXXXXX",
+        "XXX2XXXX",
         "XXXXXXX",
         "XXXXXXX"
       ],
@@ -833,7 +833,7 @@
     },
     {
       "id": 20,
-      "name": "Level 20 - Foundation Challenge",
+      "name": "Foundation Challenge",
       "gridWidth": 7,
       "gridHeight": 7,
       "items": [
@@ -875,7 +875,7 @@
     },
     {
       "id": 21,
-      "name": "Level 21 - Momentum Challenge",
+      "name": "Momentum Challenge",
       "gridWidth": 7,
       "gridHeight": 8,
       "items": [
@@ -918,7 +918,7 @@
     },
     {
       "id": 22,
-      "name": "Level 22 - Boost Challenge",
+      "name": "Boost Challenge",
       "gridWidth": 7,
       "gridHeight": 7,
       "items": [
@@ -960,7 +960,7 @@
     },
     {
       "id": 23,
-      "name": "Level 23 - Challenge Challenge",
+      "name": "Challenge Challenge",
       "gridWidth": 7,
       "gridHeight": 7,
       "items": [
@@ -1002,7 +1002,7 @@
     },
     {
       "id": 24,
-      "name": "Level 24 - Surge Challenge",
+      "name": "Surge Challenge",
       "gridWidth": 8,
       "gridHeight": 8,
       "items": [
@@ -1045,7 +1045,7 @@
     },
     {
       "id": 25,
-      "name": "Level 25 - Flow Challenge",
+      "name": "Flow Challenge",
       "gridWidth": 8,
       "gridHeight": 7,
       "items": [
@@ -1074,11 +1074,11 @@
         null
       ],
       "gridShape": [
-        "XXXXXXXX",
+        "XXXX2XXXX",
         "_XXXXXXX",
         "__XXXXXX",
         "XXXXXXXX",
-        "_XXXXXXX",
+        "_XXXXX1XX",
         "__XXXXXX",
         "XXXXXXXX"
       ],
@@ -1087,7 +1087,7 @@
     },
     {
       "id": 26,
-      "name": "Level 26 - Drive Challenge",
+      "name": "Drive Challenge",
       "gridWidth": 8,
       "gridHeight": 7,
       "items": [
@@ -1116,11 +1116,11 @@
         null
       ],
       "gridShape": [
-        "XXXXXXXX",
-        "XXXXXXXX",
+        "XXXXXX2XX",
+        "XXXXXXXX3",
         "XX____XX",
         "XX____XX",
-        "XX____XX",
+        "XX____XX2",
         "XXXXXXXX",
         "XXXXXXXX"
       ],
@@ -1129,7 +1129,7 @@
     },
     {
       "id": 27,
-      "name": "Level 27 - Spark Challenge",
+      "name": "Spark Challenge",
       "gridWidth": 7,
       "gridHeight": 8,
       "items": [
@@ -1172,7 +1172,7 @@
     },
     {
       "id": 28,
-      "name": "Level 28 - Rush Challenge",
+      "name": "Rush Challenge",
       "gridWidth": 8,
       "gridHeight": 8,
       "items": [
@@ -1215,7 +1215,7 @@
     },
     {
       "id": 29,
-      "name": "Level 29 - Ignite Challenge",
+      "name": "Ignite Challenge",
       "gridWidth": 7,
       "gridHeight": 8,
       "items": [
@@ -1245,10 +1245,10 @@
       ],
       "gridShape": [
         "XXXXXXX",
-        "_XXXXX_",
+        "_X2XXXX_",
         "__XXX__",
         "XXXXXXX",
-        "XXXXXXX",
+        "XXX3XXXX1",
         "__XXX__",
         "_XXXXX_",
         "XXXXXXX"
@@ -1258,7 +1258,7 @@
     },
     {
       "id": 30,
-      "name": "Level 30 - Elevate Challenge",
+      "name": "Elevate Challenge",
       "gridWidth": 7,
       "gridHeight": 7,
       "items": [
@@ -1300,7 +1300,7 @@
     },
     {
       "id": 31,
-      "name": "Level 31 - Fruit Challenge II",
+      "name": "Fruit Challenge II",
       "gridWidth": 8,
       "gridHeight": 7,
       "items": [
@@ -1329,20 +1329,20 @@
         null
       ],
       "gridShape": [
-        "XXXXXXXX",
-        "XXXXXXX_",
+        "XXXXXXX4X",
+        "XXXXXXX1_",
         "XXXXXX__",
         "XXXXX___",
         "XXXX____",
         "XXX_____",
-        "XXXXXXXX"
+        "XXX5XXX4XX"
       ],
       "movesAllowed": 24,
       "scoreTarget": 435
     },
     {
       "id": 32,
-      "name": "Level 32 - Heart Challenge II",
+      "name": "Heart Challenge II",
       "gridWidth": 8,
       "gridHeight": 7,
       "items": [
@@ -1371,20 +1371,20 @@
         null
       ],
       "gridShape": [
-        "_XXXXXX_",
+        "_XXXXX3X_",
         "_XXXXXX_",
         "XXXXXXXX",
         "XXXXXXXX",
         "XXXXXXXX",
         "_XXXXXX_",
-        "_XXXXXX_"
+        "_XXXX3XX_"
       ],
       "movesAllowed": 24,
       "scoreTarget": 501
     },
     {
       "id": 33,
-      "name": "Level 33 - Sports Challenge II",
+      "name": "Sports Challenge II",
       "gridWidth": 8,
       "gridHeight": 7,
       "items": [
@@ -1413,10 +1413,10 @@
         null
       ],
       "gridShape": [
-        "__XXXX__",
+        "__XXXX4__",
         "_XXXXXX_",
-        "XXXXXXXX",
-        "XXXXXXXX",
+        "XXX3XXXXX",
+        "XX3XX2XXXX",
         "XXXXXXXX",
         "_XXXXXX_",
         "__XXXX__"
@@ -1426,7 +1426,7 @@
     },
     {
       "id": 34,
-      "name": "Level 34 - Veggie Challenge II",
+      "name": "Veggie Challenge II",
       "gridWidth": 7,
       "gridHeight": 8,
       "items": [
@@ -1456,9 +1456,9 @@
       ],
       "gridShape": [
         "XXXXXXX",
-        "_XXXXXX",
+        "_XXXXX3X",
         "__XXXXX",
-        "XXXXXXX",
+        "X4XXXXXX",
         "_XXXXXX",
         "__XXXXX",
         "XXXXXXX",
@@ -1469,7 +1469,7 @@
     },
     {
       "id": 35,
-      "name": "Level 35 - Achievement Challenge II",
+      "name": "Achievement Challenge II",
       "gridWidth": 8,
       "gridHeight": 7,
       "items": [
@@ -1511,7 +1511,7 @@
     },
     {
       "id": 36,
-      "name": "Level 36 - Weight Challenge II",
+      "name": "Weight Challenge II",
       "gridWidth": 7,
       "gridHeight": 7,
       "items": [
@@ -1553,7 +1553,7 @@
     },
     {
       "id": 37,
-      "name": "Level 37 - Endurance Challenge II",
+      "name": "Endurance Challenge II",
       "gridWidth": 7,
       "gridHeight": 7,
       "items": [
@@ -1582,11 +1582,11 @@
         null
       ],
       "gridShape": [
+        "X3XX5XXXX",
         "XXXXXXX",
+        "X1XXXXXX",
         "XXXXXXX",
-        "XXXXXXX",
-        "XXXXXXX",
-        "XXXXXXX",
+        "XXXXXXX2",
         "XXXXXXX",
         "XXXXXXX"
       ],
@@ -1595,7 +1595,7 @@
     },
     {
       "id": 38,
-      "name": "Level 38 - Speed Challenge II",
+      "name": "Speed Challenge II",
       "gridWidth": 7,
       "gridHeight": 7,
       "items": [
@@ -1637,7 +1637,7 @@
     },
     {
       "id": 39,
-      "name": "Level 39 - Strength Challenge II",
+      "name": "Strength Challenge II",
       "gridWidth": 7,
       "gridHeight": 7,
       "items": [
@@ -1666,20 +1666,20 @@
         null
       ],
       "gridShape": [
-        "XXXXXXX",
+        "X5XXXXXX",
         "__XXX__",
         "_XXXXX_",
-        "XXXXXXX",
-        "_XXXXX_",
-        "__XXX__",
-        "XXXXXXX"
+        "XXXX5XXX",
+        "_XXX3XX_",
+        "__X1XX__",
+        "XXX1XXXX"
       ],
       "movesAllowed": 24,
       "scoreTarget": 423
     },
     {
       "id": 40,
-      "name": "Level 40 - Balance Challenge II",
+      "name": "Balance Challenge II",
       "gridWidth": 7,
       "gridHeight": 7,
       "items": [
@@ -1721,7 +1721,7 @@
     },
     {
       "id": 41,
-      "name": "Level 41 - Power Challenge II",
+      "name": "Power Challenge II",
       "gridWidth": 8,
       "gridHeight": 7,
       "items": [
@@ -1752,18 +1752,18 @@
       "gridShape": [
         "_XXXXXX_",
         "_XXXXXX_",
+        "X2XXXXXXX",
         "XXXXXXXX",
-        "XXXXXXXX",
-        "XXXXXXXX",
+        "X5XXXXXXX",
         "_XXXXXX_",
-        "_XXXXXX_"
+        "_XXX5XXX_"
       ],
       "movesAllowed": 24,
       "scoreTarget": 576
     },
     {
       "id": 42,
-      "name": "Level 42 - Agility Challenge II",
+      "name": "Agility Challenge II",
       "gridWidth": 8,
       "gridHeight": 8,
       "items": [
@@ -1793,20 +1793,20 @@
       ],
       "gridShape": [
         "__XXXX__",
-        "_XXXXXX_",
+        "_XXXXXX5_",
         "XXXXXXXX",
         "XXXXXXXX",
         "XXXXXXXX",
         "XXXXXXXX",
-        "_XXXXXX_",
-        "__XXXX__"
+        "_XX2XXXX_",
+        "__XX4XX__"
       ],
       "movesAllowed": 25,
       "scoreTarget": 619
     },
     {
       "id": 43,
-      "name": "Level 43 - Focus Challenge II",
+      "name": "Focus Challenge II",
       "gridWidth": 7,
       "gridHeight": 7,
       "items": [
@@ -1848,7 +1848,7 @@
     },
     {
       "id": 44,
-      "name": "Level 44 - Energy Challenge II",
+      "name": "Energy Challenge II",
       "gridWidth": 7,
       "gridHeight": 7,
       "items": [
@@ -1890,7 +1890,7 @@
     },
     {
       "id": 45,
-      "name": "Level 45 - Vitality Challenge II",
+      "name": "Vitality Challenge II",
       "gridWidth": 8,
       "gridHeight": 8,
       "items": [
@@ -1933,7 +1933,7 @@
     },
     {
       "id": 46,
-      "name": "Level 46 - Circuit Challenge II",
+      "name": "Circuit Challenge II",
       "gridWidth": 7,
       "gridHeight": 7,
       "items": [
@@ -1975,7 +1975,7 @@
     },
     {
       "id": 47,
-      "name": "Level 47 - Sprint Challenge II",
+      "name": "Sprint Challenge II",
       "gridWidth": 7,
       "gridHeight": 7,
       "items": [
@@ -2017,7 +2017,7 @@
     },
     {
       "id": 48,
-      "name": "Level 48 - Recovery Challenge II",
+      "name": "Recovery Challenge II",
       "gridWidth": 7,
       "gridHeight": 8,
       "items": [
@@ -2060,7 +2060,7 @@
     },
     {
       "id": 49,
-      "name": "Level 49 - Peak Challenge II",
+      "name": "Peak Challenge II",
       "gridWidth": 8,
       "gridHeight": 7,
       "items": [
@@ -2089,20 +2089,20 @@
         null
       ],
       "gridShape": [
-        "XXXXXXXX",
+        "X1X1XXXXX5X",
         "XXXXXXX_",
         "XXXXXX__",
         "XXXXX___",
         "XXXX____",
         "XXX_____",
-        "XXXXXXXX"
+        "XXX3XXXXX4"
       ],
       "movesAllowed": 25,
       "scoreTarget": 530
     },
     {
       "id": 50,
-      "name": "Level 50 - Foundation Challenge II",
+      "name": "Foundation Challenge II",
       "gridWidth": 7,
       "gridHeight": 7,
       "items": [
@@ -2144,7 +2144,7 @@
     },
     {
       "id": 51,
-      "name": "Level 51 - Momentum Challenge II",
+      "name": "Momentum Challenge II",
       "gridWidth": 7,
       "gridHeight": 8,
       "items": [
@@ -2187,7 +2187,7 @@
     },
     {
       "id": 52,
-      "name": "Level 52 - Boost Challenge II",
+      "name": "Boost Challenge II",
       "gridWidth": 7,
       "gridHeight": 8,
       "items": [
@@ -2230,7 +2230,7 @@
     },
     {
       "id": 53,
-      "name": "Level 53 - Challenge Challenge II",
+      "name": "Challenge Challenge II",
       "gridWidth": 8,
       "gridHeight": 7,
       "items": [
@@ -2259,20 +2259,20 @@
         null
       ],
       "gridShape": [
-        "XXXXXXXX",
+        "XXXX4XXXX",
         "XXXXXXXX",
         "XX____XX",
         "XX____XX",
-        "XX____XX",
-        "XXXXXXXX",
-        "XXXXXXXX"
+        "XX4____XX",
+        "XXXXX5XXX",
+        "XXX1XXXXX"
       ],
       "movesAllowed": 25,
       "scoreTarget": 572
     },
     {
       "id": 54,
-      "name": "Level 54 - Surge Challenge II",
+      "name": "Surge Challenge II",
       "gridWidth": 7,
       "gridHeight": 7,
       "items": [
@@ -2301,12 +2301,12 @@
         null
       ],
       "gridShape": [
+        "XXXXXX2X",
         "XXXXXXX",
         "XXXXXXX",
+        "XX1XXX2XX",
         "XXXXXXX",
-        "XXXXXXX",
-        "XXXXXXX",
-        "XXXXXXX",
+        "XXXX2XXX",
         "XXXXXXX"
       ],
       "movesAllowed": 25,
@@ -2314,7 +2314,7 @@
     },
     {
       "id": 55,
-      "name": "Level 55 - Flow Challenge II",
+      "name": "Flow Challenge II",
       "gridWidth": 7,
       "gridHeight": 7,
       "items": [
@@ -2346,17 +2346,17 @@
         "XXXXXXX",
         "XXXXXXX",
         "XXXXXXX",
-        "XXXXXXX",
-        "XXXXXXX",
-        "XXXXXXX",
-        "XXXXXXX"
+        "XXX2XXXX",
+        "XXXX3XXX",
+        "X3XXXXX4X",
+        "XX1XXXXX"
       ],
       "movesAllowed": 25,
       "scoreTarget": 628
     },
     {
       "id": 56,
-      "name": "Level 56 - Drive Challenge II",
+      "name": "Drive Challenge II",
       "gridWidth": 7,
       "gridHeight": 7,
       "items": [
@@ -2386,19 +2386,19 @@
       ],
       "gridShape": [
         "XXXXXXX",
-        "_XXXXX_",
+        "_XXX4XX_",
         "__XXX__",
-        "XXXXXXX",
+        "XXX3XXXX",
         "__XXX__",
-        "_XXXXX_",
-        "XXXXXXX"
+        "_X1XXXX5_",
+        "XXXXX4XX"
       ],
       "movesAllowed": 25,
       "scoreTarget": 511
     },
     {
       "id": 57,
-      "name": "Level 57 - Spark Challenge II",
+      "name": "Spark Challenge II",
       "gridWidth": 7,
       "gridHeight": 8,
       "items": [
@@ -2441,7 +2441,7 @@
     },
     {
       "id": 58,
-      "name": "Level 58 - Rush Challenge II",
+      "name": "Rush Challenge II",
       "gridWidth": 8,
       "gridHeight": 8,
       "items": [
@@ -2484,7 +2484,7 @@
     },
     {
       "id": 59,
-      "name": "Level 59 - Ignite Challenge II",
+      "name": "Ignite Challenge II",
       "gridWidth": 7,
       "gridHeight": 8,
       "items": [
@@ -2527,7 +2527,7 @@
     },
     {
       "id": 60,
-      "name": "Level 60 - Elevate Challenge II",
+      "name": "Elevate Challenge II",
       "gridWidth": 7,
       "gridHeight": 9,
       "items": [
@@ -2571,7 +2571,7 @@
     },
     {
       "id": 61,
-      "name": "Level 61 - Fruit Challenge III",
+      "name": "Fruit Challenge III",
       "gridWidth": 7,
       "gridHeight": 7,
       "items": [
@@ -2601,19 +2601,19 @@
       ],
       "gridShape": [
         "XXXXXXX",
+        "_XXXXX1X",
+        "__XXX5XX6",
+        "XXXXXX5X",
         "_XXXXXX",
         "__XXXXX",
-        "XXXXXXX",
-        "_XXXXXX",
-        "__XXXXX",
-        "XXXXXXX"
+        "X3XXXXXX"
       ],
       "movesAllowed": 26,
       "scoreTarget": 629
     },
     {
       "id": 62,
-      "name": "Level 62 - Heart Challenge III",
+      "name": "Heart Challenge III",
       "gridWidth": 7,
       "gridHeight": 9,
       "items": [
@@ -2657,7 +2657,7 @@
     },
     {
       "id": 63,
-      "name": "Level 63 - Sports Challenge III",
+      "name": "Sports Challenge III",
       "gridWidth": 7,
       "gridHeight": 9,
       "items": [
@@ -2686,22 +2686,22 @@
         null
       ],
       "gridShape": [
+        "XXXX3XXX",
+        "XXXXX2XX",
+        "XXXXXXX8",
         "XXXXXXX",
         "XXXXXXX",
         "XXXXXXX",
-        "XXXXXXX",
-        "XXXXXXX",
-        "XXXXXXX",
-        "XXXXXXX",
-        "XXXXXXX",
-        "XXXXXXX"
+        "XXXXX2XX",
+        "XXXXXXX8",
+        "XXX8XXXX"
       ],
       "movesAllowed": 28,
       "scoreTarget": 855
     },
     {
       "id": 64,
-      "name": "Level 64 - Veggie Challenge III",
+      "name": "Veggie Challenge III",
       "gridWidth": 8,
       "gridHeight": 8,
       "items": [
@@ -2744,7 +2744,7 @@
     },
     {
       "id": 65,
-      "name": "Level 65 - Achievement Challenge III",
+      "name": "Achievement Challenge III",
       "gridWidth": 7,
       "gridHeight": 8,
       "items": [
@@ -2787,7 +2787,7 @@
     },
     {
       "id": 66,
-      "name": "Level 66 - Weight Challenge III",
+      "name": "Weight Challenge III",
       "gridWidth": 7,
       "gridHeight": 7,
       "items": [
@@ -2816,20 +2816,20 @@
         null
       ],
       "gridShape": [
-        "XXXXXXX",
+        "XXXXXXX7",
         "__XXX__",
         "_XXXXX_",
         "XXXXXXX",
-        "_XXXXX_",
+        "_X4XXXX_",
         "__XXX__",
-        "XXXXXXX"
+        "X3XXXXXX8"
       ],
       "movesAllowed": 26,
       "scoreTarget": 578
     },
     {
       "id": 67,
-      "name": "Level 67 - Endurance Challenge III",
+      "name": "Endurance Challenge III",
       "gridWidth": 8,
       "gridHeight": 9,
       "items": [
@@ -2859,10 +2859,10 @@
       ],
       "gridShape": [
         "XXXXXXXX",
-        "XXXXXXX_",
-        "XXXXXX__",
+        "XXXXXX4X_",
+        "XXXXX4X__",
         "XXXXX___",
-        "XXXX____",
+        "X4XXX____",
         "XXX_____",
         "XXXXXXXX",
         "XXXXXXX_",
@@ -2873,7 +2873,7 @@
     },
     {
       "id": 68,
-      "name": "Level 68 - Speed Challenge III",
+      "name": "Speed Challenge III",
       "gridWidth": 7,
       "gridHeight": 9,
       "items": [
@@ -2917,7 +2917,7 @@
     },
     {
       "id": 69,
-      "name": "Level 69 - Strength Challenge III",
+      "name": "Strength Challenge III",
       "gridWidth": 8,
       "gridHeight": 8,
       "items": [
@@ -2960,7 +2960,7 @@
     },
     {
       "id": 70,
-      "name": "Level 70 - Balance Challenge III",
+      "name": "Balance Challenge III",
       "gridWidth": 7,
       "gridHeight": 7,
       "items": [
@@ -2993,16 +2993,16 @@
         "_XXXXXX",
         "__XXXXX",
         "XXXXXXX",
-        "_XXXXXX",
-        "__XXXXX",
-        "XXXXXXX"
+        "_X6XXXXX",
+        "__XX4X7XX",
+        "XXXX8XXX4"
       ],
       "movesAllowed": 26,
       "scoreTarget": 656
     },
     {
       "id": 71,
-      "name": "Level 71 - Power Challenge III",
+      "name": "Power Challenge III",
       "gridWidth": 8,
       "gridHeight": 9,
       "items": [
@@ -3036,9 +3036,9 @@
         "XX____XX",
         "XX____XX",
         "XX____XX",
-        "XX____XX",
-        "XX____XX",
-        "XXXXXXXX",
+        "XX____X1X",
+        "X1X____XX",
+        "XX7XXXXXX",
         "XXXXXXXX"
       ],
       "movesAllowed": 27,
@@ -3046,7 +3046,7 @@
     },
     {
       "id": 72,
-      "name": "Level 72 - Agility Challenge III",
+      "name": "Agility Challenge III",
       "gridWidth": 7,
       "gridHeight": 9,
       "items": [
@@ -3075,14 +3075,14 @@
         null
       ],
       "gridShape": [
+        "XX6XXXXX",
+        "XXX5XXXX",
+        "XX8XXXXX5",
         "XXXXXXX",
+        "XXXXXXX7",
         "XXXXXXX",
-        "XXXXXXX",
-        "XXXXXXX",
-        "XXXXXXX",
-        "XXXXXXX",
-        "XXXXXXX",
-        "XXXXXXX",
+        "XXX6XXXX",
+        "XXXXXXX5",
         "XXXXXXX"
       ],
       "movesAllowed": 28,
@@ -3090,7 +3090,7 @@
     },
     {
       "id": 73,
-      "name": "Level 73 - Focus Challenge III",
+      "name": "Focus Challenge III",
       "gridWidth": 7,
       "gridHeight": 7,
       "items": [
@@ -3132,7 +3132,7 @@
     },
     {
       "id": 74,
-      "name": "Level 74 - Energy Challenge III",
+      "name": "Energy Challenge III",
       "gridWidth": 8,
       "gridHeight": 9,
       "items": [
@@ -3176,7 +3176,7 @@
     },
     {
       "id": 75,
-      "name": "Level 75 - Vitality Challenge III",
+      "name": "Vitality Challenge III",
       "gridWidth": 7,
       "gridHeight": 8,
       "items": [
@@ -3219,7 +3219,7 @@
     },
     {
       "id": 76,
-      "name": "Level 76 - Circuit Challenge III",
+      "name": "Circuit Challenge III",
       "gridWidth": 7,
       "gridHeight": 9,
       "items": [
@@ -3263,7 +3263,7 @@
     },
     {
       "id": 77,
-      "name": "Level 77 - Sprint Challenge III",
+      "name": "Sprint Challenge III",
       "gridWidth": 7,
       "gridHeight": 9,
       "items": [
@@ -3295,19 +3295,19 @@
         "__XXX__",
         "_XXXXX_",
         "_XXXXX_",
+        "XX3XXX1XX",
         "XXXXXXX",
-        "XXXXXXX",
-        "XXXXXXX",
-        "_XXXXX_",
-        "_XXXXX_",
-        "__XXX__"
+        "XXXXXX8X",
+        "_X6XXXX_",
+        "_XX2X2XX_",
+        "__XXX7__"
       ],
       "movesAllowed": 27,
       "scoreTarget": 721
     },
     {
       "id": 78,
-      "name": "Level 78 - Recovery Challenge III",
+      "name": "Recovery Challenge III",
       "gridWidth": 7,
       "gridHeight": 9,
       "items": [
@@ -3337,12 +3337,12 @@
       ],
       "gridShape": [
         "__XXX__",
-        "_XXXXX_",
+        "_XXX7XX_",
+        "XX6XXXXX",
         "XXXXXXX",
-        "XXXXXXX",
-        "XXXXXXX",
-        "XXXXXXX",
-        "XXXXXXX",
+        "XXXXX1XX",
+        "XXX7XX1XX",
+        "XXX5XXXX",
         "_XXXXX_",
         "__XXX__"
       ],
@@ -3351,7 +3351,7 @@
     },
     {
       "id": 79,
-      "name": "Level 79 - Peak Challenge III",
+      "name": "Peak Challenge III",
       "gridWidth": 7,
       "gridHeight": 9,
       "items": [
@@ -3380,22 +3380,22 @@
         null
       ],
       "gridShape": [
-        "XXXXXXX",
-        "_XXXXXX",
+        "XXXXX2XX",
+        "_XX5XXXX",
         "__XXXXX",
         "XXXXXXX",
         "_XXXXXX",
         "__XXXXX",
         "XXXXXXX",
-        "_XXXXXX",
-        "__XXXXX"
+        "_X7X6XXXX",
+        "__XXX5XX"
       ],
       "movesAllowed": 28,
       "scoreTarget": 804
     },
     {
       "id": 80,
-      "name": "Level 80 - Foundation Challenge III",
+      "name": "Foundation Challenge III",
       "gridWidth": 8,
       "gridHeight": 9,
       "items": [
@@ -3424,22 +3424,22 @@
         null
       ],
       "gridShape": [
+        "XXXXXX5XX",
         "XXXXXXXX",
+        "XX____XX",
+        "XX____XX",
+        "X1X____XX",
+        "XX____XX",
+        "XX____XX",
         "XXXXXXXX",
-        "XX____XX",
-        "XX____XX",
-        "XX____XX",
-        "XX____XX",
-        "XX____XX",
-        "XXXXXXXX",
-        "XXXXXXXX"
+        "XX4XXX8XXX"
       ],
       "movesAllowed": 28,
       "scoreTarget": 837
     },
     {
       "id": 81,
-      "name": "Level 81 - Momentum Challenge III",
+      "name": "Momentum Challenge III",
       "gridWidth": 8,
       "gridHeight": 9,
       "items": [
@@ -3469,13 +3469,13 @@
       ],
       "gridShape": [
         "XXXXXXXX",
+        "XX4XXXXXX",
+        "XXXXX5XX4X",
+        "XXXXXXXX6",
+        "XX7XXXXXX",
         "XXXXXXXX",
-        "XXXXXXXX",
-        "XXXXXXXX",
-        "XXXXXXXX",
-        "XXXXXXXX",
-        "XXXXXXXX",
-        "XXXXXXXX",
+        "XXXX5XXXX",
+        "XXXXX6XXX",
         "XXXXXXXX"
       ],
       "movesAllowed": 30,
@@ -3483,7 +3483,7 @@
     },
     {
       "id": 82,
-      "name": "Level 82 - Boost Challenge III",
+      "name": "Boost Challenge III",
       "gridWidth": 8,
       "gridHeight": 9,
       "items": [
@@ -3515,10 +3515,10 @@
         "XXXXXXXX",
         "XXXXXXXX",
         "XXXXXXXX",
+        "XXX7XXXXX",
         "XXXXXXXX",
-        "XXXXXXXX",
-        "XXXXXXXX",
-        "XXXXXXXX",
+        "X4XXXXXXX",
+        "XXX8XXXXX",
         "XXXXXXXX",
         "XXXXXXXX"
       ],
@@ -3527,7 +3527,7 @@
     },
     {
       "id": 83,
-      "name": "Level 83 - Challenge Challenge III",
+      "name": "Challenge Challenge III",
       "gridWidth": 7,
       "gridHeight": 8,
       "items": [
@@ -3570,7 +3570,7 @@
     },
     {
       "id": 84,
-      "name": "Level 84 - Surge Challenge III",
+      "name": "Surge Challenge III",
       "gridWidth": 7,
       "gridHeight": 9,
       "items": [
@@ -3614,7 +3614,7 @@
     },
     {
       "id": 85,
-      "name": "Level 85 - Flow Challenge III",
+      "name": "Flow Challenge III",
       "gridWidth": 7,
       "gridHeight": 9,
       "items": [
@@ -3643,14 +3643,14 @@
         null
       ],
       "gridShape": [
-        "XXXXXXX",
-        "XXXXXX_",
-        "XXXXX__",
+        "XXX7XXXX",
+        "XXXXXX2_",
+        "XXXX7X__",
         "XXXX___",
         "XXX____",
         "XXXXXXX",
-        "XXXXXX_",
-        "XXXXX__",
+        "XXX1XXX_",
+        "X1XX4XX__",
         "XXXX___"
       ],
       "movesAllowed": 27,
@@ -3658,7 +3658,7 @@
     },
     {
       "id": 86,
-      "name": "Level 86 - Drive Challenge III",
+      "name": "Drive Challenge III",
       "gridWidth": 7,
       "gridHeight": 8,
       "items": [
@@ -3689,10 +3689,10 @@
       "gridShape": [
         "__XXX__",
         "_XXXXX_",
-        "_XXXXX_",
+        "_XX7XXX_",
         "XXXXXXX",
-        "XXXXXXX",
-        "XXXXXXX",
+        "XXXXXXX4",
+        "XX1XXXXX4",
         "_XXXXX_",
         "_XXXXX_"
       ],
@@ -3701,7 +3701,7 @@
     },
     {
       "id": 87,
-      "name": "Level 87 - Spark Challenge III",
+      "name": "Spark Challenge III",
       "gridWidth": 7,
       "gridHeight": 7,
       "items": [
@@ -3743,7 +3743,7 @@
     },
     {
       "id": 88,
-      "name": "Level 88 - Rush Challenge III",
+      "name": "Rush Challenge III",
       "gridWidth": 7,
       "gridHeight": 8,
       "items": [
@@ -3773,20 +3773,20 @@
       ],
       "gridShape": [
         "XXXXXXX",
-        "_XXXXXX",
+        "_XXXXX6X",
         "__XXXXX",
-        "XXXXXXX",
-        "_XXXXXX",
+        "XXXXXX2X",
+        "_XXXXXX2",
         "__XXXXX",
-        "XXXXXXX",
-        "_XXXXXX"
+        "X7XXXXXX",
+        "_XXXXX7X"
       ],
       "movesAllowed": 27,
       "scoreTarget": 825
     },
     {
       "id": 89,
-      "name": "Level 89 - Ignite Challenge III",
+      "name": "Ignite Challenge III",
       "gridWidth": 7,
       "gridHeight": 7,
       "items": [
@@ -3815,12 +3815,12 @@
         null
       ],
       "gridShape": [
-        "XXXXXXX",
-        "XXXXXXX",
+        "XXX8XXXX",
+        "XXXXX2XX",
         "XX___XX",
+        "XX___XX2",
         "XX___XX",
-        "XX___XX",
-        "XXXXXXX",
+        "XXXX3XXX",
         "XXXXXXX"
       ],
       "movesAllowed": 27,
@@ -3828,7 +3828,7 @@
     },
     {
       "id": 90,
-      "name": "Level 90 - Elevate Challenge III",
+      "name": "Elevate Challenge III",
       "gridWidth": 8,
       "gridHeight": 8,
       "items": [
@@ -3871,7 +3871,7 @@
     },
     {
       "id": 91,
-      "name": "Level 91 - Fruit Challenge IV",
+      "name": "Fruit Challenge IV",
       "gridWidth": 7,
       "gridHeight": 9,
       "items": [
@@ -3905,13 +3905,13 @@
         null
       ],
       "gridShape": [
+        "XXXX6X4XX",
         "XXXXXXX",
+        "XXXXX7XX",
+        "XX1XXXXX",
         "XXXXXXX",
-        "XXXXXXX",
-        "XXXXXXX",
-        "XXXXXXX",
-        "XXXXXXX",
-        "XXXXXXX",
+        "XXXXXX5X1",
+        "XXXXX2XX",
         "XXXXXXX",
         "XXXXXXX"
       ],
@@ -3920,7 +3920,7 @@
     },
     {
       "id": 92,
-      "name": "Level 92 - Heart Challenge IV",
+      "name": "Heart Challenge IV",
       "gridWidth": 8,
       "gridHeight": 8,
       "items": [
@@ -3963,7 +3963,7 @@
     },
     {
       "id": 93,
-      "name": "Level 93 - Sports Challenge IV",
+      "name": "Sports Challenge IV",
       "gridWidth": 8,
       "gridHeight": 9,
       "items": [
@@ -3992,14 +3992,14 @@
         null
       ],
       "gridShape": [
-        "XXXXXXXX",
+        "XXXXXXX2X",
         "__XXXX__",
         "_XXXXXX_",
+        "X2XXXXXXX",
         "XXXXXXXX",
-        "XXXXXXXX",
-        "XXXXXXXX",
-        "_XXXXXX_",
-        "__XXXX__",
+        "XXXXX4XXX",
+        "_XXXX3XX_",
+        "__X5XXX__",
         "XXXXXXXX"
       ],
       "movesAllowed": 30,
@@ -4007,7 +4007,7 @@
     },
     {
       "id": 94,
-      "name": "Level 94 - Veggie Challenge IV",
+      "name": "Veggie Challenge IV",
       "gridWidth": 8,
       "gridHeight": 7,
       "items": [
@@ -4037,19 +4037,19 @@
       ],
       "gridShape": [
         "XXXXXXXX",
-        "XXXXXXX_",
-        "XXXXXX__",
+        "XXX7X5XXX_",
+        "XXX2XX5X__",
         "XXXXX___",
         "XXXX____",
-        "XXX_____",
-        "XXXXXXXX"
+        "XX5X_____",
+        "X3XXXXXXX"
       ],
       "movesAllowed": 28,
       "scoreTarget": 747
     },
     {
       "id": 95,
-      "name": "Level 95 - Achievement Challenge IV",
+      "name": "Achievement Challenge IV",
       "gridWidth": 7,
       "gridHeight": 8,
       "items": [
@@ -4092,7 +4092,7 @@
     },
     {
       "id": 96,
-      "name": "Level 96 - Weight Challenge IV",
+      "name": "Weight Challenge IV",
       "gridWidth": 7,
       "gridHeight": 7,
       "items": [
@@ -4134,7 +4134,7 @@
     },
     {
       "id": 97,
-      "name": "Level 97 - Endurance Challenge IV",
+      "name": "Endurance Challenge IV",
       "gridWidth": 7,
       "gridHeight": 9,
       "items": [
@@ -4178,7 +4178,7 @@
     },
     {
       "id": 98,
-      "name": "Level 98 - Speed Challenge IV",
+      "name": "Speed Challenge IV",
       "gridWidth": 7,
       "gridHeight": 7,
       "items": [
@@ -4220,7 +4220,7 @@
     },
     {
       "id": 99,
-      "name": "Level 99 - Strength Challenge IV",
+      "name": "Strength Challenge IV",
       "gridWidth": 8,
       "gridHeight": 8,
       "items": [
@@ -4263,7 +4263,7 @@
     },
     {
       "id": 100,
-      "name": "Level 100 - Balance Challenge IV",
+      "name": "Balance Challenge IV",
       "gridWidth": 7,
       "gridHeight": 9,
       "items": [
@@ -4307,7 +4307,7 @@
     },
     {
       "id": 101,
-      "name": "Level 101 - Power Challenge IV",
+      "name": "Power Challenge IV",
       "gridWidth": 8,
       "gridHeight": 7,
       "items": [
@@ -4339,17 +4339,17 @@
         "XXXXXXXX",
         "_XXXXXX_",
         "__XXXX__",
-        "XXXXXXXX",
-        "__XXXX__",
-        "_XXXXXX_",
-        "XXXXXXXX"
+        "XXXX3XXXX",
+        "__XXX5X6__",
+        "_XXXXXX2_",
+        "XX5XX6XXXX"
       ],
       "movesAllowed": 28,
       "scoreTarget": 848
     },
     {
       "id": 102,
-      "name": "Level 102 - Agility Challenge IV",
+      "name": "Agility Challenge IV",
       "gridWidth": 8,
       "gridHeight": 7,
       "items": [
@@ -4391,7 +4391,7 @@
     },
     {
       "id": 103,
-      "name": "Level 103 - Focus Challenge IV",
+      "name": "Focus Challenge IV",
       "gridWidth": 8,
       "gridHeight": 8,
       "items": [
@@ -4420,21 +4420,21 @@
         null
       ],
       "gridShape": [
-        "XXXXXXXX",
-        "XXXXXXX_",
+        "XX5XXXXXX",
+        "XX9XXXXX_",
         "XXXXXX__",
         "XXXXX___",
-        "XXXX____",
-        "XXX_____",
+        "XXXX8____",
+        "XX6X_____",
         "XXXXXXXX",
-        "XXXXXXX_"
+        "XXX9XXXX_"
       ],
       "movesAllowed": 28,
       "scoreTarget": 906
     },
     {
       "id": 104,
-      "name": "Level 104 - Energy Challenge IV",
+      "name": "Energy Challenge IV",
       "gridWidth": 7,
       "gridHeight": 9,
       "items": [
@@ -4469,21 +4469,21 @@
       ],
       "gridShape": [
         "__XXX__",
+        "_XXX6XX_",
         "_XXXXX_",
-        "_XXXXX_",
+        "X1XXXXXX6",
+        "X1XXXXXX",
         "XXXXXXX",
-        "XXXXXXX",
-        "XXXXXXX",
         "_XXXXX_",
         "_XXXXX_",
-        "__XXX__"
+        "__XXX2__"
       ],
       "movesAllowed": 28,
       "scoreTarget": 896
     },
     {
       "id": 105,
-      "name": "Level 105 - Vitality Challenge IV",
+      "name": "Vitality Challenge IV",
       "gridWidth": 7,
       "gridHeight": 7,
       "items": [
@@ -4525,7 +4525,7 @@
     },
     {
       "id": 106,
-      "name": "Level 106 - Circuit Challenge IV",
+      "name": "Circuit Challenge IV",
       "gridWidth": 8,
       "gridHeight": 8,
       "items": [
@@ -4568,7 +4568,7 @@
     },
     {
       "id": 107,
-      "name": "Level 107 - Sprint Challenge IV",
+      "name": "Sprint Challenge IV",
       "gridWidth": 8,
       "gridHeight": 8,
       "items": [
@@ -4611,7 +4611,7 @@
     },
     {
       "id": 108,
-      "name": "Level 108 - Recovery Challenge IV",
+      "name": "Recovery Challenge IV",
       "gridWidth": 7,
       "gridHeight": 7,
       "items": [
@@ -4644,16 +4644,16 @@
         "XXXXXXX",
         "XXXXXXX",
         "XXXXXXX",
-        "XXXXXXX",
-        "XXXXXXX",
-        "XXXXXXX"
+        "XXXXXXX2",
+        "XXX10XXXX",
+        "XXX2XXX2X"
       ],
       "movesAllowed": 29,
       "scoreTarget": 934
     },
     {
       "id": 109,
-      "name": "Level 109 - Peak Challenge IV",
+      "name": "Peak Challenge IV",
       "gridWidth": 7,
       "gridHeight": 9,
       "items": [
@@ -4697,7 +4697,7 @@
     },
     {
       "id": 110,
-      "name": "Level 110 - Foundation Challenge IV",
+      "name": "Foundation Challenge IV",
       "gridWidth": 8,
       "gridHeight": 9,
       "items": [
@@ -4746,7 +4746,7 @@
     },
     {
       "id": 111,
-      "name": "Level 111 - Momentum Challenge IV",
+      "name": "Momentum Challenge IV",
       "gridWidth": 8,
       "gridHeight": 9,
       "items": [
@@ -4790,7 +4790,7 @@
     },
     {
       "id": 112,
-      "name": "Level 112 - Boost Challenge IV",
+      "name": "Boost Challenge IV",
       "gridWidth": 8,
       "gridHeight": 8,
       "items": [
@@ -4833,7 +4833,7 @@
     },
     {
       "id": 113,
-      "name": "Level 113 - Challenge Challenge IV",
+      "name": "Challenge Challenge IV",
       "gridWidth": 7,
       "gridHeight": 9,
       "items": [
@@ -4877,7 +4877,7 @@
     },
     {
       "id": 114,
-      "name": "Level 114 - Surge Challenge IV",
+      "name": "Surge Challenge IV",
       "gridWidth": 7,
       "gridHeight": 7,
       "items": [
@@ -4919,7 +4919,7 @@
     },
     {
       "id": 115,
-      "name": "Level 115 - Flow Challenge IV",
+      "name": "Flow Challenge IV",
       "gridWidth": 7,
       "gridHeight": 9,
       "items": [
@@ -4949,21 +4949,21 @@
       ],
       "gridShape": [
         "XXXXXXX",
+        "_XXXX10XX",
+        "__X5XX3XX",
+        "X9XXXXXX",
+        "_XXXX3X9X",
+        "__XX9XXX",
+        "XXXXX1XX",
         "_XXXXXX",
-        "__XXXXX",
-        "XXXXXXX",
-        "_XXXXXX",
-        "__XXXXX",
-        "XXXXXXX",
-        "_XXXXXX",
-        "__XXXXX"
+        "__XXXXX9"
       ],
       "movesAllowed": 30,
       "scoreTarget": 1020
     },
     {
       "id": 116,
-      "name": "Level 116 - Drive Challenge IV",
+      "name": "Drive Challenge IV",
       "gridWidth": 7,
       "gridHeight": 9,
       "items": [
@@ -5007,7 +5007,7 @@
     },
     {
       "id": 117,
-      "name": "Level 117 - Spark Challenge IV",
+      "name": "Spark Challenge IV",
       "gridWidth": 8,
       "gridHeight": 9,
       "items": [
@@ -5056,7 +5056,7 @@
     },
     {
       "id": 118,
-      "name": "Level 118 - Rush Challenge IV",
+      "name": "Rush Challenge IV",
       "gridWidth": 8,
       "gridHeight": 7,
       "items": [
@@ -5086,19 +5086,19 @@
       ],
       "gridShape": [
         "XXXXXXXX",
+        "XXX1XXXXX",
         "XXXXXXXX",
-        "XXXXXXXX",
-        "XXXXXXXX",
-        "XXXXXXXX",
-        "XXXXXXXX",
-        "XXXXXXXX"
+        "XXX6XXXXX",
+        "XXXXXXXX3",
+        "X5XX10XXXXX",
+        "X2XXXXXXX"
       ],
       "movesAllowed": 30,
       "scoreTarget": 1055
     },
     {
       "id": 119,
-      "name": "Level 119 - Ignite Challenge IV",
+      "name": "Ignite Challenge IV",
       "gridWidth": 7,
       "gridHeight": 7,
       "items": [
@@ -5127,20 +5127,20 @@
         null
       ],
       "gridShape": [
-        "XXXXXXX",
+        "XXXXXXX10",
         "_XXXXX_",
-        "__XXX__",
-        "XXXXXXX",
+        "__XXX10__",
+        "XXXXXX9X",
         "__XXX__",
         "_XXXXX_",
-        "XXXXXXX"
+        "XXX7XXXX"
       ],
       "movesAllowed": 29,
       "scoreTarget": 811
     },
     {
       "id": 120,
-      "name": "Level 120 - Elevate Challenge IV",
+      "name": "Elevate Challenge IV",
       "gridWidth": 7,
       "gridHeight": 8,
       "items": [
@@ -5170,12 +5170,12 @@
       ],
       "gridShape": [
         "XXXXXXX",
-        "__XXX__",
+        "__XX8X__",
         "_XXXXX_",
-        "XXXXXXX",
-        "XXXXXXX",
-        "XXXXXXX",
-        "_XXXXX_",
+        "X5XXXXXX",
+        "XXXXX9XX",
+        "XXXXXXX3",
+        "_X8XXX6X7_",
         "__XXX__"
       ],
       "movesAllowed": 30,
@@ -5183,7 +5183,7 @@
     },
     {
       "id": 121,
-      "name": "Level 121 - Fruit Challenge 5",
+      "name": "Fruit Challenge 5",
       "gridWidth": 7,
       "gridHeight": 7,
       "items": [
@@ -5230,7 +5230,7 @@
     },
     {
       "id": 122,
-      "name": "Level 122 - Heart Challenge 5",
+      "name": "Heart Challenge 5",
       "gridWidth": 7,
       "gridHeight": 9,
       "items": [
@@ -5259,22 +5259,22 @@
         null
       ],
       "gridShape": [
-        "__XXX__",
+        "__X7XX7__",
+        "_XX10XXX_",
         "_XXXXX_",
-        "_XXXXX_",
+        "XXXXXX2X",
         "XXXXXXX",
         "XXXXXXX",
-        "XXXXXXX",
         "_XXXXX_",
-        "_XXXXX_",
-        "__XXX__"
+        "_XXX6XX_",
+        "__XXX5__"
       ],
       "movesAllowed": 30,
       "scoreTarget": 997
     },
     {
       "id": 123,
-      "name": "Level 123 - Sports Challenge 5",
+      "name": "Sports Challenge 5",
       "gridWidth": 8,
       "gridHeight": 7,
       "items": [
@@ -5316,7 +5316,7 @@
     },
     {
       "id": 124,
-      "name": "Level 124 - Veggie Challenge 5",
+      "name": "Veggie Challenge 5",
       "gridWidth": 8,
       "gridHeight": 8,
       "items": [
@@ -5345,21 +5345,21 @@
         null
       ],
       "gridShape": [
-        "XXXXXXXX",
+        "XXXXXXXX4",
         "_XXXXXXX",
         "__XXXXXX",
+        "XXX8XXXXX",
+        "_X1XX6XXXX",
+        "__XXXX10XX",
         "XXXXXXXX",
-        "_XXXXXXX",
-        "__XXXXXX",
-        "XXXXXXXX",
-        "_XXXXXXX"
+        "_XXXXX9XX"
       ],
       "movesAllowed": 31,
       "scoreTarget": 1143
     },
     {
       "id": 125,
-      "name": "Level 125 - Achievement Challenge 5",
+      "name": "Achievement Challenge 5",
       "gridWidth": 7,
       "gridHeight": 8,
       "items": [
@@ -5402,7 +5402,7 @@
     },
     {
       "id": 126,
-      "name": "Level 126 - Weight Challenge 5",
+      "name": "Weight Challenge 5",
       "gridWidth": 8,
       "gridHeight": 7,
       "items": [
@@ -5444,7 +5444,7 @@
     },
     {
       "id": 127,
-      "name": "Level 127 - Endurance Challenge 5",
+      "name": "Endurance Challenge 5",
       "gridWidth": 7,
       "gridHeight": 9,
       "items": [
@@ -5488,7 +5488,7 @@
     },
     {
       "id": 128,
-      "name": "Level 128 - Speed Challenge 5",
+      "name": "Speed Challenge 5",
       "gridWidth": 7,
       "gridHeight": 9,
       "items": [
@@ -5520,19 +5520,19 @@
         "XXXXXXX",
         "_XXXXX_",
         "__XXX__",
+        "XXXX4XXX10",
         "XXXXXXX",
-        "XXXXXXX",
-        "XXXXXXX",
+        "XX2XX10XXX",
         "__XXX__",
         "_XXXXX_",
-        "XXXXXXX"
+        "XX2XXXX6X"
       ],
       "movesAllowed": 31,
       "scoreTarget": 1071
     },
     {
       "id": 129,
-      "name": "Level 129 - Strength Challenge 5",
+      "name": "Strength Challenge 5",
       "gridWidth": 8,
       "gridHeight": 9,
       "items": [
@@ -5564,9 +5564,9 @@
         "XXXXXXXX",
         "__XXXX__",
         "_XXXXXX_",
-        "XXXXXXXX",
-        "XXXXXXXX",
-        "XXXXXXXX",
+        "XXXXXX1XX",
+        "XXXXXXX3X",
+        "XXXX8XXXX4",
         "_XXXXXX_",
         "__XXXX__",
         "XXXXXXXX"
@@ -5576,7 +5576,7 @@
     },
     {
       "id": 130,
-      "name": "Level 130 - Balance Challenge 5",
+      "name": "Balance Challenge 5",
       "gridWidth": 7,
       "gridHeight": 7,
       "items": [
@@ -5623,7 +5623,7 @@
     },
     {
       "id": 131,
-      "name": "Level 131 - Power Challenge 5",
+      "name": "Power Challenge 5",
       "gridWidth": 8,
       "gridHeight": 7,
       "items": [
@@ -5665,7 +5665,7 @@
     },
     {
       "id": 132,
-      "name": "Level 132 - Agility Challenge 5",
+      "name": "Agility Challenge 5",
       "gridWidth": 9,
       "gridHeight": 7,
       "items": [
@@ -5699,12 +5699,12 @@
         null
       ],
       "gridShape": [
-        "__XXXXX__",
+        "__X6XXXX__",
         "_XXXXXXX_",
-        "XXXXXXXXX",
-        "XXXXXXXXX",
-        "XXXXXXXXX",
-        "_XXXXXXX_",
+        "X10XXXXXXXX3",
+        "X5XXXXXXXX",
+        "XXXXXXX5XX",
+        "_XXXX1XX8X5_",
         "__XXXXX__"
       ],
       "movesAllowed": 31,
@@ -5712,7 +5712,7 @@
     },
     {
       "id": 133,
-      "name": "Level 133 - Focus Challenge 5",
+      "name": "Focus Challenge 5",
       "gridWidth": 7,
       "gridHeight": 8,
       "items": [
@@ -5755,7 +5755,7 @@
     },
     {
       "id": 134,
-      "name": "Level 134 - Energy Challenge 5",
+      "name": "Energy Challenge 5",
       "gridWidth": 7,
       "gridHeight": 8,
       "items": [
@@ -5798,7 +5798,7 @@
     },
     {
       "id": 135,
-      "name": "Level 135 - Vitality Challenge 5",
+      "name": "Vitality Challenge 5",
       "gridWidth": 8,
       "gridHeight": 9,
       "items": [
@@ -5842,7 +5842,7 @@
     },
     {
       "id": 136,
-      "name": "Level 136 - Circuit Challenge 5",
+      "name": "Circuit Challenge 5",
       "gridWidth": 7,
       "gridHeight": 8,
       "items": [
@@ -5885,7 +5885,7 @@
     },
     {
       "id": 137,
-      "name": "Level 137 - Sprint Challenge 5",
+      "name": "Sprint Challenge 5",
       "gridWidth": 9,
       "gridHeight": 7,
       "items": [
@@ -5927,7 +5927,7 @@
     },
     {
       "id": 138,
-      "name": "Level 138 - Recovery Challenge 5",
+      "name": "Recovery Challenge 5",
       "gridWidth": 8,
       "gridHeight": 7,
       "items": [
@@ -5969,7 +5969,7 @@
     },
     {
       "id": 139,
-      "name": "Level 139 - Peak Challenge 5",
+      "name": "Peak Challenge 5",
       "gridWidth": 7,
       "gridHeight": 7,
       "items": [
@@ -6011,7 +6011,7 @@
     },
     {
       "id": 140,
-      "name": "Level 140 - Foundation Challenge 5",
+      "name": "Foundation Challenge 5",
       "gridWidth": 7,
       "gridHeight": 7,
       "items": [
@@ -6053,7 +6053,7 @@
     },
     {
       "id": 141,
-      "name": "Level 141 - Momentum Challenge 5",
+      "name": "Momentum Challenge 5",
       "gridWidth": 8,
       "gridHeight": 9,
       "items": [
@@ -6097,7 +6097,7 @@
     },
     {
       "id": 142,
-      "name": "Level 142 - Boost Challenge 5",
+      "name": "Boost Challenge 5",
       "gridWidth": 7,
       "gridHeight": 9,
       "items": [
@@ -6126,14 +6126,14 @@
         null
       ],
       "gridShape": [
-        "XXXXXXX",
-        "_XXXXXX",
+        "XX4XXXXX",
+        "_XXXXXX8",
         "__XXXXX",
-        "XXXXXXX",
-        "_XXXXXX",
-        "__XXXXX",
-        "XXXXXXX",
-        "_XXXXXX",
+        "X7XXXXXX",
+        "_XXX10XXX",
+        "__X10XXXX",
+        "XXXXXX8X",
+        "_XXXX9X9X",
         "__XXXXX"
       ],
       "movesAllowed": 32,
@@ -6141,7 +6141,7 @@
     },
     {
       "id": 143,
-      "name": "Level 143 - Challenge Challenge 5",
+      "name": "Challenge Challenge 5",
       "gridWidth": 9,
       "gridHeight": 7,
       "items": [
@@ -6193,7 +6193,7 @@
     },
     {
       "id": 144,
-      "name": "Level 144 - Surge Challenge 5",
+      "name": "Surge Challenge 5",
       "gridWidth": 9,
       "gridHeight": 9,
       "items": [
@@ -6237,7 +6237,7 @@
     },
     {
       "id": 145,
-      "name": "Level 145 - Flow Challenge 5",
+      "name": "Flow Challenge 5",
       "gridWidth": 8,
       "gridHeight": 9,
       "items": [
@@ -6268,12 +6268,12 @@
       "gridShape": [
         "XXXXXXXX",
         "XXXXXXXX",
+        "XXXX3X2XXX",
+        "XXX5XXXXX",
+        "XXXXXX3XX",
         "XXXXXXXX",
-        "XXXXXXXX",
-        "XXXXXXXX",
-        "XXXXXXXX",
-        "XXXXXXXX",
-        "XXXXXXXX",
+        "XXXXXXX5X",
+        "XXXXX3XXX",
         "XXXXXXXX"
       ],
       "movesAllowed": 34,
@@ -6281,7 +6281,7 @@
     },
     {
       "id": 146,
-      "name": "Level 146 - Drive Challenge 5",
+      "name": "Drive Challenge 5",
       "gridWidth": 9,
       "gridHeight": 8,
       "items": [
@@ -6324,7 +6324,7 @@
     },
     {
       "id": 147,
-      "name": "Level 147 - Spark Challenge 5",
+      "name": "Spark Challenge 5",
       "gridWidth": 7,
       "gridHeight": 7,
       "items": [
@@ -6366,7 +6366,7 @@
     },
     {
       "id": 148,
-      "name": "Level 148 - Rush Challenge 5",
+      "name": "Rush Challenge 5",
       "gridWidth": 9,
       "gridHeight": 9,
       "items": [
@@ -6397,12 +6397,12 @@
       "gridShape": [
         "XXXXXXXXX",
         "XXXXXXXX_",
-        "XXXXXXX__",
-        "XXXXXX___",
+        "XXXX6XXX__",
+        "XXXX6XX___",
         "XXXXX____",
         "XXXX_____",
         "XXX______",
-        "XXXXXXXXX",
+        "XXXXXXXX7X4",
         "XXXXXXXX_"
       ],
       "movesAllowed": 32,
@@ -6410,7 +6410,7 @@
     },
     {
       "id": 149,
-      "name": "Level 149 - Ignite Challenge 5",
+      "name": "Ignite Challenge 5",
       "gridWidth": 7,
       "gridHeight": 7,
       "items": [
@@ -6439,12 +6439,12 @@
         null
       ],
       "gridShape": [
-        "_XXXXX_",
-        "_XXXXX_",
+        "_XX6XXX2_",
+        "_XXX2XX_",
+        "XX7XXXXX",
         "XXXXXXX",
-        "XXXXXXX",
-        "XXXXXXX",
-        "_XXXXX_",
+        "XX7XXXX9X",
+        "_XXXXX6_",
         "_XXXXX_"
       ],
       "movesAllowed": 31,
@@ -6452,7 +6452,7 @@
     },
     {
       "id": 150,
-      "name": "Level 150 - Elevate Challenge 5",
+      "name": "Elevate Challenge 5",
       "gridWidth": 7,
       "gridHeight": 7,
       "items": [
@@ -6482,11 +6482,11 @@
       ],
       "gridShape": [
         "__XXX__",
-        "_XXXXX_",
+        "_XXXX9X13_",
+        "X8XXX9X10X15X9",
+        "XXXXXXX10",
         "XXXXXXX",
-        "XXXXXXX",
-        "XXXXXXX",
-        "_XXXXX_",
+        "_XXXXX12_",
         "__XXX__"
       ],
       "movesAllowed": 32,
@@ -6494,7 +6494,7 @@
     },
     {
       "id": 151,
-      "name": "Level 151 - Fruit Challenge 6",
+      "name": "Fruit Challenge 6",
       "gridWidth": 8,
       "gridHeight": 9,
       "items": [
@@ -6538,7 +6538,7 @@
     },
     {
       "id": 152,
-      "name": "Level 152 - Heart Challenge 6",
+      "name": "Heart Challenge 6",
       "gridWidth": 9,
       "gridHeight": 7,
       "items": [
@@ -6580,7 +6580,7 @@
     },
     {
       "id": 153,
-      "name": "Level 153 - Sports Challenge 6",
+      "name": "Sports Challenge 6",
       "gridWidth": 9,
       "gridHeight": 7,
       "items": [
@@ -6622,7 +6622,7 @@
     },
     {
       "id": 154,
-      "name": "Level 154 - Veggie Challenge 6",
+      "name": "Veggie Challenge 6",
       "gridWidth": 8,
       "gridHeight": 7,
       "items": [
@@ -6656,20 +6656,20 @@
         null
       ],
       "gridShape": [
+        "XXXXXXX7X",
+        "XXXXXXXX13",
+        "XXXXX2XXX",
+        "X12XX1XXXX10X",
         "XXXXXXXX",
         "XXXXXXXX",
-        "XXXXXXXX",
-        "XXXXXXXX",
-        "XXXXXXXX",
-        "XXXXXXXX",
-        "XXXXXXXX"
+        "XXXXXX8XX"
       ],
       "movesAllowed": 33,
       "scoreTarget": 1275
     },
     {
       "id": 155,
-      "name": "Level 155 - Achievement Challenge 6",
+      "name": "Achievement Challenge 6",
       "gridWidth": 7,
       "gridHeight": 8,
       "items": [
@@ -6712,7 +6712,7 @@
     },
     {
       "id": 156,
-      "name": "Level 156 - Weight Challenge 6",
+      "name": "Weight Challenge 6",
       "gridWidth": 7,
       "gridHeight": 7,
       "items": [
@@ -6759,7 +6759,7 @@
     },
     {
       "id": 157,
-      "name": "Level 157 - Endurance Challenge 6",
+      "name": "Endurance Challenge 6",
       "gridWidth": 8,
       "gridHeight": 8,
       "items": [
@@ -6789,12 +6789,12 @@
       ],
       "gridShape": [
         "XXXXXXXX",
-        "XXXXXXX_",
-        "XXXXXX__",
-        "XXXXX___",
-        "XXXX____",
+        "XXX10XXXX5_",
+        "XXX13XXX__",
+        "XX15XXX___",
+        "X13XXX____",
         "XXX_____",
-        "XXXXXXXX",
+        "XXXXXX5XX",
         "XXXXXXX_"
       ],
       "movesAllowed": 32,
@@ -6802,7 +6802,7 @@
     },
     {
       "id": 158,
-      "name": "Level 158 - Speed Challenge 6",
+      "name": "Speed Challenge 6",
       "gridWidth": 7,
       "gridHeight": 10,
       "items": [
@@ -6847,7 +6847,7 @@
     },
     {
       "id": 159,
-      "name": "Level 159 - Strength Challenge 6",
+      "name": "Strength Challenge 6",
       "gridWidth": 8,
       "gridHeight": 8,
       "items": [
@@ -6890,7 +6890,7 @@
     },
     {
       "id": 160,
-      "name": "Level 160 - Balance Challenge 6",
+      "name": "Balance Challenge 6",
       "gridWidth": 8,
       "gridHeight": 9,
       "items": [
@@ -6934,7 +6934,7 @@
     },
     {
       "id": 161,
-      "name": "Level 161 - Power Challenge 6",
+      "name": "Power Challenge 6",
       "gridWidth": 8,
       "gridHeight": 10,
       "items": [
@@ -6963,15 +6963,15 @@
         null
       ],
       "gridShape": [
-        "XXXXXXXX",
-        "XXXXXXXX",
+        "XXX1XXXXX15",
+        "XX6XXXXXX",
         "XX____XX",
         "XX____XX",
+        "X7X____XX11",
+        "XX13____XX",
         "XX____XX",
-        "XX____XX",
-        "XX____XX",
-        "XX____XX",
-        "XXXXXXXX",
+        "X14X____XX",
+        "XXXX9XXX11X",
         "XXXXXXXX"
       ],
       "movesAllowed": 33,
@@ -6979,7 +6979,7 @@
     },
     {
       "id": 162,
-      "name": "Level 162 - Agility Challenge 6",
+      "name": "Agility Challenge 6",
       "gridWidth": 7,
       "gridHeight": 9,
       "items": [
@@ -7023,7 +7023,7 @@
     },
     {
       "id": 163,
-      "name": "Level 163 - Focus Challenge 6",
+      "name": "Focus Challenge 6",
       "gridWidth": 9,
       "gridHeight": 8,
       "items": [
@@ -7052,21 +7052,21 @@
         null
       ],
       "gridShape": [
+        "XXX2XXXXX1X",
+        "XXXXXXXXX",
+        "X15XXXX8XXXX",
         "XXXXXXXXX",
         "XXXXXXXXX",
-        "XXXXXXXXX",
-        "XXXXXXXXX",
-        "XXXXXXXXX",
-        "XXXXXXXXX",
-        "XXXXXXXXX",
-        "XXXXXXXXX"
+        "XXXX6XXXXX",
+        "XXX5XXXX14XX",
+        "XX13XXXXXXX"
       ],
       "movesAllowed": 35,
       "scoreTarget": 1614
     },
     {
       "id": 164,
-      "name": "Level 164 - Energy Challenge 6",
+      "name": "Energy Challenge 6",
       "gridWidth": 9,
       "gridHeight": 9,
       "items": [
@@ -7110,7 +7110,7 @@
     },
     {
       "id": 165,
-      "name": "Level 165 - Vitality Challenge 6",
+      "name": "Vitality Challenge 6",
       "gridWidth": 9,
       "gridHeight": 10,
       "items": [
@@ -7160,7 +7160,7 @@
     },
     {
       "id": 166,
-      "name": "Level 166 - Circuit Challenge 6",
+      "name": "Circuit Challenge 6",
       "gridWidth": 8,
       "gridHeight": 10,
       "items": [
@@ -7205,7 +7205,7 @@
     },
     {
       "id": 167,
-      "name": "Level 167 - Sprint Challenge 6",
+      "name": "Sprint Challenge 6",
       "gridWidth": 9,
       "gridHeight": 8,
       "items": [
@@ -7237,18 +7237,18 @@
         "__XXXXX__",
         "_XXXXXXX_",
         "_XXXXXXX_",
+        "XX5XXX8XXXX",
         "XXXXXXXXX",
-        "XXXXXXXXX",
-        "XXXXXXXXX",
+        "XX9XXXXXXX",
         "_XXXXXXX_",
-        "_XXXXXXX_"
+        "_X12XXXXXX_"
       ],
       "movesAllowed": 35,
       "scoreTarget": 1434
     },
     {
       "id": 168,
-      "name": "Level 168 - Recovery Challenge 6",
+      "name": "Recovery Challenge 6",
       "gridWidth": 9,
       "gridHeight": 10,
       "items": [
@@ -7293,7 +7293,7 @@
     },
     {
       "id": 169,
-      "name": "Level 169 - Peak Challenge 6",
+      "name": "Peak Challenge 6",
       "gridWidth": 7,
       "gridHeight": 9,
       "items": [
@@ -7327,14 +7327,14 @@
         null
       ],
       "gridShape": [
-        "XXXXXXX",
+        "X5XXX6XXX",
         "_XXXXXX",
         "__XXXXX",
-        "XXXXXXX",
+        "XXXX5X2XX4",
         "_XXXXXX",
-        "__XXXXX",
-        "XXXXXXX",
-        "_XXXXXX",
+        "__XXXX11X",
+        "XXXXXXX13",
+        "_XX3XXXX",
         "__XXXXX"
       ],
       "movesAllowed": 34,
@@ -7342,7 +7342,7 @@
     },
     {
       "id": 170,
-      "name": "Level 170 - Foundation Challenge 6",
+      "name": "Foundation Challenge 6",
       "gridWidth": 7,
       "gridHeight": 9,
       "items": [
@@ -7386,7 +7386,7 @@
     },
     {
       "id": 171,
-      "name": "Level 171 - Momentum Challenge 6",
+      "name": "Momentum Challenge 6",
       "gridWidth": 7,
       "gridHeight": 10,
       "items": [
@@ -7431,7 +7431,7 @@
     },
     {
       "id": 172,
-      "name": "Level 172 - Boost Challenge 6",
+      "name": "Boost Challenge 6",
       "gridWidth": 7,
       "gridHeight": 10,
       "items": [
@@ -7460,23 +7460,23 @@
         null
       ],
       "gridShape": [
+        "XX1XXX9XX",
         "XXXXXXX",
         "XXXXXXX",
+        "XXXXXX4X",
+        "XX11XXXXX",
+        "XXXXXXX",
+        "X7X7X12XXXX",
         "XXXXXXX",
         "XXXXXXX",
-        "XXXXXXX",
-        "XXXXXXX",
-        "XXXXXXX",
-        "XXXXXXX",
-        "XXXXXXX",
-        "XXXXXXX"
+        "XXXXXXX12"
       ],
       "movesAllowed": 36,
       "scoreTarget": 1609
     },
     {
       "id": 173,
-      "name": "Level 173 - Challenge Challenge 6",
+      "name": "Challenge Challenge 6",
       "gridWidth": 7,
       "gridHeight": 8,
       "items": [
@@ -7519,7 +7519,7 @@
     },
     {
       "id": 174,
-      "name": "Level 174 - Surge Challenge 6",
+      "name": "Surge Challenge 6",
       "gridWidth": 8,
       "gridHeight": 10,
       "items": [
@@ -7564,7 +7564,7 @@
     },
     {
       "id": 175,
-      "name": "Level 175 - Flow Challenge 6",
+      "name": "Flow Challenge 6",
       "gridWidth": 7,
       "gridHeight": 9,
       "items": [
@@ -7608,7 +7608,7 @@
     },
     {
       "id": 176,
-      "name": "Level 176 - Drive Challenge 6",
+      "name": "Drive Challenge 6",
       "gridWidth": 9,
       "gridHeight": 10,
       "items": [
@@ -7658,7 +7658,7 @@
     },
     {
       "id": 177,
-      "name": "Level 177 - Spark Challenge 6",
+      "name": "Spark Challenge 6",
       "gridWidth": 8,
       "gridHeight": 10,
       "items": [
@@ -7703,7 +7703,7 @@
     },
     {
       "id": 178,
-      "name": "Level 178 - Rush Challenge 6",
+      "name": "Rush Challenge 6",
       "gridWidth": 8,
       "gridHeight": 10,
       "items": [
@@ -7733,22 +7733,22 @@
       ],
       "gridShape": [
         "XXXXXXXX",
-        "_XXXXXXX",
+        "_XXXXXXX6",
+        "__XXX5XX3X",
+        "XX9XXXXXX",
+        "_XXXXX4XX",
         "__XXXXXX",
         "XXXXXXXX",
-        "_XXXXXXX",
-        "__XXXXXX",
-        "XXXXXXXX",
-        "_XXXXXXX",
-        "__XXXXXX",
-        "XXXXXXXX"
+        "_XX1XXXXX",
+        "__XXXX11XX",
+        "XXX1XXXXX"
       ],
       "movesAllowed": 36,
       "scoreTarget": 1643
     },
     {
       "id": 179,
-      "name": "Level 179 - Ignite Challenge 6",
+      "name": "Ignite Challenge 6",
       "gridWidth": 9,
       "gridHeight": 8,
       "items": [
@@ -7778,11 +7778,11 @@
       ],
       "gridShape": [
         "XXXXXXXXX",
-        "XXXXXXXXX",
-        "XXXXXXXXX",
+        "XXXXX9XXXX",
+        "X4X13XXXXXXX",
         "XXX___XXX",
         "XXX___XXX",
-        "XXXXXXXXX",
+        "XXXXXXXXX3",
         "XXXXXXXXX",
         "XXXXXXXXX"
       ],
@@ -7791,7 +7791,7 @@
     },
     {
       "id": 180,
-      "name": "Level 180 - Elevate Challenge 6",
+      "name": "Elevate Challenge 6",
       "gridWidth": 9,
       "gridHeight": 10,
       "items": [
@@ -7836,7 +7836,7 @@
     },
     {
       "id": 181,
-      "name": "Level 181 - Fruit Challenge 7",
+      "name": "Fruit Challenge 7",
       "gridWidth": 9,
       "gridHeight": 9,
       "items": [
@@ -7880,7 +7880,7 @@
     },
     {
       "id": 182,
-      "name": "Level 182 - Heart Challenge 7",
+      "name": "Heart Challenge 7",
       "gridWidth": 8,
       "gridHeight": 8,
       "items": [
@@ -7928,7 +7928,7 @@
     },
     {
       "id": 183,
-      "name": "Level 183 - Sports Challenge 7",
+      "name": "Sports Challenge 7",
       "gridWidth": 8,
       "gridHeight": 10,
       "items": [
@@ -7973,7 +7973,7 @@
     },
     {
       "id": 184,
-      "name": "Level 184 - Veggie Challenge 7",
+      "name": "Veggie Challenge 7",
       "gridWidth": 8,
       "gridHeight": 9,
       "items": [
@@ -8002,13 +8002,13 @@
         null
       ],
       "gridShape": [
-        "XXXXXXXX",
-        "XXXXXXX_",
+        "X12X3XXXX12XX4",
+        "XXX10XXXX_",
         "XXXXXX__",
         "XXXXX___",
-        "XXXX____",
+        "XXX13X____",
         "XXX_____",
-        "XXXXXXXX",
+        "XX14XX1XXXX",
         "XXXXXXX_",
         "XXXXXX__"
       ],
@@ -8017,7 +8017,7 @@
     },
     {
       "id": 185,
-      "name": "Level 185 - Achievement Challenge 7",
+      "name": "Achievement Challenge 7",
       "gridWidth": 8,
       "gridHeight": 10,
       "items": [
@@ -8046,23 +8046,23 @@
         null
       ],
       "gridShape": [
+        "__XXXX2__",
         "__XXXX__",
-        "__XXXX__",
         "_XXXXXX_",
         "_XXXXXX_",
         "XXXXXXXX",
-        "XXXXXXXX",
+        "XXXXX11X14XX",
         "XXXXXXXX",
         "_XXXXXX_",
         "_XXXXXX_",
-        "__XXXX__"
+        "__X1XXX15__"
       ],
       "movesAllowed": 36,
       "scoreTarget": 1548
     },
     {
       "id": 186,
-      "name": "Level 186 - Weight Challenge 7",
+      "name": "Weight Challenge 7",
       "gridWidth": 8,
       "gridHeight": 9,
       "items": [
@@ -8091,22 +8091,22 @@
         null
       ],
       "gridShape": [
-        "__XXXX__",
+        "__XXXX1__",
         "_XXXXXX_",
+        "XXXXXXX9X",
+        "XXXXX15XXX",
+        "XXX9XXXXX",
+        "XXX8XXXXX",
         "XXXXXXXX",
-        "XXXXXXXX",
-        "XXXXXXXX",
-        "XXXXXXXX",
-        "XXXXXXXX",
-        "_XXXXXX_",
-        "__XXXX__"
+        "_XXXX3XX_",
+        "__X10XXX__"
       ],
       "movesAllowed": 36,
       "scoreTarget": 1551
     },
     {
       "id": 187,
-      "name": "Level 187 - Endurance Challenge 7",
+      "name": "Endurance Challenge 7",
       "gridWidth": 8,
       "gridHeight": 9,
       "items": [
@@ -8155,7 +8155,7 @@
     },
     {
       "id": 188,
-      "name": "Level 188 - Speed Challenge 7",
+      "name": "Speed Challenge 7",
       "gridWidth": 8,
       "gridHeight": 9,
       "items": [
@@ -8184,14 +8184,14 @@
         null
       ],
       "gridShape": [
+        "XXX5XXXXX",
         "XXXXXXXX",
-        "XXXXXXXX",
         "XX____XX",
         "XX____XX",
+        "X11X____X3X",
+        "XX____X14X",
         "XX____XX",
-        "XX____XX",
-        "XX____XX",
-        "XXXXXXXX",
+        "XXXXXXX3X",
         "XXXXXXXX"
       ],
       "movesAllowed": 35,
@@ -8199,7 +8199,7 @@
     },
     {
       "id": 189,
-      "name": "Level 189 - Strength Challenge 7",
+      "name": "Strength Challenge 7",
       "gridWidth": 9,
       "gridHeight": 8,
       "items": [
@@ -8228,13 +8228,13 @@
         null
       ],
       "gridShape": [
+        "XXXX8XXXXX",
+        "XXXXXXXXX",
+        "XX11XX6X5XXXX",
+        "XX6XXXXXXX",
         "XXXXXXXXX",
         "XXXXXXXXX",
-        "XXXXXXXXX",
-        "XXXXXXXXX",
-        "XXXXXXXXX",
-        "XXXXXXXXX",
-        "XXXXXXXXX",
+        "X1XXXXXXX2X3",
         "XXXXXXXXX"
       ],
       "movesAllowed": 37,
@@ -8242,7 +8242,7 @@
     },
     {
       "id": 190,
-      "name": "Level 190 - Balance Challenge 7",
+      "name": "Balance Challenge 7",
       "gridWidth": 8,
       "gridHeight": 9,
       "items": [
@@ -8286,7 +8286,7 @@
     },
     {
       "id": 191,
-      "name": "Level 191 - Power Challenge 7",
+      "name": "Power Challenge 7",
       "gridWidth": 8,
       "gridHeight": 10,
       "items": [
@@ -8331,7 +8331,7 @@
     },
     {
       "id": 192,
-      "name": "Level 192 - Agility Challenge 7",
+      "name": "Agility Challenge 7",
       "gridWidth": 9,
       "gridHeight": 9,
       "items": [
@@ -8375,7 +8375,7 @@
     },
     {
       "id": 193,
-      "name": "Level 193 - Focus Challenge 7",
+      "name": "Focus Challenge 7",
       "gridWidth": 7,
       "gridHeight": 8,
       "items": [
@@ -8418,7 +8418,7 @@
     },
     {
       "id": 194,
-      "name": "Level 194 - Energy Challenge 7",
+      "name": "Energy Challenge 7",
       "gridWidth": 9,
       "gridHeight": 9,
       "items": [
@@ -8462,7 +8462,7 @@
     },
     {
       "id": 195,
-      "name": "Level 195 - Vitality Challenge 7",
+      "name": "Vitality Challenge 7",
       "gridWidth": 7,
       "gridHeight": 8,
       "items": [
@@ -8510,7 +8510,7 @@
     },
     {
       "id": 196,
-      "name": "Level 196 - Circuit Challenge 7",
+      "name": "Circuit Challenge 7",
       "gridWidth": 7,
       "gridHeight": 8,
       "items": [
@@ -8553,7 +8553,7 @@
     },
     {
       "id": 197,
-      "name": "Level 197 - Sprint Challenge 7",
+      "name": "Sprint Challenge 7",
       "gridWidth": 8,
       "gridHeight": 9,
       "items": [
@@ -8597,7 +8597,7 @@
     },
     {
       "id": 198,
-      "name": "Level 198 - Recovery Challenge 7",
+      "name": "Recovery Challenge 7",
       "gridWidth": 9,
       "gridHeight": 8,
       "items": [
@@ -8631,21 +8631,21 @@
         null
       ],
       "gridShape": [
+        "XXXXX2XX13XX",
+        "XXXX1XXXXX",
+        "XXXXX4XXXX",
         "XXXXXXXXX",
+        "XXXXXXX1XX",
+        "XX9XXX14XXXX",
         "XXXXXXXXX",
-        "XXXXXXXXX",
-        "XXXXXXXXX",
-        "XXXXXXXXX",
-        "XXXXXXXXX",
-        "XXXXXXXXX",
-        "XXXXXXXXX"
+        "XXXX9XXXX5X"
       ],
       "movesAllowed": 38,
       "scoreTarget": 1791
     },
     {
       "id": 199,
-      "name": "Level 199 - Peak Challenge 7",
+      "name": "Peak Challenge 7",
       "gridWidth": 7,
       "gridHeight": 10,
       "items": [
@@ -8690,7 +8690,7 @@
     },
     {
       "id": 200,
-      "name": "Level 200 - Foundation Challenge 7",
+      "name": "Foundation Challenge 7",
       "gridWidth": 8,
       "gridHeight": 9,
       "items": [
@@ -8721,20 +8721,20 @@
       "gridShape": [
         "XXXXXXXX",
         "_XXXXXX_",
-        "__XXXX__",
+        "__X13XXX__",
         "XXXXXXXX",
         "XXXXXXXX",
-        "XXXXXXXX",
-        "__XXXX__",
-        "_XXXXXX_",
-        "XXXXXXXX"
+        "XXXX13XXXX",
+        "__X5XXX__",
+        "_XXX6XXX_",
+        "XXXXXXX11X"
       ],
       "movesAllowed": 37,
       "scoreTarget": 1653
     },
     {
       "id": 201,
-      "name": "Level 201 - Momentum Challenge 7",
+      "name": "Momentum Challenge 7",
       "gridWidth": 9,
       "gridHeight": 9,
       "items": [
@@ -8763,12 +8763,12 @@
         null
       ],
       "gridShape": [
-        "XXXXXXXXX",
+        "X11XXXXXXXX",
         "___XXX___",
-        "__XXXXX__",
-        "_XXXXXXX_",
-        "XXXXXXXXX",
-        "_XXXXXXX_",
+        "__X1XXXX__",
+        "_XXXXXXX8_",
+        "XXX8XXXXX11X",
+        "_XXXX3X10XX12_",
         "__XXXXX__",
         "___XXX___",
         "XXXXXXXXX"
@@ -8778,7 +8778,7 @@
     },
     {
       "id": 202,
-      "name": "Level 202 - Boost Challenge 7",
+      "name": "Boost Challenge 7",
       "gridWidth": 7,
       "gridHeight": 8,
       "items": [
@@ -8807,21 +8807,21 @@
         null
       ],
       "gridShape": [
-        "XXXXXXX",
-        "XXXXXX_",
+        "XXXXXX11X",
+        "XXX4X9X2X_",
         "XXXXX__",
         "XXXX___",
         "XXX____",
-        "XXXXXXX",
-        "XXXXXX_",
-        "XXXXX__"
+        "XXX11XX2XX",
+        "XXX12XXX_",
+        "XXX1XX__"
       ],
       "movesAllowed": 35,
       "scoreTarget": 1353
     },
     {
       "id": 203,
-      "name": "Level 203 - Challenge Challenge 7",
+      "name": "Challenge Challenge 7",
       "gridWidth": 7,
       "gridHeight": 9,
       "items": [
@@ -8865,7 +8865,7 @@
     },
     {
       "id": 204,
-      "name": "Level 204 - Surge Challenge 7",
+      "name": "Surge Challenge 7",
       "gridWidth": 9,
       "gridHeight": 9,
       "items": [
@@ -8894,22 +8894,22 @@
         null
       ],
       "gridShape": [
-        "__XXXXX__",
-        "_XXXXXXX_",
+        "__XX15XXX__",
+        "_XX3XXXXX14_",
         "XXXXXXXXX",
         "XXXXXXXXX",
+        "XXXXXXXXX12",
         "XXXXXXXXX",
-        "XXXXXXXXX",
-        "XXXXXXXXX",
-        "_XXXXXXX_",
-        "__XXXXX__"
+        "XXXXXXXXX7",
+        "_XXXXXXX11_",
+        "__XX10XXX__"
       ],
       "movesAllowed": 37,
       "scoreTarget": 1827
     },
     {
       "id": 205,
-      "name": "Level 205 - Flow Challenge 7",
+      "name": "Flow Challenge 7",
       "gridWidth": 8,
       "gridHeight": 10,
       "items": [
@@ -8938,23 +8938,23 @@
         null
       ],
       "gridShape": [
-        "XXXXXXXX",
-        "_XXXXXXX",
+        "XXXX9XXXX",
+        "_XXXXXX2X",
+        "__XX15XXXX",
+        "X15XXXX1XXX5",
+        "_XXXXXX12X",
         "__XXXXXX",
         "XXXXXXXX",
-        "_XXXXXXX",
-        "__XXXXXX",
-        "XXXXXXXX",
-        "_XXXXXXX",
-        "__XXXXXX",
-        "XXXXXXXX"
+        "_XXXXX9XX",
+        "__XXXXX5X",
+        "X5XXX14XXXX"
       ],
       "movesAllowed": 38,
       "scoreTarget": 1866
     },
     {
       "id": 206,
-      "name": "Level 206 - Drive Challenge 7",
+      "name": "Drive Challenge 7",
       "gridWidth": 9,
       "gridHeight": 8,
       "items": [
@@ -8983,21 +8983,21 @@
         null
       ],
       "gridShape": [
-        "XXXXXXXXX",
+        "XXXXXX10XXX",
         "XXXXXXXXX",
         "XXXXXXXXX",
         "XXX___XXX",
         "XXX___XXX",
-        "XXXXXXXXX",
-        "XXXXXXXXX",
-        "XXXXXXXXX"
+        "XXXXX14XXX5X",
+        "X1X14XX13XX5XXX",
+        "XX1XXXX12XXX"
       ],
       "movesAllowed": 37,
       "scoreTarget": 1779
     },
     {
       "id": 207,
-      "name": "Level 207 - Spark Challenge 7",
+      "name": "Spark Challenge 7",
       "gridWidth": 8,
       "gridHeight": 10,
       "items": [
@@ -9026,12 +9026,12 @@
         null
       ],
       "gridShape": [
+        "XXXXXX2XX",
+        "X15XX12X2XXXX",
         "XXXXXXXX",
-        "XXXXXXXX",
-        "XXXXXXXX",
-        "XXXXXXXX",
-        "XXXXXXXX",
-        "XXXXXXXX",
+        "XXXXXX11XX3",
+        "XXXXXX15XX",
+        "XXXXXX6XX",
         "XXXXXXXX",
         "XXXXXXXX",
         "XXXXXXXX",
@@ -9042,7 +9042,7 @@
     },
     {
       "id": 208,
-      "name": "Level 208 - Rush Challenge 7",
+      "name": "Rush Challenge 7",
       "gridWidth": 7,
       "gridHeight": 8,
       "items": [
@@ -9090,7 +9090,7 @@
     },
     {
       "id": 209,
-      "name": "Level 209 - Ignite Challenge 7",
+      "name": "Ignite Challenge 7",
       "gridWidth": 9,
       "gridHeight": 8,
       "items": [
@@ -9138,7 +9138,7 @@
     },
     {
       "id": 210,
-      "name": "Level 210 - Elevate Challenge 7",
+      "name": "Elevate Challenge 7",
       "gridWidth": 9,
       "gridHeight": 8,
       "items": [
@@ -9167,13 +9167,13 @@
         null
       ],
       "gridShape": [
-        "XXXXXXXXX",
+        "XXXXXX4XX8X",
         "___XXX___",
         "__XXXXX__",
-        "_XXXXXXX_",
-        "XXXXXXXXX",
-        "_XXXXXXX_",
-        "__XXXXX__",
+        "_XXXXXXX15_",
+        "X12XXXX5XXXX",
+        "_XX4XX8XXX_",
+        "__XXX8XX__",
         "___XXX___"
       ],
       "movesAllowed": 36,
@@ -9181,7 +9181,7 @@
     },
     {
       "id": 211,
-      "name": "Level 211 - Fruit Challenge 8",
+      "name": "Fruit Challenge 8",
       "gridWidth": 9,
       "gridHeight": 9,
       "items": [
@@ -9210,14 +9210,14 @@
         null
       ],
       "gridShape": [
-        "XXXXXXXXX",
-        "XXXXXXXX_",
-        "XXXXXXX__",
+        "XX1XXXXXX10X",
+        "XXXXXXXX8_",
+        "XXX13XXXX__",
         "XXXXXX___",
         "XXXXX____",
         "XXXX_____",
         "XXX______",
-        "XXXXXXXXX",
+        "XXXXXXXXX7",
         "XXXXXXXX_"
       ],
       "movesAllowed": 37,
@@ -9225,7 +9225,7 @@
     },
     {
       "id": 212,
-      "name": "Level 212 - Heart Challenge 8",
+      "name": "Heart Challenge 8",
       "gridWidth": 7,
       "gridHeight": 8,
       "items": [
@@ -9268,7 +9268,7 @@
     },
     {
       "id": 213,
-      "name": "Level 213 - Sports Challenge 8",
+      "name": "Sports Challenge 8",
       "gridWidth": 8,
       "gridHeight": 10,
       "items": [
@@ -9313,7 +9313,7 @@
     },
     {
       "id": 214,
-      "name": "Level 214 - Veggie Challenge 8",
+      "name": "Veggie Challenge 8",
       "gridWidth": 7,
       "gridHeight": 10,
       "items": [
@@ -9342,23 +9342,23 @@
         null
       ],
       "gridShape": [
-        "XXXXXXX",
-        "_XXXXXX",
+        "XXXX12XXX",
+        "_XXXXXX5",
         "__XXXXX",
-        "XXXXXXX",
-        "_XXXXXX",
+        "XXX6X10XXX",
+        "_XXXXXX11",
         "__XXXXX",
-        "XXXXXXX",
-        "_XXXXXX",
+        "X8XXXXXX",
+        "_XXX8X9XX",
         "__XXXXX",
-        "XXXXXXX"
+        "XXXXXX8X10"
       ],
       "movesAllowed": 38,
       "scoreTarget": 1713
     },
     {
       "id": 215,
-      "name": "Level 215 - Achievement Challenge 8",
+      "name": "Achievement Challenge 8",
       "gridWidth": 7,
       "gridHeight": 9,
       "items": [
@@ -9402,7 +9402,7 @@
     },
     {
       "id": 216,
-      "name": "Level 216 - Weight Challenge 8",
+      "name": "Weight Challenge 8",
       "gridWidth": 8,
       "gridHeight": 10,
       "items": [
@@ -9431,15 +9431,15 @@
         null
       ],
       "gridShape": [
+        "X1XXXXXXX",
+        "XX1XXX14XXX",
+        "XXX10XXXXX",
+        "XXX2XX2XXX",
+        "XXXXXXXX",
+        "XX6XXXXXX",
         "XXXXXXXX",
         "XXXXXXXX",
-        "XXXXXXXX",
-        "XXXXXXXX",
-        "XXXXXXXX",
-        "XXXXXXXX",
-        "XXXXXXXX",
-        "XXXXXXXX",
-        "XXXXXXXX",
+        "X2XXXXXXX",
         "XXXXXXXX"
       ],
       "movesAllowed": 40,
@@ -9447,7 +9447,7 @@
     },
     {
       "id": 217,
-      "name": "Level 217 - Endurance Challenge 8",
+      "name": "Endurance Challenge 8",
       "gridWidth": 7,
       "gridHeight": 9,
       "items": [
@@ -9491,7 +9491,7 @@
     },
     {
       "id": 218,
-      "name": "Level 218 - Speed Challenge 8",
+      "name": "Speed Challenge 8",
       "gridWidth": 7,
       "gridHeight": 9,
       "items": [
@@ -9535,7 +9535,7 @@
     },
     {
       "id": 219,
-      "name": "Level 219 - Strength Challenge 8",
+      "name": "Strength Challenge 8",
       "gridWidth": 7,
       "gridHeight": 9,
       "items": [
@@ -9579,7 +9579,7 @@
     },
     {
       "id": 220,
-      "name": "Level 220 - Balance Challenge 8",
+      "name": "Balance Challenge 8",
       "gridWidth": 9,
       "gridHeight": 9,
       "items": [
@@ -9628,7 +9628,7 @@
     },
     {
       "id": 221,
-      "name": "Level 221 - Power Challenge 8",
+      "name": "Power Challenge 8",
       "gridWidth": 9,
       "gridHeight": 9,
       "items": [
@@ -9663,12 +9663,12 @@
       ],
       "gridShape": [
         "__XXXXX__",
-        "_XXXXXXX_",
-        "_XXXXXXX_",
+        "_XXXXXX8X_",
+        "_XXXX5XXX_",
+        "XXXXXXXX11X",
         "XXXXXXXXX",
-        "XXXXXXXXX",
-        "XXXXXXXXX",
-        "_XXXXXXX_",
+        "XXXXXXXX3X",
+        "_XXX9XXXX_",
         "_XXXXXXX_",
         "__XXXXX__"
       ],
@@ -9677,7 +9677,7 @@
     },
     {
       "id": 222,
-      "name": "Level 222 - Agility Challenge 8",
+      "name": "Agility Challenge 8",
       "gridWidth": 9,
       "gridHeight": 8,
       "items": [
@@ -9720,7 +9720,7 @@
     },
     {
       "id": 223,
-      "name": "Level 223 - Focus Challenge 8",
+      "name": "Focus Challenge 8",
       "gridWidth": 8,
       "gridHeight": 8,
       "items": [
@@ -9763,7 +9763,7 @@
     },
     {
       "id": 224,
-      "name": "Level 224 - Energy Challenge 8",
+      "name": "Energy Challenge 8",
       "gridWidth": 9,
       "gridHeight": 9,
       "items": [
@@ -9807,7 +9807,7 @@
     },
     {
       "id": 225,
-      "name": "Level 225 - Vitality Challenge 8",
+      "name": "Vitality Challenge 8",
       "gridWidth": 9,
       "gridHeight": 8,
       "items": [
@@ -9837,20 +9837,20 @@
       ],
       "gridShape": [
         "XXXXXXXXX",
-        "XXXXXXXXX",
-        "XXXXXXXXX",
-        "XXXXXXXXX",
-        "XXXXXXXXX",
-        "XXXXXXXXX",
-        "XXXXXXXXX",
-        "XXXXXXXXX"
+        "XXXX7XXXXX",
+        "X2XX2XXXXXX",
+        "X3XXX10XXXXX",
+        "XXX12XXXXXX",
+        "XXX8XX3XXXX",
+        "XXXX15XXX10XX",
+        "XX9XXXXXXX"
       ],
       "movesAllowed": 40,
       "scoreTarget": 2016
     },
     {
       "id": 226,
-      "name": "Level 226 - Circuit Challenge 8",
+      "name": "Circuit Challenge 8",
       "gridWidth": 7,
       "gridHeight": 8,
       "items": [
@@ -9893,7 +9893,7 @@
     },
     {
       "id": 227,
-      "name": "Level 227 - Sprint Challenge 8",
+      "name": "Sprint Challenge 8",
       "gridWidth": 8,
       "gridHeight": 9,
       "items": [
@@ -9922,22 +9922,22 @@
         null
       ],
       "gridShape": [
-        "XXXXXXXX",
+        "XXXXXX12XX",
         "_XXXXXX_",
-        "__XXXX__",
+        "__XXX3X__",
         "XXXXXXXX",
+        "XXXXX5XXX",
         "XXXXXXXX",
-        "XXXXXXXX",
-        "__XXXX__",
-        "_XXXXXX_",
-        "XXXXXXXX"
+        "__XXX10X__",
+        "_XXXXXX2_",
+        "XXXXXXX7X"
       ],
       "movesAllowed": 39,
       "scoreTarget": 1794
     },
     {
       "id": 228,
-      "name": "Level 228 - Recovery Challenge 8",
+      "name": "Recovery Challenge 8",
       "gridWidth": 8,
       "gridHeight": 10,
       "items": [
@@ -9982,7 +9982,7 @@
     },
     {
       "id": 229,
-      "name": "Level 229 - Peak Challenge 8",
+      "name": "Peak Challenge 8",
       "gridWidth": 9,
       "gridHeight": 9,
       "items": [
@@ -10026,7 +10026,7 @@
     },
     {
       "id": 230,
-      "name": "Level 230 - Foundation Challenge 8",
+      "name": "Foundation Challenge 8",
       "gridWidth": 9,
       "gridHeight": 8,
       "items": [
@@ -10056,20 +10056,20 @@
       ],
       "gridShape": [
         "__XXXXX__",
-        "_XXXXXXX_",
-        "_XXXXXXX_",
+        "_XX2XXXXX_",
+        "_XXX5XXX12X_",
         "XXXXXXXXX",
+        "XXXXX2X15XXX",
         "XXXXXXXXX",
-        "XXXXXXXXX",
-        "_XXXXXXX_",
-        "_XXXXXXX_"
+        "_XX13XXXXX_",
+        "_XXXXX1XX_"
       ],
       "movesAllowed": 39,
       "scoreTarget": 1803
     },
     {
       "id": 231,
-      "name": "Level 231 - Momentum Challenge 8",
+      "name": "Momentum Challenge 8",
       "gridWidth": 7,
       "gridHeight": 9,
       "items": [
@@ -10106,19 +10106,19 @@
         "__XXX__",
         "_XXXXX_",
         "XXXXXXX",
+        "X11XXXXXX6",
         "XXXXXXX",
         "XXXXXXX",
-        "XXXXXXX",
-        "XXXXXXX",
-        "_XXXXX_",
-        "__XXX__"
+        "XXX8XXXX",
+        "_XXXX2X_",
+        "__X7XX__"
       ],
       "movesAllowed": 38,
       "scoreTarget": 1635
     },
     {
       "id": 232,
-      "name": "Level 232 - Boost Challenge 8",
+      "name": "Boost Challenge 8",
       "gridWidth": 8,
       "gridHeight": 8,
       "items": [
@@ -10161,7 +10161,7 @@
     },
     {
       "id": 233,
-      "name": "Level 233 - Challenge Challenge 8",
+      "name": "Challenge Challenge 8",
       "gridWidth": 8,
       "gridHeight": 10,
       "items": [
@@ -10190,23 +10190,23 @@
         null
       ],
       "gridShape": [
-        "XXXXXXXX",
-        "XXXXXXXX",
+        "XXX7XXXXX",
+        "XXXX2X5XXX",
+        "XX13____XX",
+        "X3X____X3X",
         "XX____XX",
         "XX____XX",
         "XX____XX",
         "XX____XX",
-        "XX____XX",
-        "XX____XX",
-        "XXXXXXXX",
-        "XXXXXXXX"
+        "X5XX9X7XXX15X",
+        "XX1XXXXXX"
       ],
       "movesAllowed": 38,
       "scoreTarget": 1736
     },
     {
       "id": 234,
-      "name": "Level 234 - Surge Challenge 8",
+      "name": "Surge Challenge 8",
       "gridWidth": 7,
       "gridHeight": 10,
       "items": [
@@ -10240,23 +10240,23 @@
         null
       ],
       "gridShape": [
+        "XXX8XX5XX",
+        "XXXXXXX",
+        "XXX4X8XXX",
+        "XXXXX15XX",
+        "X9XXX6X7XX",
         "XXXXXXX",
         "XXXXXXX",
         "XXXXXXX",
-        "XXXXXXX",
-        "XXXXXXX",
-        "XXXXXXX",
-        "XXXXXXX",
-        "XXXXXXX",
-        "XXXXXXX",
-        "XXXXXXX"
+        "XXXXXX9X",
+        "X5XXX4XXX"
       ],
       "movesAllowed": 40,
       "scoreTarget": 2005
     },
     {
       "id": 235,
-      "name": "Level 235 - Flow Challenge 8",
+      "name": "Flow Challenge 8",
       "gridWidth": 9,
       "gridHeight": 9,
       "items": [
@@ -10286,21 +10286,21 @@
       ],
       "gridShape": [
         "XXXXXXXXX",
+        "X3XX4XXXXXX",
+        "XXXXXXX7XX",
+        "X1XXXXXXX9X",
+        "XXXXXXXXX10",
+        "X3XXXX11XXXX",
+        "XXXX14XXXXX",
         "XXXXXXXXX",
-        "XXXXXXXXX",
-        "XXXXXXXXX",
-        "XXXXXXXXX",
-        "XXXXXXXXX",
-        "XXXXXXXXX",
-        "XXXXXXXXX",
-        "XXXXXXXXX"
+        "XXX13XXXXXX"
       ],
       "movesAllowed": 41,
       "scoreTarget": 2217
     },
     {
       "id": 236,
-      "name": "Level 236 - Drive Challenge 8",
+      "name": "Drive Challenge 8",
       "gridWidth": 9,
       "gridHeight": 9,
       "items": [
@@ -10329,22 +10329,22 @@
         null
       ],
       "gridShape": [
-        "XXXXXXXXX",
-        "_XXXXXXX_",
-        "__XXXXX__",
+        "XX3XX10XXXXX",
+        "_XX6X12XXXX_",
+        "__XXXX10X__",
+        "___XX7X___",
+        "XX12XXXX14XXX",
         "___XXX___",
-        "XXXXXXXXX",
-        "___XXX___",
         "__XXXXX__",
         "_XXXXXXX_",
-        "XXXXXXXXX"
+        "XXXX15XXXXX"
       ],
       "movesAllowed": 38,
       "scoreTarget": 1764
     },
     {
       "id": 237,
-      "name": "Level 237 - Spark Challenge 8",
+      "name": "Spark Challenge 8",
       "gridWidth": 9,
       "gridHeight": 9,
       "items": [
@@ -10388,7 +10388,7 @@
     },
     {
       "id": 238,
-      "name": "Level 238 - Rush Challenge 8",
+      "name": "Rush Challenge 8",
       "gridWidth": 7,
       "gridHeight": 10,
       "items": [
@@ -10433,7 +10433,7 @@
     },
     {
       "id": 239,
-      "name": "Level 239 - Ignite Challenge 8",
+      "name": "Ignite Challenge 8",
       "gridWidth": 7,
       "gridHeight": 8,
       "items": [
@@ -10476,7 +10476,7 @@
     },
     {
       "id": 240,
-      "name": "Level 240 - Elevate Challenge 8",
+      "name": "Elevate Challenge 8",
       "gridWidth": 9,
       "gridHeight": 8,
       "items": [
@@ -10519,7 +10519,7 @@
     },
     {
       "id": 241,
-      "name": "Level 241 - Fruit Challenge 9",
+      "name": "Fruit Challenge 9",
       "gridWidth": 8,
       "gridHeight": 8,
       "items": [
@@ -10562,7 +10562,7 @@
     },
     {
       "id": 242,
-      "name": "Level 242 - Heart Challenge 9",
+      "name": "Heart Challenge 9",
       "gridWidth": 7,
       "gridHeight": 10,
       "items": [
@@ -10596,23 +10596,23 @@
         null
       ],
       "gridShape": [
+        "XXXX7X9XX11",
         "XXXXXXX",
-        "XXXXXXX",
+        "X4X___XX",
         "XX___XX",
-        "XX___XX",
-        "XX___XX",
-        "XX___XX",
-        "XX___XX",
-        "XX___XX",
-        "XXXXXXX",
-        "XXXXXXX"
+        "XX___X1X",
+        "XX___XX13",
+        "XX___X1X",
+        "XX___XX8",
+        "XXXXXX3X",
+        "XXXX12X2XX"
       ],
       "movesAllowed": 39,
       "scoreTarget": 1739
     },
     {
       "id": 243,
-      "name": "Level 243 - Sports Challenge 9",
+      "name": "Sports Challenge 9",
       "gridWidth": 8,
       "gridHeight": 8,
       "items": [
@@ -10655,7 +10655,7 @@
     },
     {
       "id": 244,
-      "name": "Level 244 - Veggie Challenge 9",
+      "name": "Veggie Challenge 9",
       "gridWidth": 7,
       "gridHeight": 9,
       "items": [
@@ -10684,22 +10684,22 @@
         null
       ],
       "gridShape": [
+        "XXX2X11XXX",
+        "X3XXXXXX",
+        "XX6XXXXX10",
+        "XX2XXXXX",
+        "XXXX12XXX",
+        "X8XXXXXX11",
         "XXXXXXX",
         "XXXXXXX",
-        "XXXXXXX",
-        "XXXXXXX",
-        "XXXXXXX",
-        "XXXXXXX",
-        "XXXXXXX",
-        "XXXXXXX",
-        "XXXXXXX"
+        "XX2XXXXX"
       ],
       "movesAllowed": 40,
       "scoreTarget": 1965
     },
     {
       "id": 245,
-      "name": "Level 245 - Achievement Challenge 9",
+      "name": "Achievement Challenge 9",
       "gridWidth": 8,
       "gridHeight": 8,
       "items": [
@@ -10742,7 +10742,7 @@
     },
     {
       "id": 246,
-      "name": "Level 246 - Weight Challenge 9",
+      "name": "Weight Challenge 9",
       "gridWidth": 8,
       "gridHeight": 10,
       "items": [
@@ -10787,7 +10787,7 @@
     },
     {
       "id": 247,
-      "name": "Level 247 - Endurance Challenge 9",
+      "name": "Endurance Challenge 9",
       "gridWidth": 7,
       "gridHeight": 9,
       "items": [
@@ -10836,7 +10836,7 @@
     },
     {
       "id": 248,
-      "name": "Level 248 - Speed Challenge 9",
+      "name": "Speed Challenge 9",
       "gridWidth": 7,
       "gridHeight": 10,
       "items": [
@@ -10881,7 +10881,7 @@
     },
     {
       "id": 249,
-      "name": "Level 249 - Strength Challenge 9",
+      "name": "Strength Challenge 9",
       "gridWidth": 8,
       "gridHeight": 9,
       "items": [
@@ -10910,14 +10910,14 @@
         null
       ],
       "gridShape": [
-        "__XXXX__",
+        "__XX12XX__",
         "_XXXXXX_",
+        "XXX6XXXXX",
         "XXXXXXXX",
-        "XXXXXXXX",
-        "XXXXXXXX",
-        "XXXXXXXX",
-        "XXXXXXXX",
-        "_XXXXXX_",
+        "X13XX5XXX2XX",
+        "XXXXXX2XX15",
+        "XX10XXXXXX",
+        "_X14XXX14XX_",
         "__XXXX__"
       ],
       "movesAllowed": 40,
@@ -10925,7 +10925,7 @@
     },
     {
       "id": 250,
-      "name": "Level 250 - Balance Challenge 9",
+      "name": "Balance Challenge 9",
       "gridWidth": 9,
       "gridHeight": 10,
       "items": [
@@ -10970,7 +10970,7 @@
     },
     {
       "id": 251,
-      "name": "Level 251 - Power Challenge 9",
+      "name": "Power Challenge 9",
       "gridWidth": 8,
       "gridHeight": 9,
       "items": [
@@ -10999,22 +10999,22 @@
         null
       ],
       "gridShape": [
+        "X10X18XXXXXX",
         "XXXXXXXX",
-        "XXXXXXXX",
         "XX____XX",
         "XX____XX",
+        "XX____X3X",
         "XX____XX",
-        "XX____XX",
-        "XX____XX",
-        "XXXXXXXX",
-        "XXXXXXXX"
+        "XX7____XX",
+        "XXXX17XXX5X",
+        "X18X8XXXXXX"
       ],
       "movesAllowed": 39,
       "scoreTarget": 1766
     },
     {
       "id": 252,
-      "name": "Level 252 - Agility Challenge 9",
+      "name": "Agility Challenge 9",
       "gridWidth": 9,
       "gridHeight": 9,
       "items": [
@@ -11058,7 +11058,7 @@
     },
     {
       "id": 253,
-      "name": "Level 253 - Focus Challenge 9",
+      "name": "Focus Challenge 9",
       "gridWidth": 7,
       "gridHeight": 8,
       "items": [
@@ -11106,7 +11106,7 @@
     },
     {
       "id": 254,
-      "name": "Level 254 - Energy Challenge 9",
+      "name": "Energy Challenge 9",
       "gridWidth": 8,
       "gridHeight": 10,
       "items": [
@@ -11151,7 +11151,7 @@
     },
     {
       "id": 255,
-      "name": "Level 255 - Vitality Challenge 9",
+      "name": "Vitality Challenge 9",
       "gridWidth": 8,
       "gridHeight": 11,
       "items": [
@@ -11182,22 +11182,22 @@
       "gridShape": [
         "XXXXXXXX",
         "__XXXX__",
-        "__XXXX__",
+        "__X8XXX__",
+        "_XXX12XXX_",
+        "XXX15X4XXXX",
+        "XXXXXXXX",
+        "X16XXX5XXXX",
         "_XXXXXX_",
-        "XXXXXXXX",
-        "XXXXXXXX",
-        "XXXXXXXX",
-        "_XXXXXX_",
+        "__XXXX15__",
         "__XXXX__",
-        "__XXXX__",
-        "XXXXXXXX"
+        "XXXXXX4XX"
       ],
       "movesAllowed": 41,
       "scoreTarget": 2098
     },
     {
       "id": 256,
-      "name": "Level 256 - Circuit Challenge 9",
+      "name": "Circuit Challenge 9",
       "gridWidth": 8,
       "gridHeight": 11,
       "items": [
@@ -11243,7 +11243,7 @@
     },
     {
       "id": 257,
-      "name": "Level 257 - Sprint Challenge 9",
+      "name": "Sprint Challenge 9",
       "gridWidth": 9,
       "gridHeight": 11,
       "items": [
@@ -11272,24 +11272,24 @@
         null
       ],
       "gridShape": [
-        "__XXXXX__",
-        "__XXXXX__",
-        "_XXXXXXX_",
+        "__XX13XXX__",
+        "__XXXXX15__",
+        "_XXXXXXX11_",
         "_XXXXXXX_",
         "XXXXXXXXX",
-        "XXXXXXXXX",
-        "XXXXXXXXX",
-        "_XXXXXXX_",
+        "X11XXXXX4XXX",
+        "XXXXX7XXXX",
+        "_XX3XXXXX_",
         "_XXXXXXX_",
         "__XXXXX__",
-        "__XXXXX__"
+        "__XX17XXX__"
       ],
       "movesAllowed": 42,
       "scoreTarget": 2244
     },
     {
       "id": 258,
-      "name": "Level 258 - Recovery Challenge 9",
+      "name": "Recovery Challenge 9",
       "gridWidth": 8,
       "gridHeight": 9,
       "items": [
@@ -11333,7 +11333,7 @@
     },
     {
       "id": 259,
-      "name": "Level 259 - Peak Challenge 9",
+      "name": "Peak Challenge 9",
       "gridWidth": 9,
       "gridHeight": 9,
       "items": [
@@ -11362,22 +11362,22 @@
         null
       ],
       "gridShape": [
+        "XXXXXX6XXX",
+        "_XXXXXXX4X",
+        "__X12X7XXXXX",
         "XXXXXXXXX",
-        "_XXXXXXXX",
-        "__XXXXXXX",
-        "XXXXXXXXX",
-        "_XXXXXXXX",
-        "__XXXXXXX",
-        "XXXXXXXXX",
-        "_XXXXXXXX",
-        "__XXXXXXX"
+        "_X5XXXXXX16X",
+        "__XXX9XXXX",
+        "XXXXXX17XXX",
+        "_XXXXX1XXX",
+        "__XXXXX2XX"
       ],
       "movesAllowed": 42,
       "scoreTarget": 2190
     },
     {
       "id": 260,
-      "name": "Level 260 - Foundation Challenge 9",
+      "name": "Foundation Challenge 9",
       "gridWidth": 9,
       "gridHeight": 10,
       "items": [
@@ -11413,12 +11413,12 @@
       "gridShape": [
         "XXXXXXXXX",
         "XXXXXXXXX",
-        "XXXXXXXXX",
+        "XXXXXX3XXX1",
+        "XXX___XX18X",
         "XXX___XXX",
+        "XXX6___XXX",
         "XXX___XXX",
-        "XXX___XXX",
-        "XXX___XXX",
-        "XXXXXXXXX",
+        "XX18XXXXXXX",
         "XXXXXXXXX",
         "XXXXXXXXX"
       ],
@@ -11427,7 +11427,7 @@
     },
     {
       "id": 261,
-      "name": "Level 261 - Momentum Challenge 9",
+      "name": "Momentum Challenge 9",
       "gridWidth": 8,
       "gridHeight": 9,
       "items": [
@@ -11457,11 +11457,11 @@
       ],
       "gridShape": [
         "XXXXXXXX",
-        "XXXXXXXX",
-        "XXXXXXXX",
-        "XXXXXXXX",
-        "XXXXXXXX",
-        "XXXXXXXX",
+        "XXX16XX4XX17X",
+        "XXXXX1XXX",
+        "XXX7XXXXX",
+        "XXXXXXX17X10",
+        "X3X14XXX3XXX",
         "XXXXXXXX",
         "XXXXXXXX",
         "XXXXXXXX"
@@ -11471,7 +11471,7 @@
     },
     {
       "id": 262,
-      "name": "Level 262 - Boost Challenge 9",
+      "name": "Boost Challenge 9",
       "gridWidth": 7,
       "gridHeight": 10,
       "items": [
@@ -11516,7 +11516,7 @@
     },
     {
       "id": 263,
-      "name": "Level 263 - Challenge Challenge 9",
+      "name": "Challenge Challenge 9",
       "gridWidth": 8,
       "gridHeight": 9,
       "items": [
@@ -11560,7 +11560,7 @@
     },
     {
       "id": 264,
-      "name": "Level 264 - Surge Challenge 9",
+      "name": "Surge Challenge 9",
       "gridWidth": 9,
       "gridHeight": 10,
       "items": [
@@ -11610,7 +11610,7 @@
     },
     {
       "id": 265,
-      "name": "Level 265 - Flow Challenge 9",
+      "name": "Flow Challenge 9",
       "gridWidth": 9,
       "gridHeight": 10,
       "items": [
@@ -11640,22 +11640,22 @@
       ],
       "gridShape": [
         "XXXXXXXXX",
-        "XXXXXXXX_",
-        "XXXXXXX__",
-        "XXXXXX___",
-        "XXXXX____",
-        "XXXX_____",
+        "XXXX14XXXX3_",
+        "XXXXX3XX__",
+        "X6XXXXX___",
+        "XXX18XX____",
+        "X18XXX_____",
         "XXX______",
         "XXXXXXXXX",
         "XXXXXXXX_",
-        "XXXXXXX__"
+        "XXXXX13XX__"
       ],
       "movesAllowed": 41,
       "scoreTarget": 2154
     },
     {
       "id": 266,
-      "name": "Level 266 - Drive Challenge 9",
+      "name": "Drive Challenge 9",
       "gridWidth": 7,
       "gridHeight": 10,
       "items": [
@@ -11700,7 +11700,7 @@
     },
     {
       "id": 267,
-      "name": "Level 267 - Spark Challenge 9",
+      "name": "Spark Challenge 9",
       "gridWidth": 8,
       "gridHeight": 11,
       "items": [
@@ -11729,24 +11729,24 @@
         null
       ],
       "gridShape": [
-        "__XXXX__",
+        "__XX8XX__",
         "_XXXXXX_",
+        "_X10XXXXX_",
+        "XXX18XXXX3X",
+        "X8XXX17XXXX",
+        "XXXXXXX11X",
+        "XXXXXXXX",
+        "XXXX16XX13XX",
+        "_XXX2XXX_",
         "_XXXXXX_",
-        "XXXXXXXX",
-        "XXXXXXXX",
-        "XXXXXXXX",
-        "XXXXXXXX",
-        "XXXXXXXX",
-        "_XXXXXX_",
-        "_XXXXXX_",
-        "__XXXX__"
+        "__XXXX7__"
       ],
       "movesAllowed": 42,
       "scoreTarget": 2286
     },
     {
       "id": 268,
-      "name": "Level 268 - Rush Challenge 9",
+      "name": "Rush Challenge 9",
       "gridWidth": 8,
       "gridHeight": 11,
       "items": [
@@ -11776,15 +11776,15 @@
       ],
       "gridShape": [
         "XXXXXXXX",
-        "_XXXXXXX",
+        "_XXX11XXXX",
+        "__XXXX1X17X",
+        "XXXXXXXX17",
+        "_XXX15XXX5X",
         "__XXXXXX",
         "XXXXXXXX",
         "_XXXXXXX",
         "__XXXXXX",
-        "XXXXXXXX",
-        "_XXXXXXX",
-        "__XXXXXX",
-        "XXXXXXXX",
+        "XXXXX9XXX",
         "_XXXXXXX"
       ],
       "movesAllowed": 42,
@@ -11792,7 +11792,7 @@
     },
     {
       "id": 269,
-      "name": "Level 269 - Ignite Challenge 9",
+      "name": "Ignite Challenge 9",
       "gridWidth": 9,
       "gridHeight": 9,
       "items": [
@@ -11821,22 +11821,22 @@
         null
       ],
       "gridShape": [
-        "XXXXXXXXX",
-        "XXXXXXXXX",
-        "XXXXXXXXX",
+        "XXX1XXXXXX",
+        "XXXXX17XXXX",
+        "XXXXXX6XXX8",
         "XXX___XXX",
-        "XXX___XXX",
-        "XXX___XXX",
-        "XXXXXXXXX",
-        "XXXXXXXXX",
-        "XXXXXXXXX"
+        "XX8X___XXX",
+        "XXX7___XXX",
+        "XXXXXXXX18X9",
+        "XXXXXXX2XX",
+        "XXXXXXX16XX"
       ],
       "movesAllowed": 42,
       "scoreTarget": 2292
     },
     {
       "id": 270,
-      "name": "Level 270 - Elevate Challenge 9",
+      "name": "Elevate Challenge 9",
       "gridWidth": 9,
       "gridHeight": 11,
       "items": [
@@ -11865,24 +11865,24 @@
         null
       ],
       "gridShape": [
+        "XXX18XXXXXX",
+        "XXXXX4XXXX",
+        "XX12X13XXXXXX",
+        "XXXXXXXXX",
+        "XXXX1XXXXX",
         "XXXXXXXXX",
         "XXXXXXXXX",
-        "XXXXXXXXX",
-        "XXXXXXXXX",
-        "XXXXXXXXX",
-        "XXXXXXXXX",
-        "XXXXXXXXX",
-        "XXXXXXXXX",
-        "XXXXXXXXX",
-        "XXXXXXXXX",
-        "XXXXXXXXX"
+        "XXXXXXXXX18",
+        "X6XXXXXXXX",
+        "XXXX2XXXXX",
+        "XXXXXXXX18X3"
       ],
       "movesAllowed": 45,
       "scoreTarget": 2862
     },
     {
       "id": 271,
-      "name": "Level 271 - Fruit Challenge 10",
+      "name": "Fruit Challenge 10",
       "gridWidth": 7,
       "gridHeight": 10,
       "items": [
@@ -11927,7 +11927,7 @@
     },
     {
       "id": 272,
-      "name": "Level 272 - Heart Challenge 10",
+      "name": "Heart Challenge 10",
       "gridWidth": 7,
       "gridHeight": 9,
       "items": [
@@ -11959,19 +11959,19 @@
         "XXXXXXX",
         "_XXXXX_",
         "__XXX__",
-        "XXXXXXX",
-        "XXXXXXX",
-        "XXXXXXX",
+        "X16XXX4XXX",
+        "XX15XXXX3X",
+        "XX5XXXX14X",
         "__XXX__",
-        "_XXXXX_",
-        "XXXXXXX"
+        "_X12XXXX_",
+        "X11XXX6XXX"
       ],
       "movesAllowed": 41,
       "scoreTarget": 1860
     },
     {
       "id": 273,
-      "name": "Level 273 - Sports Challenge 10",
+      "name": "Sports Challenge 10",
       "gridWidth": 8,
       "gridHeight": 11,
       "items": [
@@ -12022,7 +12022,7 @@
     },
     {
       "id": 274,
-      "name": "Level 274 - Veggie Challenge 10",
+      "name": "Veggie Challenge 10",
       "gridWidth": 8,
       "gridHeight": 9,
       "items": [
@@ -12051,22 +12051,22 @@
         null
       ],
       "gridShape": [
-        "XXXXXXXX",
-        "XXXXXXX_",
+        "X16XXXXXXX",
+        "X10XXXXXX_",
         "XXXXXX__",
-        "XXXXX___",
+        "XX12XXX3___",
         "XXXX____",
         "XXX_____",
-        "XXXXXXXX",
-        "XXXXXXX_",
-        "XXXXXX__"
+        "XXXXXXXX8",
+        "XXXX11XXX_",
+        "XXX9XXX__"
       ],
       "movesAllowed": 41,
       "scoreTarget": 1929
     },
     {
       "id": 275,
-      "name": "Level 275 - Achievement Challenge 10",
+      "name": "Achievement Challenge 10",
       "gridWidth": 9,
       "gridHeight": 11,
       "items": [
@@ -12101,23 +12101,23 @@
       ],
       "gridShape": [
         "__XXXXX__",
+        "__X1XXXX__",
+        "_XXXXXXX_",
+        "_XXXXXXX_",
+        "XXXXXXXXX9",
+        "XXXXXX18X17XX",
+        "XX10XXXXXXX",
+        "_X4XXXXXX_",
+        "_XXX17X14X2XX_",
         "__XXXXX__",
-        "_XXXXXXX_",
-        "_XXXXXXX_",
-        "XXXXXXXXX",
-        "XXXXXXXXX",
-        "XXXXXXXXX",
-        "_XXXXXXX_",
-        "_XXXXXXX_",
-        "__XXXXX__",
-        "__XXXXX__"
+        "__X1XXXX12__"
       ],
       "movesAllowed": 43,
       "scoreTarget": 2373
     },
     {
       "id": 276,
-      "name": "Level 276 - Weight Challenge 10",
+      "name": "Weight Challenge 10",
       "gridWidth": 8,
       "gridHeight": 10,
       "items": [
@@ -12148,21 +12148,21 @@
       "gridShape": [
         "__XXXX__",
         "_XXXXXX_",
-        "_XXXXXX_",
+        "_XXXX5X10X_",
+        "XXXXX4XXX",
+        "XX9XXXXXX",
         "XXXXXXXX",
-        "XXXXXXXX",
-        "XXXXXXXX",
-        "XXXXXXXX",
-        "_XXXXXX_",
-        "_XXXXXX_",
-        "__XXXX__"
+        "XXXXXX7X1X11",
+        "_XXXX4XX_",
+        "_XX10XXXX_",
+        "__XX16X17X__"
       ],
       "movesAllowed": 42,
       "scoreTarget": 2145
     },
     {
       "id": 277,
-      "name": "Level 277 - Endurance Challenge 10",
+      "name": "Endurance Challenge 10",
       "gridWidth": 9,
       "gridHeight": 10,
       "items": [
@@ -12191,23 +12191,23 @@
         null
       ],
       "gridShape": [
-        "XXXXXXXXX",
-        "_XXXXXXXX",
+        "XXXXX4XXXX",
+        "_XXXXXXXX12",
         "__XXXXXXX",
         "XXXXXXXXX",
-        "_XXXXXXXX",
+        "_XXXXXXXX1",
+        "__XXXXXX12X4",
+        "XXXXXXXXX3",
+        "_XXXXX1XXX",
         "__XXXXXXX",
-        "XXXXXXXXX",
-        "_XXXXXXXX",
-        "__XXXXXXX",
-        "XXXXXXXXX"
+        "XX18XXXXXXX"
       ],
       "movesAllowed": 44,
       "scoreTarget": 2505
     },
     {
       "id": 278,
-      "name": "Level 278 - Speed Challenge 10",
+      "name": "Speed Challenge 10",
       "gridWidth": 9,
       "gridHeight": 11,
       "items": [
@@ -12237,23 +12237,23 @@
       ],
       "gridShape": [
         "XXXXXXXXX",
+        "XXXXXX14XXX",
+        "XXXX2XXXXX",
+        "XXX___XXX",
+        "XXX___XXX",
+        "XXX___XXX",
+        "XXX___XXX",
+        "XXX___XX17X",
         "XXXXXXXXX",
-        "XXXXXXXXX",
-        "XXX___XXX",
-        "XXX___XXX",
-        "XXX___XXX",
-        "XXX___XXX",
-        "XXX___XXX",
-        "XXXXXXXXX",
-        "XXXXXXXXX",
-        "XXXXXXXXX"
+        "XXXXX14XXXX",
+        "XX1XXXXXXX"
       ],
       "movesAllowed": 44,
       "scoreTarget": 2571
     },
     {
       "id": 279,
-      "name": "Level 279 - Strength Challenge 10",
+      "name": "Strength Challenge 10",
       "gridWidth": 7,
       "gridHeight": 11,
       "items": [
@@ -12299,7 +12299,7 @@
     },
     {
       "id": 280,
-      "name": "Level 280 - Balance Challenge 10",
+      "name": "Balance Challenge 10",
       "gridWidth": 7,
       "gridHeight": 10,
       "items": [
@@ -12344,7 +12344,7 @@
     },
     {
       "id": 281,
-      "name": "Level 281 - Power Challenge 10",
+      "name": "Power Challenge 10",
       "gridWidth": 7,
       "gridHeight": 10,
       "items": [
@@ -12374,14 +12374,14 @@
       ],
       "gridShape": [
         "XXXXXXX",
-        "_XXXXX_",
+        "_XXXXX7_",
+        "__XX12X__",
+        "XXXX12XXX17",
+        "XXXXX9XX",
+        "XXXXXXX",
+        "XXX14XXXX",
         "__XXX__",
-        "XXXXXXX",
-        "XXXXXXX",
-        "XXXXXXX",
-        "XXXXXXX",
-        "__XXX__",
-        "_XXXXX_",
+        "_XXX17XX17_",
         "XXXXXXX"
       ],
       "movesAllowed": 41,
@@ -12389,7 +12389,7 @@
     },
     {
       "id": 282,
-      "name": "Level 282 - Agility Challenge 10",
+      "name": "Agility Challenge 10",
       "gridWidth": 8,
       "gridHeight": 9,
       "items": [
@@ -12418,13 +12418,13 @@
         null
       ],
       "gridShape": [
+        "X13XXXXXXX",
+        "__XX11XX__",
+        "_X13X10XXXX_",
         "XXXXXXXX",
-        "__XXXX__",
-        "_XXXXXX_",
         "XXXXXXXX",
         "XXXXXXXX",
-        "XXXXXXXX",
-        "_XXXXXX_",
+        "_XX8XXXX_",
         "__XXXX__",
         "XXXXXXXX"
       ],
@@ -12433,7 +12433,7 @@
     },
     {
       "id": 283,
-      "name": "Level 283 - Focus Challenge 10",
+      "name": "Focus Challenge 10",
       "gridWidth": 8,
       "gridHeight": 10,
       "items": [
@@ -12478,7 +12478,7 @@
     },
     {
       "id": 284,
-      "name": "Level 284 - Energy Challenge 10",
+      "name": "Energy Challenge 10",
       "gridWidth": 9,
       "gridHeight": 9,
       "items": [
@@ -12507,22 +12507,22 @@
         null
       ],
       "gridShape": [
-        "__XXXXX__",
-        "_XXXXXXX_",
-        "_XXXXXXX_",
+        "__XXXX4X__",
+        "_XXXXXXX9_",
+        "_XXXXXX12X_",
+        "X1XX11XXXXXX",
         "XXXXXXXXX",
-        "XXXXXXXXX",
-        "XXXXXXXXX",
-        "_XXXXXXX_",
-        "_XXXXXXX_",
-        "__XXXXX__"
+        "XX16XXXXXXX",
+        "_XXXX3XXX_",
+        "_XXX18XXXX_",
+        "__XX10XXX13__"
       ],
       "movesAllowed": 42,
       "scoreTarget": 2255
     },
     {
       "id": 285,
-      "name": "Level 285 - Vitality Challenge 10",
+      "name": "Vitality Challenge 10",
       "gridWidth": 7,
       "gridHeight": 11,
       "items": [
@@ -12568,7 +12568,7 @@
     },
     {
       "id": 286,
-      "name": "Level 286 - Circuit Challenge 10",
+      "name": "Circuit Challenge 10",
       "gridWidth": 9,
       "gridHeight": 9,
       "items": [
@@ -12608,21 +12608,21 @@
       ],
       "gridShape": [
         "XXXXXXXXX",
-        "_XXXXXXXX",
+        "_XX9XXX11XXX",
+        "__XXXXXXX8",
+        "XXXXXXXXX",
+        "_XXXXX2XXX",
         "__XXXXXXX",
         "XXXXXXXXX",
         "_XXXXXXXX",
-        "__XXXXXXX",
-        "XXXXXXXXX",
-        "_XXXXXXXX",
-        "__XXXXXXX"
+        "__XXXXXX4X"
       ],
       "movesAllowed": 44,
       "scoreTarget": 2415
     },
     {
       "id": 287,
-      "name": "Level 287 - Sprint Challenge 10",
+      "name": "Sprint Challenge 10",
       "gridWidth": 9,
       "gridHeight": 10,
       "items": [
@@ -12667,7 +12667,7 @@
     },
     {
       "id": 288,
-      "name": "Level 288 - Recovery Challenge 10",
+      "name": "Recovery Challenge 10",
       "gridWidth": 9,
       "gridHeight": 10,
       "items": [
@@ -12696,23 +12696,23 @@
         null
       ],
       "gridShape": [
+        "XXXXX18XXXX",
         "XXXXXXXXX",
+        "XXXXXXX10X12X",
+        "XXXXXX16XXX",
+        "XXX18XXXXXX",
         "XXXXXXXXX",
+        "XXXXXXX8XX",
         "XXXXXXXXX",
-        "XXXXXXXXX",
-        "XXXXXXXXX",
-        "XXXXXXXXX",
-        "XXXXXXXXX",
-        "XXXXXXXXX",
-        "XXXXXXXXX",
-        "XXXXXXXXX"
+        "XXXXXXX11XX",
+        "XXXXXX14XXX"
       ],
       "movesAllowed": 46,
       "scoreTarget": 2817
     },
     {
       "id": 289,
-      "name": "Level 289 - Peak Challenge 10",
+      "name": "Peak Challenge 10",
       "gridWidth": 7,
       "gridHeight": 11,
       "items": [
@@ -12758,7 +12758,7 @@
     },
     {
       "id": 290,
-      "name": "Level 290 - Foundation Challenge 10",
+      "name": "Foundation Challenge 10",
       "gridWidth": 8,
       "gridHeight": 11,
       "items": [
@@ -12790,21 +12790,21 @@
         "XXXXXXXX",
         "_XXXXXX_",
         "__XXXX__",
+        "XXXX7XXXX",
         "XXXXXXXX",
-        "XXXXXXXX",
-        "XXXXXXXX",
-        "XXXXXXXX",
-        "XXXXXXXX",
+        "XX16XXXXXX",
+        "XXXXXXX11X",
+        "X6XX13X1XXXX",
         "__XXXX__",
-        "_XXXXXX_",
-        "XXXXXXXX"
+        "_XXXX7XX_",
+        "XXXX9XXXX"
       ],
       "movesAllowed": 44,
       "scoreTarget": 2515
     },
     {
       "id": 291,
-      "name": "Level 291 - Momentum Challenge 10",
+      "name": "Momentum Challenge 10",
       "gridWidth": 9,
       "gridHeight": 10,
       "items": [
@@ -12833,15 +12833,15 @@
         null
       ],
       "gridShape": [
-        "XXXXXXXXX",
-        "___XXX___",
+        "XXXXXXXX4X2",
+        "___XXX14___",
         "__XXXXX__",
-        "_XXXXXXX_",
+        "_XXXX12XXX_",
         "XXXXXXXXX",
         "XXXXXXXXX",
         "XXXXXXXXX",
-        "_XXXXXXX_",
-        "__XXXXX__",
+        "_XXXX15XXX_",
+        "__XX1XXX__",
         "___XXX___"
       ],
       "movesAllowed": 43,
@@ -12849,7 +12849,7 @@
     },
     {
       "id": 292,
-      "name": "Level 292 - Boost Challenge 10",
+      "name": "Boost Challenge 10",
       "gridWidth": 9,
       "gridHeight": 10,
       "items": [
@@ -12894,7 +12894,7 @@
     },
     {
       "id": 293,
-      "name": "Level 293 - Challenge Challenge 10",
+      "name": "Challenge Challenge 10",
       "gridWidth": 9,
       "gridHeight": 10,
       "items": [
@@ -12923,15 +12923,15 @@
         null
       ],
       "gridShape": [
+        "__XXXX8X__",
         "__XXXXX__",
-        "__XXXXX__",
         "_XXXXXXX_",
         "_XXXXXXX_",
-        "XXXXXXXXX",
-        "XXXXXXXXX",
-        "XXXXXXXXX",
+        "XXXXXXXXX4",
+        "XXX14XXXXXX",
+        "XXXXXXXX14X",
         "_XXXXXXX_",
-        "_XXXXXXX_",
+        "_XXX5XX1XX_",
         "__XXXXX__"
       ],
       "movesAllowed": 44,
@@ -12939,7 +12939,7 @@
     },
     {
       "id": 294,
-      "name": "Level 294 - Surge Challenge 10",
+      "name": "Surge Challenge 10",
       "gridWidth": 7,
       "gridHeight": 9,
       "items": [
@@ -12983,7 +12983,7 @@
     },
     {
       "id": 295,
-      "name": "Level 295 - Flow Challenge 10",
+      "name": "Flow Challenge 10",
       "gridWidth": 7,
       "gridHeight": 9,
       "items": [
@@ -13027,7 +13027,7 @@
     },
     {
       "id": 296,
-      "name": "Level 296 - Drive Challenge 10",
+      "name": "Drive Challenge 10",
       "gridWidth": 7,
       "gridHeight": 9,
       "items": [
@@ -13071,7 +13071,7 @@
     },
     {
       "id": 297,
-      "name": "Level 297 - Spark Challenge 10",
+      "name": "Spark Challenge 10",
       "gridWidth": 9,
       "gridHeight": 11,
       "items": [
@@ -13122,7 +13122,7 @@
     },
     {
       "id": 298,
-      "name": "Level 298 - Rush Challenge 10",
+      "name": "Rush Challenge 10",
       "gridWidth": 8,
       "gridHeight": 11,
       "items": [
@@ -13168,7 +13168,7 @@
     },
     {
       "id": 299,
-      "name": "Level 299 - Ignite Challenge 10",
+      "name": "Ignite Challenge 10",
       "gridWidth": 8,
       "gridHeight": 11,
       "items": [
@@ -13219,7 +13219,7 @@
     },
     {
       "id": 300,
-      "name": "Level 300 - Elevate Challenge 10",
+      "name": "Elevate Challenge 10",
       "gridWidth": 7,
       "gridHeight": 10,
       "items": [
@@ -13250,12 +13250,12 @@
       "gridShape": [
         "XXXXXXX",
         "__XXX__",
-        "__XXX__",
+        "__XX3X18__",
         "_XXXXX_",
-        "XXXXXXX",
-        "XXXXXXX",
-        "XXXXXXX",
-        "_XXXXX_",
+        "XXXX15X4XX5",
+        "XX5XXXXX",
+        "XXXX2XXX",
+        "_XXX15XX_",
         "__XXX__",
         "__XXX__"
       ],
@@ -13264,7 +13264,7 @@
     },
     {
       "id": 301,
-      "name": "Level 301 - Fruit Challenge 11",
+      "name": "Fruit Challenge 11",
       "gridWidth": 9,
       "gridHeight": 10,
       "items": [
@@ -13309,7 +13309,7 @@
     },
     {
       "id": 302,
-      "name": "Level 302 - Heart Challenge 11",
+      "name": "Heart Challenge 11",
       "gridWidth": 7,
       "gridHeight": 11,
       "items": [
@@ -13339,15 +13339,15 @@
       ],
       "gridShape": [
         "__XXX__",
-        "__XXX__",
-        "_XXXXX_",
-        "_XXXXX_",
-        "XXXXXXX",
-        "XXXXXXX",
-        "XXXXXXX",
-        "_XXXXX_",
-        "_XXXXX_",
-        "__XXX__",
+        "__X6XX__",
+        "_X14XXXX_",
+        "_X16XX14XX17_",
+        "X16XXXXXX",
+        "XX5XXXXX",
+        "XXX14XXXX",
+        "_XXXX13X_",
+        "_X6XXXX_",
+        "__XX6X__",
         "__XXX__"
       ],
       "movesAllowed": 43,
@@ -13355,7 +13355,7 @@
     },
     {
       "id": 303,
-      "name": "Level 303 - Sports Challenge 11",
+      "name": "Sports Challenge 11",
       "gridWidth": 8,
       "gridHeight": 10,
       "items": [
@@ -13384,15 +13384,15 @@
         null
       ],
       "gridShape": [
-        "__XXXX__",
+        "__XX11XX__",
         "_XXXXXX_",
         "_XXXXXX_",
-        "XXXXXXXX",
-        "XXXXXXXX",
-        "XXXXXXXX",
-        "XXXXXXXX",
-        "_XXXXXX_",
-        "_XXXXXX_",
+        "X17XXX1XXX3X",
+        "XXXXXXXX3",
+        "XX11XXXXXX",
+        "X17XXXXXXX",
+        "_XXXXX17X_",
+        "_XXXXX1X_",
         "__XXXX__"
       ],
       "movesAllowed": 44,
@@ -13400,7 +13400,7 @@
     },
     {
       "id": 304,
-      "name": "Level 304 - Veggie Challenge 11",
+      "name": "Veggie Challenge 11",
       "gridWidth": 8,
       "gridHeight": 11,
       "items": [
@@ -13446,7 +13446,7 @@
     },
     {
       "id": 305,
-      "name": "Level 305 - Achievement Challenge 11",
+      "name": "Achievement Challenge 11",
       "gridWidth": 8,
       "gridHeight": 11,
       "items": [
@@ -13492,7 +13492,7 @@
     },
     {
       "id": 306,
-      "name": "Level 306 - Weight Challenge 11",
+      "name": "Weight Challenge 11",
       "gridWidth": 7,
       "gridHeight": 9,
       "items": [
@@ -13536,7 +13536,7 @@
     },
     {
       "id": 307,
-      "name": "Level 307 - Endurance Challenge 11",
+      "name": "Endurance Challenge 11",
       "gridWidth": 9,
       "gridHeight": 11,
       "items": [
@@ -13582,7 +13582,7 @@
     },
     {
       "id": 308,
-      "name": "Level 308 - Speed Challenge 11",
+      "name": "Speed Challenge 11",
       "gridWidth": 8,
       "gridHeight": 11,
       "items": [
@@ -13633,7 +13633,7 @@
     },
     {
       "id": 309,
-      "name": "Level 309 - Strength Challenge 11",
+      "name": "Strength Challenge 11",
       "gridWidth": 7,
       "gridHeight": 11,
       "items": [
@@ -13679,7 +13679,7 @@
     },
     {
       "id": 310,
-      "name": "Level 310 - Balance Challenge 11",
+      "name": "Balance Challenge 11",
       "gridWidth": 9,
       "gridHeight": 10,
       "items": [
@@ -13708,14 +13708,14 @@
         null
       ],
       "gridShape": [
-        "XXXXXXXXX",
+        "X6XXXXX12XXX",
         "XXXXXXXX_",
         "XXXXXXX__",
-        "XXXXXX___",
-        "XXXXX____",
-        "XXXX_____",
+        "XX17XXXX___",
+        "XXXXX4____",
+        "XXX2X_____",
         "XXX______",
-        "XXXXXXXXX",
+        "XXXXXX17XXX",
         "XXXXXXXX_",
         "XXXXXXX__"
       ],
@@ -13724,7 +13724,7 @@
     },
     {
       "id": 311,
-      "name": "Level 311 - Power Challenge 11",
+      "name": "Power Challenge 11",
       "gridWidth": 9,
       "gridHeight": 10,
       "items": [
@@ -13769,7 +13769,7 @@
     },
     {
       "id": 312,
-      "name": "Level 312 - Agility Challenge 11",
+      "name": "Agility Challenge 11",
       "gridWidth": 9,
       "gridHeight": 9,
       "items": [
@@ -13818,7 +13818,7 @@
     },
     {
       "id": 313,
-      "name": "Level 313 - Focus Challenge 11",
+      "name": "Focus Challenge 11",
       "gridWidth": 7,
       "gridHeight": 9,
       "items": [
@@ -13847,22 +13847,22 @@
         null
       ],
       "gridShape": [
-        "XXXXXXX",
+        "XXX10XXXX",
+        "_XXXX3XX",
+        "__XXXXX2",
+        "XXXXX7XX9",
         "_XXXXXX",
         "__XXXXX",
-        "XXXXXXX",
+        "XXXXX12XX12",
         "_XXXXXX",
-        "__XXXXX",
-        "XXXXXXX",
-        "_XXXXXX",
-        "__XXXXX"
+        "__XXXXX8"
       ],
       "movesAllowed": 43,
       "scoreTarget": 2154
     },
     {
       "id": 314,
-      "name": "Level 314 - Energy Challenge 11",
+      "name": "Energy Challenge 11",
       "gridWidth": 9,
       "gridHeight": 9,
       "items": [
@@ -13891,13 +13891,13 @@
         null
       ],
       "gridShape": [
-        "XXXXXXXXX",
-        "XXXXXXXXX",
-        "XXXXXXXXX",
+        "XXXXXXXXX3",
+        "XXXXXXXXX13",
+        "XX3XXXXXXX",
+        "XX6X___XXX",
         "XXX___XXX",
         "XXX___XXX",
-        "XXX___XXX",
-        "XXXXXXXXX",
+        "XX6XXXXXXX",
         "XXXXXXXXX",
         "XXXXXXXXX"
       ],
@@ -13906,7 +13906,7 @@
     },
     {
       "id": 315,
-      "name": "Level 315 - Vitality Challenge 11",
+      "name": "Vitality Challenge 11",
       "gridWidth": 7,
       "gridHeight": 10,
       "items": [
@@ -13935,12 +13935,12 @@
         null
       ],
       "gridShape": [
+        "XXXX17XXX",
         "XXXXXXX",
+        "XX18XXXXX15",
+        "XXXX1X13XX",
         "XXXXXXX",
-        "XXXXXXX",
-        "XXXXXXX",
-        "XXXXXXX",
-        "XXXXXXX",
+        "XXX7XXXX",
         "XXXXXXX",
         "XXXXXXX",
         "XXXXXXX",
@@ -13951,7 +13951,7 @@
     },
     {
       "id": 316,
-      "name": "Level 316 - Circuit Challenge 11",
+      "name": "Circuit Challenge 11",
       "gridWidth": 7,
       "gridHeight": 10,
       "items": [
@@ -13981,22 +13981,22 @@
       ],
       "gridShape": [
         "XXXXXXX",
+        "XXX13XXXX",
+        "XXXXXX18X8",
         "XXXXXXX",
+        "XXXX14XXX",
         "XXXXXXX",
+        "XXXXX17XX",
         "XXXXXXX",
-        "XXXXXXX",
-        "XXXXXXX",
-        "XXXXXXX",
-        "XXXXXXX",
-        "XXXXXXX",
-        "XXXXXXX"
+        "XXXXXX2X",
+        "X5XXXXXX"
       ],
       "movesAllowed": 46,
       "scoreTarget": 2531
     },
     {
       "id": 317,
-      "name": "Level 317 - Sprint Challenge 11",
+      "name": "Sprint Challenge 11",
       "gridWidth": 9,
       "gridHeight": 9,
       "items": [
@@ -14040,7 +14040,7 @@
     },
     {
       "id": 318,
-      "name": "Level 318 - Recovery Challenge 11",
+      "name": "Recovery Challenge 11",
       "gridWidth": 8,
       "gridHeight": 9,
       "items": [
@@ -14084,7 +14084,7 @@
     },
     {
       "id": 319,
-      "name": "Level 319 - Peak Challenge 11",
+      "name": "Peak Challenge 11",
       "gridWidth": 9,
       "gridHeight": 11,
       "items": [
@@ -14119,23 +14119,23 @@
       ],
       "gridShape": [
         "XXXXXXXXX",
-        "XXXXXXXX_",
-        "XXXXXXX__",
+        "XXXXXXX7X_",
+        "X12XX10XXXX__",
         "XXXXXX___",
         "XXXXX____",
         "XXXX_____",
         "XXX______",
         "XXXXXXXXX",
-        "XXXXXXXX_",
+        "XXXXXXX7X_",
         "XXXXXXX__",
-        "XXXXXX___"
+        "X18XXX8XX___"
       ],
       "movesAllowed": 46,
       "scoreTarget": 2586
     },
     {
       "id": 320,
-      "name": "Level 320 - Foundation Challenge 11",
+      "name": "Foundation Challenge 11",
       "gridWidth": 8,
       "gridHeight": 10,
       "items": [
@@ -14166,13 +14166,13 @@
       "gridShape": [
         "__XXXX__",
         "__XXXX__",
+        "_XXXXX16X_",
         "_XXXXXX_",
-        "_XXXXXX_",
+        "XXXX8XXXX",
         "XXXXXXXX",
-        "XXXXXXXX",
-        "XXXXXXXX",
-        "_XXXXXX_",
-        "_XXXXXX_",
+        "X4XXXXXXX",
+        "_XX15XXXX_",
+        "_XXX9XXX_",
         "__XXXX__"
       ],
       "movesAllowed": 45,
@@ -14180,7 +14180,7 @@
     },
     {
       "id": 321,
-      "name": "Level 321 - Momentum Challenge 11",
+      "name": "Momentum Challenge 11",
       "gridWidth": 8,
       "gridHeight": 11,
       "items": [
@@ -14226,7 +14226,7 @@
     },
     {
       "id": 322,
-      "name": "Level 322 - Boost Challenge 11",
+      "name": "Boost Challenge 11",
       "gridWidth": 9,
       "gridHeight": 9,
       "items": [
@@ -14270,7 +14270,7 @@
     },
     {
       "id": 323,
-      "name": "Level 323 - Challenge Challenge 11",
+      "name": "Challenge Challenge 11",
       "gridWidth": 9,
       "gridHeight": 11,
       "items": [
@@ -14316,7 +14316,7 @@
     },
     {
       "id": 324,
-      "name": "Level 324 - Surge Challenge 11",
+      "name": "Surge Challenge 11",
       "gridWidth": 8,
       "gridHeight": 11,
       "items": [
@@ -14362,7 +14362,7 @@
     },
     {
       "id": 325,
-      "name": "Level 325 - Flow Challenge 11",
+      "name": "Flow Challenge 11",
       "gridWidth": 9,
       "gridHeight": 11,
       "items": [
@@ -14396,24 +14396,24 @@
         null
       ],
       "gridShape": [
+        "XX12XXXXXXX",
+        "XXXXXX5XXX",
+        "XXX18XXXXXX",
+        "XX9XXXXXXX",
+        "XXXXXXXXX",
+        "XX14XXXXXXX",
         "XXXXXXXXX",
         "XXXXXXXXX",
-        "XXXXXXXXX",
-        "XXXXXXXXX",
-        "XXXXXXXXX",
-        "XXXXXXXXX",
-        "XXXXXXXXX",
-        "XXXXXXXXX",
-        "XXXXXXXXX",
-        "XXXXXXXXX",
-        "XXXXXXXXX"
+        "XXXXXX18XXX",
+        "X3X5XXXXXXX",
+        "XXXXXXXXX4"
       ],
       "movesAllowed": 48,
       "scoreTarget": 3324
     },
     {
       "id": 326,
-      "name": "Level 326 - Drive Challenge 11",
+      "name": "Drive Challenge 11",
       "gridWidth": 8,
       "gridHeight": 11,
       "items": [
@@ -14459,7 +14459,7 @@
     },
     {
       "id": 327,
-      "name": "Level 327 - Spark Challenge 11",
+      "name": "Spark Challenge 11",
       "gridWidth": 7,
       "gridHeight": 11,
       "items": [
@@ -14505,7 +14505,7 @@
     },
     {
       "id": 328,
-      "name": "Level 328 - Rush Challenge 11",
+      "name": "Rush Challenge 11",
       "gridWidth": 9,
       "gridHeight": 11,
       "items": [
@@ -14534,24 +14534,24 @@
         null
       ],
       "gridShape": [
-        "XXXXXXXXX",
+        "XXX6XXXXXX",
         "XXXXXXXX_",
         "XXXXXXX__",
-        "XXXXXX___",
+        "X14XXXXX10___",
         "XXXXX____",
         "XXXX_____",
         "XXX______",
         "XXXXXXXXX",
-        "XXXXXXXX_",
-        "XXXXXXX__",
-        "XXXXXX___"
+        "XX18XXXX12XX_",
+        "X11XXXXXX__",
+        "X17XX11X12XX___"
       ],
       "movesAllowed": 46,
       "scoreTarget": 2685
     },
     {
       "id": 329,
-      "name": "Level 329 - Ignite Challenge 11",
+      "name": "Ignite Challenge 11",
       "gridWidth": 9,
       "gridHeight": 10,
       "items": [
@@ -14582,12 +14582,12 @@
       "gridShape": [
         "__XXXXX__",
         "__XXXXX__",
-        "_XXXXXXX_",
-        "_XXXXXXX_",
-        "XXXXXXXXX",
-        "XXXXXXXXX",
-        "XXXXXXXXX",
-        "_XXXXXXX_",
+        "_XXX15XXXX_",
+        "_XXXX1XXX_",
+        "XX11XXXXXXX9",
+        "XXXXX8XXXX",
+        "XXXXXXXX3X",
+        "_XXXX13XX4X_",
         "_XXXXXXX_",
         "__XXXXX__"
       ],
@@ -14596,7 +14596,7 @@
     },
     {
       "id": 330,
-      "name": "Level 330 - Elevate Challenge 11",
+      "name": "Elevate Challenge 11",
       "gridWidth": 9,
       "gridHeight": 10,
       "items": [
@@ -14646,7 +14646,7 @@
     },
     {
       "id": 331,
-      "name": "Level 331 - Fruit Challenge 12",
+      "name": "Fruit Challenge 12",
       "gridWidth": 8,
       "gridHeight": 9,
       "items": [
@@ -14675,13 +14675,13 @@
         null
       ],
       "gridShape": [
-        "XXXXXXXX",
-        "_XXXXXXX",
+        "XXXXXX5XX",
+        "_XXX17X8XXX10",
         "__XXXXXX",
         "XXXXXXXX",
         "_XXXXXXX",
-        "__XXXXXX",
-        "XXXXXXXX",
+        "__XXXXX3X",
+        "XXXXXX15X17X",
         "_XXXXXXX",
         "__XXXXXX"
       ],
@@ -14690,7 +14690,7 @@
     },
     {
       "id": 332,
-      "name": "Level 332 - Heart Challenge 12",
+      "name": "Heart Challenge 12",
       "gridWidth": 9,
       "gridHeight": 10,
       "items": [
@@ -14719,15 +14719,15 @@
         null
       ],
       "gridShape": [
+        "XXXXXXXXX13",
         "XXXXXXXXX",
-        "XXXXXXXXX",
-        "XXXXXXXXX",
+        "XXX8XXXXXX",
+        "XXX___XX4X",
+        "XX5X___XXX7",
         "XXX___XXX",
-        "XXX___XXX",
-        "XXX___XXX",
-        "XXX___XXX",
-        "XXXXXXXXX",
-        "XXXXXXXXX",
+        "XX2X___XXX1",
+        "XXXX1XXX7XX",
+        "XXX2XX5XXXX",
         "XXXXXXXXX"
       ],
       "movesAllowed": 47,
@@ -14735,7 +14735,7 @@
     },
     {
       "id": 333,
-      "name": "Level 333 - Sports Challenge 12",
+      "name": "Sports Challenge 12",
       "gridWidth": 8,
       "gridHeight": 10,
       "items": [
@@ -14780,7 +14780,7 @@
     },
     {
       "id": 334,
-      "name": "Level 334 - Veggie Challenge 12",
+      "name": "Veggie Challenge 12",
       "gridWidth": 8,
       "gridHeight": 9,
       "items": [
@@ -14824,7 +14824,7 @@
     },
     {
       "id": 335,
-      "name": "Level 335 - Achievement Challenge 12",
+      "name": "Achievement Challenge 12",
       "gridWidth": 9,
       "gridHeight": 11,
       "items": [
@@ -14853,16 +14853,16 @@
         null
       ],
       "gridShape": [
-        "XXXXXXXXX",
-        "_XXXXXXX_",
+        "XXXXXXX1X10X",
+        "_XXXXXX18X_",
         "__XXXXX__",
         "___XXX___",
+        "XXXX4XX5XX7X",
         "XXXXXXXXX",
-        "XXXXXXXXX",
-        "XXXXXXXXX",
-        "___XXX___",
+        "XXXX7XXXXX",
+        "___XX2X___",
         "__XXXXX__",
-        "_XXXXXXX_",
+        "_XXXXXX13X_",
         "XXXXXXXXX"
       ],
       "movesAllowed": 47,
@@ -14870,7 +14870,7 @@
     },
     {
       "id": 336,
-      "name": "Level 336 - Weight Challenge 12",
+      "name": "Weight Challenge 12",
       "gridWidth": 9,
       "gridHeight": 11,
       "items": [
@@ -14916,7 +14916,7 @@
     },
     {
       "id": 337,
-      "name": "Level 337 - Endurance Challenge 12",
+      "name": "Endurance Challenge 12",
       "gridWidth": 9,
       "gridHeight": 11,
       "items": [
@@ -14962,7 +14962,7 @@
     },
     {
       "id": 338,
-      "name": "Level 338 - Speed Challenge 12",
+      "name": "Speed Challenge 12",
       "gridWidth": 7,
       "gridHeight": 9,
       "items": [
@@ -14997,21 +14997,21 @@
       ],
       "gridShape": [
         "__XXX__",
+        "_XXX14XX_",
         "_XXXXX_",
-        "_XXXXX_",
-        "XXXXXXX",
-        "XXXXXXX",
-        "XXXXXXX",
-        "_XXXXX_",
-        "_XXXXX_",
-        "__XXX__"
+        "XXXXX4XX",
+        "XXXX10XXX6",
+        "X2XXX9XXX17",
+        "_XXX5XX_",
+        "_XXX7XX_",
+        "__XXX15__"
       ],
       "movesAllowed": 44,
       "scoreTarget": 2115
     },
     {
       "id": 339,
-      "name": "Level 339 - Strength Challenge 12",
+      "name": "Strength Challenge 12",
       "gridWidth": 9,
       "gridHeight": 10,
       "items": [
@@ -15056,7 +15056,7 @@
     },
     {
       "id": 340,
-      "name": "Level 340 - Balance Challenge 12",
+      "name": "Balance Challenge 12",
       "gridWidth": 7,
       "gridHeight": 9,
       "items": [
@@ -15100,7 +15100,7 @@
     },
     {
       "id": 341,
-      "name": "Level 341 - Power Challenge 12",
+      "name": "Power Challenge 12",
       "gridWidth": 7,
       "gridHeight": 9,
       "items": [
@@ -15149,7 +15149,7 @@
     },
     {
       "id": 342,
-      "name": "Level 342 - Agility Challenge 12",
+      "name": "Agility Challenge 12",
       "gridWidth": 8,
       "gridHeight": 10,
       "items": [
@@ -15194,7 +15194,7 @@
     },
     {
       "id": 343,
-      "name": "Level 343 - Focus Challenge 12",
+      "name": "Focus Challenge 12",
       "gridWidth": 7,
       "gridHeight": 11,
       "items": [
@@ -15240,7 +15240,7 @@
     },
     {
       "id": 344,
-      "name": "Level 344 - Energy Challenge 12",
+      "name": "Energy Challenge 12",
       "gridWidth": 7,
       "gridHeight": 9,
       "items": [
@@ -15284,7 +15284,7 @@
     },
     {
       "id": 345,
-      "name": "Level 345 - Vitality Challenge 12",
+      "name": "Vitality Challenge 12",
       "gridWidth": 8,
       "gridHeight": 11,
       "items": [
@@ -15330,7 +15330,7 @@
     },
     {
       "id": 346,
-      "name": "Level 346 - Circuit Challenge 12",
+      "name": "Circuit Challenge 12",
       "gridWidth": 9,
       "gridHeight": 9,
       "items": [
@@ -15359,22 +15359,22 @@
         null
       ],
       "gridShape": [
-        "XXXXXXXXX",
+        "X4XXXXXXXX",
         "XXXXXXXX_",
-        "XXXXXXX__",
+        "XXXXXX4X__",
         "XXXXXX___",
         "XXXXX____",
-        "XXXX_____",
+        "X17XXX_____",
         "XXX______",
-        "XXXXXXXXX",
-        "XXXXXXXX_"
+        "XXXXX14XX16X11X",
+        "XXXXXXXX10_"
       ],
       "movesAllowed": 46,
       "scoreTarget": 2486
     },
     {
       "id": 347,
-      "name": "Level 347 - Sprint Challenge 12",
+      "name": "Sprint Challenge 12",
       "gridWidth": 8,
       "gridHeight": 9,
       "items": [
@@ -15404,13 +15404,13 @@
       ],
       "gridShape": [
         "__XXXX__",
-        "_XXXXXX_",
-        "_XXXXXX_",
+        "_XXX18XXX_",
+        "_XX2XXX3X_",
         "XXXXXXXX",
-        "XXXXXXXX",
-        "XXXXXXXX",
-        "_XXXXXX_",
-        "_XXXXXX_",
+        "XXXXXX5XX",
+        "X17XXXXXXX",
+        "_XX7XXXX_",
+        "_XXXX9XX_",
         "__XXXX__"
       ],
       "movesAllowed": 46,
@@ -15418,7 +15418,7 @@
     },
     {
       "id": 348,
-      "name": "Level 348 - Recovery Challenge 12",
+      "name": "Recovery Challenge 12",
       "gridWidth": 7,
       "gridHeight": 10,
       "items": [
@@ -15447,12 +15447,12 @@
         null
       ],
       "gridShape": [
-        "__XXX__",
-        "_XXXXX_",
+        "__X2XX__",
+        "_XXX11XX_",
+        "XX10XXXXX13",
         "XXXXXXX",
-        "XXXXXXX",
-        "XXXXXXX",
-        "XXXXXXX",
+        "X8XXXXXX",
+        "XXXXXX18X18",
         "XXXXXXX",
         "XXXXXXX",
         "_XXXXX_",
@@ -15463,7 +15463,7 @@
     },
     {
       "id": 349,
-      "name": "Level 349 - Peak Challenge 12",
+      "name": "Peak Challenge 12",
       "gridWidth": 9,
       "gridHeight": 9,
       "items": [
@@ -15507,7 +15507,7 @@
     },
     {
       "id": 350,
-      "name": "Level 350 - Foundation Challenge 12",
+      "name": "Foundation Challenge 12",
       "gridWidth": 7,
       "gridHeight": 10,
       "items": [
@@ -15552,7 +15552,7 @@
     },
     {
       "id": 351,
-      "name": "Level 351 - Momentum Challenge 12",
+      "name": "Momentum Challenge 12",
       "gridWidth": 8,
       "gridHeight": 9,
       "items": [
@@ -15601,7 +15601,7 @@
     },
     {
       "id": 352,
-      "name": "Level 352 - Boost Challenge 12",
+      "name": "Boost Challenge 12",
       "gridWidth": 7,
       "gridHeight": 10,
       "items": [
@@ -15635,23 +15635,23 @@
         null
       ],
       "gridShape": [
+        "XXXXXXX4",
+        "XXX10XXXX7",
+        "XXXX25XXX",
+        "XX19X10XXXX",
+        "XXXXXX22X14",
         "XXXXXXX",
+        "XXXXXX4X",
+        "X25X6XXX15XX",
         "XXXXXXX",
-        "XXXXXXX",
-        "XXXXXXX",
-        "XXXXXXX",
-        "XXXXXXX",
-        "XXXXXXX",
-        "XXXXXXX",
-        "XXXXXXX",
-        "XXXXXXX"
+        "XXXXXXX7"
       ],
       "movesAllowed": 48,
       "scoreTarget": 2779
     },
     {
       "id": 353,
-      "name": "Level 353 - Challenge Challenge 12",
+      "name": "Challenge Challenge 12",
       "gridWidth": 9,
       "gridHeight": 10,
       "items": [
@@ -15696,7 +15696,7 @@
     },
     {
       "id": 354,
-      "name": "Level 354 - Surge Challenge 12",
+      "name": "Surge Challenge 12",
       "gridWidth": 9,
       "gridHeight": 10,
       "items": [
@@ -15725,15 +15725,15 @@
         null
       ],
       "gridShape": [
-        "XXXXXXXXX",
+        "X19X10XXXXXXX",
         "___XXX___",
-        "__XXXXX__",
-        "_XXXXXXX_",
-        "XXXXXXXXX",
-        "XXXXXXXXX",
-        "XXXXXXXXX",
-        "_XXXXXXX_",
-        "__XXXXX__",
+        "__XX20XXX__",
+        "_XXX4XXXX_",
+        "XXXXX1X10XXX13",
+        "XXXX2XX16XXX",
+        "XXXXXX13X3XX7",
+        "_X2XXXXXX_",
+        "__X7XXXX__",
         "___XXX___"
       ],
       "movesAllowed": 47,
@@ -15741,7 +15741,7 @@
     },
     {
       "id": 355,
-      "name": "Level 355 - Flow Challenge 12",
+      "name": "Flow Challenge 12",
       "gridWidth": 7,
       "gridHeight": 12,
       "items": [
@@ -15770,25 +15770,25 @@
         null
       ],
       "gridShape": [
-        "XXXXXXX",
+        "X9XXXXX16X",
         "XXXXXX_",
         "XXXXX__",
         "XXXX___",
         "XXX____",
-        "XXXXXXX",
-        "XXXXXX_",
+        "XX11XX14X22XX",
+        "X12XXXXX_",
         "XXXXX__",
         "XXXX___",
-        "XXX____",
+        "XX22X____",
         "XXXXXXX",
-        "XXXXXX_"
+        "XXXX25XX5_"
       ],
       "movesAllowed": 47,
       "scoreTarget": 2613
     },
     {
       "id": 356,
-      "name": "Level 356 - Drive Challenge 12",
+      "name": "Drive Challenge 12",
       "gridWidth": 8,
       "gridHeight": 11,
       "items": [
@@ -15817,15 +15817,15 @@
         null
       ],
       "gridShape": [
+        "__XXXX23__",
         "__XXXX__",
-        "__XXXX__",
+        "_X14XXXXX_",
         "_XXXXXX_",
-        "_XXXXXX_",
-        "XXXXXXXX",
-        "XXXXXXXX",
-        "XXXXXXXX",
-        "_XXXXXX_",
-        "_XXXXXX_",
+        "XXX4XXXXX",
+        "X20XXXXXX24X",
+        "X5XXXXXX11X",
+        "_XX19XXXX_",
+        "_X14XXXXX_",
         "__XXXX__",
         "__XXXX__"
       ],
@@ -15834,7 +15834,7 @@
     },
     {
       "id": 357,
-      "name": "Level 357 - Spark Challenge 12",
+      "name": "Spark Challenge 12",
       "gridWidth": 9,
       "gridHeight": 12,
       "items": [
@@ -15881,7 +15881,7 @@
     },
     {
       "id": 358,
-      "name": "Level 358 - Rush Challenge 12",
+      "name": "Rush Challenge 12",
       "gridWidth": 7,
       "gridHeight": 11,
       "items": [
@@ -15927,7 +15927,7 @@
     },
     {
       "id": 359,
-      "name": "Level 359 - Ignite Challenge 12",
+      "name": "Ignite Challenge 12",
       "gridWidth": 7,
       "gridHeight": 11,
       "items": [
@@ -15956,24 +15956,24 @@
         null
       ],
       "gridShape": [
-        "XXXXXXX",
-        "XXXXXXX",
+        "XXX1XXX18X",
+        "XXXX23XX23X",
+        "XX___XX",
+        "XX___XX",
+        "XX14___XX",
         "XX___XX",
         "XX___XX",
         "XX___XX",
         "XX___XX",
-        "XX___XX",
-        "XX___XX",
-        "XX___XX",
-        "XXXXXXX",
-        "XXXXXXX"
+        "X2XX7XXX1X",
+        "XX1XXXXX"
       ],
       "movesAllowed": 46,
       "scoreTarget": 2450
     },
     {
       "id": 360,
-      "name": "Level 360 - Elevate Challenge 12",
+      "name": "Elevate Challenge 12",
       "gridWidth": 9,
       "gridHeight": 10,
       "items": [
@@ -16018,7 +16018,7 @@
     },
     {
       "id": 361,
-      "name": "Level 361 - Fruit Challenge 13",
+      "name": "Fruit Challenge 13",
       "gridWidth": 7,
       "gridHeight": 11,
       "items": [
@@ -16047,24 +16047,24 @@
         null
       ],
       "gridShape": [
+        "XX11X24XXXX",
+        "X4XXXXXX",
+        "XXXXXX5X",
+        "XXXXXXX21",
+        "X4XXXXXX",
         "XXXXXXX",
         "XXXXXXX",
         "XXXXXXX",
-        "XXXXXXX",
-        "XXXXXXX",
-        "XXXXXXX",
-        "XXXXXXX",
-        "XXXXXXX",
-        "XXXXXXX",
-        "XXXXXXX",
-        "XXXXXXX"
+        "XXXX25XXX",
+        "XXXXXX24X",
+        "XXXXXX6X"
       ],
       "movesAllowed": 49,
       "scoreTarget": 3058
     },
     {
       "id": 362,
-      "name": "Level 362 - Heart Challenge 13",
+      "name": "Heart Challenge 13",
       "gridWidth": 8,
       "gridHeight": 11,
       "items": [
@@ -16110,7 +16110,7 @@
     },
     {
       "id": 363,
-      "name": "Level 363 - Sports Challenge 13",
+      "name": "Sports Challenge 13",
       "gridWidth": 8,
       "gridHeight": 10,
       "items": [
@@ -16160,7 +16160,7 @@
     },
     {
       "id": 364,
-      "name": "Level 364 - Veggie Challenge 13",
+      "name": "Veggie Challenge 13",
       "gridWidth": 7,
       "gridHeight": 10,
       "items": [
@@ -16210,7 +16210,7 @@
     },
     {
       "id": 365,
-      "name": "Level 365 - Achievement Challenge 13",
+      "name": "Achievement Challenge 13",
       "gridWidth": 9,
       "gridHeight": 11,
       "items": [
@@ -16256,7 +16256,7 @@
     },
     {
       "id": 366,
-      "name": "Level 366 - Weight Challenge 13",
+      "name": "Weight Challenge 13",
       "gridWidth": 8,
       "gridHeight": 10,
       "items": [
@@ -16301,7 +16301,7 @@
     },
     {
       "id": 367,
-      "name": "Level 367 - Endurance Challenge 13",
+      "name": "Endurance Challenge 13",
       "gridWidth": 9,
       "gridHeight": 10,
       "items": [
@@ -16330,15 +16330,15 @@
         null
       ],
       "gridShape": [
+        "XXXX4XXXXX",
+        "_XXX24XXXXX",
+        "__XXX8XXXX",
         "XXXXXXXXX",
         "_XXXXXXXX",
-        "__XXXXXXX",
-        "XXXXXXXXX",
+        "__X18XXXXXX",
+        "XXXXX23XXXX",
         "_XXXXXXXX",
-        "__XXXXXXX",
-        "XXXXXXXXX",
-        "_XXXXXXXX",
-        "__XXXXXXX",
+        "__XX23XXXXX",
         "XXXXXXXXX"
       ],
       "movesAllowed": 50,
@@ -16346,7 +16346,7 @@
     },
     {
       "id": 368,
-      "name": "Level 368 - Speed Challenge 13",
+      "name": "Speed Challenge 13",
       "gridWidth": 7,
       "gridHeight": 12,
       "items": [
@@ -16393,7 +16393,7 @@
     },
     {
       "id": 369,
-      "name": "Level 369 - Strength Challenge 13",
+      "name": "Strength Challenge 13",
       "gridWidth": 7,
       "gridHeight": 11,
       "items": [
@@ -16422,24 +16422,24 @@
         null
       ],
       "gridShape": [
-        "XXXXXXX",
-        "XXXXXXX",
-        "XXXXXXX",
-        "XXXXXXX",
-        "XXXXXXX",
-        "XXXXXXX",
-        "XXXXXXX",
-        "XXXXXXX",
-        "XXXXXXX",
-        "XXXXXXX",
-        "XXXXXXX"
+        "X1XXX4X21XX",
+        "XX3XXXXX11",
+        "XXXXXXX6",
+        "X10XXXXXX",
+        "XXXXXX19X",
+        "XXXXXXX10",
+        "XXXX11XXX",
+        "XX20XXXXX",
+        "XXXXX13XX",
+        "X10XXXXXX",
+        "XXXXX16XX"
       ],
       "movesAllowed": 49,
       "scoreTarget": 3082
     },
     {
       "id": 370,
-      "name": "Level 370 - Balance Challenge 13",
+      "name": "Balance Challenge 13",
       "gridWidth": 8,
       "gridHeight": 11,
       "items": [
@@ -16468,24 +16468,24 @@
         null
       ],
       "gridShape": [
+        "XXXXXXX20X",
+        "XXX14XXXXX",
+        "XXXXXXXX",
+        "X13XXXXXXX",
+        "XXXXXXXX",
+        "XXX12XXXXX",
         "XXXXXXXX",
         "XXXXXXXX",
         "XXXXXXXX",
-        "XXXXXXXX",
-        "XXXXXXXX",
-        "XXXXXXXX",
-        "XXXXXXXX",
-        "XXXXXXXX",
-        "XXXXXXXX",
-        "XXXXXXXX",
-        "XXXXXXXX"
+        "XXXXX8XXX",
+        "XXXX10XXXX"
       ],
       "movesAllowed": 50,
       "scoreTarget": 3371
     },
     {
       "id": 371,
-      "name": "Level 371 - Power Challenge 13",
+      "name": "Power Challenge 13",
       "gridWidth": 8,
       "gridHeight": 11,
       "items": [
@@ -16514,14 +16514,14 @@
         null
       ],
       "gridShape": [
-        "XXXXXXXX",
-        "_XXXXXX_",
+        "XXX6XXXX8X",
+        "_X25XXXXX_",
         "__XXXX__",
         "XXXXXXXX",
+        "XXXXX4X3XX",
+        "XXXXXX13XX",
         "XXXXXXXX",
-        "XXXXXXXX",
-        "XXXXXXXX",
-        "XXXXXXXX",
+        "XXXX18XXXX",
         "__XXXX__",
         "_XXXXXX_",
         "XXXXXXXX"
@@ -16531,7 +16531,7 @@
     },
     {
       "id": 372,
-      "name": "Level 372 - Agility Challenge 13",
+      "name": "Agility Challenge 13",
       "gridWidth": 7,
       "gridHeight": 10,
       "items": [
@@ -16576,7 +16576,7 @@
     },
     {
       "id": 373,
-      "name": "Level 373 - Focus Challenge 13",
+      "name": "Focus Challenge 13",
       "gridWidth": 7,
       "gridHeight": 10,
       "items": [
@@ -16621,7 +16621,7 @@
     },
     {
       "id": 374,
-      "name": "Level 374 - Energy Challenge 13",
+      "name": "Energy Challenge 13",
       "gridWidth": 9,
       "gridHeight": 11,
       "items": [
@@ -16672,7 +16672,7 @@
     },
     {
       "id": 375,
-      "name": "Level 375 - Vitality Challenge 13",
+      "name": "Vitality Challenge 13",
       "gridWidth": 9,
       "gridHeight": 12,
       "items": [
@@ -16719,7 +16719,7 @@
     },
     {
       "id": 376,
-      "name": "Level 376 - Circuit Challenge 13",
+      "name": "Circuit Challenge 13",
       "gridWidth": 9,
       "gridHeight": 10,
       "items": [
@@ -16764,7 +16764,7 @@
     },
     {
       "id": 377,
-      "name": "Level 377 - Sprint Challenge 13",
+      "name": "Sprint Challenge 13",
       "gridWidth": 7,
       "gridHeight": 11,
       "items": [
@@ -16815,7 +16815,7 @@
     },
     {
       "id": 378,
-      "name": "Level 378 - Recovery Challenge 13",
+      "name": "Recovery Challenge 13",
       "gridWidth": 9,
       "gridHeight": 10,
       "items": [
@@ -16860,7 +16860,7 @@
     },
     {
       "id": 379,
-      "name": "Level 379 - Peak Challenge 13",
+      "name": "Peak Challenge 13",
       "gridWidth": 9,
       "gridHeight": 12,
       "items": [
@@ -16907,7 +16907,7 @@
     },
     {
       "id": 380,
-      "name": "Level 380 - Foundation Challenge 13",
+      "name": "Foundation Challenge 13",
       "gridWidth": 8,
       "gridHeight": 12,
       "items": [
@@ -16954,7 +16954,7 @@
     },
     {
       "id": 381,
-      "name": "Level 381 - Momentum Challenge 13",
+      "name": "Momentum Challenge 13",
       "gridWidth": 9,
       "gridHeight": 11,
       "items": [
@@ -16983,14 +16983,14 @@
         null
       ],
       "gridShape": [
-        "XXXXXXXXX",
+        "XXXXXX7XX3X",
         "___XXX___",
         "__XXXXX__",
         "_XXXXXXX_",
-        "XXXXXXXXX",
-        "XXXXXXXXX",
-        "XXXXXXXXX",
-        "_XXXXXXX_",
+        "XXXX8XXXXX",
+        "XXXXXXX19XX",
+        "XXXXX8XXXX",
+        "_XX23XX15XXX_",
         "__XXXXX__",
         "___XXX___",
         "XXXXXXXXX"
@@ -17000,7 +17000,7 @@
     },
     {
       "id": 382,
-      "name": "Level 382 - Boost Challenge 13",
+      "name": "Boost Challenge 13",
       "gridWidth": 9,
       "gridHeight": 11,
       "items": [
@@ -17046,7 +17046,7 @@
     },
     {
       "id": 383,
-      "name": "Level 383 - Challenge Challenge 13",
+      "name": "Challenge Challenge 13",
       "gridWidth": 9,
       "gridHeight": 12,
       "items": [
@@ -17075,25 +17075,25 @@
         null
       ],
       "gridShape": [
-        "___XXX___",
+        "___XXX22___",
         "__XXXXX__",
         "__XXXXX__",
+        "_XXXXXXX22_",
         "_XXXXXXX_",
-        "_XXXXXXX_",
+        "XXXXXXXX8X",
+        "XX24XXXXXXX",
         "XXXXXXXXX",
-        "XXXXXXXXX",
-        "XXXXXXXXX",
         "_XXXXXXX_",
         "_XXXXXXX_",
-        "__XXXXX__",
-        "__XXXXX__"
+        "__XX7XXX__",
+        "__XXX13XX__"
       ],
       "movesAllowed": 50,
       "scoreTarget": 3228
     },
     {
       "id": 384,
-      "name": "Level 384 - Surge Challenge 13",
+      "name": "Surge Challenge 13",
       "gridWidth": 9,
       "gridHeight": 12,
       "items": [
@@ -17123,15 +17123,15 @@
       ],
       "gridShape": [
         "___XXX___",
-        "__XXXXX__",
-        "_XXXXXXX_",
+        "__XX23XXX__",
+        "_X25XXXXXX_",
+        "XXXXXX2X9XX",
         "XXXXXXXXX",
         "XXXXXXXXX",
+        "XX3XXXX12XXX",
+        "X25X11XXXXX21XX",
         "XXXXXXXXX",
-        "XXXXXXXXX",
-        "XXXXXXXXX",
-        "XXXXXXXXX",
-        "_XXXXXXX_",
+        "_XXXX9XXX_",
         "__XXXXX__",
         "___XXX___"
       ],
@@ -17140,7 +17140,7 @@
     },
     {
       "id": 385,
-      "name": "Level 385 - Flow Challenge 13",
+      "name": "Flow Challenge 13",
       "gridWidth": 9,
       "gridHeight": 10,
       "items": [
@@ -17190,7 +17190,7 @@
     },
     {
       "id": 386,
-      "name": "Level 386 - Drive Challenge 13",
+      "name": "Drive Challenge 13",
       "gridWidth": 9,
       "gridHeight": 11,
       "items": [
@@ -17236,7 +17236,7 @@
     },
     {
       "id": 387,
-      "name": "Level 387 - Spark Challenge 13",
+      "name": "Spark Challenge 13",
       "gridWidth": 9,
       "gridHeight": 11,
       "items": [
@@ -17265,16 +17265,16 @@
         null
       ],
       "gridShape": [
+        "XX25XXXX4XXX",
+        "XXXXXX8XXX",
+        "XXXXXXX20XX16",
+        "XXXXXXX19X19X25",
         "XXXXXXXXX",
+        "XXX12X24XXXXX",
         "XXXXXXXXX",
-        "XXXXXXXXX",
-        "XXXXXXXXX",
-        "XXXXXXXXX",
-        "XXXXXXXXX",
-        "XXXXXXXXX",
-        "XXXXXXXXX",
-        "XXXXXXXXX",
-        "XXXXXXXXX",
+        "X5XXXXXXXX",
+        "XXXXXX11XXX",
+        "XXX3XXXXXX",
         "XXXXXXXXX"
       ],
       "movesAllowed": 52,
@@ -17282,7 +17282,7 @@
     },
     {
       "id": 388,
-      "name": "Level 388 - Rush Challenge 13",
+      "name": "Rush Challenge 13",
       "gridWidth": 8,
       "gridHeight": 10,
       "items": [
@@ -17327,7 +17327,7 @@
     },
     {
       "id": 389,
-      "name": "Level 389 - Ignite Challenge 13",
+      "name": "Ignite Challenge 13",
       "gridWidth": 8,
       "gridHeight": 11,
       "items": [
@@ -17356,24 +17356,24 @@
         null
       ],
       "gridShape": [
-        "XXXXXXXX",
-        "_XXXXXX_",
+        "XX19XXX25XXX",
+        "_XXXX7XX_",
         "__XXXX__",
-        "XXXXXXXX",
-        "XXXXXXXX",
-        "XXXXXXXX",
-        "XXXXXXXX",
-        "XXXXXXXX",
+        "XXXX5XXXX",
+        "XX3XXXXXX",
+        "XXXXXX8XX",
+        "XX4XXX9XX14X",
+        "XXXXX13XXX",
         "__XXXX__",
-        "_XXXXXX_",
-        "XXXXXXXX"
+        "_XXXXXX10_",
+        "XXXX21X5XXX"
       ],
       "movesAllowed": 50,
       "scoreTarget": 3192
     },
     {
       "id": 390,
-      "name": "Level 390 - Elevate Challenge 13",
+      "name": "Elevate Challenge 13",
       "gridWidth": 8,
       "gridHeight": 11,
       "items": [
@@ -17407,13 +17407,13 @@
         null
       ],
       "gridShape": [
-        "XXXXXXXX",
+        "XXX7XXXXX",
         "__XXXX__",
         "__XXXX__",
-        "_XXXXXX_",
+        "_XXXXX7X4_",
         "XXXXXXXX",
-        "XXXXXXXX",
-        "XXXXXXXX",
+        "XXXXXXX15X",
+        "X3XXX10XXX16X6",
         "_XXXXXX_",
         "__XXXX__",
         "__XXXX__",
@@ -17424,7 +17424,7 @@
     },
     {
       "id": 391,
-      "name": "Level 391 - Fruit Challenge 14",
+      "name": "Fruit Challenge 14",
       "gridWidth": 8,
       "gridHeight": 12,
       "items": [
@@ -17471,7 +17471,7 @@
     },
     {
       "id": 392,
-      "name": "Level 392 - Heart Challenge 14",
+      "name": "Heart Challenge 14",
       "gridWidth": 9,
       "gridHeight": 11,
       "items": [
@@ -17504,11 +17504,11 @@
         "__XXXXX__",
         "_XXXXXXX_",
         "_XXXXXXX_",
+        "XXXXXXX12XX",
         "XXXXXXXXX",
-        "XXXXXXXXX",
-        "XXXXXXXXX",
-        "_XXXXXXX_",
-        "_XXXXXXX_",
+        "XXXX17X17XXXX22",
+        "_X7XXXXXX_",
+        "_XX4XXXXX_",
         "__XXXXX__",
         "__XXXXX__"
       ],
@@ -17517,7 +17517,7 @@
     },
     {
       "id": 393,
-      "name": "Level 393 - Sports Challenge 14",
+      "name": "Sports Challenge 14",
       "gridWidth": 9,
       "gridHeight": 11,
       "items": [
@@ -17563,7 +17563,7 @@
     },
     {
       "id": 394,
-      "name": "Level 394 - Veggie Challenge 14",
+      "name": "Veggie Challenge 14",
       "gridWidth": 8,
       "gridHeight": 10,
       "items": [
@@ -17592,14 +17592,14 @@
         null
       ],
       "gridShape": [
-        "XXXXXXXX",
-        "_XXXXXXX",
+        "XXXXXXX1X",
+        "_XXXX13XXX",
+        "__XXX14XXX",
+        "X4XXXXXXX",
+        "_XXX13XXXX",
         "__XXXXXX",
-        "XXXXXXXX",
-        "_XXXXXXX",
-        "__XXXXXX",
-        "XXXXXXXX",
-        "_XXXXXXX",
+        "XXXXXXXX18",
+        "_XXXXXX22X",
         "__XXXXXX",
         "XXXXXXXX"
       ],
@@ -17608,7 +17608,7 @@
     },
     {
       "id": 395,
-      "name": "Level 395 - Achievement Challenge 14",
+      "name": "Achievement Challenge 14",
       "gridWidth": 9,
       "gridHeight": 10,
       "items": [
@@ -17653,7 +17653,7 @@
     },
     {
       "id": 396,
-      "name": "Level 396 - Weight Challenge 14",
+      "name": "Weight Challenge 14",
       "gridWidth": 9,
       "gridHeight": 11,
       "items": [
@@ -17704,7 +17704,7 @@
     },
     {
       "id": 397,
-      "name": "Level 397 - Endurance Challenge 14",
+      "name": "Endurance Challenge 14",
       "gridWidth": 8,
       "gridHeight": 11,
       "items": [
@@ -17733,16 +17733,16 @@
         null
       ],
       "gridShape": [
+        "XX16X2XXX4XX",
+        "XXXX5XXX7X",
+        "XXXXX4XXX",
         "XXXXXXXX",
         "XXXXXXXX",
-        "XXXXXXXX",
-        "XXXXXXXX",
-        "XXXXXXXX",
-        "XXXXXXXX",
-        "XXXXXXXX",
-        "XXXXXXXX",
-        "XXXXXXXX",
-        "XXXXXXXX",
+        "XXXX2XXXX",
+        "XXXXX10XXX",
+        "XXXXX22XXX",
+        "XXX19XXXXX",
+        "X20XXXXXXX",
         "XXXXXXXX"
       ],
       "movesAllowed": 52,
@@ -17750,7 +17750,7 @@
     },
     {
       "id": 398,
-      "name": "Level 398 - Speed Challenge 14",
+      "name": "Speed Challenge 14",
       "gridWidth": 9,
       "gridHeight": 10,
       "items": [
@@ -17795,7 +17795,7 @@
     },
     {
       "id": 399,
-      "name": "Level 399 - Strength Challenge 14",
+      "name": "Strength Challenge 14",
       "gridWidth": 9,
       "gridHeight": 12,
       "items": [
@@ -17842,7 +17842,7 @@
     },
     {
       "id": 400,
-      "name": "Level 400 - Balance Challenge 14",
+      "name": "Balance Challenge 14",
       "gridWidth": 9,
       "gridHeight": 12,
       "items": [
@@ -17872,24 +17872,24 @@
       ],
       "gridShape": [
         "XXXXXXXXX",
-        "XXXXXXXX_",
+        "XXX23XXXXX_",
         "XXXXXXX__",
-        "XXXXXX___",
+        "XX13XXXX___",
         "XXXXX____",
         "XXXX_____",
-        "XXX______",
-        "XXXXXXXXX",
+        "XXX8______",
+        "XXX12XXXXXX",
         "XXXXXXXX_",
-        "XXXXXXX__",
+        "XXXXXX24X__",
         "XXXXXX___",
-        "XXXXX____"
+        "X5X4XXX____"
       ],
       "movesAllowed": 51,
       "scoreTarget": 3329
     },
     {
       "id": 401,
-      "name": "Level 401 - Power Challenge 14",
+      "name": "Power Challenge 14",
       "gridWidth": 9,
       "gridHeight": 10,
       "items": [
@@ -17920,21 +17920,21 @@
       "gridShape": [
         "__XXXXX__",
         "__XXXXX__",
-        "_XXXXXXX_",
-        "_XXXXXXX_",
-        "XXXXXXXXX",
-        "XXXXXXXXX",
-        "XXXXXXXXX",
-        "_XXXXXXX_",
-        "_XXXXXXX_",
-        "__XXXXX__"
+        "_XXXXXX23X_",
+        "_X11XXX20XXX_",
+        "X23XXXXXXXX7",
+        "XXXX24X25X2XXX13",
+        "XXXXXXXX22X",
+        "_XXXX19XXX19_",
+        "_X8XXXXXX_",
+        "__XX11XXX__"
       ],
       "movesAllowed": 51,
       "scoreTarget": 3136
     },
     {
       "id": 402,
-      "name": "Level 402 - Agility Challenge 14",
+      "name": "Agility Challenge 14",
       "gridWidth": 8,
       "gridHeight": 12,
       "items": [
@@ -17981,7 +17981,7 @@
     },
     {
       "id": 403,
-      "name": "Level 403 - Focus Challenge 14",
+      "name": "Focus Challenge 14",
       "gridWidth": 9,
       "gridHeight": 11,
       "items": [
@@ -18015,15 +18015,15 @@
         null
       ],
       "gridShape": [
-        "XXXXXXXXX",
+        "XX7XXXXXXX",
+        "_XXXXXX13X25X24",
+        "__XXX7XXXX",
+        "XXX17XXXXXX",
         "_XXXXXXXX",
-        "__XXXXXXX",
-        "XXXXXXXXX",
-        "_XXXXXXXX",
-        "__XXXXXXX",
-        "XXXXXXXXX",
-        "_XXXXXXXX",
-        "__XXXXXXX",
+        "__XXXXXXX5",
+        "XXXXXX17XXX",
+        "_X21XXXXXXX15",
+        "__XXXXX7XX11",
         "XXXXXXXXX",
         "_XXXXXXXX"
       ],
@@ -18032,7 +18032,7 @@
     },
     {
       "id": 404,
-      "name": "Level 404 - Energy Challenge 14",
+      "name": "Energy Challenge 14",
       "gridWidth": 9,
       "gridHeight": 12,
       "items": [
@@ -18062,24 +18062,24 @@
       ],
       "gridShape": [
         "XXXXXXXXX",
+        "XXX3XXXXXX",
         "XXXXXXXXX",
-        "XXXXXXXXX",
+        "XXX5___XX23X",
+        "XXX___XXX",
+        "XXX___XXX2",
         "XXX___XXX",
         "XXX___XXX",
         "XXX___XXX",
-        "XXX___XXX",
-        "XXX___XXX",
-        "XXX___XXX",
-        "XXXXXXXXX",
-        "XXXXXXXXX",
-        "XXXXXXXXX"
+        "XX23XXXX7X21X4X",
+        "XXXX25XXXXX19",
+        "XXXX18XXXXX"
       ],
       "movesAllowed": 53,
       "scoreTarget": 3705
     },
     {
       "id": 405,
-      "name": "Level 405 - Vitality Challenge 14",
+      "name": "Vitality Challenge 14",
       "gridWidth": 9,
       "gridHeight": 12,
       "items": [
@@ -18126,7 +18126,7 @@
     },
     {
       "id": 406,
-      "name": "Level 406 - Circuit Challenge 14",
+      "name": "Circuit Challenge 14",
       "gridWidth": 9,
       "gridHeight": 11,
       "items": [
@@ -18158,21 +18158,21 @@
         "XXXXXXXXX",
         "XXXXXXXXX",
         "XXXXXXXXX",
+        "XXX11XXXXXX12",
+        "XXXXXXX1X17X",
+        "XXXXXXXXX",
+        "XXXXXXXXX17",
         "XXXXXXXXX",
         "XXXXXXXXX",
         "XXXXXXXXX",
-        "XXXXXXXXX",
-        "XXXXXXXXX",
-        "XXXXXXXXX",
-        "XXXXXXXXX",
-        "XXXXXXXXX"
+        "X18XXXXXXXX2"
       ],
       "movesAllowed": 54,
       "scoreTarget": 3963
     },
     {
       "id": 407,
-      "name": "Level 407 - Sprint Challenge 14",
+      "name": "Sprint Challenge 14",
       "gridWidth": 9,
       "gridHeight": 10,
       "items": [
@@ -18222,7 +18222,7 @@
     },
     {
       "id": 408,
-      "name": "Level 408 - Recovery Challenge 14",
+      "name": "Recovery Challenge 14",
       "gridWidth": 9,
       "gridHeight": 10,
       "items": [
@@ -18251,15 +18251,15 @@
         null
       ],
       "gridShape": [
-        "XXXXXXXXX",
+        "X21XXXX7XXXX",
         "___XXX___",
         "__XXXXX__",
         "_XXXXXXX_",
-        "XXXXXXXXX",
-        "XXXXXXXXX",
-        "XXXXXXXXX",
+        "XXXX22XXXXX",
+        "X24XXXXXXXX",
+        "XXXXX15XXXX",
         "_XXXXXXX_",
-        "__XXXXX__",
+        "__XXXX13X__",
         "___XXX___"
       ],
       "movesAllowed": 51,
@@ -18267,7 +18267,7 @@
     },
     {
       "id": 409,
-      "name": "Level 409 - Peak Challenge 14",
+      "name": "Peak Challenge 14",
       "gridWidth": 9,
       "gridHeight": 11,
       "items": [
@@ -18296,24 +18296,24 @@
         null
       ],
       "gridShape": [
-        "XXXXXXXXX",
+        "XXXXX3XXXX",
         "XXXXXXXX_",
-        "XXXXXXX__",
+        "XXXX2XXX__",
         "XXXXXX___",
         "XXXXX____",
-        "XXXX_____",
+        "XXXX22_____",
         "XXX______",
-        "XXXXXXXXX",
+        "XXXXX11XXXX",
         "XXXXXXXX_",
-        "XXXXXXX__",
-        "XXXXXX___"
+        "XXXXX15XX__",
+        "X7XXX2XX___"
       ],
       "movesAllowed": 52,
       "scoreTarget": 3216
     },
     {
       "id": 410,
-      "name": "Level 410 - Foundation Challenge 14",
+      "name": "Foundation Challenge 14",
       "gridWidth": 8,
       "gridHeight": 10,
       "items": [
@@ -18358,7 +18358,7 @@
     },
     {
       "id": 411,
-      "name": "Level 411 - Momentum Challenge 14",
+      "name": "Momentum Challenge 14",
       "gridWidth": 9,
       "gridHeight": 10,
       "items": [
@@ -18403,7 +18403,7 @@
     },
     {
       "id": 412,
-      "name": "Level 412 - Boost Challenge 14",
+      "name": "Boost Challenge 14",
       "gridWidth": 8,
       "gridHeight": 11,
       "items": [
@@ -18449,7 +18449,7 @@
     },
     {
       "id": 413,
-      "name": "Level 413 - Challenge Challenge 14",
+      "name": "Challenge Challenge 14",
       "gridWidth": 9,
       "gridHeight": 12,
       "items": [
@@ -18496,7 +18496,7 @@
     },
     {
       "id": 414,
-      "name": "Level 414 - Surge Challenge 14",
+      "name": "Surge Challenge 14",
       "gridWidth": 9,
       "gridHeight": 12,
       "items": [
@@ -18525,25 +18525,25 @@
         null
       ],
       "gridShape": [
+        "XXXXXXXXX22",
+        "X5XX5XXXXXX",
+        "XXXX25XXXX12X",
         "XXXXXXXXX",
         "XXXXXXXXX",
+        "XXXX19XXXXX",
         "XXXXXXXXX",
         "XXXXXXXXX",
-        "XXXXXXXXX",
-        "XXXXXXXXX",
-        "XXXXXXXXX",
-        "XXXXXXXXX",
-        "XXXXXXXXX",
-        "XXXXXXXXX",
-        "XXXXXXXXX",
-        "XXXXXXXXX"
+        "XXXXX11XXXX",
+        "XXXXXX15XXX",
+        "XX20XX17X1XXXX",
+        "X15XXXXXXX9X"
       ],
       "movesAllowed": 55,
       "scoreTarget": 4239
     },
     {
       "id": 415,
-      "name": "Level 415 - Flow Challenge 14",
+      "name": "Flow Challenge 14",
       "gridWidth": 8,
       "gridHeight": 10,
       "items": [
@@ -18588,7 +18588,7 @@
     },
     {
       "id": 416,
-      "name": "Level 416 - Drive Challenge 14",
+      "name": "Drive Challenge 14",
       "gridWidth": 9,
       "gridHeight": 11,
       "items": [
@@ -18622,24 +18622,24 @@
         null
       ],
       "gridShape": [
-        "XXXXXXXXX",
-        "_XXXXXXX_",
+        "XXXXXXX10XX",
+        "_X4XXXXXX_",
         "__XXXXX__",
         "___XXX___",
         "XXXXXXXXX",
+        "XX15XXX12X16X18X21X16",
         "XXXXXXXXX",
-        "XXXXXXXXX",
-        "___XXX___",
+        "___X14XX___",
         "__XXXXX__",
         "_XXXXXXX_",
-        "XXXXXXXXX"
+        "XXXX13XX22XXX"
       ],
       "movesAllowed": 52,
       "scoreTarget": 3321
     },
     {
       "id": 417,
-      "name": "Level 417 - Spark Challenge 14",
+      "name": "Spark Challenge 14",
       "gridWidth": 9,
       "gridHeight": 10,
       "items": [
@@ -18668,23 +18668,23 @@
         null
       ],
       "gridShape": [
-        "XXXXXXXXX",
-        "___XXX___",
+        "X6XXXXX5XXX",
+        "___X22XX___",
         "__XXXXX__",
-        "_XXXXXXX_",
+        "_X4XXXXXX_",
+        "XXXX4XXXXX",
         "XXXXXXXXX",
-        "XXXXXXXXX",
-        "XXXXXXXXX",
-        "_XXXXXXX_",
+        "XXX24X20X15X24XXX",
+        "_XXXXXXX11_",
         "__XXXXX__",
-        "___XXX___"
+        "___X20XX___"
       ],
       "movesAllowed": 51,
       "scoreTarget": 3072
     },
     {
       "id": 418,
-      "name": "Level 418 - Rush Challenge 14",
+      "name": "Rush Challenge 14",
       "gridWidth": 9,
       "gridHeight": 11,
       "items": [
@@ -18735,7 +18735,7 @@
     },
     {
       "id": 419,
-      "name": "Level 419 - Ignite Challenge 14",
+      "name": "Ignite Challenge 14",
       "gridWidth": 9,
       "gridHeight": 12,
       "items": [
@@ -18765,15 +18765,15 @@
       ],
       "gridShape": [
         "___XXX___",
+        "__XX3XXX__",
         "__XXXXX__",
-        "__XXXXX__",
-        "_XXXXXXX_",
-        "_XXXXXXX_",
+        "_XXX16XXXX_",
+        "_XX23XXXXX_",
+        "XXXX13XXX7XX",
+        "XXXX2XXX9XX",
         "XXXXXXXXX",
-        "XXXXXXXXX",
-        "XXXXXXXXX",
-        "_XXXXXXX_",
-        "_XXXXXXX_",
+        "_XX14XXXXX13_",
+        "_XXXXXX19X_",
         "__XXXXX__",
         "__XXXXX__"
       ],
@@ -18782,7 +18782,7 @@
     },
     {
       "id": 420,
-      "name": "Level 420 - Elevate Challenge 14",
+      "name": "Elevate Challenge 14",
       "gridWidth": 9,
       "gridHeight": 12,
       "items": [
@@ -18829,7 +18829,7 @@
     },
     {
       "id": 421,
-      "name": "Level 421 - Fruit Challenge 15",
+      "name": "Fruit Challenge 15",
       "gridWidth": 8,
       "gridHeight": 11,
       "items": [
@@ -18858,16 +18858,16 @@
         null
       ],
       "gridShape": [
-        "XXXXXXXX",
-        "_XXXXXXX",
+        "X1XXX25XXXX",
+        "_XXXXXX13X",
         "__XXXXXX",
         "XXXXXXXX",
         "_XXXXXXX",
         "__XXXXXX",
         "XXXXXXXX",
-        "_XXXXXXX",
+        "_XXXXXXX13",
         "__XXXXXX",
-        "XXXXXXXX",
+        "XXX5XXXX20X",
         "_XXXXXXX"
       ],
       "movesAllowed": 53,
@@ -18875,7 +18875,7 @@
     },
     {
       "id": 422,
-      "name": "Level 422 - Heart Challenge 15",
+      "name": "Heart Challenge 15",
       "gridWidth": 8,
       "gridHeight": 12,
       "items": [
@@ -18922,7 +18922,7 @@
     },
     {
       "id": 423,
-      "name": "Level 423 - Sports Challenge 15",
+      "name": "Sports Challenge 15",
       "gridWidth": 8,
       "gridHeight": 10,
       "items": [
@@ -18951,23 +18951,23 @@
         null
       ],
       "gridShape": [
+        "XXXXX21XXX",
+        "XXXXXXXX",
+        "XXXXX18XXX",
+        "X19XXXXXXX",
+        "XXXXX21XXX13",
+        "XXXXXX8XX",
         "XXXXXXXX",
         "XXXXXXXX",
-        "XXXXXXXX",
-        "XXXXXXXX",
-        "XXXXXXXX",
-        "XXXXXXXX",
-        "XXXXXXXX",
-        "XXXXXXXX",
-        "XXXXXXXX",
-        "XXXXXXXX"
+        "XXXXXX14XX",
+        "XXX22XX15X11XX"
       ],
       "movesAllowed": 54,
       "scoreTarget": 3562
     },
     {
       "id": 424,
-      "name": "Level 424 - Veggie Challenge 15",
+      "name": "Veggie Challenge 15",
       "gridWidth": 9,
       "gridHeight": 12,
       "items": [
@@ -19014,7 +19014,7 @@
     },
     {
       "id": 425,
-      "name": "Level 425 - Achievement Challenge 15",
+      "name": "Achievement Challenge 15",
       "gridWidth": 9,
       "gridHeight": 10,
       "items": [
@@ -19059,7 +19059,7 @@
     },
     {
       "id": 426,
-      "name": "Level 426 - Weight Challenge 15",
+      "name": "Weight Challenge 15",
       "gridWidth": 9,
       "gridHeight": 10,
       "items": [
@@ -19104,7 +19104,7 @@
     },
     {
       "id": 427,
-      "name": "Level 427 - Endurance Challenge 15",
+      "name": "Endurance Challenge 15",
       "gridWidth": 8,
       "gridHeight": 12,
       "items": [
@@ -19151,7 +19151,7 @@
     },
     {
       "id": 428,
-      "name": "Level 428 - Speed Challenge 15",
+      "name": "Speed Challenge 15",
       "gridWidth": 9,
       "gridHeight": 12,
       "items": [
@@ -19180,25 +19180,25 @@
         null
       ],
       "gridShape": [
-        "___XXX___",
+        "___XXX6___",
         "__XXXXX__",
         "__XXXXX__",
-        "_XXXXXXX_",
-        "_XXXXXXX_",
+        "_X16XXXXXX_",
+        "_XX13XXXXX_",
+        "XXXXXXXX8X",
         "XXXXXXXXX",
-        "XXXXXXXXX",
-        "XXXXXXXXX",
-        "_XXXXXXX_",
+        "XX12XXX6XXXX",
+        "_XXXXX7XX_",
         "_XXXXXXX_",
         "__XXXXX__",
-        "__XXXXX__"
+        "__XXXXX21__"
       ],
       "movesAllowed": 53,
       "scoreTarget": 3519
     },
     {
       "id": 429,
-      "name": "Level 429 - Strength Challenge 15",
+      "name": "Strength Challenge 15",
       "gridWidth": 9,
       "gridHeight": 11,
       "items": [
@@ -19254,7 +19254,7 @@
     },
     {
       "id": 430,
-      "name": "Level 430 - Balance Challenge 15",
+      "name": "Balance Challenge 15",
       "gridWidth": 9,
       "gridHeight": 11,
       "items": [
@@ -19284,23 +19284,23 @@
       ],
       "gridShape": [
         "XXXXXXXXX",
+        "_XXXXXXXX19",
+        "__XXXXXXX23",
+        "XXXXXXXX15X",
         "_XXXXXXXX",
-        "__XXXXXXX",
+        "__X20XXX14XXX",
         "XXXXXXXXX",
         "_XXXXXXXX",
         "__XXXXXXX",
         "XXXXXXXXX",
-        "_XXXXXXXX",
-        "__XXXXXXX",
-        "XXXXXXXXX",
-        "_XXXXXXXX"
+        "_XXXXXX3XX"
       ],
       "movesAllowed": 54,
       "scoreTarget": 3844
     },
     {
       "id": 431,
-      "name": "Level 431 - Power Challenge 15",
+      "name": "Power Challenge 15",
       "gridWidth": 8,
       "gridHeight": 11,
       "items": [
@@ -19346,7 +19346,7 @@
     },
     {
       "id": 432,
-      "name": "Level 432 - Agility Challenge 15",
+      "name": "Agility Challenge 15",
       "gridWidth": 9,
       "gridHeight": 11,
       "items": [
@@ -19392,7 +19392,7 @@
     },
     {
       "id": 433,
-      "name": "Level 433 - Focus Challenge 15",
+      "name": "Focus Challenge 15",
       "gridWidth": 9,
       "gridHeight": 12,
       "items": [
@@ -19423,23 +19423,23 @@
       "gridShape": [
         "XXXXXXXXX",
         "XXXXXXXXX",
+        "XX10XXXXXXX",
+        "XXX10XXXXXX",
+        "XX11XXXXXXX",
+        "X24XXX23XXXXX",
+        "X10XXXXXX2XX",
+        "XXXXXXX11XX",
         "XXXXXXXXX",
         "XXXXXXXXX",
-        "XXXXXXXXX",
-        "XXXXXXXXX",
-        "XXXXXXXXX",
-        "XXXXXXXXX",
-        "XXXXXXXXX",
-        "XXXXXXXXX",
-        "XXXXXXXXX",
-        "XXXXXXXXX"
+        "XXXXXX3XX3X",
+        "XXXXXX25XX18X"
       ],
       "movesAllowed": 56,
       "scoreTarget": 4404
     },
     {
       "id": 434,
-      "name": "Level 434 - Energy Challenge 15",
+      "name": "Energy Challenge 15",
       "gridWidth": 9,
       "gridHeight": 12,
       "items": [
@@ -19469,24 +19469,24 @@
       ],
       "gridShape": [
         "XXXXXXXXX",
-        "_XXXXXXX_",
+        "_XXXXXX17X_",
         "__XXXXX__",
         "___XXX___",
-        "XXXXXXXXX",
-        "XXXXXXXXX",
+        "XXXXX11XXXX6",
+        "XX23XXXX8XX10X",
         "XXXXXXXXX",
         "XXXXXXXXX",
         "___XXX___",
         "__XXXXX__",
         "_XXXXXXX_",
-        "XXXXXXXXX"
+        "XXXXXXX10XX"
       ],
       "movesAllowed": 54,
       "scoreTarget": 3711
     },
     {
       "id": 435,
-      "name": "Level 435 - Vitality Challenge 15",
+      "name": "Vitality Challenge 15",
       "gridWidth": 9,
       "gridHeight": 11,
       "items": [
@@ -19532,7 +19532,7 @@
     },
     {
       "id": 436,
-      "name": "Level 436 - Circuit Challenge 15",
+      "name": "Circuit Challenge 15",
       "gridWidth": 9,
       "gridHeight": 10,
       "items": [
@@ -19577,7 +19577,7 @@
     },
     {
       "id": 437,
-      "name": "Level 437 - Sprint Challenge 15",
+      "name": "Sprint Challenge 15",
       "gridWidth": 8,
       "gridHeight": 12,
       "items": [
@@ -19606,15 +19606,15 @@
         null
       ],
       "gridShape": [
+        "__XX19XX__",
         "__XXXX__",
         "__XXXX__",
-        "__XXXX__",
+        "_X6XX24XXX_",
         "_XXXXXX_",
-        "_XXXXXX_",
+        "XXXXXXXX15",
+        "XXXXXXX10X",
         "XXXXXXXX",
-        "XXXXXXXX",
-        "XXXXXXXX",
-        "_XXXXXX_",
+        "_XX5X18X17XX_",
         "_XXXXXX_",
         "__XXXX__",
         "__XXXX__"
@@ -19624,7 +19624,7 @@
     },
     {
       "id": 438,
-      "name": "Level 438 - Recovery Challenge 15",
+      "name": "Recovery Challenge 15",
       "gridWidth": 9,
       "gridHeight": 11,
       "items": [
@@ -19670,7 +19670,7 @@
     },
     {
       "id": 439,
-      "name": "Level 439 - Peak Challenge 15",
+      "name": "Peak Challenge 15",
       "gridWidth": 8,
       "gridHeight": 10,
       "items": [
@@ -19715,7 +19715,7 @@
     },
     {
       "id": 440,
-      "name": "Level 440 - Foundation Challenge 15",
+      "name": "Foundation Challenge 15",
       "gridWidth": 9,
       "gridHeight": 12,
       "items": [
@@ -19767,7 +19767,7 @@
     },
     {
       "id": 441,
-      "name": "Level 441 - Momentum Challenge 15",
+      "name": "Momentum Challenge 15",
       "gridWidth": 9,
       "gridHeight": 12,
       "items": [
@@ -19814,7 +19814,7 @@
     },
     {
       "id": 442,
-      "name": "Level 442 - Boost Challenge 15",
+      "name": "Boost Challenge 15",
       "gridWidth": 8,
       "gridHeight": 10,
       "items": [
@@ -19864,7 +19864,7 @@
     },
     {
       "id": 443,
-      "name": "Level 443 - Challenge Challenge 15",
+      "name": "Challenge Challenge 15",
       "gridWidth": 8,
       "gridHeight": 11,
       "items": [
@@ -19910,7 +19910,7 @@
     },
     {
       "id": 444,
-      "name": "Level 444 - Surge Challenge 15",
+      "name": "Surge Challenge 15",
       "gridWidth": 9,
       "gridHeight": 11,
       "items": [
@@ -19956,7 +19956,7 @@
     },
     {
       "id": 445,
-      "name": "Level 445 - Flow Challenge 15",
+      "name": "Flow Challenge 15",
       "gridWidth": 8,
       "gridHeight": 10,
       "items": [
@@ -20001,7 +20001,7 @@
     },
     {
       "id": 446,
-      "name": "Level 446 - Drive Challenge 15",
+      "name": "Drive Challenge 15",
       "gridWidth": 9,
       "gridHeight": 12,
       "items": [
@@ -20048,7 +20048,7 @@
     },
     {
       "id": 447,
-      "name": "Level 447 - Spark Challenge 15",
+      "name": "Spark Challenge 15",
       "gridWidth": 9,
       "gridHeight": 11,
       "items": [
@@ -20094,7 +20094,7 @@
     },
     {
       "id": 448,
-      "name": "Level 448 - Rush Challenge 15",
+      "name": "Rush Challenge 15",
       "gridWidth": 9,
       "gridHeight": 12,
       "items": [
@@ -20123,25 +20123,25 @@
         null
       ],
       "gridShape": [
+        "X21XXXX3XXXX",
+        "_XXXXXXXX",
+        "__XXXXXXX9",
+        "X9XXXXXXXX",
+        "_XX5XXXXXX",
+        "__XXXXXX17X",
         "XXXXXXXXX",
         "_XXXXXXXX",
         "__XXXXXXX",
-        "XXXXXXXXX",
+        "XXX10XXXXXX",
         "_XXXXXXXX",
-        "__XXXXXXX",
-        "XXXXXXXXX",
-        "_XXXXXXXX",
-        "__XXXXXXX",
-        "XXXXXXXXX",
-        "_XXXXXXXX",
-        "__XXXXXXX"
+        "__XX16XXXX9X"
       ],
       "movesAllowed": 56,
       "scoreTarget": 4197
     },
     {
       "id": 449,
-      "name": "Level 449 - Ignite Challenge 15",
+      "name": "Ignite Challenge 15",
       "gridWidth": 9,
       "gridHeight": 10,
       "items": [
@@ -20186,7 +20186,7 @@
     },
     {
       "id": 450,
-      "name": "Level 450 - Elevate Challenge 15",
+      "name": "Elevate Challenge 15",
       "gridWidth": 9,
       "gridHeight": 11,
       "items": [
@@ -20232,7 +20232,7 @@
     },
     {
       "id": 451,
-      "name": "Level 451 - Fruit Challenge 16",
+      "name": "Fruit Challenge 16",
       "gridWidth": 9,
       "gridHeight": 12,
       "items": [
@@ -20284,7 +20284,7 @@
     },
     {
       "id": 452,
-      "name": "Level 452 - Heart Challenge 16",
+      "name": "Heart Challenge 16",
       "gridWidth": 8,
       "gridHeight": 11,
       "items": [
@@ -20330,7 +20330,7 @@
     },
     {
       "id": 453,
-      "name": "Level 453 - Sports Challenge 16",
+      "name": "Sports Challenge 16",
       "gridWidth": 9,
       "gridHeight": 12,
       "items": [
@@ -20362,14 +20362,14 @@
         "XXXXXXXXX",
         "___XXX___",
         "___XXX___",
-        "__XXXXX__",
+        "__X13XXXX__",
         "_XXXXXXX_",
+        "XXXXXX19XXX",
         "XXXXXXXXX",
-        "XXXXXXXXX",
-        "XXXXXXXXX",
-        "_XXXXXXX_",
-        "__XXXXX__",
-        "___XXX___",
+        "XX18XXXXXXX",
+        "_XXX23XX5X3X_",
+        "__X24X13XX3X__",
+        "___XXX15___",
         "___XXX___"
       ],
       "movesAllowed": 55,
@@ -20377,7 +20377,7 @@
     },
     {
       "id": 454,
-      "name": "Level 454 - Veggie Challenge 16",
+      "name": "Veggie Challenge 16",
       "gridWidth": 9,
       "gridHeight": 12,
       "items": [
@@ -20408,15 +20408,15 @@
       "gridShape": [
         "XXXXXXXXX",
         "XXXXXXXX_",
-        "XXXXXXX__",
-        "XXXXXX___",
-        "XXXXX____",
-        "XXXX_____",
+        "XX23XXXXX__",
+        "XX4XXXX___",
+        "XXXXX18____",
+        "XXXX20_____",
         "XXX______",
-        "XXXXXXXXX",
+        "XXXXXXXX5X",
         "XXXXXXXX_",
         "XXXXXXX__",
-        "XXXXXX___",
+        "XXXXX3X___",
         "XXXXX____"
       ],
       "movesAllowed": 55,
@@ -20424,7 +20424,7 @@
     },
     {
       "id": 455,
-      "name": "Level 455 - Achievement Challenge 16",
+      "name": "Achievement Challenge 16",
       "gridWidth": 9,
       "gridHeight": 11,
       "items": [
@@ -20458,24 +20458,24 @@
         null
       ],
       "gridShape": [
+        "__XXXXX15__",
         "__XXXXX__",
+        "_X23X24XXXX18X15_",
+        "_X12XXXX25XX1_",
+        "XX18XXXXXXX22",
+        "XXXXXXX3XX",
+        "XXXXXXXXX",
+        "_X4XXXX11XX_",
+        "_XXXXXXX_",
         "__XXXXX__",
-        "_XXXXXXX_",
-        "_XXXXXXX_",
-        "XXXXXXXXX",
-        "XXXXXXXXX",
-        "XXXXXXXXX",
-        "_XXXXXXX_",
-        "_XXXXXXX_",
-        "__XXXXX__",
-        "__XXXXX__"
+        "__XXX5XX__"
       ],
       "movesAllowed": 55,
       "scoreTarget": 3588
     },
     {
       "id": 456,
-      "name": "Level 456 - Weight Challenge 16",
+      "name": "Weight Challenge 16",
       "gridWidth": 9,
       "gridHeight": 12,
       "items": [
@@ -20505,14 +20505,14 @@
       ],
       "gridShape": [
         "___XXX___",
-        "__XXXXX__",
+        "__XXXX7X16__",
         "_XXXXXXX_",
-        "XXXXXXXXX",
-        "XXXXXXXXX",
-        "XXXXXXXXX",
-        "XXXXXXXXX",
-        "XXXXXXXXX",
-        "XXXXXXXXX",
+        "XX24X22XX2XXXX",
+        "XXXX21XXX20X21X",
+        "XXXX13XXXXX",
+        "XXX23XXXXXX",
+        "XXX22XXXXXX",
+        "XXXXXX21X8XX",
         "_XXXXXXX_",
         "__XXXXX__",
         "___XXX___"
@@ -20522,7 +20522,7 @@
     },
     {
       "id": 457,
-      "name": "Level 457 - Endurance Challenge 16",
+      "name": "Endurance Challenge 16",
       "gridWidth": 9,
       "gridHeight": 11,
       "items": [
@@ -20568,7 +20568,7 @@
     },
     {
       "id": 458,
-      "name": "Level 458 - Speed Challenge 16",
+      "name": "Speed Challenge 16",
       "gridWidth": 9,
       "gridHeight": 12,
       "items": [
@@ -20615,7 +20615,7 @@
     },
     {
       "id": 459,
-      "name": "Level 459 - Strength Challenge 16",
+      "name": "Strength Challenge 16",
       "gridWidth": 9,
       "gridHeight": 12,
       "items": [
@@ -20662,7 +20662,7 @@
     },
     {
       "id": 460,
-      "name": "Level 460 - Balance Challenge 16",
+      "name": "Balance Challenge 16",
       "gridWidth": 8,
       "gridHeight": 11,
       "items": [
@@ -20692,15 +20692,15 @@
       ],
       "gridShape": [
         "XXXXXXXX",
+        "XXXX20XXXX",
+        "XXXXXXX18X",
+        "XXXX7XXXX",
+        "XXXX6XXXX",
         "XXXXXXXX",
+        "XXXXXX6XX",
         "XXXXXXXX",
-        "XXXXXXXX",
-        "XXXXXXXX",
-        "XXXXXXXX",
-        "XXXXXXXX",
-        "XXXXXXXX",
-        "XXXXXXXX",
-        "XXXXXXXX",
+        "XXX6XXXXX",
+        "XXXXXX4XX",
         "XXXXXXXX"
       ],
       "movesAllowed": 56,
@@ -20708,7 +20708,7 @@
     },
     {
       "id": 461,
-      "name": "Level 461 - Power Challenge 16",
+      "name": "Power Challenge 16",
       "gridWidth": 9,
       "gridHeight": 11,
       "items": [
@@ -20754,7 +20754,7 @@
     },
     {
       "id": 462,
-      "name": "Level 462 - Agility Challenge 16",
+      "name": "Agility Challenge 16",
       "gridWidth": 8,
       "gridHeight": 12,
       "items": [
@@ -20806,7 +20806,7 @@
     },
     {
       "id": 463,
-      "name": "Level 463 - Focus Challenge 16",
+      "name": "Focus Challenge 16",
       "gridWidth": 9,
       "gridHeight": 12,
       "items": [
@@ -20836,16 +20836,16 @@
       ],
       "gridShape": [
         "XXXXXXXXX",
-        "XXXXXXXX_",
+        "XXXXXXX12X_",
         "XXXXXXX__",
-        "XXXXXX___",
+        "XXXXXX9___",
         "XXXXX____",
         "XXXX_____",
         "XXX______",
-        "XXXXXXXXX",
-        "XXXXXXXX_",
-        "XXXXXXX__",
-        "XXXXXX___",
+        "XXXXX12X12XXX",
+        "X3XXX8XXXX13_",
+        "X22XXX21XXX__",
+        "XX22XXXX15___",
         "XXXXX____"
       ],
       "movesAllowed": 55,
@@ -20853,7 +20853,7 @@
     },
     {
       "id": 464,
-      "name": "Level 464 - Energy Challenge 16",
+      "name": "Energy Challenge 16",
       "gridWidth": 9,
       "gridHeight": 12,
       "items": [
@@ -20882,25 +20882,25 @@
         null
       ],
       "gridShape": [
-        "___XXX___",
+        "___XXX18___",
         "__XXXXX__",
         "__XXXXX__",
         "_XXXXXXX_",
         "_XXXXXXX_",
-        "XXXXXXXXX",
-        "XXXXXXXXX",
-        "XXXXXXXXX",
+        "X20XX6XXXXXX",
+        "XXXXX5X22XXX22",
+        "XX8XXX21XXX4X",
         "_XXXXXXX_",
-        "_XXXXXXX_",
+        "_XX8XXX9XX_",
         "__XXXXX__",
-        "__XXXXX__"
+        "__XX5X3XX__"
       ],
       "movesAllowed": 55,
       "scoreTarget": 3783
     },
     {
       "id": 465,
-      "name": "Level 465 - Vitality Challenge 16",
+      "name": "Vitality Challenge 16",
       "gridWidth": 9,
       "gridHeight": 11,
       "items": [
@@ -20930,15 +20930,15 @@
       ],
       "gridShape": [
         "___XXX___",
-        "_XXXXXXX_",
-        "_XXXXXXX_",
+        "_XXXXX12XX_",
+        "_X2XXXXXX_",
+        "XXX8XX18XXXX",
+        "XXXX18XXXXX",
+        "XX14XXXXXXX",
         "XXXXXXXXX",
-        "XXXXXXXXX",
-        "XXXXXXXXX",
-        "XXXXXXXXX",
-        "XXXXXXXXX",
-        "_XXXXXXX_",
-        "_XXXXXXX_",
+        "XXXXXXXX6X5",
+        "_XXX18XXX21X_",
+        "_X3XXXXXX_",
         "___XXX___"
       ],
       "movesAllowed": 56,
@@ -20946,7 +20946,7 @@
     },
     {
       "id": 466,
-      "name": "Level 466 - Circuit Challenge 16",
+      "name": "Circuit Challenge 16",
       "gridWidth": 8,
       "gridHeight": 12,
       "items": [
@@ -20975,25 +20975,25 @@
         null
       ],
       "gridShape": [
-        "XXXXXXXX",
-        "_XXXXXXX",
+        "XX22XXXXXX",
+        "_XX9XXXXX",
         "__XXXXXX",
-        "XXXXXXXX",
+        "XX20XXXXXX",
         "_XXXXXXX",
-        "__XXXXXX",
-        "XXXXXXXX",
-        "_XXXXXXX",
-        "__XXXXXX",
-        "XXXXXXXX",
-        "_XXXXXXX",
-        "__XXXXXX"
+        "__XXXX1X15X3",
+        "XX7XXXXXX",
+        "_XX13XXXXX",
+        "__XX6XX14XX",
+        "XXXX9XXXX",
+        "_X22XX1XXXX",
+        "__XX4XXXX"
       ],
       "movesAllowed": 57,
       "scoreTarget": 3975
     },
     {
       "id": 467,
-      "name": "Level 467 - Sprint Challenge 16",
+      "name": "Sprint Challenge 16",
       "gridWidth": 9,
       "gridHeight": 12,
       "items": [
@@ -21040,7 +21040,7 @@
     },
     {
       "id": 468,
-      "name": "Level 468 - Recovery Challenge 16",
+      "name": "Recovery Challenge 16",
       "gridWidth": 9,
       "gridHeight": 12,
       "items": [
@@ -21078,21 +21078,21 @@
         "XXXXXXXXX",
         "XXXXXXXXX",
         "XXXXXXXXX",
+        "XX9XXXXXX12X",
         "XXXXXXXXX",
         "XXXXXXXXX",
-        "XXXXXXXXX",
-        "XXXXXXXXX",
-        "XXXXXXXXX",
-        "XXXXXXXXX",
-        "XXXXXXXXX",
-        "XXXXXXXXX"
+        "X4XXXXXXXX",
+        "XXXXX4XXXX",
+        "XXXX1XXXXX",
+        "XXXXXXXXX16",
+        "XXXX1XXXXX13"
       ],
       "movesAllowed": 59,
       "scoreTarget": 4725
     },
     {
       "id": 469,
-      "name": "Level 469 - Peak Challenge 16",
+      "name": "Peak Challenge 16",
       "gridWidth": 9,
       "gridHeight": 12,
       "items": [
@@ -21121,25 +21121,25 @@
         null
       ],
       "gridShape": [
+        "XXXXXXXXX21",
         "XXXXXXXXX",
         "XXXXXXXXX",
+        "XXXXXX24XXX",
+        "XXXX4X16XXXX",
         "XXXXXXXXX",
         "XXXXXXXXX",
-        "XXXXXXXXX",
-        "XXXXXXXXX",
-        "XXXXXXXXX",
-        "XXXXXXXXX",
-        "XXXXXXXXX",
-        "XXXXXXXXX",
-        "XXXXXXXXX",
-        "XXXXXXXXX"
+        "XXXXXX5XXX",
+        "X7XXXXXX1XX6",
+        "XXX2XXXXXX",
+        "XXXXXXXX5X",
+        "XXX17XXXXXX"
       ],
       "movesAllowed": 59,
       "scoreTarget": 4728
     },
     {
       "id": 470,
-      "name": "Level 470 - Foundation Challenge 16",
+      "name": "Foundation Challenge 16",
       "gridWidth": 8,
       "gridHeight": 12,
       "items": [
@@ -21186,7 +21186,7 @@
     },
     {
       "id": 471,
-      "name": "Level 471 - Momentum Challenge 16",
+      "name": "Momentum Challenge 16",
       "gridWidth": 9,
       "gridHeight": 11,
       "items": [
@@ -21232,7 +21232,7 @@
     },
     {
       "id": 472,
-      "name": "Level 472 - Boost Challenge 16",
+      "name": "Boost Challenge 16",
       "gridWidth": 9,
       "gridHeight": 12,
       "items": [
@@ -21279,7 +21279,7 @@
     },
     {
       "id": 473,
-      "name": "Level 473 - Challenge Challenge 16",
+      "name": "Challenge Challenge 16",
       "gridWidth": 9,
       "gridHeight": 12,
       "items": [
@@ -21331,7 +21331,7 @@
     },
     {
       "id": 474,
-      "name": "Level 474 - Surge Challenge 16",
+      "name": "Surge Challenge 16",
       "gridWidth": 9,
       "gridHeight": 12,
       "items": [
@@ -21378,7 +21378,7 @@
     },
     {
       "id": 475,
-      "name": "Level 475 - Flow Challenge 16",
+      "name": "Flow Challenge 16",
       "gridWidth": 9,
       "gridHeight": 12,
       "items": [
@@ -21425,7 +21425,7 @@
     },
     {
       "id": 476,
-      "name": "Level 476 - Drive Challenge 16",
+      "name": "Drive Challenge 16",
       "gridWidth": 9,
       "gridHeight": 12,
       "items": [
@@ -21455,24 +21455,24 @@
       ],
       "gridShape": [
         "XXXXXXXXX",
+        "XXXXXXX14XX",
+        "XXXXX12XX15XX",
+        "XXX___XXX",
+        "XXX___XXX",
+        "XXX___XXX",
+        "XXX___XX19X",
+        "XX7X___XXX",
+        "XXX___XXX",
+        "X13XXXXXXXX",
         "XXXXXXXXX",
-        "XXXXXXXXX",
-        "XXX___XXX",
-        "XXX___XXX",
-        "XXX___XXX",
-        "XXX___XXX",
-        "XXX___XXX",
-        "XXX___XXX",
-        "XXXXXXXXX",
-        "XXXXXXXXX",
-        "XXXXXXXXX"
+        "XXXXXXXX16X17"
       ],
       "movesAllowed": 58,
       "scoreTarget": 4191
     },
     {
       "id": 477,
-      "name": "Level 477 - Spark Challenge 16",
+      "name": "Spark Challenge 16",
       "gridWidth": 9,
       "gridHeight": 11,
       "items": [
@@ -21518,7 +21518,7 @@
     },
     {
       "id": 478,
-      "name": "Level 478 - Rush Challenge 16",
+      "name": "Rush Challenge 16",
       "gridWidth": 9,
       "gridHeight": 12,
       "items": [
@@ -21547,25 +21547,25 @@
         null
       ],
       "gridShape": [
+        "XXXXXX2X20XX",
         "XXXXXXXXX",
+        "XXX10XXXXXX",
+        "XXXXXXX2XX",
         "XXXXXXXXX",
+        "XXXXX19XXXX",
+        "XX2X17XXXXXX",
+        "XXXX22XXXXX",
         "XXXXXXXXX",
+        "X5XXXXXXXX",
         "XXXXXXXXX",
-        "XXXXXXXXX",
-        "XXXXXXXXX",
-        "XXXXXXXXX",
-        "XXXXXXXXX",
-        "XXXXXXXXX",
-        "XXXXXXXXX",
-        "XXXXXXXXX",
-        "XXXXXXXXX"
+        "XXXX20XXXX25X"
       ],
       "movesAllowed": 59,
       "scoreTarget": 4755
     },
     {
       "id": 479,
-      "name": "Level 479 - Ignite Challenge 16",
+      "name": "Ignite Challenge 16",
       "gridWidth": 9,
       "gridHeight": 11,
       "items": [
@@ -21611,7 +21611,7 @@
     },
     {
       "id": 480,
-      "name": "Level 480 - Elevate Challenge 16",
+      "name": "Elevate Challenge 16",
       "gridWidth": 9,
       "gridHeight": 12,
       "items": [
@@ -21658,7 +21658,7 @@
     },
     {
       "id": 481,
-      "name": "Level 481 - Fruit Challenge 17",
+      "name": "Fruit Challenge 17",
       "gridWidth": 8,
       "gridHeight": 11,
       "items": [
@@ -21709,7 +21709,7 @@
     },
     {
       "id": 482,
-      "name": "Level 482 - Heart Challenge 17",
+      "name": "Heart Challenge 17",
       "gridWidth": 9,
       "gridHeight": 11,
       "items": [
@@ -21755,7 +21755,7 @@
     },
     {
       "id": 483,
-      "name": "Level 483 - Sports Challenge 17",
+      "name": "Sports Challenge 17",
       "gridWidth": 9,
       "gridHeight": 12,
       "items": [
@@ -21802,7 +21802,7 @@
     },
     {
       "id": 484,
-      "name": "Level 484 - Veggie Challenge 17",
+      "name": "Veggie Challenge 17",
       "gridWidth": 9,
       "gridHeight": 12,
       "items": [
@@ -21854,7 +21854,7 @@
     },
     {
       "id": 485,
-      "name": "Level 485 - Achievement Challenge 17",
+      "name": "Achievement Challenge 17",
       "gridWidth": 8,
       "gridHeight": 12,
       "items": [
@@ -21901,7 +21901,7 @@
     },
     {
       "id": 486,
-      "name": "Level 486 - Weight Challenge 17",
+      "name": "Weight Challenge 17",
       "gridWidth": 9,
       "gridHeight": 12,
       "items": [
@@ -21930,25 +21930,25 @@
         null
       ],
       "gridShape": [
+        "XXXXXXXX5X",
         "XXXXXXXXX",
         "XXXXXXXXX",
         "XXXXXXXXX",
+        "XXXX5X22XXXX",
         "XXXXXXXXX",
         "XXXXXXXXX",
+        "XX3XXXXXXX",
         "XXXXXXXXX",
+        "XXXXXXX5XX",
         "XXXXXXXXX",
-        "XXXXXXXXX",
-        "XXXXXXXXX",
-        "XXXXXXXXX",
-        "XXXXXXXXX",
-        "XXXXXXXXX"
+        "XXXXX3XXXX"
       ],
       "movesAllowed": 60,
       "scoreTarget": 4887
     },
     {
       "id": 487,
-      "name": "Level 487 - Endurance Challenge 17",
+      "name": "Endurance Challenge 17",
       "gridWidth": 9,
       "gridHeight": 11,
       "items": [
@@ -21994,7 +21994,7 @@
     },
     {
       "id": 488,
-      "name": "Level 488 - Speed Challenge 17",
+      "name": "Speed Challenge 17",
       "gridWidth": 9,
       "gridHeight": 12,
       "items": [
@@ -22024,16 +22024,16 @@
       ],
       "gridShape": [
         "XXXXXXXXX",
-        "_XXXXXXX_",
-        "__XXXXX__",
+        "_XX17XX21XXX_",
+        "__XXXX20X__",
         "___XXX___",
+        "X12XX24XX10XXXX",
+        "X2XXX17XXX6X13X",
         "XXXXXXXXX",
-        "XXXXXXXXX",
-        "XXXXXXXXX",
-        "XXXXXXXXX",
+        "X22XXXXXXXX",
         "___XXX___",
         "__XXXXX__",
-        "_XXXXXXX_",
+        "_XXXX15XXX_",
         "XXXXXXXXX"
       ],
       "movesAllowed": 58,
@@ -22041,7 +22041,7 @@
     },
     {
       "id": 489,
-      "name": "Level 489 - Strength Challenge 17",
+      "name": "Strength Challenge 17",
       "gridWidth": 9,
       "gridHeight": 12,
       "items": [
@@ -22088,7 +22088,7 @@
     },
     {
       "id": 490,
-      "name": "Level 490 - Balance Challenge 17",
+      "name": "Balance Challenge 17",
       "gridWidth": 9,
       "gridHeight": 12,
       "items": [
@@ -22118,24 +22118,24 @@
       ],
       "gridShape": [
         "XXXXXXXXX",
-        "XXXXXXXX_",
-        "XXXXXXX__",
-        "XXXXXX___",
+        "XXXXXXX12X_",
+        "XXXXXXX19__",
+        "XXX21XXX___",
         "XXXXX____",
         "XXXX_____",
         "XXX______",
         "XXXXXXXXX",
-        "XXXXXXXX_",
+        "XXXXXXXX17_",
         "XXXXXXX__",
-        "XXXXXX___",
-        "XXXXX____"
+        "XXXX24XX___",
+        "X16XXXX____"
       ],
       "movesAllowed": 57,
       "scoreTarget": 3907
     },
     {
       "id": 491,
-      "name": "Level 491 - Power Challenge 17",
+      "name": "Power Challenge 17",
       "gridWidth": 8,
       "gridHeight": 12,
       "items": [
@@ -22182,7 +22182,7 @@
     },
     {
       "id": 492,
-      "name": "Level 492 - Agility Challenge 17",
+      "name": "Agility Challenge 17",
       "gridWidth": 9,
       "gridHeight": 12,
       "items": [
@@ -22229,7 +22229,7 @@
     },
     {
       "id": 493,
-      "name": "Level 493 - Focus Challenge 17",
+      "name": "Focus Challenge 17",
       "gridWidth": 9,
       "gridHeight": 12,
       "items": [
@@ -22276,7 +22276,7 @@
     },
     {
       "id": 494,
-      "name": "Level 494 - Energy Challenge 17",
+      "name": "Energy Challenge 17",
       "gridWidth": 9,
       "gridHeight": 11,
       "items": [
@@ -22327,7 +22327,7 @@
     },
     {
       "id": 495,
-      "name": "Level 495 - Vitality Challenge 17",
+      "name": "Vitality Challenge 17",
       "gridWidth": 9,
       "gridHeight": 12,
       "items": [
@@ -22361,25 +22361,25 @@
         null
       ],
       "gridShape": [
+        "XXXXXX15XXX",
+        "XXXXXXXXX",
+        "XXXXXXX6XX",
+        "XX6XXXXXXX",
         "XXXXXXXXX",
         "XXXXXXXXX",
         "XXXXXXXXX",
         "XXXXXXXXX",
+        "XXXX7XXXXX",
+        "XXXX2XXXXX",
         "XXXXXXXXX",
-        "XXXXXXXXX",
-        "XXXXXXXXX",
-        "XXXXXXXXX",
-        "XXXXXXXXX",
-        "XXXXXXXXX",
-        "XXXXXXXXX",
-        "XXXXXXXXX"
+        "XXXX12XXXXX"
       ],
       "movesAllowed": 61,
       "scoreTarget": 4914
     },
     {
       "id": 496,
-      "name": "Level 496 - Circuit Challenge 17",
+      "name": "Circuit Challenge 17",
       "gridWidth": 8,
       "gridHeight": 11,
       "items": [
@@ -22425,7 +22425,7 @@
     },
     {
       "id": 497,
-      "name": "Level 497 - Sprint Challenge 17",
+      "name": "Sprint Challenge 17",
       "gridWidth": 8,
       "gridHeight": 12,
       "items": [
@@ -22472,7 +22472,7 @@
     },
     {
       "id": 498,
-      "name": "Level 498 - Recovery Challenge 17",
+      "name": "Recovery Challenge 17",
       "gridWidth": 8,
       "gridHeight": 12,
       "items": [
@@ -22519,7 +22519,7 @@
     },
     {
       "id": 499,
-      "name": "Level 499 - Peak Challenge 17",
+      "name": "Peak Challenge 17",
       "gridWidth": 9,
       "gridHeight": 11,
       "items": [
@@ -22548,16 +22548,16 @@
         null
       ],
       "gridShape": [
-        "XXXXXXXXX",
-        "XXXXXXXX_",
-        "XXXXXXX__",
-        "XXXXXX___",
-        "XXXXX____",
+        "XXXX19X2XXXX",
+        "X5XXX13XXXX10_",
+        "XXXX19XXX__",
+        "XXXXX24X___",
+        "XX5XXX____",
         "XXXX_____",
-        "XXX______",
+        "X8XX______",
         "XXXXXXXXX",
-        "XXXXXXXX_",
-        "XXXXXXX__",
+        "XXXXXX25XX_",
+        "X24XXXXXX__",
         "XXXXXX___"
       ],
       "movesAllowed": 58,
@@ -22565,7 +22565,7 @@
     },
     {
       "id": 500,
-      "name": "Level 500 - Foundation Challenge 17",
+      "name": "Foundation Challenge 17",
       "gridWidth": 9,
       "gridHeight": 12,
       "items": [
@@ -22595,16 +22595,16 @@
       ],
       "gridShape": [
         "___XXX___",
-        "__XXXXX__",
-        "__XXXXX__",
+        "__XXXX18X__",
+        "__XX8XXX__",
+        "_XXX20XXXX21_",
+        "_XX5XXXXX_",
+        "XXX23XXXXX16X12",
+        "XX7XXXXXXX",
+        "XXXXXX10XX2X",
+        "_XXXXX2XX_",
         "_XXXXXXX_",
-        "_XXXXXXX_",
-        "XXXXXXXXX",
-        "XXXXXXXXX",
-        "XXXXXXXXX",
-        "_XXXXXXX_",
-        "_XXXXXXX_",
-        "__XXXXX__",
+        "__XX14XXX__",
         "__XXXXX__"
       ],
       "movesAllowed": 58,
