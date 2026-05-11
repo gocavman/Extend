@@ -204,7 +204,7 @@ class GameScene: SKScene {
                     widthFactor = 1.0
                 }
                 
-                let width = (strokeThickness / 2) * widthFactor
+                let width = (strokeThickness / 2) * widthFactor * scale
                 
                 // Top and bottom edges using custom taper direction
                 let topPoint = CGPoint(x: pos.x + perpX * width, y: pos.y + perpY * width)
@@ -368,8 +368,8 @@ class GameScene: SKScene {
                     widthFactorRight = bulge
                 }
                 
-                let widthLeft = (strokeThickness / 2) * widthFactorLeft
-                let widthRight = (strokeThickness / 2) * widthFactorRight
+                let widthLeft = (strokeThickness / 2) * widthFactorLeft * scale
+                let widthRight = (strokeThickness / 2) * widthFactorRight * scale
                 
                 if debugFirstPass {
                     minWidth = min(minWidth, widthLeft, widthRight)
@@ -480,7 +480,7 @@ class GameScene: SKScene {
                     let curveShape = cos(angle)
                     bicepWidthFactor = 0.5 + (bicepFusiform * max(0, curveShape))
                 }
-                let bicepWidth = (strokeThicknessBicep / 2) * bicepWidthFactor
+                let bicepWidth = (strokeThicknessBicep / 2) * bicepWidthFactor * scale
                 
                 // Calculate tricep width (top/outer side)
                 var tricepWidthFactor: CGFloat = 0.3
@@ -489,7 +489,7 @@ class GameScene: SKScene {
                     let curveShape = cos(angle)
                     tricepWidthFactor = 0.5 + (tricepFusiform * max(0, curveShape))
                 }
-                let tricepWidth = (strokeThicknessTricep / 2) * tricepWidthFactor
+                let tricepWidth = (strokeThicknessTricep / 2) * tricepWidthFactor * scale
                 
                 // Determine which muscle appears on which side based on armMuscleSide
                 // For left arm: + perpendicular = inner/bottom, - perpendicular = outer/top
@@ -674,7 +674,7 @@ class GameScene: SKScene {
                     widthFactor = 1.0 + (fusiform * (1.0 - distFromCenter))
                 }
                 
-                let halfWidth = (strokeThickness / 2) * (1 + widthFactor)
+                let halfWidth = (strokeThickness / 2) * (1 + widthFactor) * scale
                 
                 // Create edge points
                 topEdgePoints.append(CGPoint(x: curr.x + perpX * halfWidth, y: curr.y + perpY * halfWidth))

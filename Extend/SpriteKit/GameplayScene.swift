@@ -1338,54 +1338,59 @@ private func renderFrameObjects(_ objects: [AnimationObject], on container: SKNo
     for object in objects {
         let node: SKNode
         
+        // Object positions are stored as absolute SpriteKit scene coordinates from the editor.
+        // The editor scene is a square with side = editorSceneWidth (saved per-object).
+        // The character container was at (editorSceneWidth/2, editorSceneWidth/2) in that scene.
+        // The editor rendered the figure at scale = 1.2 (editorRenderScale).
+        //
+        // Conversion:
+        //   1. Compute position relative to editor character center (Y already goes up in SpriteKit)
+        //   2. Divide by editorRenderScale → normalised figure-space units
+        //   3. Multiply by characterRenderScale → gameplay units
+        let editorRenderScale: CGFloat = 1.2
+        let editorCenter = object.editorSceneWidth / 2.0
+        let normalised = CGPoint(
+            x: (object.position.x - editorCenter) / editorRenderScale,
+            y: (object.position.y - editorCenter) / editorRenderScale
+        )
+
+        // Per-object scale from editor combined with the global character scale
+        let objectScale = CGFloat(object.scale) * scale
+        let scaledWidth  = object.width  * objectScale
+        let scaledHeight = object.height * objectScale
+
         if object.type == .box {
-            // Render box with exact size from editor - no scaling
-            let boxNode = SKShapeNode(rectOf: CGSize(width: object.width, height: object.height))
+            let boxNode = SKShapeNode(rectOf: CGSize(width: scaledWidth, height: scaledHeight))
             let boxColor = UIColor(hex: object.color) ?? UIColor(red: 1.0, green: 0.0, blue: 0.0, alpha: 1.0)
             boxNode.fillColor = boxColor
             boxNode.strokeColor = .black
-            boxNode.lineWidth = 2
+            boxNode.lineWidth = max(2.0 * scale, 1.0)
             boxNode.zPosition = 5
             boxNode.name = "object_box_\(object.id)"
             node = boxNode
         } else {
-            // Render image with exact size from editor
             let sprite = SKSpriteNode(imageNamed: object.imageName)
-            // Set to the exact size saved in the editor (width/height are in pixels)
-            sprite.size = CGSize(width: object.width, height: object.height)
+            sprite.size = CGSize(width: scaledWidth, height: scaledHeight)
             sprite.zPosition = 5
             sprite.name = "object_image_\(object.imageName)"
             node = sprite
         }
-        
-        // Objects positioned exactly as they appear in the editor
-        // Convert from editor coordinates to gameplay coordinates
-        
-        let estimatedEditorSize: CGFloat = 402
-        let editorCenter = estimatedEditorSize / 2
-        
-        // Editor: origin at top-left, Y increases downward
-        // Gameplay: origin at scene center, Y increases upward
+
         var relativePos = CGPoint(
-            x: object.position.x - editorCenter,
-            y: -(editorCenter - object.position.y)
+            x: normalised.x * scale,
+            y: normalised.y * scale
         )
-        
-        // Apply horizontal flip to object position and rotation if needed
+
         var objectRotation = CGFloat(object.rotation)
         if shouldFlip {
             relativePos.x = -relativePos.x
             node.xScale = -1.0
-            // Mirror the rotation angle when flipping
             objectRotation = -objectRotation
         }
-        
-        // Position object exactly as it appears in the editor
+
         node.position = relativePos
         node.zRotation = objectRotation
         container.addChild(node)
-        
-        print("🎮 renderFrameObjects: object=\(object.imageName), editorPos=\(object.position), relativePos=\(relativePos)")
     }
 }
 

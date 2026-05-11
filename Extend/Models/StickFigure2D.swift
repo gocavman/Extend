@@ -66,27 +66,34 @@ struct AnimationObject: Codable, Identifiable, Equatable {
     var position: CGPoint
     var rotation: Double // in degrees
     var scale: Double
-    
+
     // Box-specific properties
     var width: CGFloat = 50   // Box width
     var height: CGFloat = 50  // Box height
     var color: String = "#FF0000"  // Box color as hex string
-    
+
+    /// Width of the SpriteKit editor scene at the time this object was saved.
+    /// Used by renderFrameObjects to convert editor scene coordinates back to
+    /// figure-relative space at any characterRenderScale.
+    /// Defaults to 390 (standard iPhone width) for frames saved before this field existed.
+    var editorSceneWidth: CGFloat = 390
+
     enum ObjectType: String, Codable {
         case image = "image"
         case box = "box"
     }
-    
-    init(imageName: String, position: CGPoint, rotation: Double = 0, scale: Double = 1.0) {
+
+    init(imageName: String, position: CGPoint, rotation: Double = 0, scale: Double = 1.0, editorSceneWidth: CGFloat = 390) {
         self.id = UUID()
         self.type = .image
         self.imageName = imageName
         self.position = position
         self.rotation = rotation
         self.scale = scale
+        self.editorSceneWidth = editorSceneWidth
     }
-    
-    init(boxAt position: CGPoint, width: CGFloat = 50, height: CGFloat = 50, color: String = "#FF0000", rotation: Double = 0) {
+
+    init(boxAt position: CGPoint, width: CGFloat = 50, height: CGFloat = 50, color: String = "#FF0000", rotation: Double = 0, editorSceneWidth: CGFloat = 390) {
         self.id = UUID()
         self.type = .box
         self.position = position
@@ -95,11 +102,12 @@ struct AnimationObject: Codable, Identifiable, Equatable {
         self.color = color
         self.rotation = rotation
         self.scale = 1.0
+        self.editorSceneWidth = editorSceneWidth
     }
-    
+
     // Custom Codable to handle position as dict with x,y keys
     enum CodingKeys: String, CodingKey {
-        case id, type, imageName, position, rotation, scale, width, height, color
+        case id, type, imageName, position, rotation, scale, width, height, color, editorSceneWidth
     }
     
     func encode(to encoder: Encoder) throws {
@@ -118,27 +126,28 @@ struct AnimationObject: Codable, Identifiable, Equatable {
         try container.encode(width, forKey: .width)
         try container.encode(height, forKey: .height)
         try container.encode(color, forKey: .color)
+        try container.encode(editorSceneWidth, forKey: .editorSceneWidth)
     }
-    
+
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         id = try container.decode(UUID.self, forKey: .id)
         type = try container.decode(ObjectType.self, forKey: .type)
         imageName = try container.decode(String.self, forKey: .imageName)
-        
-        // Decode position from nested object
+
         let posContainer = try container.nestedContainer(keyedBy: PositionKeys.self, forKey: .position)
         let x = try posContainer.decode(CGFloat.self, forKey: .x)
         let y = try posContainer.decode(CGFloat.self, forKey: .y)
         position = CGPoint(x: x, y: y)
-        
+
         rotation = try container.decode(Double.self, forKey: .rotation)
         scale = try container.decodeIfPresent(Double.self, forKey: .scale) ?? 1.0
-        
-        // Box-specific properties - optional for image objects
+
         width = try container.decodeIfPresent(CGFloat.self, forKey: .width) ?? 50
         height = try container.decodeIfPresent(CGFloat.self, forKey: .height) ?? 50
         color = try container.decodeIfPresent(String.self, forKey: .color) ?? "#FF0000"
+        // Default to 390 for frames saved before this field was added
+        editorSceneWidth = try container.decodeIfPresent(CGFloat.self, forKey: .editorSceneWidth) ?? 390
     }
     
     enum PositionKeys: String, CodingKey {

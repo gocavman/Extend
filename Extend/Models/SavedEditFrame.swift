@@ -8,24 +8,27 @@ struct EditorObject: Codable, Identifiable {
     var rotation: CGFloat  // in radians
     var scaleX: CGFloat
     var scaleY: CGFloat
-    var baseWidth: CGFloat?  // Actual base width of the object in the editor (e.g., 40 for Shaker)
-    var baseHeight: CGFloat?  // Actual base height of the object in the editor (e.g., 60 for Shaker)
-    
+    var baseWidth: CGFloat?
+    var baseHeight: CGFloat?
+    /// Width of the editor SpriteKit scene at save time — used for coordinate conversion in gameplay.
+    var editorSceneWidth: CGFloat = 390
+
     enum CodingKeys: String, CodingKey {
         case id
-        case assetName = "imageName"  // JSON uses "imageName", property is "assetName"
+        case assetName = "imageName"
         case position
         case rotation
-        case scale  // JSON uses "scale" for both scaleX and scaleY
+        case scale
         case baseWidth
         case baseHeight
+        case editorSceneWidth
     }
     
     enum PositionKeys: String, CodingKey {
         case x, y
     }
     
-    init(assetName: String, position: CGPoint, rotation: CGFloat = 0, scaleX: CGFloat = 1.0, scaleY: CGFloat = 1.0, baseWidth: CGFloat? = nil, baseHeight: CGFloat? = nil) {
+    init(assetName: String, position: CGPoint, rotation: CGFloat = 0, scaleX: CGFloat = 1.0, scaleY: CGFloat = 1.0, baseWidth: CGFloat? = nil, baseHeight: CGFloat? = nil, editorSceneWidth: CGFloat = 390) {
         self.id = UUID()
         self.assetName = assetName
         self.position = position
@@ -34,49 +37,43 @@ struct EditorObject: Codable, Identifiable {
         self.scaleY = scaleY
         self.baseWidth = baseWidth
         self.baseHeight = baseHeight
+        self.editorSceneWidth = editorSceneWidth
     }
-    
+
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         id = try container.decode(UUID.self, forKey: .id)
         assetName = try container.decode(String.self, forKey: .assetName)
         rotation = try container.decodeIfPresent(CGFloat.self, forKey: .rotation) ?? 0
-        
-        // Decode position as a dictionary with x and y
+
         let posContainer = try container.nestedContainer(keyedBy: PositionKeys.self, forKey: .position)
         let x = try posContainer.decode(CGFloat.self, forKey: .x)
         let y = try posContainer.decode(CGFloat.self, forKey: .y)
         position = CGPoint(x: x, y: y)
-        
-        // JSON stores scale as a single value, use it for both scaleX and scaleY
+
         let scale = try container.decodeIfPresent(CGFloat.self, forKey: .scale) ?? 1.0
         scaleX = scale
         scaleY = scale
-        
-        // Decode optional base dimensions
+
         baseWidth = try container.decodeIfPresent(CGFloat.self, forKey: .baseWidth)
         baseHeight = try container.decodeIfPresent(CGFloat.self, forKey: .baseHeight)
+        editorSceneWidth = try container.decodeIfPresent(CGFloat.self, forKey: .editorSceneWidth) ?? 390
     }
-    
+
     func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
         try container.encode(id, forKey: .id)
         try container.encode(assetName, forKey: .assetName)
         try container.encode(rotation, forKey: .rotation)
         try container.encode(scaleX, forKey: .scale)
-        
-        // Encode position as a nested dictionary with x and y
+        try container.encode(editorSceneWidth, forKey: .editorSceneWidth)
+
         var posContainer = container.nestedContainer(keyedBy: PositionKeys.self, forKey: .position)
         try posContainer.encode(position.x, forKey: .x)
         try posContainer.encode(position.y, forKey: .y)
-        
-        // Encode optional base dimensions
-        if let baseWidth = baseWidth {
-            try container.encode(baseWidth, forKey: .baseWidth)
-        }
-        if let baseHeight = baseHeight {
-            try container.encode(baseHeight, forKey: .baseHeight)
-        }
+
+        if let baseWidth = baseWidth { try container.encode(baseWidth, forKey: .baseWidth) }
+        if let baseHeight = baseHeight { try container.encode(baseHeight, forKey: .baseHeight) }
     }
 }
 
@@ -628,6 +625,7 @@ class SavedFramesManager {
             jsonString += "          \"x\" : \(roundAndFormat(object.position.x, decimals: 1)),\n"
             jsonString += "          \"y\" : \(roundAndFormat(object.position.y, decimals: 1))\n"
             jsonString += "        },\n"
+            jsonString += "        \"editorSceneWidth\" : \(roundAndFormat(object.editorSceneWidth, decimals: 1)),\n"
             jsonString += "        \"rotation\" : \(roundAndFormat(object.rotation, decimals: 4))\n"
             jsonString += "      }"
             if index < frame.objects.count - 1 {
