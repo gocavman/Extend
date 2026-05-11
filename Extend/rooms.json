@@ -7,7 +7,7 @@
     "backgroundImage": "map_bg",
     "backgroundColor": "#E0E0E0",
     "levels": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
-    "doors": ["door_to_training_room_1", "door_to_match_challenge"],
+    "doors": ["door_to_training_room_1"],
     "population": {
       "items": ["⭐"],
       "count": 7,

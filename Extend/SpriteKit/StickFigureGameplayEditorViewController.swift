@@ -7,6 +7,7 @@ import SpriteKit
 class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerViewControllerDelegate, UIImagePickerControllerDelegate, UINavigationControllerDelegate, UITableViewDelegate, UITableViewDataSource, UIGestureRecognizerDelegate {
     
     // MARK: - Properties
+    var onDismiss: (() -> Void)?  // Called when the editor is closed
     private var skView: SKView?
     private var editorScene: StickFigureEditorScene?
     private var colorPickerEditorScene: StickFigureEditorScene?  // Store scene for color picker delegate
@@ -1980,10 +1981,10 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
     }
     
     @objc private func closePressed() {
-        dismiss(animated: true)
+        dismiss(animated: true) { [weak self] in
+            self?.onDismiss?()
+        }
     }
-    
-    // MARK: - UIColorPickerViewControllerDelegate
     func colorPickerViewControllerDidSelectColor(_ viewController: UIColorPickerViewController) {
         // Check if this is for a box color (colorPickerEditorScene will be set)
         if colorPickerEditorScene != nil {

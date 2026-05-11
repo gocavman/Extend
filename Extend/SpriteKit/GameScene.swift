@@ -5,9 +5,7 @@ import SwiftUI
 /// Base scene class for all game scenes with touch handling
 class GameScene: SKScene {
     var gameState: StickFigureGameState?
-    var mapState: GameMapState?
-    var gameViewController: GameViewController?  // Add reference to view controller
-    var hudScene: MapHUDScene?  // Reference to HUD scene for animations
+    var gameViewController: GameViewController?
     
     override func didMove(to view: SKView) {
         super.didMove(to: view)

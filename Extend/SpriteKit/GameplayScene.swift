@@ -164,6 +164,42 @@ private func setupUI() {
     exitLabel.zPosition = 101
     addChild(exitLabel)
     
+    // LVL button - next to exit
+    let lvlBtn = SKShapeNode(rectOf: CGSize(width: 55, height: 40))
+    lvlBtn.position = CGPoint(x: 105, y: topBarY)
+    lvlBtn.fillColor = SKColor(red: 0.9, green: 0.5, blue: 0.2, alpha: 0.9)
+    lvlBtn.strokeColor = .black
+    lvlBtn.lineWidth = 2
+    lvlBtn.name = "lvlButton"
+    lvlBtn.zPosition = 100
+    addChild(lvlBtn)
+    
+    let lvlLabel = SKLabelNode(fontNamed: "Arial")
+    lvlLabel.text = "LVL"
+    lvlLabel.fontSize = 10
+    lvlLabel.fontColor = .white
+    lvlLabel.position = CGPoint(x: 105, y: topBarY)
+    lvlLabel.zPosition = 101
+    addChild(lvlLabel)
+    
+    // EDIT button - next to LVL
+    let editBtn = SKShapeNode(rectOf: CGSize(width: 55, height: 40))
+    editBtn.position = CGPoint(x: 170, y: topBarY)
+    editBtn.fillColor = SKColor(red: 0.2, green: 0.7, blue: 0.4, alpha: 0.9)
+    editBtn.strokeColor = .black
+    editBtn.lineWidth = 2
+    editBtn.name = "editButton"
+    editBtn.zPosition = 100
+    addChild(editBtn)
+    
+    let editLabel = SKLabelNode(fontNamed: "Arial")
+    editLabel.text = "EDIT"
+    editLabel.fontSize = 10
+    editLabel.fontColor = .white
+    editLabel.position = CGPoint(x: 170, y: topBarY)
+    editLabel.zPosition = 101
+    addChild(editLabel)
+    
     // Stats button - top right
     statsButtonArea = SKShapeNode(rectOf: CGSize(width: 60, height: 40))
     statsButtonArea?.position = CGPoint(x: size.width - 35, y: topBarY)
@@ -202,10 +238,12 @@ private func setupUI() {
     }
     
     // Level display - top center left (level ONLY, no points)
+    let infoBarY = topBarY - 50  // Below the HUD buttons
+
     levelLabel = SKLabelNode(fontNamed: "Arial")
     levelLabel?.fontSize = 12
     levelLabel?.fontColor = .black
-    levelLabel?.position = CGPoint(x: size.width / 2 - 80, y: topBarY)
+    levelLabel?.position = CGPoint(x: size.width / 2 - 80, y: infoBarY)
     levelLabel?.text = "Level: \(gameState?.currentLevel ?? 1)"
     levelLabel?.zPosition = 101
     if let label = levelLabel { addChild(label) }
@@ -214,7 +252,7 @@ private func setupUI() {
     pointsTextLabel = SKLabelNode(fontNamed: "Arial")
     pointsTextLabel?.fontSize = 12
     pointsTextLabel?.fontColor = .black
-    pointsTextLabel?.position = CGPoint(x: size.width / 2 - 5, y: topBarY)
+    pointsTextLabel?.position = CGPoint(x: size.width / 2 - 5, y: infoBarY)
     pointsTextLabel?.text = "Points: "
     pointsTextLabel?.zPosition = 101
     if let label = pointsTextLabel { addChild(label) }
@@ -223,7 +261,7 @@ private func setupUI() {
     pointsValueLabel = SKLabelNode(fontNamed: "Arial")
     pointsValueLabel?.fontSize = 12
     pointsValueLabel?.fontColor = .black
-    pointsValueLabel?.position = CGPoint(x: size.width / 2 + 40, y: topBarY)
+    pointsValueLabel?.position = CGPoint(x: size.width / 2 + 40, y: infoBarY)
     pointsValueLabel?.text = "\(gameState?.currentPoints ?? 0)"
     pointsValueLabel?.zPosition = 101
     if let label = pointsValueLabel { addChild(label) }
@@ -503,9 +541,19 @@ private func setupControlZones() {
         let tapDistance = abs(point.y - topBarY)
         
         if tapDistance < 35 { // Within the top button area
-            // Exit button - go back to map
+            // Exit button - go back to dashboard
             if point.x < 70 {
-                gameViewController?.showMapScene()
+                gameViewController?.dismissGame()
+                return
+            }
+            // LVL button
+            if point.x > 70 && point.x < 140 {
+                gameViewController?.showLevelPicker()
+                return
+            }
+            // EDIT button
+            if point.x > 140 && point.x < 210 {
+                gameViewController?.openStickFigureEditor()
                 return
             }
             // Appearance button (left of Stats)

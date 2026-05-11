@@ -5,11 +5,6 @@
     "displayName": "Rest",
     "pointsToComplete": 50,
     "availableActions": ["rest"],
-    "mapX": 300,
-    "mapY": 1750,
-    "width": 80,
-    "height": 80,
-    "difficulty": 1.0,
     "description": "Take it easy"
   },
   {
@@ -18,11 +13,6 @@
     "displayName": "Run",
     "pointsToComplete": 100,
     "availableActions": ["rest", "run"],
-    "mapX": 600,
-    "mapY": 1750,
-    "width": 80,
-    "height": 80,
-    "difficulty": 1.2,
     "description": "Pick up the pace"
   },
   {
@@ -31,11 +21,6 @@
     "displayName": "Box Jump",
     "pointsToComplete": 200,
     "availableActions": ["rest", "run", "jump"],
-    "mapX": 900,
-    "mapY": 1750,
-    "width": 80,
-    "height": 80,
-    "difficulty": 1.4,
     "description": "Get off the ground"
   },
   {
@@ -44,11 +29,6 @@
     "displayName": "Jumping Jacks",
     "pointsToComplete": 350,
     "availableActions": ["rest", "run", "jump", "jumpingjack"],
-    "mapX": 1200,
-    "mapY": 1750,
-    "width": 80,
-    "height": 80,
-    "difficulty": 1.6,
     "description": "Coordination challenge"
   },
   {
@@ -57,11 +37,6 @@
     "displayName": "Yoga",
     "pointsToComplete": 550,
     "availableActions": ["rest", "run", "jump", "jumpingjack", "yoga"],
-    "mapX": 1500,
-    "mapY": 1750,
-    "width": 80,
-    "height": 80,
-    "difficulty": 1.8,
     "description": "Find your balance"
   },
   {
@@ -70,11 +45,6 @@
     "displayName": "Bicep Curls",
     "pointsToComplete": 800,
     "availableActions": ["rest", "run", "jump", "jumpingjack", "yoga", "curls"],
-    "mapX": 1800,
-    "mapY": 1750,
-    "width": 80,
-    "height": 80,
-    "difficulty": 2.0,
     "description": "Build some strength"
   },
   {
@@ -83,11 +53,6 @@
     "displayName": "Kettlebell Swings",
     "pointsToComplete": 1100,
     "availableActions": ["rest", "run", "jump", "jumpingjack", "yoga", "curls", "kettlebell"],
-    "mapX": 1800,
-    "mapY": 1550,
-    "width": 80,
-    "height": 80,
-    "difficulty": 2.2,
     "description": "Power and momentum"
   },
   {
@@ -96,11 +61,6 @@
     "displayName": "Push Ups",
     "pointsToComplete": 1450,
     "availableActions": ["rest", "run", "jump", "jumpingjack", "yoga", "curls", "kettlebell", "pushup"],
-    "mapX": 1800,
-    "mapY": 1350,
-    "width": 80,
-    "height": 80,
-    "difficulty": 2.4,
     "description": "Upper body endurance"
   },
   {
@@ -109,11 +69,6 @@
     "displayName": "Pull Ups",
     "pointsToComplete": 1850,
     "availableActions": ["rest", "run", "jump", "jumpingjack", "yoga", "curls", "kettlebell", "pushup", "pullup"],
-    "mapX": 1800,
-    "mapY": 1150,
-    "width": 80,
-    "height": 80,
-    "difficulty": 2.6,
     "description": "The ultimate challenge"
   },
   {
@@ -122,11 +77,6 @@
     "displayName": "Meditation",
     "pointsToComplete": 2300,
     "availableActions": ["rest", "run", "jump", "jumpingjack", "yoga", "curls", "kettlebell", "pushup", "pullup", "meditation"],
-    "mapX": 1800,
-    "mapY": 950,
-    "width": 80,
-    "height": 80,
-    "difficulty": 2.8,
     "description": "Inner peace and reflection"
   }
 ]

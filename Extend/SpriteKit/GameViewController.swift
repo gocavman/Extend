@@ -6,10 +6,10 @@ import SwiftUI
 class GameViewController: UIViewController {
     var skView: SKView?
     var gameState: StickFigureGameState?
-    var mapState: GameMapState?
     var currentScene: GameScene?
     weak var gameplayScene: GameplayScene?
     var onDismissGame: (() -> Void)?  // Callback for SwiftUI dismissal
+    var onShowEditor: (() -> Void)?   // Callback to let SwiftUI present the editor
     private var hasInitializedScene = false  // Track if we've shown the initial scene
     private var hudContainer: UIStackView?  // HUD buttons container
     private var infoContainer: UIStackView?  // Info labels container (room name, level, points)
@@ -43,14 +43,9 @@ class GameViewController: UIViewController {
         if gameState == nil {
             gameState = StickFigureGameState()
         }
-        if mapState == nil {
-            mapState = GameMapState()
-        }
         
-        // Show map on first load
-        //print("🎮 GameViewController viewDidLoad - showing map for first time")
-        showMapScene()
-        setupHUD()  // Add HUD buttons to UIView
+        // Go straight to gameplay
+        startGameplay()
         hasInitializedScene = true
         
         // Ensure the SKView actually has the scene
@@ -266,11 +261,9 @@ class GameViewController: UIViewController {
         
         // Add options for levels 1-10 (or however many levels you have)
         for level in 1...10 {
-            alert.addAction(UIAlertAction(title: "Level \(level)", style: .default) { [weak self] _ in
+            alert.addAction(UIAlertAction(title: "Level \(level)", style: .default) { _ in
                 gameState.currentLevel = level
                 print("🎮 Developer: Reset to Level \(level)")
-                // Refresh the map to show updated level colors
-                self?.showMapScene()
             })
         }
         
@@ -284,46 +277,12 @@ class GameViewController: UIViewController {
         showStats()
     }
     
-    /// Show the map/level selection scene
-    func showMapScene() {
-        guard let skView = skView, let gameState = gameState, let mapState = mapState else { return }
-        
-        // Show HUD on the map
-        setHUDVisible(true)
-        
-        // Position character next to the level they just exited (not on top of it)
-        if let levelConfig = LEVEL_CONFIGS.first(where: { $0.id == gameState.currentLevel }) {
-            // Position character slightly below and to the left of the level station
-            let offsetDistance: CGFloat = 120  // pixels away from station
-            mapState.characterX = levelConfig.mapX - offsetDistance
-            mapState.characterY = levelConfig.mapY - offsetDistance
-        }
-        
-        // Update HUD with current room info
-        let roomName = getRoomConfig("main_map")?.name ?? "Main Map"
-        updateHUDInfo(roomName: roomName, level: gameState.currentLevel, points: gameState.currentPoints)
-        
-        // Remove previous scene if it exists
-        if let currentScene = currentScene {
-            currentScene.removeAllChildren()
-            currentScene.removeAllActions()
-            currentScene.removeFromParent()  // Remove from view
-        }
-        
-        let scene = MapScene(size: skView.bounds.size)
-        scene.gameState = gameState
-        scene.mapState = mapState
-        scene.gameViewController = self  // Pass reference to view controller
-        scene.scaleMode = .resizeFill
-        
-        skView.presentScene(scene)  // Remove transition for now to avoid conflicts
-        currentScene = scene
-    }
+    /// Show the map/level selection scene - REMOVED (going direct to gameplay now)
     
     /// Show the gameplay scene
     func startGameplay() {
-        guard let skView = skView, let gameState = gameState, let mapState = mapState else {
-            print("❌ startGameplay: missing skView, gameState, or mapState")
+        guard let skView = skView, let gameState = gameState else {
+            print("❌ startGameplay: missing skView or gameState")
             return
         }
         
@@ -349,47 +308,47 @@ class GameViewController: UIViewController {
         
         let scene = GameplayScene(size: skView.bounds.size)
         scene.gameState = gameState
-        scene.mapState = mapState
         scene.gameViewController = self
         scene.scaleMode = .resizeFill
         scene.isUserInteractionEnabled = true
         
-        //print("🎮 About to present GameplayScene to SKView")
-        //print("🎮 SKView scene before presentScene: \(skView.scene != nil ? "HAS SCENE" : "NO SCENE")")
-        
-        // Present the scene directly without transition to avoid conflicts
         skView.presentScene(scene)
-        
-        //print("🎮 SKView scene after presentScene: \(skView.scene != nil ? "HAS SCENE" : "NO SCENE")")
-        //print("🎮 Scene type: \(type(of: skView.scene))")
         currentScene = scene
-        gameplayScene = scene  // Store reference for edit mode
-        //print("🎮 GameplayScene is now active")
+        gameplayScene = scene
     }
     
     /// Dismiss the game and return to SwiftUI
     func dismissGame() {
-        //print("🎮 dismissGame() called")
-        // Save state
         gameState?.saveStats()
-        gameState?.saveMapPosition(mapState ?? GameMapState())
         
-        // Call the callback to notify SwiftUI
         DispatchQueue.main.async {
-            //print("🎮 Calling onDismissGame callback")
             self.onDismissGame?()
         }
     }
     
-    /// Show the stick figure gameplay editor (new UIKit version)
+    /// Show level picker (accessible from gameplay screen)
+    func showLevelPicker() {
+        resetLevelTapped()
+    }
+    
+    /// Show the stick figure gameplay editor — delegates to SwiftUI via callback
     func openStickFigureEditor() {
-        //print("🎮 Opening Stick Figure Gameplay Editor (UIKit)")
-        
-        let editor = StickFigureGameplayEditorViewController()
-        editor.gameState = gameState
-        editor.modalPresentationStyle = .fullScreen
-        
-        present(editor, animated: true)
+        if let onShowEditor = onShowEditor {
+            // Preferred: let SwiftUI own the presentation to avoid UIKit/SwiftUI hierarchy conflicts
+            DispatchQueue.main.async { onShowEditor() }
+        } else {
+            // Fallback: present directly (legacy path)
+            let editor = StickFigureGameplayEditorViewController()
+            editor.gameState = gameState
+            editor.modalPresentationStyle = .fullScreen
+            editor.onDismiss = { [weak self] in
+                guard let self = self else { return }
+                if self.skView?.scene == nil || !(self.skView?.scene is GameplayScene) {
+                    self.startGameplay()
+                }
+            }
+            present(editor, animated: true)
+        }
     }
     
     func showStats() {

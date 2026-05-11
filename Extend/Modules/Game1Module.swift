@@ -123,11 +123,6 @@ struct LevelConfig: Codable {
     let displayName: String
     let pointsToComplete: Int
     let availableActions: [String]  // Action IDs available in this level
-    let mapX: Double
-    let mapY: Double
-    let width: Double
-    let height: Double
-    let difficulty: Double
     let description: String
     // Helper to check if an action is available in this level
     func isActionAvailable(_ actionId: String) -> Bool {
@@ -139,11 +134,7 @@ struct LevelConfig: Codable {
 
 struct DoorConfig: Codable {
     let id: String
-    let name: String?  // Optional: display name for the door
-    let mapX: Double
-    let mapY: Double
-    let width: Double
-    let height: Double
+    let name: String?
     let destinationRoomId: String
     let returnDoorId: String
 }
@@ -273,23 +264,6 @@ let LEVEL_CONFIGS: [LevelConfig] = loadLevels()
 
 // MARK: - Door and Room Loading Functions
 
-/// Loads door configurations from doors.json
-func loadDoors() -> [DoorConfig] {
-    if let url = Bundle.main.url(forResource: "doors", withExtension: "json") {
-        do {
-            let data = try Data(contentsOf: url)
-            let doors = try JSONDecoder().decode([DoorConfig].self, from: data)
-            print("✅ Successfully loaded \(doors.count) door configurations")
-            return doors
-        } catch {
-            print("⚠️ Failed to decode doors.json: \(error)")
-        }
-    } else {
-        print("ℹ️ doors.json not found - no doors will be available")
-    }
-    return []
-}
-
 /// Loads room configurations from rooms.json
 func loadRooms() -> [RoomConfig] {
     if let url = Bundle.main.url(forResource: "rooms", withExtension: "json") {
@@ -307,25 +281,13 @@ func loadRooms() -> [RoomConfig] {
     return []
 }
 
-// MARK: - Door and Room Configurations
+// MARK: - Room Configurations
 
-let DOOR_CONFIGS: [DoorConfig] = loadDoors()
 let ROOM_CONFIGS: [RoomConfig] = loadRooms()
 
 // Helper to get a room by ID
 func getRoomConfig(_ roomId: String) -> RoomConfig? {
     return ROOM_CONFIGS.first { $0.id == roomId }
-}
-
-// Helper to get a door by ID
-func getDoorConfig(_ doorId: String) -> DoorConfig? {
-    return DOOR_CONFIGS.first { $0.id == doorId }
-}
-
-// Helper to get all doors in a room
-func getDoorsInRoom(_ roomId: String) -> [DoorConfig] {
-    guard let room = getRoomConfig(roomId) else { return [] }
-    return DOOR_CONFIGS.filter { room.doors.contains($0.id) }
 }
 
 // Helper to get all level IDs in a room
@@ -407,8 +369,6 @@ func loadCatchables() -> [CatchableConfig] {
     }
     return []
 }
-
-// MARK: - Catchable Configurations
 
 let CATCHABLE_CONFIGS: [CatchableConfig] = loadCatchables()
 
@@ -590,8 +550,8 @@ class StickFigureGameState {
     var boostTimerRefreshTimer: Timer?
     var boostTimerTick: Int = 0 // Counter for boost timer updates
 
-    // Map return
-    var shouldReturnToMap: Bool = false
+    // Map return - kept for compatibility but no longer used
+    // var shouldReturnToMap: Bool = false
 
     private let statsKey = "game1_stats"
     private let highScoreKey = "game1_high_score"
@@ -674,7 +634,6 @@ class StickFigureGameState {
             spawnFireworks()
             currentPoints = 0
             sessionActions.removeAll()
-            shouldReturnToMap = true
             currentLevel += 1  // INCREMENT LEVEL!
             print("🎮 Current Level AFTER increment: \(currentLevel)")
             
@@ -894,24 +853,6 @@ class StickFigureGameState {
     func saveHighScore() {
         UserDefaults.standard.set(highScore, forKey: highScoreKey)
         UserDefaults.standard.synchronize()
-    }
-
-    func saveMapPosition(_ mapState: GameMapState) {
-        let payload: [String: Any] = [
-            "x": Double(mapState.characterX),
-            "y": Double(mapState.characterY)
-        ]
-        UserDefaults.standard.set(payload, forKey: mapPositionKey)
-    }
-
-    func loadMapPosition(_ mapState: GameMapState) {
-        guard let payload = UserDefaults.standard.dictionary(forKey: mapPositionKey) else { return }
-        if let x = payload["x"] as? Double, let y = payload["y"] as? Double {
-            mapState.characterX = CGFloat(x)
-            mapState.characterY = CGFloat(y)
-            mapState.targetX = CGFloat(x)
-            mapState.targetY = CGFloat(y)
-        }
     }
 
     func initializeRoom(_ roomId: String) {
@@ -1619,10 +1560,10 @@ class GameMapState {
             
             boxes.append(LevelBox(
                 levelNumber: levelConfig.id,
-                x: levelConfig.mapX,
-                y: levelConfig.mapY,
-                width: levelConfig.width,
-                height: levelConfig.height,
+                x: Double(levelConfig.id) * 200.0,  // default spacing since map is removed
+                y: 0,
+                width: 80,
+                height: 80,
                 isCompleted: isCompleted,
                 isAvailable: isAvailable
             ))
@@ -2055,7 +1996,6 @@ private struct StatsListContent: View {
 
 struct StatsOverlayView: View {
     var gameState: StickFigureGameState
-    var mapState: GameMapState
     var showStats: Binding<Bool>
     var showLevelPicker: Binding<Bool>
     
@@ -2082,7 +2022,6 @@ struct StatsOverlayView: View {
                     gameState: gameState,
                     showLevelPicker: showLevelPicker,
                     onResetData: {
-                        // Reset all game data
                         gameState.currentLevel = 1
                         gameState.currentPoints = 0
                         gameState.selectedAction = "Rest"
@@ -2096,25 +2035,7 @@ struct StatsOverlayView: View {
                         gameState.highScore = 0
                         gameState.saveStats()
                         gameState.saveHighScore()
-                        
-                        // Clear coin last collected time
                         UserDefaults.standard.removeObject(forKey: "game1_coin_last_collected_time")
-                        
-                        // Reinitialize map level boxes after reset
-                        mapState.initializeLevelBoxes(currentLevel: 1)
-                        
-                        // Regenerate coin (will be visible since no collection time)
-                        mapState.generateCoin()
-                        
-                        // Position character next to level 1
-                        if mapState.levelBoxes.count > 0 {
-                            let level1Box = mapState.levelBoxes[0]
-                            let offset: CGFloat = 100
-                            mapState.characterX = level1Box.x - offset
-                            mapState.characterY = level1Box.y
-                            mapState.targetX = level1Box.x - offset
-                            mapState.targetY = level1Box.y
-                        }
                     }
                 )
 
@@ -2126,9 +2047,6 @@ struct StatsOverlayView: View {
             .padding(.horizontal, 12)
             .padding(.top, 50)
             .transition(.move(edge: .bottom))
-            .onAppear {
-                //print("📊 STATS OVERLAY APPEARED - Timer status: \(gameState.elapsedTimeTimer != nil)")
-            }
         }
     }
 }
@@ -2138,8 +2056,8 @@ struct StatsOverlayView: View {
 private struct Game1ModuleView: View {
     let module: Game1Module
     @State private var gameState = StickFigureGameState()
-    @State private var mapState = GameMapState()
-    @State private var showGame = true  // Control whether to show the game view
+    @State private var showGame = true
+    @State private var showEditor = false  // SwiftUI-owned editor presentation
     @Environment(ModuleState.self) var moduleState
     @Environment(\.scenePhase) var scenePhase
 
@@ -2147,25 +2065,56 @@ private struct Game1ModuleView: View {
     var body: some View {
         Group {
             if showGame {
-                // Use SpriteKit for the game
-                SpriteKitGameView(gameState: gameState, mapState: mapState, onDismiss: {
-                    print("🎮 Game dismissed - navigating back to dashboard")
-                    // Select dashboard module to show it
-                    moduleState.selectModule(ModuleIDs.dashboard)
-                })
-                    .ignoresSafeArea()
+                SpriteKitGameView(
+                    gameState: gameState,
+                    onDismiss: {
+                        print("🎮 Game dismissed - navigating back to dashboard")
+                        moduleState.selectModule(ModuleIDs.dashboard)
+                    },
+                    onShowEditor: {
+                        showEditor = true
+                    }
+                )
+                .ignoresSafeArea()
             }
         }
+        .fullScreenCover(isPresented: $showEditor) {
+            StickFigureEditorSwiftUIWrapper(gameState: gameState)
+        }
         .onAppear {
-            // Reset showGame to true when this module appears
-            //print("🎮 Game1Module appeared - ensuring showGame is true")
             showGame = true
         }
         .onChange(of: scenePhase) { oldValue, newValue in
             if newValue == .background || newValue == .inactive {
-                //print("🎮 App going to background/inactive - Saving game state")
                 gameState.saveStats()
             }
         }
+    }
+}
+
+// MARK: - SwiftUI wrapper for the stick figure editor
+// Presenting via fullScreenCover keeps the lifecycle inside SwiftUI,
+// so dismissal always returns to the gameplay screen.
+private struct StickFigureEditorSwiftUIWrapper: UIViewControllerRepresentable {
+    var gameState: StickFigureGameState
+    @Environment(\.dismiss) private var dismiss
+
+    func makeUIViewController(context: Context) -> StickFigureGameplayEditorViewController {
+        let editor = StickFigureGameplayEditorViewController()
+        editor.gameState = gameState
+        editor.onDismiss = {
+            context.coordinator.dismissCover()
+        }
+        return editor
+    }
+
+    func updateUIViewController(_ uiViewController: StickFigureGameplayEditorViewController, context: Context) {}
+
+    func makeCoordinator() -> Coordinator { Coordinator(dismiss: dismiss) }
+
+    class Coordinator {
+        var dismiss: DismissAction
+        init(dismiss: DismissAction) { self.dismiss = dismiss }
+        func dismissCover() { dismiss() }
     }
 }
