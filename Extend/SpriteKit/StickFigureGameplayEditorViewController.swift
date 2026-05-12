@@ -313,40 +313,33 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
     
     // MARK: - UITableViewDataSource & UITableViewDelegate
     func numberOfSections(in tableView: UITableView) -> Int {
-        return 7  // Display, Scale, Stroke, Fusiform, Joints, Colors (Save/Load and Objects moved to header)
+        return 4  // 0=Controls, 1=Figure, 2=Joint Angles, 3=Colors
     }
     
     func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
         let isExpanded = expandedSections.contains(section)
         
         switch section {
-        case 0: return 2  // Zoom, Position buttons (Show Joints moved to header)
-        case 1: return isExpanded ? 12 : 0  // Figure Scale, Joint Shape Size, Shoulder Width, Waist Width, Waist Thickness, Neck Length, Neck Width, Hand Size, Foot Size, Torso Width, Arm Width, Leg Width
-        case 2: return isExpanded ? 10 : 0  // Stroke Joints, Upper Torso, Lower Torso, Upper Arms, Lower Arms, Upper Legs, Lower Legs, Full Torso, Deltoids, Trapezius
-        case 3: return isExpanded ? 22 : 0  // 9 fusiform + 1 full torso hourglass + 8 peak position + 3 peak torso positions + armMuscleSide
-        case 4: return isExpanded ? 3 : 0  // 3 Skeleton Size sliders: Torso, Arm, Leg
-        case 5: return isExpanded ? 11 : 0  // 11 Joint sliders: head, leftShoulder, rightShoulder, leftElbow, rightElbow, leftKnee, rightKnee, leftCalf, rightCalf, waistRotation, neckRotation
-        case 6: return isExpanded ? 12 : 0  // Color pickers for each body part (added shoulders)
+        case 0: return 2    // Position, Zoom
+        case 1: return isExpanded ? 12 : 0  // Figure Scale, Shoulder Width, Waist Width, Neck Length, Neck Width, Hand Size, Foot Size, Torso Width, Arm Width, Leg Width, Upper Arm Fusiform, Upper Leg Fusiform
+        case 2: return isExpanded ? 11 : 0  // Joint Angles
+        case 3: return isExpanded ? 8  : 0  // Colors
         default: return 0
         }
     }
     
     func tableView(_ tableView: UITableView, titleForHeaderInSection section: Int) -> String? {
         switch section {
-        case 0: return nil  // No header for display section
-        case 1: return "FIGURE SCALE & THICKNESS"
-        case 2: return "STROKE THICKNESS"
-        case 3: return "FUSIFORM"
-        case 4: return "SKELETON"
-        case 5: return "JOINT ANGLES"
-        case 6: return "COLORS"
+        case 0: return nil
+        case 1: return "FIGURE"
+        case 2: return "JOINT ANGLES"
+        case 3: return "COLORS"
         default: return nil
         }
     }
     
     func tableView(_ tableView: UITableView, viewForHeaderInSection section: Int) -> UIView? {
-        // Make sections 1, 2, 3, 4, 5, and 6 collapsible
-        guard section == 1 || section == 2 || section == 3 || section == 4 || section == 5 || section == 6 else { return nil }
+        guard section == 1 || section == 2 || section == 3 else { return nil }
         
         let headerView = UIView()
         headerView.backgroundColor = UIColor(red: 0.95, green: 0.95, blue: 0.98, alpha: 1.0)
@@ -393,7 +386,7 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
         
         switch (indexPath.section, indexPath.row) {
         case (0, 0):
-            // Position buttons (X/Y controls) - smaller buttons - FIRST ROW
+            // Position buttons (X/Y controls) - FIRST ROW
             let container = UIStackView()
             container.axis = .horizontal
             container.spacing = 2
@@ -554,243 +547,112 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
             })
             
         case (1, 1):
-            // Joint Shape Size slider (was previously at 1, 2)
-            addSliderCell(cell, label: "Joint Shape Size", value: jointShapeSize, min: 0.0, max: 30.0, increment: 0.1, onChange: { [weak self] val in
-                self?.jointShapeSize = val
-                self?.updateFigure()
-            })
-            
-        case (1, 2):
-            // Shoulder Width slider (was previously at 1, 3)
+            // Shoulder Width
             addSliderCell(cell, label: "Shoulder Width", value: shoulderWidthMultiplier, min: 0.0, max: 2.0, increment: 0.1, onChange: { [weak self] val in
                 self?.shoulderWidthMultiplier = val
                 self?.updateFigure()
             })
             
-        case (1, 3):
-            // Waist Width slider (was previously at 1, 4)
+        case (1, 2):
+            // Waist Width
             addSliderCell(cell, label: "Waist Width", value: waistWidthMultiplier, min: 0.0, max: 2.0, increment: 0.1, onChange: { [weak self] val in
                 self?.waistWidthMultiplier = val
                 self?.updateFigure()
             })
             
-        case (1, 4):
-            // Waist Thickness slider - now controls triangle point position (was previously at 1, 5)
-            addSliderCell(cell, label: "Waist Point", value: waistThicknessMultiplier, min: 0.0, max: 0.9, increment: 0.1, onChange: { [weak self] val in
-                self?.waistThicknessMultiplier = val
-                self?.updateFigure()
-            })
-            
-        case (1, 5):
-            // Neck Length slider (was previously at 1, 6)
+        case (1, 3):
+            // Neck Length
             addSliderCell(cell, label: "Neck Length", value: neckLength, min: 0.5, max: 30.0, increment: 0.1, onChange: { [weak self] val in
                 self?.neckLength = val
                 self?.updateFigure()
             })
             
-        case (1, 6):
-            // Neck Width slider (was previously at 1, 7)
+        case (1, 4):
+            // Neck Width
             addSliderCell(cell, label: "Neck Width", value: neckWidth, min: 0.5, max: 20.0, increment: 0.1, onChange: { [weak self] val in
                 self?.neckWidth = val
                 self?.updateFigure()
             })
             
-        case (1, 7):
-            // Hand Size slider (was previously at 1, 8)
+        case (1, 5):
+            // Hand Size
             addSliderCell(cell, label: "Hand Size", value: handSize, min: 0.5, max: 10.0, increment: 0.1, onChange: { [weak self] val in
                 self?.handSize = val
                 self?.updateFigure()
             })
             
-        case (1, 8):
-            // Foot Size slider
+        case (1, 6):
+            // Foot Size
             addSliderCell(cell, label: "Foot Size", value: footSize, min: 0.5, max: 10.0, increment: 0.1, onChange: { [weak self] val in
                 self?.footSize = val
                 self?.updateFigure()
             })
 
-        case (1, 9):
-            // Torso Width — controls master strokeThickness used by V2 torso
+        case (1, 7):
+            // Torso Width
             addSliderCell(cell, label: "Torso Width", value: strokeThickness, min: 1.0, max: 20.0, increment: 0.5, onChange: { [weak self] val in
                 self?.strokeThickness = val
                 self?.updateFigure()
             })
 
-        case (1, 10):
-            // Arm Width — controls strokeThicknessBicep used as V2 arm base width
+        case (1, 8):
+            // Arm Width
             addSliderCell(cell, label: "Arm Width", value: strokeThicknessBicep, min: 1.0, max: 20.0, increment: 0.5, onChange: { [weak self] val in
                 self?.strokeThicknessBicep = val
                 self?.updateFigure()
             })
 
-        case (1, 11):
-            // Leg Width — controls strokeThicknessUpperLegs used as V2 leg base width
+        case (1, 9):
+            // Leg Width
             addSliderCell(cell, label: "Leg Width", value: strokeThicknessUpperLegs, min: 1.0, max: 20.0, increment: 0.5, onChange: { [weak self] val in
                 self?.strokeThicknessUpperLegs = val
                 self?.updateFigure()
             })
-            
-        // Skeleton size sliders - NEW SECTION 4
-        case (4, 0):
-            addSliderCell(cell, label: "Torso Skeleton", value: skeletonSizeTorso, min: 0.0, max: 5.0, increment: 0.1, onChange: { [weak self] val in
-                self?.skeletonSizeTorso = val
+
+        case (1, 10):
+            // Upper Arm Fusiform
+            addSliderCell(cell, label: "Upper Arm Fusiform", value: fusiformBicep, min: 0, max: 10, increment: 0.1, onChange: { [weak self] val in
+                self?.fusiformBicep = val
                 self?.updateFigure()
             })
-            
-        case (4, 1):
-            addSliderCell(cell, label: "Arm Skeleton", value: skeletonSizeArm, min: 0.0, max: 5.0, increment: 0.1, onChange: { [weak self] val in
-                self?.skeletonSizeArm = val
+
+        case (1, 11):
+            // Upper Leg Fusiform
+            addSliderCell(cell, label: "Upper Leg Fusiform", value: fusiformUpperLegs, min: 0, max: 10, increment: 0.1, onChange: { [weak self] val in
+                self?.fusiformUpperLegs = val
                 self?.updateFigure()
             })
+
+        // Joint Angles - SECTION 2
+        case (2, 0): addSliderCell(cell, label: "Head", value: neckRotation, min: -180, max: 180, increment: 1, onChange: { [weak self] val in self?.neckRotation = val; self?.updateFigure() })
+        case (2, 1): addSliderCell(cell, label: "L Shoulder", value: leftShoulderAngle, min: -180, max: 180, increment: 1, onChange: { [weak self] val in self?.leftShoulderAngle = val; self?.updateFigure() })
+        case (2, 2): addSliderCell(cell, label: "R Shoulder", value: rightShoulderAngle, min: -180, max: 180, increment: 1, onChange: { [weak self] val in self?.rightShoulderAngle = val; self?.updateFigure() })
+        case (2, 3): addSliderCell(cell, label: "L Elbow", value: leftElbowAngle, min: -180, max: 180, increment: 1, onChange: { [weak self] val in self?.leftElbowAngle = val; self?.updateFigure() })
+        case (2, 4): addSliderCell(cell, label: "R Elbow", value: rightElbowAngle, min: -180, max: 180, increment: 1, onChange: { [weak self] val in self?.rightElbowAngle = val; self?.updateFigure() })
+        case (2, 5): addSliderCell(cell, label: "L Upper Leg", value: leftKneeAngle, min: -180, max: 180, increment: 1, onChange: { [weak self] val in self?.leftKneeAngle = val; self?.updateFigure() })
+        case (2, 6): addSliderCell(cell, label: "R Upper Leg", value: rightKneeAngle, min: -180, max: 180, increment: 1, onChange: { [weak self] val in self?.rightKneeAngle = val; self?.updateFigure() })
+        case (2, 7): addSliderCell(cell, label: "L Calf", value: leftFootAngle, min: -180, max: 180, increment: 1, onChange: { [weak self] val in self?.leftFootAngle = val; self?.updateFigure() })
+        case (2, 8): addSliderCell(cell, label: "R Calf", value: rightFootAngle, min: -180, max: 180, increment: 1, onChange: { [weak self] val in self?.rightFootAngle = val; self?.updateFigure() })
+        case (2, 9): addSliderCell(cell, label: "Waist Rotation", value: waistTorsoAngle, min: -180, max: 180, increment: 1, onChange: { [weak self] val in self?.waistTorsoAngle = val; self?.updateFigure() })
+        case (2, 10): addSliderCell(cell, label: "Mid Torso Rotation", value: lowerTorsoRotation, min: -180, max: 180, increment: 1, onChange: { [weak self] val in self?.lowerTorsoRotation = val; self?.updateFigure() })
             
-        case (4, 2):
-            addSliderCell(cell, label: "Leg Skeleton", value: skeletonSizeLeg, min: 0.0, max: 5.0, increment: 0.1, onChange: { [weak self] val in
-                self?.skeletonSizeLeg = val
-                self?.updateFigure()
-            })
-            
-        // Stroke sliders - SECTION 2
-        case (2, 0):
-            // Stroke - Joints
-            addSliderCell(cell, label: "Joints", value: strokeThicknessJoints, min: 0.0, max: 10.0, increment: 0.1, onChange: { [weak self] val in
-                self?.strokeThicknessJoints = val
-                self?.updateFigure()
-            })
-            
-        case (2, 1):
-            // Stroke - Upper Torso
-            addSliderCell(cell, label: "Upper Torso", value: strokeThicknessUpperTorso, min: 0.0, max: 20.0, increment: 0.1, onChange: { [weak self] val in
-                self?.strokeThicknessUpperTorso = val
-                self?.updateFigure()
-            })
-            
-        case (2, 2):
-            // Stroke - Lower Torso
-            addSliderCell(cell, label: "Lower Torso", value: strokeThicknessLowerTorso, min: 0.0, max: 20.0, increment: 0.1, onChange: { [weak self] val in
-                self?.strokeThicknessLowerTorso = val
-                self?.updateFigure()
-            })
-            
-        case (2, 3):
-            // Stroke - Bicep
-            addSliderCell(cell, label: "Bicep", value: strokeThicknessBicep, min: 0.0, max: 20.0, increment: 0.1, onChange: { [weak self] val in
-                self?.strokeThicknessBicep = val
-                self?.updateFigure()
-            })
-            
-        case (2, 4):
-            // Stroke - Tricep
-            addSliderCell(cell, label: "Tricep", value: strokeThicknessTricep, min: 0.0, max: 15.0, increment: 0.1, onChange: { [weak self] val in
-                self?.strokeThicknessTricep = val
-                self?.updateFigure()
-            })
-            
-        case (2, 5):
-            // Stroke - Lower Arms
-            addSliderCell(cell, label: "Lower Arms", value: strokeThicknessLowerArms, min: 0.0, max: 20.0, increment: 0.1, onChange: { [weak self] val in
-                self?.strokeThicknessLowerArms = val
-                self?.updateFigure()
-            })
-            
-        case (2, 6):
-            // Stroke - Upper Legs
-            addSliderCell(cell, label: "Upper Legs", value: strokeThicknessUpperLegs, min: 0.0, max: 20.0, increment: 0.1, onChange: { [weak self] val in
-                self?.strokeThicknessUpperLegs = val
-                self?.updateFigure()
-            })
-            
-        case (2, 6):
-            // Stroke - Lower Legs
-            addSliderCell(cell, label: "Lower Legs", value: strokeThicknessLowerLegs, min: 0.0, max: 20.0, increment: 0.1, onChange: { [weak self] val in
-                self?.strokeThicknessLowerLegs = val
-                self?.updateFigure()
-            })
-            
-        case (2, 7):
-            // Stroke - Full Torso
-            addSliderCell(cell, label: "Full Torso", value: strokeThicknessFullTorso, min: 0.0, max: 20.0, increment: 0.1, onChange: { [weak self] val in
-                self?.strokeThicknessFullTorso = val
-                self?.updateFigure()
-            })
-            
-        case (2, 8):
-            // Stroke - Deltoids
-            addSliderCell(cell, label: "Deltoids", value: strokeThicknessDeltoids, min: 0.0, max: 20.0, increment: 0.1, onChange: { [weak self] val in
-                self?.strokeThicknessDeltoids = val
-                self?.updateFigure()
-            })
-            
-        case (2, 9):
-            // Stroke - Trapezius
-            addSliderCell(cell, label: "Trapezius", value: strokeThicknessTrapezius, min: 0.0, max: 20.0, increment: 0.1, onChange: { [weak self] val in
-                self?.strokeThicknessTrapezius = val
-                self?.updateFigure()
-            })
-            
-        // Fusiform sliders - NOW SECTION 3
-        case (3, 0): addSliderCell(cell, label: "Upper Torso", value: fusiformUpperTorso, min: 0, max: 10, increment: 0.1, onChange: { [weak self] val in self?.fusiformUpperTorso = val; self?.updateFigure() })
-        case (3, 1): addSliderCell(cell, label: "Lower Torso", value: fusiformLowerTorso, min: 0, max: 10, increment: 0.1, onChange: { [weak self] val in self?.fusiformLowerTorso = val; self?.updateFigure() })
-        case (3, 2): addSliderCell(cell, label: "Bicep", value: fusiformBicep, min: 0, max: 10, increment: 0.1, onChange: { [weak self] val in self?.fusiformBicep = val; self?.updateFigure() })
-        case (3, 3): addSliderCell(cell, label: "Tricep", value: fusiformTricep, min: 0, max: 5, increment: 0.1, onChange: { [weak self] val in self?.fusiformTricep = val; self?.updateFigure() })
-        case (3, 4): addSliderCell(cell, label: "Lower Arms", value: fusiformLowerArms, min: 0, max: 10, increment: 0.1, onChange: { [weak self] val in self?.fusiformLowerArms = val; self?.updateFigure() })
-        case (3, 5): addSliderCell(cell, label: "Upper Legs", value: fusiformUpperLegs, min: 0, max: 10, increment: 0.1, onChange: { [weak self] val in self?.fusiformUpperLegs = val; self?.updateFigure() })
-        case (3, 6): addSliderCell(cell, label: "Lower Legs", value: fusiformLowerLegs, min: 0, max: 10, increment: 0.1, onChange: { [weak self] val in self?.fusiformLowerLegs = val; self?.updateFigure() })
-        case (3, 7): addSliderCell(cell, label: "Shoulders", value: fusiformShoulders, min: 0, max: 10, increment: 0.1, onChange: { [weak self] val in self?.fusiformShoulders = val; self?.updateFigure() })
-        case (3, 8): addSliderCell(cell, label: "Deltoids", value: fusiformDeltoids, min: 0, max: 10, increment: 0.1, onChange: { [weak self] val in self?.fusiformDeltoids = val; self?.updateFigure() })
-        case (3, 9): addSliderCell(cell, label: "Full Torso Hourglass", value: fusiformFullTorso, min: 0, max: 10, increment: 0.1, onChange: { [weak self] val in self?.fusiformFullTorso = val; self?.updateFigure() })
-        
-        // Peak position sliders
-        case (3, 10): addSliderCell(cell, label: "Peak Bicep", value: peakPositionBicep, min: 0.1, max: 0.9, increment: 0.05, onChange: { [weak self] val in self?.peakPositionBicep = val; self?.updateFigure() })
-        case (3, 11): addSliderCell(cell, label: "Peak Tricep", value: peakPositionTricep, min: 0.1, max: 0.9, increment: 0.05, onChange: { [weak self] val in self?.peakPositionTricep = val; self?.updateFigure() })
-        case (3, 12): addSliderCell(cell, label: "Peak Lower Arm", value: peakPositionLowerArms, min: 0.1, max: 0.9, increment: 0.05, onChange: { [weak self] val in self?.peakPositionLowerArms = val; self?.updateFigure() })
-        case (3, 13): addSliderCell(cell, label: "Peak Upper Leg", value: peakPositionUpperLegs, min: 0.1, max: 0.9, increment: 0.05, onChange: { [weak self] val in self?.peakPositionUpperLegs = val; self?.updateFigure() })
-        case (3, 14): addSliderCell(cell, label: "Peak Lower Leg", value: peakPositionLowerLegs, min: 0.1, max: 0.9, increment: 0.05, onChange: { [weak self] val in self?.peakPositionLowerLegs = val; self?.updateFigure() })
-        case (3, 15): addSliderCell(cell, label: "Peak Upper Torso", value: peakPositionUpperTorso, min: 0.0, max: 0.9, increment: 0.05, onChange: { [weak self] val in self?.peakPositionUpperTorso = val; self?.updateFigure() })
-        case (3, 16): addSliderCell(cell, label: "Peak Lower Torso", value: peakPositionLowerTorso, min: 0.1, max: 1.0, increment: 0.05, onChange: { [weak self] val in self?.peakPositionLowerTorso = val; self?.updateFigure() })
-        case (3, 17): addSliderCell(cell, label: "Peak Deltoids", value: peakPositionDeltoids, min: 0.1, max: 0.9, increment: 0.05, onChange: { [weak self] val in self?.peakPositionDeltoids = val; self?.updateFigure() })
-        case (3, 18): addSliderCell(cell, label: "Peak Torso Top", value: peakPositionFullTorsoTop, min: 0.0, max: 0.4, increment: 0.05, onChange: { [weak self] val in self?.peakPositionFullTorsoTop = val; self?.updateFigure() })
-        case (3, 19): addSliderCell(cell, label: "Peak Torso Middle", value: peakPositionFullTorsoMiddle, min: 0.3, max: 0.7, increment: 0.05, onChange: { [weak self] val in self?.peakPositionFullTorsoMiddle = val; self?.updateFigure() })
-        case (3, 20): addSliderCell(cell, label: "Peak Torso Bottom", value: peakPositionFullTorsoBottom, min: 0.6, max: 1.0, increment: 0.05, onChange: { [weak self] val in self?.peakPositionFullTorsoBottom = val; self?.updateFigure() })
-        case (3, 21): addSegmentedControlCell(cell, label: "Arm Muscle Side", value: armMuscleSide, options: ["normal", "flipped", "both"], onChange: { [weak self] val in self?.armMuscleSide = val; self?.updateFigure() })
-        
-        // Joint sliders - SECTION 5 (was previously section 4)
-        case (5, 0): addSliderCell(cell, label: "Head", value: neckRotation, min: -180, max: 180, increment: 1, onChange: { [weak self] val in self?.neckRotation = val; self?.updateFigure() })
-        case (5, 1): addSliderCell(cell, label: "L Shoulder", value: leftShoulderAngle, min: -180, max: 180, increment: 1, onChange: { [weak self] val in self?.leftShoulderAngle = val; self?.updateFigure() })
-        case (5, 2): addSliderCell(cell, label: "R Shoulder", value: rightShoulderAngle, min: -180, max: 180, increment: 1, onChange: { [weak self] val in self?.rightShoulderAngle = val; self?.updateFigure() })
-        case (5, 3): addSliderCell(cell, label: "L Elbow", value: leftElbowAngle, min: -180, max: 180, increment: 1, onChange: { [weak self] val in self?.leftElbowAngle = val; self?.updateFigure() })
-        case (5, 4): addSliderCell(cell, label: "R Elbow", value: rightElbowAngle, min: -180, max: 180, increment: 1, onChange: { [weak self] val in self?.rightElbowAngle = val; self?.updateFigure() })
-        case (5, 5): addSliderCell(cell, label: "L Upper Leg", value: leftKneeAngle, min: -180, max: 180, increment: 1, onChange: { [weak self] val in self?.leftKneeAngle = val; self?.updateFigure() })
-        case (5, 6): addSliderCell(cell, label: "R Upper Leg", value: rightKneeAngle, min: -180, max: 180, increment: 1, onChange: { [weak self] val in self?.rightKneeAngle = val; self?.updateFigure() })
-        case (5, 7): addSliderCell(cell, label: "L Calf", value: leftFootAngle, min: -180, max: 180, increment: 1, onChange: { [weak self] val in self?.leftFootAngle = val; self?.updateFigure() })
-        case (5, 8): addSliderCell(cell, label: "R Calf", value: rightFootAngle, min: -180, max: 180, increment: 1, onChange: { [weak self] val in self?.rightFootAngle = val; self?.updateFigure() })
-        case (5, 9): addSliderCell(cell, label: "Waist Rotation", value: waistTorsoAngle, min: -180, max: 180, increment: 1, onChange: { [weak self] val in self?.waistTorsoAngle = val; self?.updateFigure() })
-        case (5, 10): addSliderCell(cell, label: "Mid Torso Rotation", value: lowerTorsoRotation, min: -180, max: 180, increment: 1, onChange: { [weak self] val in self?.lowerTorsoRotation = val; self?.updateFigure() })
-        
-        // Color picker buttons - SECTION 6 (was previously section 5)
-        case (6, 0):
+        // Color picker buttons - SECTION 3
+        case (3, 0):
             addColorButton(cell, label: "Head", colorKey: "head")
-        case (6, 1):
+        case (3, 1):
             addColorButton(cell, label: "Torso", colorKey: "torso")
-        case (6, 2):
+        case (3, 2):
             addColorButton(cell, label: "L Shoulder", colorKey: "leftShoulder")
-        case (6, 3):
+        case (3, 3):
             addColorButton(cell, label: "R Shoulder", colorKey: "rightShoulder")
-        case (6, 4):
+        case (3, 4):
             addColorButton(cell, label: "L Upper Arm", colorKey: "leftUpperArm")
-        case (6, 5):
+        case (3, 5):
             addColorButton(cell, label: "R Upper Arm", colorKey: "rightUpperArm")
-        case (6, 6):
+        case (3, 6):
             addColorButton(cell, label: "L Lower Arm", colorKey: "leftLowerArm")
-        case (6, 7):
+        case (3, 7):
             addColorButton(cell, label: "R Lower Arm", colorKey: "rightLowerArm")
-        case (6, 8):
-            addColorButton(cell, label: "L Upper Leg", colorKey: "leftUpperLeg")
-        case (6, 9):
-            addColorButton(cell, label: "R Upper Leg", colorKey: "rightUpperLeg")
-        case (6, 10):
-            addColorButton(cell, label: "L Lower Leg", colorKey: "leftLowerLeg")
-        case (6, 11):
-            addColorButton(cell, label: "R Lower Leg", colorKey: "rightLowerLeg")
             
         default:
             break
@@ -800,7 +662,7 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
     }
     
     func tableView(_ tableView: UITableView, heightForRowAt indexPath: IndexPath) -> CGFloat {
-        if indexPath.section == 0 || indexPath.section == 6 || indexPath.section == 7 {
+        if indexPath.section == 0 || indexPath.section == 4 {
             return UITableView.automaticDimension
         }
         return UITableView.automaticDimension
