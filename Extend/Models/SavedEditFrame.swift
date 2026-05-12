@@ -121,6 +121,7 @@ struct SavedEditFrame: Codable, Identifiable {
     let footSize: CGFloat
     
     // Stroke thickness properties for each body part
+    let strokeThickness: CGFloat  // Torso width (V2 renderer)
     let strokeThicknessJoints: CGFloat
     let strokeThicknessLowerArms: CGFloat
     let strokeThicknessLowerLegs: CGFloat
@@ -269,6 +270,7 @@ struct SavedEditFrame: Codable, Identifiable {
         
         // Store stroke thickness properties from pose or values
         if let pose = pose {
+            self.strokeThickness = pose.strokeThickness
             self.strokeThicknessJoints = pose.strokeThicknessJoints
             self.strokeThicknessLowerArms = pose.strokeThicknessLowerArms
             self.strokeThicknessLowerLegs = pose.strokeThicknessLowerLegs
@@ -282,6 +284,7 @@ struct SavedEditFrame: Codable, Identifiable {
             self.strokeThicknessTrapezius = pose.strokeThicknessTrapezius
         } else {
             // Use values from editor (EditModeValues) if available, otherwise use defaults
+            self.strokeThickness = 4.0
             self.strokeThicknessJoints = values.strokeThicknessJoints ?? 2.5
             self.strokeThicknessLowerArms = values.strokeThicknessLowerArms ?? 3.5
             self.strokeThicknessLowerLegs = values.strokeThicknessLowerLegs ?? 3.5
@@ -319,6 +322,7 @@ struct SavedEditFrame: Codable, Identifiable {
         case leftKneeAngle, rightKneeAngle, leftFootAngle, rightFootAngle
         case strokeThicknessJoints, strokeThicknessLowerArms, strokeThicknessLowerLegs
         case strokeThicknessLowerTorso, strokeThicknessBicep, strokeThicknessTricep, strokeThicknessUpperLegs, strokeThicknessUpperTorso, strokeThicknessFullTorso, strokeThicknessDeltoids, strokeThicknessTrapezius
+        case strokeThickness
         case headRadiusMultiplier, shoulderWidthMultiplier_
         case footColor, handColor, headColor, torsoColor, leftArmColor, rightArmColor
         case leftLegColor, rightLegColor, leftUpperArmColor, leftLowerArmColor
@@ -402,6 +406,7 @@ struct SavedEditFrame: Codable, Identifiable {
         rightFootAngle = try poseContainer.decodeIfPresent(CGFloat.self, forKey: .rightFootAngle) ?? 0.0
         
         // Decode stroke thickness properties from pose container - optional for backward compatibility
+        strokeThickness = try poseContainer.decodeIfPresent(CGFloat.self, forKey: .strokeThickness) ?? 4.0
         strokeThicknessJoints = try poseContainer.decodeIfPresent(CGFloat.self, forKey: .strokeThicknessJoints) ?? 2.5
         strokeThicknessLowerArms = try poseContainer.decodeIfPresent(CGFloat.self, forKey: .strokeThicknessLowerArms) ?? 3.5
         strokeThicknessLowerLegs = try poseContainer.decodeIfPresent(CGFloat.self, forKey: .strokeThicknessLowerLegs) ?? 3.5
@@ -484,6 +489,7 @@ struct SavedEditFrame: Codable, Identifiable {
         try poseContainer.encode(rightKneeAngle, forKey: .rightKneeAngle)
         try poseContainer.encode(leftFootAngle, forKey: .leftFootAngle)
         try poseContainer.encode(rightFootAngle, forKey: .rightFootAngle)
+        try poseContainer.encode(strokeThickness, forKey: .strokeThickness)
         try poseContainer.encode(strokeThicknessJoints, forKey: .strokeThicknessJoints)
         try poseContainer.encode(strokeThicknessLowerArms, forKey: .strokeThicknessLowerArms)
         try poseContainer.encode(strokeThicknessLowerLegs, forKey: .strokeThicknessLowerLegs)
@@ -636,88 +642,37 @@ class SavedFramesManager {
         jsonString += "    ],\n"
         jsonString += "    \"pose\" : {\n"
         
-        // Build pose dictionary - sort alphabetically
+        // Build pose dictionary - sort alphabetically (V2 renderer properties only)
         let poseEntries: [(String, String)] = [
-            ("armMuscleSide", "\"\(frame.armMuscleSide)\""),
-            ("figureOffsetX", roundAndFormat(frame.positionX, decimals: 1)),
-            ("figureOffsetY", roundAndFormat(frame.positionY, decimals: 1)),
             ("figureScale", roundAndFormat(frame.figureScale, decimals: 1)),
             ("footColor", "\"#000000\""),
             ("footSize", roundAndFormat(frame.footSize, decimals: 1)),
-            ("fusiformLowerArms", roundAndFormat(frame.fusiformLowerArms, decimals: 2)),
-            ("fusiformLowerLegs", roundAndFormat(frame.fusiformLowerLegs, decimals: 2)),
-            ("fusiformLowerTorso", roundAndFormat(frame.fusiformLowerTorso, decimals: 2)),
-            ("fusiformShoulders", roundAndFormat(frame.fusiformShoulders, decimals: 2)),
-            ("fusiformDeltoids", roundAndFormat(frame.fusiformDeltoids, decimals: 2)),
             ("fusiformBicep", roundAndFormat(frame.fusiformBicep, decimals: 2)),
-            ("fusiformTricep", roundAndFormat(frame.fusiformTricep, decimals: 2)),
             ("fusiformUpperLegs", roundAndFormat(frame.fusiformUpperLegs, decimals: 2)),
-            ("fusiformUpperTorso", roundAndFormat(frame.fusiformUpperTorso, decimals: 2)),
             ("handColor", "\"#000000\""),
             ("handSize", roundAndFormat(frame.handSize, decimals: 1)),
             ("headAngle", "\(Int(frame.headAngle))"),
             ("headColor", "\"#000000\""),
-            ("headRadiusMultiplier", "1"),
-            ("jointColor", "\"#000000\""),
-            ("jointShapeSize", roundAndFormat(frame.jointShapeSize, decimals: 1)),
-            ("leftArmColor", "\"#000000\""),
             ("leftElbowAngle", "\(Int(frame.leftElbowAngle))"),
             ("leftFootAngle", "\(Int(frame.leftFootAngle))"),
             ("leftHipAngle", "\(Int(frame.leftHipAngle))"),
             ("leftKneeAngle", "\(Int(frame.leftKneeAngle))"),
-            ("leftLegColor", "\"#000000\""),
-            ("leftLowerArmColor", "\"#000000\""),
-            ("leftLowerLegColor", "\"#000000\""),
             ("leftShoulderAngle", "\(Int(frame.leftShoulderAngle))"),
-            ("leftUpperArmColor", "\"#000000\""),
-            ("leftUpperLegColor", "\"#000000\""),
             ("midTorsoAngle", "\(Int(frame.midTorsoAngle))"),
             ("neckLength", roundAndFormat(frame.neckLength, decimals: 1)),
             ("neckWidth", roundAndFormat(frame.neckWidth, decimals: 1)),
-            ("peakPositionLowerArms", roundAndFormat(frame.peakPositionLowerArms, decimals: 2)),
-            ("peakPositionLowerLegs", roundAndFormat(frame.peakPositionLowerLegs, decimals: 2)),
-            ("peakPositionLowerTorso", roundAndFormat(frame.peakPositionLowerTorso, decimals: 2)),
-            ("peakPositionBicep", roundAndFormat(frame.peakPositionBicep, decimals: 2)),
-            ("peakPositionTricep", roundAndFormat(frame.peakPositionTricep, decimals: 2)),
-            ("peakPositionUpperLegs", roundAndFormat(frame.peakPositionUpperLegs, decimals: 2)),
-            ("peakPositionUpperTorso", roundAndFormat(frame.peakPositionUpperTorso, decimals: 2)),
-            ("peakPositionDeltoids", roundAndFormat(frame.peakPositionDeltoids, decimals: 2)),
-            ("fusiformFullTorso", roundAndFormat(frame.fusiformFullTorso, decimals: 2)),
-            ("peakPositionFullTorsoTop", roundAndFormat(frame.peakPositionFullTorsoTop, decimals: 2)),
-            ("peakPositionFullTorsoMiddle", roundAndFormat(frame.peakPositionFullTorsoMiddle, decimals: 2)),
-            ("peakPositionFullTorsoBottom", roundAndFormat(frame.peakPositionFullTorsoBottom, decimals: 2)),
-            ("rightArmColor", "\"#000000\""),
             ("rightElbowAngle", "\(Int(frame.rightElbowAngle))"),
             ("rightFootAngle", "\(Int(frame.rightFootAngle))"),
             ("rightHipAngle", "\(Int(frame.rightHipAngle))"),
             ("rightKneeAngle", "\(Int(frame.rightKneeAngle))"),
-            ("rightLegColor", "\"#000000\""),
-            ("rightLowerArmColor", "\"#000000\""),
-            ("rightLowerLegColor", "\"#000000\""),
             ("rightShoulderAngle", "\(Int(frame.rightShoulderAngle))"),
-            ("rightUpperArmColor", "\"#000000\""),
-            ("rightUpperLegColor", "\"#000000\""),
             ("scale", roundAndFormat(frame.figureScale, decimals: 1)),
             ("shoulderWidthMultiplier", roundAndFormat(frame.shoulderWidthMultiplier, decimals: 2)),
-            ("skeletonSizeArm", roundAndFormat(frame.skeletonSizeArm, decimals: 2)),
-            ("skeletonSizeLeg", roundAndFormat(frame.skeletonSizeLeg, decimals: 2)),
-            ("skeletonSizeTorso", roundAndFormat(frame.skeletonSizeTorso, decimals: 2)),
-            ("strokeThicknessFullTorso", roundAndFormat(frame.strokeThicknessFullTorso, decimals: 1)),
-            ("strokeThicknessDeltoids", roundAndFormat(frame.strokeThicknessDeltoids, decimals: 1)),
-            ("strokeThicknessTrapezius", roundAndFormat(frame.strokeThicknessTrapezius, decimals: 1)),
-            ("strokeThicknessJoints", roundAndFormat(frame.strokeThicknessJoints, decimals: 1)),
-            ("strokeThicknessLowerArms", roundAndFormat(frame.strokeThicknessLowerArms, decimals: 1)),
-            ("strokeThicknessLowerLegs", roundAndFormat(frame.strokeThicknessLowerLegs, decimals: 1)),
-            ("strokeThicknessLowerTorso", roundAndFormat(frame.strokeThicknessLowerTorso, decimals: 1)),
+            ("strokeThickness", roundAndFormat(frame.strokeThickness, decimals: 1)),
             ("strokeThicknessBicep", roundAndFormat(frame.strokeThicknessBicep, decimals: 1)),
-            ("strokeThicknessTricep", roundAndFormat(frame.strokeThicknessTricep, decimals: 1)),
             ("strokeThicknessUpperLegs", roundAndFormat(frame.strokeThicknessUpperLegs, decimals: 1)),
-            ("strokeThicknessUpperTorso", roundAndFormat(frame.strokeThicknessUpperTorso, decimals: 1)),
             ("torsoColor", "\"#000000\""),
             ("torsoRotationAngle", "\(Int(frame.torsoRotationAngle))"),
-            ("waistPositionX", "300"),
-            ("waistPositionY", "360"),
-            ("waistThicknessMultiplier", roundAndFormat(frame.waistThicknessMultiplier, decimals: 1)),
             ("waistTorsoAngle", "\(Int(frame.waistTorsoAngle))"),
             ("waistWidthMultiplier", roundAndFormat(frame.waistWidthMultiplier, decimals: 2))
         ]

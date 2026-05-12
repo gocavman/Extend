@@ -590,7 +590,7 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
 
         case (1, 7):
             // Torso Width
-            addSliderCell(cell, label: "Torso Width", value: strokeThickness, min: 1.0, max: 20.0, increment: 0.5, onChange: { [weak self] val in
+            addSliderCell(cell, label: "Torso Width", value: strokeThickness, min: 0.0, max: 20.0, increment: 0.5, onChange: { [weak self] val in
                 self?.strokeThickness = val
                 self?.updateFigure()
             })
@@ -1259,6 +1259,7 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
             tempPose.handSize = self.handSize
             tempPose.footSize = self.footSize
             // Set individual stroke thickness values
+            tempPose.strokeThickness = self.strokeThickness
             tempPose.strokeThicknessJoints = self.strokeThicknessJoints
             tempPose.strokeThicknessUpperTorso = self.strokeThicknessUpperTorso
             tempPose.strokeThicknessLowerTorso = self.strokeThicknessLowerTorso
@@ -1730,6 +1731,7 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
         
         // Restore figure scale and thickness
         figureScale = frame.figureScale
+        strokeThickness = frame.strokeThickness
         // Restore individual stroke thickness values
         strokeThicknessJoints = frame.strokeThicknessJoints
         strokeThicknessUpperTorso = frame.strokeThicknessUpperTorso

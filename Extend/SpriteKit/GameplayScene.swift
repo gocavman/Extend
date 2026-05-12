@@ -1316,11 +1316,11 @@ private func applyMuscleScaling(to figure: StickFigure2D) -> StickFigure2D {
     let isSideView = scaledFigure.shoulderWidthMultiplier < 0.1 && scaledFigure.waistWidthMultiplier < 0.1
     
     if isSideView {
-        scaledFigure.strokeThicknessUpperTorso = min(scaledFigure.strokeThicknessUpperTorso, 5.0)
+        //scaledFigure.strokeThicknessUpperTorso = min(scaledFigure.strokeThicknessUpperTorso, 5.0)
         //scaledFigure.fusiformShoulders = min(scaledFigure.fusiformShoulders, 3.0)
-        scaledFigure.fusiformShoulders = min(scaledFigure.fusiformShoulders, 0) // Make shoulder fusiform proportional to neck width for better side view appearance
+        //scaledFigure.fusiformShoulders = min(scaledFigure.fusiformShoulders, 0) // Make shoulder fusiform proportional to neck width for better side view appearance
         //scaledFigure.strokeThicknessFullTorso = min(scaledFigure.strokeThicknessFullTorso, 5.0)
-        scaledFigure.strokeThicknessDeltoids = min(scaledFigure.strokeThicknessDeltoids, 3.0)
+        //scaledFigure.strokeThicknessDeltoids = min(scaledFigure.strokeThicknessDeltoids, 3.0)
         //scaledFigure.skeletonSizeTorso = min(scaledFigure.skeletonSizeTorso, 3.0)
         
     }

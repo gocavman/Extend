@@ -518,6 +518,7 @@ struct StickFigure2DPose: Codable {
         try container.encode(round(strokeThicknessMultiplier), forKey: .strokeThicknessMultiplier)
         try container.encode(round(strokeThicknessUpperLegs), forKey: .strokeThicknessUpperLegs)
         try container.encode(round(strokeThicknessUpperTorso), forKey: .strokeThicknessUpperTorso)
+        try container.encode(strokeThickness, forKey: .strokeThickness)
         try container.encode(torsoColor, forKey: .torsoColor)
         try container.encode(round(waistPosition.x), forKey: .waistPositionX)
         try container.encode(round(waistPosition.y), forKey: .waistPositionY)
@@ -530,21 +531,21 @@ struct StickFigure2DPose: Codable {
         let x = try container.decodeIfPresent(CGFloat.self, forKey: .waistPositionX) ?? 300
         let y = try container.decodeIfPresent(CGFloat.self, forKey: .waistPositionY) ?? 360
         self.waistPosition = CGPoint(x: x, y: y)
-        self.waistTorsoAngle = try container.decode(Double.self, forKey: .waistTorsoAngle)
-        self.midTorsoAngle = try container.decode(Double.self, forKey: .midTorsoAngle)
-        self.headAngle = try container.decode(Double.self, forKey: .headAngle)
-        self.leftShoulderAngle = try container.decode(Double.self, forKey: .leftShoulderAngle)
-        self.rightShoulderAngle = try container.decode(Double.self, forKey: .rightShoulderAngle)
-        self.leftElbowAngle = try container.decode(Double.self, forKey: .leftElbowAngle)
-        self.rightElbowAngle = try container.decode(Double.self, forKey: .rightElbowAngle)
+        self.waistTorsoAngle = try container.decodeIfPresent(Double.self, forKey: .waistTorsoAngle) ?? 0
+        self.midTorsoAngle = try container.decodeIfPresent(Double.self, forKey: .midTorsoAngle) ?? 0
+        self.headAngle = try container.decodeIfPresent(Double.self, forKey: .headAngle) ?? 0
+        self.leftShoulderAngle = try container.decodeIfPresent(Double.self, forKey: .leftShoulderAngle) ?? 0
+        self.rightShoulderAngle = try container.decodeIfPresent(Double.self, forKey: .rightShoulderAngle) ?? 0
+        self.leftElbowAngle = try container.decodeIfPresent(Double.self, forKey: .leftElbowAngle) ?? 0
+        self.rightElbowAngle = try container.decodeIfPresent(Double.self, forKey: .rightElbowAngle) ?? 0
         self.leftHipAngle = try container.decodeIfPresent(Double.self, forKey: .leftHipAngle) ?? 0
         self.rightHipAngle = try container.decodeIfPresent(Double.self, forKey: .rightHipAngle) ?? 0
-        self.leftKneeAngle = try container.decode(Double.self, forKey: .leftKneeAngle)
-        self.rightKneeAngle = try container.decode(Double.self, forKey: .rightKneeAngle)
-        self.leftFootAngle = try container.decode(Double.self, forKey: .leftFootAngle)
-        self.rightFootAngle = try container.decode(Double.self, forKey: .rightFootAngle)
-        self.headColor = try container.decode(String.self, forKey: .headColor)
-        self.torsoColor = try container.decode(String.self, forKey: .torsoColor)
+        self.leftKneeAngle = try container.decodeIfPresent(Double.self, forKey: .leftKneeAngle) ?? 0
+        self.rightKneeAngle = try container.decodeIfPresent(Double.self, forKey: .rightKneeAngle) ?? 0
+        self.leftFootAngle = try container.decodeIfPresent(Double.self, forKey: .leftFootAngle) ?? 0
+        self.rightFootAngle = try container.decodeIfPresent(Double.self, forKey: .rightFootAngle) ?? 0
+        self.headColor = try container.decodeIfPresent(String.self, forKey: .headColor) ?? "#000000"
+        self.torsoColor = try container.decodeIfPresent(String.self, forKey: .torsoColor) ?? "#000000"
         self.leftArmColor = try container.decodeIfPresent(String.self, forKey: .leftArmColor) ?? "#000000"
         self.rightArmColor = try container.decodeIfPresent(String.self, forKey: .rightArmColor) ?? "#000000"
         self.leftUpperArmColor = try container.decodeIfPresent(String.self, forKey: .leftUpperArmColor) ?? "#000000"
@@ -557,13 +558,13 @@ struct StickFigure2DPose: Codable {
         self.rightUpperLegColor = try container.decodeIfPresent(String.self, forKey: .rightUpperLegColor) ?? "#000000"
         self.leftLowerLegColor = try container.decodeIfPresent(String.self, forKey: .leftLowerLegColor) ?? "#000000"
         self.rightLowerLegColor = try container.decodeIfPresent(String.self, forKey: .rightLowerLegColor) ?? "#000000"
-        self.handColor = try container.decode(String.self, forKey: .handColor)
-        self.footColor = try container.decode(String.self, forKey: .footColor)
+        self.handColor = try container.decodeIfPresent(String.self, forKey: .handColor) ?? "#000000"
+        self.footColor = try container.decodeIfPresent(String.self, forKey: .footColor) ?? "#000000"
         self.jointColor = try container.decodeIfPresent(String.self, forKey: .jointColor) ?? "#000000"
         // strokeThickness is optional - derive from average of other strokes if missing
         self.strokeThickness = try container.decodeIfPresent(CGFloat.self, forKey: .strokeThickness) ?? 1.0
-        self.scale = try container.decode(Double.self, forKey: .scale)
-        self.headRadiusMultiplier = try container.decode(Double.self, forKey: .headRadiusMultiplier)
+        self.scale = try container.decodeIfPresent(Double.self, forKey: .scale) ?? 1.0
+        self.headRadiusMultiplier = try container.decodeIfPresent(Double.self, forKey: .headRadiusMultiplier) ?? 1.0
         // New properties with defaults for backward compatibility
         self.strokeThicknessBicep = try container.decodeIfPresent(CGFloat.self, forKey: .strokeThicknessBicep) ?? 4.0
         self.strokeThicknessTricep = try container.decodeIfPresent(CGFloat.self, forKey: .strokeThicknessTricep) ?? 4.0
