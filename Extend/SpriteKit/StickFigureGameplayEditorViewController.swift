@@ -52,6 +52,7 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
     private var armMuscleSide: String = "normal"  // normal, flipped, or both
     
     // Individual stroke thickness properties for each body part
+    private var strokeThickness: CGFloat = 4.0
     private var strokeThicknessJoints: CGFloat = 2.0
     private var strokeThicknessUpperTorso: CGFloat = 5.0
     private var strokeThicknessLowerTorso: CGFloat = 5.0
@@ -320,7 +321,7 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
         
         switch section {
         case 0: return 2  // Zoom, Position buttons (Show Joints moved to header)
-        case 1: return isExpanded ? 9 : 0  // Figure Scale, Joint Shape Size, Shoulder Width, Waist Width, Waist Thickness, Neck Length, Neck Width, Hand Size, Foot Size (Skeleton Size removed)
+        case 1: return isExpanded ? 12 : 0  // Figure Scale, Joint Shape Size, Shoulder Width, Waist Width, Waist Thickness, Neck Length, Neck Width, Hand Size, Foot Size, Torso Width, Arm Width, Leg Width
         case 2: return isExpanded ? 10 : 0  // Stroke Joints, Upper Torso, Lower Torso, Upper Arms, Lower Arms, Upper Legs, Lower Legs, Full Torso, Deltoids, Trapezius
         case 3: return isExpanded ? 22 : 0  // 9 fusiform + 1 full torso hourglass + 8 peak position + 3 peak torso positions + armMuscleSide
         case 4: return isExpanded ? 3 : 0  // 3 Skeleton Size sliders: Torso, Arm, Leg
@@ -602,9 +603,30 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
             })
             
         case (1, 8):
-            // Foot Size slider (was previously at 1, 9)
+            // Foot Size slider
             addSliderCell(cell, label: "Foot Size", value: footSize, min: 0.5, max: 10.0, increment: 0.1, onChange: { [weak self] val in
                 self?.footSize = val
+                self?.updateFigure()
+            })
+
+        case (1, 9):
+            // Torso Width — controls master strokeThickness used by V2 torso
+            addSliderCell(cell, label: "Torso Width", value: strokeThickness, min: 1.0, max: 20.0, increment: 0.5, onChange: { [weak self] val in
+                self?.strokeThickness = val
+                self?.updateFigure()
+            })
+
+        case (1, 10):
+            // Arm Width — controls strokeThicknessBicep used as V2 arm base width
+            addSliderCell(cell, label: "Arm Width", value: strokeThicknessBicep, min: 1.0, max: 20.0, increment: 0.5, onChange: { [weak self] val in
+                self?.strokeThicknessBicep = val
+                self?.updateFigure()
+            })
+
+        case (1, 11):
+            // Leg Width — controls strokeThicknessUpperLegs used as V2 leg base width
+            addSliderCell(cell, label: "Leg Width", value: strokeThicknessUpperLegs, min: 1.0, max: 20.0, increment: 0.5, onChange: { [weak self] val in
+                self?.strokeThicknessUpperLegs = val
                 self?.updateFigure()
             })
             
@@ -1175,6 +1197,7 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
             neckWidth = standFrame.neckWidth
             handSize = standFrame.handSize
             footSize = standFrame.footSize
+            strokeThickness = standFrame.strokeThickness
             
             // Fusiforms - load from standFrame
             fusiformUpperTorso = standFrame.fusiformUpperTorso
@@ -1252,6 +1275,7 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
         
         editorScene?.updateWithValues(
             figureScale: figureScale,
+            strokeThickness: strokeThickness,
             skeletonSizeTorso: skeletonSizeTorso,
             skeletonSizeArm: skeletonSizeArm,
             skeletonSizeLeg: skeletonSizeLeg,
@@ -2450,6 +2474,7 @@ class StickFigureEditorScene: SKScene {
     
     func updateWithValues(
         figureScale: CGFloat,
+        strokeThickness: CGFloat = 4.0,
         skeletonSizeTorso: CGFloat = 1.0,
         skeletonSizeArm: CGFloat = 1.0,
         skeletonSizeLeg: CGFloat = 1.0,
@@ -2526,6 +2551,7 @@ class StickFigureEditorScene: SKScene {
         
         // Create updated frame with angles
         var updatedFrame = standFrame
+        updatedFrame.strokeThickness = strokeThickness
         updatedFrame.fusiformUpperTorso = fusiformUpperTorso
         updatedFrame.fusiformLowerTorso = fusiformLowerTorso
         updatedFrame.fusiformBicep = fusiformBicep
