@@ -553,6 +553,7 @@ class MuscleSystem {
     private func getPropertyValue(_ propertyKey: String, from frame: SavedEditFrame) -> Double {
         let value: Double
         switch propertyKey {
+        case "strokeThickness": value = Double(frame.strokeThickness)
         case "fusiformShoulders": value = Double(frame.fusiformShoulders)
         case "fusiformDeltoids": value = Double(frame.fusiformDeltoids)
         case "fusiformUpperTorso": value = Double(frame.fusiformUpperTorso)
@@ -765,6 +766,8 @@ class MuscleSystem {
     private func extractPropertyValueFromFrame(frame: AnimationFrame, propertyId: String) -> Double {
         // Map property IDs to frame properties
         switch propertyId {
+        case "strokeThickness":
+            return Double(frame.pose.strokeThickness)
         case "fusiformShoulders":
             return Double(frame.pose.fusiformShoulders)
         case "fusiformDeltoids":
