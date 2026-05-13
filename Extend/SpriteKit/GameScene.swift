@@ -384,8 +384,8 @@ class GameScene: SKScene {
             let midX  = (sTop.x + sTopR.x + hBot.x + hBotR.x) / 4
 
             // Abs occupy the lower ~55% of the torso
-            let absTop = topY + (botY - topY) * 0.45
-            let absBot = topY + (botY - topY) * 0.92
+            let absTop = topY + (botY - topY) * 0.35
+            let absBot = topY + (botY - topY) * 0.90
             let absH   = absBot - absTop
 
             // Half-width: fits comfortably inside the narrower waist area
@@ -435,27 +435,33 @@ class GameScene: SKScene {
             let pecLineW  = max(0.7, scale * 0.65)
             let pecColor  = SKColor.white.withAlphaComponent(0.55)
 
-            // Left pec: CCW arc from π/2 → 0 (top → left → bottom → inner-right, 270°)
-            let leftPath = UIBezierPath()
-            leftPath.addArc(withCenter: leftCenter, radius: pecR,
-                            startAngle: .pi / 2, endAngle: .pi, clockwise: false)
-            let leftPecNode = SKShapeNode(path: leftPath.cgPath)
-            leftPecNode.strokeColor = pecColor
-            leftPecNode.lineWidth   = pecLineW
-            leftPecNode.fillColor   = .clear
-            leftPecNode.zPosition   = 1.8
-            container.addChild(leftPecNode)
-
-            // Right pec: CW arc from π/2 → π (top → right → bottom → inner-left, 270°)
+            // Clock-to-math angle: 0 = 3 o'clock, counter-clockwise positive (UIKit flips Y so
+            // clockwise:true draws visually clockwise).
+            // Right pec: 3:00 → 9:30 clockwise  (0 → -13π/12, negated to flip vertically)
             let rightPath = UIBezierPath()
             rightPath.addArc(withCenter: rightCenter, radius: pecR,
-                             startAngle: .pi / 2, endAngle: 0, clockwise: true)
+                             startAngle: 0,
+                             endAngle: -13 * .pi / 12,
+                             clockwise: false)
             let rightPecNode = SKShapeNode(path: rightPath.cgPath)
             rightPecNode.strokeColor = pecColor
             rightPecNode.lineWidth   = pecLineW
             rightPecNode.fillColor   = .clear
             rightPecNode.zPosition   = 1.8
             container.addChild(rightPecNode)
+
+            // Left pec: 2:30 → 9:00 clockwise  (-π/12 → -π, negated to flip vertically)
+            let leftPath = UIBezierPath()
+            leftPath.addArc(withCenter: leftCenter, radius: pecR,
+                            startAngle: -.pi / 12,
+                            endAngle: -.pi,
+                            clockwise: false)
+            let leftPecNode = SKShapeNode(path: leftPath.cgPath)
+            leftPecNode.strokeColor = pecColor
+            leftPecNode.lineWidth   = pecLineW
+            leftPecNode.fillColor   = .clear
+            leftPecNode.zPosition   = 1.8
+            container.addChild(leftPecNode)
         }
 
         // Shoulder crossbar — trapezoid/triangle: wide at bottom, converging to a point at top
