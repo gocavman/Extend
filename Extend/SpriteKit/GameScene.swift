@@ -135,6 +135,7 @@ class GameScene: SKScene {
             start: CGPoint, mid: CGPoint, end: CGPoint,
             startHalf: CGFloat, midHalf: CGFloat, endHalf: CGFloat,
             upperBulge: CGFloat, upperBulgePeak: CGFloat = 0.38,
+            lowerBulge: CGFloat = 0, lowerBulgePeak: CGFloat = 0.25,
             color: SKColor, zPos: CGFloat = 1.0
         ) {
             let s = rel(start), m = rel(mid), e = rel(end)
@@ -190,13 +191,17 @@ class GameScene: SKScene {
             }
             addShape(upLeft, upRight)
 
-            // Lower segment: mid → end (simple taper)
+            // Lower segment: mid → end (with optional bulge near the top/joint end)
             var loLeft: [CGPoint] = []
             var loRight: [CGPoint] = []
             for i in 0 ... N {
                 let t = CGFloat(i) / CGFloat(N)
                 let p = CGPoint(x: m.x + laDir.x * laLen * t, y: m.y + laDir.y * laLen * t)
-                let w = midHalf + (endHalf - midHalf) * t
+                let baseW = midHalf + (endHalf - midHalf) * t
+                let bRaw: CGFloat = t < lowerBulgePeak
+                    ? t / max(lowerBulgePeak, 0.01)
+                    : 1.0 - (t - lowerBulgePeak) / max(1.0 - lowerBulgePeak, 0.01)
+                let w = baseW + lowerBulge * max(0, bRaw)
                 loLeft.append(CGPoint(x: p.x + laPerp.x * w, y: p.y + laPerp.y * w))
                 loRight.append(CGPoint(x: p.x - laPerp.x * w, y: p.y - laPerp.y * w))
             }
@@ -254,8 +259,8 @@ class GameScene: SKScene {
                     : CGPoint(x: 1, y: 0)
                 let topL = CGPoint(x: smid.x - perp.x * sideExpansion, y: smid.y - perp.y * sideExpansion)
                 let topR = CGPoint(x: smid.x + perp.x * sideExpansion, y: smid.y + perp.y * sideExpansion)
-                let botL = CGPoint(x: hmid.x - perp.x * sideExpansion * 0.85, y: hmid.y - perp.y * sideExpansion * 0.85)
-                let botR = CGPoint(x: hmid.x + perp.x * sideExpansion * 0.85, y: hmid.y + perp.y * sideExpansion * 0.85)
+                let botL = CGPoint(x: hmid.x - perp.x * sideExpansion * 0.65, y: hmid.y - perp.y * sideExpansion * 0.65)
+                let botR = CGPoint(x: hmid.x + perp.x * sideExpansion * 0.65, y: hmid.y + perp.y * sideExpansion * 0.65)
                 let path = UIBezierPath()
                 path.move(to: topL)
                 path.addLine(to: topR)
@@ -281,8 +286,8 @@ class GameScene: SKScene {
             let hn: CGPoint = hLen > 0
                 ? CGPoint(x: hdx / hLen, y: hdy / hLen)
                 : CGPoint(x: 1, y: 0)
-            lh = CGPoint(x: hipMidX - hn.x * sideExpansion * 0.85, y: lh.y)
-            rh = CGPoint(x: hipMidX + hn.x * sideExpansion * 0.85, y: rh.y)
+            lh = CGPoint(x: hipMidX - hn.x * sideExpansion * 0.65, y: lh.y)
+            rh = CGPoint(x: hipMidX + hn.x * sideExpansion * 0.65, y: rh.y)
 
             let shoulderHalfW = abs(rs.x - ls.x) / 2
             let torsoMidX = (ls.x + rs.x) / 2
@@ -336,10 +341,10 @@ class GameScene: SKScene {
         let rightLegCol = toSKColorV2(mutableFigure.rightUpperLegColor)
 
         // ---- Width parameters ----
-        let armShoulderHalf = armBaseHalf * (1.1 + muscleScale * 0.6)
-        let armElbowHalf    = armBaseHalf * (0.65 + muscleScale * 0.15)
+        let armShoulderHalf = armBaseHalf * (0.7 + muscleScale * 0.1)   // narrow at top — bicep bulge creates the peak
+        let armElbowHalf    = armBaseHalf * (0.62 + muscleScale * 0.15)
         let armWristHalf    = armBaseHalf * (0.52 + muscleScale * 0.12)
-        let armBulge        = armBaseHalf * muscleScale * 1.4
+        let armBulge        = armBaseHalf * (0.3 + muscleScale * 1.8)   // bigger peak for bicep shape
 
         let legHipHalf   = legBaseHalf * (1.3 + legMuscleScale * 0.7)
         let legKneeHalf  = legBaseHalf * (0.85 + legMuscleScale * 0.2)
@@ -352,10 +357,12 @@ class GameScene: SKScene {
         drawUnifiedLimb(start: leftHipPos, mid: leftUpperLegEnd, end: leftFootEnd,
                         startHalf: legHipHalf, midHalf: legKneeHalf, endHalf: legAnkleHalf,
                         upperBulge: legBulge, upperBulgePeak: 0.4,
+                        lowerBulge: legBaseHalf * (0.3 + legMuscleScale * 0.5), lowerBulgePeak: 0.2,
                         color: leftLegCol, zPos: 1.0)
         drawUnifiedLimb(start: rightHipPos, mid: rightUpperLegEnd, end: rightFootEnd,
                         startHalf: legHipHalf, midHalf: legKneeHalf, endHalf: legAnkleHalf,
                         upperBulge: legBulge, upperBulgePeak: 0.4,
+                        lowerBulge: legBaseHalf * (0.3 + legMuscleScale * 0.5), lowerBulgePeak: 0.2,
                         color: rightLegCol, zPos: 1.0)
 
         // Torso
@@ -422,7 +429,7 @@ class GameScene: SKScene {
 
         // Shoulder caps — smooth seam between torso and arms
         // When width=0, both shoulders are the same point — draw only once to avoid duplication
-        let shoulderCapR = armShoulderHalf * 1.0
+        let shoulderCapR = armBaseHalf * (0.95 + muscleScale * 0.5)  // round shoulder ball, independent of arm taper
         let shoulderCapPositions: [CGPoint] = shoulderSep > 2
             ? [leftShoulderPos, rightShoulderPos]
             : [leftShoulderPos]
@@ -480,11 +487,13 @@ class GameScene: SKScene {
         // Arms
         drawUnifiedLimb(start: leftShoulderPos, mid: leftUpperArmEnd, end: leftForearmEnd,
                         startHalf: armShoulderHalf, midHalf: armElbowHalf, endHalf: armWristHalf,
-                        upperBulge: armBulge, upperBulgePeak: 0.38,
+                        upperBulge: armBulge, upperBulgePeak: 0.55,
+                        lowerBulge: armBaseHalf * (0.25 + muscleScale * 0.3), lowerBulgePeak: 0.2,
                         color: leftArmCol, zPos: 2.0)
         drawUnifiedLimb(start: rightShoulderPos, mid: rightUpperArmEnd, end: rightForearmEnd,
                         startHalf: armShoulderHalf, midHalf: armElbowHalf, endHalf: armWristHalf,
-                        upperBulge: armBulge, upperBulgePeak: 0.38,
+                        upperBulge: armBulge, upperBulgePeak: 0.55,
+                        lowerBulge: armBaseHalf * (0.25 + muscleScale * 0.3), lowerBulgePeak: 0.2,
                         color: rightArmCol, zPos: 2.0)
 
         // Head

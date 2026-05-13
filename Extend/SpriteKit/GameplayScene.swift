@@ -1242,6 +1242,11 @@ private func applyMuscleScaling(to figure: StickFigure2D) -> StickFigure2D {
             // Apply the interpolated value to the appropriate figure property
             switch property.id {
             case "strokeThickness": scaledFigure.strokeThickness = interpolatedValue
+            case "shoulderWidthMultiplier":
+                // Only apply if not a side-view frame (side-view frames have 0, keep them 0)
+                if frameShoulderWidth > 0 { scaledFigure.shoulderWidthMultiplier = interpolatedValue }
+            case "waistWidthMultiplier":
+                if frameWaistWidth > 0 { scaledFigure.waistWidthMultiplier = interpolatedValue }
             case "fusiformShoulders": scaledFigure.fusiformShoulders = interpolatedValue
             case "fusiformUpperTorso": scaledFigure.fusiformUpperTorso = interpolatedValue
             case "fusiformLowerTorso": scaledFigure.fusiformLowerTorso = interpolatedValue
@@ -1288,8 +1293,9 @@ private func applyMuscleScaling(to figure: StickFigure2D) -> StickFigure2D {
         print("🎮 ERROR applyMuscleScaling: No properties configured!")
     }
     
-    scaledFigure.shoulderWidthMultiplier = frameShoulderWidth
-    scaledFigure.waistWidthMultiplier = frameWaistWidth
+    // Restore shoulder/waist width only for side-view frames (muscle system handles front-view scaling above)
+    if frameShoulderWidth <= 0 { scaledFigure.shoulderWidthMultiplier = frameShoulderWidth }
+    if frameWaistWidth <= 0 { scaledFigure.waistWidthMultiplier = frameWaistWidth }
     
     // Apply properties from the muscle system (both regular and derived)
     let handSize = MuscleSystem.shared.getDerivedPropertyValue(for: "handSize", state: gameState.muscleState)
@@ -1318,7 +1324,7 @@ private func applyMuscleScaling(to figure: StickFigure2D) -> StickFigure2D {
     let isSideView = scaledFigure.shoulderWidthMultiplier < 0.1 && scaledFigure.waistWidthMultiplier < 0.1
     
     if isSideView {
-        //scaledFigure.strokeThicknessUpperTorso = min(scaledFigure.strokeThicknessUpperTorso, 5.0)
+        scaledFigure.strokeThickness = min(scaledFigure.strokeThickness, 3.0)
         //scaledFigure.fusiformShoulders = min(scaledFigure.fusiformShoulders, 3.0)
         //scaledFigure.fusiformShoulders = min(scaledFigure.fusiformShoulders, 1) // Make shoulder fusiform proportional to neck width for better side view appearance
         //scaledFigure.strokeThicknessFullTorso = min(scaledFigure.strokeThicknessFullTorso, 5.0)

@@ -554,6 +554,8 @@ class MuscleSystem {
         let value: Double
         switch propertyKey {
         case "strokeThickness": value = Double(frame.strokeThickness)
+        case "shoulderWidthMultiplier": value = Double(frame.shoulderWidthMultiplier)
+        case "waistWidthMultiplier": value = Double(frame.waistWidthMultiplier)
         case "fusiformShoulders": value = Double(frame.fusiformShoulders)
         case "fusiformDeltoids": value = Double(frame.fusiformDeltoids)
         case "fusiformUpperTorso": value = Double(frame.fusiformUpperTorso)
@@ -768,6 +770,10 @@ class MuscleSystem {
         switch propertyId {
         case "strokeThickness":
             return Double(frame.pose.strokeThickness)
+        case "shoulderWidthMultiplier":
+            return Double(frame.pose.shoulderWidthMultiplier)
+        case "waistWidthMultiplier":
+            return Double(frame.pose.waistWidthMultiplier)
         case "fusiformShoulders":
             return Double(frame.pose.fusiformShoulders)
         case "fusiformDeltoids":
