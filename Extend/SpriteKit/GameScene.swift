@@ -372,6 +372,92 @@ class GameScene: SKScene {
                          sideExpansion: torsoBaseHalf * 5.0,
                          color: bodyColor, zPos: 1.5)
 
+        // Abs grid — 1 vertical centre line + 2 horizontal lines (2-wide × 3-tall interior grid)
+        // Only draw in front view (not side view)
+        if mutableFigure.shoulderWidthMultiplier > 0.1 {
+            let sTop  = rel(leftShoulderPos)
+            let sTopR = rel(rightShoulderPos)
+            let hBot  = rel(leftHipPos)
+            let hBotR = rel(rightHipPos)
+            let topY  = (sTop.y + sTopR.y) / 2
+            let botY  = (hBot.y + hBotR.y) / 2
+            let midX  = (sTop.x + sTopR.x + hBot.x + hBotR.x) / 4
+
+            // Abs occupy the lower ~55% of the torso
+            let absTop = topY + (botY - topY) * 0.45
+            let absBot = topY + (botY - topY) * 0.92
+            let absH   = absBot - absTop
+
+            // Half-width: fits comfortably inside the narrower waist area
+            let absHalfW = torsoBaseHalf * 2.2
+
+            let absLineW: CGFloat = max(0.6, scale * 0.6)
+            let absColor = SKColor.white.withAlphaComponent(0.55)
+
+            func absLine(from a: CGPoint, to b: CGPoint) {
+                let p = UIBezierPath()
+                p.move(to: a); p.addLine(to: b)
+                let n = SKShapeNode(path: p.cgPath)
+                n.strokeColor = absColor
+                n.lineWidth   = absLineW
+                n.zPosition   = 1.8
+                container.addChild(n)
+            }
+
+            // 1 vertical centre line
+            absLine(from: CGPoint(x: midX, y: absTop),
+                    to:   CGPoint(x: midX, y: absBot))
+
+            // 2 horizontal lines dividing into 3 rows
+            for i in 1 ... 2 {
+                let y = absTop + absH * CGFloat(i) / 3.0
+                absLine(from: CGPoint(x: midX - absHalfW, y: y),
+                        to:   CGPoint(x: midX + absHalfW, y: y))
+            }
+        }
+
+        // Pec outlines — two 3/4 arcs, missing the upper-inner quarter each
+        // Left pec: missing top-right (inner-top) quarter
+        // Right pec: missing top-left (inner-top) quarter
+        if mutableFigure.shoulderWidthMultiplier > 0.1 {
+            let sTopL = rel(leftShoulderPos),  sTopR = rel(rightShoulderPos)
+            let hBotL = rel(leftHipPos),        hBotR = rel(rightHipPos)
+            let topY  = (sTopL.y + sTopR.y) / 2
+            let botY  = (hBotL.y + hBotR.y) / 2
+            let midX  = (sTopL.x + sTopR.x + hBotL.x + hBotR.x) / 4
+
+            let pecR        = torsoBaseHalf * 2.0
+            let pecCenterY  = topY + (botY - topY) * 0.18
+            let pecOffset   = torsoBaseHalf * 2.0   // each center this far from midX
+            let leftCenter  = CGPoint(x: midX - pecOffset, y: pecCenterY)
+            let rightCenter = CGPoint(x: midX + pecOffset, y: pecCenterY)
+
+            let pecLineW  = max(0.7, scale * 0.65)
+            let pecColor  = SKColor.white.withAlphaComponent(0.55)
+
+            // Left pec: CCW arc from π/2 → 0 (top → left → bottom → inner-right, 270°)
+            let leftPath = UIBezierPath()
+            leftPath.addArc(withCenter: leftCenter, radius: pecR,
+                            startAngle: .pi / 2, endAngle: .pi, clockwise: false)
+            let leftPecNode = SKShapeNode(path: leftPath.cgPath)
+            leftPecNode.strokeColor = pecColor
+            leftPecNode.lineWidth   = pecLineW
+            leftPecNode.fillColor   = .clear
+            leftPecNode.zPosition   = 1.8
+            container.addChild(leftPecNode)
+
+            // Right pec: CW arc from π/2 → π (top → right → bottom → inner-left, 270°)
+            let rightPath = UIBezierPath()
+            rightPath.addArc(withCenter: rightCenter, radius: pecR,
+                             startAngle: .pi / 2, endAngle: 0, clockwise: true)
+            let rightPecNode = SKShapeNode(path: rightPath.cgPath)
+            rightPecNode.strokeColor = pecColor
+            rightPecNode.lineWidth   = pecLineW
+            rightPecNode.fillColor   = .clear
+            rightPecNode.zPosition   = 1.8
+            container.addChild(rightPecNode)
+        }
+
         // Shoulder crossbar — trapezoid/triangle: wide at bottom, converging to a point at top
         // Only draw if there is meaningful horizontal separation (avoid zero-length round-cap = ball)
         let shoulderSep = hypot(rel(rightShoulderPos).x - rel(leftShoulderPos).x,
