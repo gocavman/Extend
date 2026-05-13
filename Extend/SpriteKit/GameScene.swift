@@ -536,24 +536,72 @@ class GameScene: SKScene {
             }
         }
 
-        // Hands — independent of torso/arm width, driven purely by handSize slider
+        // Hands — circle palm + small thumb circle on the outer side of the forearm
         let handSceneR = scale * mutableFigure.handSize * 2.2
         let handColor  = toSKColorV2(mutableFigure.handColor)
-        for pos in [leftForearmEnd, rightForearmEnd] {
+        let thumbR = handSceneR * 0.45
+        for (wristPos, elbowPos, isLeft) in [
+            (leftForearmEnd,  leftUpperArmEnd,  true),
+            (rightForearmEnd, rightUpperArmEnd, false)
+        ] as [(CGPoint, CGPoint, Bool)] {
+            // Palm circle
             let h = SKShapeNode(circleOfRadius: handSceneR)
             h.fillColor = handColor; h.strokeColor = .clear
-            h.position = rel(pos); h.zPosition = 2.5
+            h.position = rel(wristPos); h.zPosition = 2.5
             container.addChild(h)
+            // Forearm direction vector (scene space)
+            let fw = rel(wristPos), fe = rel(elbowPos)
+            let fdx = fw.x - fe.x, fdy = fw.y - fe.y
+            let fLen = hypot(fdx, fdy)
+            if fLen > 0.5 {
+                // Perpendicular — left arm thumb goes to the left-perp, right to right-perp
+                let px = -fdy / fLen, py = fdx / fLen
+                let side: CGFloat = isLeft ? 1 : -1
+                let thumbOffset = handSceneR * 0.85
+                let thumbNode = SKShapeNode(circleOfRadius: thumbR)
+                thumbNode.fillColor = handColor; thumbNode.strokeColor = .clear
+                thumbNode.position = CGPoint(x: fw.x + px * thumbOffset * side,
+                                             y: fw.y + py * thumbOffset * side)
+                thumbNode.zPosition = 2.4
+                container.addChild(thumbNode)
+            }
         }
 
-        // Feet — independent of torso/leg width, driven purely by footSize slider
+        // Feet — oval perpendicular to the lower leg so it always points "forward"
+        // (vertical leg → horizontal foot in side view; angled leg → angled foot in action frames)
         let footSceneR = scale * mutableFigure.footSize * 2.8
         let footColor  = toSKColorV2(mutableFigure.footColor)
-        for pos in [leftFootEnd, rightFootEnd] {
-            let f = SKShapeNode(circleOfRadius: footSceneR)
-            f.fillColor = footColor; f.strokeColor = .clear
-            f.position = rel(pos); f.zPosition = 1.5
-            container.addChild(f)
+        let isFrontView = mutableFigure.shoulderWidthMultiplier > 0.1
+        for (footPos, kneePos, isLeftFoot) in [
+            (leftFootEnd,  leftUpperLegEnd,  true),
+            (rightFootEnd, rightUpperLegEnd, false)
+        ] as [(CGPoint, CGPoint, Bool)] {
+            let fr = rel(footPos), kr = rel(kneePos)
+            let fdx = fr.x - kr.x, fdy = fr.y - kr.y
+            let fLen = hypot(fdx, fdy)
+            let longR  = footSceneR * 1.6
+            let shortR = footSceneR * 0.7
+            let footPath = UIBezierPath(ovalIn: CGRect(x: -longR, y: -shortR,
+                                                        width: longR * 2, height: shortR * 2))
+            let fNode = SKShapeNode(path: footPath.cgPath)
+            fNode.fillColor = footColor; fNode.strokeColor = .clear
+            if isFrontView {
+                // Front/standing view: feet angled slightly outward (duck-feet style)
+                let outwardAngle: CGFloat = 0.7   // ~20° outward from straight down
+                let side: CGFloat = isLeftFoot ? -1 : 1
+                fNode.position = fr
+                fNode.zRotation = -.pi / 2 + outwardAngle * side
+            } else {
+                // Side view: foot is perpendicular to lower leg, offset slightly forward
+                let perpX = fLen > 0 ? -fdy / fLen : 1
+                let perpY = fLen > 0 ?  fdx / fLen : 0
+                let forwardOffset = footSceneR * 0.5
+                fNode.position = CGPoint(x: fr.x + perpX * forwardOffset,
+                                         y: fr.y + perpY * forwardOffset)
+                if fLen > 0.5 { fNode.zRotation = atan2(perpY, perpX) }
+            }
+            fNode.zPosition = 1.5
+            container.addChild(fNode)
         }
 
         return container
