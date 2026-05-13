@@ -404,16 +404,49 @@ class GameScene: SKScene {
                 container.addChild(n)
             }
 
+            // Draws a horizontal ab divider with upward-curling caps on each end.
+            // The cap lifts the tip upward by `capLift` over the last `capLen` of the line.
+            func absHorizLine(y: CGFloat) {
+                let capLen  = absHalfW * 0.28   // how far inward the curl starts
+                let capLift = absH * 0.045       // how much the tip curls upward
+
+                let lx = midX - absHalfW  // left tip x
+                let rx = midX + absHalfW  // right tip x
+
+                // Left cap: starts at tip (curled up), curves down to flat by lx+capLen
+                // Right cap: flat until rx-capLen, curves up to tip
+                let p = UIBezierPath()
+
+                // Start at left tip, lifted up
+                p.move(to: CGPoint(x: lx, y: y - capLift))
+                // Cubic: left tip → flat section start
+                p.addCurve(to:             CGPoint(x: lx + capLen,       y: y),
+                           controlPoint1: CGPoint(x: lx + capLen * 0.5,  y: y - capLift),
+                           controlPoint2: CGPoint(x: lx + capLen,        y: y))
+                // Flat middle section
+                p.addLine(to: CGPoint(x: rx - capLen, y: y))
+                // Cubic: flat section end → right tip, lifted up
+                p.addCurve(to:             CGPoint(x: rx,                y: y - capLift),
+                           controlPoint1: CGPoint(x: rx - capLen,        y: y),
+                           controlPoint2: CGPoint(x: rx - capLen * 0.5,  y: y - capLift))
+
+                let n = SKShapeNode(path: p.cgPath)
+                n.strokeColor = absColor
+                n.lineWidth   = absLineW
+                n.zPosition   = 1.8
+                container.addChild(n)
+            }
+
             // 1 vertical centre line
             absLine(from: CGPoint(x: midX, y: absTop),
                     to:   CGPoint(x: midX, y: absBot))
 
-            // 2 horizontal lines dividing into 3 rows
+            // 3 horizontal lines: 2 interior dividers + bottom border, all with curled caps
             for i in 1 ... 2 {
                 let y = absTop + absH * CGFloat(i) / 3.0
-                absLine(from: CGPoint(x: midX - absHalfW, y: y),
-                        to:   CGPoint(x: midX + absHalfW, y: y))
+                absHorizLine(y: y)
             }
+            absHorizLine(y: absBot)
         }
 
         // Pec outlines — two 3/4 arcs, missing the upper-inner quarter each
