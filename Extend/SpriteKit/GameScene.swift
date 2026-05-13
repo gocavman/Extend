@@ -129,7 +129,8 @@ class GameScene: SKScene {
         let baseHalf = torsoBaseHalf
 
         // ---- Unified bent-limb helper ----
-        // Draws shoulder→elbow→wrist (or hip→knee→ankle) as one continuous filled shape.
+        // Draws upper and lower segments as two separate filled shapes so self-overlapping
+        // limbs never trigger even-odd fill holes.
         func drawUnifiedLimb(
             start: CGPoint, mid: CGPoint, end: CGPoint,
             startHalf: CGFloat, midHalf: CGFloat, endHalf: CGFloat,
@@ -150,15 +151,32 @@ class GameScene: SKScene {
             let laDir = CGPoint(x: laDx / laLen, y: laDy / laLen)
             let laPerp = CGPoint(x: -laDir.y, y: laDir.x)
 
-            // Bisector perpendicular at joint for a smooth continuous corner
-            let bisX = uaDir.x + laDir.x, bisY = uaDir.y + laDir.y
-            let bisLen = hypot(bisX, bisY)
-            let jointPerp = bisLen > 0.01 ? CGPoint(x: -bisY / bisLen, y: bisX / bisLen) : uaPerp
+            func addShape(_ leftEdge: [CGPoint], _ rightEdge: [CGPoint]) {
+                guard let firstPt = leftEdge.first else { return }
+                let path = UIBezierPath()
+                path.move(to: firstPt)
+                for i in 1 ..< leftEdge.count {
+                    let prev = leftEdge[i - 1], curr = leftEdge[i]
+                    path.addQuadCurve(to: curr, controlPoint: CGPoint(x: (prev.x + curr.x) / 2, y: (prev.y + curr.y) / 2))
+                }
+                for i in stride(from: rightEdge.count - 1, through: 0, by: -1) {
+                    let curr = rightEdge[i]
+                    let nxt = i < rightEdge.count - 1 ? rightEdge[i + 1] : curr
+                    path.addQuadCurve(to: curr, controlPoint: CGPoint(x: (nxt.x + curr.x) / 2, y: (nxt.y + curr.y) / 2))
+                }
+                path.close()
+                let shape = SKShapeNode(path: path.cgPath)
+                shape.fillColor = color
+                shape.strokeColor = color
+                shape.lineWidth = 1.0
+                shape.zPosition = zPos
+                container.addChild(shape)
+            }
 
+            // Upper segment: start → mid (with bulge)
             let N = 20
-            var leftEdge: [CGPoint] = []
-            var rightEdge: [CGPoint] = []
-
+            var upLeft: [CGPoint] = []
+            var upRight: [CGPoint] = []
             for i in 0 ... N {
                 let t = CGFloat(i) / CGFloat(N)
                 let p = CGPoint(x: s.x + uaDir.x * uaLen * t, y: s.y + uaDir.y * uaLen * t)
@@ -167,38 +185,36 @@ class GameScene: SKScene {
                     ? t / max(upperBulgePeak, 0.01)
                     : 1.0 - (t - upperBulgePeak) / max(1.0 - upperBulgePeak, 0.01)
                 let w = baseW + upperBulge * max(0, bRaw)
-                let perp = (i == N) ? jointPerp : uaPerp
-                leftEdge.append(CGPoint(x: p.x + perp.x * w, y: p.y + perp.y * w))
-                rightEdge.append(CGPoint(x: p.x - perp.x * w, y: p.y - perp.y * w))
+                upLeft.append(CGPoint(x: p.x + uaPerp.x * w, y: p.y + uaPerp.y * w))
+                upRight.append(CGPoint(x: p.x - uaPerp.x * w, y: p.y - uaPerp.y * w))
             }
-            for i in 1 ... N {
+            addShape(upLeft, upRight)
+
+            // Lower segment: mid → end (simple taper)
+            var loLeft: [CGPoint] = []
+            var loRight: [CGPoint] = []
+            for i in 0 ... N {
                 let t = CGFloat(i) / CGFloat(N)
                 let p = CGPoint(x: m.x + laDir.x * laLen * t, y: m.y + laDir.y * laLen * t)
                 let w = midHalf + (endHalf - midHalf) * t
-                leftEdge.append(CGPoint(x: p.x + laPerp.x * w, y: p.y + laPerp.y * w))
-                rightEdge.append(CGPoint(x: p.x - laPerp.x * w, y: p.y - laPerp.y * w))
+                loLeft.append(CGPoint(x: p.x + laPerp.x * w, y: p.y + laPerp.y * w))
+                loRight.append(CGPoint(x: p.x - laPerp.x * w, y: p.y - laPerp.y * w))
             }
+            addShape(loLeft, loRight)
 
-            guard let firstPt = leftEdge.first else { return }
-            let path = UIBezierPath()
-            path.move(to: firstPt)
-            for i in 1 ..< leftEdge.count {
-                let prev = leftEdge[i - 1], curr = leftEdge[i]
-                path.addQuadCurve(to: curr, controlPoint: CGPoint(x: (prev.x + curr.x) / 2, y: (prev.y + curr.y) / 2))
+            // Cap circles to fill gaps at start, joint (elbow/knee), and end
+            func addCap(at pt: CGPoint, radius: CGFloat) {
+                let cap = SKShapeNode(circleOfRadius: radius)
+                cap.fillColor = color
+                cap.strokeColor = .clear
+                cap.lineWidth = 0
+                cap.position = pt
+                cap.zPosition = zPos
+                container.addChild(cap)
             }
-            for i in stride(from: rightEdge.count - 1, through: 0, by: -1) {
-                let curr = rightEdge[i]
-                let nxt = i < rightEdge.count - 1 ? rightEdge[i + 1] : curr
-                path.addQuadCurve(to: curr, controlPoint: CGPoint(x: (nxt.x + curr.x) / 2, y: (nxt.y + curr.y) / 2))
-            }
-            path.close()
-
-            let shape = SKShapeNode(path: path.cgPath)
-            shape.fillColor = color
-            shape.strokeColor = .clear
-            shape.lineWidth = 0
-            shape.zPosition = zPos
-            container.addChild(shape)
+            addCap(at: s, radius: startHalf)
+            addCap(at: m, radius: midHalf)
+            addCap(at: e, radius: endHalf)
         }
 
         // ---- Unified torso trapezoid ----
@@ -322,12 +338,12 @@ class GameScene: SKScene {
         // ---- Width parameters ----
         let armShoulderHalf = armBaseHalf * (1.1 + muscleScale * 0.6)
         let armElbowHalf    = armBaseHalf * (0.65 + muscleScale * 0.15)
-        let armWristHalf    = armBaseHalf * 0.48
+        let armWristHalf    = armBaseHalf * (0.52 + muscleScale * 0.12)
         let armBulge        = armBaseHalf * muscleScale * 1.4
 
         let legHipHalf   = legBaseHalf * (1.3 + legMuscleScale * 0.7)
         let legKneeHalf  = legBaseHalf * (0.85 + legMuscleScale * 0.2)
-        let legAnkleHalf = legBaseHalf * (0.55 + legMuscleScale * 0.1)   // grows slightly with leg width
+        let legAnkleHalf = legBaseHalf * (0.58 + legMuscleScale * 0.18)  // grows more with leg width
         let legBulge     = legBaseHalf * legMuscleScale * 1.2
 
         // ---- Draw: back to front ----
@@ -349,21 +365,44 @@ class GameScene: SKScene {
                          sideExpansion: torsoBaseHalf * 5.0,
                          color: bodyColor, zPos: 1.5)
 
-        // Shoulder crossbar — connects left and right shoulder, visible when torso is slim
+        // Shoulder crossbar — trapezoid/triangle: wide at bottom, converging to a point at top
         // Only draw if there is meaningful horizontal separation (avoid zero-length round-cap = ball)
         let shoulderSep = hypot(rel(rightShoulderPos).x - rel(leftShoulderPos).x,
                                 rel(rightShoulderPos).y - rel(leftShoulderPos).y)
         let crossbarWidth = max(torsoBaseHalf * 1.2, 1.5)
         if shoulderSep > 2 {
-            let shoulderBar = UIBezierPath()
-            shoulderBar.move(to: rel(leftShoulderPos))
-            shoulderBar.addLine(to: rel(rightShoulderPos))
-            let shoulderBarNode = SKShapeNode(path: shoulderBar.cgPath)
-            shoulderBarNode.strokeColor = bodyColor
-            shoulderBarNode.lineWidth = crossbarWidth * 2
-            shoulderBarNode.lineCap = .round
-            shoulderBarNode.zPosition = 1.55
-            container.addChild(shoulderBarNode)
+            let ls = rel(leftShoulderPos)
+            let rs = rel(rightShoulderPos)
+            let halfH = crossbarWidth
+            let centerX = (ls.x + rs.x) / 2
+            let centerY = (ls.y + rs.y) / 2
+            // sharpness 0=rectangle, 1=pure triangle. 0.80 = strong point with tiny flat top
+            let sharpness: CGFloat = 0.80
+            let topHalfSpan = (shoulderSep / 2) * (1.0 - sharpness)
+
+            let bl = CGPoint(x: ls.x, y: ls.y)
+            let br = CGPoint(x: rs.x, y: rs.y)
+            let tl = CGPoint(x: centerX - topHalfSpan, y: centerY + halfH * 2)
+            let tr = CGPoint(x: centerX + topHalfSpan, y: centerY + halfH * 2)
+
+            // Control points pull each side inward (concave curves)
+            let lCtrl = CGPoint(x: ls.x + (centerX - ls.x) * 0.25, y: ls.y + halfH)
+            let rCtrl = CGPoint(x: rs.x - (rs.x - centerX) * 0.25, y: rs.y + halfH)
+
+            let p = UIBezierPath()
+            p.move(to: bl)
+            p.addLine(to: br)
+            p.addQuadCurve(to: tr, controlPoint: rCtrl)
+            p.addLine(to: tl)
+            p.addQuadCurve(to: bl, controlPoint: lCtrl)
+            p.close()
+
+            let barNode = SKShapeNode(path: p.cgPath)
+            barNode.fillColor = bodyColor
+            barNode.strokeColor = bodyColor
+            barNode.lineWidth = 1.0
+            barNode.zPosition = 1.55
+            container.addChild(barNode)
         }
 
         // Hip crossbar — connects left and right hip
@@ -383,7 +422,7 @@ class GameScene: SKScene {
 
         // Shoulder caps — smooth seam between torso and arms
         // When width=0, both shoulders are the same point — draw only once to avoid duplication
-        let shoulderCapR = armShoulderHalf * 1.05
+        let shoulderCapR = armShoulderHalf * 1.0
         let shoulderCapPositions: [CGPoint] = shoulderSep > 2
             ? [leftShoulderPos, rightShoulderPos]
             : [leftShoulderPos]
@@ -398,7 +437,7 @@ class GameScene: SKScene {
         }
 
         // Hip caps — smooth seam between torso and legs
-        let hipCapR = legHipHalf * 1.05
+        let hipCapR = legHipHalf * 1.0
         let hipCapPositions: [CGPoint] = hipSep > 2
             ? [leftHipPos, rightHipPos]
             : [leftHipPos]

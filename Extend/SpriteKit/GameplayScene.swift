@@ -1207,6 +1207,7 @@ private func loadFrameNamed(_ name: String) -> StickFigure2D? {
                 figure.skeletonSizeLeg = frame.skeletonSizeLeg
                 figure.waistThicknessMultiplier = frame.waistThicknessMultiplier
                 figure.waistWidthMultiplier = frame.waistWidthMultiplier
+                figure.shoulderWidthMultiplier = frame.shoulderWidthMultiplier
                 //print("🎮 ✓ Loaded frame '\(name)' successfully")
                 return figure
             }
