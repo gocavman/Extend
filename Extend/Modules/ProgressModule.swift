@@ -436,6 +436,7 @@ private struct WorkoutLogDetailView: View {
     @State var log: WorkoutLog
     @State private var showDeleteAlert = false
     @State private var isEditing = false
+    @State private var editingSnapshot: WorkoutLog? = nil
     
     // Helper computed properties for duration components
     private var hoursBinding: Binding<Int> {
@@ -534,41 +535,24 @@ private struct WorkoutLogDetailView: View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 16) {
-                    // Workout name (editable) with Edit button
+                    // Workout name (editable)
                     VStack(alignment: .leading, spacing: 8) {
                         Text("Workout Name")
                             .font(.caption)
                             .fontWeight(.semibold)
                             .foregroundColor(.gray)
-                        
-                        HStack(alignment: .center, spacing: 12) {
-                            if isEditing {
-                                TextField("Workout name", text: $log.workoutName)
-                                    .font(.subheadline)
-                                    .textFieldStyle(.roundedBorder)
-                                    .padding(8)
-                                    .background(Color(red: 0.96, green: 0.96, blue: 0.97))
-                                    .cornerRadius(6)
-                            } else {
-                                Text(log.workoutName)
-                                    .font(.subheadline)
-                                    .fontWeight(.semibold)
-                            }
-                            
-                            Button(isEditing ? "Done" : "Edit") {
-                                UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                                if isEditing {
-                                    logState.updateLog(log)
-                                }
-                                isEditing.toggle()
-                            }
-                            .font(.subheadline)
-                            .fontWeight(.semibold)
-                            .foregroundColor(.black)
-                            .padding(.horizontal, 12)
-                            .padding(.vertical, 6)
-                            .background(Color(red: 0.96, green: 0.96, blue: 0.97))
-                            .cornerRadius(6)
+
+                        if isEditing {
+                            TextField("Workout name", text: $log.workoutName)
+                                .font(.subheadline)
+                                .textFieldStyle(.roundedBorder)
+                                .padding(8)
+                                .background(Color(red: 0.96, green: 0.96, blue: 0.97))
+                                .cornerRadius(6)
+                        } else {
+                            Text(log.workoutName)
+                                .font(.subheadline)
+                                .fontWeight(.semibold)
                         }
                     }
                     .padding(.horizontal, 16)
@@ -678,64 +662,103 @@ private struct WorkoutLogDetailView: View {
                     // Exercises
                     ForEach($log.exercises) { $exercise in
                         VStack(alignment: .leading, spacing: 8) {
-                            Text(exercise.exerciseName)
-                                .font(.subheadline)
-                                .fontWeight(.semibold)
-                            
+                            HStack {
+                                Text(exercise.exerciseName)
+                                    .font(.subheadline)
+                                    .fontWeight(.semibold)
+
+                                Spacer()
+
+                                if isEditing {
+                                    Button(action: {
+                                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                                        exercise.sets.append(LoggedSet(reps: 0, weight: 0))
+                                    }) {
+                                        Image(systemName: "plus.circle.fill")
+                                            .foregroundColor(.black)
+                                    }
+                                    .buttonStyle(.plain)
+                                }
+                            }
+
                             if !exercise.sets.isEmpty {
-                                ForEach($exercise.sets, id: \.id) { $set in
+                                ForEach(Array(exercise.sets.indices), id: \.self) { index in
                                     HStack {
-                                        Text("Set \(exercise.sets.firstIndex(where: { $0.id == set.id })! + 1)")
+                                        Text("Set \(index + 1)")
                                             .font(.caption)
                                             .foregroundColor(.gray)
-                                        
+
                                         if isEditing {
-                                            TextField("Reps", value: $set.reps, format: .number)
+                                            TextField("Reps", value: $exercise.sets[index].reps, format: .number)
                                                 .keyboardType(.numberPad)
                                                 .font(.caption)
                                                 .frame(width: 40)
                                                 .textFieldStyle(.roundedBorder)
-                                            
+
                                             Text("×")
                                                 .font(.caption)
                                                 .foregroundColor(.gray)
-                                            
-                                            TextField("Weight", value: $set.weight, format: .number)
+
+                                            TextField("Weight", value: $exercise.sets[index].weight, format: .number)
                                                 .keyboardType(.decimalPad)
                                                 .font(.caption)
                                                 .frame(width: 50)
                                                 .textFieldStyle(.roundedBorder)
-                                            
+
                                             Text("lbs")
                                                 .font(.caption)
                                                 .foregroundColor(.gray)
                                         } else {
                                             Spacer()
-                                            
-                                            Text("\(set.reps) reps")
+
+                                            Text("\(exercise.sets[index].reps) reps")
                                                 .font(.caption)
-                                            
+
                                             Text("×")
                                                 .font(.caption)
                                                 .foregroundColor(.gray)
-                                            
-                                            Text(String(format: "%.1f lbs", set.weight))
+
+                                            Text(String(format: "%.1f lbs", exercise.sets[index].weight))
                                                 .font(.caption)
+                                        }
+
+                                        if isEditing {
+                                            Button(action: {
+                                                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                                                exercise.sets.remove(at: index)
+                                            }) {
+                                                Image(systemName: "xmark.circle.fill")
+                                                    .foregroundColor(.red)
+                                            }
+                                            .buttonStyle(.plain)
                                         }
                                     }
                                 }
                             }
-                            
+
                             if isEditing {
-                                TextField("Exercise notes", text: $exercise.notes, axis: .vertical)
-                                    .font(.caption)
-                                    .textFieldStyle(.roundedBorder)
-                                    .lineLimit(2, reservesSpace: true)
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text("Notes")
+                                        .font(.caption2)
+                                        .fontWeight(.semibold)
+                                        .foregroundColor(.gray)
+                                    TextField("Exercise notes", text: $exercise.notes, axis: .vertical)
+                                        .font(.caption)
+                                        .textFieldStyle(.roundedBorder)
+                                        .lineLimit(2, reservesSpace: true)
+                                }
+                                .padding(.top, 4)
                             } else if !exercise.notes.isEmpty {
-                                Text(exercise.notes)
-                                    .font(.caption)
-                                    .foregroundColor(.gray)
-                                    .padding(.top, 4)
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text("Notes")
+                                        .font(.caption2)
+                                        .fontWeight(.semibold)
+                                        .foregroundColor(.gray)
+                                    Text(exercise.notes)
+                                        .font(.caption)
+                                        .foregroundColor(.gray)
+                                }
+                                .padding(.top, 4)
                             }
                         }
                         .padding(12)
@@ -750,15 +773,39 @@ private struct WorkoutLogDetailView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
-                    Button("Close") {
-                        if isEditing {
-                            logState.updateLog(log)
+                    if isEditing {
+                        Button("Cancel") {
+                            if let snapshot = editingSnapshot {
+                                log = snapshot
+                            }
+                            editingSnapshot = nil
+                            isEditing = false
                         }
-                        dismiss()
+                    } else {
+                        Button("Close") {
+                            dismiss()
+                        }
                     }
                 }
-                
-                ToolbarItem(placement: .topBarTrailing) {
+
+                ToolbarItemGroup(placement: .topBarTrailing) {
+                    Button(action: {
+                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                        if isEditing {
+                            // Save
+                            logState.updateLog(log)
+                            editingSnapshot = nil
+                            isEditing = false
+                        } else {
+                            // Enter edit mode — snapshot current state
+                            editingSnapshot = log
+                            isEditing = true
+                        }
+                    }) {
+                        Image(systemName: isEditing ? "checkmark" : "pencil")
+                            .foregroundColor(.black)
+                    }
+
                     Button(role: .destructive, action: {
                         UIImpactFeedbackGenerator(style: .light).impactOccurred()
                         showDeleteAlert = true
