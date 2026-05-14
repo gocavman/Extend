@@ -35,12 +35,11 @@ private struct SettingsModuleView: View {
     @Environment(MuscleGroupsState.self) var muscleGroupsState
     @Environment(EquipmentState.self) var equipmentState
     @Environment(DashboardHeaderState.self) var dashboardHeaderState
-    @Environment(VoiceTrainerState.self) var voiceTrainerState
 
     @State private var showingResetAlert = false
     @State private var isNavBarSectionExpanded = false
+    @State private var isNavBarColorExpanded = false
     @State private var isDashboardSectionExpanded = false
-    @State private var isVoiceTrainerSectionExpanded = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -60,27 +59,29 @@ private struct SettingsModuleView: View {
                             Text("Customize")
                         }
 
-                        ColorPicker("Background Color", selection: Binding(
-                            get: { moduleState.navBarBackgroundColor },
-                            set: { moduleState.updateNavBarBackgroundColor($0) }
-                        ))
+                        DisclosureGroup("Color", isExpanded: $isNavBarColorExpanded) {
+                            ColorPicker("Background Color", selection: Binding(
+                                get: { moduleState.navBarBackgroundColor },
+                                set: { moduleState.updateNavBarBackgroundColor($0) }
+                            ))
 
-                        Toggle("Use Gradient", isOn: Binding(
-                            get: { moduleState.navBarUseGradient },
-                            set: { moduleState.updateNavBarUseGradient($0) }
-                        ))
+                            Toggle("Use Gradient", isOn: Binding(
+                                get: { moduleState.navBarUseGradient },
+                                set: { moduleState.updateNavBarUseGradient($0) }
+                            ))
 
-                        if moduleState.navBarUseGradient {
-                            ColorPicker("Gradient Secondary", selection: Binding(
-                                get: { moduleState.navBarGradientSecondaryColor },
-                                set: { moduleState.updateNavBarGradientSecondaryColor($0) }
+                            if moduleState.navBarUseGradient {
+                                ColorPicker("Gradient Secondary", selection: Binding(
+                                    get: { moduleState.navBarGradientSecondaryColor },
+                                    set: { moduleState.updateNavBarGradientSecondaryColor($0) }
+                                ))
+                            }
+
+                            ColorPicker("Text Color", selection: Binding(
+                                get: { moduleState.navBarTextColor },
+                                set: { moduleState.updateNavBarTextColor($0) }
                             ))
                         }
-
-                        ColorPicker("Text Color", selection: Binding(
-                            get: { moduleState.navBarTextColor },
-                            set: { moduleState.updateNavBarTextColor($0) }
-                        ))
                     }
 
                     // MARK: - Dashboard Section
@@ -92,97 +93,6 @@ private struct SettingsModuleView: View {
                         NavigationLink(destination: DashboardHeaderSettingsView()) {
                             Text("Header")
                         }
-                    }
-
-                    // MARK: - Voice Trainer Section
-                    DisclosureGroup("Voice Trainer", isExpanded: $isVoiceTrainerSectionExpanded) {
-                        VStack(alignment: .leading, spacing: 8) {
-                            Text("Workout Start Warning")
-                                .font(.subheadline)
-                                .fontWeight(.semibold)
-                            HStack(spacing: 12) {
-                                Button(action: {
-                                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                                    if voiceTrainerState.workoutStartWarning > 0 {
-                                        voiceTrainerState.workoutStartWarning -= 1
-                                        voiceTrainerState.saveSettings()
-                                    }
-                                }) {
-                                    Image(systemName: "minus.circle")
-                                        .font(.system(size: 16))
-                                        .foregroundColor(.black)
-                                }
-                                .buttonStyle(.plain)
-                                .disabled(voiceTrainerState.workoutStartWarning <= 0)
-                                
-                                Text("\(voiceTrainerState.workoutStartWarning)s")
-                                    .font(.caption)
-                                    .foregroundColor(.gray)
-                                    .frame(minWidth: 40)
-                                
-                                Button(action: {
-                                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                                    if voiceTrainerState.workoutStartWarning < 30 {
-                                        voiceTrainerState.workoutStartWarning += 1
-                                        voiceTrainerState.saveSettings()
-                                    }
-                                }) {
-                                    Image(systemName: "plus.circle")
-                                        .font(.system(size: 16))
-                                        .foregroundColor(.black)
-                                }
-                                .buttonStyle(.plain)
-                                .disabled(voiceTrainerState.workoutStartWarning >= 30)
-                            }
-                            Text("Countdown before workout starts")
-                                .font(.caption2)
-                                .foregroundColor(.gray)
-                        }
-                        .padding(.vertical, 8)
-                        
-                        VStack(alignment: .leading, spacing: 8) {
-                            Text("Rest End Warning")
-                                .font(.subheadline)
-                                .fontWeight(.semibold)
-                            HStack(spacing: 12) {
-                                Button(action: {
-                                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                                    if voiceTrainerState.restEndWarning > 0 {
-                                        voiceTrainerState.restEndWarning -= 1
-                                        voiceTrainerState.saveSettings()
-                                    }
-                                }) {
-                                    Image(systemName: "minus.circle")
-                                        .font(.system(size: 16))
-                                        .foregroundColor(.black)
-                                }
-                                .buttonStyle(.plain)
-                                .disabled(voiceTrainerState.restEndWarning <= 0)
-                                
-                                Text("\(voiceTrainerState.restEndWarning)s")
-                                    .font(.caption)
-                                    .foregroundColor(.gray)
-                                    .frame(minWidth: 40)
-                                
-                                Button(action: {
-                                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                                    if voiceTrainerState.restEndWarning < 30 {
-                                        voiceTrainerState.restEndWarning += 1
-                                        voiceTrainerState.saveSettings()
-                                    }
-                                }) {
-                                    Image(systemName: "plus.circle")
-                                        .font(.system(size: 16))
-                                        .foregroundColor(.black)
-                                }
-                                .buttonStyle(.plain)
-                                .disabled(voiceTrainerState.restEndWarning >= 30)
-                            }
-                            Text("Countdown during last seconds of rest")
-                                .font(.caption2)
-                                .foregroundColor(.gray)
-                        }
-                        .padding(.vertical, 8)
                     }
 
                     // MARK: - Reset Section

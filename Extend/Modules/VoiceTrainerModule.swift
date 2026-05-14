@@ -211,7 +211,9 @@ private struct VoiceTrainerModuleView: View {
             delayBetweenLines: config.delayBetweenLines,
             numberOfRounds: config.numberOfRounds,
             randomOrder: config.randomOrder,
-            cooldownPeriod: config.cooldownPeriod
+            cooldownPeriod: config.cooldownPeriod,
+            workoutStartWarning: config.workoutStartWarning,
+            restEndWarning: config.restEndWarning
         )
         voiceManager?.startPlayback(config: pbConfig, state: playbackState)
         activeConfig = config
@@ -245,6 +247,7 @@ private struct VoiceTrainerModuleView: View {
         let numRounds = config.numberOfRounds
         let restLength = config.restLength
         let cooldownPeriod = config.cooldownPeriod
+        let restEndWarning = config.restEndWarning
         // Capture playbackState and voiceManager as strong references (both are classes)
         let ps = playbackState
         let vm = voiceManager
@@ -264,7 +267,7 @@ private struct VoiceTrainerModuleView: View {
 
                     if ps.roundTimeRemaining == 0 {
                         if restLength > 0 && ps.currentRound < numRounds {
-                            vm?.startRestCountdownIfNeeded(duration: restLength, warningAt: ps.restEndWarning)
+                            vm?.startRestCountdownIfNeeded(duration: restLength, warningAt: restEndWarning)
                         } else if cooldownPeriod > 0 && ps.currentRound == numRounds {
                             vm?.startCooldownCountdownIfNeeded(duration: cooldownPeriod * 60)
                         }
@@ -408,6 +411,8 @@ private struct VoiceTrainerEditorView: View {
     @State private var numberOfRounds: Int = 3
     @State private var randomOrder: Bool = false
     @State private var cooldownPeriod: Int = 0
+    @State private var workoutStartWarning: Int = 10
+    @State private var restEndWarning: Int = 10
 
     init(title: String, initialConfig: VoiceTrainerConfig? = nil, onSave: @escaping (VoiceTrainerConfig) -> Void) {
         self.title = title
@@ -424,6 +429,8 @@ private struct VoiceTrainerEditorView: View {
             _numberOfRounds = State(initialValue: c.numberOfRounds)
             _randomOrder = State(initialValue: c.randomOrder)
             _cooldownPeriod = State(initialValue: c.cooldownPeriod)
+            _workoutStartWarning = State(initialValue: c.workoutStartWarning)
+            _restEndWarning = State(initialValue: c.restEndWarning)
         }
     }
 
@@ -454,13 +461,15 @@ private struct VoiceTrainerEditorView: View {
                     HStack {
                         Text("Number of Rounds")
                         Spacer()
-                        Stepper("\(numberOfRounds)", value: $numberOfRounds, in: 1...100)
+                        Stepper("", value: $numberOfRounds, in: 1...100)
+                        Text("\(numberOfRounds)")
+                            .foregroundColor(.accentColor)
                     }
 
                     HStack {
                         Text("Round Length")
                         Spacer()
-                        Picker("Round Length", selection: $roundLength) {
+                        Picker("", selection: $roundLength) {
                             Text("30 sec").tag(30)
                             Text("1 min").tag(60)
                             Text("1.5 min").tag(90)
@@ -483,9 +492,9 @@ private struct VoiceTrainerEditorView: View {
                     }
 
                     HStack {
-                        Text("Rest Between Rounds")
+                        Text("Rest Length")
                         Spacer()
-                        Picker("Rest Length", selection: $restLength) {
+                        Picker("", selection: $restLength) {
                             Text("None").tag(0)
                             Text("10 sec").tag(10)
                             Text("15 sec").tag(15)
@@ -506,9 +515,9 @@ private struct VoiceTrainerEditorView: View {
 
                 Section("Timing") {
                     HStack {
-                        Text("Delay Between Lines")
+                        Text("Delay")
                         Spacer()
-                        Picker("Delay", selection: $delayBetweenLines) {
+                        Picker("", selection: $delayBetweenLines) {
                             Text("0 sec").tag(0)
                             Text("1 sec").tag(1)
                             Text("2 sec").tag(2)
@@ -525,9 +534,33 @@ private struct VoiceTrainerEditorView: View {
                     }
 
                     HStack {
-                        Text("Cooldown Period")
+                        Text("Start Warning")
                         Spacer()
-                        Picker("Cooldown", selection: $cooldownPeriod) {
+                        Picker("", selection: $workoutStartWarning) {
+                            Text("None").tag(0)
+                            ForEach(1...30, id: \.self) { s in
+                                Text("\(s) sec").tag(s)
+                            }
+                        }
+                        .pickerStyle(.menu)
+                    }
+
+                    HStack {
+                        Text("Rest End Warning")
+                        Spacer()
+                        Picker("", selection: $restEndWarning) {
+                            Text("None").tag(0)
+                            ForEach(1...30, id: \.self) { s in
+                                Text("\(s) sec").tag(s)
+                            }
+                        }
+                        .pickerStyle(.menu)
+                    }
+
+                    HStack {
+                        Text("Cooldown")
+                        Spacer()
+                        Picker("", selection: $cooldownPeriod) {
                             Text("None").tag(0)
                             Text("1 min").tag(1)
                             Text("2 min").tag(2)
@@ -564,6 +597,8 @@ private struct VoiceTrainerEditorView: View {
                             numberOfRounds: numberOfRounds,
                             randomOrder: randomOrder,
                             cooldownPeriod: cooldownPeriod,
+                            workoutStartWarning: workoutStartWarning,
+                            restEndWarning: restEndWarning,
                             isFavorite: initialConfig?.isFavorite ?? false
                         )
                         onSave(config)
@@ -586,6 +621,8 @@ private struct VoicePlaybackConfig {
     let numberOfRounds: Int
     let randomOrder: Bool
     let cooldownPeriod: Int
+    let workoutStartWarning: Int
+    let restEndWarning: Int
 }
 
 // MARK: - Voice Manager
@@ -645,14 +682,14 @@ private class VoiceManager: NSObject, AVSpeechSynthesizerDelegate {
         }
         
         // Start with countdown if configured
-        if state.workoutStartWarning > 0 {
+        if config.workoutStartWarning > 0 {
             // Set isPlaying to true so pause button shows during countdown
             // Set isInInitialCountdown to true so elapsed time doesn't increment during countdown
             DispatchQueue.main.async {
                 state.isPlaying = true
                 state.isInInitialCountdown = true
             }
-            countdownQueue = (1...state.workoutStartWarning).reversed().map { "\($0)" }
+            countdownQueue = (1...config.workoutStartWarning).reversed().map { "\($0)" }
             speakNextCountdown()
         } else {
             // No countdown, start lines immediately
@@ -752,7 +789,7 @@ private class VoiceManager: NSObject, AVSpeechSynthesizerDelegate {
            currentRoundNumber < config.numberOfRounds,
            config.restLength > 0 {
             isResting = true
-            restWarningAt = state.restEndWarning
+            restWarningAt = config.restEndWarning
             restWarningSpoken = false
             lastRestCountdownSpoken = -1
             state.restCountdown = config.restLength
@@ -1039,7 +1076,7 @@ private class VoiceManager: NSObject, AVSpeechSynthesizerDelegate {
                     return
                 }
                 print("🛌 Scheduling rest period for \(config.restLength) seconds")
-                beginRest(duration: config.restLength, warningAt: state.restEndWarning)
+                beginRest(duration: config.restLength, warningAt: config.restEndWarning)
             } else {
                 print("🏁 No rest, starting next round immediately (delegate already waited delay)")
                 startRound(roundNumber: currentRoundNumber + 1)

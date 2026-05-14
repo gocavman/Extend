@@ -18,10 +18,6 @@ final class VoiceTrainerState {
     var numberOfRounds: Int = 1  // 1-100
     var randomOrder: Bool = false
     
-    // Countdown warnings
-    var workoutStartWarning: Int = 10  // seconds countdown before workout starts
-    var restEndWarning: Int = 10  // seconds countdown before rest ends
-    
     // Playback state
     var isPlaying: Bool = false
     var isPaused: Bool = false
@@ -43,7 +39,6 @@ final class VoiceTrainerState {
     var savedConfigurations: [VoiceTrainerConfig] = []
     
     init() {
-        loadSettings()
         loadSavedConfigurations()
         createDefaultConfigurationsIfNeeded()
     }
@@ -202,18 +197,7 @@ Left and Right Uppercuts
     
     // MARK: - Persistence
     
-    private func loadSettings() {
-        workoutStartWarning = UserDefaults.standard.integer(forKey: "VoiceTrainerWorkoutStartWarning")
-        if workoutStartWarning == 0 { workoutStartWarning = 10 } // Default to 10
-        
-        restEndWarning = UserDefaults.standard.integer(forKey: "VoiceTrainerRestEndWarning")
-        if restEndWarning == 0 { restEndWarning = 10 } // Default to 10
-    }
-    
-    func saveSettings() {
-        UserDefaults.standard.set(workoutStartWarning, forKey: "VoiceTrainerWorkoutStartWarning")
-        UserDefaults.standard.set(restEndWarning, forKey: "VoiceTrainerRestEndWarning")
-    }
+
     
     private func saveToDefaults() {
         if let encoded = try? JSONEncoder().encode(savedConfigurations) {
@@ -271,6 +255,8 @@ struct VoiceTrainerConfig: Identifiable, Codable, Hashable {
     var numberOfRounds: Int
     var randomOrder: Bool
     var cooldownPeriod: Int  // minutes after all rounds complete (0-60)
+    var workoutStartWarning: Int  // seconds countdown before workout starts (0-30)
+    var restEndWarning: Int       // seconds countdown before rest ends (0-30)
     var isFavorite: Bool
     
     // Custom decoding to provide default values for new fields (backward compatibility)
@@ -286,11 +272,13 @@ struct VoiceTrainerConfig: Identifiable, Codable, Hashable {
         numberOfRounds = try container.decode(Int.self, forKey: .numberOfRounds)
         randomOrder = try container.decode(Bool.self, forKey: .randomOrder)
         cooldownPeriod = try container.decodeIfPresent(Int.self, forKey: .cooldownPeriod) ?? 0
+        workoutStartWarning = try container.decodeIfPresent(Int.self, forKey: .workoutStartWarning) ?? 10
+        restEndWarning = try container.decodeIfPresent(Int.self, forKey: .restEndWarning) ?? 10
         isFavorite = try container.decodeIfPresent(Bool.self, forKey: .isFavorite) ?? false
     }
     
     // Standard initializer for creating new configs
-    init(id: UUID = UUID(), name: String, notes: String = "", text: String, roundLength: Int, restLength: Int, delayBetweenLines: Int, numberOfRounds: Int, randomOrder: Bool, cooldownPeriod: Int, isFavorite: Bool = false) {
+    init(id: UUID = UUID(), name: String, notes: String = "", text: String, roundLength: Int, restLength: Int, delayBetweenLines: Int, numberOfRounds: Int, randomOrder: Bool, cooldownPeriod: Int, workoutStartWarning: Int = 10, restEndWarning: Int = 10, isFavorite: Bool = false) {
         self.id = id
         self.name = name
         self.notes = notes
@@ -301,6 +289,8 @@ struct VoiceTrainerConfig: Identifiable, Codable, Hashable {
         self.numberOfRounds = numberOfRounds
         self.randomOrder = randomOrder
         self.cooldownPeriod = cooldownPeriod
+        self.workoutStartWarning = workoutStartWarning
+        self.restEndWarning = restEndWarning
         self.isFavorite = isFavorite
     }
     
