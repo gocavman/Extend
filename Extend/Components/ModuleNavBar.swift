@@ -30,7 +30,7 @@ public struct ModuleNavBar: View {
     public var body: some View {
         VStack(spacing: 0) {
             // MARK: - Module Buttons
-            HStack(spacing: 12) {
+            GeometryReader { geo in
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: 12) {
                         ForEach(modulesToShow) { module in
@@ -44,6 +44,9 @@ public struct ModuleNavBar: View {
                         }
                     }
                     .padding(.horizontal, 16)
+                    // Expand to at least the full width so items center when
+                    // they fit; scrolls normally when they overflow.
+                    .frame(minWidth: geo.size.width)
                 }
             }
             .frame(height: 60)

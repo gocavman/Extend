@@ -31,6 +31,24 @@ private struct ProgressModuleView: View {
     @State private var selectedLog: WorkoutLog?
     @State private var showingExportSheet = false
     
+    private var monthYearString: String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "MMMM yyyy"
+        return formatter.string(from: currentMonth)
+    }
+
+    private func previousMonth() {
+        if let newMonth = Calendar.current.date(byAdding: .month, value: -1, to: currentMonth) {
+            currentMonth = newMonth
+        }
+    }
+
+    private func nextMonth() {
+        if let newMonth = Calendar.current.date(byAdding: .month, value: 1, to: currentMonth) {
+            currentMonth = newMonth
+        }
+    }
+
     var body: some View {
         VStack(spacing: 0) {
             // Header
@@ -38,9 +56,37 @@ private struct ProgressModuleView: View {
                 Text("Log")
                     .font(.title2)
                     .fontWeight(.bold)
-                
+
                 Spacer()
-                
+
+                // Month navigation — centered between title and export button
+                HStack(spacing: 8) {
+                    Button(action: {
+                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                        previousMonth()
+                    }) {
+                        Image(systemName: "chevron.left")
+                            .foregroundColor(.black)
+                            .frame(width: 28, height: 28)
+                    }
+
+                    Text(monthYearString)
+                        .font(.title2)
+                        .fontWeight(.semibold)
+                        .fixedSize()
+
+                    Button(action: {
+                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                        nextMonth()
+                    }) {
+                        Image(systemName: "chevron.right")
+                            .foregroundColor(.black)
+                            .frame(width: 28, height: 28)
+                    }
+                }
+
+                Spacer()
+
                 Button(action: {
                     UIImpactFeedbackGenerator(style: .light).impactOccurred()
                     showingExportSheet = true
@@ -127,12 +173,6 @@ private struct CalendarView: View {
         return Array(repeating: GridItem(.flexible(), spacing: spacing), count: 7)
     }()
     
-    private var monthYearString: String {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "MMMM yyyy"
-        return formatter.string(from: currentMonth)
-    }
-    
     private var days: [Date?] {
         guard let monthInterval = calendar.dateInterval(of: .month, for: currentMonth),
               let monthFirstWeek = calendar.dateInterval(of: .weekOfMonth, for: monthInterval.start),
@@ -164,27 +204,6 @@ private struct CalendarView: View {
     
     var body: some View {
         VStack(spacing: 8) {
-            // Month navigation
-            HStack {
-                Button(action: previousMonth) {
-                    Image(systemName: "chevron.left")
-                        .foregroundColor(.black)
-                }
-                
-                Spacer()
-                
-                Text(monthYearString)
-                    .font(.headline)
-                
-                Spacer()
-                
-                Button(action: nextMonth) {
-                    Image(systemName: "chevron.right")
-                        .foregroundColor(.black)
-                }
-            }
-            .padding(.horizontal, 4)
-            
             // Weekday headers
             LazyVGrid(columns: columns, spacing: 2) {
                 ForEach(["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"], id: \.self) { day in
@@ -221,17 +240,6 @@ private struct CalendarView: View {
         .cornerRadius(12)
     }
     
-    private func previousMonth() {
-        if let newMonth = calendar.date(byAdding: .month, value: -1, to: currentMonth) {
-            currentMonth = newMonth
-        }
-    }
-    
-    private func nextMonth() {
-        if let newMonth = calendar.date(byAdding: .month, value: 1, to: currentMonth) {
-            currentMonth = newMonth
-        }
-    }
 }
 
 // MARK: - Day Cell
