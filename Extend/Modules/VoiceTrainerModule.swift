@@ -36,8 +36,13 @@ private struct VoiceTrainerModuleView: View {
     @State private var searchText: String = ""
     @State private var showingAdd = false
     @State private var editingConfig: VoiceTrainerConfig?
-    @State private var playingConfig: VoiceTrainerConfig?
     @State private var deletingConfig: VoiceTrainerConfig?
+
+    // Playback state
+    @State private var activeConfig: VoiceTrainerConfig?
+    @State private var voiceManager: VoiceManager?
+    @State private var updateTimer: Timer?
+    @State private var playbackState = VoiceTrainerState()
 
     private var filteredConfigs: [VoiceTrainerConfig] {
         let trimmed = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -50,123 +55,272 @@ private struct VoiceTrainerModuleView: View {
     }
 
     var body: some View {
-        NavigationStack {
-            VStack(spacing: 0) {
-                // Header
-                HStack {
-                    Text("Trainer")
-                        .font(.title2)
-                        .fontWeight(.bold)
-                    Spacer()
-                    Button(action: {
-                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                        showingAdd = true
-                    }) {
-                        Image(systemName: "plus")
-                            .foregroundColor(.black)
-                    }
+        VStack(spacing: 0) {
+            // Header
+            HStack {
+                Text("Trainer")
+                    .font(.title2)
+                    .fontWeight(.bold)
+                Spacer()
+                Button(action: {
+                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                    showingAdd = true
+                }) {
+                    Image(systemName: "plus")
+                        .foregroundColor(.black)
                 }
-                .padding(.horizontal, 16)
-                .padding(.vertical, 12)
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 12)
 
-                List {
-                    // Favorites tiles
-                    if !state.favoriteConfigs.isEmpty {
-                        Section {
-                            ScrollView(.horizontal, showsIndicators: false) {
-                                HStack(spacing: 10) {
-                                    ForEach(state.favoriteConfigs) { config in
-                                        Button(action: {
-                                            UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                                            playingConfig = config
-                                        }) {
-                                            VStack(spacing: 6) {
-                                                Image(systemName: "speaker.wave.2.fill")
-                                                    .font(.system(size: 20))
-                                                    .foregroundColor(.black)
-                                                Text(config.name)
-                                                    .font(.caption)
-                                                    .fontWeight(.semibold)
-                                                    .foregroundColor(.black)
-                                                    .lineLimit(2)
-                                                    .multilineTextAlignment(.center)
-                                            }
-                                            .frame(width: 70, height: 80)
-                                            .background(Color(red: 0.92, green: 0.92, blue: 0.94))
-                                            .cornerRadius(10)
+            List {
+                // Favorites tiles
+                if !state.favoriteConfigs.isEmpty {
+                    Section {
+                        ScrollView(.horizontal, showsIndicators: false) {
+                            HStack(spacing: 10) {
+                                ForEach(state.favoriteConfigs) { config in
+                                    Button(action: {
+                                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                                        play(config)
+                                    }) {
+                                        VStack(spacing: 6) {
+                                            Image(systemName: "speaker.wave.2.fill")
+                                                .font(.system(size: 20))
+                                                .foregroundColor(.black)
+                                            Text(config.name)
+                                                .font(.caption)
+                                                .fontWeight(.semibold)
+                                                .foregroundColor(.black)
+                                                .lineLimit(2)
+                                                .multilineTextAlignment(.center)
                                         }
-                                        .buttonStyle(.plain)
+                                        .frame(width: 70, height: 80)
+                                        .background(Color(red: 0.92, green: 0.92, blue: 0.94))
+                                        .cornerRadius(10)
                                     }
+                                    .buttonStyle(.plain)
                                 }
-                                .padding(.vertical, 4)
                             }
-                        }
-                        .listRowInsets(EdgeInsets(top: 4, leading: 16, bottom: 4, trailing: 16))
-                    }
-
-                    SearchField(text: $searchText, placeholder: "Search trainers...")
-
-                    if filteredConfigs.isEmpty {
-                        Text(state.savedConfigurations.isEmpty ? "No trainers yet" : "No trainers found")
-                            .font(.subheadline)
-                            .foregroundColor(.gray)
-                            .frame(maxWidth: .infinity, alignment: .center)
-                            .padding(.vertical, 20)
-                    } else {
-                        ForEach(filteredConfigs) { config in
-                            VoiceTrainerListRow(
-                                config: config,
-                                onPlay: {
-                                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                                    playingConfig = config
-                                },
-                                onStar: {
-                                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                                    state.toggleFavorite(id: config.id)
-                                },
-                                onClone: {
-                                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                                    state.cloneConfiguration(config)
-                                },
-                                onEdit: {
-                                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                                    editingConfig = config
-                                },
-                                onDelete: {
-                                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                                    deletingConfig = config
-                                }
-                            )
+                            .padding(.vertical, 4)
                         }
                     }
+                    .listRowInsets(EdgeInsets(top: 4, leading: 16, bottom: 4, trailing: 16))
                 }
-                .listStyle(.plain)
-            }
-            .sheet(isPresented: $showingAdd) {
-                VoiceTrainerEditorView(title: "New Trainer") { newConfig in
-                    state.saveConfiguration(name: newConfig.name, config: newConfig)
-                }
-            }
-            .sheet(item: $editingConfig) { config in
-                VoiceTrainerEditorView(title: "Edit Trainer", initialConfig: config) { updated in
-                    state.updateConfiguration(updated)
-                }
-            }
-            .navigationDestination(item: $playingConfig) { config in
-                VoiceTrainerPlayView(config: config, logState: logState)
-            }
-            .alert("Delete Trainer?", isPresented: .constant(deletingConfig != nil)) {
-                Button("Cancel", role: .cancel) { deletingConfig = nil }
-                Button("Delete", role: .destructive) {
-                    if let c = deletingConfig {
-                        state.deleteConfiguration(c)
-                        deletingConfig = nil
+
+                SearchField(text: $searchText, placeholder: "Search trainers...")
+
+                if filteredConfigs.isEmpty {
+                    Text(state.savedConfigurations.isEmpty ? "No trainers yet" : "No trainers found")
+                        .font(.subheadline)
+                        .foregroundColor(.gray)
+                        .frame(maxWidth: .infinity, alignment: .center)
+                        .padding(.vertical, 20)
+                } else {
+                    ForEach(filteredConfigs) { config in
+                        VoiceTrainerListRow(
+                            config: config,
+                            onPlay: {
+                                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                                play(config)
+                            },
+                            onStar: {
+                                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                                state.toggleFavorite(id: config.id)
+                            },
+                            onClone: {
+                                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                                state.cloneConfiguration(config)
+                            },
+                            onEdit: {
+                                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                                editingConfig = config
+                            },
+                            onDelete: {
+                                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                                deletingConfig = config
+                            }
+                        )
                     }
                 }
-            } message: {
-                Text("This will permanently delete the trainer configuration.")
+            }
+            .listStyle(.plain)
+        }
+        .sheet(isPresented: $showingAdd) {
+            VoiceTrainerEditorView(title: "New Trainer") { newConfig in
+                state.saveConfiguration(name: newConfig.name, config: newConfig)
             }
         }
+        .sheet(item: $editingConfig) { config in
+            VoiceTrainerEditorView(title: "Edit Trainer", initialConfig: config) { updated in
+                state.updateConfiguration(updated)
+            }
+        }
+        .fullScreenCover(item: $activeConfig) { config in
+            PlaybackScreen(
+                state: playbackState,
+                numberOfRounds: config.numberOfRounds,
+                onPause: { pausePlayback() },
+                onResume: { resumePlayback() },
+                onStop: {
+                    resetPlayback()
+                    activeConfig = nil
+                },
+                onComplete: {
+                    completeSession()
+                    activeConfig = nil
+                },
+                onStartPlayback: { startUpdateTimer() },
+                formatTime: formatTime
+            )
+        }
+        .alert("Delete Trainer?", isPresented: .constant(deletingConfig != nil)) {
+            Button("Cancel", role: .cancel) { deletingConfig = nil }
+            Button("Delete", role: .destructive) {
+                if let c = deletingConfig {
+                    state.deleteConfiguration(c)
+                    deletingConfig = nil
+                }
+            }
+        } message: {
+            Text("This will permanently delete the trainer configuration.")
+        }
+    }
+
+    private func play(_ config: VoiceTrainerConfig) {
+        // Stop and discard any previous session
+        updateTimer?.invalidate()
+        updateTimer = nil
+        voiceManager?.stop()
+        voiceManager = VoiceManager()
+
+        playbackState.isPlaying = false
+        playbackState.isPaused = false
+        playbackState.elapsedTime = 0
+        playbackState.currentRound = 1
+        playbackState.currentLineIndex = 0
+        playbackState.currentLineText = ""
+        playbackState.lineHistory = []
+        playbackState.linesSpoken = 0
+        playbackState.totalTime = calculateTotalTime(config)
+
+        let pbConfig = VoicePlaybackConfig(
+            text: config.text,
+            roundLength: config.roundLength,
+            restLength: config.restLength,
+            delayBetweenLines: config.delayBetweenLines,
+            numberOfRounds: config.numberOfRounds,
+            randomOrder: config.randomOrder,
+            cooldownPeriod: config.cooldownPeriod
+        )
+        voiceManager?.startPlayback(config: pbConfig, state: playbackState)
+        activeConfig = config
+    }
+
+    private func pausePlayback() {
+        playbackState.isPlaying = false
+        playbackState.isPaused = true
+        voiceManager?.pausePlayback()
+    }
+
+    private func resumePlayback() {
+        playbackState.isPlaying = true
+        playbackState.isPaused = false
+        if updateTimer == nil { startUpdateTimer() }
+        voiceManager?.resumePlayback()
+    }
+
+    private func resetPlayback() {
+        updateTimer?.invalidate()
+        updateTimer = nil
+        voiceManager?.stop()
+        playbackState.reset()
+    }
+
+    private func startUpdateTimer() {
+        guard let config = activeConfig else { return }
+        // Invalidate any existing timer before creating a new one
+        updateTimer?.invalidate()
+        updateTimer = nil
+        let numRounds = config.numberOfRounds
+        let restLength = config.restLength
+        let cooldownPeriod = config.cooldownPeriod
+        // Capture playbackState and voiceManager as strong references (both are classes)
+        let ps = playbackState
+        let vm = voiceManager
+        updateTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { timer in
+            if ps.isPaused { return }
+
+            if ps.isPlaying {
+                if !ps.isInInitialCountdown {
+                    ps.elapsedTime += 1
+                }
+
+                if ps.restCountdown > 0 {
+                    ps.restCountdown = max(0, ps.restCountdown - 1)
+                    vm?.handleRestCountdownTick()
+                } else if ps.roundTimeRemaining > 0 && !ps.isInInitialCountdown {
+                    ps.roundTimeRemaining -= 1
+
+                    if ps.roundTimeRemaining == 0 {
+                        if restLength > 0 && ps.currentRound < numRounds {
+                            vm?.startRestCountdownIfNeeded(duration: restLength, warningAt: ps.restEndWarning)
+                        } else if cooldownPeriod > 0 && ps.currentRound == numRounds {
+                            vm?.startCooldownCountdownIfNeeded(duration: cooldownPeriod * 60)
+                        }
+                        vm?.forceRoundComplete()
+                    }
+                }
+
+                // Advance pause-aware inter-line delay countdown
+                vm?.tick()
+            }
+
+            if !ps.isPlaying && !ps.isPaused {
+                timer.invalidate()
+            }
+        }
+    }
+
+    private func completeSession() {
+        guard let config = activeConfig else { return }
+        let linesSpoken = playbackState.lineHistory + (playbackState.currentLineText.isEmpty ? [] : [playbackState.currentLineText])
+        let linesText = linesSpoken.joined(separator: "\n")
+        let logNotes = """
+Voice Trainer Session: \(config.name)
+\(config.parameterSummary)
+
+Lines Read (in order):
+\(linesText)
+
+Total Lines Read: \(playbackState.linesSpoken)
+"""
+        let workoutLog = WorkoutLog(
+            id: UUID(),
+            workoutName: "Trainer – \(config.name)",
+            completedAt: Date(),
+            exercises: [],
+            notes: logNotes,
+            duration: TimeInterval(playbackState.elapsedTime)
+        )
+        logState.addLog(workoutLog)
+        resetPlayback()
+        ModuleState.shared.selectedModuleID = ModuleIDs.progress
+    }
+
+    private func calculateTotalTime(_ config: VoiceTrainerConfig) -> Int {
+        let totalRoundsTime = config.roundLength * config.numberOfRounds
+        let restPeriodsCount = max(0, config.numberOfRounds - 1)
+        let totalRestTime = restPeriodsCount * config.restLength
+        return totalRoundsTime + totalRestTime + (config.cooldownPeriod * 60)
+    }
+
+    private func formatTime(_ seconds: Int) -> String {
+        let hours = seconds / 3600
+        let minutes = (seconds % 3600) / 60
+        let secs = seconds % 60
+        if hours > 0 { return String(format: "%02d:%02d:%02d", hours, minutes, secs) }
+        return String(format: "%02d:%02d", minutes, secs)
     }
 }
 
@@ -422,217 +576,6 @@ private struct VoiceTrainerEditorView: View {
     }
 }
 
-// MARK: - Voice Trainer Play View (wrapper around existing playback logic)
-
-private struct VoiceTrainerPlayView: View {
-    let config: VoiceTrainerConfig
-    let logState: WorkoutLogState
-
-    @State private var voiceManager: VoiceManager?
-    @State private var updateTimer: Timer?
-    @State private var showPlaybackScreen = false
-    @State private var state = VoiceTrainerState()
-
-    var body: some View {
-        VStack(spacing: 24) {
-            // Config summary
-            VStack(alignment: .leading, spacing: 8) {
-                Text(config.name)
-                    .font(.title2)
-                    .fontWeight(.bold)
-                if !config.notes.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                    Text(config.notes.trimmingCharacters(in: .whitespacesAndNewlines))
-                        .font(.subheadline)
-                        .foregroundColor(.secondary)
-                }
-                Text(config.parameterSummary)
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-                let lineCount = config.text.split(separator: "\n").filter { !$0.trimmingCharacters(in: .whitespaces).isEmpty }.count
-                Text("\(lineCount) lines")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(16)
-            .background(Color(red: 0.96, green: 0.96, blue: 0.97))
-            .cornerRadius(12)
-            .padding(.horizontal, 16)
-
-            Spacer()
-
-            Button(action: {
-                UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-                startPlayback()
-            }) {
-                HStack(spacing: 8) {
-                    Image(systemName: "play.fill")
-                        .font(.system(size: 16, weight: .semibold))
-                    Text("Start")
-                        .font(.subheadline)
-                        .fontWeight(.semibold)
-                    Text("(\(formatTime(calculateTotalTime())))")
-                        .font(.subheadline)
-                        .opacity(0.7)
-                }
-                .foregroundColor(.black)
-                .frame(maxWidth: .infinity)
-                .padding(14)
-                .background(Color(red: 0.88, green: 0.88, blue: 0.88))
-                .cornerRadius(10)
-            }
-            .padding(.horizontal, 16)
-            .padding(.bottom, 20)
-        }
-        .navigationTitle("Start Trainer")
-        .navigationBarTitleDisplayMode(.inline)
-        .onAppear {
-            voiceManager = VoiceManager()
-            state.totalTime = calculateTotalTime()
-        }
-        .fullScreenCover(isPresented: $showPlaybackScreen) {
-            PlaybackScreen(
-                state: state,
-                numberOfRounds: config.numberOfRounds,
-                onPause: { pausePlayback() },
-                onResume: { resumePlayback() },
-                onStop: {
-                    resetPlayback()
-                    showPlaybackScreen = false
-                },
-                onComplete: {
-                    completeSession()
-                    showPlaybackScreen = false
-                },
-                onStartPlayback: { startUpdateTimer() },
-                formatTime: formatTime
-            )
-        }
-    }
-
-    private func calculateTotalTime() -> Int {
-        let totalRoundsTime = config.roundLength * config.numberOfRounds
-        let restPeriodsCount = max(0, config.numberOfRounds - 1)
-        let totalRestTime = restPeriodsCount * config.restLength
-        let cooldownSeconds = config.cooldownPeriod * 60
-        return totalRoundsTime + totalRestTime + cooldownSeconds
-    }
-
-    private func startPlayback() {
-        state.isPlaying = false
-        state.isPaused = false
-        state.elapsedTime = 0
-        state.currentRound = 1
-        state.currentLineIndex = 0
-        state.currentLineText = ""
-        state.lineHistory = []
-        state.linesSpoken = 0
-        state.totalTime = calculateTotalTime()
-
-        let playbackConfig = VoicePlaybackConfig(
-            text: config.text,
-            roundLength: config.roundLength,
-            restLength: config.restLength,
-            delayBetweenLines: config.delayBetweenLines,
-            numberOfRounds: config.numberOfRounds,
-            randomOrder: config.randomOrder,
-            cooldownPeriod: config.cooldownPeriod
-        )
-        voiceManager?.startPlayback(config: playbackConfig, state: state)
-        showPlaybackScreen = true
-    }
-
-    private func pausePlayback() {
-        state.isPlaying = false
-        state.isPaused = true
-        voiceManager?.pausePlayback()
-    }
-
-    private func resumePlayback() {
-        state.isPlaying = true
-        state.isPaused = false
-        if updateTimer == nil { startUpdateTimer() }
-        voiceManager?.resumePlayback()
-    }
-
-    private func resetPlayback() {
-        state.reset()
-        updateTimer?.invalidate()
-        updateTimer = nil
-        voiceManager?.stop()
-    }
-
-    private func startUpdateTimer() {
-        updateTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [state, voiceManager] timer in
-            let numRounds = config.numberOfRounds
-            let restLength = config.restLength
-            let cooldownPeriod = config.cooldownPeriod
-
-            if state.isPaused { return }
-
-            if state.isPlaying {
-                if !state.isInInitialCountdown {
-                    state.elapsedTime += 1
-                }
-
-                if state.restCountdown > 0 {
-                    state.restCountdown = max(0, state.restCountdown - 1)
-                    voiceManager?.handleRestCountdownTick()
-                } else if state.roundTimeRemaining > 0 && !state.isInInitialCountdown {
-                    state.roundTimeRemaining -= 1
-
-                    if state.roundTimeRemaining == 0 {
-                        if restLength > 0 && state.currentRound < numRounds {
-                            voiceManager?.startRestCountdownIfNeeded(duration: restLength, warningAt: state.restEndWarning)
-                        } else if cooldownPeriod > 0 && state.currentRound == numRounds {
-                            voiceManager?.startCooldownCountdownIfNeeded(duration: cooldownPeriod * 60)
-                        }
-                        voiceManager?.forceRoundComplete()
-                    }
-                }
-            }
-
-            if !state.isPlaying && !state.isPaused {
-                timer.invalidate()
-            }
-        }
-    }
-
-    private func completeSession() {
-        let linesSpoken = state.lineHistory + (state.currentLineText.isEmpty ? [] : [state.currentLineText])
-        let linesText = linesSpoken.joined(separator: "\n")
-        let logNotes = """
-Voice Trainer Session: \(config.name)
-\(config.parameterSummary)
-
-Lines Read (in order):
-\(linesText)
-
-Total Lines Read: \(state.linesSpoken)
-"""
-
-        let workoutLog = WorkoutLog(
-            id: UUID(),
-            workoutName: "Trainer – \(config.name)",
-            completedAt: Date(),
-            exercises: [],
-            notes: logNotes,
-            duration: TimeInterval(state.elapsedTime)
-        )
-        logState.addLog(workoutLog)
-        resetPlayback()
-        ModuleState.shared.selectedModuleID = ModuleIDs.progress
-    }
-
-    private func formatTime(_ seconds: Int) -> String {
-        let hours = seconds / 3600
-        let minutes = (seconds % 3600) / 60
-        let secs = seconds % 60
-        if hours > 0 { return String(format: "%02d:%02d:%02d", hours, minutes, secs) }
-        return String(format: "%02d:%02d", minutes, secs)
-    }
-}
-
 // MARK: - Voice Playback Configuration
 
 private struct VoicePlaybackConfig {
@@ -665,6 +608,10 @@ private class VoiceManager: NSObject, AVSpeechSynthesizerDelegate {
     private var restWarningSpoken = false
     private var isAnnouncingEndOfRound = false
     private var lastRestCountdownSpoken: Int = -1
+
+    // Pause-aware inter-line/countdown delay driven by the main update timer tick()
+    private var pendingDelay: Int = 0
+    private var pendingAction: (() -> Void)?
 
     override init() {
         self.synthesizer = AVSpeechSynthesizer()
@@ -726,8 +673,8 @@ private class VoiceManager: NSObject, AVSpeechSynthesizerDelegate {
         pauseRequested = false
         // Continue speaking the current line if it was interrupted
         synthesizer.continueSpeaking()
-        // If synthesizer doesn't have anything to resume, check what to speak next
-        if !synthesizer.isSpeaking {
+        // If synthesizer isn't speaking AND there's no pending delay countdown, resume immediately
+        if !synthesizer.isSpeaking && pendingDelay == 0 {
             if !countdownQueue.isEmpty {
                 print("🎤 Synthesizer not speaking, resuming countdown")
                 speakNextCountdown()
@@ -736,6 +683,7 @@ private class VoiceManager: NSObject, AVSpeechSynthesizerDelegate {
                 speakNextLine()
             }
         }
+        // If pendingDelay > 0, the main timer tick() will handle the remaining wait
     }
     
     func stop() {
@@ -748,6 +696,22 @@ private class VoiceManager: NSObject, AVSpeechSynthesizerDelegate {
         synthesizer.delegate = self
         countdownQueue.removeAll()
         linesQueue.removeAll()
+        pendingDelay = 0
+        pendingAction = nil
+    }
+
+    /// Called by the main update timer every second while not paused.
+    /// Drives pause-aware inter-line and inter-countdown delays.
+    func tick() {
+        guard pendingDelay > 0, !stopRequested, !pauseRequested else { return }
+        pendingDelay -= 1
+        // Update the UI countdown so it reflects the remaining wait time
+        currentState?.nextItemCountdown = pendingDelay > 0 ? pendingDelay : 0
+        if pendingDelay == 0 {
+            let action = pendingAction
+            pendingAction = nil
+            action?()
+        }
     }
     
     func forceRoundComplete() {
@@ -773,6 +737,10 @@ private class VoiceManager: NSObject, AVSpeechSynthesizerDelegate {
         print("   Canceling \(scheduledWorkItems.count) scheduled work items")
         scheduledWorkItems.forEach { $0.cancel() }
         scheduledWorkItems.removeAll()
+
+        // Cancel any pending pause-aware delay
+        pendingDelay = 0
+        pendingAction = nil
 
         // Clear all queues
         linesQueue.removeAll()
@@ -1039,27 +1007,7 @@ private class VoiceManager: NSObject, AVSpeechSynthesizerDelegate {
         utterance.rate = AVSpeechUtteranceDefaultSpeechRate
         utterance.pitchMultiplier = 1.0
         
-        // Schedule next item countdown if delay is configured
-        // Show countdown even if queue is empty (will refill after delay)
-        if config.delayBetweenLines > 1 {
-            scheduleNextItemCountdown(delay: config.delayBetweenLines)
-        }
-        
         synthesizer.speak(utterance)
-    }
-    
-    private func scheduleNextItemCountdown(delay: Int) {
-        guard let state = currentState else { return }
-        
-        for second in 1..<delay {
-            let workItem = DispatchWorkItem { [weak self, weak state] in
-                guard let self = self, let state = state,
-                      !self.stopRequested && !self.pauseRequested else { return }
-                state.nextItemCountdown = delay - second
-            }
-            scheduledWorkItems.append(workItem)
-            DispatchQueue.main.asyncAfter(deadline: .now() + Double(second), execute: workItem)
-        }
     }
     
     private func handleRoundComplete() {
@@ -1078,6 +1026,8 @@ private class VoiceManager: NSObject, AVSpeechSynthesizerDelegate {
         // Cancel any delayed line-queue work before starting rest/next round
         scheduledWorkItems.forEach { $0.cancel() }
         scheduledWorkItems.removeAll()
+        pendingDelay = 0
+        pendingAction = nil
 
         print("   currentRoundNumber: \(currentRoundNumber) / \(config.numberOfRounds)")
         print("   restLength: \(config.restLength)")
@@ -1207,65 +1157,53 @@ private class VoiceManager: NSObject, AVSpeechSynthesizerDelegate {
         print("📊 currentConfig exists: \(currentConfig != nil)")
 
         if !countdownQueue.isEmpty {
-            print("⏰ Continuing countdown, scheduling next number in 1 second (total 1s between numbers)")
-            // Continue countdown after 1 second from NOW (not from when it started speaking)
-            let workItem = DispatchWorkItem { [weak self] in
-                self?.speakNextCountdown()
-            }
-            scheduledWorkItems.append(workItem)
-            DispatchQueue.main.asyncAfter(deadline: .now() + 1.0, execute: workItem)
+            print("⏰ Continuing countdown, waiting 1 second (pause-aware via tick)")
+            // Use pendingDelay so the 1-second gap between countdown numbers respects pause
+            pendingDelay = 1
+            pendingAction = { [weak self] in self?.speakNextCountdown() }
         } else if let config = currentConfig, linesQueue.isEmpty, currentRoundNumber > 0 {
             // Last line of the queue just finished (we're in a round, not just finishing countdown)
             if isCompletingRound || isResting {
                 print("⏭️ Skipping queue-empty handling during round completion/rest")
                 return
             }
-            let finishTime = Date()
-            print("🔄 Queue empty after line finished at \(finishTime), waiting \(config.delayBetweenLines) seconds")
-            let workItem = DispatchWorkItem { [weak self] in
-                guard let self = self, !self.stopRequested && !self.pauseRequested else { return }
+            print("🔄 Queue empty after line finished, waiting \(config.delayBetweenLines) seconds (pause-aware)")
+            // Set UI countdown immediately so the display starts at the full delay value
+            currentState?.nextItemCountdown = config.delayBetweenLines
+            let delay = config.delayBetweenLines
+            pendingDelay = delay
+            pendingAction = { [weak self] in
+                guard let self = self, !self.stopRequested else { return }
                 if self.isCompletingRound || self.isResting {
                     print("⏭️ Skipping delayed queue-empty handling during round completion/rest")
                     return
                 }
-
-                let resumeTime = Date()
-                print("⏰ Delay complete at \(resumeTime), elapsed: \(resumeTime.timeIntervalSince(finishTime))s")
-
-                // Check if queue was already refilled by another call (prevent duplicates)
                 if !self.linesQueue.isEmpty {
                     print("⚠️ Queue already refilled, skipping duplicate call")
                     return
                 }
-
-                // Check if we should refill queue or complete round
                 if let state = self.currentState, state.roundTimeRemaining > 0 {
                     print("⏱️ Round time remaining (\(state.roundTimeRemaining)s), refilling queue and continuing")
-                    self.speakNextLine() // This will refill the queue and speak next line
+                    self.speakNextLine()
                 } else {
                     print("✅ Round time complete (or expired), forcing round completion")
                     self.forceRoundComplete()
                 }
             }
-            scheduledWorkItems.append(workItem)
-            DispatchQueue.main.asyncAfter(deadline: .now() + Double(config.delayBetweenLines), execute: workItem)
         } else if countdownQueue.isEmpty && linesQueue.isEmpty && currentRoundNumber == 0 {
             // Just finished countdown (both queues empty and no rounds started yet)
             print("🎯 Delegate detected countdown finished, waiting 1 second before starting lines")
-            let workItem = DispatchWorkItem { [weak self] in
-                guard let self = self, !self.stopRequested && !self.pauseRequested else { return }
+            pendingDelay = 1
+            pendingAction = { [weak self] in
+                guard let self = self, !self.stopRequested else { return }
                 self.startRound(roundNumber: 1)
             }
-            scheduledWorkItems.append(workItem)
-            DispatchQueue.main.asyncAfter(deadline: .now() + 1.0, execute: workItem)
         } else if let config = currentConfig, !linesQueue.isEmpty {
-            print("📝 Continuing to next line after \(config.delayBetweenLines) seconds")
-            // Just finished a line, wait delay then speak next line
-            let workItem = DispatchWorkItem { [weak self] in
-                self?.speakNextLine()
-            }
-            scheduledWorkItems.append(workItem)
-            DispatchQueue.main.asyncAfter(deadline: .now() + Double(config.delayBetweenLines), execute: workItem)
+            print("📝 Continuing to next line after \(config.delayBetweenLines) seconds (pause-aware)")
+            // Use pendingDelay so the gap respects pause; set UI countdown immediately
+            currentState?.nextItemCountdown = config.delayBetweenLines
+            pendingDelay = config.delayBetweenLines
+            pendingAction = { [weak self] in self?.speakNextLine() }
         } else {
             print("⚠️ Delegate: No action taken")
             print("   - countdownQueue.isEmpty: \(countdownQueue.isEmpty)")
@@ -1303,7 +1241,7 @@ private class VoiceManager: NSObject, AVSpeechSynthesizerDelegate {
 // MARK: - Playback Screen
 
 private struct PlaybackScreen: View {
-    let state: VoiceTrainerState
+    @Bindable var state: VoiceTrainerState
     let numberOfRounds: Int
     let onPause: () -> Void
     let onResume: () -> Void
