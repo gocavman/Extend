@@ -367,58 +367,48 @@ private struct TimerEditorView: View {
 
 // MARK: - Stepper helpers
 
+/// Inline minutes + seconds wheel picker. Seconds column snaps to 5-second increments.
 private struct DurationStepper: View {
     let label: String
     @Binding var seconds: Int
 
-    @State private var text: String = ""
+    private var minutes: Int { seconds / 60 }
+    private var secs: Int { (seconds % 60) / 5 * 5 }  // snap to nearest 5s
 
     var body: some View {
-        HStack {
+        VStack(alignment: .leading, spacing: 4) {
             if !label.isEmpty {
                 Text(label)
                     .font(.subheadline)
-                Spacer()
             }
-            Button(action: {
-                UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                if seconds > 0 { seconds = max(0, seconds - 5) }
-                text = "\(seconds)"
-            }) {
-                Image(systemName: "minus.circle.fill")
-                    .foregroundColor(.black)
-                    .font(.system(size: 22))
-            }
-            .buttonStyle(.plain)
-
-            TextField("0", text: $text)
-                .keyboardType(.numberPad)
-                .multilineTextAlignment(.center)
-                .font(.subheadline.monospacedDigit())
-                .frame(width: 60)
-                .padding(6)
-                .background(Color(red: 0.96, green: 0.96, blue: 0.97))
-                .cornerRadius(6)
-                .onChange(of: text) { _, newVal in
-                    if let v = Int(newVal) { seconds = max(0, v) }
+            HStack(spacing: 0) {
+                // Minutes wheel
+                Picker("", selection: Binding(
+                    get: { minutes },
+                    set: { seconds = $0 * 60 + secs }
+                )) {
+                    ForEach(0..<100, id: \.self) { m in
+                        Text("\(m) min").tag(m)
+                    }
                 }
-                .onAppear { text = "\(seconds)" }
-                .onChange(of: seconds) { _, newVal in
-                    if text != "\(newVal)" { text = "\(newVal)" }
+                .pickerStyle(.wheel)
+                .frame(maxWidth: .infinity)
+                .clipped()
+
+                // Seconds wheel (0, 5, 10 … 55)
+                Picker("", selection: Binding(
+                    get: { secs },
+                    set: { seconds = minutes * 60 + $0 }
+                )) {
+                    ForEach(Array(stride(from: 0, through: 55, by: 5)), id: \.self) { s in
+                        Text("\(s) sec").tag(s)
+                    }
                 }
-
-            Button(action: {
-                UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                seconds += 5
-                text = "\(seconds)"
-            }) {
-                Image(systemName: "plus.circle.fill")
-                    .foregroundColor(.black)
-                    .font(.system(size: 22))
+                .pickerStyle(.wheel)
+                .frame(maxWidth: .infinity)
+                .clipped()
             }
-            .buttonStyle(.plain)
-
-            if label.isEmpty { Spacer() }
+            .frame(height: 120)
         }
     }
 }

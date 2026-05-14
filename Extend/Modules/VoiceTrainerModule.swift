@@ -460,118 +460,148 @@ private struct VoiceTrainerEditorView: View {
                 Section("Rounds") {
                     HStack {
                         Text("Number of Rounds")
+                            .font(.subheadline)
                         Spacer()
-                        Stepper("", value: $numberOfRounds, in: 1...100)
+                        Button(action: {
+                            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                            if numberOfRounds > 1 { numberOfRounds -= 1 }
+                        }) {
+                            Image(systemName: "minus.circle.fill")
+                                .foregroundColor(.black)
+                                .font(.system(size: 22))
+                        }
+                        .buttonStyle(.plain)
                         Text("\(numberOfRounds)")
-                            .foregroundColor(.accentColor)
+                            .font(.subheadline.monospacedDigit())
+                            .frame(width: 44, alignment: .center)
+                            .padding(6)
+                            .background(Color(red: 0.96, green: 0.96, blue: 0.97))
+                            .cornerRadius(6)
+                        Button(action: {
+                            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                            if numberOfRounds < 100 { numberOfRounds += 1 }
+                        }) {
+                            Image(systemName: "plus.circle.fill")
+                                .foregroundColor(.black)
+                                .font(.system(size: 22))
+                        }
+                        .buttonStyle(.plain)
                     }
 
-                    HStack {
+                    VStack(alignment: .leading, spacing: 4) {
                         Text("Round Length")
-                        Spacer()
-                        Picker("", selection: $roundLength) {
-                            Text("30 sec").tag(30)
-                            Text("1 min").tag(60)
-                            Text("1.5 min").tag(90)
-                            Text("2 min").tag(120)
-                            Text("2.5 min").tag(150)
-                            Text("3 min").tag(180)
-                            Text("3.5 min").tag(210)
-                            Text("4 min").tag(240)
-                            Text("4.5 min").tag(270)
-                            Text("5 min").tag(300)
-                            Text("6 min").tag(360)
-                            Text("7 min").tag(420)
-                            Text("8 min").tag(480)
-                            Text("9 min").tag(540)
-                            Text("10 min").tag(600)
-                            Text("15 min").tag(900)
-                            Text("20 min").tag(1200)
+                            .font(.subheadline)
+                        HStack(spacing: 0) {
+                            Picker("", selection: Binding(
+                                get: { roundLength / 60 },
+                                set: { roundLength = $0 * 60 + (roundLength % 60) / 5 * 5 }
+                            )) {
+                                ForEach(0..<100, id: \.self) { m in
+                                    Text("\(m) min").tag(m)
+                                }
+                            }
+                            .pickerStyle(.wheel)
+                            .frame(maxWidth: .infinity)
+                            .clipped()
+
+                            Picker("", selection: Binding(
+                                get: { (roundLength % 60) / 5 * 5 },
+                                set: { roundLength = (roundLength / 60) * 60 + $0 }
+                            )) {
+                                ForEach(Array(stride(from: 0, through: 55, by: 5)), id: \.self) { s in
+                                    Text("\(s) sec").tag(s)
+                                }
+                            }
+                            .pickerStyle(.wheel)
+                            .frame(maxWidth: .infinity)
+                            .clipped()
                         }
-                        .pickerStyle(.menu)
+                        .frame(height: 120)
                     }
 
-                    HStack {
-                        Text("Rest Length")
-                        Spacer()
-                        Picker("", selection: $restLength) {
-                            Text("None").tag(0)
-                            Text("10 sec").tag(10)
-                            Text("15 sec").tag(15)
-                            Text("30 sec").tag(30)
-                            Text("45 sec").tag(45)
-                            Text("1 min").tag(60)
-                            Text("1.5 min").tag(90)
-                            Text("2 min").tag(120)
-                            Text("2.5 min").tag(150)
-                            Text("3 min").tag(180)
-                            Text("3.5 min").tag(210)
-                            Text("4.5 min").tag(270)
-                            Text("5 min").tag(300)
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Rest Between Rounds")
+                            .font(.subheadline)
+                        HStack(spacing: 0) {
+                            Picker("", selection: Binding(
+                                get: { restLength / 60 },
+                                set: { restLength = $0 * 60 + (restLength % 60) / 5 * 5 }
+                            )) {
+                                ForEach(0..<100, id: \.self) { m in
+                                    Text("\(m) min").tag(m)
+                                }
+                            }
+                            .pickerStyle(.wheel)
+                            .frame(maxWidth: .infinity)
+                            .clipped()
+
+                            Picker("", selection: Binding(
+                                get: { (restLength % 60) / 5 * 5 },
+                                set: { restLength = (restLength / 60) * 60 + $0 }
+                            )) {
+                                ForEach(Array(stride(from: 0, through: 55, by: 5)), id: \.self) { s in
+                                    Text("\(s) sec").tag(s)
+                                }
+                            }
+                            .pickerStyle(.wheel)
+                            .frame(maxWidth: .infinity)
+                            .clipped()
                         }
-                        .pickerStyle(.menu)
+                        .frame(height: 120)
                     }
                 }
 
                 Section("Timing") {
                     HStack {
-                        Text("Delay")
+                        Text("Delay Between Lines")
                         Spacer()
                         Picker("", selection: $delayBetweenLines) {
-                            Text("0 sec").tag(0)
-                            Text("1 sec").tag(1)
-                            Text("2 sec").tag(2)
-                            Text("3 sec").tag(3)
-                            Text("4 sec").tag(4)
-                            Text("5 sec").tag(5)
-                            Text("6 sec").tag(6)
-                            Text("7 sec").tag(7)
-                            Text("8 sec").tag(8)
-                            Text("9 sec").tag(9)
-                            Text("10 sec").tag(10)
+                            ForEach(0...10, id: \.self) { s in
+                                Text(s == 0 ? "None" : "\(s) sec").tag(s)
+                            }
                         }
-                        .pickerStyle(.menu)
+                        .pickerStyle(.wheel)
+                        .frame(width: 110, height: 100)
+                        .clipped()
                     }
 
                     HStack {
-                        Text("Start Warning")
+                        Text("Start Countdown")
                         Spacer()
                         Picker("", selection: $workoutStartWarning) {
-                            Text("None").tag(0)
-                            ForEach(1...30, id: \.self) { s in
-                                Text("\(s) sec").tag(s)
+                            ForEach(0...30, id: \.self) { s in
+                                Text(s == 0 ? "None" : "\(s) sec").tag(s)
                             }
                         }
-                        .pickerStyle(.menu)
+                        .pickerStyle(.wheel)
+                        .frame(width: 110, height: 100)
+                        .clipped()
                     }
 
                     HStack {
-                        Text("Rest End Warning")
+                        Text("Rest Ending Countdown")
                         Spacer()
                         Picker("", selection: $restEndWarning) {
-                            Text("None").tag(0)
-                            ForEach(1...30, id: \.self) { s in
-                                Text("\(s) sec").tag(s)
+                            ForEach(0...30, id: \.self) { s in
+                                Text(s == 0 ? "None" : "\(s) sec").tag(s)
                             }
                         }
-                        .pickerStyle(.menu)
+                        .pickerStyle(.wheel)
+                        .frame(width: 110, height: 100)
+                        .clipped()
                     }
 
                     HStack {
                         Text("Cooldown")
                         Spacer()
                         Picker("", selection: $cooldownPeriod) {
-                            Text("None").tag(0)
-                            Text("1 min").tag(1)
-                            Text("2 min").tag(2)
-                            Text("3 min").tag(3)
-                            Text("4 min").tag(4)
-                            Text("5 min").tag(5)
-                            Text("10 min").tag(10)
-                            Text("15 min").tag(15)
-                            Text("20 min").tag(20)
+                            ForEach(0...60, id: \.self) { m in
+                                Text(m == 0 ? "None" : "\(m) min").tag(m)
+                            }
                         }
-                        .pickerStyle(.menu)
+                        .pickerStyle(.wheel)
+                        .frame(width: 110, height: 100)
+                        .clipped()
                     }
 
                     Toggle("Random Order", isOn: $randomOrder)
