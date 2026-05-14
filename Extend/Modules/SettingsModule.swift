@@ -234,15 +234,15 @@ private struct SettingsModuleView: View {
             ModuleIDs.workouts,
             ModuleIDs.generate,
             ModuleIDs.quickWorkout,
-            ModuleIDs.settings
+            ModuleIDs.progress
         ]
 
         let topModules: [UUID] = [
-            ModuleIDs.progress,
             ModuleIDs.timer,
             ModuleIDs.exercises,
             ModuleIDs.muscles,
-            ModuleIDs.equipment
+            ModuleIDs.equipment,
+            ModuleIDs.settings
         ]
 
         moduleState.setBottomNavBarModules(bottomModules)
