@@ -239,9 +239,9 @@ private struct SettingsModuleView: View {
 
         let topModules: [UUID] = [
             ModuleIDs.timer,
+            ModuleIDs.voiceTrainer,
             ModuleIDs.exercises,
             ModuleIDs.muscles,
-            ModuleIDs.equipment,
             ModuleIDs.settings
         ]
 
@@ -256,7 +256,9 @@ private struct SettingsModuleView: View {
         ExercisesState.shared.resetExercises()
         WorkoutsState.shared.resetWorkouts()
         GenerateState.shared.resetGenerated()
+        GenerateState.shared.resetFilterPresets()
         QuickWorkoutState.shared.resetFavorites()
+        TimerState.shared.reset()
         WorkoutLogState.shared.resetLogs()
 
         // Reset Game Progress - Workout Buddy (Game 1)

@@ -672,7 +672,7 @@ private struct ActiveTimerView: View {
 
     // MARK: - Phase Building
 
-    private mutating func buildPhases() {
+    private func buildPhases() {
         phases = buildPhaseList()
         phaseIndex = 0
         phaseElapsed = 0

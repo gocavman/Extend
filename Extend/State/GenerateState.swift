@@ -159,6 +159,11 @@ public final class GenerateState {
         generatedExercises = []
     }
 
+    public func resetFilterPresets() {
+        filterPresets = []
+        savePresets()
+    }
+
     public func saveAsWorkout(
         name: String,
         notes: String = "",

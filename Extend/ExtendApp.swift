@@ -33,6 +33,7 @@ struct ExtendApp: App {
     let equipmentState = EquipmentState.shared
     let quickWorkoutState = QuickWorkoutState.shared
     let workoutLogState = WorkoutLogState.shared
+    let timerState = TimerState.shared
     let voiceTrainerState = VoiceTrainerState()
 
     var body: some Scene {
@@ -49,6 +50,7 @@ struct ExtendApp: App {
                 .environment(equipmentState)
                 .environment(quickWorkoutState)
                 .environment(workoutLogState)
+                .environment(timerState)
                 .environment(voiceTrainerState)
         }
         .modelContainer(sharedModelContainer)
