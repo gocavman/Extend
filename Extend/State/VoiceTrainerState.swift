@@ -168,6 +168,38 @@ Left and Right Uppercuts
         }
     }
     
+    func updateConfiguration(_ config: VoiceTrainerConfig) {
+        if let index = savedConfigurations.firstIndex(where: { $0.id == config.id }) {
+            savedConfigurations[index] = config
+            saveToDefaults()
+        }
+    }
+    
+    func cloneConfiguration(_ config: VoiceTrainerConfig) {
+        var cloned = config
+        cloned.id = UUID()
+        cloned.name = "\(config.name) Copy"
+        cloned.isFavorite = false
+        savedConfigurations.append(cloned)
+        saveToDefaults()
+    }
+    
+    func toggleFavorite(id: UUID) {
+        if let index = savedConfigurations.firstIndex(where: { $0.id == id }) {
+            savedConfigurations[index].isFavorite.toggle()
+            saveToDefaults()
+        }
+    }
+    
+    var favoriteConfigs: [VoiceTrainerConfig] {
+        savedConfigurations.filter { $0.isFavorite }
+    }
+    
+    func resetConfigurations() {
+        savedConfigurations = []
+        saveToDefaults()
+    }
+    
     // MARK: - Persistence
     
     private func loadSettings() {
@@ -228,9 +260,10 @@ Left and Right Uppercuts
 
 // MARK: - Data Models
 
-struct VoiceTrainerConfig: Identifiable, Codable {
+struct VoiceTrainerConfig: Identifiable, Codable, Hashable {
     var id: UUID
     var name: String
+    var notes: String
     var text: String
     var roundLength: Int
     var restLength: Int
@@ -238,26 +271,29 @@ struct VoiceTrainerConfig: Identifiable, Codable {
     var numberOfRounds: Int
     var randomOrder: Bool
     var cooldownPeriod: Int  // minutes after all rounds complete (0-60)
+    var isFavorite: Bool
     
-    // Custom decoding to provide default value for cooldownPeriod (for legacy configs)
+    // Custom decoding to provide default values for new fields (backward compatibility)
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         id = try container.decode(UUID.self, forKey: .id)
         name = try container.decode(String.self, forKey: .name)
+        notes = try container.decodeIfPresent(String.self, forKey: .notes) ?? ""
         text = try container.decode(String.self, forKey: .text)
         roundLength = try container.decode(Int.self, forKey: .roundLength)
         restLength = try container.decode(Int.self, forKey: .restLength)
         delayBetweenLines = try container.decode(Int.self, forKey: .delayBetweenLines)
         numberOfRounds = try container.decode(Int.self, forKey: .numberOfRounds)
         randomOrder = try container.decode(Bool.self, forKey: .randomOrder)
-        // Default to 0 if cooldownPeriod doesn't exist (legacy configs)
         cooldownPeriod = try container.decodeIfPresent(Int.self, forKey: .cooldownPeriod) ?? 0
+        isFavorite = try container.decodeIfPresent(Bool.self, forKey: .isFavorite) ?? false
     }
     
     // Standard initializer for creating new configs
-    init(id: UUID, name: String, text: String, roundLength: Int, restLength: Int, delayBetweenLines: Int, numberOfRounds: Int, randomOrder: Bool, cooldownPeriod: Int) {
+    init(id: UUID = UUID(), name: String, notes: String = "", text: String, roundLength: Int, restLength: Int, delayBetweenLines: Int, numberOfRounds: Int, randomOrder: Bool, cooldownPeriod: Int, isFavorite: Bool = false) {
         self.id = id
         self.name = name
+        self.notes = notes
         self.text = text
         self.roundLength = roundLength
         self.restLength = restLength
@@ -265,5 +301,34 @@ struct VoiceTrainerConfig: Identifiable, Codable {
         self.numberOfRounds = numberOfRounds
         self.randomOrder = randomOrder
         self.cooldownPeriod = cooldownPeriod
+        self.isFavorite = isFavorite
+    }
+    
+    var parameterSummary: String {
+        var parts: [String] = []
+        parts.append("Rounds: \(numberOfRounds)")
+        let roundMins = roundLength / 60
+        let roundSecs = roundLength % 60
+        if roundMins > 0 && roundSecs > 0 {
+            parts.append("Round: \(roundMins)m\(roundSecs)s")
+        } else if roundMins > 0 {
+            parts.append("Round: \(roundMins)m")
+        } else {
+            parts.append("Round: \(roundSecs)s")
+        }
+        if restLength > 0 {
+            let restMins = restLength / 60
+            let restSecs = restLength % 60
+            if restMins > 0 && restSecs > 0 {
+                parts.append("Rest: \(restMins)m\(restSecs)s")
+            } else if restMins > 0 {
+                parts.append("Rest: \(restMins)m")
+            } else {
+                parts.append("Rest: \(restSecs)s")
+            }
+        }
+        if cooldownPeriod > 0 { parts.append("Cooldown: \(cooldownPeriod)m") }
+        if randomOrder { parts.append("Random") }
+        return parts.joined(separator: " · ")
     }
 }

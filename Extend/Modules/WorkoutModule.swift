@@ -60,6 +60,40 @@ private struct WorkoutsModuleView: View {
             .padding(.vertical, 12)
 
             List {
+                // Favorites tiles
+                if !state.favoriteWorkouts.isEmpty {
+                    Section {
+                        ScrollView(.horizontal, showsIndicators: false) {
+                            HStack(spacing: 10) {
+                                ForEach(state.favoriteWorkouts) { workout in
+                                    Button(action: {
+                                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                                        startingWorkout = workout
+                                    }) {
+                                        VStack(spacing: 6) {
+                                            Image(systemName: "dumbbell.fill")
+                                                .font(.system(size: 20))
+                                                .foregroundColor(.black)
+                                            Text(workout.name)
+                                                .font(.caption)
+                                                .fontWeight(.semibold)
+                                                .foregroundColor(.black)
+                                                .lineLimit(2)
+                                                .multilineTextAlignment(.center)
+                                        }
+                                        .frame(width: 70, height: 80)
+                                        .background(Color(red: 0.92, green: 0.92, blue: 0.94))
+                                        .cornerRadius(10)
+                                    }
+                                    .buttonStyle(.plain)
+                                }
+                            }
+                            .padding(.vertical, 4)
+                        }
+                    }
+                    .listRowInsets(EdgeInsets(top: 4, leading: 16, bottom: 4, trailing: 16))
+                }
+
                 SearchField(text: $searchText, placeholder: "Search workouts...")
 
                 if filteredWorkouts.isEmpty {
@@ -104,6 +138,16 @@ private struct WorkoutsModuleView: View {
                                 }
                             }
                             .frame(maxWidth: .infinity, alignment: .leading)
+
+                            // Star / Favorite button
+                            Button(action: {
+                                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                                state.toggleFavorite(id: workout.id)
+                            }) {
+                                Image(systemName: state.isFavorite(workout.id) ? "star.fill" : "star")
+                                    .foregroundColor(state.isFavorite(workout.id) ? .yellow : .gray)
+                            }
+                            .buttonStyle(.plain)
 
                             // Clone button
                             Button(action: {

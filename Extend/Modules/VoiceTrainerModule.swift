@@ -25,406 +25,477 @@ public struct VoiceTrainerModule: AppModule {
     }
 }
 
-// MARK: - Voice Trainer View
+// MARK: - Voice Trainer List View
 
 private struct VoiceTrainerModuleView: View {
     let module: VoiceTrainerModule
-    
+
     @Environment(VoiceTrainerState.self) var state
     @Environment(WorkoutLogState.self) var logState
-    @Environment(DashboardState.self) var dashboardState
-    
-    @State private var showSaveDialog = false
-    @State private var configName = ""
-    @State private var showFavorites = false
-    @State private var selectedFavoriteId: UUID?
-    @State private var isLoadingConfig = false
-    @State private var voiceManager: VoiceManager?
-    @State private var updateTimer: Timer?
-    @State private var text = ""
-    @State private var roundLength: Int = 30
-    @State private var restLength: Int = 60
-    @State private var delayBetweenLines: Int = 5
-    @State private var numberOfRounds: Int = 1
-    @State private var randomOrder = false
-    @State private var cooldownPeriod: Int = 0
-    @State private var showPlaybackScreen = false
+
+    @State private var searchText: String = ""
+    @State private var showingAdd = false
+    @State private var editingConfig: VoiceTrainerConfig?
+    @State private var playingConfig: VoiceTrainerConfig?
+    @State private var deletingConfig: VoiceTrainerConfig?
+
+    private var filteredConfigs: [VoiceTrainerConfig] {
+        let trimmed = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return state.savedConfigurations }
+        return state.savedConfigurations.filter {
+            $0.name.localizedCaseInsensitiveContains(trimmed) ||
+            $0.notes.localizedCaseInsensitiveContains(trimmed) ||
+            $0.text.localizedCaseInsensitiveContains(trimmed)
+        }
+    }
 
     var body: some View {
-        VStack(spacing: 0) {
-            // MARK: - Top Controls
-            VStack(alignment: .leading, spacing: 8) {
+        NavigationStack {
+            VStack(spacing: 0) {
+                // Header
                 HStack {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("Voice Trainer")
-                            .font(.headline)
-                            .fontWeight(.semibold)
-                        
-                        if state.isPlaying || state.isPaused {
-                            Text("Round \(state.currentRound) of \(numberOfRounds)")
-                                .font(.caption)
-                                .foregroundColor(.gray)
-                        }
-                    }
-                    
+                    Text("Trainer")
+                        .font(.title2)
+                        .fontWeight(.bold)
                     Spacer()
-                    
-                    HStack(spacing: 12) {
-                        if !state.savedConfigurations.isEmpty {
-                            Button(action: { showFavorites = true }) {
-                                Image(systemName: "slider.horizontal.3")
-                                    .font(.system(size: 16))
-                                    .foregroundColor(.black)
-                            }
-                        }
-                        
-                        Button(action: { showSaveDialog = true }) {
-                            Image(systemName: "heart")
-                                .font(.system(size: 16))
-                                .foregroundColor(.black)
-                        }
-                    }
-                }
-                
-                // Saved configurations tags (no preferences icon in tags)
-                if !state.savedConfigurations.isEmpty {
-                    ScrollView(.horizontal, showsIndicators: false) {
-                        HStack(spacing: 8) {
-                            ForEach(state.savedConfigurations) { config in
-                                Button(action: {
-                                    // Load configuration and set selected without triggering onChange
-                                    selectedFavoriteId = config.id
-                                    text = config.text
-                                    numberOfRounds = config.numberOfRounds
-                                    roundLength = config.roundLength
-                                    restLength = config.restLength
-                                    delayBetweenLines = config.delayBetweenLines
-                                    randomOrder = config.randomOrder
-                                    cooldownPeriod = config.cooldownPeriod
-                                    updateTotalTime()
-                                }) {
-                                    Text(config.name)
-                                        .font(.caption)
-                                        .fontWeight(.semibold)
-                                        .foregroundColor(selectedFavoriteId == config.id ? .white : .black)
-                                        .padding(.horizontal, 10)
-                                        .padding(.vertical, 6)
-                                        .background(selectedFavoriteId == config.id ? Color.black : Color(red: 0.88, green: 0.88, blue: 0.88))
-                                        .cornerRadius(16)
-                                }
-                            }
-                        }
-                        .padding(.horizontal, 16)
-                    }
-                }
-            }
-            .padding(.vertical, 12)
-            .padding(.horizontal, 16)
-            .background(Color(red: 0.96, green: 0.96, blue: 0.97))
-            
-            ScrollView {
-                VStack(spacing: 16) {
-                    // MARK: - Text Area
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("Text to Read")
-                            .font(.subheadline)
-                            .fontWeight(.semibold)
-                        
-                        ZStack(alignment: .topLeading) {
-                            TextEditor(text: $text)
-                                .frame(height: 120)
-                                .padding(8)
-                                .background(Color(red: 0.96, green: 0.96, blue: 0.97))
-                                .cornerRadius(8)
-                                .disabled(state.isPlaying || state.isPaused)
-                                .opacity(text.isEmpty ? 0.25 : 1.0)
-                            
-                            if text.isEmpty {
-                                Text("Enter text to read aloud, one item per line...")
-                                    .font(.body)
-                                    .foregroundColor(.gray.opacity(0.75))
-                                    .padding(.horizontal, 16)
-                                    .padding(.vertical, 18)
-                                    .allowsHitTesting(false)
-                            }
-                        }
-                    }
-                    
-                    // MARK: - Configuration Options
-                    VStack(spacing: 12) {
-                        // Number of Rounds
-                        HStack {
-                            Text("Number of Rounds")
-                                .font(.subheadline)
-                                .fontWeight(.semibold)
-                            Spacer()
-                            HStack(spacing: 12) {
-                                Button(action: {
-                                    if numberOfRounds > 1 {
-                                        numberOfRounds -= 1
-                                        updateTotalTime()
-                                    }
-                                }) {
-                                    Image(systemName: "minus.circle")
-                                        .font(.system(size: 16))
-                                        .foregroundColor(.black)
-                                }
-                                .disabled(numberOfRounds <= 1)
-                                
-                                Text("\(numberOfRounds)")
-                                    .font(.subheadline)
-                                    .fontWeight(.semibold)
-                                    .frame(minWidth: 30)
-                                
-                                Button(action: {
-                                    if numberOfRounds < 100 {
-                                        numberOfRounds += 1
-                                        updateTotalTime()
-                                    }
-                                }) {
-                                    Image(systemName: "plus.circle")
-                                        .font(.system(size: 16))
-                                        .foregroundColor(.black)
-                                }
-                                .disabled(numberOfRounds >= 100)
-                            }
-                        }
-                        
-                        // Round Length
-                        HStack {
-                            Text("Round Length")
-                                .font(.subheadline)
-                                .fontWeight(.semibold)
-                            Spacer()
-                            Picker("Round Length", selection: $roundLength) {
-                                Text("30 sec").tag(30)
-                                Text("1 min").tag(60)
-                                Text("1.5 min").tag(90)
-                                Text("2 min").tag(120)
-                                Text("2.5 min").tag(150)
-                                Text("3 min").tag(180)
-                                Text("3.5 min").tag(210)
-                                Text("4 min").tag(240)
-                                Text("4.5 min").tag(270)
-                                Text("5 min").tag(300)
-                                Text("6 min").tag(360)
-                                Text("7 min").tag(420)
-                                Text("8 min").tag(480)
-                                Text("9 min").tag(540)
-                                Text("10 min").tag(600)
-                                Text("15 min").tag(900)
-                                Text("20 min").tag(1200)
-                            }
-                            .pickerStyle(.menu)
-                            .disabled(state.isPlaying || state.isPaused)
-                            .onChange(of: roundLength) { _, _ in
-                                updateTotalTime()
-                            }
-                        }
-                        
-                        // Rest Length
-                        HStack {
-                            Text("Rest Length")
-                                .font(.subheadline)
-                                .fontWeight(.semibold)
-                            Spacer()
-                            Picker("Rest Length", selection: $restLength) {
-                                Text("None").tag(0)
-                                Text("10 sec").tag(10)
-                                Text("15 sec").tag(15)
-                                Text("30 sec").tag(30)
-                                Text("45 sec").tag(45)
-                                Text("1 min").tag(60)
-                                Text("1.5 min").tag(90)
-                                Text("2 min").tag(120)
-                                Text("2.5 min").tag(150)
-                                Text("3 min").tag(180)
-                                Text("3.5 min").tag(210)
-                                Text("4.5 min").tag(270)
-                                Text("5 min").tag(300)
-                            }
-                            .pickerStyle(.menu)
-                            .disabled(state.isPlaying || state.isPaused)
-                        }
-                        
-                        // Delay Between Lines
-                        HStack {
-                            Text("Delay Between Lines")
-                                .font(.subheadline)
-                                .fontWeight(.semibold)
-                            Spacer()
-                            Picker("Delay Between Lines", selection: $delayBetweenLines) {
-                                Text("0 sec").tag(0)
-                                Text("1 sec").tag(1)
-                                Text("2 sec").tag(2)
-                                Text("3 sec").tag(3)
-                                Text("4 sec").tag(4)
-                                Text("5 sec").tag(5)
-                                Text("6 sec").tag(6)
-                                Text("7 sec").tag(7)
-                                Text("8 sec").tag(8)
-                                Text("9 sec").tag(9)
-                                Text("10 sec").tag(10)
-                            }
-                            .pickerStyle(.menu)
-                            .disabled(state.isPlaying || state.isPaused)
-                            .onChange(of: delayBetweenLines) { _, _ in
-                                updateTotalTime()
-                            }
-                        }
-                        
-                        // Cooldown Period
-                        HStack {
-                            Text("Cooldown Period")
-                                .font(.subheadline)
-                                .fontWeight(.semibold)
-                            Spacer()
-                            Picker("Cooldown Period", selection: $cooldownPeriod) {
-                                Text("None").tag(0)
-                                Text("1 min").tag(1)
-                                Text("2 min").tag(2)
-                                Text("3 min").tag(3)
-                                Text("4 min").tag(4)
-                                Text("5 min").tag(5)
-                                Text("10 min").tag(10)
-                                Text("15 min").tag(15)
-                                Text("20 min").tag(20)
-                            }
-                            .pickerStyle(.menu)
-                            .disabled(state.isPlaying || state.isPaused)
-                            .onChange(of: cooldownPeriod) { _, _ in
-                                updateTotalTime()
-                            }
-                        }
-                        
-                        // Random Order Toggle
-                        Toggle(isOn: $randomOrder) {
-                            Text("Random Order")
-                                .font(.subheadline)
-                                .fontWeight(.semibold)
-                        }
-                        .disabled(state.isPlaying || state.isPaused)
-                    }
-                    .padding(12)
-                    .background(Color(red: 0.96, green: 0.96, blue: 0.97))
-                    .cornerRadius(8)
-                }
-                .padding(16)
-            }
-            
-            Spacer()
-            
-            // MARK: - Playback Controls
-            VStack(spacing: 12) {
-                // Duration Display
-                if state.isPlaying || state.isPaused {
-                    VStack(spacing: 4) {
-                        Text(formatTime(state.elapsedTime))
-                            .font(.headline)
-                            .fontWeight(.semibold)
-                        Text(String(format: "%@ / %@", formatTime(state.elapsedTime), formatTime(state.totalTime)))
-                            .font(.caption)
-                            .foregroundColor(.gray)
-                    }
-                }
-                
-                // Control Buttons
-                HStack(spacing: 12) {
-                    // Start Button with Total Time
                     Button(action: {
-                        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-                        if state.isPlaying {
-                            pausePlayback()
-                        } else if state.isPaused {
-                            resumePlayback()
-                        } else {
-                            startPlayback()
-                        }
+                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                        showingAdd = true
                     }) {
-                        HStack(spacing: 4) {
-                            Image(systemName: state.isPlaying ? "pause.fill" : (state.isPaused ? "play.fill" : "play.fill"))
-                                .font(.system(size: 16, weight: .semibold))
-                            Text(state.isPlaying ? "Pause" : (state.isPaused ? "Resume" : "Start"))
-                                .font(.subheadline)
-                                .fontWeight(.semibold)
-                            Text("(\(formatTime(state.totalTime)))")
-                                .font(.subheadline)
-                                .opacity(0.7)
-                        }
-                        .foregroundColor(.black)
-                        .frame(maxWidth: .infinity)
-                        .padding(12)
-                        .background(Color(red: 0.88, green: 0.88, blue: 0.88))
-                        .cornerRadius(8)
+                        Image(systemName: "plus")
+                            .foregroundColor(.black)
                     }
-                    .disabled(text.isEmpty)
+                }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 12)
+
+                List {
+                    // Favorites tiles
+                    if !state.favoriteConfigs.isEmpty {
+                        Section {
+                            ScrollView(.horizontal, showsIndicators: false) {
+                                HStack(spacing: 10) {
+                                    ForEach(state.favoriteConfigs) { config in
+                                        Button(action: {
+                                            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                                            playingConfig = config
+                                        }) {
+                                            VStack(spacing: 6) {
+                                                Image(systemName: "speaker.wave.2.fill")
+                                                    .font(.system(size: 20))
+                                                    .foregroundColor(.black)
+                                                Text(config.name)
+                                                    .font(.caption)
+                                                    .fontWeight(.semibold)
+                                                    .foregroundColor(.black)
+                                                    .lineLimit(2)
+                                                    .multilineTextAlignment(.center)
+                                            }
+                                            .frame(width: 70, height: 80)
+                                            .background(Color(red: 0.92, green: 0.92, blue: 0.94))
+                                            .cornerRadius(10)
+                                        }
+                                        .buttonStyle(.plain)
+                                    }
+                                }
+                                .padding(.vertical, 4)
+                            }
+                        }
+                        .listRowInsets(EdgeInsets(top: 4, leading: 16, bottom: 4, trailing: 16))
+                    }
+
+                    SearchField(text: $searchText, placeholder: "Search trainers...")
+
+                    if filteredConfigs.isEmpty {
+                        Text(state.savedConfigurations.isEmpty ? "No trainers yet" : "No trainers found")
+                            .font(.subheadline)
+                            .foregroundColor(.gray)
+                            .frame(maxWidth: .infinity, alignment: .center)
+                            .padding(.vertical, 20)
+                    } else {
+                        ForEach(filteredConfigs) { config in
+                            VoiceTrainerListRow(
+                                config: config,
+                                onPlay: {
+                                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                                    playingConfig = config
+                                },
+                                onStar: {
+                                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                                    state.toggleFavorite(id: config.id)
+                                },
+                                onClone: {
+                                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                                    state.cloneConfiguration(config)
+                                },
+                                onEdit: {
+                                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                                    editingConfig = config
+                                },
+                                onDelete: {
+                                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                                    deletingConfig = config
+                                }
+                            )
+                        }
+                    }
+                }
+                .listStyle(.plain)
+            }
+            .sheet(isPresented: $showingAdd) {
+                VoiceTrainerEditorView(title: "New Trainer") { newConfig in
+                    state.saveConfiguration(name: newConfig.name, config: newConfig)
                 }
             }
-            .padding(16)
+            .sheet(item: $editingConfig) { config in
+                VoiceTrainerEditorView(title: "Edit Trainer", initialConfig: config) { updated in
+                    state.updateConfiguration(updated)
+                }
+            }
+            .navigationDestination(item: $playingConfig) { config in
+                VoiceTrainerPlayView(config: config, logState: logState)
+            }
+            .alert("Delete Trainer?", isPresented: .constant(deletingConfig != nil)) {
+                Button("Cancel", role: .cancel) { deletingConfig = nil }
+                Button("Delete", role: .destructive) {
+                    if let c = deletingConfig {
+                        state.deleteConfiguration(c)
+                        deletingConfig = nil
+                    }
+                }
+            } message: {
+                Text("This will permanently delete the trainer configuration.")
+            }
         }
+    }
+}
+
+// MARK: - Voice Trainer List Row
+
+private struct VoiceTrainerListRow: View {
+    let config: VoiceTrainerConfig
+    let onPlay: () -> Void
+    let onStar: () -> Void
+    let onClone: () -> Void
+    let onEdit: () -> Void
+    let onDelete: () -> Void
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Button(action: onPlay) {
+                Image(systemName: "play.circle.fill")
+                    .foregroundColor(.black)
+                    .font(.system(size: 20))
+            }
+            .buttonStyle(.plain)
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text(config.name)
+                    .font(.subheadline)
+                    .fontWeight(.semibold)
+                    .foregroundColor(.primary)
+
+                if !config.notes.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                    Text(config.notes.trimmingCharacters(in: .whitespacesAndNewlines))
+                        .font(.caption2)
+                        .foregroundColor(.secondary)
+                        .lineLimit(2)
+                }
+
+                Text(config.parameterSummary)
+                    .font(.caption2)
+                    .foregroundColor(.secondary)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+
+            Button(action: onStar) {
+                Image(systemName: config.isFavorite ? "star.fill" : "star")
+                    .foregroundColor(config.isFavorite ? .yellow : .gray)
+            }
+            .buttonStyle(.plain)
+
+            Button(action: onClone) {
+                Image(systemName: "doc.on.doc")
+                    .foregroundColor(.black)
+            }
+            .buttonStyle(.plain)
+
+            Button(action: onEdit) {
+                Image(systemName: "pencil")
+                    .foregroundColor(.black)
+            }
+            .buttonStyle(.plain)
+
+            Button(action: onDelete) {
+                Image(systemName: "xmark.circle.fill")
+                    .foregroundColor(.red)
+            }
+            .buttonStyle(.plain)
+        }
+        .padding(.vertical, 6)
+    }
+}
+
+// MARK: - Voice Trainer Editor View
+
+private struct VoiceTrainerEditorView: View {
+    @Environment(\.dismiss) var dismiss
+
+    let title: String
+    let initialConfig: VoiceTrainerConfig?
+    let onSave: (VoiceTrainerConfig) -> Void
+
+    @State private var name: String = ""
+    @State private var notes: String = ""
+    @State private var text: String = ""
+    @State private var roundLength: Int = 300
+    @State private var restLength: Int = 60
+    @State private var delayBetweenLines: Int = 5
+    @State private var numberOfRounds: Int = 3
+    @State private var randomOrder: Bool = false
+    @State private var cooldownPeriod: Int = 0
+
+    init(title: String, initialConfig: VoiceTrainerConfig? = nil, onSave: @escaping (VoiceTrainerConfig) -> Void) {
+        self.title = title
+        self.initialConfig = initialConfig
+        self.onSave = onSave
+
+        if let c = initialConfig {
+            _name = State(initialValue: c.name)
+            _notes = State(initialValue: c.notes)
+            _text = State(initialValue: c.text)
+            _roundLength = State(initialValue: c.roundLength)
+            _restLength = State(initialValue: c.restLength)
+            _delayBetweenLines = State(initialValue: c.delayBetweenLines)
+            _numberOfRounds = State(initialValue: c.numberOfRounds)
+            _randomOrder = State(initialValue: c.randomOrder)
+            _cooldownPeriod = State(initialValue: c.cooldownPeriod)
+        }
+    }
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section("Details") {
+                    TextField("Name", text: $name)
+                    TextField("Notes (optional)", text: $notes, axis: .vertical)
+                        .lineLimit(3, reservesSpace: true)
+                }
+
+                Section("Text to Read") {
+                    ZStack(alignment: .topLeading) {
+                        TextEditor(text: $text)
+                            .frame(minHeight: 120)
+                            .opacity(text.isEmpty ? 0.25 : 1.0)
+                        if text.isEmpty {
+                            Text("One item per line...")
+                                .foregroundColor(.gray)
+                                .padding(.top, 8)
+                                .allowsHitTesting(false)
+                        }
+                    }
+                }
+
+                Section("Rounds") {
+                    HStack {
+                        Text("Number of Rounds")
+                        Spacer()
+                        Stepper("\(numberOfRounds)", value: $numberOfRounds, in: 1...100)
+                    }
+
+                    HStack {
+                        Text("Round Length")
+                        Spacer()
+                        Picker("Round Length", selection: $roundLength) {
+                            Text("30 sec").tag(30)
+                            Text("1 min").tag(60)
+                            Text("1.5 min").tag(90)
+                            Text("2 min").tag(120)
+                            Text("2.5 min").tag(150)
+                            Text("3 min").tag(180)
+                            Text("3.5 min").tag(210)
+                            Text("4 min").tag(240)
+                            Text("4.5 min").tag(270)
+                            Text("5 min").tag(300)
+                            Text("6 min").tag(360)
+                            Text("7 min").tag(420)
+                            Text("8 min").tag(480)
+                            Text("9 min").tag(540)
+                            Text("10 min").tag(600)
+                            Text("15 min").tag(900)
+                            Text("20 min").tag(1200)
+                        }
+                        .pickerStyle(.menu)
+                    }
+
+                    HStack {
+                        Text("Rest Between Rounds")
+                        Spacer()
+                        Picker("Rest Length", selection: $restLength) {
+                            Text("None").tag(0)
+                            Text("10 sec").tag(10)
+                            Text("15 sec").tag(15)
+                            Text("30 sec").tag(30)
+                            Text("45 sec").tag(45)
+                            Text("1 min").tag(60)
+                            Text("1.5 min").tag(90)
+                            Text("2 min").tag(120)
+                            Text("2.5 min").tag(150)
+                            Text("3 min").tag(180)
+                            Text("3.5 min").tag(210)
+                            Text("4.5 min").tag(270)
+                            Text("5 min").tag(300)
+                        }
+                        .pickerStyle(.menu)
+                    }
+                }
+
+                Section("Timing") {
+                    HStack {
+                        Text("Delay Between Lines")
+                        Spacer()
+                        Picker("Delay", selection: $delayBetweenLines) {
+                            Text("0 sec").tag(0)
+                            Text("1 sec").tag(1)
+                            Text("2 sec").tag(2)
+                            Text("3 sec").tag(3)
+                            Text("4 sec").tag(4)
+                            Text("5 sec").tag(5)
+                            Text("6 sec").tag(6)
+                            Text("7 sec").tag(7)
+                            Text("8 sec").tag(8)
+                            Text("9 sec").tag(9)
+                            Text("10 sec").tag(10)
+                        }
+                        .pickerStyle(.menu)
+                    }
+
+                    HStack {
+                        Text("Cooldown Period")
+                        Spacer()
+                        Picker("Cooldown", selection: $cooldownPeriod) {
+                            Text("None").tag(0)
+                            Text("1 min").tag(1)
+                            Text("2 min").tag(2)
+                            Text("3 min").tag(3)
+                            Text("4 min").tag(4)
+                            Text("5 min").tag(5)
+                            Text("10 min").tag(10)
+                            Text("15 min").tag(15)
+                            Text("20 min").tag(20)
+                        }
+                        .pickerStyle(.menu)
+                    }
+
+                    Toggle("Random Order", isOn: $randomOrder)
+                }
+            }
+            .navigationTitle(title)
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button("Cancel") { dismiss() }
+                }
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Save") {
+                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                        let config = VoiceTrainerConfig(
+                            id: initialConfig?.id ?? UUID(),
+                            name: name,
+                            notes: notes,
+                            text: text,
+                            roundLength: roundLength,
+                            restLength: restLength,
+                            delayBetweenLines: delayBetweenLines,
+                            numberOfRounds: numberOfRounds,
+                            randomOrder: randomOrder,
+                            cooldownPeriod: cooldownPeriod,
+                            isFavorite: initialConfig?.isFavorite ?? false
+                        )
+                        onSave(config)
+                        dismiss()
+                    }
+                    .disabled(name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                }
+            }
+        }
+    }
+}
+
+// MARK: - Voice Trainer Play View (wrapper around existing playback logic)
+
+private struct VoiceTrainerPlayView: View {
+    let config: VoiceTrainerConfig
+    let logState: WorkoutLogState
+
+    @State private var voiceManager: VoiceManager?
+    @State private var updateTimer: Timer?
+    @State private var showPlaybackScreen = false
+    @State private var state = VoiceTrainerState()
+
+    var body: some View {
+        VStack(spacing: 24) {
+            // Config summary
+            VStack(alignment: .leading, spacing: 8) {
+                Text(config.name)
+                    .font(.title2)
+                    .fontWeight(.bold)
+                if !config.notes.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                    Text(config.notes.trimmingCharacters(in: .whitespacesAndNewlines))
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                }
+                Text(config.parameterSummary)
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                let lineCount = config.text.split(separator: "\n").filter { !$0.trimmingCharacters(in: .whitespaces).isEmpty }.count
+                Text("\(lineCount) lines")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(16)
+            .background(Color(red: 0.96, green: 0.96, blue: 0.97))
+            .cornerRadius(12)
+            .padding(.horizontal, 16)
+
+            Spacer()
+
+            Button(action: {
+                UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                startPlayback()
+            }) {
+                HStack(spacing: 8) {
+                    Image(systemName: "play.fill")
+                        .font(.system(size: 16, weight: .semibold))
+                    Text("Start")
+                        .font(.subheadline)
+                        .fontWeight(.semibold)
+                    Text("(\(formatTime(calculateTotalTime())))")
+                        .font(.subheadline)
+                        .opacity(0.7)
+                }
+                .foregroundColor(.black)
+                .frame(maxWidth: .infinity)
+                .padding(14)
+                .background(Color(red: 0.88, green: 0.88, blue: 0.88))
+                .cornerRadius(10)
+            }
+            .padding(.horizontal, 16)
+            .padding(.bottom, 20)
+        }
+        .navigationTitle("Start Trainer")
+        .navigationBarTitleDisplayMode(.inline)
         .onAppear {
             voiceManager = VoiceManager()
-            updateTotalTime()
-        }
-        .onChange(of: text) { _, _ in
-            selectedFavoriteId = nil
-        }
-        .onChange(of: roundLength) { _, _ in
-            selectedFavoriteId = nil
-        }
-        .onChange(of: restLength) { _, _ in
-            selectedFavoriteId = nil
-        }
-        .onChange(of: delayBetweenLines) { _, _ in
-            selectedFavoriteId = nil
-        }
-        .onChange(of: numberOfRounds) { _, _ in
-            selectedFavoriteId = nil
-        }
-        .onChange(of: randomOrder) { _, _ in
-            selectedFavoriteId = nil
-        }
-        .onChange(of: cooldownPeriod) { _, _ in
-            selectedFavoriteId = nil
-        }
-        .sheet(isPresented: $showSaveDialog) {
-            SaveConfigurationSheet(
-                name: $configName,
-                onSave: {
-                    let config = VoiceTrainerConfig(
-                        id: UUID(),
-                        name: configName,
-                        text: text,
-                        roundLength: roundLength,
-                        restLength: restLength,
-                        delayBetweenLines: delayBetweenLines,
-                        numberOfRounds: numberOfRounds,
-                        randomOrder: randomOrder,
-                        cooldownPeriod: cooldownPeriod
-                    )
-                    state.saveConfiguration(name: configName, config: config)
-                    configName = ""
-                    showSaveDialog = false
-                },
-                onCancel: {
-                    configName = ""
-                    showSaveDialog = false
-                }
-            )
-        }
-        .sheet(isPresented: $showFavorites) {
-            FavoritesSheet(state: state)
+            state.totalTime = calculateTotalTime()
         }
         .fullScreenCover(isPresented: $showPlaybackScreen) {
             PlaybackScreen(
                 state: state,
-                numberOfRounds: numberOfRounds,
-                onPause: {
-                    pausePlayback()
-                },
-                onResume: {
-                    resumePlayback()
-                },
+                numberOfRounds: config.numberOfRounds,
+                onPause: { pausePlayback() },
+                onResume: { resumePlayback() },
                 onStop: {
                     resetPlayback()
                     showPlaybackScreen = false
@@ -433,16 +504,22 @@ private struct VoiceTrainerModuleView: View {
                     completeSession()
                     showPlaybackScreen = false
                 },
-                onStartPlayback: {
-                    startUpdateTimer()
-                },
+                onStartPlayback: { startUpdateTimer() },
                 formatTime: formatTime
             )
         }
     }
-    
+
+    private func calculateTotalTime() -> Int {
+        let totalRoundsTime = config.roundLength * config.numberOfRounds
+        let restPeriodsCount = max(0, config.numberOfRounds - 1)
+        let totalRestTime = restPeriodsCount * config.restLength
+        let cooldownSeconds = config.cooldownPeriod * 60
+        return totalRoundsTime + totalRestTime + cooldownSeconds
+    }
+
     private func startPlayback() {
-        state.isPlaying = false  // Don't set to true yet - will be set when first line starts
+        state.isPlaying = false
         state.isPaused = false
         state.elapsedTime = 0
         state.currentRound = 1
@@ -450,155 +527,109 @@ private struct VoiceTrainerModuleView: View {
         state.currentLineText = ""
         state.lineHistory = []
         state.linesSpoken = 0
-        
-        // Don't start timer yet - it will start after countdown finishes
+        state.totalTime = calculateTotalTime()
+
         let playbackConfig = VoicePlaybackConfig(
-            text: text,
-            roundLength: roundLength,
-            restLength: restLength,
-            delayBetweenLines: delayBetweenLines,
-            numberOfRounds: numberOfRounds,
-            randomOrder: randomOrder,
-            cooldownPeriod: cooldownPeriod
+            text: config.text,
+            roundLength: config.roundLength,
+            restLength: config.restLength,
+            delayBetweenLines: config.delayBetweenLines,
+            numberOfRounds: config.numberOfRounds,
+            randomOrder: config.randomOrder,
+            cooldownPeriod: config.cooldownPeriod
         )
         voiceManager?.startPlayback(config: playbackConfig, state: state)
-        
-        // Show fullscreen playback view
         showPlaybackScreen = true
     }
-    
+
     private func pausePlayback() {
         state.isPlaying = false
         state.isPaused = true
-        // Keep timer alive; it will no-op while paused
-        
-        // Stop the synthesizer completely
         voiceManager?.pausePlayback()
     }
-    
+
     private func resumePlayback() {
         state.isPlaying = true
         state.isPaused = false
-        if updateTimer == nil {
-            startUpdateTimer()
-        }
+        if updateTimer == nil { startUpdateTimer() }
         voiceManager?.resumePlayback()
     }
-    
+
     private func resetPlayback() {
         state.reset()
         updateTimer?.invalidate()
+        updateTimer = nil
         voiceManager?.stop()
     }
-    
-    private func startUpdateTimer() {
-        updateTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [state, voiceManager, numberOfRounds, restLength, cooldownPeriod] timer in
-            // Pause all timers when paused
-            if state.isPaused {
-                return
-            }
 
-            // Only run timers after initial countdown has finished
+    private func startUpdateTimer() {
+        updateTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [state, voiceManager] timer in
+            let numRounds = config.numberOfRounds
+            let restLength = config.restLength
+            let cooldownPeriod = config.cooldownPeriod
+
+            if state.isPaused { return }
+
             if state.isPlaying {
-                // Only increment elapsed time if NOT in initial countdown
                 if !state.isInInitialCountdown {
                     state.elapsedTime += 1
                 }
 
-                // Rest countdown
                 if state.restCountdown > 0 {
                     state.restCountdown = max(0, state.restCountdown - 1)
                     voiceManager?.handleRestCountdownTick()
                 } else if state.roundTimeRemaining > 0 && !state.isInInitialCountdown {
-                    // Round timer only runs when not resting AND not in initial countdown
                     state.roundTimeRemaining -= 1
 
-                    // Check if round just expired
                     if state.roundTimeRemaining == 0 {
-                        if restLength > 0 && state.currentRound < numberOfRounds {
-                            // Start rest countdown immediately to keep timers in sync
+                        if restLength > 0 && state.currentRound < numRounds {
                             voiceManager?.startRestCountdownIfNeeded(duration: restLength, warningAt: state.restEndWarning)
-                        } else if cooldownPeriod > 0 && state.currentRound == numberOfRounds {
-                            // Start cooldown countdown immediately to keep timers in sync
+                        } else if cooldownPeriod > 0 && state.currentRound == numRounds {
                             voiceManager?.startCooldownCountdownIfNeeded(duration: cooldownPeriod * 60)
                         }
-                        print("⏱️ Round time just expired! currentRound: \(state.currentRound) / \(numberOfRounds)")
-                        // Stop speaking and complete round via VoiceManager
                         voiceManager?.forceRoundComplete()
                     }
                 }
             }
-            
-            // Check stop condition AFTER all updates so final second is counted
+
             if !state.isPlaying && !state.isPaused {
                 timer.invalidate()
-                return
             }
         }
     }
-    
+
     private func completeSession() {
-        // Use the actual lines that were spoken in the order they were spoken
         let linesSpoken = state.lineHistory + (state.currentLineText.isEmpty ? [] : [state.currentLineText])
         let linesText = linesSpoken.joined(separator: "\n")
-        let notes = """
-Voice Trainer Session
+        let logNotes = """
+Voice Trainer Session: \(config.name)
+\(config.parameterSummary)
 
 Lines Read (in order):
 \(linesText)
 
 Total Lines Read: \(state.linesSpoken)
 """
-        
+
         let workoutLog = WorkoutLog(
             id: UUID(),
-            workoutName: "Trainer Session",
+            workoutName: "Trainer – \(config.name)",
             completedAt: Date(),
             exercises: [],
-            notes: notes,
+            notes: logNotes,
             duration: TimeInterval(state.elapsedTime)
         )
-        
         logState.addLog(workoutLog)
         resetPlayback()
-        
-        // Navigate to log screen
         ModuleState.shared.selectedModuleID = ModuleIDs.progress
     }
-    
-    private func updateTotalTime() {
-        // Total time for all lines across all rounds (round length includes reading time)
-        let totalRoundsTime = roundLength * numberOfRounds
-        
-        // Rest periods only happen BETWEEN rounds, not after the last round
-        let restPeriodsCount = max(0, numberOfRounds - 1)
-        let totalRestTime = restPeriodsCount * restLength
-        
-        // Add cooldown period (in minutes, convert to seconds)
-        let cooldownSeconds = cooldownPeriod * 60
-        
-        state.totalTime = totalRoundsTime + totalRestTime + cooldownSeconds
-    }
-    
+
     private func formatTime(_ seconds: Int) -> String {
         let hours = seconds / 3600
         let minutes = (seconds % 3600) / 60
         let secs = seconds % 60
-        
-        if hours > 0 {
-            return String(format: "%02d:%02d:%02d", hours, minutes, secs)
-        }
+        if hours > 0 { return String(format: "%02d:%02d:%02d", hours, minutes, secs) }
         return String(format: "%02d:%02d", minutes, secs)
-    }
-    
-    private func formatRestLength(_ seconds: Int) -> String {
-        if seconds == 0 { return "None" }
-        let minutes = seconds / 60
-        let secs = seconds % 60
-        if secs > 0 {
-            return String(format: "%d:%02d", minutes, secs)
-        }
-        return "\(minutes)m"
     }
 }
 
@@ -1266,245 +1297,6 @@ private class VoiceManager: NSObject, AVSpeechSynthesizerDelegate {
         utterance.rate = AVSpeechUtteranceDefaultSpeechRate
         utterance.pitchMultiplier = 1.0
         synthesizer.speak(utterance)
-    }
-}
-
-// MARK: - Save Configuration Sheet
-
-private struct SaveConfigurationSheet: View {
-    @Binding var name: String
-    let onSave: () -> Void
-    let onCancel: () -> Void
-    
-    var body: some View {
-        NavigationStack {
-            Form {
-                Section("Configuration Name") {
-                    TextField("Enter name", text: $name)
-                }
-            }
-            .navigationTitle("Save Configuration")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button("Save") {
-                        onSave()
-                    }
-                    .disabled(name.isEmpty)
-                }
-                
-                ToolbarItem(placement: .topBarLeading) {
-                    Button("Cancel") {
-                        onCancel()
-                    }
-                }
-            }
-        }
-    }
-}
-
-// MARK: - Favorites Sheet
-
-private struct FavoritesSheet: View {
-    @Environment(\.dismiss) var dismiss
-    let state: VoiceTrainerState
-    
-    @State private var selectedConfigId: UUID?
-    @State private var showRenameDialog = false
-    @State private var configToDeleteId: UUID?
-    @State private var renameText = ""
-    
-    var body: some View {
-        NavigationStack {
-            List {
-                if state.savedConfigurations.isEmpty {
-                    Text("No saved configurations")
-                        .foregroundColor(.gray)
-                } else {
-                    ForEach(state.savedConfigurations, id: \.id) { config in
-                        VoiceTrainerConfigRow(
-                            config: config,
-                            formatRoundLength: formatRoundLength,
-                            formatRestLength: formatRestLength,
-                            onRename: {
-                                renameText = config.name
-                                selectedConfigId = config.id
-                                showRenameDialog = true
-                            },
-                            onDelete: {
-                                configToDeleteId = config.id
-                            }
-                        )
-                    }
-                    .onMove { indices, newOffset in
-                        state.savedConfigurations.move(fromOffsets: indices, toOffset: newOffset)
-                        state.saveConfigurations()
-                    }
-                }
-            }
-            .environment(\.editMode, .constant(.active))
-            .navigationTitle("Saved Configurations")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button("Done") {
-                        dismiss()
-                    }
-                }
-            }
-        }
-        .sheet(isPresented: $showRenameDialog) {
-            RenameConfigurationSheet(
-                name: $renameText,
-                onSave: {
-                    if let configId = selectedConfigId,
-                       let config = state.savedConfigurations.first(where: { $0.id == configId }) {
-                        state.updateConfiguration(config, name: renameText)
-                        showRenameDialog = false
-                        selectedConfigId = nil
-                    }
-                },
-                onCancel: {
-                    showRenameDialog = false
-                    selectedConfigId = nil
-                    renameText = ""
-                }
-            )
-        }
-        .alert("Delete Configuration", isPresented: Binding(
-            get: { configToDeleteId != nil },
-            set: { if !$0 { configToDeleteId = nil } }
-        )) {
-            Button("Delete", role: .destructive) {
-                if let configId = configToDeleteId {
-                    if let config = state.savedConfigurations.first(where: { $0.id == configId }) {
-                        state.deleteConfiguration(config)
-                    }
-                    configToDeleteId = nil
-                }
-            }
-            Button("Cancel", role: .cancel) {
-                configToDeleteId = nil
-            }
-        } message: {
-            if let configId = configToDeleteId,
-               let config = state.savedConfigurations.first(where: { $0.id == configId }) {
-                Text("Are you sure you want to delete '\(config.name)'? This cannot be undone.")
-            }
-        }
-    }
-    
-    private func formatRoundLength(_ seconds: Int) -> String {
-        let minutes = seconds / 60
-        let secs = seconds % 60
-        if secs > 0 {
-            return String(format: "%d:%02d", minutes, secs)
-        }
-        return "\(minutes)m"
-    }
-    
-    private func formatRestLength(_ seconds: Int) -> String {
-        if seconds == 0 { return "None" }
-        let minutes = seconds / 60
-        let secs = seconds % 60
-        if secs > 0 {
-            return String(format: "%d:%02d", minutes, secs)
-        }
-        return "\(minutes)m"
-    }
-}
-
-// MARK: - Voice Trainer Config Row View
-
-private struct VoiceTrainerConfigRow: View {
-    let config: VoiceTrainerConfig
-    let formatRoundLength: (Int) -> String
-    let formatRestLength: (Int) -> String
-    let onRename: () -> Void
-    let onDelete: () -> Void
-    
-    var body: some View {
-        HStack(spacing: 12) {
-            VStack(alignment: .leading, spacing: 4) {
-                Text(config.name)
-                    .font(.subheadline)
-                    .fontWeight(.semibold)
-                    .foregroundColor(.black)
-                Text("Lines: \(config.text.split(separator: "\n").count)")
-                    .font(.caption)
-                    .foregroundColor(.gray)
-                
-                // Configuration details
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("Rounds: \(config.numberOfRounds) • Length: \(formatRoundLength(config.roundLength))")
-                        .font(.caption2)
-                        .foregroundColor(.gray)
-                    Text("Rest: \(formatRestLength(config.restLength)) • Delay: \(config.delayBetweenLines)s • Cooldown: \(config.cooldownPeriod)m")
-                        .font(.caption2)
-                        .foregroundColor(.gray)
-                    Text("Random: \(config.randomOrder ? "On" : "Off")")
-                        .font(.caption2)
-                        .foregroundColor(.gray)
-                }
-                .padding(.top, 2)
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            
-            HStack(spacing: 8) {
-                Button(action: {
-                    onRename()
-                }) {
-                    Image(systemName: "pencil")
-                        .font(.system(size: 16))
-                        .foregroundColor(.black)
-                }
-                .buttonStyle(PlainButtonStyle())
-                
-                Button(action: {
-                    onDelete()
-                }) {
-                    Image(systemName: "trash")
-                        .font(.system(size: 16))
-                        .foregroundColor(.red)
-                }
-                .buttonStyle(PlainButtonStyle())
-            }
-        }
-        .padding(.vertical, 8)
-    }
-}
-
-// MARK: - Rename Configuration Sheet
-
-private struct RenameConfigurationSheet: View {
-    @Binding var name: String
-    let onSave: () -> Void
-    let onCancel: () -> Void
-    
-    var body: some View {
-        NavigationStack {
-            Form {
-                Section("Configuration Name") {
-                    TextField("Enter name", text: $name)
-                }
-            }
-            .navigationTitle("Rename Configuration")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button("Save") {
-                        onSave()
-                    }
-                    .disabled(name.isEmpty)
-                }
-                
-                ToolbarItem(placement: .topBarLeading) {
-                    Button("Cancel") {
-                        onCancel()
-                    }
-                }
-            }
-        }
     }
 }
 

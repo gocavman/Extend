@@ -13,11 +13,37 @@ public final class WorkoutsState {
     public static let shared = WorkoutsState()
 
     @ObservationIgnored private let storageKey = "workouts_data"
+    @ObservationIgnored private let favoritesKey = "workouts_favorites"
 
     public var workouts: [Workout] = []
+    public var favoriteWorkoutIDs: Set<UUID> = []
 
     private init() {
         loadWorkouts()
+        loadFavorites()
+    }
+
+    public func toggleFavorite(id: UUID) {
+        if favoriteWorkoutIDs.contains(id) {
+            favoriteWorkoutIDs.remove(id)
+        } else {
+            favoriteWorkoutIDs.insert(id)
+        }
+        saveFavorites()
+    }
+
+    public func isFavorite(_ id: UUID) -> Bool {
+        favoriteWorkoutIDs.contains(id)
+    }
+
+    public var favoriteWorkouts: [Workout] {
+        workouts.filter { favoriteWorkoutIDs.contains($0.id) }
+            .sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
+    }
+
+    public func resetFavorites() {
+        favoriteWorkoutIDs = []
+        saveFavorites()
     }
 
     public func addWorkout(_ workout: Workout) {
@@ -63,6 +89,19 @@ public final class WorkoutsState {
     private func saveWorkouts() {
         if let encoded = try? JSONEncoder().encode(workouts) {
             UserDefaults.standard.set(encoded, forKey: storageKey)
+        }
+    }
+
+    private func saveFavorites() {
+        if let encoded = try? JSONEncoder().encode(Array(favoriteWorkoutIDs)) {
+            UserDefaults.standard.set(encoded, forKey: favoritesKey)
+        }
+    }
+
+    private func loadFavorites() {
+        if let data = UserDefaults.standard.data(forKey: favoritesKey),
+           let decoded = try? JSONDecoder().decode([UUID].self, from: data) {
+            favoriteWorkoutIDs = Set(decoded)
         }
     }
 }
