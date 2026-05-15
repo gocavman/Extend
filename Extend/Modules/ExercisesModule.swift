@@ -27,10 +27,12 @@ private struct ExercisesModuleView: View {
     @Environment(ExercisesState.self) var state
     @Environment(MuscleGroupsState.self) var muscleGroupsState
     @Environment(EquipmentState.self) var equipmentState
-    
+    @Environment(WorkoutLogState.self) var logState
+
     @State private var searchText: String = ""
     @State private var showingAdd = false
     @State private var editingExercise: Exercise?
+    @State private var statsExercise: Exercise?
     
     private var filteredExercises: [Exercise] {
         let trimmedSearch = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -43,128 +45,150 @@ private struct ExercisesModuleView: View {
     }
     
     var body: some View {
-        VStack(spacing: 0) {
-            // Header with title and add button
-            HStack {
-                Text("Exercises")
-                    .font(.title2)
-                    .fontWeight(.bold)
-                Spacer()
-                Button(action: {
-                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                    showingAdd = true
-                }) {
-                    Image(systemName: "plus")
-                        .foregroundColor(.black)
+        NavigationStack {
+            VStack(spacing: 0) {
+                // Header with title and add button
+                HStack {
+                    Text("Exercises")
+                        .font(.title2)
+                        .fontWeight(.bold)
+                    Spacer()
+                    Button(action: {
+                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                        showingAdd = true
+                    }) {
+                        Image(systemName: "plus")
+                            .foregroundColor(.black)
+                    }
                 }
-            }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 12)
+                .padding(.horizontal, 16)
+                .padding(.vertical, 12)
 
-            List {
-                SearchField(text: $searchText, placeholder: "Search exercises...")
-                
-                // Exercises List
-                if filteredExercises.isEmpty {
-                    Text("No exercises found")
-                        .font(.subheadline)
-                        .foregroundColor(.gray)
-                        .frame(maxWidth: .infinity, alignment: .center)
-                        .padding(.vertical, 20)
-                } else {
-                    ForEach(filteredExercises) { exercise in
-                        Button(action: {
-                            UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                            editingExercise = exercise
-                        }) {
+                List {
+                    SearchField(text: $searchText, placeholder: "Search exercises...")
+                    
+                    // Exercises List
+                    if filteredExercises.isEmpty {
+                        Text("No exercises found")
+                            .font(.subheadline)
+                            .foregroundColor(.gray)
+                            .frame(maxWidth: .infinity, alignment: .center)
+                            .padding(.vertical, 20)
+                    } else {
+                        ForEach(filteredExercises) { exercise in
                             HStack(spacing: 12) {
                                 VStack(alignment: .leading, spacing: 8) {
                                     Text(exercise.name)
                                         .font(.subheadline)
                                         .fontWeight(.semibold)
                                         .foregroundColor(.primary)
-                                    
-                    // Show muscle groups
-                    if !exercise.primaryMuscleGroupIDs.isEmpty || !exercise.secondaryMuscleGroupIDs.isEmpty {
-                        HStack(alignment: .firstTextBaseline, spacing: 4) {
-                            Text("Muscles:")
-                                .font(.caption)
-                                .fontWeight(.semibold)
-                                .foregroundColor(.gray)
-                            Text(formattedMuscleGroups(primaryIDs: exercise.primaryMuscleGroupIDs,
-                                                      secondaryIDs: exercise.secondaryMuscleGroupIDs))
-                                .font(.caption2)
-                                .foregroundColor(.secondary)
-                        }
-                    }
 
-                    if !exercise.equipmentIDs.isEmpty {
-                        HStack(alignment: .firstTextBaseline, spacing: 4) {
-                            Text("Equipment:")
-                                .font(.caption)
-                                .fontWeight(.semibold)
-                                .foregroundColor(.gray)
-                            Text(equipmentNames(exercise.equipmentIDs).joined(separator: ", "))
-                                .font(.caption2)
-                                .foregroundColor(.secondary)
-                        }
-                    }
+                                    // Show muscle groups
+                                    if !exercise.primaryMuscleGroupIDs.isEmpty || !exercise.secondaryMuscleGroupIDs.isEmpty {
+                                        HStack(alignment: .firstTextBaseline, spacing: 4) {
+                                            Text("Muscles:")
+                                                .font(.caption)
+                                                .fontWeight(.semibold)
+                                                .foregroundColor(.gray)
+                                            Text(formattedMuscleGroups(primaryIDs: exercise.primaryMuscleGroupIDs,
+                                                                       secondaryIDs: exercise.secondaryMuscleGroupIDs))
+                                                .font(.caption2)
+                                                .foregroundColor(.secondary)
+                                        }
+                                    }
 
-                    let trimmedNotes = exercise.notes.trimmingCharacters(in: .whitespacesAndNewlines)
-                    if !trimmedNotes.isEmpty {
-                        HStack(alignment: .firstTextBaseline, spacing: 4) {
-                            Text("Notes:")
-                                .font(.caption)
-                                .fontWeight(.semibold)
-                                .foregroundColor(.gray)
-                            Text(trimmedNotes)
-                                .font(.caption2)
-                                .foregroundColor(.secondary)
-                        }
-                    }
+                                    if !exercise.equipmentIDs.isEmpty {
+                                        HStack(alignment: .firstTextBaseline, spacing: 4) {
+                                            Text("Equipment:")
+                                                .font(.caption)
+                                                .fontWeight(.semibold)
+                                                .foregroundColor(.gray)
+                                            Text(equipmentNames(exercise.equipmentIDs).joined(separator: ", "))
+                                                .font(.caption2)
+                                                .foregroundColor(.secondary)
+                                        }
+                                    }
+
+                                    let trimmedNotes = exercise.notes.trimmingCharacters(in: .whitespacesAndNewlines)
+                                    if !trimmedNotes.isEmpty {
+                                        HStack(alignment: .firstTextBaseline, spacing: 4) {
+                                            Text("Notes:")
+                                                .font(.caption)
+                                                .fontWeight(.semibold)
+                                                .foregroundColor(.gray)
+                                            Text(trimmedNotes)
+                                                .font(.caption2)
+                                                .foregroundColor(.secondary)
+                                        }
+                                    }
                                 }
                                 .frame(maxWidth: .infinity, alignment: .leading)
-                                
-                                Image(systemName: "pencil")
-                                    .foregroundColor(.black)
+                                .contentShape(Rectangle())
+                                .onTapGesture {
+                                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                                    editingExercise = exercise
+                                }
+
+                                // Graph icon — navigate to stats
+                                Button(action: {
+                                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                                    statsExercise = exercise
+                                }) {
+                                    Image(systemName: "chart.bar")
+                                        .foregroundColor(.black)
+                                }
+                                .buttonStyle(.plain)
+
+                                // Edit icon
+                                Button(action: {
+                                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                                    editingExercise = exercise
+                                }) {
+                                    Image(systemName: "pencil")
+                                        .foregroundColor(.black)
+                                }
+                                .buttonStyle(.plain)
                             }
                             .padding(.vertical, 8)
-                        }
-                        .buttonStyle(.plain)
-                        .swipeActions(edge: .leading, allowsFullSwipe: false) {
-                            Button {
-                                UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                                editingExercise = exercise
-                            } label: {
-                                Label("Edit", systemImage: "pencil")
+                            .swipeActions(edge: .leading, allowsFullSwipe: false) {
+                                Button {
+                                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                                    editingExercise = exercise
+                                } label: {
+                                    Label("Edit", systemImage: "pencil")
+                                }
+                                .tint(.blue)
                             }
-                            .tint(.blue)
-                        }
-                        .swipeActions {
-                            Button(role: .destructive) {
-                                UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-                                state.removeExercise(id: exercise.id)
-                            } label: {
-                                Label("Delete", systemImage: "trash")
+                            .swipeActions {
+                                Button(role: .destructive) {
+                                    UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                                    state.removeExercise(id: exercise.id)
+                                } label: {
+                                    Label("Delete", systemImage: "trash")
+                                }
                             }
                         }
                     }
                 }
-            }
-            .listStyle(.plain)
-            .sheet(isPresented: $showingAdd) {
-                ExerciseEditor(title: "Add Exercise") { exercise in
-                    state.addExercise(exercise)
+                .listStyle(.plain)
+                .sheet(isPresented: $showingAdd) {
+                    ExerciseEditor(title: "Add Exercise") { exercise in
+                        state.addExercise(exercise)
+                    }
+                    .environment(muscleGroupsState)
+                    .environment(equipmentState)
                 }
-                .environment(muscleGroupsState)
-                .environment(equipmentState)
-            }
-            .sheet(item: $editingExercise) { exercise in
-                ExerciseEditor(title: "Edit Exercise", initialExercise: exercise) { updated in
-                    state.updateExercise(updated)
+                .sheet(item: $editingExercise) { exercise in
+                    ExerciseEditor(title: "Edit Exercise", initialExercise: exercise) { updated in
+                        state.updateExercise(updated)
+                    }
+                    .environment(muscleGroupsState)
+                    .environment(equipmentState)
                 }
-                .environment(muscleGroupsState)
-                .environment(equipmentState)
+            }
+            .navigationDestination(item: $statsExercise) { exercise in
+                ExerciseStatsView(exercise: exercise)
+                    .environment(logState)
             }
         }
     }
@@ -368,4 +392,5 @@ private struct ExerciseEditor: View {
         .environment(ExercisesState.shared)
         .environment(MuscleGroupsState.shared)
         .environment(EquipmentState.shared)
+        .environment(WorkoutLogState.shared)
 }

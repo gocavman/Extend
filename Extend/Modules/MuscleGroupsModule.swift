@@ -28,84 +28,108 @@ public struct MuscleGroupsModule: AppModule {
 
 private struct MuscleGroupsModuleView: View {
     @Environment(MuscleGroupsState.self) var state
+    @Environment(WorkoutLogState.self) var logState
+    @Environment(ExercisesState.self) var exercisesState
+
     @State private var showingAdd = false
     @State private var editingGroup: MuscleGroup?
+    @State private var statsGroup: MuscleGroup?
 
     var body: some View {
-        VStack(spacing: 0) {
-            HStack {
-                Text("Muscles")
-                    .font(.title2)
-                    .fontWeight(.bold)
-                Spacer()
-                Button(action: {
-                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                    showingAdd = true
-                }) {
-                    Image(systemName: "plus")
-                        .foregroundColor(.black)
-                }
-            }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 12)
-
-            List {
-                ForEach(state.sortedGroups) { group in
+        NavigationStack {
+            VStack(spacing: 0) {
+                HStack {
+                    Text("Muscles")
+                        .font(.title2)
+                        .fontWeight(.bold)
+                    Spacer()
                     Button(action: {
                         UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                        editingGroup = group
+                        showingAdd = true
                     }) {
+                        Image(systemName: "plus")
+                            .foregroundColor(.black)
+                    }
+                }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 12)
+
+                List {
+                    ForEach(state.sortedGroups) { group in
                         HStack(spacing: 12) {
                             MuscleGroupThumbnail(group: group, size: 40)
 
                             Text(group.name)
                                 .font(.subheadline)
                                 .foregroundColor(.primary)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .contentShape(Rectangle())
+                                .onTapGesture {
+                                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                                    editingGroup = group
+                                }
 
-                            Spacer()
+                            // Graph icon — navigate to stats
+                            Button(action: {
+                                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                                statsGroup = group
+                            }) {
+                                Image(systemName: "chart.bar")
+                                    .foregroundColor(.black)
+                            }
+                            .buttonStyle(.plain)
+                            .accessibilityLabel("Stats for \(group.name)")
 
-                            Button(action: { editingGroup = group }) {
+                            // Edit icon
+                            Button(action: {
+                                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                                editingGroup = group
+                            }) {
                                 Image(systemName: "pencil")
                                     .foregroundColor(.black)
                             }
                             .buttonStyle(.plain)
                             .accessibilityLabel("Edit \(group.name)")
                         }
+                        .contextMenu {
+                            Button("Edit") { editingGroup = group }
+                            Button(role: .destructive) {
+                                state.removeGroup(id: group.id)
+                            } label: { Text("Delete") }
+                        }
+                        .swipeActions(edge: .leading, allowsFullSwipe: false) {
+                            Button {
+                                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                                editingGroup = group
+                            } label: { Label("Edit", systemImage: "pencil") }
+                            .tint(.blue)
+                        }
+                        .swipeActions {
+                            Button(role: .destructive) {
+                                UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                                state.removeGroup(id: group.id)
+                            } label: { Label("Delete", systemImage: "trash") }
+                        }
                     }
-                    .buttonStyle(.plain)
-                    .contextMenu {
-                        Button("Edit") { editingGroup = group }
-                        Button(role: .destructive) {
-                            state.removeGroup(id: group.id)
-                        } label: { Text("Delete") }
+                }
+                .sheet(isPresented: $showingAdd) {
+                    MuscleGroupEditor(title: "Add Muscle Group") { updated in
+                        state.groups.append(updated)
+                        state.updateGroup(updated)
                     }
-                    .swipeActions(edge: .leading, allowsFullSwipe: false) {
-                        Button {
-                            UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                            editingGroup = group
-                        } label: { Label("Edit", systemImage: "pencil") }
-                        .tint(.blue)
+                    .environment(state)
+                }
+                .sheet(item: $editingGroup) { group in
+                    MuscleGroupEditor(title: "Edit Muscle Group", group: group) { updated in
+                        state.updateGroup(updated)
                     }
-                    .swipeActions {
-                        Button(role: .destructive) {
-                            UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-                            state.removeGroup(id: group.id)
-                        } label: { Label("Delete", systemImage: "trash") }
-                    }
+                    .environment(state)
                 }
             }
-            .sheet(isPresented: $showingAdd) {
-                MuscleGroupEditor(title: "Add Muscle Group") { updated in
-                    state.groups.append(updated)
-                    state.updateGroup(updated)
-                }
-                .environment(state)
-            }
-            .sheet(item: $editingGroup) { group in
-                MuscleGroupEditor(title: "Edit Muscle Group", group: group) { updated in
-                    state.updateGroup(updated)
-                }
-                .environment(state)
+            .navigationDestination(item: $statsGroup) { group in
+                MuscleStatsView(muscleGroup: group)
+                    .environment(logState)
+                    .environment(exercisesState)
             }
         }
     }
@@ -348,4 +372,6 @@ private struct MuscleGroupEditor: View {
 #Preview {
     MuscleGroupsModuleView()
         .environment(MuscleGroupsState.shared)
+        .environment(WorkoutLogState.shared)
+        .environment(ExercisesState.shared)
 }
