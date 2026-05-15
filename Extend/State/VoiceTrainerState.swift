@@ -192,6 +192,8 @@ Left and Right Uppercuts
     
     func resetConfigurations() {
         savedConfigurations = []
+        UserDefaults.standard.removeObject(forKey: "VoiceTrainerDefaultsCreated")
+        createDefaultConfigurations()
         saveToDefaults()
     }
     

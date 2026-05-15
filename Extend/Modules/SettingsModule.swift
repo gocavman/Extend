@@ -35,6 +35,7 @@ private struct SettingsModuleView: View {
     @Environment(MuscleGroupsState.self) var muscleGroupsState
     @Environment(EquipmentState.self) var equipmentState
     @Environment(DashboardHeaderState.self) var dashboardHeaderState
+    @Environment(VoiceTrainerState.self) var voiceTrainerState
 
     @State private var showingResetAlert = false
     @State private var isNavBarSectionExpanded = false
@@ -154,7 +155,7 @@ private struct SettingsModuleView: View {
                         resetApp()
                     }
                 } message: {
-                    Text("This will reset navbars, dashboard tiles, exercises, workouts, muscle groups, and equipment back to defaults.")
+                    Text("This will reset the whole app back to default settings; clearing history, logs, favorites and customizations (navbars, dashboard tiles, exercises, workouts, muscle groups, equipment, timers and voice trainers.")
                 }
             }
         }
@@ -196,6 +197,7 @@ private struct SettingsModuleView: View {
         QuickWorkoutState.shared.resetFavorites()
         TimerState.shared.reset()
         WorkoutLogState.shared.resetLogs()
+        voiceTrainerState.resetConfigurations()
 
         // Reset Game Progress - Workout Buddy (Game 1)
         // Remove the entire stats dictionary and let it reinitialize
