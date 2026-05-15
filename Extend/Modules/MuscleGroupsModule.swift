@@ -99,17 +99,20 @@ private struct MuscleGroupsModuleView: View {
                     state.groups.append(updated)
                     state.updateGroup(updated)
                 }
+                .environment(state)
             }
             .sheet(item: $editingGroup) { group in
                 MuscleGroupEditor(title: "Edit Muscle Group", group: group) { updated in
                     state.updateGroup(updated)
                 }
+                .environment(state)
             }
         }
     }
 }
 
 // MARK: - Thumbnail (reusable in list + workout info panel)
+// Shows primary image. If a secondary also exists, both are shown side-by-side within the given size.
 
 public struct MuscleGroupThumbnail: View {
     public let group: MuscleGroup
@@ -120,25 +123,51 @@ public struct MuscleGroupThumbnail: View {
         self.size = size
     }
 
+    private var hasPrimary: Bool {
+        group.customPrimaryImageData != nil || (group.primaryImageAssetName ?? "").isEmpty == false
+    }
+
+    private var hasSecondary: Bool {
+        group.customSecondaryImageData != nil || (group.secondaryImageAssetName ?? "").isEmpty == false
+    }
+
     public var body: some View {
-        Group {
-            if let data = group.customPrimaryImageData, let ui = UIImage(data: data) {
-                Image(uiImage: ui)
-                    .resizable().scaledToFill()
-            } else if let name = group.primaryImageAssetName, !name.isEmpty {
-                Image(name)
-                    .resizable().scaledToFill()
-            } else {
-                Image(systemName: "figure.strengthtraining.traditional")
-                    .font(.system(size: size * 0.5, weight: .semibold))
-                    .foregroundColor(.blue)
-                    .frame(width: size, height: size)
-                    .background(Color.blue.opacity(0.1))
-                    .cornerRadius(size * 0.15)
+        if hasPrimary && hasSecondary {
+            // Side-by-side: each image gets half the width
+            HStack(spacing: 2) {
+                singleImage(data: group.customPrimaryImageData, assetName: group.primaryImageAssetName)
+                    .frame(width: (size - 2) / 2, height: size)
+                    .clipShape(RoundedRectangle(cornerRadius: size * 0.1))
+                singleImage(data: group.customSecondaryImageData, assetName: group.secondaryImageAssetName)
+                    .frame(width: (size - 2) / 2, height: size)
+                    .clipShape(RoundedRectangle(cornerRadius: size * 0.1))
             }
+            .frame(width: size, height: size)
+        } else if hasPrimary {
+            singleImage(data: group.customPrimaryImageData, assetName: group.primaryImageAssetName)
+                .frame(width: size, height: size)
+                .clipShape(RoundedRectangle(cornerRadius: size * 0.15))
+        } else {
+            Image(systemName: "figure.strengthtraining.traditional")
+                .font(.system(size: size * 0.5, weight: .semibold))
+                .foregroundColor(.blue)
+                .frame(width: size, height: size)
+                .background(Color.blue.opacity(0.1))
+                .clipShape(RoundedRectangle(cornerRadius: size * 0.15))
         }
-        .frame(width: size, height: size)
-        .clipShape(RoundedRectangle(cornerRadius: size * 0.15))
+    }
+
+    @ViewBuilder
+    private func singleImage(data: Data?, assetName: String?) -> some View {
+        if let data, let ui = UIImage(data: data) {
+            Image(uiImage: ui)
+                .resizable().scaledToFit()
+        } else if let name = assetName, !name.isEmpty {
+            Image(name)
+                .resizable().scaledToFit()
+        } else {
+            Color.clear
+        }
     }
 }
 
@@ -160,23 +189,14 @@ private struct MuscleGroupEditor: View {
     @State private var activeSlot: ImageSlot = .primary
     @State private var showingPhotoPicker = false
 
-    // Image option selection
-    enum ImageOption: String, CaseIterable {
-        case male = "Option 1 (Male)"
-        case female = "Option 2 (Female)"
-        case custom = "Custom"
-    }
-    @State private var selectedOption: ImageOption = .male
-
     init(title: String, group: MuscleGroup? = nil, onSave: @escaping (MuscleGroup) -> Void) {
         self.title = title
         self.onSave = onSave
         _group = State(initialValue: group ?? MuscleGroup(name: ""))
     }
 
-    // The JSON pair for this muscle name
-    private var imagePairs: (male: (primary: String?, secondary: String?), female: (primary: String?, secondary: String?))? {
-        MuscleGroupsState.shared.imagePairs(for: group.name)
+    private var isCustomMode: Bool {
+        state.selectedBodyOption == .custom
     }
 
     var body: some View {
@@ -187,31 +207,36 @@ private struct MuscleGroupEditor: View {
                 }
 
                 Section("Image") {
-                    Picker("Source", selection: $selectedOption) {
-                        ForEach(ImageOption.allCases, id: \.self) { opt in
-                            Text(opt.rawValue).tag(opt)
+                    // Preview row — always visible
+                    HStack(spacing: 16) {
+                        Spacer()
+                        imagePreview(data: group.customPrimaryImageData, assetName: group.primaryImageAssetName, label: "Primary")
+                        if group.secondaryImageAssetName != nil || group.customSecondaryImageData != nil {
+                            imagePreview(data: group.customSecondaryImageData, assetName: group.secondaryImageAssetName, label: "Secondary")
                         }
+                        Spacer()
                     }
-                    .pickerStyle(.segmented)
-                    .onChange(of: selectedOption) { _, newOption in
-                        applyOption(newOption)
+                    .padding(.vertical, 4)
+
+                    if isCustomMode {
+                        // Custom mode: show choose / clear buttons for each slot
+                        imageRow(
+                            label: "Primary",
+                            assetName: group.primaryImageAssetName,
+                            customData: group.customPrimaryImageData,
+                            slot: .primary
+                        )
+                        imageRow(
+                            label: "Secondary",
+                            assetName: group.secondaryImageAssetName,
+                            customData: group.customSecondaryImageData,
+                            slot: .secondary
+                        )
+                    } else {
+                        Text("Images are controlled by the Image Set option in Settings → Muscles.")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
                     }
-
-                    // Primary image
-                    imageRow(
-                        label: "Primary",
-                        assetName: group.primaryImageAssetName,
-                        customData: group.customPrimaryImageData,
-                        slot: .primary
-                    )
-
-                    // Secondary image
-                    imageRow(
-                        label: "Secondary",
-                        assetName: group.secondaryImageAssetName,
-                        customData: group.customSecondaryImageData,
-                        slot: .secondary
-                    )
                 }
             }
             .navigationTitle(title)
@@ -251,18 +276,38 @@ private struct MuscleGroupEditor: View {
                     }
                 }
             }
-            .onAppear {
-                // Pre-select the option that matches stored data
-                if group.customPrimaryImageData != nil || group.customSecondaryImageData != nil {
-                    selectedOption = .custom
-                } else if let primary = group.primaryImageAssetName {
-                    selectedOption = primary.hasPrefix("Female") ? .female : .male
-                }
-            }
         }
     }
 
-    // MARK: - Image row helper
+    // MARK: - Large preview helper (shown at top of Image section)
+
+    @ViewBuilder
+    private func imagePreview(data: Data?, assetName: String?, label: String) -> some View {
+        VStack(spacing: 4) {
+            Group {
+                if let data, let ui = UIImage(data: data) {
+                    Image(uiImage: ui).resizable().scaledToFit()
+                } else if let name = assetName, !name.isEmpty {
+                    Image(name).resizable().scaledToFit()
+                } else {
+                    Image(systemName: "photo")
+                        .font(.system(size: 24))
+                        .foregroundColor(.secondary)
+                        .frame(width: 72, height: 72)
+                        .background(Color(uiColor: .systemGray6))
+                        .cornerRadius(8)
+                }
+            }
+            .frame(width: 72, height: 72)
+            .clipShape(RoundedRectangle(cornerRadius: 8))
+
+            Text(label)
+                .font(.caption2)
+                .foregroundColor(.secondary)
+        }
+    }
+
+    // MARK: - Image row helper (Custom mode only)
 
     @ViewBuilder
     private func imageRow(label: String, assetName: String?, customData: Data?, slot: ImageSlot) -> some View {
@@ -272,74 +317,30 @@ private struct MuscleGroupEditor: View {
 
             Spacer()
 
-            // Thumbnail preview
-            Group {
-                if let data = customData, let ui = UIImage(data: data) {
-                    Image(uiImage: ui)
-                        .resizable().scaledToFill()
-                } else if let name = assetName, !name.isEmpty {
-                    Image(name)
-                        .resizable().scaledToFill()
-                } else {
-                    Image(systemName: "photo")
-                        .font(.system(size: 18))
-                        .foregroundColor(.secondary)
-                        .frame(width: 44, height: 44)
-                        .background(Color(uiColor: .systemGray6))
-                        .cornerRadius(6)
-                }
+            Button(action: {
+                activeSlot = slot
+                showingPhotoPicker = true
+            }) {
+                Text("Choose")
+                    .font(.caption)
+                    .foregroundColor(.accentColor)
             }
-            .frame(width: 44, height: 44)
-            .clipShape(RoundedRectangle(cornerRadius: 6))
+            .buttonStyle(.plain)
 
-            if selectedOption == .custom {
+            if (slot == .primary && customData != nil) || (slot == .secondary && customData != nil) {
                 Button(action: {
-                    activeSlot = slot
-                    showingPhotoPicker = true
+                    switch slot {
+                    case .primary:
+                        group.customPrimaryImageData = nil
+                    case .secondary:
+                        group.customSecondaryImageData = nil
+                    }
                 }) {
-                    Text("Choose")
-                        .font(.caption)
-                        .foregroundColor(.accentColor)
+                    Image(systemName: "xmark.circle.fill")
+                        .foregroundColor(.secondary)
                 }
                 .buttonStyle(.plain)
-
-                if (slot == .primary && customData != nil) || (slot == .secondary && customData != nil) {
-                    Button(action: {
-                        switch slot {
-                        case .primary:
-                            group.customPrimaryImageData = nil
-                        case .secondary:
-                            group.customSecondaryImageData = nil
-                        }
-                    }) {
-                        Image(systemName: "xmark.circle.fill")
-                            .foregroundColor(.secondary)
-                    }
-                    .buttonStyle(.plain)
-                }
             }
-        }
-    }
-
-    // MARK: - Apply option
-
-    private func applyOption(_ option: ImageOption) {
-        switch option {
-        case .male:
-            let pair = imagePairs?.male
-            group.primaryImageAssetName = pair?.primary
-            group.secondaryImageAssetName = pair?.secondary
-            group.customPrimaryImageData = nil
-            group.customSecondaryImageData = nil
-        case .female:
-            let pair = imagePairs?.female
-            group.primaryImageAssetName = pair?.primary
-            group.secondaryImageAssetName = pair?.secondary
-            group.customPrimaryImageData = nil
-            group.customSecondaryImageData = nil
-        case .custom:
-            // Keep whatever is already stored; user will tap Choose
-            break
         }
     }
 }
