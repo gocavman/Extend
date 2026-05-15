@@ -183,6 +183,7 @@ private struct SettingsModuleView: View {
 
         moduleState.setBottomNavBarModules(bottomModules)
         moduleState.setTopNavBarModules(topModules)
+        moduleState.resetNavBarAppearance()
 
         // Reset data
         dashboardState.resetTiles()

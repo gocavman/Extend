@@ -125,6 +125,19 @@ public final class ModuleState {
         ModuleState.saveColor(color, for: navBarGradientSecondaryColorKey)
     }
 
+    public func resetNavBarAppearance() {
+        let defaultBg = Color(red: 0.98, green: 0.98, blue: 1.0)
+        let defaultSecondary = Color(red: 0.96, green: 0.96, blue: 0.97)
+        navBarBackgroundColor = defaultBg
+        navBarTextColor = .black
+        navBarUseGradient = false
+        navBarGradientSecondaryColor = defaultSecondary
+        ModuleState.saveColor(defaultBg, for: navBarBackgroundColorKey)
+        ModuleState.saveColor(.black, for: navBarTextColorKey)
+        UserDefaults.standard.set(false, forKey: navBarUseGradientKey)
+        ModuleState.saveColor(defaultSecondary, for: navBarGradientSecondaryColorKey)
+    }
+
     private func saveNavBarPreferences() {
         UserDefaults.standard.set(topNavBarModules.map { $0.uuidString }, forKey: topNavBarKey)
         UserDefaults.standard.set(bottomNavBarModules.map { $0.uuidString }, forKey: bottomNavBarKey)
