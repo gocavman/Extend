@@ -25,37 +25,39 @@ public struct EquipmentModule: AppModule {
 
 private struct EquipmentModuleView: View {
     @Environment(EquipmentState.self) var state
+    @Environment(ExercisesState.self) var exercisesState
+    @Environment(WorkoutLogState.self) var logState
+
     @State private var showingAdd = false
     @State private var editingItem: Equipment?
-    
-    var body: some View {
-        VStack(spacing: 0) {
-            // Header with title and add button
-            HStack {
-                Text("Equipment")
-                    .font(.title2)
-                    .fontWeight(.bold)
-                Spacer()
-                Button(action: {
-                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                    showingAdd = true
-                }) {
-                    Image(systemName: "plus")
-                        .foregroundColor(.black)
-                }
-            }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 12)
+    @State private var deletingItem: Equipment?
+    @State private var statsItem: Equipment?
 
-            List {
-                ForEach(state.sortedItems) { item in
+    var body: some View {
+        NavigationStack {
+            VStack(spacing: 0) {
+                // Header with title and add button
+                HStack {
+                    Text("Equipment")
+                        .font(.title2)
+                        .fontWeight(.bold)
+                    Spacer()
                     Button(action: {
                         UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                        editingItem = item
+                        showingAdd = true
                     }) {
+                        Image(systemName: "plus")
+                            .foregroundColor(.black)
+                    }
+                }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 12)
+
+                List {
+                    ForEach(state.sortedItems) { item in
                         HStack(spacing: 12) {
-                            Image(systemName: "photo")
-                                .font(.system(size: 18, weight: .semibold))
+                            Image(systemName: "figure.walk.treadmill")
+                                .font(.system(size: 16, weight: .semibold))
                                 .foregroundColor(.blue)
                                 .frame(width: 32, height: 32)
                                 .background(Color.blue.opacity(0.1))
@@ -64,58 +66,84 @@ private struct EquipmentModuleView: View {
                             Text(item.name)
                                 .font(.subheadline)
                                 .foregroundColor(.primary)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .contentShape(Rectangle())
+                                .onTapGesture {
+                                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                                    statsItem = item
+                                }
 
-                            Spacer()
+                            // Usage/stats button
+                            Button(action: {
+                                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                                statsItem = item
+                            }) {
+                                Image(systemName: "chart.bar")
+                                    .foregroundColor(.black)
+                            }
+                            .buttonStyle(.plain)
 
-                            Button(action: { editingItem = item }) {
+                            // Edit button
+                            Button(action: {
+                                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                                editingItem = item
+                            }) {
                                 Image(systemName: "pencil")
                                     .foregroundColor(.black)
                             }
                             .buttonStyle(.plain)
-                            .accessibilityLabel("Edit \(item.name)")
+                        }
+                        .padding(.vertical, 8)
+                        .swipeActions(edge: .leading, allowsFullSwipe: false) {
+                            Button {
+                                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                                editingItem = item
+                            } label: {
+                                Label("Edit", systemImage: "pencil")
+                            }
+                            .tint(.blue)
+                        }
+                        .swipeActions {
+                            Button(role: .destructive) {
+                                UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                                deletingItem = item
+                            } label: {
+                                Label("Delete", systemImage: "trash")
+                            }
                         }
                     }
-                    .buttonStyle(.plain)
-                    .contextMenu {
-                        Button("Edit") {
-                            editingItem = item
-                        }
-                        Button(role: .destructive) {
-                            state.removeItem(id: item.id)
-                        } label: {
-                            Text("Delete")
+                }
+                .listStyle(.plain)
+                .sheet(isPresented: $showingAdd) {
+                    EquipmentEditor(title: "Add Equipment") { name in
+                        state.addItem(name: name)
+                    }
+                }
+                .sheet(item: $editingItem) { item in
+                    EquipmentEditor(title: "Edit Equipment", initialName: item.name) { name in
+                        var updated = item
+                        updated.name = name
+                        state.updateItem(updated)
+                    } onDelete: {
+                        state.removeItem(id: item.id)
+                    }
+                }
+                .alert("Delete Equipment?", isPresented: .constant(deletingItem != nil)) {
+                    Button("Cancel", role: .cancel) { deletingItem = nil }
+                    Button("Delete", role: .destructive) {
+                        if let e = deletingItem {
+                            state.removeItem(id: e.id)
+                            deletingItem = nil
                         }
                     }
-                    .swipeActions(edge: .leading, allowsFullSwipe: false) {
-                        Button {
-                            UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                            editingItem = item
-                        } label: {
-                            Label("Edit", systemImage: "pencil")
-                        }
-                        .tint(.blue)
-                    }
-                    .swipeActions {
-                        Button(role: .destructive) {
-                            UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-                            state.removeItem(id: item.id)
-                        } label: {
-                            Label("Delete", systemImage: "trash")
-                        }
-                    }
+                } message: {
+                    Text("This will permanently delete the equipment.")
                 }
             }
-            .sheet(isPresented: $showingAdd) {
-                EquipmentEditor(title: "Add Equipment") { name in
-                    state.addItem(name: name)
-                }
-            }
-            .sheet(item: $editingItem) { item in
-                EquipmentEditor(title: "Edit Equipment", initialName: item.name) { name in
-                    var updated = item
-                    updated.name = name
-                    state.updateItem(updated)
-                }
+            .navigationDestination(item: $statsItem) { item in
+                EquipmentStatsView(equipment: item)
+                    .environment(logState)
+                    .environment(exercisesState)
             }
         }
     }
@@ -126,30 +154,38 @@ private struct EquipmentEditor: View {
     let title: String
     let initialName: String
     let onSave: (String) -> Void
-    
+    let onDelete: (() -> Void)?
+
     @State private var name: String
-    
-    init(title: String, initialName: String = "", onSave: @escaping (String) -> Void) {
+    @State private var showDeleteConfirm = false
+
+    init(title: String, initialName: String = "", onSave: @escaping (String) -> Void, onDelete: (() -> Void)? = nil) {
         self.title = title
         self.initialName = initialName
         self.onSave = onSave
+        self.onDelete = onDelete
         _name = State(initialValue: initialName)
     }
-    
+
     var body: some View {
         NavigationStack {
             Form {
                 Section("Details") {
                     TextField("Name", text: $name)
-                    Text("Image support coming soon")
-                        .font(.caption)
-                        .foregroundColor(.gray)
                 }
             }
             .navigationTitle(title)
+            .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
+                ToolbarItemGroup(placement: .topBarLeading) {
                     Button("Cancel") { dismiss() }
+                    if onDelete != nil {
+                        Button(action: { showDeleteConfirm = true }) {
+                            Image(systemName: "trash.circle.fill")
+                                .foregroundColor(.red)
+                                .font(.system(size: 22))
+                        }
+                    }
                 }
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Save") {
@@ -160,6 +196,15 @@ private struct EquipmentEditor: View {
                     .disabled(name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                 }
             }
+            .alert("Delete Equipment?", isPresented: $showDeleteConfirm) {
+                Button("Cancel", role: .cancel) { }
+                Button("Delete", role: .destructive) {
+                    onDelete?()
+                    dismiss()
+                }
+            } message: {
+                Text("This will permanently delete the equipment.")
+            }
         }
     }
 }
@@ -167,4 +212,6 @@ private struct EquipmentEditor: View {
 #Preview {
     EquipmentModuleView()
         .environment(EquipmentState.shared)
+        .environment(ExercisesState.shared)
+        .environment(WorkoutLogState.shared)
 }
