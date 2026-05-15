@@ -201,6 +201,7 @@ private struct WorkoutsModuleView: View {
                     .environment(exercisesState)
                     .environment(MuscleGroupsState.shared)
                     .environment(EquipmentState.shared)
+                    .environment(WorkoutLogState.shared)
             }
             .alert("Delete Workout?", isPresented: .constant(deletingWorkout != nil)) {
                 Button("Cancel", role: .cancel) {
@@ -501,6 +502,7 @@ public struct StartWorkoutView: View {
     @Environment(ExercisesState.self) var exercisesState
     @Environment(MuscleGroupsState.self) var muscleGroupsState
     @Environment(EquipmentState.self) var equipmentState
+    @Environment(WorkoutLogState.self) var logState
 
     public let workout: Workout
 
@@ -513,6 +515,7 @@ public struct StartWorkoutView: View {
     @State private var notes: String = ""
     @State private var workoutStartTime: Date = Date()
     @State private var exerciseData: [UUID: (sets: [WorkoutSet], notes: String, timerSeconds: Int)] = [:]
+    @State private var showingHistory: Bool = false
 
     private var currentExercise: Exercise? {
         guard currentExerciseIndex < workout.exercises.count else { return nil }
@@ -681,6 +684,16 @@ public struct StartWorkoutView: View {
 
                                     Spacer()
 
+                                    // History button — only shown when previous logs exist
+                                    if let ex = currentExercise,
+                                       lastLoggedSets(for: ex.id) != nil {
+                                        Button(action: { showingHistory = true }) {
+                                            Image(systemName: "clock.arrow.circlepath")
+                                                .foregroundColor(.black)
+                                        }
+                                        .buttonStyle(.plain)
+                                    }
+
                                     Button(action: { addSet() }) {
                                         Image(systemName: "plus.circle.fill")
                                             .foregroundColor(.black)
@@ -793,6 +806,11 @@ public struct StartWorkoutView: View {
                         }
                     }
                     .padding(.vertical, 16)
+                }
+                .sheet(isPresented: $showingHistory) {
+                    if let exercise = currentExercise {
+                        ExerciseHistorySheet(exercise: exercise, logState: logState)
+                    }
                 }
 
                 // Complete workout button
@@ -918,8 +936,21 @@ public struct StartWorkoutView: View {
     }
 
     private func initializeSets() {
-        // Initialize with one set prepopulated
-        sets = [WorkoutSet(reps: 0, weight: 0)]
+        guard let exerciseID = workout.exercises[safe: currentExerciseIndex]?.exerciseID,
+              let logged = lastLoggedSets(for: exerciseID), !logged.isEmpty else {
+            sets = [WorkoutSet(reps: 0, weight: 0)]
+            return
+        }
+        // Pre-populate from the most recent log entry for this exercise
+        sets = logged.map { WorkoutSet(reps: $0.reps, weight: $0.weight) }
+    }
+
+    /// Returns the sets from the most recent log that contains this exercise, or nil if none.
+    private func lastLoggedSets(for exerciseID: UUID) -> [LoggedSet]? {
+        let match = logState.sortedLogs
+            .compactMap { log in log.exercises.first(where: { $0.exerciseID == exerciseID }) }
+            .first
+        return match.flatMap { $0.sets.isEmpty ? nil : $0.sets }
     }
 
     private func completeWorkout() {
@@ -1006,6 +1037,115 @@ extension View {
 extension Array {
     subscript(safe index: Int) -> Element? {
         return indices.contains(index) ? self[index] : nil
+    }
+}
+
+// MARK: - Exercise History Sheet
+
+private struct ExerciseHistorySheet: View {
+    @Environment(\.dismiss) var dismiss
+
+    let exercise: Exercise
+    let logState: WorkoutLogState
+
+    /// All past log entries for this exercise, newest first.
+    private var history: [(date: Date, sets: [LoggedSet], notes: String)] {
+        logState.sortedLogs.compactMap { log in
+            guard let ex = log.exercises.first(where: { $0.exerciseID == exercise.id }),
+                  !ex.sets.isEmpty else { return nil }
+            return (date: log.completedAt, sets: ex.sets, notes: ex.notes)
+        }
+    }
+
+    var body: some View {
+        NavigationStack {
+            Group {
+                if history.isEmpty {
+                    VStack(spacing: 12) {
+                        Image(systemName: "clock.arrow.circlepath")
+                            .font(.system(size: 40, weight: .light))
+                            .foregroundColor(.secondary)
+                        Text("No History")
+                            .font(.headline)
+                            .foregroundColor(.secondary)
+                        Text("Complete a workout with this exercise to see history here.")
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                            .multilineTextAlignment(.center)
+                            .padding(.horizontal, 32)
+                    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                } else {
+                    List {
+                        ForEach(Array(history.enumerated()), id: \.offset) { _, entry in
+                            VStack(alignment: .leading, spacing: 8) {
+                                HStack(spacing: 6) {
+                                    Text(entry.date, style: .date)
+                                        .font(.subheadline)
+                                        .fontWeight(.semibold)
+                                    Text(entry.date, style: .time)
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                }
+
+                                // Sets grid: Set # | Reps | Weight
+                                VStack(spacing: 4) {
+                                    HStack {
+                                        Text("Set")
+                                            .font(.caption2)
+                                            .foregroundColor(.secondary)
+                                            .frame(maxWidth: .infinity, alignment: .leading)
+                                        Text("Reps")
+                                            .font(.caption2)
+                                            .foregroundColor(.secondary)
+                                            .frame(maxWidth: .infinity, alignment: .center)
+                                        Text("Weight")
+                                            .font(.caption2)
+                                            .foregroundColor(.secondary)
+                                            .frame(maxWidth: .infinity, alignment: .trailing)
+                                    }
+
+                                    ForEach(Array(entry.sets.enumerated()), id: \.offset) { idx, set in
+                                        HStack {
+                                            Text("\(idx + 1)")
+                                                .font(.caption)
+                                                .fontWeight(.semibold)
+                                                .frame(maxWidth: .infinity, alignment: .leading)
+                                            Text("\(set.reps)")
+                                                .font(.caption)
+                                                .frame(maxWidth: .infinity, alignment: .center)
+                                            Text(set.weight == 0 ? "—" : String(format: "%.1f lbs", set.weight))
+                                                .font(.caption)
+                                                .frame(maxWidth: .infinity, alignment: .trailing)
+                                        }
+                                    }
+                                }
+                                .padding(8)
+                                .background(Color(uiColor: .systemGray6))
+                                .cornerRadius(6)
+
+                                // Notes from that session
+                                if !entry.notes.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                                    Text("Notes: \(entry.notes)")
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                        .frame(maxWidth: .infinity, alignment: .leading)
+                                }
+                            }
+                            .padding(.vertical, 4)
+                        }
+                    }
+                    .listStyle(.plain)
+                }
+            }
+            .navigationTitle("History: \(exercise.name)")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Done") { dismiss() }
+                }
+            }
+        }
     }
 }
 

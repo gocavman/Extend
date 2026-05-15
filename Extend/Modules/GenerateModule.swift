@@ -272,6 +272,7 @@ private struct GenerateModuleView: View {
                     .environment(ExercisesState.shared)
                     .environment(MuscleGroupsState.shared)
                     .environment(EquipmentState.shared)
+                    .environment(WorkoutLogState.shared)
             }
             .sheet(isPresented: $showManagePresets) {
                 ManageFilterPresetsView()
