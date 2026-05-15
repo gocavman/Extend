@@ -42,6 +42,7 @@ public final class MuscleGroupsState {
     public enum BodyImageOption: String, CaseIterable {
         case male = "male"
         case female = "female"
+        case custom = "custom"
     }
 
     private let storageKey = "muscle_groups"
@@ -82,6 +83,34 @@ public final class MuscleGroupsState {
 
     public func resetGroups() {
         groups = defaultGroups()
+        saveGroups()
+    }
+
+    /// Applies the chosen body option to every group, re-seeding images from the JSON mapping.
+    /// Custom groups (those not found in the JSON) are left untouched.
+    public func applyBodyOption(_ option: BodyImageOption) {
+        selectedBodyOption = option
+        let mappings = loadImageMappings()
+        for i in groups.indices {
+            guard let map = mappings.first(where: { $0.name == groups[i].name }) else { continue }
+            switch option {
+            case .male:
+                groups[i].primaryImageAssetName   = map.male.primary
+                groups[i].secondaryImageAssetName  = map.male.secondary
+                groups[i].customPrimaryImageData   = nil
+                groups[i].customSecondaryImageData = nil
+            case .female:
+                groups[i].primaryImageAssetName   = map.female.primary
+                groups[i].secondaryImageAssetName  = map.female.secondary
+                groups[i].customPrimaryImageData   = nil
+                groups[i].customSecondaryImageData = nil
+            case .custom:
+                // Clear asset images so the blank placeholder shows; preserve any existing custom data
+                groups[i].primaryImageAssetName   = nil
+                groups[i].secondaryImageAssetName  = nil
+                // Leave customPrimaryImageData / customSecondaryImageData as-is
+            }
+        }
         saveGroups()
     }
 
@@ -156,18 +185,23 @@ public final class MuscleGroupsState {
     // MARK: - JSON loader
 
     /// Returns all mappings from muscle_images.json, or empty array if missing/malformed.
-    public func loadImageMappings() -> [MuscleImageMapping] {
+    public func loadImageMappings() -> [(name: String, male: (primary: String?, secondary: String?), female: (primary: String?, secondary: String?))] {
         guard let url = Bundle.main.url(forResource: "muscle_images", withExtension: "json"),
               let data = try? Data(contentsOf: url),
               let file = try? JSONDecoder().decode(MuscleImageMappingFile.self, from: data)
         else { return [] }
-        return file.mappings
+        return file.mappings.map { m in
+            (name: m.name,
+             male: (primary: m.male.primary, secondary: m.male.secondary),
+             female: (primary: m.female.primary, secondary: m.female.secondary))
+        }
     }
 
     /// Returns the male and female image pairs for a given muscle name from the JSON.
     public func imagePairs(for muscleName: String) -> (male: (primary: String?, secondary: String?), female: (primary: String?, secondary: String?))? {
-        let map = loadImageMappings().first { $0.name == muscleName }
-        guard let m = map else { return nil }
-        return (male: (m.male.primary, m.male.secondary), female: (m.female.primary, m.female.secondary))
+        loadImageMappings().first { $0.name == muscleName }.map { m in
+            (male: (primary: m.male.primary, secondary: m.male.secondary),
+             female: (primary: m.female.primary, secondary: m.female.secondary))
+        }
     }
 }

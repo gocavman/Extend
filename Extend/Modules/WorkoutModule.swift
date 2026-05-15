@@ -576,18 +576,37 @@ public struct StartWorkoutView: View {
                             // Expandable info section
                             if expandedInfo {
                                 VStack(alignment: .leading, spacing: 8) {
-                                    let primaryMuscles = exercise.primaryMuscleGroupIDs.compactMap { id in
-                                        muscleGroupsState.sortedGroups.first { $0.id == id }?.name
+                                    let primaryGroups = exercise.primaryMuscleGroupIDs.compactMap { id in
+                                        muscleGroupsState.sortedGroups.first { $0.id == id }
                                     }
-                                    let secondaryMuscles = exercise.secondaryMuscleGroupIDs.compactMap { id in
-                                        muscleGroupsState.sortedGroups.first { $0.id == id }?.name
+                                    let secondaryGroups = exercise.secondaryMuscleGroupIDs.compactMap { id in
+                                        muscleGroupsState.sortedGroups.first { $0.id == id }
                                     }
-                                    let allMuscles = (primaryMuscles + secondaryMuscles).joined(separator: ", ")
+                                    let allGroups = primaryGroups + secondaryGroups
+                                    let allMuscles = allGroups.map(\.name).joined(separator: ", ")
 
                                     if !allMuscles.isEmpty {
                                         Text("Muscles: \(allMuscles)")
                                             .font(.caption)
                                             .foregroundColor(.secondary)
+                                    }
+
+                                    // Muscle thumbnails
+                                    if !allGroups.isEmpty {
+                                        ScrollView(.horizontal, showsIndicators: false) {
+                                            HStack(spacing: 8) {
+                                                ForEach(allGroups) { group in
+                                                    VStack(spacing: 4) {
+                                                        MuscleGroupThumbnail(group: group, size: 144)
+                                                        Text(group.name)
+                                                            .font(.system(size: 11))
+                                                            .foregroundColor(.secondary)
+                                                            .lineLimit(1)
+                                                    }
+                                                }
+                                            }
+                                            .padding(.vertical, 2)
+                                        }
                                     }
 
                                     let equipmentNames = exercise.equipmentIDs.compactMap { id in

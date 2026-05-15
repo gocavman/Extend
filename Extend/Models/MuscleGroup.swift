@@ -54,6 +54,17 @@ public struct MuscleGroup: Identifiable, Hashable, Codable {
         customSecondaryImageData = try container.decodeIfPresent(Data.self, forKey: .customSecondaryImageData)
     }
 
+    public func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(id, forKey: .id)
+        try container.encode(name, forKey: .name)
+        try container.encodeIfPresent(primaryImageAssetName, forKey: .primaryImageAssetName)
+        try container.encodeIfPresent(secondaryImageAssetName, forKey: .secondaryImageAssetName)
+        try container.encodeIfPresent(customPrimaryImageData, forKey: .customPrimaryImageData)
+        try container.encodeIfPresent(customSecondaryImageData, forKey: .customSecondaryImageData)
+        // Note: legacy imageAssetName key is intentionally not written out
+    }
+
     private enum CodingKeys: String, CodingKey {
         case id, name
         case imageAssetName          // legacy key — read-only for migration

@@ -40,6 +40,7 @@ private struct SettingsModuleView: View {
     @State private var isNavBarSectionExpanded = false
     @State private var isNavBarColorExpanded = false
     @State private var isDashboardSectionExpanded = false
+    @State private var isMusclesSectionExpanded = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -93,6 +94,30 @@ private struct SettingsModuleView: View {
                         NavigationLink(destination: DashboardHeaderSettingsView()) {
                             Text("Header")
                         }
+                    }
+
+                    // MARK: - Muscles Section
+                    DisclosureGroup("Muscles", isExpanded: $isMusclesSectionExpanded) {
+                        HStack {
+                            Text("Image Set")
+                            Spacer()
+                            Picker("", selection: Binding(
+                                get: { muscleGroupsState.selectedBodyOption },
+                                set: { muscleGroupsState.applyBodyOption($0) }
+                            )) {
+                                Text("Option 1").tag(MuscleGroupsState.BodyImageOption.male)
+                                Text("Option 2").tag(MuscleGroupsState.BodyImageOption.female)
+                                Text("Custom").tag(MuscleGroupsState.BodyImageOption.custom)
+                            }
+                            .pickerStyle(.menu)
+                        }
+                        Text(muscleGroupsState.selectedBodyOption == .custom
+                             ? "Custom: Edit each muscle individually to assign images."
+                             : muscleGroupsState.selectedBodyOption == .male
+                               ? "Option 1: Default images are used for all muscles."
+                               : "Option 2: Default images are used for all muscles.")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
                     }
 
                     // MARK: - Reset Section

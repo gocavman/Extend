@@ -291,15 +291,15 @@ private struct MuscleGroupEditor: View {
                     Image(name).resizable().scaledToFit()
                 } else {
                     Image(systemName: "photo")
-                        .font(.system(size: 24))
+                        .font(.system(size: 48))
                         .foregroundColor(.secondary)
-                        .frame(width: 72, height: 72)
+                        .frame(width: 144, height: 144)
                         .background(Color(uiColor: .systemGray6))
-                        .cornerRadius(8)
+                        .cornerRadius(12)
                 }
             }
-            .frame(width: 72, height: 72)
-            .clipShape(RoundedRectangle(cornerRadius: 8))
+            .frame(width: 144, height: 144)
+            .clipShape(RoundedRectangle(cornerRadius: 12))
 
             Text(label)
                 .font(.caption2)
