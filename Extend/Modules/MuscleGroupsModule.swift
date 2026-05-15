@@ -66,7 +66,7 @@ private struct MuscleGroupsModuleView: View {
                                 .contentShape(Rectangle())
                                 .onTapGesture {
                                     UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                                    editingGroup = group
+                                    statsGroup = group
                                 }
 
                             // Graph icon — navigate to stats

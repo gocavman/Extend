@@ -137,41 +137,57 @@ struct ExerciseStatsView: View {
 
     @ViewBuilder
     private func statsCard(title: String, unit: String, points: [(Date, Double)], color: Color) -> some View {
-        let maxVal = points.map { $0.1 }.max() ?? 1
-        let latest = points.last?.1 ?? 0
-        let best = points.map { $0.1 }.max() ?? 0
-        let avg = points.isEmpty ? 0 : points.map { $0.1 }.reduce(0, +) / Double(points.count)
+        let hasData = points.contains(where: { $0.1 > 0 })
 
-        VStack(alignment: .leading, spacing: 12) {
-            Text(title)
-                .font(.subheadline)
-                .fontWeight(.semibold)
-                .padding(.horizontal, 16)
-
-            // Bar chart
-            BarChartView(points: points, maxValue: maxVal, barColor: color)
-                .frame(height: 120)
-                .padding(.horizontal, 16)
-
-            // Summary strip
-            HStack(spacing: 0) {
-                summaryCell(label: "Latest", value: formatVal(latest, unit: unit))
-                Divider().frame(height: 28)
-                summaryCell(label: "Best", value: formatVal(best, unit: unit))
-                Divider().frame(height: 28)
-                summaryCell(label: "Avg", value: formatVal(avg, unit: unit))
+        if !hasData {
+            HStack {
+                Text(title)
+                    .font(.subheadline)
+                    .fontWeight(.semibold)
+                Spacer()
+                Text("No data")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
             }
-            .frame(maxWidth: .infinity)
+            .padding(.horizontal, 16)
             .padding(.vertical, 10)
-            .background(Color(uiColor: .systemGray6))
-            .cornerRadius(10)
+        } else {
+            let maxVal = points.map { $0.1 }.max() ?? 1
+            let latest = points.last?.1 ?? 0
+            let best = points.map { $0.1 }.max() ?? 0
+            let avg = points.isEmpty ? 0 : points.map { $0.1 }.reduce(0, +) / Double(points.count)
+
+            VStack(alignment: .leading, spacing: 12) {
+                Text(title)
+                    .font(.subheadline)
+                    .fontWeight(.semibold)
+                    .padding(.horizontal, 16)
+
+                // Bar chart
+                BarChartView(points: points, maxValue: maxVal, barColor: color)
+                    .frame(height: 120)
+                    .padding(.horizontal, 16)
+
+                // Summary strip
+                HStack(spacing: 0) {
+                    summaryCell(label: "Latest", value: formatVal(latest, unit: unit))
+                    Divider().frame(height: 28)
+                    summaryCell(label: "Best", value: formatVal(best, unit: unit))
+                    Divider().frame(height: 28)
+                    summaryCell(label: "Avg", value: formatVal(avg, unit: unit))
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 10)
+                .background(Color(uiColor: .systemGray6))
+                .cornerRadius(10)
+                .padding(.horizontal, 16)
+            }
+            .padding(.vertical, 12)
+            .background(Color(uiColor: .systemBackground))
+            .cornerRadius(14)
+            .shadow(color: .black.opacity(0.05), radius: 4, x: 0, y: 2)
             .padding(.horizontal, 16)
         }
-        .padding(.vertical, 12)
-        .background(Color(uiColor: .systemBackground))
-        .cornerRadius(14)
-        .shadow(color: .black.opacity(0.05), radius: 4, x: 0, y: 2)
-        .padding(.horizontal, 16)
     }
 
     private func summaryCell(label: String, value: String) -> some View {
@@ -336,39 +352,55 @@ struct MuscleStatsView: View {
 
     @ViewBuilder
     private func muscleStatsCard(title: String, unit: String, points: [(Date, Double)], color: Color) -> some View {
-        let maxVal = points.map { $0.1 }.max() ?? 1
-        let total = points.map { $0.1 }.reduce(0, +)
-        let avg = points.isEmpty ? 0 : total / Double(points.count)
-        let best = points.map { $0.1 }.max() ?? 0
+        let hasData = points.contains(where: { $0.1 > 0 })
 
-        VStack(alignment: .leading, spacing: 12) {
-            Text(title)
-                .font(.subheadline)
-                .fontWeight(.semibold)
-                .padding(.horizontal, 16)
-
-            BarChartView(points: points, maxValue: maxVal, barColor: color, labelMode: .week)
-                .frame(height: 120)
-                .padding(.horizontal, 16)
-
-            HStack(spacing: 0) {
-                summaryCell(label: "Total", value: formatVal(total, unit: unit))
-                Divider().frame(height: 28)
-                summaryCell(label: "Best Week", value: formatVal(best, unit: unit))
-                Divider().frame(height: 28)
-                summaryCell(label: "Avg/Week", value: formatVal(avg, unit: unit))
+        if !hasData {
+            HStack {
+                Text(title)
+                    .font(.subheadline)
+                    .fontWeight(.semibold)
+                Spacer()
+                Text("No data")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
             }
-            .frame(maxWidth: .infinity)
+            .padding(.horizontal, 16)
             .padding(.vertical, 10)
-            .background(Color(uiColor: .systemGray6))
-            .cornerRadius(10)
+        } else {
+            let maxVal = points.map { $0.1 }.max() ?? 1
+            let total = points.map { $0.1 }.reduce(0, +)
+            let avg = points.isEmpty ? 0 : total / Double(points.count)
+            let best = points.map { $0.1 }.max() ?? 0
+
+            VStack(alignment: .leading, spacing: 12) {
+                Text(title)
+                    .font(.subheadline)
+                    .fontWeight(.semibold)
+                    .padding(.horizontal, 16)
+
+                BarChartView(points: points, maxValue: maxVal, barColor: color, labelMode: .week)
+                    .frame(height: 120)
+                    .padding(.horizontal, 16)
+
+                HStack(spacing: 0) {
+                    summaryCell(label: "Total", value: formatVal(total, unit: unit))
+                    Divider().frame(height: 28)
+                    summaryCell(label: "Best Week", value: formatVal(best, unit: unit))
+                    Divider().frame(height: 28)
+                    summaryCell(label: "Avg/Week", value: formatVal(avg, unit: unit))
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 10)
+                .background(Color(uiColor: .systemGray6))
+                .cornerRadius(10)
+                .padding(.horizontal, 16)
+            }
+            .padding(.vertical, 12)
+            .background(Color(uiColor: .systemBackground))
+            .cornerRadius(14)
+            .shadow(color: .black.opacity(0.05), radius: 4, x: 0, y: 2)
             .padding(.horizontal, 16)
         }
-        .padding(.vertical, 12)
-        .background(Color(uiColor: .systemBackground))
-        .cornerRadius(14)
-        .shadow(color: .black.opacity(0.05), radius: 4, x: 0, y: 2)
-        .padding(.horizontal, 16)
     }
 
     private func summaryCell(label: String, value: String) -> some View {
@@ -406,9 +438,7 @@ struct BarChartView: View {
     var labelMode: BarLabelMode = .date
 
     private var displayPoints: [(Date, Double)] {
-        // Cap to a reasonable number of bars for readability
         if points.count <= 20 { return points }
-        // Downsample by taking evenly spaced points
         let step = points.count / 20
         return stride(from: 0, to: points.count, by: max(step, 1)).map { points[$0] }
     }
@@ -416,63 +446,113 @@ struct BarChartView: View {
     var body: some View {
         GeometryReader { geo in
             let count = displayPoints.count
-            guard count > 0, maxValue > 0 else {
-                Rectangle().fill(Color(uiColor: .systemGray5)).cornerRadius(4)
-                return
-            }
+            if count == 0 || maxValue <= 0 {
+                Rectangle()
+                    .fill(Color(uiColor: .systemGray5))
+                    .cornerRadius(4)
+            } else {
+                let totalWidth  = geo.size.width
+                let totalHeight = geo.size.height
+                let labelHeight: CGFloat = 14
+                // The chart area sits above the label strip — baseline is exact pixel
+                let baseline    = totalHeight - labelHeight
+                let chartHeight = baseline
+                let barSpacing: CGFloat = count > 12 ? 2 : 4
+                let barWidth = max(4, (totalWidth - barSpacing * CGFloat(count - 1)) / CGFloat(count))
+                let fractions: [CGFloat] = displayPoints.map { CGFloat(maxValue > 0 ? $0.1 / maxValue : 0) }
 
-            let totalWidth = geo.size.width
-            let totalHeight = geo.size.height
-            let labelHeight: CGFloat = 18
-            let chartHeight = totalHeight - labelHeight
-            let barSpacing: CGFloat = count > 12 ? 2 : 4
-            let barWidth = max(4, (totalWidth - barSpacing * CGFloat(count - 1)) / CGFloat(count))
+                ZStack(alignment: .topLeading) {
+                    // All bars rendered in a single Canvas — pixel-perfect baseline alignment
+                    Canvas { ctx, size in
+                        // Grid lines at 100% and 50%
+                        for frac in [1.0, 0.5] as [CGFloat] {
+                            let y = baseline - frac * chartHeight
+                            var line = Path()
+                            line.move(to: CGPoint(x: 0, y: y))
+                            line.addLine(to: CGPoint(x: size.width, y: y))
+                            ctx.stroke(line, with: .color(Color(uiColor: .systemGray5)), lineWidth: 1)
+                        }
 
-            ZStack(alignment: .bottomLeading) {
-                // Horizontal grid lines (3 lines)
-                VStack(spacing: 0) {
-                    ForEach([1.0, 0.5], id: \.self) { fraction in
-                        Spacer()
-                        Rectangle()
-                            .fill(Color(uiColor: .systemGray5))
-                            .frame(height: 1)
-                            .offset(y: -labelHeight)
-                        Spacer()
+                        // Bars
+                        for i in fractions.indices {
+                            let barH  = fractions[i] * chartHeight
+                            let barX  = CGFloat(i) * (barWidth + barSpacing)
+                            let barY  = baseline - barH          // top-left corner of bar
+                            let rect  = CGRect(x: barX, y: barY, width: barWidth, height: barH)
+                            let rr    = Path(roundedRect: rect, cornerRadius: 3)
+                            ctx.fill(rr, with: .color(barColor.opacity(0.85)))
+                        }
                     }
-                }
-                .frame(height: totalHeight - labelHeight)
-                .frame(maxWidth: .infinity, alignment: .top)
+                    .frame(width: totalWidth, height: totalHeight)
 
-                // Bars + labels
-                HStack(alignment: .bottom, spacing: barSpacing) {
+                    // Value labels — drawn as SwiftUI Text so they scale with Dynamic Type
+                    // Positioned absolutely inside the bar using known bar geometry
                     ForEach(displayPoints.indices, id: \.self) { i in
-                        let (date, val) = displayPoints[i]
-                        let fraction = maxValue > 0 ? val / maxValue : 0
-                        let barH = max(2, chartHeight * CGFloat(fraction))
+                        let val    = displayPoints[i].1
+                        let barH   = fractions[i] * chartHeight
+                        let barX   = CGFloat(i) * (barWidth + barSpacing)
+                        let showValue = barWidth >= 18 && barH >= 22
+                        if showValue {
+                            Text(formatBarValue(val))
+                                .font(.system(size: min(barWidth * 0.42, 13), weight: .semibold))
+                                .foregroundColor(.white)
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.6)
+                                .frame(width: barWidth - 2)
+                                // Center the text within the bar vertically
+                                .position(x: barX + barWidth / 2,
+                                          y: baseline - barH / 2)
+                        }
+                    }
 
-                        VStack(spacing: 2) {
-                            Spacer(minLength: 0)
-                            RoundedRectangle(cornerRadius: 3)
-                                .fill(barColor.opacity(0.85))
-                                .frame(width: barWidth, height: barH)
-                            Text(barLabel(for: date, index: i, total: count))
+                    // Date / week labels along the bottom
+                    ForEach(displayPoints.indices, id: \.self) { i in
+                        let label = barLabel(for: displayPoints[i].0, index: i, total: count)
+                        if !label.isEmpty {
+                            let barX = CGFloat(i) * (barWidth + barSpacing)
+                            Text(label)
                                 .font(.system(size: 9))
                                 .foregroundColor(.secondary)
-                                .frame(width: barWidth)
                                 .lineLimit(1)
+                                .frame(width: barWidth)
+                                .position(x: barX + barWidth / 2,
+                                          y: baseline + labelHeight / 2)
                         }
-                        .frame(height: totalHeight)
+                    }
+
+                    // Trend line (Catmull-Rom curve through bar tops)
+                    if count > 1 {
+                        let overflow: CGFloat = 8
+                        TrendLineOverlay(
+                            fractions: fractions.map { Double($0) },
+                            barWidth: barWidth,
+                            barSpacing: barSpacing,
+                            chartHeight: chartHeight,
+                            baseline: baseline,
+                            overflow: overflow,
+                            color: barColor
+                        )
+                        .frame(width: totalWidth, height: totalHeight)
+                        .padding(-overflow)
+                        .allowsHitTesting(false)
                     }
                 }
             }
         }
     }
 
+    private func formatBarValue(_ val: Double) -> String {
+        if val >= 1000 {
+            return String(format: "%.0fk", val / 1000)
+        }
+        return val.truncatingRemainder(dividingBy: 1) == 0
+            ? "\(Int(val))"
+            : String(format: "%.1f", val)
+    }
+
     private func barLabel(for date: Date, index: Int, total: Int) -> String {
-        // Only show labels for first, middle, last (to avoid crowding)
         let showIndices: Set<Int> = [0, total / 2, total - 1]
         guard showIndices.contains(index) else { return "" }
-
         switch labelMode {
         case .date:
             let formatter = DateFormatter()
@@ -481,5 +561,76 @@ struct BarChartView: View {
         case .week:
             return "W\(index + 1)"
         }
+    }
+}
+
+// MARK: - Trend line drawn over bars using a smooth Catmull-Rom curve
+
+private struct TrendLineOverlay: View {
+    let fractions: [Double]
+    let barWidth: CGFloat
+    let barSpacing: CGFloat
+    let chartHeight: CGFloat
+    let baseline: CGFloat     // y of the bar floor in the original (non-expanded) coordinate space
+    let overflow: CGFloat
+    let color: Color
+
+    var body: some View {
+        Canvas { ctx, size in
+            guard fractions.count > 1 else { return }
+
+            // X center of each bar — shift right by overflow since canvas is expanded on all sides
+            let xs: [CGFloat] = fractions.indices.map { i in
+                overflow + CGFloat(i) * (barWidth + barSpacing) + barWidth / 2
+            }
+            // Y = top of each bar — baseline is shifted down by overflow, bar top is above it
+            let ys: [CGFloat] = fractions.map { f in
+                overflow + baseline - CGFloat(f) * chartHeight
+            }
+
+            let points = zip(xs, ys).map { CGPoint(x: $0, y: $1) }
+
+            // Build a smooth Catmull-Rom path through the bar-top midpoints
+            var path = Path()
+            path.move(to: points[0])
+
+            for i in 0 ..< points.count - 1 {
+                let p0 = points[max(i - 1, 0)]
+                let p1 = points[i]
+                let p2 = points[min(i + 1, points.count - 1)]
+                let p3 = points[min(i + 2, points.count - 1)]
+
+                let cp1 = CGPoint(
+                    x: p1.x + (p2.x - p0.x) / 6,
+                    y: p1.y + (p2.y - p0.y) / 6
+                )
+                let cp2 = CGPoint(
+                    x: p2.x - (p3.x - p1.x) / 6,
+                    y: p2.y - (p3.y - p1.y) / 6
+                )
+                path.addCurve(to: p2, control1: cp1, control2: cp2)
+            }
+
+            // Draw a subtle glow shadow first, then the line itself
+            ctx.stroke(
+                path,
+                with: .color(color.opacity(0.18)),
+                style: StrokeStyle(lineWidth: 4, lineCap: .round, lineJoin: .round)
+            )
+            ctx.stroke(
+                path,
+                with: .color(color.opacity(0.75)),
+                style: StrokeStyle(lineWidth: 2, lineCap: .round, lineJoin: .round)
+            )
+
+            // Dot at each data point
+            for pt in points {
+                let dotRect = CGRect(x: pt.x - 3, y: pt.y - 3, width: 6, height: 6)
+                ctx.fill(Path(ellipseIn: dotRect), with: .color(color))
+                let innerRect = CGRect(x: pt.x - 1.5, y: pt.y - 1.5, width: 3, height: 3)
+                ctx.fill(Path(ellipseIn: innerRect), with: .color(.white))
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 }

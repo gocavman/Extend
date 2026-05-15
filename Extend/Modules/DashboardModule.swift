@@ -1091,68 +1091,148 @@ private struct WeekFrequencyView: View {
     }
 }
 
+private struct DonutSegmentShape: Shape {
+    let startAngle: Angle
+    let endAngle: Angle
+    let outerRadius: CGFloat
+    let innerRadius: CGFloat
+    let center: CGPoint
+
+    func path(in rect: CGRect) -> Path {
+        var path = Path()
+        path.addArc(center: center, radius: outerRadius,
+                    startAngle: startAngle, endAngle: endAngle, clockwise: false)
+        path.addArc(center: center, radius: innerRadius,
+                    startAngle: endAngle, endAngle: startAngle, clockwise: true)
+        path.closeSubpath()
+        return path
+    }
+}
+
+private struct DonutSeparatorShape: Shape {
+    let angle: Angle
+    let innerRadius: CGFloat
+    let outerRadius: CGFloat
+    let center: CGPoint
+
+    func path(in rect: CGRect) -> Path {
+        var path = Path()
+        let cosA = CGFloat(Foundation.cos(angle.radians))
+        let sinA = CGFloat(Foundation.sin(angle.radians))
+        path.move(to: CGPoint(x: center.x + innerRadius * cosA, y: center.y + innerRadius * sinA))
+        path.addLine(to: CGPoint(x: center.x + outerRadius * cosA, y: center.y + outerRadius * sinA))
+        return path
+    }
+}
+
 private struct PieChartView: View {
     let segments: [PieSegment]
 
-    var body: some View {
-        GeometryReader { geometry in
-            ZStack {
-                ForEach(segments.indices, id: \.self) { index in
-                    let startAngle = angleStart(at: index)
-                    let endAngle = angleEnd(at: index)
-                    Path { path in
-                        let rect = CGRect(origin: .zero, size: geometry.size)
-                        let center = CGPoint(x: rect.midX, y: rect.midY)
-                        let radius = min(rect.width, rect.height) / 2
-                        path.move(to: center)
-                        path.addArc(
-                            center: center,
-                            radius: radius,
-                            startAngle: startAngle,
-                            endAngle: endAngle,
-                            clockwise: false
-                        )
-                    }
-                    .fill(segments[index].color)
-
-                    // Only show percentage labels for real data (not dummy charts)
-                    if !isDummyChart {
-                        let midAngle = (startAngle.radians + endAngle.radians) / 2
-                        let radius = min(geometry.size.width, geometry.size.height) / 2
-                        let theta = max(endAngle.radians - startAngle.radians, 0.0001)
-                        let labelRadius = (4 * radius * sin(theta / 2)) / (3 * theta)
-                        let labelX = geometry.size.width / 2 + labelRadius * cos(midAngle)
-                        let labelY = geometry.size.height / 2 + labelRadius * sin(midAngle)
-
-                        Text("\(Int(segments[index].value * 100))%")
-                            .font(.caption2)
-                            .fontWeight(.semibold)
-                            .foregroundColor(.white)
-                            .position(x: labelX, y: labelY)
-                    }
-                }
-            }
-        }
-    }
-
-    // Check if this is a dummy chart (single 100% gray segment)
     private var isDummyChart: Bool {
         segments.count == 1 && segments[0].value == 1.0 && segments[0].color == .gray
     }
 
-    // ...existing code...
+    var body: some View {
+        GeometryReader { geometry in
+            PieChartCanvas(
+                segments: segments,
+                isDummyChart: isDummyChart,
+                size: geometry.size
+            )
+        }
+    }
 
     private func angleStart(at index: Int) -> Angle {
         let total = segments.map { $0.value }.reduce(0, +)
         let prior = segments.prefix(index).map { $0.value }.reduce(0, +)
-        // Start from top (12 o'clock = -90 degrees)
         return .degrees((prior / total) * 360 - 90)
     }
 
     private func angleEnd(at index: Int) -> Angle {
         let total = segments.map { $0.value }.reduce(0, +)
         let current = segments.prefix(index + 1).map { $0.value }.reduce(0, +)
-        // Start from top (12 o'clock = -90 degrees)
+        return .degrees((current / total) * 360 - 90)
+    }
+}
+
+private struct PieChartCanvas: View {
+    let segments: [PieSegment]
+    let isDummyChart: Bool
+    let size: CGSize
+
+    private var outerRadius: CGFloat { min(size.width, size.height) / 2 }
+    private var innerRadius: CGFloat { outerRadius * 0.34 }
+    private var center: CGPoint { CGPoint(x: size.width / 2, y: size.height / 2) }
+
+    var body: some View {
+        ZStack {
+            ForEach(segments.indices, id: \.self) { index in
+                DonutSegmentShape(
+                    startAngle: angleStart(at: index),
+                    endAngle: angleEnd(at: index),
+                    outerRadius: outerRadius,
+                    innerRadius: innerRadius,
+                    center: center
+                )
+                .fill(segments[index].color)
+
+                if segments.count > 1 {
+                    DonutSeparatorShape(
+                        angle: angleStart(at: index),
+                        innerRadius: innerRadius,
+                        outerRadius: outerRadius,
+                        center: center
+                    )
+                    .stroke(Color.white, lineWidth: 1.5)
+                }
+
+                // Percentage label in the middle of the ring arc — only for segments ≥ 8%
+                if !isDummyChart {
+                    percentageLabel(at: index)
+                }
+            }
+
+            // Center hole
+            Circle()
+                .fill(Color(uiColor: .systemGray6))
+                .frame(width: innerRadius * 2, height: innerRadius * 2)
+                .position(center)
+        }
+    }
+
+    @ViewBuilder
+    private func percentageLabel(at index: Int) -> some View {
+        let total = segments.map { $0.value }.reduce(0, +)
+        let fraction = total > 0 ? segments[index].value / total : 0
+        // Only show label when segment is large enough to fit text
+        if fraction >= 0.08 {
+            let start = angleStart(at: index)
+            let end = angleEnd(at: index)
+            let midAngle = Angle.degrees((start.degrees + end.degrees) / 2)
+            // Position label in the middle of the ring band
+            let labelRadius = (innerRadius + outerRadius) / 2
+            let cosA = CGFloat(Foundation.cos(midAngle.radians))
+            let sinA = CGFloat(Foundation.sin(midAngle.radians))
+            let labelX = center.x + labelRadius * cosA
+            let labelY = center.y + labelRadius * sinA
+
+            Text("\(Int((fraction * 100).rounded()))%")
+                .font(.system(size: max(8, outerRadius * 0.16), weight: .semibold))
+                .foregroundColor(.white)
+                .shadow(color: .black.opacity(0.25), radius: 1, x: 0, y: 0)
+                .position(x: labelX, y: labelY)
+        }
+    }
+
+    private func angleStart(at index: Int) -> Angle {
+        let total = segments.map { $0.value }.reduce(0, +)
+        let prior = segments.prefix(index).map { $0.value }.reduce(0, +)
+        return .degrees((prior / total) * 360 - 90)
+    }
+
+    private func angleEnd(at index: Int) -> Angle {
+        let total = segments.map { $0.value }.reduce(0, +)
+        let current = segments.prefix(index + 1).map { $0.value }.reduce(0, +)
         return .degrees((current / total) * 360 - 90)
     }
 }

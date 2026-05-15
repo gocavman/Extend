@@ -585,14 +585,29 @@ public struct StartWorkoutView: View {
                                     let allGroups = primaryGroups + secondaryGroups
                                     let allMuscles = allGroups.map(\.name).joined(separator: ", ")
 
+                                    // A group has a real image if it has a non-nil asset name or custom data
+                                    let groupsWithImages = allGroups.filter {
+                                        $0.customPrimaryImageData != nil ||
+                                        ($0.primaryImageAssetName != nil && !($0.primaryImageAssetName!.isEmpty))
+                                    }
+                                    let hasAnyImages = !groupsWithImages.isEmpty
+
                                     if !allMuscles.isEmpty {
-                                        Text("Muscles: \(allMuscles)")
-                                            .font(.caption)
-                                            .foregroundColor(.secondary)
+                                        if hasAnyImages {
+                                            // Images present — show label only, no redundant name list
+                                            Text("Muscles:")
+                                                .font(.caption)
+                                                .foregroundColor(.secondary)
+                                        } else {
+                                            // No images — show full name list, skip thumbnails
+                                            Text("Muscles: \(allMuscles)")
+                                                .font(.caption)
+                                                .foregroundColor(.secondary)
+                                        }
                                     }
 
-                                    // Muscle thumbnails
-                                    if !allGroups.isEmpty {
+                                    // Muscle thumbnails — only when real images exist
+                                    if hasAnyImages {
                                         ScrollView(.horizontal, showsIndicators: false) {
                                             HStack(spacing: 8) {
                                                 ForEach(allGroups) { group in

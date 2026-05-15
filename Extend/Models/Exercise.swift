@@ -8,7 +8,7 @@
 import Foundation
 
 /// Exercise model with muscle group and equipment relationships
-public struct Exercise: Identifiable, Codable {
+public struct Exercise: Identifiable, Codable, Hashable {
     public let id: UUID
     public var name: String
     public var notes: String

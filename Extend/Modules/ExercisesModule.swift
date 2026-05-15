@@ -126,7 +126,7 @@ private struct ExercisesModuleView: View {
                                 .contentShape(Rectangle())
                                 .onTapGesture {
                                     UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                                    editingExercise = exercise
+                                    statsExercise = exercise
                                 }
 
                                 // Graph icon — navigate to stats
