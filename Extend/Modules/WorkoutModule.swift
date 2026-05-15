@@ -608,20 +608,24 @@ public struct StartWorkoutView: View {
 
                                     // Muscle thumbnails — only when real images exist
                                     if hasAnyImages {
-                                        ScrollView(.horizontal, showsIndicators: false) {
-                                            HStack(spacing: 8) {
-                                                ForEach(allGroups) { group in
-                                                    VStack(spacing: 4) {
-                                                        MuscleGroupThumbnail(group: group, size: 144)
-                                                        Text(group.name)
-                                                            .font(.system(size: 11))
-                                                            .foregroundColor(.secondary)
-                                                            .lineLimit(1)
-                                                    }
+                                        LazyVGrid(
+                                            columns: [
+                                                GridItem(.flexible()),
+                                                GridItem(.flexible())
+                                            ],
+                                            spacing: 12
+                                        ) {
+                                            ForEach(allGroups) { group in
+                                                VStack(spacing: 4) {
+                                                    MuscleGroupThumbnail(group: group, size: 144)
+                                                    Text(group.name)
+                                                        .font(.system(size: 11))
+                                                        .foregroundColor(.secondary)
+                                                        .lineLimit(1)
                                                 }
                                             }
-                                            .padding(.vertical, 2)
                                         }
+                                        .padding(.vertical, 2)
                                     }
 
                                     let equipmentNames = exercise.equipmentIDs.compactMap { id in

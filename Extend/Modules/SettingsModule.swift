@@ -97,9 +97,9 @@ private struct SettingsModuleView: View {
                     }
 
                     // MARK: - Muscles Section
-                    DisclosureGroup("Muscles", isExpanded: $isMusclesSectionExpanded) {
+                    DisclosureGroup("Image Set", isExpanded: $isMusclesSectionExpanded) {
                         HStack {
-                            Text("Image Set")
+                            Text("Muscles")
                             Spacer()
                             Picker("", selection: Binding(
                                 get: { muscleGroupsState.selectedBodyOption },
@@ -187,6 +187,7 @@ private struct SettingsModuleView: View {
         dashboardState.resetTiles()
         dashboardHeaderState.resetDefaults()
         muscleGroupsState.resetGroups()
+        muscleGroupsState.applyBodyOption(.male)
         equipmentState.resetItems()
         ExercisesState.shared.resetExercises()
         WorkoutsState.shared.resetWorkouts()
