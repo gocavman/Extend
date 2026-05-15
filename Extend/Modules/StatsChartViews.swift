@@ -634,3 +634,205 @@ private struct TrendLineOverlay: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 }
+
+// MARK: - Equipment Stats View
+
+struct EquipmentStatsView: View {
+    let equipment: Equipment
+
+    @Environment(WorkoutLogState.self) var logState
+    @Environment(ExercisesState.self) var exercisesState
+    @State private var timeRange: StatsTimeRange = .thirtyDays
+
+    /// Exercises that use this piece of equipment
+    private var linkedExercises: [Exercise] {
+        exercisesState.exercises.filter { $0.equipmentIDs.contains(equipment.id) }
+    }
+
+    private var linkedExerciseIDs: Set<UUID> {
+        Set(linkedExercises.map { $0.id })
+    }
+
+    /// Logs within the time range that contain at least one linked exercise
+    private var filteredLogs: [WorkoutLog] {
+        let start = timeRange.startDate
+        return logState.logs
+            .filter { $0.completedAt >= start }
+            .filter { $0.exercises.contains(where: { linkedExerciseIDs.contains($0.exerciseID) }) }
+            .sorted { $0.completedAt < $1.completedAt }
+    }
+
+    private struct WeekBucket: Identifiable {
+        let id = UUID()
+        let weekStart: Date
+        var sessions: Int
+        var totalVolume: Double
+    }
+
+    private var weekBuckets: [WeekBucket] {
+        guard !filteredLogs.isEmpty else { return [] }
+        let cal = Calendar.current
+        var dict: [Date: WeekBucket] = [:]
+        for log in filteredLogs {
+            let start = cal.dateInterval(of: .weekOfYear, for: log.completedAt)?.start ?? log.completedAt
+            let volume = log.exercises
+                .filter { linkedExerciseIDs.contains($0.exerciseID) }
+                .flatMap { $0.sets }
+                .reduce(0.0) { $0 + Double($1.reps) * $1.weight }
+            if dict[start] != nil {
+                dict[start]!.sessions += 1
+                dict[start]!.totalVolume += volume
+            } else {
+                dict[start] = WeekBucket(weekStart: start, sessions: 1, totalVolume: volume)
+            }
+        }
+        return dict.values.sorted { $0.weekStart < $1.weekStart }
+    }
+
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 16) {
+                // Time range picker
+                Picker("Time Range", selection: $timeRange) {
+                    ForEach(StatsTimeRange.allCases, id: \.self) { range in
+                        Text(range.rawValue).tag(range)
+                    }
+                }
+                .pickerStyle(.segmented)
+                .padding(.horizontal, 16)
+
+                if weekBuckets.isEmpty {
+                    equipmentEmptyState
+                } else {
+                    VStack(alignment: .leading, spacing: 24) {
+                        equipmentStatsCard(
+                            title: "Sessions Used",
+                            unit: "sessions",
+                            points: weekBuckets.map { ($0.weekStart, Double($0.sessions)) },
+                            color: .blue
+                        )
+                        equipmentStatsCard(
+                            title: "Total Volume",
+                            unit: "lbs",
+                            points: weekBuckets.map { ($0.weekStart, $0.totalVolume) },
+                            color: Color(red: 0.2, green: 0.65, blue: 0.4)
+                        )
+                    }
+                }
+
+                // Linked exercises list
+                if !linkedExercises.isEmpty {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Exercises Using This Equipment")
+                            .font(.subheadline)
+                            .fontWeight(.semibold)
+                            .padding(.horizontal, 16)
+                        ForEach(linkedExercises) { exercise in
+                            HStack {
+                                Image(systemName: "flame.fill")
+                                    .foregroundColor(.orange)
+                                    .font(.caption)
+                                Text(exercise.name)
+                                    .font(.subheadline)
+                                    .foregroundColor(.primary)
+                            }
+                            .padding(.horizontal, 20)
+                            .padding(.vertical, 4)
+                        }
+                    }
+                    .padding(.vertical, 12)
+                    .background(Color(uiColor: .systemBackground))
+                    .cornerRadius(14)
+                    .shadow(color: .black.opacity(0.05), radius: 4, x: 0, y: 2)
+                    .padding(.horizontal, 16)
+                }
+            }
+            .padding(.vertical, 16)
+        }
+        .navigationTitle(equipment.name)
+        .navigationBarTitleDisplayMode(.large)
+    }
+
+    private var equipmentEmptyState: some View {
+        VStack(spacing: 12) {
+            Image(systemName: "chart.bar")
+                .font(.system(size: 48, weight: .light))
+                .foregroundColor(.secondary)
+            Text("No Data")
+                .font(.headline)
+                .foregroundColor(.secondary)
+            Text("Log workouts with exercises using this equipment to see stats here.")
+                .font(.subheadline)
+                .foregroundColor(.secondary)
+                .multilineTextAlignment(.center)
+                .padding(.horizontal, 32)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.top, 60)
+    }
+
+    @ViewBuilder
+    private func equipmentStatsCard(title: String, unit: String, points: [(Date, Double)], color: Color) -> some View {
+        let hasData = points.contains(where: { $0.1 > 0 })
+        if !hasData {
+            HStack {
+                Text(title)
+                    .font(.subheadline)
+                    .fontWeight(.semibold)
+                Spacer()
+                Text("No data")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 10)
+        } else {
+            let maxVal = points.map { $0.1 }.max() ?? 1
+            let total  = points.map { $0.1 }.reduce(0, +)
+            let avg    = points.isEmpty ? 0 : total / Double(points.count)
+            let best   = points.map { $0.1 }.max() ?? 0
+            VStack(alignment: .leading, spacing: 12) {
+                Text(title)
+                    .font(.subheadline)
+                    .fontWeight(.semibold)
+                    .padding(.horizontal, 16)
+                BarChartView(points: points, maxValue: maxVal, barColor: color, labelMode: .week)
+                    .frame(height: 120)
+                    .padding(.horizontal, 16)
+                HStack(spacing: 0) {
+                    equipmentSummaryCell(label: "Total",     value: equipmentFormatVal(total, unit: unit))
+                    Divider().frame(height: 28)
+                    equipmentSummaryCell(label: "Best Week", value: equipmentFormatVal(best,  unit: unit))
+                    Divider().frame(height: 28)
+                    equipmentSummaryCell(label: "Avg/Week",  value: equipmentFormatVal(avg,   unit: unit))
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 10)
+                .background(Color(uiColor: .systemGray6))
+                .cornerRadius(10)
+                .padding(.horizontal, 16)
+            }
+            .padding(.vertical, 12)
+            .background(Color(uiColor: .systemBackground))
+            .cornerRadius(14)
+            .shadow(color: .black.opacity(0.05), radius: 4, x: 0, y: 2)
+            .padding(.horizontal, 16)
+        }
+    }
+
+    private func equipmentSummaryCell(label: String, value: String) -> some View {
+        VStack(spacing: 2) {
+            Text(value).font(.subheadline).fontWeight(.semibold)
+            Text(label).font(.caption2).foregroundColor(.secondary)
+        }
+        .frame(maxWidth: .infinity)
+    }
+
+    private func equipmentFormatVal(_ val: Double, unit: String) -> String {
+        if val == 0 { return "—" }
+        if unit == "sessions" { return "\(Int(val))" }
+        return val.truncatingRemainder(dividingBy: 1) == 0
+            ? "\(Int(val)) \(unit)"
+            : String(format: "%.1f \(unit)", val)
+    }
+}

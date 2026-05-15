@@ -33,6 +33,7 @@ private struct MuscleGroupsModuleView: View {
 
     @State private var showingAdd = false
     @State private var editingGroup: MuscleGroup?
+    @State private var deletingGroup: MuscleGroup?
     @State private var statsGroup: MuscleGroup?
 
     var body: some View {
@@ -91,12 +92,6 @@ private struct MuscleGroupsModuleView: View {
                             .buttonStyle(.plain)
                             .accessibilityLabel("Edit \(group.name)")
                         }
-                        .contextMenu {
-                            Button("Edit") { editingGroup = group }
-                            Button(role: .destructive) {
-                                state.removeGroup(id: group.id)
-                            } label: { Text("Delete") }
-                        }
                         .swipeActions(edge: .leading, allowsFullSwipe: false) {
                             Button {
                                 UIImpactFeedbackGenerator(style: .light).impactOccurred()
@@ -107,7 +102,7 @@ private struct MuscleGroupsModuleView: View {
                         .swipeActions {
                             Button(role: .destructive) {
                                 UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-                                state.removeGroup(id: group.id)
+                                deletingGroup = group
                             } label: { Label("Delete", systemImage: "trash") }
                         }
                     }
@@ -122,8 +117,21 @@ private struct MuscleGroupsModuleView: View {
                 .sheet(item: $editingGroup) { group in
                     MuscleGroupEditor(title: "Edit Muscle Group", group: group) { updated in
                         state.updateGroup(updated)
+                    } onDelete: {
+                        state.removeGroup(id: group.id)
                     }
                     .environment(state)
+                }
+                .alert("Delete Muscle Group?", isPresented: .constant(deletingGroup != nil)) {
+                    Button("Cancel", role: .cancel) { deletingGroup = nil }
+                    Button("Delete", role: .destructive) {
+                        if let g = deletingGroup {
+                            state.removeGroup(id: g.id)
+                            deletingGroup = nil
+                        }
+                    }
+                } message: {
+                    Text("This will permanently delete the muscle group.")
                 }
             }
             .navigationDestination(item: $statsGroup) { group in
@@ -205,6 +213,7 @@ private struct MuscleGroupEditor: View {
 
     let title: String
     let onSave: (MuscleGroup) -> Void
+    let onDelete: (() -> Void)?
 
     @State private var group: MuscleGroup
 
@@ -212,10 +221,12 @@ private struct MuscleGroupEditor: View {
     @State private var photoPickerItem: PhotosPickerItem?
     @State private var activeSlot: ImageSlot = .primary
     @State private var showingPhotoPicker = false
+    @State private var showDeleteConfirm = false
 
-    init(title: String, group: MuscleGroup? = nil, onSave: @escaping (MuscleGroup) -> Void) {
+    init(title: String, group: MuscleGroup? = nil, onSave: @escaping (MuscleGroup) -> Void, onDelete: (() -> Void)? = nil) {
         self.title = title
         self.onSave = onSave
+        self.onDelete = onDelete
         _group = State(initialValue: group ?? MuscleGroup(name: ""))
     }
 
@@ -266,8 +277,15 @@ private struct MuscleGroupEditor: View {
             .navigationTitle(title)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
+                ToolbarItemGroup(placement: .topBarLeading) {
                     Button("Cancel") { dismiss() }
+                    if onDelete != nil {
+                        Button(action: { showDeleteConfirm = true }) {
+                            Image(systemName: "trash.circle.fill")
+                                .foregroundColor(.red)
+                                .font(.system(size: 22))
+                        }
+                    }
                 }
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Save") {
@@ -277,6 +295,15 @@ private struct MuscleGroupEditor: View {
                     }
                     .disabled(group.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                 }
+            }
+            .alert("Delete Muscle Group?", isPresented: $showDeleteConfirm) {
+                Button("Cancel", role: .cancel) { }
+                Button("Delete", role: .destructive) {
+                    onDelete?()
+                    dismiss()
+                }
+            } message: {
+                Text("This will permanently delete the muscle group.")
             }
             .photosPicker(
                 isPresented: $showingPhotoPicker,

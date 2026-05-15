@@ -169,17 +169,25 @@ private struct WorkoutsModuleView: View {
                             }
                             .buttonStyle(.plain)
 
-                            // Delete button
-                            Button(action: {
-                                UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                                deletingWorkout = workout
-                            }) {
-                                Image(systemName: "xmark.circle.fill")
-                                    .foregroundColor(.red)
-                            }
-                            .buttonStyle(.plain)
                         }
                         .padding(.vertical, 6)
+                        .swipeActions(edge: .leading, allowsFullSwipe: false) {
+                            Button {
+                                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                                editingWorkout = workout
+                            } label: {
+                                Label("Edit", systemImage: "pencil")
+                            }
+                            .tint(.blue)
+                        }
+                        .swipeActions {
+                            Button(role: .destructive) {
+                                UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                                deletingWorkout = workout
+                            } label: {
+                                Label("Delete", systemImage: "trash")
+                            }
+                        }
                     }
                 }
             }
@@ -193,6 +201,8 @@ private struct WorkoutsModuleView: View {
             .sheet(item: $editingWorkout) { workout in
                 WorkoutEditor(title: "Edit Workout", initialWorkout: workout) { updated in
                     state.updateWorkout(updated)
+                } onDelete: {
+                    state.removeWorkout(id: workout.id)
                 }
                 .environment(exercisesState)
             }
@@ -249,17 +259,20 @@ private struct WorkoutEditor: View {
     let title: String
     let initialWorkout: Workout?
     let onSave: (Workout) -> Void
+    let onDelete: (() -> Void)?
 
     @State private var name: String = ""
     @State private var notes: String = ""
     @State private var workoutExercises: [WorkoutExercise] = []
     @State private var showingPicker = false
     @State private var searchText = ""
+    @State private var showDeleteConfirm = false
 
-    init(title: String, initialWorkout: Workout? = nil, onSave: @escaping (Workout) -> Void) {
+    init(title: String, initialWorkout: Workout? = nil, onSave: @escaping (Workout) -> Void, onDelete: (() -> Void)? = nil) {
         self.title = title
         self.initialWorkout = initialWorkout
         self.onSave = onSave
+        self.onDelete = onDelete
 
         if let workout = initialWorkout {
             _name = State(initialValue: workout.name)
@@ -368,9 +381,17 @@ private struct WorkoutEditor: View {
                 }
             }
             .navigationTitle(title)
+            .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
+                ToolbarItemGroup(placement: .topBarLeading) {
                     Button("Cancel") { dismiss() }
+                    if onDelete != nil {
+                        Button(action: { showDeleteConfirm = true }) {
+                            Image(systemName: "trash.circle.fill")
+                                .foregroundColor(.red)
+                                .font(.system(size: 22))
+                        }
+                    }
                 }
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Save") {
@@ -386,6 +407,15 @@ private struct WorkoutEditor: View {
                     }
                     .disabled(name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                 }
+            }
+            .alert("Delete Workout?", isPresented: $showDeleteConfirm) {
+                Button("Cancel", role: .cancel) { }
+                Button("Delete", role: .destructive) {
+                    onDelete?()
+                    dismiss()
+                }
+            } message: {
+                Text("This will permanently delete the workout.")
             }
             .environment(\.editMode, .constant(.active))
         }
@@ -1042,7 +1072,7 @@ extension Array {
 
 // MARK: - Exercise History Sheet
 
-private struct ExerciseHistorySheet: View {
+struct ExerciseHistorySheet: View {
     @Environment(\.dismiss) var dismiss
 
     let exercise: Exercise

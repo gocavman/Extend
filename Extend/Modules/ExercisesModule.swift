@@ -32,7 +32,9 @@ private struct ExercisesModuleView: View {
     @State private var searchText: String = ""
     @State private var showingAdd = false
     @State private var editingExercise: Exercise?
+    @State private var deletingExercise: Exercise?
     @State private var statsExercise: Exercise?
+    @State private var historyExercise: Exercise?
     
     private var filteredExercises: [Exercise] {
         let trimmedSearch = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -129,6 +131,16 @@ private struct ExercisesModuleView: View {
                                     statsExercise = exercise
                                 }
 
+                                // History icon — opens exercise history sheet
+                                Button(action: {
+                                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                                    historyExercise = exercise
+                                }) {
+                                    Image(systemName: "clock.arrow.circlepath")
+                                        .foregroundColor(.black)
+                                }
+                                .buttonStyle(.plain)
+
                                 // Graph icon — navigate to stats
                                 Button(action: {
                                     UIImpactFeedbackGenerator(style: .light).impactOccurred()
@@ -162,7 +174,7 @@ private struct ExercisesModuleView: View {
                             .swipeActions {
                                 Button(role: .destructive) {
                                     UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-                                    state.removeExercise(id: exercise.id)
+                                    deletingExercise = exercise
                                 } label: {
                                     Label("Delete", systemImage: "trash")
                                 }
@@ -181,9 +193,25 @@ private struct ExercisesModuleView: View {
                 .sheet(item: $editingExercise) { exercise in
                     ExerciseEditor(title: "Edit Exercise", initialExercise: exercise) { updated in
                         state.updateExercise(updated)
+                    } onDelete: {
+                        state.removeExercise(id: exercise.id)
                     }
                     .environment(muscleGroupsState)
                     .environment(equipmentState)
+                }
+                .sheet(item: $historyExercise) { exercise in
+                    ExerciseHistorySheet(exercise: exercise, logState: logState)
+                }
+                .alert("Delete Exercise?", isPresented: .constant(deletingExercise != nil)) {
+                    Button("Cancel", role: .cancel) { deletingExercise = nil }
+                    Button("Delete", role: .destructive) {
+                        if let e = deletingExercise {
+                            state.removeExercise(id: e.id)
+                            deletingExercise = nil
+                        }
+                    }
+                } message: {
+                    Text("This will permanently delete the exercise.")
                 }
             }
             .navigationDestination(item: $statsExercise) { exercise in
@@ -246,6 +274,7 @@ private struct ExerciseEditor: View {
     let title: String
     let initialExercise: Exercise?
     let onSave: (Exercise) -> Void
+    let onDelete: (() -> Void)?
     
     @State private var name: String = ""
     @State private var notes: String = ""
@@ -254,11 +283,13 @@ private struct ExerciseEditor: View {
     @State private var selectedEquipmentIDs: Set<UUID> = []
     @State private var hasInitialized: Bool = false
     @State private var showSecondaryMuscles: Bool = false
+    @State private var showDeleteConfirm = false
     
-    init(title: String, initialExercise: Exercise? = nil, onSave: @escaping (Exercise) -> Void) {
+    init(title: String, initialExercise: Exercise? = nil, onSave: @escaping (Exercise) -> Void, onDelete: (() -> Void)? = nil) {
         self.title = title
         self.initialExercise = initialExercise
         self.onSave = onSave
+        self.onDelete = onDelete
         
         if let exercise = initialExercise {
             _name = State(initialValue: exercise.name)
@@ -351,9 +382,17 @@ private struct ExerciseEditor: View {
                 }
             }
             .navigationTitle(title)
+            .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
+                ToolbarItemGroup(placement: .topBarLeading) {
                     Button("Cancel") { dismiss() }
+                    if onDelete != nil {
+                        Button(action: { showDeleteConfirm = true }) {
+                            Image(systemName: "trash.circle.fill")
+                                .foregroundColor(.red)
+                                .font(.system(size: 22))
+                        }
+                    }
                 }
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Save") {
@@ -371,6 +410,15 @@ private struct ExerciseEditor: View {
                     }
                     .disabled(name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                 }
+            }
+            .alert("Delete Exercise?", isPresented: $showDeleteConfirm) {
+                Button("Cancel", role: .cancel) { }
+                Button("Delete", role: .destructive) {
+                    onDelete?()
+                    dismiss()
+                }
+            } message: {
+                Text("This will permanently delete the exercise.")
             }
             .onAppear {
                 if !hasInitialized {

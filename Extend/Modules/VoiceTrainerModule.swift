@@ -135,12 +135,25 @@ private struct VoiceTrainerModuleView: View {
                             onEdit: {
                                 UIImpactFeedbackGenerator(style: .light).impactOccurred()
                                 editingConfig = config
-                            },
-                            onDelete: {
-                                UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                                deletingConfig = config
                             }
                         )
+                        .swipeActions(edge: .leading, allowsFullSwipe: false) {
+                            Button {
+                                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                                editingConfig = config
+                            } label: {
+                                Label("Edit", systemImage: "pencil")
+                            }
+                            .tint(.blue)
+                        }
+                        .swipeActions {
+                            Button(role: .destructive) {
+                                UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                                deletingConfig = config
+                            } label: {
+                                Label("Delete", systemImage: "trash")
+                            }
+                        }
                     }
                 }
             }
@@ -154,6 +167,8 @@ private struct VoiceTrainerModuleView: View {
         .sheet(item: $editingConfig) { config in
             VoiceTrainerEditorView(title: "Edit Trainer", initialConfig: config) { updated in
                 state.updateConfiguration(updated)
+            } onDelete: {
+                state.deleteConfiguration(config)
             }
         }
         .fullScreenCover(item: $activeConfig) { config in
@@ -335,7 +350,6 @@ private struct VoiceTrainerListRow: View {
     let onStar: () -> Void
     let onClone: () -> Void
     let onEdit: () -> Void
-    let onDelete: () -> Void
 
     var body: some View {
         HStack(spacing: 12) {
@@ -382,12 +396,6 @@ private struct VoiceTrainerListRow: View {
                     .foregroundColor(.black)
             }
             .buttonStyle(.plain)
-
-            Button(action: onDelete) {
-                Image(systemName: "xmark.circle.fill")
-                    .foregroundColor(.red)
-            }
-            .buttonStyle(.plain)
         }
         .padding(.vertical, 6)
     }
@@ -401,7 +409,9 @@ private struct VoiceTrainerEditorView: View {
     let title: String
     let initialConfig: VoiceTrainerConfig?
     let onSave: (VoiceTrainerConfig) -> Void
+    let onDelete: (() -> Void)?
 
+    @State private var showDeleteConfirm = false
     @State private var name: String = ""
     @State private var notes: String = ""
     @State private var text: String = ""
@@ -414,10 +424,11 @@ private struct VoiceTrainerEditorView: View {
     @State private var workoutStartWarning: Int = 10
     @State private var restEndWarning: Int = 10
 
-    init(title: String, initialConfig: VoiceTrainerConfig? = nil, onSave: @escaping (VoiceTrainerConfig) -> Void) {
+    init(title: String, initialConfig: VoiceTrainerConfig? = nil, onSave: @escaping (VoiceTrainerConfig) -> Void, onDelete: (() -> Void)? = nil) {
         self.title = title
         self.initialConfig = initialConfig
         self.onSave = onSave
+        self.onDelete = onDelete
 
         if let c = initialConfig {
             _name = State(initialValue: c.name)
@@ -610,8 +621,15 @@ private struct VoiceTrainerEditorView: View {
             .navigationTitle(title)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
+                ToolbarItemGroup(placement: .topBarLeading) {
                     Button("Cancel") { dismiss() }
+                    if onDelete != nil {
+                        Button(action: { showDeleteConfirm = true }) {
+                            Image(systemName: "trash.circle.fill")
+                                .foregroundColor(.red)
+                                .font(.system(size: 22))
+                        }
+                    }
                 }
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Save") {
@@ -636,6 +654,15 @@ private struct VoiceTrainerEditorView: View {
                     }
                     .disabled(name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                 }
+            }
+            .alert("Delete Trainer?", isPresented: $showDeleteConfirm) {
+                Button("Cancel", role: .cancel) { }
+                Button("Delete", role: .destructive) {
+                    onDelete?()
+                    dismiss()
+                }
+            } message: {
+                Text("This will permanently delete the trainer configuration.")
             }
         }
     }

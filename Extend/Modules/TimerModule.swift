@@ -80,7 +80,7 @@ private struct TimerModuleView: View {
                                                     .font(.system(size: 12))
                                                     .foregroundColor(.black)
                                                 Text(config.name)
-                                                    .font(.caption2)
+                                                    .font(.caption)
                                                     .fontWeight(.semibold)
                                                     .foregroundColor(.black)
                                                     .lineLimit(2)
@@ -127,13 +127,29 @@ private struct TimerModuleView: View {
                                     UIImpactFeedbackGenerator(style: .light).impactOccurred()
                                     timerState.cloneConfig(config)
                                 },
-                                onDelete: { deletingConfig = config },
                                 onToggleFavorite: {
                                     UIImpactFeedbackGenerator(style: .light).impactOccurred()
                                     timerState.toggleFavorite(id: config.id)
                                 }
                             )
                             .padding(.vertical, 6)
+                            .swipeActions(edge: .leading, allowsFullSwipe: false) {
+                                Button {
+                                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                                    editingConfig = config
+                                } label: {
+                                    Label("Edit", systemImage: "pencil")
+                                }
+                                .tint(.blue)
+                            }
+                            .swipeActions {
+                                Button(role: .destructive) {
+                                    UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                                    deletingConfig = config
+                                } label: {
+                                    Label("Delete", systemImage: "trash")
+                                }
+                            }
                         }
                     }
                 }
@@ -153,6 +169,8 @@ private struct TimerModuleView: View {
             .sheet(item: $editingConfig) { config in
                 TimerEditorView(title: "Edit Timer", initial: config) { updated in
                     timerState.updateConfig(updated)
+                } onDelete: {
+                    timerState.removeConfig(id: config.id)
                 }
             }
             .alert("Delete Timer?", isPresented: .constant(deletingConfig != nil)) {
@@ -177,7 +195,6 @@ private struct TimerRowView: View {
     let onPlay: () -> Void
     let onEdit: () -> Void
     let onClone: () -> Void
-    let onDelete: () -> Void
     let onToggleFavorite: () -> Void
 
     var body: some View {
@@ -242,16 +259,6 @@ private struct TimerRowView: View {
                     .foregroundColor(.black)
             }
             .buttonStyle(.plain)
-
-            // Delete
-            Button(action: {
-                UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                onDelete()
-            }) {
-                Image(systemName: "xmark.circle.fill")
-                    .foregroundColor(.red)
-            }
-            .buttonStyle(.plain)
         }
     }
 }
@@ -264,13 +271,16 @@ private struct TimerEditorView: View {
     let title: String
     let initial: TimerConfig?
     let onSave: (TimerConfig) -> Void
+    let onDelete: (() -> Void)?
 
     @State private var config: TimerConfig
+    @State private var showDeleteConfirm = false
 
-    init(title: String, initial: TimerConfig? = nil, onSave: @escaping (TimerConfig) -> Void) {
+    init(title: String, initial: TimerConfig? = nil, onSave: @escaping (TimerConfig) -> Void, onDelete: (() -> Void)? = nil) {
         self.title = title
         self.initial = initial
         self.onSave = onSave
+        self.onDelete = onDelete
         _config = State(initialValue: initial ?? TimerConfig())
     }
 
@@ -349,8 +359,15 @@ private struct TimerEditorView: View {
             .navigationTitle(title)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
+                ToolbarItemGroup(placement: .topBarLeading) {
                     Button("Cancel") { dismiss() }
+                    if onDelete != nil {
+                        Button(action: { showDeleteConfirm = true }) {
+                            Image(systemName: "trash.circle.fill")
+                                .foregroundColor(.red)
+                                .font(.system(size: 22))
+                        }
+                    }
                 }
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Save") {
@@ -360,6 +377,15 @@ private struct TimerEditorView: View {
                     }
                     .disabled(config.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                 }
+            }
+            .alert("Delete Timer?", isPresented: $showDeleteConfirm) {
+                Button("Cancel", role: .cancel) { }
+                Button("Delete", role: .destructive) {
+                    onDelete?()
+                    dismiss()
+                }
+            } message: {
+                Text("This will permanently delete the timer configuration.")
             }
         }
     }
