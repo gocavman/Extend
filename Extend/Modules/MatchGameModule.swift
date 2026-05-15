@@ -11,8 +11,8 @@ import UIKit
 public struct MatchGameModule: AppModule {
     public let id: UUID = ModuleIDs.matchGame
     public let displayName: String = "Workout Match"
-    public let iconName: String = "square.grid.2x2.fill"
-    public let description: String = "Match challenge game"
+    public let iconName: String = "gamecontroller.fill"
+    public let description: String = "500 levels of match 3. Collect powerups and level up."
 
     public var order: Int = 0
     public var isVisible: Bool = true

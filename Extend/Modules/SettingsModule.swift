@@ -410,6 +410,42 @@ struct NavBarDropDelegate: DropDelegate {
     }
 }
 
+// MARK: - Shared module row (used by both navbar picker and dashboard tile sheet)
+
+private struct ModulePickerRow: View {
+    let module: AnyAppModule
+    let isSelected: Bool
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Image(systemName: module.iconName)
+                .font(.system(size: 16, weight: .semibold))
+                .foregroundColor(.black)
+                .frame(width: 32, height: 32)
+                .background(Color(red: 0.96, green: 0.96, blue: 0.97))
+                .cornerRadius(6)
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(module.displayName)
+                    .font(.subheadline)
+                    .fontWeight(.semibold)
+                    .foregroundColor(.primary)
+                Text(module.description)
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
+
+            Spacer()
+
+            if isSelected {
+                Image(systemName: "checkmark.circle.fill")
+                    .foregroundColor(.black)
+            }
+        }
+        .contentShape(Rectangle())
+    }
+}
+
 // MARK: - Module Picker View
 
 @available(iOS 16.0, *)
@@ -424,8 +460,9 @@ private struct ModulePickerView: View {
     @State private var tempSelected: Set<UUID> = []
     
     var availableModules: [AnyAppModule] {
-        // Show all modules that aren't already selected
-        registry.registeredModules.filter { !selectedModules.contains($0.id) }
+        // Show all modules that aren't already selected, excluding hidden-from-nav modules
+        let excluded = ["Animator"]
+        return registry.registeredModules.filter { !selectedModules.contains($0.id) && !excluded.contains($0.displayName) }
     }
     
     private var canAddMore: Bool {
@@ -444,34 +481,7 @@ private struct ModulePickerView: View {
                             tempSelected.insert(module.id)
                         }
                     }) {
-                        HStack {
-                            HStack(spacing: 8) {
-                                Image(systemName: module.iconName)
-                                    .foregroundColor(.black)
-                                
-                                VStack(alignment: .leading, spacing: 4) {
-                                    Text(module.displayName)
-                                        .font(.subheadline)
-                                        .fontWeight(.semibold)
-                                        .foregroundColor(.primary)
-                                    
-                                    Text(module.description)
-                                        .font(.caption)
-                                        .foregroundColor(.gray)
-                                }
-                            }
-                            
-                            Spacer()
-                            
-                            if tempSelected.contains(module.id) {
-                                Image(systemName: "checkmark.circle.fill")
-                                    .foregroundColor(.black)
-                            } else if !canAddMore {
-                                Image(systemName: "circle")
-                                    .foregroundColor(.gray.opacity(0.3))
-                            }
-                        }
-                        .contentShape(Rectangle())
+                        ModulePickerRow(module: module, isSelected: tempSelected.contains(module.id))
                     }
                     .buttonStyle(.plain)
                     .disabled(!canAddMore && !tempSelected.contains(module.id))
@@ -622,7 +632,7 @@ private struct DashboardAddTileSheet: View {
     private var moduleQuickOptions: [AnyAppModule] {
         let existingTileModuleIDs = Set(dashboardState.tiles.compactMap { $0.targetModuleID })
         return registry.registeredModules
-            .filter { !existingTileModuleIDs.contains($0.id) && $0.displayName != "Dashboard" && $0.displayName != "Workout Buddy" && $0.displayName != "Workout Match" }
+            .filter { !existingTileModuleIDs.contains($0.id) && $0.displayName != "Dashboard" && $0.displayName != "Workout Buddy" && $0.displayName != "Workout Match" && $0.displayName != "Animator" }
             .sorted { $0.displayName.localizedCaseInsensitiveCompare($1.displayName) == .orderedAscending }
     }
 
@@ -653,6 +663,18 @@ private struct DashboardAddTileSheet: View {
         }
     }
 
+    private func descriptionForStatCard(_ statCard: StatCardType) -> String {
+        switch statCard {
+        case .totalWorkouts:       return "Cumulative count of all completed workouts."
+        case .dayStreaks:          return "Your current consecutive active days streak."
+        case .totalTime:           return "Total time logged across all workouts."
+        case .favoriteExercise:    return "The exercise you perform most frequently."
+        case .favoriteDay:         return "The day of the week you work out most often."
+        case .workoutFrequency:    return "Bar chart of workout activity over the last 14 days."
+        case .muscleGroupDistribution: return "Pie chart of muscle groups trained in the last 7 days."
+        }
+    }
+
     var body: some View {
         NavigationStack {
             Form {
@@ -666,16 +688,7 @@ private struct DashboardAddTileSheet: View {
                                 selectedModuleIDs.insert(module.id)
                             }
                         }) {
-                            HStack {
-                                Text(module.displayName)
-                                    .foregroundColor(.primary)
-                                Spacer()
-                                if selectedModuleIDs.contains(module.id) {
-                                    Image(systemName: "checkmark")
-                                        .foregroundColor(.black)
-                                }
-                            }
-                            .contentShape(Rectangle())
+                            ModulePickerRow(module: module, isSelected: selectedModuleIDs.contains(module.id))
                         }
                         .buttonStyle(.plain)
                         .disabled(!canAddMore && !selectedModuleIDs.contains(module.id))
@@ -698,8 +711,14 @@ private struct DashboardAddTileSheet: View {
                                 }
                             }) {
                                 HStack {
-                                    Text(stat.rawValue)
-                                        .foregroundColor(.primary)
+                                    VStack(alignment: .leading, spacing: 2) {
+                                        Text(stat.rawValue)
+                                            .font(.subheadline)
+                                            .foregroundColor(.primary)
+                                        Text(descriptionForStatCard(stat))
+                                            .font(.caption)
+                                            .foregroundColor(.secondary)
+                                    }
                                     Spacer()
                                     if selectedStatCards.contains(stat) {
                                         Image(systemName: "checkmark")
@@ -724,21 +743,12 @@ private struct DashboardAddTileSheet: View {
                                 selectedModuleIDs.insert(workoutBuddyModule.id)
                             }
                         }) {
-                            HStack {
-                                Text("Workout Buddy")
-                                    .foregroundColor(.primary)
-                                Spacer()
-                                if selectedModuleIDs.contains(workoutBuddyModule.id) {
-                                    Image(systemName: "checkmark")
-                                        .foregroundColor(.black)
-                                }
-                            }
-                            .contentShape(Rectangle())
+                            ModulePickerRow(module: workoutBuddyModule, isSelected: selectedModuleIDs.contains(workoutBuddyModule.id))
                         }
                         .buttonStyle(.plain)
                         .disabled(!canAddMore && !selectedModuleIDs.contains(workoutBuddyModule.id))
                     }
-                    
+
                     // Workout Match
                     if let workoutMatchModule = registry.registeredModules.first(where: { $0.displayName == "Workout Match" }) {
                         Button(action: {
@@ -749,16 +759,7 @@ private struct DashboardAddTileSheet: View {
                                 selectedModuleIDs.insert(workoutMatchModule.id)
                             }
                         }) {
-                            HStack {
-                                Text("Workout Match")
-                                    .foregroundColor(.primary)
-                                Spacer()
-                                if selectedModuleIDs.contains(workoutMatchModule.id) {
-                                    Image(systemName: "checkmark")
-                                        .foregroundColor(.black)
-                                }
-                            }
-                            .contentShape(Rectangle())
+                            ModulePickerRow(module: workoutMatchModule, isSelected: selectedModuleIDs.contains(workoutMatchModule.id))
                         }
                         .buttonStyle(.plain)
                         .disabled(!canAddMore && !selectedModuleIDs.contains(workoutMatchModule.id))

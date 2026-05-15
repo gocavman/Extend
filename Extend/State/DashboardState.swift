@@ -175,7 +175,7 @@ public final class DashboardState {
         tiles.append(
             DashboardTile(
                 title: "Workout Match",
-                icon: "square.grid.2x2.fill",
+                icon: "gamecontroller.fill",
                 order: order,
                 targetModuleID: ModuleIDs.matchGame,
                 tileType: .moduleShortcut,

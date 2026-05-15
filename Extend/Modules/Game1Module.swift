@@ -300,7 +300,7 @@ public struct Game1Module: AppModule {
     public let id: UUID = ModuleIDs.game1
     public let displayName: String = "Workout Buddy"
     public let iconName: String = "gamecontroller.fill"
-    public let description: String = "Stick figure running game"
+    public let description: String = "A fitness RPG — complete workouts to level up your character."
 
     public var order: Int = 0
     public var isVisible: Bool = true
