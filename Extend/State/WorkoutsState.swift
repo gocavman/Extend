@@ -18,6 +18,9 @@ public final class WorkoutsState {
     public var workouts: [Workout] = []
     public var favoriteWorkoutIDs: Set<UUID> = []
 
+    /// Set by the dashboard to deep-link directly into a specific workout's start screen
+    public var pendingLaunchID: UUID? = nil
+
     private init() {
         loadWorkouts()
         loadFavorites()

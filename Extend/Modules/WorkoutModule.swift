@@ -226,6 +226,20 @@ private struct WorkoutsModuleView: View {
             } message: {
                 Text("This will permanently delete the workout.")
             }
+            .onAppear {
+                launchPendingWorkoutIfNeeded()
+            }
+            .onChange(of: state.pendingLaunchID) { _, _ in
+                launchPendingWorkoutIfNeeded()
+            }
+        }
+    }
+
+    private func launchPendingWorkoutIfNeeded() {
+        guard let id = state.pendingLaunchID else { return }
+        state.pendingLaunchID = nil
+        if let workout = state.workouts.first(where: { $0.id == id }) {
+            startingWorkout = workout
         }
     }
 

@@ -99,7 +99,7 @@ public final class DashboardState {
         var order = 0
         var tiles: [DashboardTile] = []
 
-        // Helper: create a stat card with the default left-gray accent
+        // Helper: create a small stat card with the default left-gray accent
         func statCard(_ type: StatCardType, icon: String, size: TileSize = .small) -> DashboardTile {
             DashboardTile(
                 title: type.rawValue,
@@ -108,15 +108,29 @@ public final class DashboardState {
                 tileType: .statCard,
                 statCardType: type,
                 size: size,
-                accentPlacement: .left,
+                accentPlacement: .top,
                 accentColorHex: "#CCCCCC"
             )
         }
 
-        tiles.append(statCard(.workoutFrequency, icon: "chart.bar", size: .large))
+        // Helper: create a graph/large stat card without any accent bar
+        func graphCard(_ type: StatCardType, icon: String) -> DashboardTile {
+            DashboardTile(
+                title: type.rawValue,
+                icon: icon,
+                order: order,
+                tileType: .statCard,
+                statCardType: type,
+                size: .large,
+                accentPlacement: .none,
+                accentColorHex: "#CCCCCC"
+            )
+        }
+
+        tiles.append(graphCard(.workoutFrequency, icon: "chart.bar"))
         order += 1
 
-        tiles.append(statCard(.muscleGroupDistribution, icon: "chart.pie", size: .large))
+        tiles.append(graphCard(.muscleGroupDistribution, icon: "chart.pie"))
         order += 1
 
         tiles.append(statCard(.totalWorkouts, icon: "list.bullet"))

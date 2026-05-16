@@ -524,6 +524,7 @@ private struct DashboardCustomizationView: View {
     @Environment(ModuleRegistry.self) var registry
     @Environment(WorkoutsState.self) var workoutsState
     @Environment(TimerState.self) var timerState
+    @Environment(VoiceTrainerState.self) var voiceTrainerState
     
     @State private var showingAddTile = false
     @State private var editingTile: DashboardTile?
@@ -604,6 +605,7 @@ private struct DashboardCustomizationView: View {
             .environment(registry)
             .environment(workoutsState)
             .environment(timerState)
+            .environment(voiceTrainerState)
         }
         .sheet(item: $editingTile) { tile in
             DashboardEditTileSheet(tile: tile) { updatedTile in
@@ -621,11 +623,12 @@ private struct DashboardAddTileSheet: View {
     @Environment(DashboardState.self) var dashboardState
     @Environment(WorkoutsState.self) var workoutsState
     @Environment(TimerState.self) var timerState
+    @Environment(VoiceTrainerState.self) var voiceTrainerState
 
     @State private var selectedModuleIDs: Set<UUID> = []
     @State private var selectedStatCards: Set<StatCardType> = []
     @State private var selectedBlankIcon: String? = nil
-    @State private var selectedShortcuts: Set<String> = []   // "workout:<uuid>" or "timer:<uuid>"
+    @State private var selectedShortcuts: Set<String> = []   // "workout:<uuid>", "timer:<uuid>", or "voicetrainer:<uuid>"
 
     let onAdd: (DashboardTile) -> Void
 
@@ -800,14 +803,15 @@ private struct DashboardAddTileSheet: View {
                 Section("Shortcuts") {
                     let existingShortcutKeys = Set(dashboardState.tiles.compactMap { t -> String? in
                         guard t.tileType == .shortcut, let st = t.shortcutType, let sid = t.shortcutItemID else { return nil }
-                        return "\(st.rawValue.lowercased()):\(sid.uuidString)"
+                        return "\(st.rawValue.lowercased().replacingOccurrences(of: " ", with: "")):\(sid.uuidString)"
                     })
 
-                    let availableWorkouts = workoutsState.workouts.filter { !existingShortcutKeys.contains("workout:\($0.id.uuidString)") }
-                    let availableTimers   = timerState.configs.filter { !existingShortcutKeys.contains("timer:\($0.id.uuidString)") }
+                    let availableWorkouts      = workoutsState.workouts.filter { !existingShortcutKeys.contains("workout:\($0.id.uuidString)") }
+                    let availableTimers        = timerState.configs.filter { !existingShortcutKeys.contains("timer:\($0.id.uuidString)") }
+                    let availableVoiceTrainers = voiceTrainerState.savedConfigurations.filter { !existingShortcutKeys.contains("voicetrainer:\($0.id.uuidString)") }
 
-                    if availableWorkouts.isEmpty && availableTimers.isEmpty {
-                        Text("No saved workouts or timers to add as shortcuts.")
+                    if availableWorkouts.isEmpty && availableTimers.isEmpty && availableVoiceTrainers.isEmpty {
+                        Text("No saved workouts, timers, or trainers to add as shortcuts.")
                             .font(.caption)
                             .foregroundColor(.gray)
                     } else {
@@ -853,6 +857,37 @@ private struct DashboardAddTileSheet: View {
                                             Text(config.type.rawValue)
                                                 .font(.caption)
                                                 .foregroundColor(.secondary)
+                                        }
+                                        Spacer()
+                                        if selectedShortcuts.contains(key) {
+                                            Image(systemName: "checkmark").foregroundColor(.black)
+                                        }
+                                    }
+                                    .contentShape(Rectangle())
+                                }
+                                .buttonStyle(.plain)
+                            }
+                        }
+                        if !availableVoiceTrainers.isEmpty {
+                            Text("Voice Trainer")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                            ForEach(availableVoiceTrainers) { config in
+                                let key = "voicetrainer:\(config.id.uuidString)"
+                                Button(action: {
+                                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                                    if selectedShortcuts.contains(key) { selectedShortcuts.remove(key) } else { selectedShortcuts.insert(key) }
+                                }) {
+                                    HStack {
+                                        Image(systemName: "speaker.wave.2")
+                                            .foregroundColor(.secondary)
+                                        VStack(alignment: .leading, spacing: 2) {
+                                            Text(config.name).foregroundColor(.primary)
+                                            if !config.parameterSummary.isEmpty {
+                                                Text(config.parameterSummary)
+                                                    .font(.caption)
+                                                    .foregroundColor(.secondary)
+                                            }
                                         }
                                         Spacer()
                                         if selectedShortcuts.contains(key) {
@@ -917,14 +952,17 @@ private struct DashboardAddTileSheet: View {
                         UIImpactFeedbackGenerator(style: .light).impactOccurred()
                         
                         for statCard in selectedStatCards {
-                            let size: TileSize = (statCard == .workoutFrequency || statCard == .muscleGroupDistribution) ? .large : .small
+                            let isGraph = statCard == .workoutFrequency || statCard == .muscleGroupDistribution
+                            let size: TileSize = isGraph ? .large : .small
                             let tile = DashboardTile(
                                 title: statCard.rawValue,
                                 icon: iconForStatCard(statCard),
                                 order: dashboardState.tiles.count,
                                 tileType: .statCard,
                                 statCardType: statCard,
-                                size: size
+                                size: size,
+                                accentPlacement: isGraph ? .none : .left,
+                                accentColorHex: "#CCCCCC"
                             )
                             onAdd(tile)
                         }
@@ -990,6 +1028,17 @@ private struct DashboardAddTileSheet: View {
                                     tileType: .shortcut,
                                     size: .small,
                                     shortcutType: .timer,
+                                    shortcutItemID: config.id
+                                )
+                                onAdd(tile)
+                            } else if parts[0] == "voicetrainer", let config = voiceTrainerState.savedConfigurations.first(where: { $0.id == itemID }) {
+                                let tile = DashboardTile(
+                                    title: config.name,
+                                    icon: "speaker.wave.2",
+                                    order: dashboardState.tiles.count,
+                                    tileType: .shortcut,
+                                    size: .small,
+                                    shortcutType: .voiceTrainer,
                                     shortcutItemID: config.id
                                 )
                                 onAdd(tile)

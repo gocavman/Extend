@@ -200,6 +200,20 @@ private struct VoiceTrainerModuleView: View {
         } message: {
             Text("This will permanently delete the trainer configuration.")
         }
+        .onAppear {
+            launchPendingTrainerIfNeeded()
+        }
+        .onChange(of: state.pendingLaunchID) { _, _ in
+            launchPendingTrainerIfNeeded()
+        }
+    }
+
+    private func launchPendingTrainerIfNeeded() {
+        guard let id = state.pendingLaunchID else { return }
+        state.pendingLaunchID = nil
+        if let config = state.savedConfigurations.first(where: { $0.id == id }) {
+            play(config)
+        }
     }
 
     private func play(_ config: VoiceTrainerConfig) {

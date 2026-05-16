@@ -184,6 +184,20 @@ private struct TimerModuleView: View {
             } message: {
                 Text("This will permanently delete the timer configuration.")
             }
+            .onAppear {
+                launchPendingTimerIfNeeded()
+            }
+            .onChange(of: timerState.pendingLaunchID) { _, _ in
+                launchPendingTimerIfNeeded()
+            }
+        }
+    }
+
+    private func launchPendingTimerIfNeeded() {
+        guard let id = timerState.pendingLaunchID else { return }
+        timerState.pendingLaunchID = nil
+        if let config = timerState.configs.first(where: { $0.id == id }) {
+            activeConfig = config
         }
     }
 }

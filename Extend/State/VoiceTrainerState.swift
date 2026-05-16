@@ -37,6 +37,9 @@ final class VoiceTrainerState {
     
     // Favorites
     var savedConfigurations: [VoiceTrainerConfig] = []
+
+    /// Set by the dashboard to deep-link directly into a specific config's playback screen
+    var pendingLaunchID: UUID? = nil
     
     init() {
         loadSavedConfigurations()

@@ -16,6 +16,9 @@ public final class TimerState {
 
     public var configs: [TimerConfig] = []
 
+    /// Set by the dashboard to deep-link directly into a specific timer's active screen
+    public var pendingLaunchID: UUID? = nil
+
     private init() {
         loadConfigs()
     }

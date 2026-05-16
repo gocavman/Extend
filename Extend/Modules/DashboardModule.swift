@@ -42,6 +42,9 @@ private struct DashboardModuleView: View {
     @Environment(ExercisesState.self) var exercisesState
     @Environment(MuscleGroupsState.self) var muscleGroupsState
     @Environment(DashboardHeaderState.self) var headerState
+    @Environment(WorkoutsState.self) var workoutsState
+    @Environment(TimerState.self) var timerState
+    @Environment(VoiceTrainerState.self) var voiceTrainerState
     
     @State private var spinningTiles: [UUID: Double] = [:]
     @State private var flyingTiles: Set<UUID> = []
@@ -194,11 +197,16 @@ private struct DashboardModuleView: View {
             if isBlankTile(tile) {
                 handleBlankTileAction(tile)
             } else if tile.tileType == .shortcut {
-                // Shortcut tiles navigate to the parent module
-                if tile.shortcutType == .workout {
+                // Shortcut tiles deep-link directly into the item
+                if tile.shortcutType == .workout, let itemID = tile.shortcutItemID {
+                    workoutsState.pendingLaunchID = itemID
                     state.selectModule(ModuleIDs.workouts)
-                } else if tile.shortcutType == .timer {
+                } else if tile.shortcutType == .timer, let itemID = tile.shortcutItemID {
+                    timerState.pendingLaunchID = itemID
                     state.selectModule(ModuleIDs.timer)
+                } else if tile.shortcutType == .voiceTrainer, let itemID = tile.shortcutItemID {
+                    voiceTrainerState.pendingLaunchID = itemID
+                    state.selectModule(ModuleIDs.voiceTrainer)
                 }
             } else if let targetID = findModuleID(for: tile) {
                 state.selectModule(targetID)
