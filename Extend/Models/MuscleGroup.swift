@@ -24,13 +24,16 @@ public struct MuscleGroup: Identifiable, Hashable, Codable {
     /// Base64-encoded PNG data for a user-uploaded custom secondary image.
     public var customSecondaryImageData: Data?
 
+    public var isFavorite: Bool
+
     public init(
         id: UUID = UUID(),
         name: String,
         primaryImageAssetName: String? = nil,
         secondaryImageAssetName: String? = nil,
         customPrimaryImageData: Data? = nil,
-        customSecondaryImageData: Data? = nil
+        customSecondaryImageData: Data? = nil,
+        isFavorite: Bool = false
     ) {
         self.id = id
         self.name = name
@@ -38,6 +41,7 @@ public struct MuscleGroup: Identifiable, Hashable, Codable {
         self.secondaryImageAssetName = secondaryImageAssetName
         self.customPrimaryImageData = customPrimaryImageData
         self.customSecondaryImageData = customSecondaryImageData
+        self.isFavorite = isFavorite
     }
 
     // MARK: - Backward-compatible decoding
@@ -52,6 +56,7 @@ public struct MuscleGroup: Identifiable, Hashable, Codable {
         secondaryImageAssetName = try container.decodeIfPresent(String.self, forKey: .secondaryImageAssetName)
         customPrimaryImageData = try container.decodeIfPresent(Data.self, forKey: .customPrimaryImageData)
         customSecondaryImageData = try container.decodeIfPresent(Data.self, forKey: .customSecondaryImageData)
+        isFavorite = try container.decodeIfPresent(Bool.self, forKey: .isFavorite) ?? false
     }
 
     public func encode(to encoder: Encoder) throws {
@@ -62,6 +67,7 @@ public struct MuscleGroup: Identifiable, Hashable, Codable {
         try container.encodeIfPresent(secondaryImageAssetName, forKey: .secondaryImageAssetName)
         try container.encodeIfPresent(customPrimaryImageData, forKey: .customPrimaryImageData)
         try container.encodeIfPresent(customSecondaryImageData, forKey: .customSecondaryImageData)
+        try container.encode(isFavorite, forKey: .isFavorite)
         // Note: legacy imageAssetName key is intentionally not written out
     }
 
@@ -72,5 +78,6 @@ public struct MuscleGroup: Identifiable, Hashable, Codable {
         case secondaryImageAssetName
         case customPrimaryImageData
         case customSecondaryImageData
+        case isFavorite
     }
 }

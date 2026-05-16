@@ -58,6 +58,17 @@ public final class MuscleGroupsState {
         groups.sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
     }
 
+    public var favoriteGroups: [MuscleGroup] {
+        groups.filter { $0.isFavorite }.sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
+    }
+
+    public func toggleFavorite(_ group: MuscleGroup) {
+        if let index = groups.firstIndex(where: { $0.id == group.id }) {
+            groups[index].isFavorite.toggle()
+            saveGroups()
+        }
+    }
+
     public func addGroup(name: String,
                          primaryImageAssetName: String? = nil,
                          secondaryImageAssetName: String? = nil) {

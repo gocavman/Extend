@@ -28,10 +28,17 @@ private struct EquipmentModuleView: View {
     @Environment(ExercisesState.self) var exercisesState
     @Environment(WorkoutLogState.self) var logState
 
+    @State private var searchText: String = ""
     @State private var showingAdd = false
     @State private var editingItem: Equipment?
     @State private var deletingItem: Equipment?
     @State private var statsItem: Equipment?
+
+    private var filteredItems: [Equipment] {
+        let trimmed = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return state.sortedItems }
+        return state.sortedItems.filter { $0.name.localizedCaseInsensitiveContains(trimmed) }
+    }
 
     var body: some View {
         NavigationStack {
@@ -54,7 +61,38 @@ private struct EquipmentModuleView: View {
                 .padding(.vertical, 12)
 
                 List {
-                    ForEach(state.sortedItems) { item in
+                    // Favorites grid
+                    if !state.favoriteItems.isEmpty && searchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                        Section {
+                            LazyVGrid(columns: [GridItem(.adaptive(minimum: 70), spacing: 10)], spacing: 10) {
+                                ForEach(state.favoriteItems) { item in
+                                    Button(action: {
+                                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                                        statsItem = item
+                                    }) {
+                                        VStack(spacing: 4) {
+                                            Image(systemName: "figure.walk.treadmill")
+                                                .font(.system(size: 20))
+                                                .foregroundColor(.black)
+                                            Text(item.name)
+                                                .font(.caption).fontWeight(.semibold).foregroundColor(.black)
+                                                .lineLimit(2).multilineTextAlignment(.center)
+                                        }
+                                        .frame(width: 70, height: 80)
+                                        .background(Color(red: 0.92, green: 0.92, blue: 0.94))
+                                        .cornerRadius(10)
+                                    }
+                                    .buttonStyle(.plain)
+                                }
+                            }
+                            .padding(.vertical, 4)
+                        }
+                        .listRowInsets(EdgeInsets(top: 4, leading: 16, bottom: 4, trailing: 16))
+                    }
+
+                    SearchField(text: $searchText, placeholder: "Search equipment...")
+
+                    ForEach(filteredItems) { item in
                         HStack(spacing: 12) {
                             Image(systemName: "figure.walk.treadmill")
                                 .font(.system(size: 16, weight: .semibold))
@@ -72,6 +110,16 @@ private struct EquipmentModuleView: View {
                                     UIImpactFeedbackGenerator(style: .light).impactOccurred()
                                     statsItem = item
                                 }
+
+                            // Favorite star
+                            Button(action: {
+                                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                                state.toggleFavorite(item)
+                            }) {
+                                Image(systemName: item.isFavorite ? "star.fill" : "star")
+                                    .foregroundColor(item.isFavorite ? .yellow : .gray)
+                            }
+                            .buttonStyle(.plain)
 
                             // Usage/stats button
                             Button(action: {

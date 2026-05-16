@@ -24,6 +24,17 @@ public final class EquipmentState {
     public var sortedItems: [Equipment] {
         items.sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
     }
+
+    public var favoriteItems: [Equipment] {
+        items.filter { $0.isFavorite }.sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
+    }
+
+    public func toggleFavorite(_ item: Equipment) {
+        if let index = items.firstIndex(where: { $0.id == item.id }) {
+            items[index].isFavorite.toggle()
+            saveItems()
+        }
+    }
     
     public func addItem(name: String, imageAssetName: String? = nil) {
         let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)

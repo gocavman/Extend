@@ -70,7 +70,7 @@ private struct GenerateModuleView: View {
                             UIImpactFeedbackGenerator(style: .light).impactOccurred()
                             showSavePresetDialog = true
                         }) {
-                            Image(systemName: "heart")
+                            Image(systemName: "star")
                                 .font(.system(size: 18))
                                 .foregroundColor(.black)
                         }
@@ -106,7 +106,6 @@ private struct GenerateModuleView: View {
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 12)
-            .background(Color(red: 0.96, green: 0.96, blue: 0.97))
 
             List {
                 // Min/Max Exercise Count Section

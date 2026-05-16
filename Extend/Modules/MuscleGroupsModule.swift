@@ -31,10 +31,17 @@ private struct MuscleGroupsModuleView: View {
     @Environment(WorkoutLogState.self) var logState
     @Environment(ExercisesState.self) var exercisesState
 
+    @State private var searchText: String = ""
     @State private var showingAdd = false
     @State private var editingGroup: MuscleGroup?
     @State private var deletingGroup: MuscleGroup?
     @State private var statsGroup: MuscleGroup?
+
+    private var filteredGroups: [MuscleGroup] {
+        let trimmed = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return state.sortedGroups }
+        return state.sortedGroups.filter { $0.name.localizedCaseInsensitiveContains(trimmed) }
+    }
 
     var body: some View {
         NavigationStack {
@@ -56,7 +63,38 @@ private struct MuscleGroupsModuleView: View {
                 .padding(.vertical, 12)
 
                 List {
-                    ForEach(state.sortedGroups) { group in
+                    // Favorites grid
+                    if !state.favoriteGroups.isEmpty && searchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                        Section {
+                            LazyVGrid(columns: [GridItem(.adaptive(minimum: 70), spacing: 10)], spacing: 10) {
+                                ForEach(state.favoriteGroups) { group in
+                                    Button(action: {
+                                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                                        statsGroup = group
+                                    }) {
+                                        VStack(spacing: 4) {
+                                            Image(systemName: "figure.strengthtraining.traditional")
+                                                .font(.system(size: 20))
+                                                .foregroundColor(.black)
+                                            Text(group.name)
+                                                .font(.caption).fontWeight(.semibold).foregroundColor(.black)
+                                                .lineLimit(2).multilineTextAlignment(.center)
+                                        }
+                                        .frame(width: 70, height: 80)
+                                        .background(Color(red: 0.92, green: 0.92, blue: 0.94))
+                                        .cornerRadius(10)
+                                    }
+                                    .buttonStyle(.plain)
+                                }
+                            }
+                            .padding(.vertical, 4)
+                        }
+                        .listRowInsets(EdgeInsets(top: 4, leading: 16, bottom: 4, trailing: 16))
+                    }
+
+                    SearchField(text: $searchText, placeholder: "Search muscles...")
+
+                    ForEach(filteredGroups) { group in
                         HStack(spacing: 12) {
                             MuscleGroupThumbnail(group: group, size: 40)
 
@@ -69,6 +107,16 @@ private struct MuscleGroupsModuleView: View {
                                     UIImpactFeedbackGenerator(style: .light).impactOccurred()
                                     statsGroup = group
                                 }
+
+                            // Favorite star
+                            Button(action: {
+                                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                                state.toggleFavorite(group)
+                            }) {
+                                Image(systemName: group.isFavorite ? "star.fill" : "star")
+                                    .foregroundColor(group.isFavorite ? .yellow : .gray)
+                            }
+                            .buttonStyle(.plain)
 
                             // Graph icon — navigate to stats
                             Button(action: {
@@ -107,6 +155,7 @@ private struct MuscleGroupsModuleView: View {
                         }
                     }
                 }
+                .listStyle(.plain)
                 .sheet(isPresented: $showingAdd) {
                     MuscleGroupEditor(title: "Add Muscle Group") { updated in
                         state.groups.append(updated)

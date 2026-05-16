@@ -67,8 +67,37 @@ private struct ExercisesModuleView: View {
                 .padding(.vertical, 12)
 
                 List {
+                    // Favorites grid
+                    if !state.favoriteExercises.isEmpty && searchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                        Section {
+                            LazyVGrid(columns: [GridItem(.adaptive(minimum: 70), spacing: 10)], spacing: 10) {
+                                ForEach(state.favoriteExercises) { exercise in
+                                    Button(action: {
+                                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                                        statsExercise = exercise
+                                    }) {
+                                        VStack(spacing: 4) {
+                                            Image(systemName: "flame.fill")
+                                                .font(.system(size: 20))
+                                                .foregroundColor(.black)
+                                            Text(exercise.name)
+                                                .font(.caption).fontWeight(.semibold).foregroundColor(.black)
+                                                .lineLimit(2).multilineTextAlignment(.center)
+                                        }
+                                        .frame(width: 70, height: 80)
+                                        .background(Color(red: 0.92, green: 0.92, blue: 0.94))
+                                        .cornerRadius(10)
+                                    }
+                                    .buttonStyle(.plain)
+                                }
+                            }
+                            .padding(.vertical, 4)
+                        }
+                        .listRowInsets(EdgeInsets(top: 4, leading: 16, bottom: 4, trailing: 16))
+                    }
+
                     SearchField(text: $searchText, placeholder: "Search exercises...")
-                    
+
                     // Exercises List
                     if filteredExercises.isEmpty {
                         Text("No exercises found")
@@ -130,6 +159,16 @@ private struct ExercisesModuleView: View {
                                     UIImpactFeedbackGenerator(style: .light).impactOccurred()
                                     statsExercise = exercise
                                 }
+
+                                // Favorite star
+                                Button(action: {
+                                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                                    state.toggleFavorite(exercise)
+                                }) {
+                                    Image(systemName: exercise.isFavorite ? "star.fill" : "star")
+                                        .foregroundColor(exercise.isFavorite ? .yellow : .gray)
+                                }
+                                .buttonStyle(.plain)
 
                                 // History icon — opens exercise history sheet
                                 Button(action: {

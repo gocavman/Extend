@@ -310,57 +310,56 @@ private struct WorkoutEditor: View {
                     } else {
                         ForEach(Array(workoutExercises.enumerated()), id: \.element.id) { index, item in
                             if let exercise = exercisesState.exercises.first(where: { $0.id == item.exerciseID }) {
-                                VStack(alignment: .leading, spacing: 4) {
-                                    HStack {
+                                HStack(spacing: 12) {
+                                    VStack(alignment: .leading, spacing: 4) {
                                         Text(exercise.name)
                                             .font(.subheadline)
                                             .fontWeight(.semibold)
 
-                                        Spacer()
-
-                                        Button(action: {
-                                            UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                                            let cloned = WorkoutExercise(exerciseID: item.exerciseID)
-                                            workoutExercises.insert(cloned, at: index + 1)
-                                        }) {
-                                            Image(systemName: "doc.on.doc")
-                                                .foregroundColor(.black)
+                                        let primaryMuscles = exercise.primaryMuscleGroupIDs.compactMap { id in
+                                            muscleGroupsState.sortedGroups.first { $0.id == id }?.name
                                         }
-                                        .buttonStyle(.plain)
-
-                                        Button(action: {
-                                            UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                                            workoutExercises.remove(at: index)
-                                        }) {
-                                            Image(systemName: "xmark.circle.fill")
-                                                .foregroundColor(.red)
+                                        let secondaryMuscles = exercise.secondaryMuscleGroupIDs.compactMap { id in
+                                            muscleGroupsState.sortedGroups.first { $0.id == id }?.name
                                         }
-                                        .buttonStyle(.plain)
-                                    }
+                                        let allMuscles = (primaryMuscles + secondaryMuscles).joined(separator: ", ")
 
-                                    let primaryMuscles = exercise.primaryMuscleGroupIDs.compactMap { id in
-                                        muscleGroupsState.sortedGroups.first { $0.id == id }?.name
-                                    }
-                                    let secondaryMuscles = exercise.secondaryMuscleGroupIDs.compactMap { id in
-                                        muscleGroupsState.sortedGroups.first { $0.id == id }?.name
-                                    }
-                                    let allMuscles = (primaryMuscles + secondaryMuscles).joined(separator: ", ")
+                                        if !allMuscles.isEmpty {
+                                            Text("Muscles: \(allMuscles)")
+                                                .font(.caption2)
+                                                .foregroundColor(.secondary)
+                                        }
 
-                                    if !allMuscles.isEmpty {
-                                        Text("Muscles: \(allMuscles)")
-                                            .font(.caption2)
-                                            .foregroundColor(.secondary)
-                                    }
+                                        let equipmentNames = exercise.equipmentIDs.compactMap { id in
+                                            equipmentState.sortedItems.first { $0.id == id }?.name
+                                        }.joined(separator: ", ")
 
-                                    let equipmentNames = exercise.equipmentIDs.compactMap { id in
-                                        equipmentState.sortedItems.first { $0.id == id }?.name
-                                    }.joined(separator: ", ")
-
-                                    if !equipmentNames.isEmpty {
-                                        Text("Equipment: \(equipmentNames)")
-                                            .font(.caption2)
-                                            .foregroundColor(.secondary)
+                                        if !equipmentNames.isEmpty {
+                                            Text("Equipment: \(equipmentNames)")
+                                                .font(.caption2)
+                                                .foregroundColor(.secondary)
+                                        }
                                     }
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+
+                                    Button(action: {
+                                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                                        let cloned = WorkoutExercise(exerciseID: item.exerciseID)
+                                        workoutExercises.insert(cloned, at: index + 1)
+                                    }) {
+                                        Image(systemName: "doc.on.doc")
+                                            .foregroundColor(.black)
+                                    }
+                                    .buttonStyle(.plain)
+
+                                    Button(action: {
+                                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                                        workoutExercises.remove(at: index)
+                                    }) {
+                                        Image(systemName: "xmark.circle.fill")
+                                            .foregroundColor(.red)
+                                    }
+                                    .buttonStyle(.plain)
                                 }
                                 .padding(.vertical, 6)
                             }

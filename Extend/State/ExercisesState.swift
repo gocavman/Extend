@@ -16,6 +16,17 @@ public final class ExercisesState {
     @ObservationIgnored private let userDefaultsKey = "exercises_data"
     
     public var exercises: [Exercise] = []
+
+    public var favoriteExercises: [Exercise] {
+        exercises.filter { $0.isFavorite }.sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
+    }
+
+    public func toggleFavorite(_ exercise: Exercise) {
+        if let index = exercises.firstIndex(where: { $0.id == exercise.id }) {
+            exercises[index].isFavorite.toggle()
+            saveExercises()
+        }
+    }
     
     private init() {
         loadExercises()

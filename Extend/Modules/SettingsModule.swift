@@ -148,6 +148,8 @@ private struct SettingsModuleView: View {
                         }
                     }
                 }
+                .scrollContentBackground(.hidden)
+                .background(Color(UIColor.systemBackground))
                 .alert("Reset App?", isPresented: $showingResetAlert) {
                     Button("Cancel", role: .cancel) {}
                     Button("Reset", role: .destructive) {

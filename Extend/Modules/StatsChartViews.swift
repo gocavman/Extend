@@ -110,7 +110,7 @@ struct ExerciseStatsView: View {
             .padding(.vertical, 16)
         }
         .navigationTitle(exercise.name)
-        .navigationBarTitleDisplayMode(.large)
+        .navigationBarTitleDisplayMode(.inline)
     }
 
     // MARK: - Empty state
@@ -329,7 +329,7 @@ struct MuscleStatsView: View {
             .padding(.vertical, 16)
         }
         .navigationTitle(muscleGroup.name)
-        .navigationBarTitleDisplayMode(.large)
+        .navigationBarTitleDisplayMode(.inline)
     }
 
     private var emptyState: some View {
@@ -750,7 +750,7 @@ struct EquipmentStatsView: View {
             .padding(.vertical, 16)
         }
         .navigationTitle(equipment.name)
-        .navigationBarTitleDisplayMode(.large)
+        .navigationBarTitleDisplayMode(.inline)
     }
 
     private var equipmentEmptyState: some View {
