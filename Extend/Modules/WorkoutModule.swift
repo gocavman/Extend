@@ -554,6 +554,8 @@ public struct StartWorkoutView: View {
     @State private var timerTask: Task<Void, Never>?
     @State private var expandedInfo: Bool = false
     @State private var sets: [WorkoutSet] = []
+    @State private var previousSets: [LoggedSet] = []
+    @State private var previousLogDate: Date? = nil
     @State private var notes: String = ""
     @State private var workoutStartTime: Date = Date()
     @State private var exerciseData: [UUID: (sets: [WorkoutSet], notes: String, timerSeconds: Int)] = [:]
@@ -625,21 +627,28 @@ public struct StartWorkoutView: View {
                             let exSecondaryGroups = exercise.secondaryMuscleGroupIDs.compactMap { id in
                                 muscleGroupsState.sortedGroups.first { $0.id == id }
                             }
-                            let exAllGroups = exPrimaryGroups + exSecondaryGroups
                             let exIsFemale = muscleGroupsState.selectedBodyOption == .female
                             let exFrontBase = exIsFemale ? "FemaleFrontFullBody" : "MaleFrontFullBody"
                             let exBackBase  = exIsFemale ? "FemaleBackFullBody"  : "MaleBackFullBody"
-                            let exAllAssets = exAllGroups.flatMap { g -> [String] in
+                            // Primary masks — full opacity
+                            let exPrimaryAssets = exPrimaryGroups.flatMap { g -> [String] in
                                 [g.primaryImageAssetName, g.secondaryImageAssetName]
                                     .compactMap { $0 }.filter { !$0.isEmpty }
                             }
-                            let exFrontMasks = exAllAssets.filter { $0.contains("Front") }
-                            let exBackMasks  = exAllAssets.filter { $0.contains("Back") && !$0.contains("FullBody") }
+                            let exFrontMasksPrimary = exPrimaryAssets.filter { $0.contains("Front") }
+                            let exBackMasksPrimary  = exPrimaryAssets.filter { $0.contains("Back") && !$0.contains("FullBody") }
+                            // Secondary muscles — dimmed
+                            let exSecondaryAssets = exSecondaryGroups.flatMap { g -> [String] in
+                                [g.primaryImageAssetName, g.secondaryImageAssetName]
+                                    .compactMap { $0 }.filter { !$0.isEmpty }
+                            }
+                            let exFrontMasksSecondary = exSecondaryAssets.filter { $0.contains("Front") }
+                            let exBackMasksSecondary  = exSecondaryAssets.filter { $0.contains("Back") && !$0.contains("FullBody") }
 
                             // Expandable info section
                             if expandedInfo {
                                 VStack(alignment: .leading, spacing: 8) {
-                                    let allMuscles = exAllGroups.map(\.name).joined(separator: ", ")
+                                    let allMuscles = (exPrimaryGroups + exSecondaryGroups).map(\.name).joined(separator: ", ")
 
                                     if !allMuscles.isEmpty {
                                         Text("Muscles: \(allMuscles)")
@@ -656,10 +665,17 @@ public struct StartWorkoutView: View {
                                                     Image(exFrontBase)
                                                         .resizable()
                                                         .scaledToFit()
-                                                    ForEach(exFrontMasks, id: \.self) { mask in
+                                                    ForEach(exFrontMasksPrimary, id: \.self) { mask in
                                                         Image(mask)
                                                             .resizable()
                                                             .scaledToFit()
+                                                            .blendMode(.screen)
+                                                    }
+                                                    ForEach(exFrontMasksSecondary, id: \.self) { mask in
+                                                        Image(mask)
+                                                            .resizable()
+                                                            .scaledToFit()
+                                                            .opacity(0.8)
                                                             .blendMode(.screen)
                                                     }
                                                 }
@@ -673,10 +689,17 @@ public struct StartWorkoutView: View {
                                                     Image(exBackBase)
                                                         .resizable()
                                                         .scaledToFit()
-                                                    ForEach(exBackMasks, id: \.self) { mask in
+                                                    ForEach(exBackMasksPrimary, id: \.self) { mask in
                                                         Image(mask)
                                                             .resizable()
                                                             .scaledToFit()
+                                                            .blendMode(.screen)
+                                                    }
+                                                    ForEach(exBackMasksSecondary, id: \.self) { mask in
+                                                        Image(mask)
+                                                            .resizable()
+                                                            .scaledToFit()
+                                                            .opacity(0.8)
                                                             .blendMode(.screen)
                                                     }
                                                 }
@@ -714,10 +737,17 @@ public struct StartWorkoutView: View {
                                         Image(exFrontBase)
                                             .resizable()
                                             .scaledToFit()
-                                        ForEach(exFrontMasks, id: \.self) { mask in
+                                        ForEach(exFrontMasksPrimary, id: \.self) { mask in
                                             Image(mask)
                                                 .resizable()
                                                 .scaledToFit()
+                                                .blendMode(.screen)
+                                        }
+                                        ForEach(exFrontMasksSecondary, id: \.self) { mask in
+                                            Image(mask)
+                                                .resizable()
+                                                .scaledToFit()
+                                                .opacity(0.8)
                                                 .blendMode(.screen)
                                         }
                                     }
@@ -755,10 +785,17 @@ public struct StartWorkoutView: View {
                                         Image(exBackBase)
                                             .resizable()
                                             .scaledToFit()
-                                        ForEach(exBackMasks, id: \.self) { mask in
+                                        ForEach(exBackMasksPrimary, id: \.self) { mask in
                                             Image(mask)
                                                 .resizable()
                                                 .scaledToFit()
+                                                .blendMode(.screen)
+                                        }
+                                        ForEach(exBackMasksSecondary, id: \.self) { mask in
+                                            Image(mask)
+                                                .resizable()
+                                                .scaledToFit()
+                                                .opacity(0.8)
                                                 .blendMode(.screen)
                                         }
                                     }
@@ -773,6 +810,22 @@ public struct StartWorkoutView: View {
                                     Text("Sets")
                                         .font(.subheadline)
                                         .fontWeight(.semibold)
+
+                                    if !previousSets.isEmpty {
+                                        let dateLabel: String = {
+                                            guard let date = previousLogDate else { return "" }
+                                            let days = Calendar.current.dateComponents([.day], from: date, to: Date()).day ?? 0
+                                            if days == 0 { return ", today" }
+                                            if days == 1 { return ", yesterday" }
+                                            if days < 30 { return ", \(days)d ago" }
+                                            let months = days / 30
+                                            return ", \(months)mo ago"
+                                        }()
+                                        Text("(previous values\(dateLabel))")
+                                            .font(.caption)
+                                            .italic()
+                                            .foregroundColor(.secondary)
+                                    }
 
                                     Spacer()
 
@@ -804,7 +857,7 @@ public struct StartWorkoutView: View {
                                                 VStack(alignment: .leading, spacing: 4) {
                                                     Text("Set")
                                                         .font(.caption2)
-                                                        .foregroundColor(.secondary)
+                                                        .foregroundColor(.primary.opacity(0.6))
                                                     Text("\(index + 1)")
                                                         .font(.caption)
                                                         .fontWeight(.semibold)
@@ -817,8 +870,10 @@ public struct StartWorkoutView: View {
                                                 VStack(alignment: .leading, spacing: 4) {
                                                     Text("Reps")
                                                         .font(.caption2)
-                                                        .foregroundColor(.secondary)
-                                                    TextField("0", text: Binding(
+                                                        .foregroundColor(.primary.opacity(0.6))
+                                                    let repPlaceholder = index < previousSets.count && previousSets[index].reps > 0
+                                                        ? "\(previousSets[index].reps)" : "0"
+                                                    TextField(repPlaceholder, text: Binding(
                                                         get: { set.reps == 0 ? "" : "\(set.reps)" },
                                                         set: {
                                                             if let value = Int($0) {
@@ -838,8 +893,10 @@ public struct StartWorkoutView: View {
                                                 VStack(alignment: .leading, spacing: 4) {
                                                     Text("Weight")
                                                         .font(.caption2)
-                                                        .foregroundColor(.secondary)
-                                                    TextField("0.00", text: Binding(
+                                                        .foregroundColor(.primary.opacity(0.6))
+                                                    let weightPlaceholder = index < previousSets.count && previousSets[index].weight > 0
+                                                        ? String(format: "%.2f", previousSets[index].weight) : "0.00"
+                                                    TextField(weightPlaceholder, text: Binding(
                                                         get: { set.weight == 0 ? "" : String(format: "%.2f", set.weight) },
                                                         set: {
                                                             if let value = Double($0) {
@@ -856,21 +913,21 @@ public struct StartWorkoutView: View {
                                                     .cornerRadius(4)
                                                 }
 
-                                                if index == sets.count - 1 {
-                                                    Button(action: { addSet() }) {
-                                                        Image(systemName: "plus.circle.fill")
-                                                            .foregroundColor(.black)
-                                                    }
-                                                    .buttonStyle(.plain)
-                                                    .padding(.top, 20)
-                                                } else {
+                                                VStack(spacing: 6) {
                                                     Button(action: { removeSet(at: index) }) {
                                                         Image(systemName: "xmark.circle.fill")
                                                             .foregroundColor(.red)
                                                     }
                                                     .buttonStyle(.plain)
-                                                    .padding(.top, 20)
+                                                    if index == sets.count - 1 {
+                                                        Button(action: { addSet() }) {
+                                                            Image(systemName: "plus.circle.fill")
+                                                                .foregroundColor(.black)
+                                                        }
+                                                        .buttonStyle(.plain)
+                                                    }
                                                 }
+                                                .padding(.top, 20)
                                             }
                                         }
                                     }
@@ -968,6 +1025,8 @@ public struct StartWorkoutView: View {
             sets = savedData.sets
             notes = savedData.notes
             timerSeconds = savedData.timerSeconds
+            previousSets = []
+            previousLogDate = nil  // already entered data for this exercise; no placeholder needed
         } else {
             sets = []
             notes = ""
@@ -1029,20 +1088,29 @@ public struct StartWorkoutView: View {
 
     private func initializeSets() {
         guard let exerciseID = workout.exercises[safe: currentExerciseIndex]?.exerciseID,
-              let logged = lastLoggedSets(for: exerciseID), !logged.isEmpty else {
+              let (logged, logDate) = lastLoggedSetsWithDate(for: exerciseID), !logged.isEmpty else {
             sets = [WorkoutSet(reps: 0, weight: 0)]
+            previousSets = []
+            previousLogDate = nil
             return
         }
-        // Pre-populate from the most recent log entry for this exercise
-        sets = logged.map { WorkoutSet(reps: $0.reps, weight: $0.weight) }
+        // Store previous values as placeholders; start with blank sets of the same count
+        previousSets = logged
+        previousLogDate = logDate
+        sets = logged.map { _ in WorkoutSet(reps: 0, weight: 0) }
+    }
+
+    /// Returns the sets and log date from the most recent log that contains this exercise, or nil if none.
+    private func lastLoggedSetsWithDate(for exerciseID: UUID) -> ([LoggedSet], Date)? {
+        guard let log = logState.sortedLogs.first(where: { log in
+            log.exercises.contains(where: { $0.exerciseID == exerciseID && !$0.sets.isEmpty })
+        }), let ex = log.exercises.first(where: { $0.exerciseID == exerciseID }) else { return nil }
+        return ex.sets.isEmpty ? nil : (ex.sets, log.completedAt)
     }
 
     /// Returns the sets from the most recent log that contains this exercise, or nil if none.
     private func lastLoggedSets(for exerciseID: UUID) -> [LoggedSet]? {
-        let match = logState.sortedLogs
-            .compactMap { log in log.exercises.first(where: { $0.exerciseID == exerciseID }) }
-            .first
-        return match.flatMap { $0.sets.isEmpty ? nil : $0.sets }
+        lastLoggedSetsWithDate(for: exerciseID).map { $0.0 }
     }
 
     private func completeWorkout() {
