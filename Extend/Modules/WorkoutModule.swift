@@ -618,60 +618,77 @@ public struct StartWorkoutView: View {
                             }
                             .padding(.horizontal, 16)
 
+                            // Shared muscle image data used by both info panel and timer row
+                            let exPrimaryGroups = exercise.primaryMuscleGroupIDs.compactMap { id in
+                                muscleGroupsState.sortedGroups.first { $0.id == id }
+                            }
+                            let exSecondaryGroups = exercise.secondaryMuscleGroupIDs.compactMap { id in
+                                muscleGroupsState.sortedGroups.first { $0.id == id }
+                            }
+                            let exAllGroups = exPrimaryGroups + exSecondaryGroups
+                            let exIsFemale = muscleGroupsState.selectedBodyOption == .female
+                            let exFrontBase = exIsFemale ? "FemaleFrontFullBody" : "MaleFrontFullBody"
+                            let exBackBase  = exIsFemale ? "FemaleBackFullBody"  : "MaleBackFullBody"
+                            let exAllAssets = exAllGroups.flatMap { g -> [String] in
+                                [g.primaryImageAssetName, g.secondaryImageAssetName]
+                                    .compactMap { $0 }.filter { !$0.isEmpty }
+                            }
+                            let exFrontMasks = exAllAssets.filter { $0.contains("Front") }
+                            let exBackMasks  = exAllAssets.filter { $0.contains("Back") && !$0.contains("FullBody") }
+
                             // Expandable info section
                             if expandedInfo {
                                 VStack(alignment: .leading, spacing: 8) {
-                                    let primaryGroups = exercise.primaryMuscleGroupIDs.compactMap { id in
-                                        muscleGroupsState.sortedGroups.first { $0.id == id }
-                                    }
-                                    let secondaryGroups = exercise.secondaryMuscleGroupIDs.compactMap { id in
-                                        muscleGroupsState.sortedGroups.first { $0.id == id }
-                                    }
-                                    let allGroups = primaryGroups + secondaryGroups
-                                    let allMuscles = allGroups.map(\.name).joined(separator: ", ")
-
-                                    // A group has a real image if it has a non-nil asset name or custom data
-                                    let groupsWithImages = allGroups.filter {
-                                        $0.customPrimaryImageData != nil ||
-                                        ($0.primaryImageAssetName != nil && !($0.primaryImageAssetName!.isEmpty))
-                                    }
-                                    let hasAnyImages = !groupsWithImages.isEmpty
+                                    let allMuscles = exAllGroups.map(\.name).joined(separator: ", ")
 
                                     if !allMuscles.isEmpty {
-                                        if hasAnyImages {
-                                            // Images present — show label only, no redundant name list
-                                            Text("Muscles:")
-                                                .font(.caption)
-                                                .foregroundColor(.secondary)
-                                        } else {
-                                            // No images — show full name list, skip thumbnails
-                                            Text("Muscles: \(allMuscles)")
-                                                .font(.caption)
-                                                .foregroundColor(.secondary)
-                                        }
+                                        Text("Muscles: \(allMuscles)")
+                                            .font(.caption)
+                                            .foregroundColor(.secondary)
                                     }
 
-                                    // Muscle thumbnails — only when real images exist
-                                    if hasAnyImages {
-                                        LazyVGrid(
-                                            columns: [
-                                                GridItem(.flexible()),
-                                                GridItem(.flexible())
-                                            ],
-                                            spacing: 12
-                                        ) {
-                                            ForEach(allGroups) { group in
-                                                VStack(spacing: 4) {
-                                                    MuscleGroupThumbnail(group: group, size: 144)
-                                                    Text(group.name)
-                                                        .font(.system(size: 11))
-                                                        .foregroundColor(.secondary)
-                                                        .lineLimit(1)
+                                    // Always show both front and back panels
+                                    GeometryReader { geo in
+                                        let panelWidth = (geo.size.width - 12) / 2
+                                        HStack(spacing: 12) {
+                                            VStack(spacing: 4) {
+                                                ZStack {
+                                                    Image(exFrontBase)
+                                                        .resizable()
+                                                        .scaledToFit()
+                                                    ForEach(exFrontMasks, id: \.self) { mask in
+                                                        Image(mask)
+                                                            .resizable()
+                                                            .scaledToFit()
+                                                            .blendMode(.screen)
+                                                    }
                                                 }
+                                                .frame(width: panelWidth)
+                                                Text("Front")
+                                                    .font(.system(size: 11))
+                                                    .foregroundColor(.secondary)
+                                            }
+                                            VStack(spacing: 4) {
+                                                ZStack {
+                                                    Image(exBackBase)
+                                                        .resizable()
+                                                        .scaledToFit()
+                                                    ForEach(exBackMasks, id: \.self) { mask in
+                                                        Image(mask)
+                                                            .resizable()
+                                                            .scaledToFit()
+                                                            .blendMode(.screen)
+                                                    }
+                                                }
+                                                .frame(width: panelWidth)
+                                                Text("Back")
+                                                    .font(.system(size: 11))
+                                                    .foregroundColor(.secondary)
                                             }
                                         }
-                                        .padding(.vertical, 2)
                                     }
+                                    .frame(height: 220)
+                                    .padding(.vertical, 4)
 
                                     let equipmentNames = exercise.equipmentIDs.compactMap { id in
                                         equipmentState.sortedItems.first { $0.id == id }?.name
@@ -690,31 +707,64 @@ public struct StartWorkoutView: View {
                                     .padding(.horizontal, 16)
                             }
 
-                            // Timer section
-                            VStack(spacing: 12) {
-                                HStack(spacing: 12) {
-                                    Button(action: { toggleTimer() }) {
-                                        Image(systemName: isTimerRunning ? "stop.circle.fill" : "play.circle.fill")
-                                            .font(.system(size: 24))
-                                            .foregroundColor(.black)
+                            // Timer section — flanked by small body thumbnails when info is collapsed
+                            HStack(spacing: 8) {
+                                if !expandedInfo {
+                                    ZStack {
+                                        Image(exFrontBase)
+                                            .resizable()
+                                            .scaledToFit()
+                                        ForEach(exFrontMasks, id: \.self) { mask in
+                                            Image(mask)
+                                                .resizable()
+                                                .scaledToFit()
+                                                .blendMode(.screen)
+                                        }
                                     }
-                                    .buttonStyle(.plain)
+                                    .frame(width: 56, height: 80)
+                                }
 
-                                    Text("\(formatTime(timerSeconds))")
-                                        .font(.title3)
-                                        .fontWeight(.semibold)
-                                        .monospacedDigit()
+                                VStack(spacing: 12) {
+                                    HStack(spacing: 12) {
+                                        Button(action: { toggleTimer() }) {
+                                            Image(systemName: isTimerRunning ? "stop.circle.fill" : "play.circle.fill")
+                                                .font(.system(size: 24))
+                                                .foregroundColor(.black)
+                                        }
+                                        .buttonStyle(.plain)
 
-                                    Button(action: { resetTimer() }) {
-                                        Image(systemName: "arrow.counterclockwise")
-                                            .foregroundColor(.black)
+                                        Text("\(formatTime(timerSeconds))")
+                                            .font(.title3)
+                                            .fontWeight(.semibold)
+                                            .monospacedDigit()
+
+                                        Button(action: { resetTimer() }) {
+                                            Image(systemName: "arrow.counterclockwise")
+                                                .foregroundColor(.black)
+                                        }
+                                        .buttonStyle(.plain)
                                     }
-                                    .buttonStyle(.plain)
+                                }
+                                .padding(12)
+                                .frame(maxWidth: .infinity)
+                                .background(Color(red: 0.96, green: 0.96, blue: 0.97))
+                                .cornerRadius(8)
+
+                                if !expandedInfo {
+                                    ZStack {
+                                        Image(exBackBase)
+                                            .resizable()
+                                            .scaledToFit()
+                                        ForEach(exBackMasks, id: \.self) { mask in
+                                            Image(mask)
+                                                .resizable()
+                                                .scaledToFit()
+                                                .blendMode(.screen)
+                                        }
+                                    }
+                                    .frame(width: 56, height: 80)
                                 }
                             }
-                            .padding(12)
-                            .background(Color(red: 0.96, green: 0.96, blue: 0.97))
-                            .cornerRadius(8)
                             .padding(.horizontal, 16)
 
                             // Sets section
