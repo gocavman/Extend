@@ -99,88 +99,51 @@ public final class DashboardState {
         var order = 0
         var tiles: [DashboardTile] = []
 
-        tiles.append(
+        // Helper: create a stat card with the default left-gray accent
+        func statCard(_ type: StatCardType, icon: String, size: TileSize = .small) -> DashboardTile {
             DashboardTile(
-                title: StatCardType.workoutFrequency.rawValue,
-                icon: "chart.bar",
+                title: type.rawValue,
+                icon: icon,
                 order: order,
                 tileType: .statCard,
-                statCardType: .workoutFrequency,
-                size: .large
+                statCardType: type,
+                size: size,
+                accentPlacement: .left,
+                accentColorHex: "#CCCCCC"
             )
-        )
+        }
+
+        tiles.append(statCard(.workoutFrequency, icon: "chart.bar", size: .large))
         order += 1
 
-        tiles.append(
-            DashboardTile(
-                title: StatCardType.muscleGroupDistribution.rawValue,
-                icon: "chart.pie",
-                order: order,
-                tileType: .statCard,
-                statCardType: .muscleGroupDistribution,
-                size: .large
-            )
-        )
+        tiles.append(statCard(.muscleGroupDistribution, icon: "chart.pie", size: .large))
         order += 1
 
-        tiles.append(
-            DashboardTile(
-                title: StatCardType.totalWorkouts.rawValue,
-                icon: "list.bullet",
-                order: order,
-                tileType: .statCard,
-                statCardType: .totalWorkouts,
-                size: .small
-            )
-        )
+        tiles.append(statCard(.totalWorkouts, icon: "list.bullet"))
         order += 1
 
-        tiles.append(
-            DashboardTile(
-                title: StatCardType.dayStreaks.rawValue,
-                icon: "flame",
-                order: order,
-                tileType: .statCard,
-                statCardType: .dayStreaks,
-                size: .small
-            )
-        )
+        tiles.append(statCard(.dayStreaks, icon: "flame"))
         order += 1
 
-        tiles.append(
-            DashboardTile(
-                title: StatCardType.totalTime.rawValue,
-                icon: "clock",
-                order: order,
-                tileType: .statCard,
-                statCardType: .totalTime,
-                size: .small
-            )
-        )
+        tiles.append(statCard(.totalTime, icon: "clock"))
         order += 1
 
-        tiles.append(
-            DashboardTile(
-                title: StatCardType.favoriteExercise.rawValue,
-                icon: "star",
-                order: order,
-                tileType: .statCard,
-                statCardType: .favoriteExercise,
-                size: .small
-            )
-        )
+        tiles.append(statCard(.volumeThisWeek, icon: "scalemass"))
         order += 1
 
-        tiles.append(
-            DashboardTile(
-                title: StatCardType.favoriteDay.rawValue,
-                icon: "calendar",
-                order: order,
-                tileType: .statCard,
-                statCardType: .favoriteDay,
-                size: .small
-            )
-        )
+        tiles.append(statCard(.longestStreak, icon: "trophy"))
+        order += 1
+
+        tiles.append(statCard(.restDays, icon: "moon"))
+        order += 1
+
+        tiles.append(statCard(.personalRecord, icon: "medal"))
+        order += 1
+
+        tiles.append(statCard(.favoriteExercise, icon: "star"))
+        order += 1
+
+        tiles.append(statCard(.favoriteDay, icon: "calendar"))
         order += 1
 
         tiles.append(

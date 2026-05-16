@@ -163,7 +163,12 @@ private struct DashboardModuleView: View {
                     statType: statCard,
                     frequencyDays: workoutFrequencyDays(),
                     frequencyRangeLabel: workoutFrequencyRangeLabel(),
-                    muscleSegments: muscleDistributionSegments()
+                    muscleSegments: muscleDistributionSegments(),
+                    accentPlacement: tile.accentPlacement,
+                    accentColor: tile.accentColor,
+                    tileTint: tile.tileTintColor,
+                    trend: trendInfo(for: statCard),
+                    personalRecordLabel: statCard == .personalRecord ? logState.personalRecord?.exerciseName : nil
                 )
                 .frame(width: tileWidth, height: tileHeight)
                 .rotationEffect(.degrees(tileRotations[tile.id] ?? 0))
@@ -183,58 +188,72 @@ private struct DashboardModuleView: View {
     }
     
     private func interactiveTileView(tile: DashboardTile, width: CGFloat, height: CGFloat) -> some View {
-        Button(action: {
+        let bg: Color = tile.tileTintColor ?? Color(red: 0.96, green: 0.96, blue: 0.97)
+        return Button(action: {
             UIImpactFeedbackGenerator(style: .light).impactOccurred()
             if isBlankTile(tile) {
                 handleBlankTileAction(tile)
+            } else if tile.tileType == .shortcut {
+                // Shortcut tiles navigate to the parent module
+                if tile.shortcutType == .workout {
+                    state.selectModule(ModuleIDs.workouts)
+                } else if tile.shortcutType == .timer {
+                    state.selectModule(ModuleIDs.timer)
+                }
             } else if let targetID = findModuleID(for: tile) {
                 state.selectModule(targetID)
             }
         }) {
-            VStack(spacing: 0) {
-                Spacer(minLength: 0)
-                
-                Image(systemName: tile.icon)
-                    .font(.system(size: 28, weight: .semibold))
-                    .foregroundColor(.black)
-                    .rotationEffect(.degrees(spinningTiles[tile.id] ?? 0))
-                    .animation(.easeInOut(duration: 1.0), value: spinningTiles[tile.id])
-                
-                if !tile.title.isEmpty {
-                    Text(tile.title)
-                        .font(.subheadline)
-                        .fontWeight(.semibold)
-                        .lineLimit(2)
-                        .multilineTextAlignment(.center)
-                        .padding(.top, 8)
+            ZStack(alignment: .leading) {
+                VStack(spacing: 0) {
+                    Spacer(minLength: 0)
+
+                    Image(systemName: tile.icon)
+                        .font(.system(size: 28, weight: .semibold))
+                        .foregroundColor(.black)
+                        .rotationEffect(.degrees(spinningTiles[tile.id] ?? 0))
+                        .animation(.easeInOut(duration: 1.0), value: spinningTiles[tile.id])
+
+                    if !tile.title.isEmpty {
+                        Text(tile.title)
+                            .font(.subheadline)
+                            .fontWeight(.semibold)
+                            .lineLimit(2)
+                            .multilineTextAlignment(.center)
+                            .padding(.top, 8)
+                    }
+
+                    Spacer(minLength: 0)
+
+                    // Show game levels at bottom
+                    if tile.targetModuleID == ModuleIDs.game1 {
+                        Text("Level \(game1Level)")
+                            .font(.caption2)
+                            .foregroundColor(.gray)
+                            .padding(.bottom, 4)
+                    } else if tile.targetModuleID == ModuleIDs.matchGame {
+                        Text("Level \(matchGameLevel)")
+                            .font(.caption2)
+                            .foregroundColor(.gray)
+                            .padding(.bottom, 4)
+                    } else if isBlankTile(tile), let count = dashboardState.tileClickCounts[tile.id], count > 0 {
+                        Text("\(count)")
+                            .font(.caption2)
+                            .foregroundColor(.gray)
+                            .padding(.bottom, 4)
+                    }
                 }
-                
-                Spacer(minLength: 0)
-                
-                // Show game levels at bottom
-                if tile.targetModuleID == ModuleIDs.game1 {
-                    Text("Level \(game1Level)")
-                        .font(.caption2)
-                        .foregroundColor(.gray)
-                        .padding(.bottom, 4)
-                } else if tile.targetModuleID == ModuleIDs.matchGame {
-                    Text("Level \(matchGameLevel)")
-                        .font(.caption2)
-                        .foregroundColor(.gray)
-                        .padding(.bottom, 4)
-                } else if isBlankTile(tile), let count = dashboardState.tileClickCounts[tile.id], count > 0 {
-                    // Show click counter for blank tiles
-                    Text("\(count)")
-                        .font(.caption2)
-                        .foregroundColor(.gray)
-                        .padding(.bottom, 4)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .padding(10)
+                .background(bg)
+                .cornerRadius(12)
+                .foregroundColor(.primary)
+
+                // Accent bar overlay
+                if tile.accentPlacement != .none {
+                    AccentBarView(placement: tile.accentPlacement, color: tile.accentColor)
                 }
             }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .padding(10)
-            .background(Color(red: 0.96, green: 0.96, blue: 0.97))
-            .cornerRadius(12)
-            .foregroundColor(.primary)
         }
         .frame(width: width, height: height)
         .rotationEffect(.degrees(tileRotations[tile.id] ?? 0))
@@ -340,6 +359,42 @@ private struct DashboardModuleView: View {
         case .muscleGroupDistribution:
             let segments = muscleDistributionSegments()
             return segments.first?.label ?? "—"
+        case .volumeThisWeek:
+            let v = logState.volumeThisWeek
+            if v >= 1000 {
+                return String(format: "%.1fk", v / 1000)
+            }
+            return String(format: "%.0f", v)
+        case .longestStreak:
+            return "\(logState.longestStreak)"
+        case .restDays:
+            return "\(logState.restDaysLast14)"
+        case .personalRecord:
+            if let pr = logState.personalRecord {
+                return String(format: "%.0f lbs", pr.weight)
+            }
+            return "—"
+        }
+    }
+
+    /// Returns an optional trend arrow (↑ / ↓) and color for stats that support comparison
+    private func trendInfo(for stat: StatCardType) -> (symbol: String, color: Color)? {
+        switch stat {
+        case .totalWorkouts:
+            let this = logState.workoutsThisWeek
+            let last = logState.workoutsLastWeek
+            if last == 0 { return nil }
+            return this > last ? ("↑", .green) : this < last ? ("↓", .red) : nil
+        case .dayStreaks:
+            // Show up arrow if current streak > 0, no comparison available without history
+            return logState.currentStreak > 0 ? ("↑", .green) : nil
+        case .volumeThisWeek:
+            let this = logState.volumeThisWeek
+            let last = logState.volumeLastWeek
+            if last == 0 { return nil }
+            return this > last ? ("↑", .green) : this < last ? ("↓", .red) : nil
+        default:
+            return nil
         }
     }
 
@@ -627,6 +682,14 @@ private struct AddTileSheet: View {
             return "chart.bar"
         case .muscleGroupDistribution:
             return "chart.pie"
+        case .volumeThisWeek:
+            return "scalemass"
+        case .longestStreak:
+            return "trophy"
+        case .restDays:
+            return "moon"
+        case .personalRecord:
+            return "medal"
         }
     }
 
@@ -969,101 +1032,166 @@ private struct StatCardTileView: View {
     let frequencyDays: [WeekdayFrequency]
     let frequencyRangeLabel: String
     let muscleSegments: [PieSegment]
+    let accentPlacement: AccentPlacement
+    let accentColor: Color
+    let tileTint: Color?
+    let trend: (symbol: String, color: Color)?
+    let personalRecordLabel: String?   // exercise name for PR card
 
     var body: some View {
-        VStack(spacing: 6) {
-            // Icon to the left of the title
-            HStack(spacing: 6) {
-                Image(systemName: icon)
-                    .font(.system(size: 14, weight: .semibold))
-                    .foregroundColor(.black)
-                Text(title)
-                    .font(.caption)
-                    .fontWeight(.bold)
-                    .foregroundColor(.black)
-                    .multilineTextAlignment(.center)
-                    .lineLimit(2)
-                    .frame(maxWidth: .infinity)
-                Spacer(minLength: 0)
-            }
-
-            Spacer()
-                .frame(height: 4)
-
-            // Data/Content
-            if statType == .workoutFrequency {
-                VStack(spacing: 4) {
-                    Text(frequencyRangeLabel)
-                        .font(.caption2)
-                        .foregroundColor(.gray)
-                    WeekFrequencyView(days: frequencyDays)
+        let bg = tileTint ?? Color(red: 0.96, green: 0.96, blue: 0.97)
+        ZStack(alignment: .leading) {
+            VStack(spacing: 6) {
+                // Header row: icon + title + trend arrow
+                HStack(spacing: 6) {
+                    Image(systemName: icon)
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundColor(.black)
+                    Text(title)
+                        .font(.caption)
+                        .fontWeight(.bold)
+                        .foregroundColor(.black)
+                        .multilineTextAlignment(.leading)
+                        .lineLimit(2)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    if let t = trend {
+                        Text(t.symbol)
+                            .font(.system(size: 13, weight: .bold))
+                            .foregroundColor(t.color)
+                    }
                 }
-            } else if statType == .muscleGroupDistribution {
-                GeometryReader { geometry in
-                    let maxHeight = geometry.size.height
-                    let maxWidth = geometry.size.width
-                    let pieSize = min(maxHeight * 0.9, maxWidth * 0.55)
-                    
-                    if muscleSegments.isEmpty {
-                        // Dummy pie chart when no workouts logged
-                        VStack {
-                            Spacer()
-                            HStack {
+
+                Spacer().frame(height: 4)
+
+                // Data / Content
+                if statType == .workoutFrequency {
+                    VStack(spacing: 4) {
+                        Text(frequencyRangeLabel)
+                            .font(.caption2)
+                            .foregroundColor(.gray)
+                        WeekFrequencyView(days: frequencyDays)
+                    }
+                } else if statType == .muscleGroupDistribution {
+                    GeometryReader { geometry in
+                        let maxHeight = geometry.size.height
+                        let maxWidth  = geometry.size.width
+                        let pieSize   = min(maxHeight * 0.9, maxWidth * 0.55)
+
+                        if muscleSegments.isEmpty {
+                            VStack {
                                 Spacer()
-                                ZStack {
-                                    PieChartView(segments: [PieSegment(label: "No Data", value: 1.0, color: .gray)])
-                                    
-                                    Text("No workouts\nlogged")
-                                        .font(.caption2)
-                                        .fontWeight(.semibold)
-                                        .foregroundColor(.black)
-                                        .multilineTextAlignment(.center)
+                                HStack {
+                                    Spacer()
+                                    ZStack {
+                                        PieChartView(segments: [PieSegment(label: "No Data", value: 1.0, color: .gray)])
+                                        Text("No workouts\nlogged")
+                                            .font(.caption2)
+                                            .fontWeight(.semibold)
+                                            .foregroundColor(.black)
+                                            .multilineTextAlignment(.center)
+                                    }
+                                    .frame(width: pieSize, height: pieSize)
+                                    Spacer()
                                 }
-                                .frame(width: pieSize, height: pieSize)
                                 Spacer()
                             }
-                            Spacer()
-                        }
-                    } else {
-                        ZStack {
-                            HStack(spacing: 12) {
-                                PieChartView(segments: muscleSegments)
-                                    .frame(width: pieSize, height: pieSize)
-
-                                VStack(alignment: .leading, spacing: 4) {
-                                    ForEach(muscleSegments, id: \.label) { segment in
-                                        HStack(spacing: 6) {
-                                            Circle()
-                                                .fill(segment.color)
-                                                .frame(width: 6, height: 6)
-
-                                            Text(segment.label)
-                                                .font(.caption2)
-                                                .foregroundColor(.black)
-                                                .lineLimit(1)
-                                                .minimumScaleFactor(0.75)
+                        } else {
+                            ZStack {
+                                HStack(spacing: 12) {
+                                    PieChartView(segments: muscleSegments)
+                                        .frame(width: pieSize, height: pieSize)
+                                    VStack(alignment: .leading, spacing: 4) {
+                                        ForEach(muscleSegments, id: \.label) { segment in
+                                            HStack(spacing: 6) {
+                                                Circle()
+                                                    .fill(segment.color)
+                                                    .frame(width: 6, height: 6)
+                                                Text(segment.label)
+                                                    .font(.caption2)
+                                                    .foregroundColor(.black)
+                                                    .lineLimit(1)
+                                                    .minimumScaleFactor(0.75)
+                                            }
                                         }
                                     }
                                 }
                             }
+                            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
                         }
-                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
+                    }
+                } else {
+                    let isNumeric = statType == .totalWorkouts || statType == .dayStreaks
+                        || statType == .totalTime || statType == .volumeThisWeek
+                        || statType == .longestStreak || statType == .restDays
+                    Text(value)
+                        .font(.system(size: isNumeric ? 28 : 16, weight: .bold, design: isNumeric ? .rounded : .default))
+                        .foregroundColor(.black)
+                        .lineLimit(2)
+                        .minimumScaleFactor(0.6)
+                        .multilineTextAlignment(.center)
+
+                    // Secondary label for Personal Record card
+                    if statType == .personalRecord, let exercise = personalRecordLabel {
+                        Text(exercise)
+                            .font(.caption2)
+                            .foregroundColor(.gray)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.7)
                     }
                 }
-            } else {
-                Text(value)
-                    .font(.system(size: 14, weight: .semibold))
-                    .foregroundColor(.black)
-                    .lineLimit(2)
-                    .multilineTextAlignment(.center)
-            }
 
-            Spacer(minLength: 0)
+                Spacer(minLength: 0)
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .padding(12)
+            .background(bg)
+            .clipShape(RoundedRectangle(cornerRadius: 12))
+
+            // Accent bar
+            if accentPlacement != .none {
+                AccentBarView(placement: accentPlacement, color: accentColor)
+            }
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .padding(12)
-        .background(Color(red: 0.96, green: 0.96, blue: 0.97))
-        .clipShape(RoundedRectangle(cornerRadius: 12))
+    }
+}
+
+/// A colored accent bar along one edge of the tile
+private struct AccentBarView: View {
+    let placement: AccentPlacement
+    let color: Color
+
+    private let thickness: CGFloat = 4
+
+    var body: some View {
+        GeometryReader { geo in
+            switch placement {
+            case .none: EmptyView()
+            case .left:
+                Rectangle()
+                    .fill(color)
+                    .frame(width: thickness, height: geo.size.height - 16)
+                    .clipShape(RoundedRectangle(cornerRadius: thickness / 2))
+                    .position(x: thickness / 2 + 4, y: geo.size.height / 2)
+            case .right:
+                Rectangle()
+                    .fill(color)
+                    .frame(width: thickness, height: geo.size.height - 16)
+                    .clipShape(RoundedRectangle(cornerRadius: thickness / 2))
+                    .position(x: geo.size.width - thickness / 2 - 4, y: geo.size.height / 2)
+            case .top:
+                Rectangle()
+                    .fill(color)
+                    .frame(width: geo.size.width - 16, height: thickness)
+                    .clipShape(RoundedRectangle(cornerRadius: thickness / 2))
+                    .position(x: geo.size.width / 2, y: thickness / 2 + 4)
+            case .bottom:
+                Rectangle()
+                    .fill(color)
+                    .frame(width: geo.size.width - 16, height: thickness)
+                    .clipShape(RoundedRectangle(cornerRadius: thickness / 2))
+                    .position(x: geo.size.width / 2, y: geo.size.height - thickness / 2 - 4)
+            }
+        }
     }
 }
 

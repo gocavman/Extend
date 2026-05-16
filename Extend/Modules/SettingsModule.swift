@@ -522,6 +522,8 @@ private struct ModulePickerView: View {
 private struct DashboardCustomizationView: View {
     @Environment(DashboardState.self) var dashboardState
     @Environment(ModuleRegistry.self) var registry
+    @Environment(WorkoutsState.self) var workoutsState
+    @Environment(TimerState.self) var timerState
     
     @State private var showingAddTile = false
     @State private var editingTile: DashboardTile?
@@ -600,6 +602,8 @@ private struct DashboardCustomizationView: View {
             }
             .environment(dashboardState)
             .environment(registry)
+            .environment(workoutsState)
+            .environment(timerState)
         }
         .sheet(item: $editingTile) { tile in
             DashboardEditTileSheet(tile: tile) { updatedTile in
@@ -615,10 +619,13 @@ private struct DashboardAddTileSheet: View {
     @Environment(\.dismiss) var dismiss
     @Environment(ModuleRegistry.self) var registry
     @Environment(DashboardState.self) var dashboardState
+    @Environment(WorkoutsState.self) var workoutsState
+    @Environment(TimerState.self) var timerState
 
     @State private var selectedModuleIDs: Set<UUID> = []
     @State private var selectedStatCards: Set<StatCardType> = []
     @State private var selectedBlankIcon: String? = nil
+    @State private var selectedShortcuts: Set<String> = []   // "workout:<uuid>" or "timer:<uuid>"
 
     let onAdd: (DashboardTile) -> Void
 
@@ -649,7 +656,7 @@ private struct DashboardAddTileSheet: View {
     }
 
     private var hasSelection: Bool {
-        !selectedModuleIDs.isEmpty || !selectedStatCards.isEmpty || selectedBlankIcon != nil
+        !selectedModuleIDs.isEmpty || !selectedStatCards.isEmpty || selectedBlankIcon != nil || !selectedShortcuts.isEmpty
     }
 
     private func iconForStatCard(_ statCard: StatCardType) -> String {
@@ -661,18 +668,26 @@ private struct DashboardAddTileSheet: View {
         case .favoriteDay: return "calendar"
         case .workoutFrequency: return "chart.bar"
         case .muscleGroupDistribution: return "chart.pie"
+        case .volumeThisWeek: return "scalemass"
+        case .longestStreak: return "trophy"
+        case .restDays: return "moon"
+        case .personalRecord: return "medal"
         }
     }
 
     private func descriptionForStatCard(_ statCard: StatCardType) -> String {
         switch statCard {
-        case .totalWorkouts:       return "Cumulative count of all completed workouts."
-        case .dayStreaks:          return "Your current consecutive active days streak."
-        case .totalTime:           return "Total time logged across all workouts."
-        case .favoriteExercise:    return "The exercise you perform most frequently."
-        case .favoriteDay:         return "The day of the week you work out most often."
-        case .workoutFrequency:    return "Bar chart of workout activity over the last 14 days."
+        case .totalWorkouts:           return "Cumulative count of all completed workouts."
+        case .dayStreaks:               return "Your current consecutive active days streak."
+        case .totalTime:               return "Total time logged across all workouts."
+        case .favoriteExercise:        return "The exercise you perform most frequently."
+        case .favoriteDay:             return "The day of the week you work out most often."
+        case .workoutFrequency:        return "Bar chart of workout activity over the last 14 days."
         case .muscleGroupDistribution: return "Pie chart of muscle groups trained in the last 7 days."
+        case .volumeThisWeek:          return "Total sets × reps × weight logged this week."
+        case .longestStreak:           return "Your all-time best consecutive workout streak."
+        case .restDays:                return "Days with no workout logged in the last 14 days."
+        case .personalRecord:          return "Your heaviest single set weight ever logged."
         }
     }
 
@@ -781,6 +796,77 @@ private struct DashboardAddTileSheet: View {
                     }
                 }
 
+                // MARK: Shortcuts
+                Section("Shortcuts") {
+                    let existingShortcutKeys = Set(dashboardState.tiles.compactMap { t -> String? in
+                        guard t.tileType == .shortcut, let st = t.shortcutType, let sid = t.shortcutItemID else { return nil }
+                        return "\(st.rawValue.lowercased()):\(sid.uuidString)"
+                    })
+
+                    let availableWorkouts = workoutsState.workouts.filter { !existingShortcutKeys.contains("workout:\($0.id.uuidString)") }
+                    let availableTimers   = timerState.configs.filter { !existingShortcutKeys.contains("timer:\($0.id.uuidString)") }
+
+                    if availableWorkouts.isEmpty && availableTimers.isEmpty {
+                        Text("No saved workouts or timers to add as shortcuts.")
+                            .font(.caption)
+                            .foregroundColor(.gray)
+                    } else {
+                        if !availableWorkouts.isEmpty {
+                            Text("Workouts")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                            ForEach(availableWorkouts) { workout in
+                                let key = "workout:\(workout.id.uuidString)"
+                                Button(action: {
+                                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                                    if selectedShortcuts.contains(key) { selectedShortcuts.remove(key) } else { selectedShortcuts.insert(key) }
+                                }) {
+                                    HStack {
+                                        Image(systemName: "figure.strengthtraining.traditional")
+                                            .foregroundColor(.secondary)
+                                        Text(workout.name).foregroundColor(.primary)
+                                        Spacer()
+                                        if selectedShortcuts.contains(key) {
+                                            Image(systemName: "checkmark").foregroundColor(.black)
+                                        }
+                                    }
+                                    .contentShape(Rectangle())
+                                }
+                                .buttonStyle(.plain)
+                            }
+                        }
+                        if !availableTimers.isEmpty {
+                            Text("Timers")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                            ForEach(availableTimers) { config in
+                                let key = "timer:\(config.id.uuidString)"
+                                Button(action: {
+                                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                                    if selectedShortcuts.contains(key) { selectedShortcuts.remove(key) } else { selectedShortcuts.insert(key) }
+                                }) {
+                                    HStack {
+                                        Image(systemName: "timer")
+                                            .foregroundColor(.secondary)
+                                        VStack(alignment: .leading, spacing: 2) {
+                                            Text(config.name).foregroundColor(.primary)
+                                            Text(config.type.rawValue)
+                                                .font(.caption)
+                                                .foregroundColor(.secondary)
+                                        }
+                                        Spacer()
+                                        if selectedShortcuts.contains(key) {
+                                            Image(systemName: "checkmark").foregroundColor(.black)
+                                        }
+                                    }
+                                    .contentShape(Rectangle())
+                                }
+                                .buttonStyle(.plain)
+                            }
+                        }
+                    }
+                }
+
                 Section("Blank Tile") {
                     Button(action: {
                         UIImpactFeedbackGenerator(style: .light).impactOccurred()
@@ -881,6 +967,35 @@ private struct DashboardAddTileSheet: View {
                             onAdd(tile)
                         }
 
+                        // Shortcut tiles
+                        for key in selectedShortcuts {
+                            let parts = key.split(separator: ":").map(String.init)
+                            guard parts.count == 2, let itemID = UUID(uuidString: parts[1]) else { continue }
+                            if parts[0] == "workout", let workout = workoutsState.workouts.first(where: { $0.id == itemID }) {
+                                let tile = DashboardTile(
+                                    title: workout.name,
+                                    icon: "figure.strengthtraining.traditional",
+                                    order: dashboardState.tiles.count,
+                                    tileType: .shortcut,
+                                    size: .small,
+                                    shortcutType: .workout,
+                                    shortcutItemID: workout.id
+                                )
+                                onAdd(tile)
+                            } else if parts[0] == "timer", let config = timerState.configs.first(where: { $0.id == itemID }) {
+                                let tile = DashboardTile(
+                                    title: config.name,
+                                    icon: "timer",
+                                    order: dashboardState.tiles.count,
+                                    tileType: .shortcut,
+                                    size: .small,
+                                    shortcutType: .timer,
+                                    shortcutItemID: config.id
+                                )
+                                onAdd(tile)
+                            }
+                        }
+
                         if hasSelection {
                             dismiss()
                         }
@@ -897,14 +1012,18 @@ private struct DashboardAddTileSheet: View {
 
 private struct DashboardEditTileSheet: View {
     @Environment(\.dismiss) var dismiss
-    
+
     let tile: DashboardTile
-    
+
     @State private var title: String = ""
     @State private var selectedIcon: String = ""
     @State private var selectedSize: TileSize = .small
     @State private var selectedBlankAction: BlankTileAction = .animation1
-    
+    @State private var accentPlacement: AccentPlacement = .none
+    @State private var accentColor: Color = .gray
+    @State private var tileTintEnabled: Bool = false
+    @State private var tileTintColor: Color = Color(red: 0.96, green: 0.96, blue: 0.97)
+
     let onSave: (DashboardTile) -> Void
 
     private let icons = [
@@ -917,11 +1036,9 @@ private struct DashboardEditTileSheet: View {
         "figure.mind.and.body", "figure.outdoor.cycle", "figure.rower", "figure.stairs",
         "tortoise.fill", "dog.fill", "cat.fill", "pawprint.fill", "lizard.fill", "bird.fill", "ant.fill", "hare.fill", "fish.fill", "fossil.shell.fill", "atom", "tree.fill"
     ]
-    
+
     private func availableSizes() -> [TileSize] {
-        if tile.tileType == .graph {
-            return [.large]
-        }
+        if tile.tileType == .graph { return [.large] }
         if tile.tileType == .statCard,
            let statCard = tile.statCardType,
            (statCard == .workoutFrequency || statCard == .muscleGroupDistribution) {
@@ -956,24 +1073,40 @@ private struct DashboardEditTileSheet: View {
                     }
                     .pickerStyle(.segmented)
                 }
-                
+
+                Section("Accent") {
+                    Picker("Placement", selection: $accentPlacement) {
+                        ForEach(AccentPlacement.allCases, id: \.self) { p in
+                            Text(p.rawValue).tag(p)
+                        }
+                    }
+                    if accentPlacement != .none {
+                        ColorPicker("Accent Color", selection: $accentColor)
+                    }
+                }
+
+                Section("Tile Tint") {
+                    Toggle("Custom background color", isOn: $tileTintEnabled)
+                    if tileTintEnabled {
+                        ColorPicker("Tint Color", selection: $tileTintColor)
+                    }
+                }
+
                 Section("Icon") {
                     LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible()), GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
                         ForEach(icons, id: \.self) { icon in
-                            VStack {
-                                Button(action: {
-                                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                                    selectedIcon = icon
-                                }) {
-                                    Image(systemName: icon)
-                                        .font(.system(size: 20))
-                                        .frame(maxWidth: .infinity, maxHeight: 50)
-                                        .background(selectedIcon == icon ? Color.black.opacity(0.15) : Color(red: 0.96, green: 0.96, blue: 0.97))
-                                        .cornerRadius(8)
-                                        .foregroundColor(.black)
-                                }
-                                .buttonStyle(.plain)
+                            Button(action: {
+                                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                                selectedIcon = icon
+                            }) {
+                                Image(systemName: icon)
+                                    .font(.system(size: 20))
+                                    .frame(maxWidth: .infinity, maxHeight: 50)
+                                    .background(selectedIcon == icon ? Color.black.opacity(0.15) : Color(red: 0.96, green: 0.96, blue: 0.97))
+                                    .cornerRadius(8)
+                                    .foregroundColor(.black)
                             }
+                            .buttonStyle(.plain)
                         }
                     }
                 }
@@ -985,12 +1118,15 @@ private struct DashboardEditTileSheet: View {
                 selectedIcon = tile.icon
                 selectedSize = tile.size
                 selectedBlankAction = tile.blankAction ?? .animation1
+                accentPlacement = tile.accentPlacement
+                accentColor = tile.accentColor
+                tileTintEnabled = tile.tileTintHex != nil
+                tileTintColor = tile.tileTintColor ?? Color(red: 0.96, green: 0.96, blue: 0.97)
             }
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
                     Button("Cancel") { dismiss() }
                 }
-                
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Save") {
                         UIImpactFeedbackGenerator(style: .light).impactOccurred()
@@ -999,6 +1135,9 @@ private struct DashboardEditTileSheet: View {
                         updatedTile.icon = selectedIcon
                         updatedTile.size = selectedSize
                         updatedTile.blankAction = isBlankTile ? selectedBlankAction : nil
+                        updatedTile.accentPlacement = accentPlacement
+                        updatedTile.accentColorHex = accentColor.toHexString()
+                        updatedTile.tileTintHex = tileTintEnabled ? tileTintColor.toHexString() : nil
                         onSave(updatedTile)
                         dismiss()
                     }

@@ -73,31 +73,35 @@ public struct DashboardTile: Identifiable, Hashable, Codable {
 
 // MARK: - Color Helpers
 
+extension Color {
+    func toHexString() -> String {
+        guard let components = UIColor(self).cgColor.components else { return "#000000" }
+        let r = Int(components[0] * 255.0)
+        let g = Int(components.count > 1 ? components[1] * 255.0 : 0)
+        let b = Int(components.count > 2 ? components[2] * 255.0 : 0)
+        return String(format: "#%02X%02X%02X", r, g, b)
+    }
+}
+
+private extension Color {
+    init?(hex: String) {
+        let hex = hex.trimmingCharacters(in: CharacterSet.alphanumerics.inverted)
+        var int: UInt64 = 0
+        Scanner(string: hex).scanHexInt64(&int)
+        let a, r, g, b: UInt64
+        switch hex.count {
+        case 6:
+            (r, g, b, a) = (int >> 16, int >> 8 & 0xFF, int & 0xFF, 255)
+        default:
+            return nil
+        }
+        self.init(.sRGB, red: Double(r) / 255, green: Double(g) / 255, blue: Double(b) / 255, opacity: Double(a) / 255)
+    }
+}
+
 public extension DashboardTile {
     var accentColor: Color { Color(hex: accentColorHex) ?? .gray }
     var tileTintColor: Color? { tileTintHex.flatMap { Color(hex: $0) } }
-}
-
-public extension Color {
-    /// Parse a hex string like "#RRGGBB" or "RRGGBB"
-    init?(hex: String) {
-        var str = hex.trimmingCharacters(in: .whitespacesAndNewlines)
-        if str.hasPrefix("#") { str = String(str.dropFirst()) }
-        guard str.count == 6, let value = UInt64(str, radix: 16) else { return nil }
-        let r = Double((value >> 16) & 0xFF) / 255
-        let g = Double((value >> 8)  & 0xFF) / 255
-        let b = Double(value & 0xFF)          / 255
-        self.init(red: r, green: g, blue: b)
-    }
-
-    /// Return hex string "#RRGGBB"
-    func toHex() -> String? {
-        guard let components = UIColor(self).cgColor.components, components.count >= 3 else { return nil }
-        let r = Int(components[0] * 255)
-        let g = Int(components[1] * 255)
-        let b = Int(components[2] * 255)
-        return String(format: "#%02X%02X%02X", r, g, b)
-    }
 }
 
 // MARK: - Enums

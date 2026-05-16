@@ -143,6 +143,99 @@ public final class WorkoutLogState {
         return formatter.string(from: date)
     }
     
+    // MARK: - New Stats
+
+    /// Total volume (sets × reps × weight) logged in the current calendar week (Mon–Sun)
+    public var volumeThisWeek: Double {
+        let calendar = Calendar.current
+        let now = Date()
+        guard let weekStart = calendar.dateInterval(of: .weekOfYear, for: now)?.start else { return 0 }
+        return logsInRange(from: weekStart, to: now)
+            .flatMap { $0.exercises }
+            .flatMap { $0.sets }
+            .reduce(0) { $0 + Double($1.reps) * $1.weight }
+    }
+
+    /// Volume for the previous calendar week — used for trend comparison
+    public var volumeLastWeek: Double {
+        let calendar = Calendar.current
+        let now = Date()
+        guard let thisWeekStart = calendar.dateInterval(of: .weekOfYear, for: now)?.start,
+              let lastWeekStart = calendar.date(byAdding: .weekOfYear, value: -1, to: thisWeekStart),
+              let lastWeekEnd   = calendar.date(byAdding: .second, value: -1, to: thisWeekStart) else { return 0 }
+        return logsInRange(from: lastWeekStart, to: lastWeekEnd)
+            .flatMap { $0.exercises }
+            .flatMap { $0.sets }
+            .reduce(0) { $0 + Double($1.reps) * $1.weight }
+    }
+
+    /// All-time longest consecutive workout streak (in days)
+    public var longestStreak: Int {
+        guard !logs.isEmpty else { return 0 }
+        let calendar = Calendar.current
+        let uniqueDays = Set(logs.map { calendar.startOfDay(for: $0.completedAt) })
+            .sorted()
+        var best = 1
+        var current = 1
+        for i in 1..<uniqueDays.count {
+            let prev = uniqueDays[i - 1]
+            let curr = uniqueDays[i]
+            if calendar.dateComponents([.day], from: prev, to: curr).day == 1 {
+                current += 1
+                best = max(best, current)
+            } else {
+                current = 1
+            }
+        }
+        return best
+    }
+
+    /// Number of days in the last 14 with NO workout logged
+    public var restDaysLast14: Int {
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: Date())
+        let activeDays = Set(
+            logs.compactMap { log -> Date? in
+                let d = calendar.startOfDay(for: log.completedAt)
+                return (0..<14).contains(calendar.dateComponents([.day], from: d, to: today).day ?? 99) ? d : nil
+            }
+        )
+        return 14 - activeDays.count
+    }
+
+    /// Number of workouts logged in the current calendar week
+    public var workoutsThisWeek: Int {
+        let calendar = Calendar.current
+        let now = Date()
+        guard let weekStart = calendar.dateInterval(of: .weekOfYear, for: now)?.start else { return 0 }
+        return logsInRange(from: weekStart, to: now).count
+    }
+
+    /// Workouts logged last calendar week — for trend comparison
+    public var workoutsLastWeek: Int {
+        let calendar = Calendar.current
+        let now = Date()
+        guard let thisWeekStart = calendar.dateInterval(of: .weekOfYear, for: now)?.start,
+              let lastWeekStart = calendar.date(byAdding: .weekOfYear, value: -1, to: thisWeekStart),
+              let lastWeekEnd   = calendar.date(byAdding: .second, value: -1, to: thisWeekStart) else { return 0 }
+        return logsInRange(from: lastWeekStart, to: lastWeekEnd).count
+    }
+
+    /// Heaviest single set weight ever logged, and the exercise name
+    public var personalRecord: (exerciseName: String, weight: Double)? {
+        var best: (String, Double)? = nil
+        for log in logs {
+            for ex in log.exercises {
+                for s in ex.sets where s.weight > 0 {
+                    if best == nil || s.weight > best!.1 {
+                        best = (ex.exerciseName, s.weight)
+                    }
+                }
+            }
+        }
+        return best
+    }
+
     /// Get workout frequency for last N days
     public func workoutFrequency(days: Int) -> [Date: Int] {
         let calendar = Calendar.current
