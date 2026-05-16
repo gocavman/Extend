@@ -839,11 +839,13 @@ public struct StartWorkoutView: View {
                                         .buttonStyle(.plain)
                                     }
 
-                                    Button(action: { addSet() }) {
-                                        Image(systemName: "plus.circle.fill")
-                                            .foregroundColor(.black)
+                                    if sets.isEmpty {
+                                        Button(action: { addSet() }) {
+                                            Image(systemName: "plus.circle.fill")
+                                                .foregroundColor(.black)
+                                        }
+                                        .buttonStyle(.plain)
                                     }
-                                    .buttonStyle(.plain)
                                 }
 
                                 if sets.isEmpty {
@@ -913,23 +915,24 @@ public struct StartWorkoutView: View {
                                                     .cornerRadius(4)
                                                 }
 
-                                                VStack(spacing: 6) {
-                                                    Button(action: { removeSet(at: index) }) {
-                                                        Image(systemName: "xmark.circle.fill")
-                                                            .foregroundColor(.red)
-                                                    }
-                                                    .buttonStyle(.plain)
-                                                    if index == sets.count - 1 {
-                                                        Button(action: { addSet() }) {
-                                                            Image(systemName: "plus.circle.fill")
-                                                                .foregroundColor(.black)
-                                                        }
-                                                        .buttonStyle(.plain)
-                                                    }
+                                                Button(action: { removeSet(at: index) }) {
+                                                    Image(systemName: "xmark.circle.fill")
+                                                        .foregroundColor(.red)
                                                 }
+                                                .buttonStyle(.plain)
                                                 .padding(.top, 20)
                                             }
                                         }
+                                    }
+
+                                    // Add Set row
+                                    HStack {
+                                        Spacer()
+                                        Button(action: { addSet() }) {
+                                            Image(systemName: "plus.circle.fill")
+                                                .foregroundColor(.black)
+                                        }
+                                        .buttonStyle(.plain)
                                     }
                                 }
                             }
