@@ -525,6 +525,7 @@ private struct DashboardCustomizationView: View {
     @Environment(WorkoutsState.self) var workoutsState
     @Environment(TimerState.self) var timerState
     @Environment(VoiceTrainerState.self) var voiceTrainerState
+    @Environment(ExercisesState.self) var exercisesState
     
     @State private var showingAddTile = false
     @State private var editingTile: DashboardTile?
@@ -606,6 +607,7 @@ private struct DashboardCustomizationView: View {
             .environment(workoutsState)
             .environment(timerState)
             .environment(voiceTrainerState)
+            .environment(exercisesState)
         }
         .sheet(item: $editingTile) { tile in
             DashboardEditTileSheet(tile: tile) { updatedTile in
@@ -624,6 +626,7 @@ private struct DashboardAddTileSheet: View {
     @Environment(WorkoutsState.self) var workoutsState
     @Environment(TimerState.self) var timerState
     @Environment(VoiceTrainerState.self) var voiceTrainerState
+    @Environment(ExercisesState.self) var exercisesState
 
     @State private var selectedModuleIDs: Set<UUID> = []
     @State private var selectedStatCards: Set<StatCardType> = []
@@ -809,9 +812,12 @@ private struct DashboardAddTileSheet: View {
                     let availableWorkouts      = workoutsState.workouts.filter { !existingShortcutKeys.contains("workout:\($0.id.uuidString)") }
                     let availableTimers        = timerState.configs.filter { !existingShortcutKeys.contains("timer:\($0.id.uuidString)") }
                     let availableVoiceTrainers = voiceTrainerState.savedConfigurations.filter { !existingShortcutKeys.contains("voicetrainer:\($0.id.uuidString)") }
+                    let availableExercises     = exercisesState.exercises
+                        .filter { !existingShortcutKeys.contains("quickexercise:\($0.id.uuidString)") }
+                        .sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
 
-                    if availableWorkouts.isEmpty && availableTimers.isEmpty && availableVoiceTrainers.isEmpty {
-                        Text("No saved workouts, timers, or trainers to add as shortcuts.")
+                    if availableWorkouts.isEmpty && availableTimers.isEmpty && availableVoiceTrainers.isEmpty && availableExercises.isEmpty {
+                        Text("No saved workouts, timers, trainers, or exercises to add as shortcuts.")
                             .font(.caption)
                             .foregroundColor(.gray)
                     } else {
@@ -889,6 +895,30 @@ private struct DashboardAddTileSheet: View {
                                                     .foregroundColor(.secondary)
                                             }
                                         }
+                                        Spacer()
+                                        if selectedShortcuts.contains(key) {
+                                            Image(systemName: "checkmark").foregroundColor(.black)
+                                        }
+                                    }
+                                    .contentShape(Rectangle())
+                                }
+                                .buttonStyle(.plain)
+                            }
+                        }
+                        if !availableExercises.isEmpty {
+                            Text("Quick Exercises")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                            ForEach(availableExercises) { exercise in
+                                let key = "quickexercise:\(exercise.id.uuidString)"
+                                Button(action: {
+                                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                                    if selectedShortcuts.contains(key) { selectedShortcuts.remove(key) } else { selectedShortcuts.insert(key) }
+                                }) {
+                                    HStack {
+                                        Image(systemName: "bolt.fill")
+                                            .foregroundColor(.secondary)
+                                        Text(exercise.name).foregroundColor(.primary)
                                         Spacer()
                                         if selectedShortcuts.contains(key) {
                                             Image(systemName: "checkmark").foregroundColor(.black)
@@ -1040,6 +1070,17 @@ private struct DashboardAddTileSheet: View {
                                     size: .small,
                                     shortcutType: .voiceTrainer,
                                     shortcutItemID: config.id
+                                )
+                                onAdd(tile)
+                            } else if parts[0] == "quickexercise", let exercise = exercisesState.exercises.first(where: { $0.id == itemID }) {
+                                let tile = DashboardTile(
+                                    title: exercise.name,
+                                    icon: "bolt.fill",
+                                    order: dashboardState.tiles.count,
+                                    tileType: .shortcut,
+                                    size: .small,
+                                    shortcutType: .quickExercise,
+                                    shortcutItemID: exercise.id
                                 )
                                 onAdd(tile)
                             }

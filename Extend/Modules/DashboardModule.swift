@@ -45,6 +45,8 @@ private struct DashboardModuleView: View {
     @Environment(WorkoutsState.self) var workoutsState
     @Environment(TimerState.self) var timerState
     @Environment(VoiceTrainerState.self) var voiceTrainerState
+
+    @State private var quickStartWorkout: Workout? = nil
     
     @State private var spinningTiles: [UUID: Double] = [:]
     @State private var flyingTiles: Set<UUID> = []
@@ -77,6 +79,13 @@ private struct DashboardModuleView: View {
             Button("OK", role: .cancel) {}
         } message: {
             Text(blankAlertMessage)
+        }
+        .sheet(item: $quickStartWorkout) { workout in
+            StartWorkoutView(workout: workout)
+                .environment(exercisesState)
+                .environment(MuscleGroupsState.shared)
+                .environment(EquipmentState.shared)
+                .environment(WorkoutLogState.shared)
         }
         .onAppear {
             // Initialize game levels from UserDefaults
@@ -207,6 +216,13 @@ private struct DashboardModuleView: View {
                 } else if tile.shortcutType == .voiceTrainer, let itemID = tile.shortcutItemID {
                     voiceTrainerState.pendingLaunchID = itemID
                     state.selectModule(ModuleIDs.voiceTrainer)
+                } else if tile.shortcutType == .quickExercise, let itemID = tile.shortcutItemID,
+                          let exercise = exercisesState.exercises.first(where: { $0.id == itemID }) {
+                    quickStartWorkout = Workout(
+                        name: "\(exercise.name) (Quick)",
+                        notes: "",
+                        exercises: [WorkoutExercise(exerciseID: exercise.id)]
+                    )
                 }
             } else if let targetID = findModuleID(for: tile) {
                 state.selectModule(targetID)

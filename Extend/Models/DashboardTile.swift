@@ -164,7 +164,8 @@ public enum AccentPlacement: String, Codable, CaseIterable {
 
 /// Saved-item shortcut types for dashboard tiles
 public enum ShortcutType: String, Codable, CaseIterable {
-    case workout      = "Workout"
-    case timer        = "Timer"
-    case voiceTrainer = "Voice Trainer"
+    case workout       = "Workout"
+    case timer         = "Timer"
+    case voiceTrainer  = "Voice Trainer"
+    case quickExercise = "Quick Exercise"
 }
