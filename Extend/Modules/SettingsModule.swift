@@ -633,9 +633,12 @@ private struct DashboardAddTileSheet: View {
         "tortoise.fill", "dog.fill", "cat.fill", "pawprint.fill", "lizard.fill", "bird.fill", "ant.fill", "hare.fill", "fish.fill", "fossil.shell.fill", "atom", "tree.fill"
     ]
 
+    private var existingTileModuleIDs: Set<UUID> {
+        Set(dashboardState.tiles.compactMap { $0.targetModuleID })
+    }
+
     private var moduleQuickOptions: [AnyAppModule] {
-        let existingTileModuleIDs = Set(dashboardState.tiles.compactMap { $0.targetModuleID })
-        return registry.registeredModules
+        registry.registeredModules
             .filter { !existingTileModuleIDs.contains($0.id) && $0.displayName != "Dashboard" && $0.displayName != "Workout Buddy" && $0.displayName != "Workout Match" && $0.displayName != "Animator" }
             .sorted { $0.displayName.localizedCaseInsensitiveCompare($1.displayName) == .orderedAscending }
     }
@@ -647,12 +650,6 @@ private struct DashboardAddTileSheet: View {
 
     private var hasSelection: Bool {
         !selectedModuleIDs.isEmpty || !selectedStatCards.isEmpty || selectedBlankIcon != nil
-    }
-
-    private var canAddMore: Bool {
-        let currentCount = dashboardState.tiles.count
-        let newCount = selectedModuleIDs.count + selectedStatCards.count + (selectedBlankIcon == nil ? 0 : 1)
-        return currentCount + newCount <= 10
     }
 
     private func iconForStatCard(_ statCard: StatCardType) -> String {
@@ -683,19 +680,24 @@ private struct DashboardAddTileSheet: View {
         NavigationStack {
             Form {
                 Section("Modules") {
-                    ForEach(moduleQuickOptions, id: \.id) { module in
-                        Button(action: {
-                            UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                            if selectedModuleIDs.contains(module.id) {
-                                selectedModuleIDs.remove(module.id)
-                            } else {
-                                selectedModuleIDs.insert(module.id)
+                    if moduleQuickOptions.isEmpty {
+                        Text("All modules are already added")
+                            .font(.caption)
+                            .foregroundColor(.gray)
+                    } else {
+                        ForEach(moduleQuickOptions, id: \.id) { module in
+                            Button(action: {
+                                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                                if selectedModuleIDs.contains(module.id) {
+                                    selectedModuleIDs.remove(module.id)
+                                } else {
+                                    selectedModuleIDs.insert(module.id)
+                                }
+                            }) {
+                                ModulePickerRow(module: module, isSelected: selectedModuleIDs.contains(module.id))
                             }
-                        }) {
-                            ModulePickerRow(module: module, isSelected: selectedModuleIDs.contains(module.id))
+                            .buttonStyle(.plain)
                         }
-                        .buttonStyle(.plain)
-                        .disabled(!canAddMore && !selectedModuleIDs.contains(module.id))
                     }
                 }
 
@@ -737,36 +739,45 @@ private struct DashboardAddTileSheet: View {
                 }
 
                 Section("Mini Games") {
-                    // Workout Buddy
-                    if let workoutBuddyModule = registry.registeredModules.first(where: { $0.displayName == "Workout Buddy" }) {
-                        Button(action: {
-                            UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                            if selectedModuleIDs.contains(workoutBuddyModule.id) {
-                                selectedModuleIDs.remove(workoutBuddyModule.id)
-                            } else {
-                                selectedModuleIDs.insert(workoutBuddyModule.id)
-                            }
-                        }) {
-                            ModulePickerRow(module: workoutBuddyModule, isSelected: selectedModuleIDs.contains(workoutBuddyModule.id))
-                        }
-                        .buttonStyle(.plain)
-                        .disabled(!canAddMore && !selectedModuleIDs.contains(workoutBuddyModule.id))
-                    }
+                    let buddyModule = registry.registeredModules.first(where: { $0.displayName == "Workout Buddy" })
+                    let matchModule = registry.registeredModules.first(where: { $0.displayName == "Workout Match" })
+                    let buddyAdded = buddyModule.map { existingTileModuleIDs.contains($0.id) } ?? true
+                    let matchAdded = matchModule.map { existingTileModuleIDs.contains($0.id) } ?? true
 
-                    // Workout Match
-                    if let workoutMatchModule = registry.registeredModules.first(where: { $0.displayName == "Workout Match" }) {
-                        Button(action: {
-                            UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                            if selectedModuleIDs.contains(workoutMatchModule.id) {
-                                selectedModuleIDs.remove(workoutMatchModule.id)
-                            } else {
-                                selectedModuleIDs.insert(workoutMatchModule.id)
+                    if buddyAdded && matchAdded {
+                        Text("All mini games are already added")
+                            .font(.caption)
+                            .foregroundColor(.gray)
+                    } else {
+                        // Workout Buddy
+                        if let workoutBuddyModule = buddyModule, !buddyAdded {
+                            Button(action: {
+                                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                                if selectedModuleIDs.contains(workoutBuddyModule.id) {
+                                    selectedModuleIDs.remove(workoutBuddyModule.id)
+                                } else {
+                                    selectedModuleIDs.insert(workoutBuddyModule.id)
+                                }
+                            }) {
+                                ModulePickerRow(module: workoutBuddyModule, isSelected: selectedModuleIDs.contains(workoutBuddyModule.id))
                             }
-                        }) {
-                            ModulePickerRow(module: workoutMatchModule, isSelected: selectedModuleIDs.contains(workoutMatchModule.id))
+                            .buttonStyle(.plain)
                         }
-                        .buttonStyle(.plain)
-                        .disabled(!canAddMore && !selectedModuleIDs.contains(workoutMatchModule.id))
+
+                        // Workout Match
+                        if let workoutMatchModule = matchModule, !matchAdded {
+                            Button(action: {
+                                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                                if selectedModuleIDs.contains(workoutMatchModule.id) {
+                                    selectedModuleIDs.remove(workoutMatchModule.id)
+                                } else {
+                                    selectedModuleIDs.insert(workoutMatchModule.id)
+                                }
+                            }) {
+                                ModulePickerRow(module: workoutMatchModule, isSelected: selectedModuleIDs.contains(workoutMatchModule.id))
+                            }
+                            .buttonStyle(.plain)
+                        }
                     }
                 }
 

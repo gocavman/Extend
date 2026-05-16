@@ -111,7 +111,12 @@ public final class WorkoutLogState {
                 counts[exercise.exerciseName, default: 0] += 1
             }
         
-        return exerciseCounts.max(by: { $0.value < $1.value })?.key
+        // Stable sort: highest count wins; ties broken alphabetically so the result
+        // doesn't change on every view re-evaluation (dictionary iteration order is
+        // non-deterministic in Swift).
+        return exerciseCounts
+            .sorted { lhs, rhs in lhs.value != rhs.value ? lhs.value > rhs.value : lhs.key < rhs.key }
+            .first?.key
     }
     
     /// Most common workout day of week
@@ -124,7 +129,11 @@ public final class WorkoutLogState {
             counts[weekday, default: 0] += 1
         }
         
-        guard let mostCommonDay = dayCounts.max(by: { $0.value < $1.value })?.key else {
+        // Stable sort: highest count wins; ties broken by weekday number so the result
+        // is deterministic regardless of dictionary iteration order.
+        guard let mostCommonDay = dayCounts
+            .sorted(by: { lhs, rhs in lhs.value != rhs.value ? lhs.value > rhs.value : lhs.key < rhs.key })
+            .first?.key else {
             return nil
         }
         
