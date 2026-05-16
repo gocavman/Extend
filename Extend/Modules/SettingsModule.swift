@@ -628,6 +628,7 @@ private struct DashboardAddTileSheet: View {
     @Environment(VoiceTrainerState.self) var voiceTrainerState
     @Environment(ExercisesState.self) var exercisesState
 
+    @State private var searchText: String = ""
     @State private var selectedModuleIDs: Set<UUID> = []
     @State private var selectedStatCards: Set<StatCardType> = []
     @State private var selectedBlankIcon: String? = nil
@@ -697,16 +698,35 @@ private struct DashboardAddTileSheet: View {
         }
     }
 
+    private var isSearching: Bool { !searchText.isEmpty }
+
+    private var filteredModuleOptions: [AnyAppModule] {
+        guard isSearching else { return moduleQuickOptions }
+        return moduleQuickOptions.filter { $0.displayName.localizedCaseInsensitiveContains(searchText) }
+    }
+
+    private var filteredStatCardOptions: [StatCardType] {
+        guard isSearching else { return statCardOptions }
+        return statCardOptions.filter {
+            $0.rawValue.localizedCaseInsensitiveContains(searchText) ||
+            descriptionForStatCard($0).localizedCaseInsensitiveContains(searchText)
+        }
+    }
+
     var body: some View {
         NavigationStack {
             Form {
+                Section {
+                    SearchField(text: $searchText, placeholder: "Search tiles...")
+                }
+
                 Section("Modules") {
-                    if moduleQuickOptions.isEmpty {
-                        Text("All modules are already added")
+                    if filteredModuleOptions.isEmpty {
+                        Text(isSearching ? "No modules match your search" : "All modules are already added")
                             .font(.caption)
                             .foregroundColor(.gray)
                     } else {
-                        ForEach(moduleQuickOptions, id: \.id) { module in
+                        ForEach(filteredModuleOptions, id: \.id) { module in
                             Button(action: {
                                 UIImpactFeedbackGenerator(style: .light).impactOccurred()
                                 if selectedModuleIDs.contains(module.id) {
@@ -723,12 +743,12 @@ private struct DashboardAddTileSheet: View {
                 }
 
                 Section("Stat Cards") {
-                    if statCardOptions.isEmpty {
-                        Text("All stat cards are already added")
+                    if filteredStatCardOptions.isEmpty {
+                        Text(isSearching ? "No stat cards match your search" : "All stat cards are already added")
                             .font(.caption)
                             .foregroundColor(.gray)
                     } else {
-                        ForEach(statCardOptions, id: \.self) { stat in
+                        ForEach(filteredStatCardOptions, id: \.self) { stat in
                             Button(action: {
                                 UIImpactFeedbackGenerator(style: .light).impactOccurred()
                                 if selectedStatCards.contains(stat) {
@@ -764,14 +784,16 @@ private struct DashboardAddTileSheet: View {
                     let matchModule = registry.registeredModules.first(where: { $0.displayName == "Workout Match" })
                     let buddyAdded = buddyModule.map { existingTileModuleIDs.contains($0.id) } ?? true
                     let matchAdded = matchModule.map { existingTileModuleIDs.contains($0.id) } ?? true
+                    let buddyVisible = !buddyAdded && (!isSearching || "Workout Buddy".localizedCaseInsensitiveContains(searchText))
+                    let matchVisible = !matchAdded && (!isSearching || "Workout Match".localizedCaseInsensitiveContains(searchText))
 
-                    if buddyAdded && matchAdded {
-                        Text("All mini games are already added")
+                    if !buddyVisible && !matchVisible {
+                        Text(isSearching ? "No mini games match your search" : "All mini games are already added")
                             .font(.caption)
                             .foregroundColor(.gray)
                     } else {
                         // Workout Buddy
-                        if let workoutBuddyModule = buddyModule, !buddyAdded {
+                        if let workoutBuddyModule = buddyModule, buddyVisible {
                             Button(action: {
                                 UIImpactFeedbackGenerator(style: .light).impactOccurred()
                                 if selectedModuleIDs.contains(workoutBuddyModule.id) {
@@ -786,7 +808,7 @@ private struct DashboardAddTileSheet: View {
                         }
 
                         // Workout Match
-                        if let workoutMatchModule = matchModule, !matchAdded {
+                        if let workoutMatchModule = matchModule, matchVisible {
                             Button(action: {
                                 UIImpactFeedbackGenerator(style: .light).impactOccurred()
                                 if selectedModuleIDs.contains(workoutMatchModule.id) {
@@ -809,15 +831,22 @@ private struct DashboardAddTileSheet: View {
                         return "\(st.rawValue.lowercased().replacingOccurrences(of: " ", with: "")):\(sid.uuidString)"
                     })
 
-                    let availableWorkouts      = workoutsState.workouts.filter { !existingShortcutKeys.contains("workout:\($0.id.uuidString)") }
-                    let availableTimers        = timerState.configs.filter { !existingShortcutKeys.contains("timer:\($0.id.uuidString)") }
-                    let availableVoiceTrainers = voiceTrainerState.savedConfigurations.filter { !existingShortcutKeys.contains("voicetrainer:\($0.id.uuidString)") }
+                    let availableWorkouts      = workoutsState.workouts
+                        .filter { !existingShortcutKeys.contains("workout:\($0.id.uuidString)") }
+                        .filter { !isSearching || $0.name.localizedCaseInsensitiveContains(searchText) }
+                    let availableTimers        = timerState.configs
+                        .filter { !existingShortcutKeys.contains("timer:\($0.id.uuidString)") }
+                        .filter { !isSearching || $0.name.localizedCaseInsensitiveContains(searchText) || $0.type.rawValue.localizedCaseInsensitiveContains(searchText) }
+                    let availableVoiceTrainers = voiceTrainerState.savedConfigurations
+                        .filter { !existingShortcutKeys.contains("voicetrainer:\($0.id.uuidString)") }
+                        .filter { !isSearching || $0.name.localizedCaseInsensitiveContains(searchText) }
                     let availableExercises     = exercisesState.exercises
                         .filter { !existingShortcutKeys.contains("quickexercise:\($0.id.uuidString)") }
+                        .filter { !isSearching || $0.name.localizedCaseInsensitiveContains(searchText) }
                         .sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
 
                     if availableWorkouts.isEmpty && availableTimers.isEmpty && availableVoiceTrainers.isEmpty && availableExercises.isEmpty {
-                        Text("No saved workouts, timers, trainers, or exercises to add as shortcuts.")
+                        Text(isSearching ? "No shortcuts match your search" : "No saved workouts, timers, trainers, or exercises to add as shortcuts.")
                             .font(.caption)
                             .foregroundColor(.gray)
                     } else {
@@ -932,6 +961,7 @@ private struct DashboardAddTileSheet: View {
                     }
                 }
 
+                if !isSearching || "Blank Tile".localizedCaseInsensitiveContains(searchText) {
                 Section("Blank Tile") {
                     Button(action: {
                         UIImpactFeedbackGenerator(style: .light).impactOccurred()
@@ -969,6 +999,7 @@ private struct DashboardAddTileSheet: View {
                         }
                     }
                 }
+                } // end Blank Tile visibility
             }
             .navigationTitle("Add Tile")
             .navigationBarTitleDisplayMode(.inline)

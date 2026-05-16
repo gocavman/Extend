@@ -70,39 +70,37 @@ private struct TimerModuleView: View {
                 List {
                     // Favorites tiles
                     if !timerState.favoriteConfigs.isEmpty {
-                        Section("Favorites") {
-                            ScrollView(.horizontal, showsIndicators: false) {
-                                HStack(spacing: 8) {
-                                    ForEach(timerState.favoriteConfigs) { config in
-                                        NavigationLink(value: config) {
-                                            VStack(spacing: 4) {
-                                                Image(systemName: config.type.iconName)
-                                                    .font(.system(size: 12))
-                                                    .foregroundColor(.black)
-                                                Text(config.name)
-                                                    .font(.caption)
-                                                    .fontWeight(.semibold)
-                                                    .foregroundColor(.black)
-                                                    .lineLimit(2)
-                                                    .multilineTextAlignment(.center)
-                                                Text(config.type.rawValue)
-                                                    .font(.system(size: 8))
-                                                    .foregroundColor(.gray)
-                                            }
-                                            .frame(width: 70, height: 80)
-                                            .padding(8)
-                                            .background(Color(red: 0.96, green: 0.96, blue: 0.97))
-                                            .cornerRadius(8)
+                        Section {
+                            LazyVGrid(columns: [GridItem(.adaptive(minimum: 70), spacing: 10)], spacing: 10) {
+                                ForEach(timerState.favoriteConfigs) { config in
+                                    Button(action: {
+                                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                                        activeConfig = config
+                                    }) {
+                                        VStack(spacing: 4) {
+                                            Image(systemName: config.type.iconName)
+                                                .font(.system(size: 20))
+                                                .foregroundColor(.black)
+                                            Text(config.name)
+                                                .font(.caption)
+                                                .fontWeight(.semibold)
+                                                .foregroundColor(.black)
+                                                .lineLimit(2)
+                                                .multilineTextAlignment(.center)
+                                            Text(config.type.rawValue)
+                                                .font(.system(size: 9))
+                                                .foregroundColor(.gray)
                                         }
-                                        .buttonStyle(.plain)
+                                        .frame(width: 70, height: 80)
+                                        .background(Color(red: 0.92, green: 0.92, blue: 0.94))
+                                        .cornerRadius(10)
                                     }
-                                    .padding(.vertical, 4)
+                                    .buttonStyle(.plain)
                                 }
-                                .padding(.horizontal, 12)
                             }
-                            .frame(height: 100)
-                            .listRowInsets(EdgeInsets())
+                            .padding(.vertical, 4)
                         }
+                        .listRowInsets(EdgeInsets(top: 4, leading: 16, bottom: 4, trailing: 16))
                     }
 
                     // Search
@@ -154,9 +152,6 @@ private struct TimerModuleView: View {
                     }
                 }
                 .listStyle(.plain)
-            }
-            .navigationDestination(for: TimerConfig.self) { config in
-                ActiveTimerView(config: config)
             }
             .navigationDestination(item: $activeConfig) { config in
                 ActiveTimerView(config: config)

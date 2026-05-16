@@ -56,45 +56,39 @@ private struct QuickWorkoutModuleView: View {
             List {
                 // Favorites section
                 if !favoriteExercises.isEmpty {
-                    Section("Favorites") {
-                        ScrollView(.horizontal, showsIndicators: false) {
-                            HStack(spacing: 8) {
-                                ForEach(favoriteExercises) { exercise in
-                                    Button(action: {
-                                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                                        let workout = Workout(
-                                            name: "\(exercise.name) (Quick)",
-                                            notes: "",
-                                            exercises: [WorkoutExercise(exerciseID: exercise.id)]
-                                        )
-                                        startingWorkout = workout
-                                    }) {
-                                        VStack(spacing: 4) {
-                                            Image(systemName: "star.fill")
-                                                .font(.system(size: 12))
-                                                .foregroundColor(.black)
-
-                                            Text(exercise.name)
-                                                .font(.caption2)
-                                                .fontWeight(.semibold)
-                                                .foregroundColor(.black)
-                                                .lineLimit(2)
-                                                .multilineTextAlignment(.center)
-                                        }
-                                        .frame(width: 70, height: 80)
-                                        .padding(8)
-                                        .background(Color(red: 0.96, green: 0.96, blue: 0.97))
-                                        .cornerRadius(8)
+                    Section {
+                        LazyVGrid(columns: [GridItem(.adaptive(minimum: 70), spacing: 10)], spacing: 10) {
+                            ForEach(favoriteExercises) { exercise in
+                                Button(action: {
+                                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                                    let workout = Workout(
+                                        name: "\(exercise.name) (Quick)",
+                                        notes: "",
+                                        exercises: [WorkoutExercise(exerciseID: exercise.id)]
+                                    )
+                                    startingWorkout = workout
+                                }) {
+                                    VStack(spacing: 6) {
+                                        Image(systemName: "bolt.fill")
+                                            .font(.system(size: 20))
+                                            .foregroundColor(.black)
+                                        Text(exercise.name)
+                                            .font(.caption)
+                                            .fontWeight(.semibold)
+                                            .foregroundColor(.black)
+                                            .lineLimit(2)
+                                            .multilineTextAlignment(.center)
                                     }
-                                    .buttonStyle(.plain)
+                                    .frame(width: 70, height: 80)
+                                    .background(Color(red: 0.92, green: 0.92, blue: 0.94))
+                                    .cornerRadius(10)
                                 }
-                                .padding(.vertical, 4)
+                                .buttonStyle(.plain)
                             }
-                            .padding(.horizontal, 12)
                         }
-                        .frame(height: 100)
-                        .listRowInsets(EdgeInsets())
+                        .padding(.vertical, 4)
                     }
+                    .listRowInsets(EdgeInsets(top: 4, leading: 16, bottom: 4, trailing: 16))
                 }
 
                 // Search bar

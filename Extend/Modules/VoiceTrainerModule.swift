@@ -77,33 +77,31 @@ private struct VoiceTrainerModuleView: View {
                 // Favorites tiles
                 if !state.favoriteConfigs.isEmpty {
                     Section {
-                        ScrollView(.horizontal, showsIndicators: false) {
-                            HStack(spacing: 10) {
-                                ForEach(state.favoriteConfigs) { config in
-                                    Button(action: {
-                                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                                        play(config)
-                                    }) {
-                                        VStack(spacing: 6) {
-                                            Image(systemName: "speaker.wave.2.fill")
-                                                .font(.system(size: 20))
-                                                .foregroundColor(.black)
-                                            Text(config.name)
-                                                .font(.caption)
-                                                .fontWeight(.semibold)
-                                                .foregroundColor(.black)
-                                                .lineLimit(2)
-                                                .multilineTextAlignment(.center)
-                                        }
-                                        .frame(width: 70, height: 80)
-                                        .background(Color(red: 0.92, green: 0.92, blue: 0.94))
-                                        .cornerRadius(10)
+                        LazyVGrid(columns: [GridItem(.adaptive(minimum: 70), spacing: 10)], spacing: 10) {
+                            ForEach(state.favoriteConfigs) { config in
+                                Button(action: {
+                                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                                    play(config)
+                                }) {
+                                    VStack(spacing: 6) {
+                                        Image(systemName: "speaker.wave.2.fill")
+                                            .font(.system(size: 20))
+                                            .foregroundColor(.black)
+                                        Text(config.name)
+                                            .font(.caption)
+                                            .fontWeight(.semibold)
+                                            .foregroundColor(.black)
+                                            .lineLimit(2)
+                                            .multilineTextAlignment(.center)
                                     }
-                                    .buttonStyle(.plain)
+                                    .frame(width: 70, height: 80)
+                                    .background(Color(red: 0.92, green: 0.92, blue: 0.94))
+                                    .cornerRadius(10)
                                 }
+                                .buttonStyle(.plain)
                             }
-                            .padding(.vertical, 4)
                         }
+                        .padding(.vertical, 4)
                     }
                     .listRowInsets(EdgeInsets(top: 4, leading: 16, bottom: 4, trailing: 16))
                 }
