@@ -11,21 +11,24 @@ import UIKit
 // MARK: - Time Range Filter
 
 public enum StatsTimeRange: String, CaseIterable {
-    case thirtyDays = "30 Days"
-    case ninetyDays = "90 Days"
-    case allTime    = "All Time"
-
-    var days: Int? {
-        switch self {
-        case .thirtyDays:  return 30
-        case .ninetyDays:  return 90
-        case .allTime:     return nil
-        }
-    }
+    case sevenDays  = "7D"
+    case oneMonth   = "1M"
+    case threeMonth = "3M"
+    case sixMonth   = "6M"
+    case oneYear    = "1Y"
+    case allTime    = "All"
 
     var startDate: Date {
-        guard let days else { return .distantPast }
-        return Calendar.current.date(byAdding: .day, value: -days, to: Date()) ?? .distantPast
+        let cal = Calendar.current
+        let now = Date()
+        switch self {
+        case .sevenDays:   return cal.date(byAdding: .day,   value: -7,  to: now) ?? .distantPast
+        case .oneMonth:    return cal.date(byAdding: .month, value: -1,  to: now) ?? .distantPast
+        case .threeMonth:  return cal.date(byAdding: .month, value: -3,  to: now) ?? .distantPast
+        case .sixMonth:    return cal.date(byAdding: .month, value: -6,  to: now) ?? .distantPast
+        case .oneYear:     return cal.date(byAdding: .year,  value: -1,  to: now) ?? .distantPast
+        case .allTime:     return .distantPast
+        }
     }
 }
 
@@ -35,7 +38,7 @@ struct ExerciseStatsView: View {
     let exercise: Exercise
 
     @Environment(WorkoutLogState.self) var logState
-    @State private var timeRange: StatsTimeRange = .thirtyDays
+    @State private var timeRange: StatsTimeRange = .oneMonth
 
     // Filtered logs containing this exercise
     private var filteredLogs: [WorkoutLog] {
@@ -220,7 +223,7 @@ struct MuscleStatsView: View {
 
     @Environment(WorkoutLogState.self) var logState
     @Environment(ExercisesState.self) var exercisesState
-    @State private var timeRange: StatsTimeRange = .thirtyDays
+    @State private var timeRange: StatsTimeRange = .oneMonth
 
     // Exercise IDs targeting this muscle (primary or secondary)
     private var targetExerciseIDs: Set<UUID> {
@@ -642,7 +645,7 @@ struct EquipmentStatsView: View {
 
     @Environment(WorkoutLogState.self) var logState
     @Environment(ExercisesState.self) var exercisesState
-    @State private var timeRange: StatsTimeRange = .thirtyDays
+    @State private var timeRange: StatsTimeRange = .oneMonth
 
     /// Exercises that use this piece of equipment
     private var linkedExercises: [Exercise] {
