@@ -23,6 +23,24 @@ public struct WorkoutModule: AppModule {
     }
 }
 
+// MARK: - Loop Color Palette
+
+private let loopColorPalette: [Color] = [
+    Color(red: 0.20, green: 0.50, blue: 1.00),   // blue
+    Color(red: 0.18, green: 0.72, blue: 0.40),   // green
+    Color(red: 1.00, green: 0.55, blue: 0.10),   // orange
+    Color(red: 0.60, green: 0.20, blue: 0.90),   // purple
+    Color(red: 0.90, green: 0.20, blue: 0.25),   // red
+    Color(red: 0.05, green: 0.70, blue: 0.75),   // teal
+]
+
+private func loopColor(for loopID: UUID, in orderedLoopIDs: [UUID]) -> Color {
+    let index = orderedLoopIDs.firstIndex(of: loopID) ?? 0
+    return loopColorPalette[index % loopColorPalette.count]
+}
+
+// MARK: - Workouts Module View
+
 private struct WorkoutsModuleView: View {
     @Environment(WorkoutsState.self) var state
     @Environment(ExercisesState.self) var exercisesState
@@ -127,10 +145,13 @@ private struct WorkoutsModuleView: View {
                                         .foregroundColor(.secondary)
                                 }
 
-                                if !workout.exercises.isEmpty {
-                                    let exerciseNames = workoutExerciseNames(workout)
+                                let exerciseItems = workout.exerciseItems
+                                if !exerciseItems.isEmpty {
+                                    let exerciseNames = exerciseItems.compactMap { item in
+                                        exercisesState.exercises.first { $0.id == item.exerciseID }?.name
+                                    }
                                     let namesText = exerciseNames.joined(separator: ", ")
-                                    Text("Exercises: \(workout.exercises.count) (\(namesText))")
+                                    Text("Exercises: \(exerciseItems.count) (\(namesText))")
                                         .font(.caption2)
                                         .foregroundColor(.secondary)
                                 }
@@ -241,26 +262,17 @@ private struct WorkoutsModuleView: View {
         }
     }
 
-    private func workoutExerciseNames(_ workout: Workout) -> [String] {
-        workout.exercises.compactMap { item in
+    private func matchesSearch(_ workout: Workout, searchKey: String) -> Bool {
+        if workout.name.localizedCaseInsensitiveContains(searchKey) { return true }
+        if workout.notes.localizedCaseInsensitiveContains(searchKey) { return true }
+        let exerciseNames = workout.exerciseItems.compactMap { item in
             exercisesState.exercises.first { $0.id == item.exerciseID }?.name
         }
-    }
-
-    private func matchesSearch(_ workout: Workout, searchKey: String) -> Bool {
-        if workout.name.localizedCaseInsensitiveContains(searchKey) {
-            return true
-        }
-        if workout.notes.localizedCaseInsensitiveContains(searchKey) {
-            return true
-        }
-        let exerciseNames = workoutExerciseNames(workout)
-        if exerciseNames.contains(where: { $0.localizedCaseInsensitiveContains(searchKey) }) {
-            return true
-        }
-        return false
+        return exerciseNames.contains { $0.localizedCaseInsensitiveContains(searchKey) }
     }
 }
+
+// MARK: - Workout Editor
 
 private struct WorkoutEditor: View {
     @Environment(\.dismiss) var dismiss
@@ -275,10 +287,13 @@ private struct WorkoutEditor: View {
 
     @State private var name: String = ""
     @State private var notes: String = ""
-    @State private var workoutExercises: [WorkoutExercise] = []
+    @State private var workoutItems: [WorkoutItem] = []
     @State private var showingPicker = false
     @State private var searchText = ""
     @State private var showDeleteConfirm = false
+    // Track which exercise rows have expanded info or sets editor
+    @State private var expandedInfoIDs: Set<UUID> = []
+    @State private var expandedSetsIDs: Set<UUID> = []
 
     init(title: String, initialWorkout: Workout? = nil, onSave: @escaping (Workout) -> Void, onDelete: (() -> Void)? = nil) {
         self.title = title
@@ -289,8 +304,21 @@ private struct WorkoutEditor: View {
         if let workout = initialWorkout {
             _name = State(initialValue: workout.name)
             _notes = State(initialValue: workout.notes)
-            _workoutExercises = State(initialValue: workout.exercises)
+            _workoutItems = State(initialValue: workout.items)
         }
+    }
+
+    /// Ordered distinct loopIDs for color assignment.
+    private var orderedLoopIDs: [UUID] {
+        var seen = Set<UUID>()
+        var result: [UUID] = []
+        for item in workoutItems {
+            if case .exercise(let e) = item, let lid = e.loopID, !seen.contains(lid) {
+                seen.insert(lid)
+                result.append(lid)
+            }
+        }
+        return result
     }
 
     var body: some View {
@@ -302,93 +330,76 @@ private struct WorkoutEditor: View {
                         .lineLimit(3, reservesSpace: true)
                 }
 
-                Section("Exercises") {
-                    if workoutExercises.isEmpty {
+                Section {
+                    if workoutItems.isEmpty {
                         Text("No exercises added")
                             .font(.caption)
                             .foregroundColor(.secondary)
                     } else {
-                        ForEach(Array(workoutExercises.enumerated()), id: \.element.id) { index, item in
-                            if let exercise = exercisesState.exercises.first(where: { $0.id == item.exerciseID }) {
-                                HStack(spacing: 12) {
-                                    VStack(alignment: .leading, spacing: 4) {
-                                        Text(exercise.name)
-                                            .font(.subheadline)
-                                            .fontWeight(.semibold)
-
-                                        let primaryMuscles = exercise.primaryMuscleGroupIDs.compactMap { id in
-                                            muscleGroupsState.sortedGroups.first { $0.id == id }?.name
-                                        }
-                                        let secondaryMuscles = exercise.secondaryMuscleGroupIDs.compactMap { id in
-                                            muscleGroupsState.sortedGroups.first { $0.id == id }?.name
-                                        }
-                                        let allMuscles = (primaryMuscles + secondaryMuscles).joined(separator: ", ")
-
-                                        if !allMuscles.isEmpty {
-                                            Text("Muscles: \(allMuscles)")
-                                                .font(.caption2)
-                                                .foregroundColor(.secondary)
-                                        }
-
-                                        let equipmentNames = exercise.equipmentIDs.compactMap { id in
-                                            equipmentState.sortedItems.first { $0.id == id }?.name
-                                        }.joined(separator: ", ")
-
-                                        if !equipmentNames.isEmpty {
-                                            Text("Equipment: \(equipmentNames)")
-                                                .font(.caption2)
-                                                .foregroundColor(.secondary)
-                                        }
-                                    }
-                                    .frame(maxWidth: .infinity, alignment: .leading)
-
-                                    Button(action: {
-                                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                                        let cloned = WorkoutExercise(exerciseID: item.exerciseID)
-                                        workoutExercises.insert(cloned, at: index + 1)
-                                    }) {
-                                        Image(systemName: "doc.on.doc")
-                                            .foregroundColor(.black)
-                                    }
-                                    .buttonStyle(.plain)
-
-                                    Button(action: {
-                                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                                        workoutExercises.remove(at: index)
-                                    }) {
-                                        Image(systemName: "xmark.circle.fill")
-                                            .foregroundColor(.red)
-                                    }
-                                    .buttonStyle(.plain)
-                                }
-                                .padding(.vertical, 6)
+                        ForEach(Array(workoutItems.enumerated()), id: \.element.id) { index, item in
+                            switch item {
+                            case .exercise(let ex):
+                                EditorExerciseRow(
+                                    exercise: ex,
+                                    index: index,
+                                    workoutItems: $workoutItems,
+                                    expandedInfoIDs: $expandedInfoIDs,
+                                    expandedSetsIDs: $expandedSetsIDs,
+                                    orderedLoopIDs: orderedLoopIDs,
+                                    muscleGroupsState: muscleGroupsState,
+                                    equipmentState: equipmentState,
+                                    exercisesState: exercisesState
+                                )
+                            case .rest(let r):
+                                EditorRestRow(rest: r, index: index, workoutItems: $workoutItems)
                             }
                         }
                         .onMove { indices, newOffset in
-                            workoutExercises.move(fromOffsets: indices, toOffset: newOffset)
+                            workoutItems.move(fromOffsets: indices, toOffset: newOffset)
                         }
                     }
 
-                    Button(action: {
-                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                        showingPicker = true
-                    }) {
-                        HStack {
-                            Image(systemName: "plus.circle.fill")
-                                .foregroundColor(.black)
-                            Text("Add Exercise")
-                                .foregroundColor(.black)
+                    // Footer buttons: Add Rest + Add Exercise
+                    HStack(spacing: 16) {
+                        Button(action: {
+                            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                            workoutItems.append(.rest(RestItem()))
+                        }) {
+                            HStack(spacing: 4) {
+                                Image(systemName: "zzz")
+                                    .foregroundColor(.black)
+                                Text("Add Rest")
+                                    .foregroundColor(.black)
+                                    .font(.subheadline)
+                            }
+                        }
+
+                        Spacer()
+
+                        Button(action: {
+                            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                            showingPicker = true
+                        }) {
+                            HStack(spacing: 4) {
+                                Image(systemName: "plus.circle.fill")
+                                    .foregroundColor(.black)
+                                Text("Add Exercise")
+                                    .foregroundColor(.black)
+                                    .font(.subheadline)
+                            }
                         }
                     }
                     .sheet(isPresented: $showingPicker) {
                         ExercisePickerView(searchText: $searchText) { exerciseID in
                             let item = WorkoutExercise(exerciseID: exerciseID)
-                            workoutExercises.append(item)
+                            workoutItems.append(.exercise(item))
                         }
                         .environment(exercisesState)
                         .environment(muscleGroupsState)
                         .environment(equipmentState)
                     }
+                } header: {
+                    Text("Exercises")
                 }
             }
             .navigationTitle(title)
@@ -411,7 +422,7 @@ private struct WorkoutEditor: View {
                             id: initialWorkout?.id ?? UUID(),
                             name: name,
                             notes: notes,
-                            exercises: workoutExercises
+                            items: workoutItems
                         )
                         onSave(workout)
                         dismiss()
@@ -432,6 +443,480 @@ private struct WorkoutEditor: View {
         }
     }
 }
+
+// MARK: - Editor Exercise Row
+
+private struct EditorExerciseRow: View {
+    let exercise: WorkoutExercise
+    let index: Int
+    @Binding var workoutItems: [WorkoutItem]
+    @Binding var expandedInfoIDs: Set<UUID>
+    @Binding var expandedSetsIDs: Set<UUID>
+    let orderedLoopIDs: [UUID]
+    let muscleGroupsState: MuscleGroupsState
+    let equipmentState: EquipmentState
+    let exercisesState: ExercisesState
+
+    private var resolvedExercise: Exercise? {
+        exercisesState.exercises.first { $0.id == exercise.exerciseID }
+    }
+
+    private var isInfoExpanded: Bool { expandedInfoIDs.contains(exercise.id) }
+    private var isSetsExpanded: Bool { expandedSetsIDs.contains(exercise.id) }
+
+    private var loopColor: Color? {
+        guard let lid = exercise.loopID else { return nil }
+        return Extend.loopColor(for: lid, in: orderedLoopIDs)
+    }
+
+    private var adjacentExercise: WorkoutExercise? {
+        // Find an adjacent exercise item (ignoring rest rows) for merge targets
+        nil // computed inline in swipe actions
+    }
+
+    private func exerciseItem(at idx: Int) -> WorkoutExercise? {
+        guard idx >= 0 && idx < workoutItems.count else { return nil }
+        if case .exercise(let e) = workoutItems[idx] { return e }
+        return nil
+    }
+
+    private var canMergeUp: Bool {
+        // There's an exercise item somewhere before this index
+        (0..<index).reversed().contains { i in
+            if case .exercise(_) = workoutItems[i] { return true }
+            return false
+        }
+    }
+
+    private var canMergeDown: Bool {
+        ((index + 1)..<workoutItems.count).contains { i in
+            if case .exercise(_) = workoutItems[i] { return true }
+            return false
+        }
+    }
+
+    private func mergeWith(otherIndex: Int) {
+        guard case .exercise(var currentEx) = workoutItems[index],
+              case .exercise(var otherEx) = workoutItems[otherIndex] else { return }
+
+        let targetLoopID: UUID
+        if let existingLoop = currentEx.loopID {
+            targetLoopID = existingLoop
+        } else if let existingLoop = otherEx.loopID {
+            targetLoopID = existingLoop
+        } else {
+            targetLoopID = UUID()
+        }
+
+        currentEx.loopID = targetLoopID
+        otherEx.loopID = targetLoopID
+        workoutItems[index] = .exercise(currentEx)
+        workoutItems[otherIndex] = .exercise(otherEx)
+        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+    }
+
+    private func removeFromLoop() {
+        guard case .exercise(var ex) = workoutItems[index] else { return }
+        ex.loopID = nil
+        workoutItems[index] = .exercise(ex)
+        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+    }
+
+    private func nearestExerciseIndex(before idx: Int) -> Int? {
+        (0..<idx).reversed().first { i in
+            if case .exercise(_) = workoutItems[i] { return true }
+            return false
+        }
+    }
+
+    private func nearestExerciseIndex(after idx: Int) -> Int? {
+        ((idx + 1)..<workoutItems.count).first { i in
+            if case .exercise(_) = workoutItems[i] { return true }
+            return false
+        }
+    }
+
+    var body: some View {
+        guard let ex = resolvedExercise else { return AnyView(EmptyView()) }
+        return AnyView(
+            VStack(alignment: .leading, spacing: 0) {
+                HStack(spacing: 0) {
+                    // Loop color bracket
+                    if let color = loopColor {
+                        RoundedRectangle(cornerRadius: 2)
+                            .fill(color)
+                            .frame(width: 4)
+                            .padding(.vertical, 2)
+                            .padding(.trailing, 8)
+                    } else {
+                        Color.clear.frame(width: 12)
+                    }
+
+                    VStack(alignment: .leading, spacing: 4) {
+                        HStack(spacing: 8) {
+                            Text(ex.name)
+                                .font(.subheadline)
+                                .fontWeight(.semibold)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+
+                            // Info toggle
+                            Button(action: {
+                                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                                if expandedInfoIDs.contains(exercise.id) {
+                                    expandedInfoIDs.remove(exercise.id)
+                                } else {
+                                    expandedInfoIDs.insert(exercise.id)
+                                }
+                            }) {
+                                Image(systemName: "info.circle")
+                                    .foregroundColor(isInfoExpanded ? .blue : .secondary)
+                                    .font(.system(size: 16))
+                            }
+                            .buttonStyle(.plain)
+
+                            // Clone
+                            Button(action: {
+                                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                                let cloned = WorkoutExercise(
+                                    exerciseID: exercise.exerciseID,
+                                    loopID: exercise.loopID,
+                                    predefinedSets: exercise.predefinedSets.map { PredefinedSet(targetReps: $0.targetReps) },
+                                    useTimedSet: exercise.useTimedSet,
+                                    timedSetDuration: exercise.timedSetDuration
+                                )
+                                workoutItems.insert(.exercise(cloned), at: index + 1)
+                            }) {
+                                Image(systemName: "doc.on.doc")
+                                    .foregroundColor(.black)
+                            }
+                            .buttonStyle(.plain)
+
+                            // Delete
+                            Button(action: {
+                                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                                workoutItems.remove(at: index)
+                            }) {
+                                Image(systemName: "xmark.circle.fill")
+                                    .foregroundColor(.red)
+                            }
+                            .buttonStyle(.plain)
+                        }
+
+                        // Loop badge
+                        if let lid = exercise.loopID {
+                            let loopIdx = orderedLoopIDs.firstIndex(of: lid) ?? 0
+                            let color = loopColorPalette[loopIdx % loopColorPalette.count]
+                            Text("Loop \(loopIdx + 1)")
+                                .font(.caption2)
+                                .fontWeight(.semibold)
+                                .foregroundColor(.white)
+                                .padding(.horizontal, 6)
+                                .padding(.vertical, 2)
+                                .background(color)
+                                .cornerRadius(4)
+                        }
+
+                        // Predefined sets summary or Add Sets button
+                        if exercise.predefinedSets.isEmpty {
+                            Button(action: {
+                                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                                expandedSetsIDs.insert(exercise.id)
+                            }) {
+                                Text("+ Add Sets")
+                                    .font(.caption)
+                                    .foregroundColor(.blue)
+                            }
+                            .buttonStyle(.plain)
+                        } else {
+                            let count = exercise.predefinedSets.count
+                            let reps = exercise.predefinedSets.first?.targetReps ?? 0
+                            let summary: String = exercise.useTimedSet
+                                ? "\(count) × \(exercise.timedSetDuration)s"
+                                : (reps > 0 ? "\(count) × \(reps) reps" : "\(count) sets")
+                            Button(action: {
+                                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                                if expandedSetsIDs.contains(exercise.id) {
+                                    expandedSetsIDs.remove(exercise.id)
+                                } else {
+                                    expandedSetsIDs.insert(exercise.id)
+                                }
+                            }) {
+                                Text(summary)
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                }
+                .padding(.vertical, 6)
+
+                // Expandable muscle/equipment info
+                if isInfoExpanded {
+                    VStack(alignment: .leading, spacing: 4) {
+                        let primaryNames = ex.primaryMuscleGroupIDs.compactMap { id in
+                            muscleGroupsState.sortedGroups.first { $0.id == id }?.name
+                        }
+                        let secondaryNames = ex.secondaryMuscleGroupIDs.compactMap { id in
+                            muscleGroupsState.sortedGroups.first { $0.id == id }?.name
+                        }
+                        let allMuscles = (primaryNames + secondaryNames).joined(separator: ", ")
+                        if !allMuscles.isEmpty {
+                            Text("Muscles: \(allMuscles)")
+                                .font(.caption2)
+                                .foregroundColor(.secondary)
+                        }
+                        let equipNames = ex.equipmentIDs.compactMap { id in
+                            equipmentState.sortedItems.first { $0.id == id }?.name
+                        }.joined(separator: ", ")
+                        if !equipNames.isEmpty {
+                            Text("Equipment: \(equipNames)")
+                                .font(.caption2)
+                                .foregroundColor(.secondary)
+                        }
+                    }
+                    .padding(.leading, 12)
+                    .padding(.bottom, 6)
+                }
+
+                // Expandable predefined sets editor
+                if isSetsExpanded {
+                    PredefinedSetsEditor(exercise: exercise, index: index, workoutItems: $workoutItems, expandedSetsIDs: $expandedSetsIDs)
+                        .padding(.leading, 12)
+                        .padding(.bottom, 8)
+                }
+            }
+            .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                if exercise.loopID != nil {
+                    Button {
+                        removeFromLoop()
+                    } label: {
+                        Label("Remove from Loop", systemImage: "circle.slash")
+                    }
+                    .tint(.orange)
+                } else {
+                    if let downIdx = nearestExerciseIndex(after: index) {
+                        Button {
+                            mergeWith(otherIndex: downIdx)
+                        } label: {
+                            Label("Merge Down", systemImage: "arrow.down.to.line")
+                        }
+                        .tint(.green)
+                    }
+                    if let upIdx = nearestExerciseIndex(before: index) {
+                        Button {
+                            mergeWith(otherIndex: upIdx)
+                        } label: {
+                            Label("Merge Up", systemImage: "arrow.up.to.line")
+                        }
+                        .tint(Color(red: 0.1, green: 0.6, blue: 0.3))
+                    }
+                }
+            }
+        )
+    }
+}
+
+// MARK: - Predefined Sets Editor
+
+private struct PredefinedSetsEditor: View {
+    let exercise: WorkoutExercise
+    let index: Int
+    @Binding var workoutItems: [WorkoutItem]
+    @Binding var expandedSetsIDs: Set<UUID>
+
+    private var setCount: Int { exercise.predefinedSets.count }
+    private var targetReps: Int { exercise.predefinedSets.first?.targetReps ?? 0 }
+
+    private func update(_ block: (inout WorkoutExercise) -> Void) {
+        guard case .exercise(var ex) = workoutItems[index] else { return }
+        block(&ex)
+        workoutItems[index] = .exercise(ex)
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            // Sets stepper
+            HStack(spacing: 12) {
+                Text("Sets:")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                Button(action: {
+                    guard setCount > 1 else { return }
+                    update { ex in
+                        ex.predefinedSets.removeLast()
+                    }
+                }) {
+                    Image(systemName: "minus.circle")
+                        .foregroundColor(setCount > 1 ? .black : .gray)
+                }
+                .buttonStyle(.plain)
+                Text("\(max(setCount, 1))")
+                    .font(.caption)
+                    .fontWeight(.semibold)
+                    .frame(minWidth: 20, alignment: .center)
+                Button(action: {
+                    update { ex in
+                        ex.predefinedSets.append(PredefinedSet(targetReps: targetReps))
+                    }
+                }) {
+                    Image(systemName: "plus.circle")
+                        .foregroundColor(.black)
+                }
+                .buttonStyle(.plain)
+            }
+
+            // Timed toggle
+            HStack(spacing: 12) {
+                Text("Timed:")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                Toggle("", isOn: Binding(
+                    get: { exercise.useTimedSet },
+                    set: { newVal in update { ex in ex.useTimedSet = newVal } }
+                ))
+                .labelsHidden()
+                .scaleEffect(0.8)
+            }
+
+            if exercise.useTimedSet {
+                // Duration stepper
+                HStack(spacing: 12) {
+                    Text("Duration:")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                    Button(action: {
+                        guard exercise.timedSetDuration > 5 else { return }
+                        update { ex in ex.timedSetDuration = max(5, ex.timedSetDuration - 5) }
+                    }) {
+                        Image(systemName: "minus.circle")
+                            .foregroundColor(exercise.timedSetDuration > 5 ? .black : .gray)
+                    }
+                    .buttonStyle(.plain)
+                    Text("\(exercise.timedSetDuration)s")
+                        .font(.caption)
+                        .fontWeight(.semibold)
+                        .frame(minWidth: 36, alignment: .center)
+                    Button(action: {
+                        update { ex in ex.timedSetDuration += 5 }
+                    }) {
+                        Image(systemName: "plus.circle")
+                            .foregroundColor(.black)
+                    }
+                    .buttonStyle(.plain)
+                }
+            } else {
+                // Reps stepper
+                HStack(spacing: 12) {
+                    Text("Reps:")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                    Button(action: {
+                        guard targetReps > 0 else { return }
+                        update { ex in
+                            let newReps = max(0, (ex.predefinedSets.first?.targetReps ?? 0) - 1)
+                            ex.predefinedSets = ex.predefinedSets.map { PredefinedSet(targetReps: newReps) }
+                        }
+                    }) {
+                        Image(systemName: "minus.circle")
+                            .foregroundColor(targetReps > 0 ? .black : .gray)
+                    }
+                    .buttonStyle(.plain)
+                    Text("\(targetReps)")
+                        .font(.caption)
+                        .fontWeight(.semibold)
+                        .frame(minWidth: 20, alignment: .center)
+                    Button(action: {
+                        update { ex in
+                            let newReps = (ex.predefinedSets.first?.targetReps ?? 0) + 1
+                            ex.predefinedSets = ex.predefinedSets.map { PredefinedSet(targetReps: newReps) }
+                        }
+                    }) {
+                        Image(systemName: "plus.circle")
+                            .foregroundColor(.black)
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+
+            // Remove sets
+            Button(action: {
+                update { ex in ex.predefinedSets = [] }
+                expandedSetsIDs.remove(exercise.id)
+            }) {
+                Text("Remove Sets")
+                    .font(.caption)
+                    .foregroundColor(.red)
+            }
+            .buttonStyle(.plain)
+        }
+        .padding(10)
+        .background(Color(uiColor: .systemGray6))
+        .cornerRadius(8)
+    }
+}
+
+// MARK: - Editor Rest Row
+
+private struct EditorRestRow: View {
+    let rest: RestItem
+    let index: Int
+    @Binding var workoutItems: [WorkoutItem]
+
+    private func update(_ block: (inout RestItem) -> Void) {
+        guard case .rest(var r) = workoutItems[index] else { return }
+        block(&r)
+        workoutItems[index] = .rest(r)
+    }
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Image(systemName: "zzz")
+                .foregroundColor(.secondary)
+                .font(.system(size: 16))
+
+            Text("Rest")
+                .font(.subheadline)
+                .foregroundColor(.secondary)
+
+            Spacer()
+
+            Button(action: {
+                guard rest.duration > 5 else { return }
+                update { r in r.duration = max(5, r.duration - 15) }
+            }) {
+                Image(systemName: "minus.circle")
+                    .foregroundColor(rest.duration > 5 ? .black : .gray)
+            }
+            .buttonStyle(.plain)
+
+            Text("\(rest.duration)s")
+                .font(.caption)
+                .fontWeight(.semibold)
+                .frame(minWidth: 40, alignment: .center)
+
+            Button(action: {
+                update { r in r.duration += 15 }
+            }) {
+                Image(systemName: "plus.circle")
+                    .foregroundColor(.black)
+            }
+            .buttonStyle(.plain)
+
+            Button(action: {
+                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                workoutItems.remove(at: index)
+            }) {
+                Image(systemName: "xmark.circle.fill")
+                    .foregroundColor(.red)
+            }
+            .buttonStyle(.plain)
+        }
+        .padding(.vertical, 6)
+    }
+}
+
+// MARK: - Exercise Picker
 
 private struct ExercisePickerView: View {
     @Environment(ExercisesState.self) var exercisesState
@@ -547,7 +1032,7 @@ public struct StartWorkoutView: View {
 
     public let workout: Workout
 
-    @State private var currentExerciseIndex: Int = 0
+    @State private var currentItemIndex: Int = 0
     @State private var timerSeconds: Int = 0
     @State private var isTimerRunning: Bool = false
     @State private var timerTask: Task<Void, Never>?
@@ -559,12 +1044,31 @@ public struct StartWorkoutView: View {
     @State private var workoutStartTime: Date = Date()
     @State private var exerciseData: [UUID: (sets: [WorkoutSet], notes: String, timerSeconds: Int)] = [:]
     @State private var showingHistory: Bool = false
+    // Rest screen state
+    @State private var restSecondsRemaining: Int = 60
+    @State private var isRestTimerRunning: Bool = false
+    @State private var restTimerTask: Task<Void, Never>?
+
+    private var currentItem: WorkoutItem? {
+        workout.items[safe: currentItemIndex]
+    }
 
     private var currentExercise: Exercise? {
-        guard currentExerciseIndex < workout.exercises.count else { return nil }
-        let exerciseID = workout.exercises[currentExerciseIndex].exerciseID
-        return exercisesState.exercises.first { $0.id == exerciseID }
+        guard case .exercise(let we) = currentItem else { return nil }
+        return exercisesState.exercises.first { $0.id == we.exerciseID }
     }
+
+    private var currentWorkoutExercise: WorkoutExercise? {
+        guard case .exercise(let we) = currentItem else { return nil }
+        return we
+    }
+
+    private var currentRestItem: RestItem? {
+        guard case .rest(let r) = currentItem else { return nil }
+        return r
+    }
+
+    private var totalItems: Int { workout.items.count }
 
     public init(workout: Workout) {
         self.workout = workout
@@ -573,394 +1077,55 @@ public struct StartWorkoutView: View {
     public var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
-                // Navigation bar with exercise count
+                // Navigation bar with item count
                 HStack {
-                    Button(action: { previousExercise() }) {
+                    Button(action: { previousItem() }) {
                         Image(systemName: "chevron.left")
                             .foregroundColor(.black)
                     }
-                    .disabled(currentExerciseIndex == 0)
+                    .disabled(currentItemIndex == 0)
 
                     Spacer()
 
-                    Text("\(currentExerciseIndex + 1) of \(workout.exercises.count)")
+                    Text("\(currentItemIndex + 1) of \(totalItems)")
                         .font(.subheadline)
                         .fontWeight(.semibold)
 
                     Spacer()
 
-                    Button(action: { nextExercise() }) {
+                    Button(action: { nextItem() }) {
                         Image(systemName: "chevron.right")
                             .foregroundColor(.black)
                     }
-                    .disabled(currentExerciseIndex == workout.exercises.count - 1)
+                    .disabled(currentItemIndex == totalItems - 1)
                 }
                 .padding(.horizontal, 16)
                 .padding(.vertical, 12)
                 .background(Color(red: 0.98, green: 0.98, blue: 1.0))
 
-                ScrollView {
-                    VStack(spacing: 16) {
-                        if let exercise = currentExercise {
-                            // Exercise name with info button
-                            HStack(spacing: 12) {
-                                Spacer()
-                                Text(exercise.name)
-                                    .font(.title2)
-                                    .fontWeight(.bold)
-                                Spacer()
-
-                                Button(action: { expandedInfo.toggle() }) {
-                                    Image(systemName: "info.circle")
-                                        .font(.system(size: 20))
-                                        .foregroundColor(.black)
-                                }
-                                .buttonStyle(.plain)
+                if let restItem = currentRestItem {
+                    // REST SCREEN
+                    RestScreen(
+                        restItem: restItem,
+                        secondsRemaining: $restSecondsRemaining,
+                        isRunning: $isRestTimerRunning,
+                        timerTask: $restTimerTask,
+                        onSkip: { nextItem() }
+                    )
+                } else {
+                    // EXERCISE SCREEN
+                    ScrollView {
+                        VStack(spacing: 16) {
+                            if let exercise = currentExercise, let we = currentWorkoutExercise {
+                                exerciseContent(exercise: exercise, we: we)
                             }
-                            .padding(.horizontal, 16)
-
-                            // Shared muscle image data used by both info panel and timer row
-                            let exPrimaryGroups = exercise.primaryMuscleGroupIDs.compactMap { id in
-                                muscleGroupsState.sortedGroups.first { $0.id == id }
-                            }
-                            let exSecondaryGroups = exercise.secondaryMuscleGroupIDs.compactMap { id in
-                                muscleGroupsState.sortedGroups.first { $0.id == id }
-                            }
-                            let exIsFemale = muscleGroupsState.selectedBodyOption == .female
-                            let exFrontBase = exIsFemale ? "FemaleFrontFullBody" : "MaleFrontFullBody"
-                            let exBackBase  = exIsFemale ? "FemaleBackFullBody"  : "MaleBackFullBody"
-                            // Primary masks — full opacity
-                            let exPrimaryAssets = exPrimaryGroups.flatMap { g -> [String] in
-                                [g.primaryImageAssetName, g.secondaryImageAssetName]
-                                    .compactMap { $0 }.filter { !$0.isEmpty }
-                            }
-                            let exFrontMasksPrimary = exPrimaryAssets.filter { $0.contains("Front") }
-                            let exBackMasksPrimary  = exPrimaryAssets.filter { $0.contains("Back") && !$0.contains("FullBody") }
-                            // Secondary muscles — dimmed
-                            let exSecondaryAssets = exSecondaryGroups.flatMap { g -> [String] in
-                                [g.primaryImageAssetName, g.secondaryImageAssetName]
-                                    .compactMap { $0 }.filter { !$0.isEmpty }
-                            }
-                            let exFrontMasksSecondary = exSecondaryAssets.filter { $0.contains("Front") }
-                            let exBackMasksSecondary  = exSecondaryAssets.filter { $0.contains("Back") && !$0.contains("FullBody") }
-
-                            // Expandable info section
-                            if expandedInfo {
-                                VStack(alignment: .leading, spacing: 8) {
-                                    let allMuscles = (exPrimaryGroups + exSecondaryGroups).map(\.name).joined(separator: ", ")
-
-                                    if !allMuscles.isEmpty {
-                                        Text("Muscles: \(allMuscles)")
-                                            .font(.caption)
-                                            .foregroundColor(.secondary)
-                                    }
-
-                                    // Always show both front and back panels
-                                    GeometryReader { geo in
-                                        let panelWidth = (geo.size.width - 12) / 2
-                                        HStack(spacing: 12) {
-                                            VStack(spacing: 4) {
-                                                ZStack {
-                                                    Image(exFrontBase)
-                                                        .resizable()
-                                                        .scaledToFit()
-                                                    ForEach(exFrontMasksPrimary, id: \.self) { mask in
-                                                        Image(mask)
-                                                            .resizable()
-                                                            .scaledToFit()
-                                                            .blendMode(.screen)
-                                                    }
-                                                    ForEach(exFrontMasksSecondary, id: \.self) { mask in
-                                                        Image(mask)
-                                                            .resizable()
-                                                            .scaledToFit()
-                                                            .opacity(0.8)
-                                                            .blendMode(.screen)
-                                                    }
-                                                }
-                                                .frame(width: panelWidth)
-                                                Text("Front")
-                                                    .font(.system(size: 11))
-                                                    .foregroundColor(.secondary)
-                                            }
-                                            VStack(spacing: 4) {
-                                                ZStack {
-                                                    Image(exBackBase)
-                                                        .resizable()
-                                                        .scaledToFit()
-                                                    ForEach(exBackMasksPrimary, id: \.self) { mask in
-                                                        Image(mask)
-                                                            .resizable()
-                                                            .scaledToFit()
-                                                            .blendMode(.screen)
-                                                    }
-                                                    ForEach(exBackMasksSecondary, id: \.self) { mask in
-                                                        Image(mask)
-                                                            .resizable()
-                                                            .scaledToFit()
-                                                            .opacity(0.8)
-                                                            .blendMode(.screen)
-                                                    }
-                                                }
-                                                .frame(width: panelWidth)
-                                                Text("Back")
-                                                    .font(.system(size: 11))
-                                                    .foregroundColor(.secondary)
-                                            }
-                                        }
-                                    }
-                                    .frame(height: 220)
-                                    .padding(.vertical, 4)
-
-                                    let equipmentNames = exercise.equipmentIDs.compactMap { id in
-                                        equipmentState.sortedItems.first { $0.id == id }?.name
-                                    }.joined(separator: ", ")
-
-                                    if !equipmentNames.isEmpty {
-                                        Text("Equipment: \(equipmentNames)")
-                                            .font(.caption)
-                                            .foregroundColor(.secondary)
-                                    }
-                                }
-                                .padding(.vertical, 8)
-                                .padding(.horizontal, 16)
-
-                                Divider()
-                                    .padding(.horizontal, 16)
-                            }
-
-                            // Timer section — flanked by small body thumbnails when info is collapsed
-                            HStack(spacing: 8) {
-                                if !expandedInfo {
-                                    ZStack {
-                                        Image(exFrontBase)
-                                            .resizable()
-                                            .scaledToFit()
-                                        ForEach(exFrontMasksPrimary, id: \.self) { mask in
-                                            Image(mask)
-                                                .resizable()
-                                                .scaledToFit()
-                                                .blendMode(.screen)
-                                        }
-                                        ForEach(exFrontMasksSecondary, id: \.self) { mask in
-                                            Image(mask)
-                                                .resizable()
-                                                .scaledToFit()
-                                                .opacity(0.8)
-                                                .blendMode(.screen)
-                                        }
-                                    }
-                                    .frame(width: 56, height: 80)
-                                }
-
-                                VStack(spacing: 12) {
-                                    HStack(spacing: 12) {
-                                        Button(action: { toggleTimer() }) {
-                                            Image(systemName: isTimerRunning ? "stop.circle.fill" : "play.circle.fill")
-                                                .font(.system(size: 24))
-                                                .foregroundColor(.black)
-                                        }
-                                        .buttonStyle(.plain)
-
-                                        Text("\(formatTime(timerSeconds))")
-                                            .font(.title3)
-                                            .fontWeight(.semibold)
-                                            .monospacedDigit()
-
-                                        Button(action: { resetTimer() }) {
-                                            Image(systemName: "arrow.counterclockwise")
-                                                .foregroundColor(.black)
-                                        }
-                                        .buttonStyle(.plain)
-                                    }
-                                }
-                                .padding(12)
-                                .frame(maxWidth: .infinity)
-                                .background(Color(red: 0.96, green: 0.96, blue: 0.97))
-                                .cornerRadius(8)
-
-                                if !expandedInfo {
-                                    ZStack {
-                                        Image(exBackBase)
-                                            .resizable()
-                                            .scaledToFit()
-                                        ForEach(exBackMasksPrimary, id: \.self) { mask in
-                                            Image(mask)
-                                                .resizable()
-                                                .scaledToFit()
-                                                .blendMode(.screen)
-                                        }
-                                        ForEach(exBackMasksSecondary, id: \.self) { mask in
-                                            Image(mask)
-                                                .resizable()
-                                                .scaledToFit()
-                                                .opacity(0.8)
-                                                .blendMode(.screen)
-                                        }
-                                    }
-                                    .frame(width: 56, height: 80)
-                                }
-                            }
-                            .padding(.horizontal, 16)
-
-                            // Sets section
-                            VStack(spacing: 8) {
-                                HStack {
-                                    Text("Sets")
-                                        .font(.subheadline)
-                                        .fontWeight(.semibold)
-
-                                    if !previousSets.isEmpty {
-                                        let dateLabel: String = {
-                                            guard let date = previousLogDate else { return "" }
-                                            let days = Calendar.current.dateComponents([.day], from: date, to: Date()).day ?? 0
-                                            if days == 0 { return ", today" }
-                                            if days == 1 { return ", yesterday" }
-                                            if days < 30 { return ", \(days)d ago" }
-                                            let months = days / 30
-                                            return ", \(months)mo ago"
-                                        }()
-                                        Text("(previous values\(dateLabel))")
-                                            .font(.caption)
-                                            .italic()
-                                            .foregroundColor(.secondary)
-                                    }
-
-                                    Spacer()
-
-                                    // History button — only shown when previous logs exist
-                                    if let ex = currentExercise,
-                                       lastLoggedSets(for: ex.id) != nil {
-                                        Button(action: { showingHistory = true }) {
-                                            Image(systemName: "clock.arrow.circlepath")
-                                                .foregroundColor(.black)
-                                        }
-                                        .buttonStyle(.plain)
-                                    }
-
-                                    if sets.isEmpty {
-                                        Button(action: { addSet() }) {
-                                            Image(systemName: "plus.circle.fill")
-                                                .foregroundColor(.black)
-                                        }
-                                        .buttonStyle(.plain)
-                                    }
-                                }
-
-                                if sets.isEmpty {
-                                    Text("No sets recorded")
-                                        .font(.caption)
-                                        .foregroundColor(.secondary)
-                                } else {
-                                    VStack(spacing: 12) {
-                                        ForEach(Array(sets.enumerated()), id: \.element.id) { index, set in
-                                            HStack(spacing: 12) {
-                                                VStack(alignment: .leading, spacing: 4) {
-                                                    Text("Set")
-                                                        .font(.caption2)
-                                                        .foregroundColor(.primary.opacity(0.6))
-                                                    Text("\(index + 1)")
-                                                        .font(.caption)
-                                                        .fontWeight(.semibold)
-                                                        .frame(maxWidth: .infinity, alignment: .center)
-                                                        .padding(6)
-                                                        .background(Color(red: 0.98, green: 0.98, blue: 1.0))
-                                                        .cornerRadius(4)
-                                                }
-
-                                                VStack(alignment: .leading, spacing: 4) {
-                                                    Text("Reps")
-                                                        .font(.caption2)
-                                                        .foregroundColor(.primary.opacity(0.6))
-                                                    let repPlaceholder = index < previousSets.count && previousSets[index].reps > 0
-                                                        ? "\(previousSets[index].reps)" : "0"
-                                                    TextField(repPlaceholder, text: Binding(
-                                                        get: { set.reps == 0 ? "" : "\(set.reps)" },
-                                                        set: {
-                                                            if let value = Int($0) {
-                                                                sets[index].reps = value
-                                                            } else if $0.isEmpty {
-                                                                sets[index].reps = 0
-                                                            }
-                                                        }
-                                                    ))
-                                                    .keyboardType(.numberPad)
-                                                    .font(.caption)
-                                                    .padding(6)
-                                                    .background(Color(red: 0.98, green: 0.98, blue: 1.0))
-                                                    .cornerRadius(4)
-                                                }
-
-                                                VStack(alignment: .leading, spacing: 4) {
-                                                    Text("Weight")
-                                                        .font(.caption2)
-                                                        .foregroundColor(.primary.opacity(0.6))
-                                                    let weightPlaceholder = index < previousSets.count && previousSets[index].weight > 0
-                                                        ? String(format: "%.2f", previousSets[index].weight) : "0.00"
-                                                    TextField(weightPlaceholder, text: Binding(
-                                                        get: { set.weight == 0 ? "" : String(format: "%.2f", set.weight) },
-                                                        set: {
-                                                            if let value = Double($0) {
-                                                                sets[index].weight = value
-                                                            } else if $0.isEmpty {
-                                                                sets[index].weight = 0
-                                                            }
-                                                        }
-                                                    ))
-                                                    .keyboardType(.decimalPad)
-                                                    .font(.caption)
-                                                    .padding(6)
-                                                    .background(Color(red: 0.98, green: 0.98, blue: 1.0))
-                                                    .cornerRadius(4)
-                                                }
-
-                                                Button(action: { removeSet(at: index) }) {
-                                                    Image(systemName: "xmark.circle.fill")
-                                                        .foregroundColor(.red)
-                                                }
-                                                .buttonStyle(.plain)
-                                                .padding(.top, 20)
-                                            }
-                                        }
-                                    }
-
-                                    // Add Set row
-                                    HStack {
-                                        Spacer()
-                                        Button(action: { addSet() }) {
-                                            Image(systemName: "plus.circle.fill")
-                                                .foregroundColor(.black)
-                                        }
-                                        .buttonStyle(.plain)
-                                    }
-                                }
-                            }
-                            .padding(12)
-                            .background(Color(red: 0.96, green: 0.96, blue: 0.97))
-                            .cornerRadius(8)
-                            .padding(.horizontal, 16)
-
-                            // Notes section
-                            VStack(alignment: .leading, spacing: 8) {
-                                Text("Notes")
-                                    .font(.subheadline)
-                                    .fontWeight(.semibold)
-
-                                TextField("Add notes...", text: $notes, axis: .vertical)
-                                    .lineLimit(3, reservesSpace: true)
-                                    .font(.caption)
-                                    .padding(8)
-                                    .background(Color(red: 0.96, green: 0.96, blue: 0.97))
-                                    .cornerRadius(6)
-                            }
-                            .padding(.horizontal, 16)
                         }
+                        .padding(.vertical, 16)
                     }
-                    .padding(.vertical, 16)
-                }
-                .sheet(isPresented: $showingHistory) {
-                    if let exercise = currentExercise {
-                        ExerciseHistorySheet(exercise: exercise, logState: logState)
+                    .sheet(isPresented: $showingHistory) {
+                        if let exercise = currentExercise {
+                            ExerciseHistorySheet(exercise: exercise, logState: logState)
+                        }
                     }
                 }
 
@@ -996,68 +1161,396 @@ public struct StartWorkoutView: View {
             workoutStartTime = Date()
             initializeSets()
         }
-        .onDisappear { timerTask?.cancel() }
-    }
-
-    private func previousExercise() {
-        if currentExerciseIndex > 0 {
-            saveCurrentExerciseData()
-            currentExerciseIndex -= 1
-            loadExerciseData()
+        .onDisappear {
+            timerTask?.cancel()
+            restTimerTask?.cancel()
         }
     }
 
-    private func nextExercise() {
-        if currentExerciseIndex < workout.exercises.count - 1 {
-            saveCurrentExerciseData()
-            currentExerciseIndex += 1
-            loadExerciseData()
+    // MARK: Exercise content builder
+
+    @ViewBuilder
+    private func exerciseContent(exercise: Exercise, we: WorkoutExercise) -> some View {
+        // Exercise name with info button
+        HStack(spacing: 12) {
+            Spacer()
+            Text(exercise.name)
+                .font(.title2)
+                .fontWeight(.bold)
+            Spacer()
+
+            Button(action: { expandedInfo.toggle() }) {
+                Image(systemName: "info.circle")
+                    .font(.system(size: 20))
+                    .foregroundColor(.black)
+            }
+            .buttonStyle(.plain)
+        }
+        .padding(.horizontal, 16)
+
+        // Muscle image data
+        let exPrimaryGroups = exercise.primaryMuscleGroupIDs.compactMap { id in
+            muscleGroupsState.sortedGroups.first { $0.id == id }
+        }
+        let exSecondaryGroups = exercise.secondaryMuscleGroupIDs.compactMap { id in
+            muscleGroupsState.sortedGroups.first { $0.id == id }
+        }
+        let exIsFemale = muscleGroupsState.selectedBodyOption == .female
+        let exFrontBase = exIsFemale ? "FemaleFrontFullBody" : "MaleFrontFullBody"
+        let exBackBase  = exIsFemale ? "FemaleBackFullBody"  : "MaleBackFullBody"
+        let exPrimaryAssets = exPrimaryGroups.flatMap { g -> [String] in
+            [g.primaryImageAssetName, g.secondaryImageAssetName].compactMap { $0 }.filter { !$0.isEmpty }
+        }
+        let exFrontMasksPrimary   = exPrimaryAssets.filter { $0.contains("Front") }
+        let exBackMasksPrimary    = exPrimaryAssets.filter { $0.contains("Back") && !$0.contains("FullBody") }
+        let exSecondaryAssets = exSecondaryGroups.flatMap { g -> [String] in
+            [g.primaryImageAssetName, g.secondaryImageAssetName].compactMap { $0 }.filter { !$0.isEmpty }
+        }
+        let exFrontMasksSecondary = exSecondaryAssets.filter { $0.contains("Front") }
+        let exBackMasksSecondary  = exSecondaryAssets.filter { $0.contains("Back") && !$0.contains("FullBody") }
+
+        // Expandable info section
+        if expandedInfo {
+            VStack(alignment: .leading, spacing: 8) {
+                let allMuscles = (exPrimaryGroups + exSecondaryGroups).map(\.name).joined(separator: ", ")
+                if !allMuscles.isEmpty {
+                    Text("Muscles: \(allMuscles)")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+
+                GeometryReader { geo in
+                    let panelWidth = (geo.size.width - 12) / 2
+                    HStack(spacing: 12) {
+                        VStack(spacing: 4) {
+                            ZStack {
+                                Image(exFrontBase).resizable().scaledToFit()
+                                ForEach(exFrontMasksPrimary, id: \.self) { mask in
+                                    Image(mask).resizable().scaledToFit().blendMode(.screen)
+                                }
+                                ForEach(exFrontMasksSecondary, id: \.self) { mask in
+                                    Image(mask).resizable().scaledToFit().opacity(0.8).blendMode(.screen)
+                                }
+                            }
+                            .frame(width: panelWidth)
+                            Text("Front").font(.system(size: 11)).foregroundColor(.secondary)
+                        }
+                        VStack(spacing: 4) {
+                            ZStack {
+                                Image(exBackBase).resizable().scaledToFit()
+                                ForEach(exBackMasksPrimary, id: \.self) { mask in
+                                    Image(mask).resizable().scaledToFit().blendMode(.screen)
+                                }
+                                ForEach(exBackMasksSecondary, id: \.self) { mask in
+                                    Image(mask).resizable().scaledToFit().opacity(0.8).blendMode(.screen)
+                                }
+                            }
+                            .frame(width: panelWidth)
+                            Text("Back").font(.system(size: 11)).foregroundColor(.secondary)
+                        }
+                    }
+                }
+                .frame(height: 220)
+                .padding(.vertical, 4)
+
+                let equipmentNames = exercise.equipmentIDs.compactMap { id in
+                    equipmentState.sortedItems.first { $0.id == id }?.name
+                }.joined(separator: ", ")
+                if !equipmentNames.isEmpty {
+                    Text("Equipment: \(equipmentNames)").font(.caption).foregroundColor(.secondary)
+                }
+            }
+            .padding(.vertical, 8)
+            .padding(.horizontal, 16)
+
+            Divider().padding(.horizontal, 16)
+        }
+
+        // Timer section — flanked by small body thumbnails when info is collapsed
+        HStack(spacing: 8) {
+            if !expandedInfo {
+                ZStack {
+                    Image(exFrontBase).resizable().scaledToFit()
+                    ForEach(exFrontMasksPrimary, id: \.self) { mask in
+                        Image(mask).resizable().scaledToFit().blendMode(.screen)
+                    }
+                    ForEach(exFrontMasksSecondary, id: \.self) { mask in
+                        Image(mask).resizable().scaledToFit().opacity(0.8).blendMode(.screen)
+                    }
+                }
+                .frame(width: 56, height: 80)
+            }
+
+            VStack(spacing: 12) {
+                HStack(spacing: 12) {
+                    Button(action: { toggleTimer() }) {
+                        Image(systemName: isTimerRunning ? "stop.circle.fill" : "play.circle.fill")
+                            .font(.system(size: 24))
+                            .foregroundColor(.black)
+                    }
+                    .buttonStyle(.plain)
+
+                    Text(formatTime(timerSeconds))
+                        .font(.title3)
+                        .fontWeight(.semibold)
+                        .monospacedDigit()
+
+                    Button(action: { resetTimer() }) {
+                        Image(systemName: "arrow.counterclockwise")
+                            .foregroundColor(.black)
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            .padding(12)
+            .frame(maxWidth: .infinity)
+            .background(Color(red: 0.96, green: 0.96, blue: 0.97))
+            .cornerRadius(8)
+
+            if !expandedInfo {
+                ZStack {
+                    Image(exBackBase).resizable().scaledToFit()
+                    ForEach(exBackMasksPrimary, id: \.self) { mask in
+                        Image(mask).resizable().scaledToFit().blendMode(.screen)
+                    }
+                    ForEach(exBackMasksSecondary, id: \.self) { mask in
+                        Image(mask).resizable().scaledToFit().opacity(0.8).blendMode(.screen)
+                    }
+                }
+                .frame(width: 56, height: 80)
+            }
+        }
+        .padding(.horizontal, 16)
+
+        // Sets section
+        VStack(spacing: 8) {
+            HStack {
+                Text("Sets")
+                    .font(.subheadline)
+                    .fontWeight(.semibold)
+
+                // Show "predefined" label if targets are set, otherwise show previous session hint
+                if !we.predefinedSets.isEmpty {
+                    let reps = we.predefinedSets.first?.targetReps ?? 0
+                    let label = we.useTimedSet
+                        ? "(target: \(we.predefinedSets.count) × \(we.timedSetDuration)s)"
+                        : (reps > 0 ? "(target: \(we.predefinedSets.count) × \(reps) reps)" : "(target: \(we.predefinedSets.count) sets)")
+                    Text(label)
+                        .font(.caption)
+                        .italic()
+                        .foregroundColor(.secondary)
+                } else if !previousSets.isEmpty {
+                    let dateLabel: String = {
+                        guard let date = previousLogDate else { return "" }
+                        let days = Calendar.current.dateComponents([.day], from: date, to: Date()).day ?? 0
+                        if days == 0 { return ", today" }
+                        if days == 1 { return ", yesterday" }
+                        if days < 30 { return ", \(days)d ago" }
+                        return ", \(days / 30)mo ago"
+                    }()
+                    Text("(previous values\(dateLabel))")
+                        .font(.caption)
+                        .italic()
+                        .foregroundColor(.secondary)
+                }
+
+                Spacer()
+
+                // History button
+                if lastLoggedSets(for: exercise.id) != nil {
+                    Button(action: { showingHistory = true }) {
+                        Image(systemName: "clock.arrow.circlepath")
+                            .foregroundColor(.black)
+                    }
+                    .buttonStyle(.plain)
+                }
+
+                if sets.isEmpty {
+                    Button(action: { addSet() }) {
+                        Image(systemName: "plus.circle.fill")
+                            .foregroundColor(.black)
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+
+            if sets.isEmpty {
+                Text("No sets recorded")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            } else {
+                VStack(spacing: 12) {
+                    ForEach(Array(sets.enumerated()), id: \.element.id) { index, set in
+                        HStack(spacing: 12) {
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text("Set")
+                                    .font(.caption2)
+                                    .foregroundColor(.primary.opacity(0.6))
+                                Text("\(index + 1)")
+                                    .font(.caption)
+                                    .fontWeight(.semibold)
+                                    .frame(maxWidth: .infinity, alignment: .center)
+                                    .padding(6)
+                                    .background(Color(red: 0.98, green: 0.98, blue: 1.0))
+                                    .cornerRadius(4)
+                            }
+
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text("Reps")
+                                    .font(.caption2)
+                                    .foregroundColor(.primary.opacity(0.6))
+
+                                // Predefined reps take precedence over previous-session placeholders
+                                let repPlaceholder: String = {
+                                    if !we.predefinedSets.isEmpty {
+                                        let targetReps = index < we.predefinedSets.count ? we.predefinedSets[index].targetReps : 0
+                                        return targetReps > 0 ? "\(targetReps)" : ""
+                                    } else if index < previousSets.count && previousSets[index].reps > 0 {
+                                        return "\(previousSets[index].reps)"
+                                    }
+                                    return ""
+                                }()
+
+                                TextField(repPlaceholder, text: Binding(
+                                    get: { set.reps == 0 ? "" : "\(set.reps)" },
+                                    set: {
+                                        if let value = Int($0) {
+                                            sets[index].reps = value
+                                        } else if $0.isEmpty {
+                                            sets[index].reps = 0
+                                        }
+                                    }
+                                ))
+                                .keyboardType(.numberPad)
+                                .font(.caption)
+                                .padding(6)
+                                .background(Color(red: 0.98, green: 0.98, blue: 1.0))
+                                .cornerRadius(4)
+                            }
+
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text("Weight")
+                                    .font(.caption2)
+                                    .foregroundColor(.primary.opacity(0.6))
+                                let weightPlaceholder = index < previousSets.count && previousSets[index].weight > 0
+                                    ? String(format: "%.2f", previousSets[index].weight) : ""
+                                TextField(weightPlaceholder, text: Binding(
+                                    get: { set.weight == 0 ? "" : String(format: "%.2f", set.weight) },
+                                    set: {
+                                        if let value = Double($0) {
+                                            sets[index].weight = value
+                                        } else if $0.isEmpty {
+                                            sets[index].weight = 0
+                                        }
+                                    }
+                                ))
+                                .keyboardType(.decimalPad)
+                                .font(.caption)
+                                .padding(6)
+                                .background(Color(red: 0.98, green: 0.98, blue: 1.0))
+                                .cornerRadius(4)
+                            }
+
+                            Button(action: { removeSet(at: index) }) {
+                                Image(systemName: "xmark.circle.fill")
+                                    .foregroundColor(.red)
+                            }
+                            .buttonStyle(.plain)
+                            .padding(.top, 20)
+                        }
+                    }
+                }
+
+                HStack {
+                    Spacer()
+                    Button(action: { addSet() }) {
+                        Image(systemName: "plus.circle.fill")
+                            .foregroundColor(.black)
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+        }
+        .padding(12)
+        .background(Color(red: 0.96, green: 0.96, blue: 0.97))
+        .cornerRadius(8)
+        .padding(.horizontal, 16)
+
+        // Notes section
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Notes")
+                .font(.subheadline)
+                .fontWeight(.semibold)
+
+            TextField("Add notes...", text: $notes, axis: .vertical)
+                .lineLimit(3, reservesSpace: true)
+                .font(.caption)
+                .padding(8)
+                .background(Color(red: 0.96, green: 0.96, blue: 0.97))
+                .cornerRadius(6)
+        }
+        .padding(.horizontal, 16)
+    }
+
+    // MARK: Navigation
+
+    private func previousItem() {
+        guard currentItemIndex > 0 else { return }
+        saveCurrentData()
+        currentItemIndex -= 1
+        loadItemData()
+    }
+
+    private func nextItem() {
+        guard currentItemIndex < totalItems - 1 else { return }
+        saveCurrentData()
+        currentItemIndex += 1
+        loadItemData()
+    }
+
+    private func saveCurrentData() {
+        if case .exercise(let we) = currentItem {
+            exerciseData[we.exerciseID] = (sets: sets, notes: notes, timerSeconds: timerSeconds)
         }
     }
 
-    private func saveCurrentExerciseData() {
-        guard let exerciseID = workout.exercises[safe: currentExerciseIndex]?.exerciseID else { return }
-        exerciseData[exerciseID] = (sets: sets, notes: notes, timerSeconds: timerSeconds)
-    }
+    private func loadItemData() {
+        // Reset rest timer
+        restTimerTask?.cancel()
+        isRestTimerRunning = false
 
-    private func loadExerciseData() {
-        guard let exerciseID = workout.exercises[safe: currentExerciseIndex]?.exerciseID else { return }
-        
-        if let savedData = exerciseData[exerciseID] {
+        if case .rest(let r) = currentItem {
+            restSecondsRemaining = r.duration
+            isTimerRunning = false
+            timerTask?.cancel()
+            return
+        }
+
+        guard case .exercise(let we) = currentItem else { return }
+
+        if let savedData = exerciseData[we.exerciseID] {
             sets = savedData.sets
             notes = savedData.notes
             timerSeconds = savedData.timerSeconds
             previousSets = []
-            previousLogDate = nil  // already entered data for this exercise; no placeholder needed
+            previousLogDate = nil
         } else {
             sets = []
             notes = ""
             timerSeconds = 0
             initializeSets()
         }
-        
+
         isTimerRunning = false
         timerTask?.cancel()
         expandedInfo = false
     }
 
-    private func resetForNewExercise() {
-        timerSeconds = 0
-        isTimerRunning = false
-        timerTask?.cancel()
-        expandedInfo = false
-        sets = []
-        notes = ""
-        initializeSets()
-    }
+    // MARK: Timer
 
     private func toggleTimer() {
         isTimerRunning.toggle()
-        if isTimerRunning {
-            startTimer()
-        } else {
-            timerTask?.cancel()
-        }
+        if isTimerRunning { startTimer() } else { timerTask?.cancel() }
     }
 
     private func startTimer() {
@@ -1065,9 +1558,7 @@ public struct StartWorkoutView: View {
             while isTimerRunning && !Task.isCancelled {
                 try? await Task.sleep(nanoseconds: 1_000_000_000)
                 if !Task.isCancelled {
-                    DispatchQueue.main.async {
-                        timerSeconds += 1
-                    }
+                    await MainActor.run { timerSeconds += 1 }
                 }
             }
         }
@@ -1079,6 +1570,8 @@ public struct StartWorkoutView: View {
         timerSeconds = 0
     }
 
+    // MARK: Sets
+
     private func addSet() {
         sets.append(WorkoutSet(reps: 0, weight: 0))
     }
@@ -1089,20 +1582,34 @@ public struct StartWorkoutView: View {
     }
 
     private func initializeSets() {
-        guard let exerciseID = workout.exercises[safe: currentExerciseIndex]?.exerciseID,
-              let (logged, logDate) = lastLoggedSetsWithDate(for: exerciseID), !logged.isEmpty else {
+        guard case .exercise(let we) = currentItem else { return }
+
+        // Predefined sets take precedence over history
+        if !we.predefinedSets.isEmpty {
+            sets = we.predefinedSets.map { _ in WorkoutSet(reps: 0, weight: 0) }
+            // Still load weight history as placeholders; reps placeholders come from predefined
+            if let (logged, logDate) = lastLoggedSetsWithDate(for: we.exerciseID), !logged.isEmpty {
+                previousSets = logged
+                previousLogDate = logDate
+            } else {
+                previousSets = []
+                previousLogDate = nil
+            }
+            return
+        }
+
+        // No predefined sets — use history placeholders
+        guard let (logged, logDate) = lastLoggedSetsWithDate(for: we.exerciseID), !logged.isEmpty else {
             sets = [WorkoutSet(reps: 0, weight: 0)]
             previousSets = []
             previousLogDate = nil
             return
         }
-        // Store previous values as placeholders; start with blank sets of the same count
         previousSets = logged
         previousLogDate = logDate
         sets = logged.map { _ in WorkoutSet(reps: 0, weight: 0) }
     }
 
-    /// Returns the sets and log date from the most recent log that contains this exercise, or nil if none.
     private func lastLoggedSetsWithDate(for exerciseID: UUID) -> ([LoggedSet], Date)? {
         guard let log = logState.sortedLogs.first(where: { log in
             log.exercises.contains(where: { $0.exerciseID == exerciseID && !$0.sets.isEmpty })
@@ -1110,54 +1617,40 @@ public struct StartWorkoutView: View {
         return ex.sets.isEmpty ? nil : (ex.sets, log.completedAt)
     }
 
-    /// Returns the sets from the most recent log that contains this exercise, or nil if none.
     private func lastLoggedSets(for exerciseID: UUID) -> [LoggedSet]? {
         lastLoggedSetsWithDate(for: exerciseID).map { $0.0 }
     }
 
+    // MARK: Complete
+
     private func completeWorkout() {
-        // Save current exercise data
-        saveCurrentExerciseData()
-        
-        // Create logged exercises from saved data
+        saveCurrentData()
+
         var loggedExercises: [LoggedExercise] = []
-        
-        for workoutExercise in workout.exercises {
-            if let exercise = exercisesState.exercises.first(where: { $0.id == workoutExercise.exerciseID }),
-               let savedData = exerciseData[workoutExercise.exerciseID] {
-                
-                let loggedSets = savedData.sets.map { set in
-                    LoggedSet(reps: set.reps, weight: set.weight)
-                }
-                
-                let loggedExercise = LoggedExercise(
-                    exerciseID: exercise.id,
-                    exerciseName: exercise.name,
-                    sets: loggedSets,
-                    notes: savedData.notes
-                )
-                
-                loggedExercises.append(loggedExercise)
-            }
+        for item in workout.items {
+            guard case .exercise(let we) = item,
+                  let exercise = exercisesState.exercises.first(where: { $0.id == we.exerciseID }),
+                  let savedData = exerciseData[we.exerciseID] else { continue }
+
+            let loggedSets = savedData.sets.map { LoggedSet(reps: $0.reps, weight: $0.weight) }
+            loggedExercises.append(LoggedExercise(
+                exerciseID: exercise.id,
+                exerciseName: exercise.name,
+                sets: loggedSets,
+                notes: savedData.notes
+            ))
         }
-        
-        // Calculate workout duration
-        let duration = Date().timeIntervalSince(workoutStartTime)
-        
-        // Create and save workout log
+
         let workoutLog = WorkoutLog(
             workoutName: workout.name,
             completedAt: Date(),
             exercises: loggedExercises,
             notes: "",
-            duration: duration
+            duration: Date().timeIntervalSince(workoutStartTime)
         )
-        
+
         WorkoutLogState.shared.addLog(workoutLog)
-        
-        // Navigate to Log module
         moduleState.selectModule(ModuleIDs.progress)
-        
         UIImpactFeedbackGenerator(style: .heavy).impactOccurred()
         dismiss()
     }
@@ -1166,12 +1659,116 @@ public struct StartWorkoutView: View {
         let hours = seconds / 3600
         let minutes = (seconds % 3600) / 60
         let secs = seconds % 60
-        
         if hours > 0 {
             return String(format: "%d:%02d:%02d", hours, minutes, secs)
         } else {
             return String(format: "%02d:%02d", minutes, secs)
         }
+    }
+}
+
+// MARK: - Rest Screen
+
+private struct RestScreen: View {
+    let restItem: RestItem
+    @Binding var secondsRemaining: Int
+    @Binding var isRunning: Bool
+    @Binding var timerTask: Task<Void, Never>?
+    let onSkip: () -> Void
+
+    var body: some View {
+        VStack(spacing: 24) {
+            Spacer()
+
+            Image(systemName: "zzz")
+                .font(.system(size: 48, weight: .light))
+                .foregroundColor(.secondary)
+
+            Text("Rest")
+                .font(.title)
+                .fontWeight(.bold)
+
+            Text(formatTime(secondsRemaining))
+                .font(.system(size: 72, weight: .semibold, design: .monospaced))
+                .foregroundColor(secondsRemaining <= 10 ? .red : .primary)
+
+            Text("of \(formatTime(restItem.duration))")
+                .font(.caption)
+                .foregroundColor(.secondary)
+
+            HStack(spacing: 24) {
+                Button(action: { toggleTimer() }) {
+                    Image(systemName: isRunning ? "pause.circle.fill" : "play.circle.fill")
+                        .font(.system(size: 48))
+                        .foregroundColor(.black)
+                }
+                .buttonStyle(.plain)
+
+                Button(action: {
+                    resetTimer()
+                }) {
+                    Image(systemName: "arrow.counterclockwise.circle")
+                        .font(.system(size: 36))
+                        .foregroundColor(.secondary)
+                }
+                .buttonStyle(.plain)
+            }
+
+            Button(action: { onSkip() }) {
+                Text("Skip Rest")
+                    .font(.subheadline)
+                    .foregroundColor(.secondary)
+                    .padding(.horizontal, 20)
+                    .padding(.vertical, 8)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 8)
+                            .stroke(Color.secondary.opacity(0.4), lineWidth: 1)
+                    )
+            }
+            .buttonStyle(.plain)
+
+            Spacer()
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .onAppear {
+            secondsRemaining = restItem.duration
+        }
+    }
+
+    private func toggleTimer() {
+        isRunning.toggle()
+        if isRunning { startTimer() } else { timerTask?.cancel() }
+    }
+
+    private func startTimer() {
+        timerTask = Task {
+            while isRunning && !Task.isCancelled && secondsRemaining > 0 {
+                try? await Task.sleep(nanoseconds: 1_000_000_000)
+                if !Task.isCancelled {
+                    await MainActor.run {
+                        if secondsRemaining > 0 {
+                            secondsRemaining -= 1
+                        }
+                        if secondsRemaining == 0 {
+                            isRunning = false
+                            UIImpactFeedbackGenerator(style: .heavy).impactOccurred()
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private func resetTimer() {
+        isRunning = false
+        timerTask?.cancel()
+        secondsRemaining = restItem.duration
+    }
+
+    private func formatTime(_ seconds: Int) -> String {
+        let m = seconds / 60
+        let s = seconds % 60
+        return String(format: "%02d:%02d", m, s)
     }
 }
 
@@ -1181,17 +1778,6 @@ private struct WorkoutSet: Identifiable {
     let id: UUID = UUID()
     var reps: Int
     var weight: Double
-}
-
-// MARK: - TextField Placeholder Extension
-
-extension View {
-    func placeholder(when shouldShow: Bool, alignment: Alignment = .leading, @ViewBuilder placeholder: @escaping () -> some View) -> some View {
-        ZStack(alignment: alignment) {
-            placeholder().opacity(shouldShow ? 1 : 0)
-            self
-        }
-    }
 }
 
 // MARK: - Array Safe Subscript Extension
@@ -1210,7 +1796,6 @@ struct ExerciseHistorySheet: View {
     let exercise: Exercise
     let logState: WorkoutLogState
 
-    /// All past log entries for this exercise, newest first.
     private var history: [(date: Date, sets: [LoggedSet], notes: String)] {
         logState.sortedLogs.compactMap { log in
             guard let ex = log.exercises.first(where: { $0.exerciseID == exercise.id }),
@@ -1250,35 +1835,17 @@ struct ExerciseHistorySheet: View {
                                         .foregroundColor(.secondary)
                                 }
 
-                                // Sets grid: Set # | Reps | Weight
                                 VStack(spacing: 4) {
                                     HStack {
-                                        Text("Set")
-                                            .font(.caption2)
-                                            .foregroundColor(.secondary)
-                                            .frame(maxWidth: .infinity, alignment: .leading)
-                                        Text("Reps")
-                                            .font(.caption2)
-                                            .foregroundColor(.secondary)
-                                            .frame(maxWidth: .infinity, alignment: .center)
-                                        Text("Weight")
-                                            .font(.caption2)
-                                            .foregroundColor(.secondary)
-                                            .frame(maxWidth: .infinity, alignment: .trailing)
+                                        Text("Set").font(.caption2).foregroundColor(.secondary).frame(maxWidth: .infinity, alignment: .leading)
+                                        Text("Reps").font(.caption2).foregroundColor(.secondary).frame(maxWidth: .infinity, alignment: .center)
+                                        Text("Weight").font(.caption2).foregroundColor(.secondary).frame(maxWidth: .infinity, alignment: .trailing)
                                     }
-
                                     ForEach(Array(entry.sets.enumerated()), id: \.offset) { idx, set in
                                         HStack {
-                                            Text("\(idx + 1)")
-                                                .font(.caption)
-                                                .fontWeight(.semibold)
-                                                .frame(maxWidth: .infinity, alignment: .leading)
-                                            Text("\(set.reps)")
-                                                .font(.caption)
-                                                .frame(maxWidth: .infinity, alignment: .center)
-                                            Text(set.weight == 0 ? "—" : String(format: "%.1f lbs", set.weight))
-                                                .font(.caption)
-                                                .frame(maxWidth: .infinity, alignment: .trailing)
+                                            Text("\(idx + 1)").font(.caption).fontWeight(.semibold).frame(maxWidth: .infinity, alignment: .leading)
+                                            Text("\(set.reps)").font(.caption).frame(maxWidth: .infinity, alignment: .center)
+                                            Text(set.weight == 0 ? "—" : String(format: "%.1f lbs", set.weight)).font(.caption).frame(maxWidth: .infinity, alignment: .trailing)
                                         }
                                     }
                                 }
@@ -1286,7 +1853,6 @@ struct ExerciseHistorySheet: View {
                                 .background(Color(uiColor: .systemGray6))
                                 .cornerRadius(6)
 
-                                // Notes from that session
                                 if !entry.notes.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                                     Text("Notes: \(entry.notes)")
                                         .font(.caption)
