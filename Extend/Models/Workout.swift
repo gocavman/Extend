@@ -76,6 +76,12 @@ public struct PredefinedSet: Identifiable, Codable {
             target = .reps(reps)
         }
     }
+
+    public func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(id,     forKey: .id)
+        try c.encode(target, forKey: .target)
+    }
 }
 
 // MARK: - Rest Item
@@ -144,6 +150,14 @@ public struct WorkoutExercise: Identifiable, Codable {
             _ = wasTimed   // silence unused warning; migration produces empty sets
             _ = timedSecs
         }
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(id,             forKey: .id)
+        try c.encode(exerciseID,     forKey: .exerciseID)
+        try c.encode(loopID,         forKey: .loopID)
+        try c.encode(predefinedSets, forKey: .predefinedSets)
     }
 }
 

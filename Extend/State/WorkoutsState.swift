@@ -81,9 +81,7 @@ public final class WorkoutsState {
                 return .exercise(WorkoutExercise(
                     exerciseID: ex.exerciseID,
                     loopID: newLoopID,
-                    predefinedSets: ex.predefinedSets.map { PredefinedSet(targetReps: $0.targetReps) },
-                    useTimedSet: ex.useTimedSet,
-                    timedSetDuration: ex.timedSetDuration
+                    predefinedSets: ex.predefinedSets.map { PredefinedSet(target: $0.target) }
                 ))
             case .rest(let r):
                 return .rest(RestItem(duration: r.duration))

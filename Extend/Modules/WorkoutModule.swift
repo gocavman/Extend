@@ -39,6 +39,24 @@ private func loopColor(for loopID: UUID, in orderedLoopIDs: [UUID]) -> Color {
     return loopColorPalette[index % loopColorPalette.count]
 }
 
+// MARK: - PredefinedSet collection helpers
+
+private extension Array where Element == PredefinedSet {
+    /// Compact summary shown on the exercise row, e.g. "3 × 8 reps", "3 × 30s", "8 reps / 30s / 8 reps"
+    var summaryLabel: String {
+        guard !isEmpty else { return "" }
+        // Check if all sets are the same type and value
+        let labels = map { $0.target.label }
+        let allSame = Set(labels).count == 1
+        if allSame {
+            return "\(count) × \(labels[0])"
+        } else {
+            // Mixed — show each set's label joined
+            return labels.joined(separator: " · ")
+        }
+    }
+}
+
 // MARK: - Workouts Module View
 
 private struct WorkoutsModuleView: View {
@@ -293,7 +311,6 @@ private struct WorkoutEditor: View {
     @State private var showDeleteConfirm = false
     // Track which exercise rows have expanded info or sets editor
     @State private var expandedInfoIDs: Set<UUID> = []
-    @State private var expandedSetsIDs: Set<UUID> = []
     @State private var editMode: EditMode = .active
 
     init(title: String, initialWorkout: Workout? = nil, onSave: @escaping (Workout) -> Void, onDelete: (() -> Void)? = nil) {
@@ -345,7 +362,6 @@ private struct WorkoutEditor: View {
                                     index: index,
                                     workoutItems: $workoutItems,
                                     expandedInfoIDs: $expandedInfoIDs,
-                                    expandedSetsIDs: $expandedSetsIDs,
                                     orderedLoopIDs: orderedLoopIDs,
                                     muscleGroupsState: muscleGroupsState,
                                     equipmentState: equipmentState,
@@ -443,7 +459,6 @@ private struct EditorExerciseRow: View {
     let index: Int
     @Binding var workoutItems: [WorkoutItem]
     @Binding var expandedInfoIDs: Set<UUID>
-    @Binding var expandedSetsIDs: Set<UUID>
     let orderedLoopIDs: [UUID]
     let muscleGroupsState: MuscleGroupsState
     let equipmentState: EquipmentState
@@ -453,8 +468,10 @@ private struct EditorExerciseRow: View {
         exercisesState.exercises.first { $0.id == exercise.exerciseID }
     }
 
+    @State private var showingSetsEditor = false
+    @State private var showingLoopMenu = false
+
     private var isInfoExpanded: Bool { expandedInfoIDs.contains(exercise.id) }
-    private var isSetsExpanded: Bool { expandedSetsIDs.contains(exercise.id) }
 
     private var exerciseLoopColor: Color? {
         guard let lid = exercise.loopID else { return nil }
@@ -509,7 +526,28 @@ private struct EditorExerciseRow: View {
         guard case .exercise(var ex) = workoutItems[index] else { return }
         ex.loopID = nil
         workoutItems[index] = .exercise(ex)
+        cleanupSingletonLoops()
         UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+    }
+
+    /// After any mutation, clear loopID from exercises that are the sole remaining member of their loop.
+    private func cleanupSingletonLoops() {
+        // Count members per loopID
+        var counts: [UUID: Int] = [:]
+        for item in workoutItems {
+            if case .exercise(let e) = item, let lid = e.loopID {
+                counts[lid, default: 0] += 1
+            }
+        }
+        // Clear loopID for any loop with only 1 member
+        for i in workoutItems.indices {
+            if case .exercise(var e) = workoutItems[i],
+               let lid = e.loopID,
+               counts[lid] == 1 {
+                e.loopID = nil
+                workoutItems[i] = .exercise(e)
+            }
+        }
     }
 
     private func nearestExerciseIndex(before idx: Int) -> Int? {
@@ -543,9 +581,25 @@ private struct EditorExerciseRow: View {
 
                 // Exercise name and sub-labels
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(ex.name)
-                        .font(.subheadline)
-                        .fontWeight(.semibold)
+                    // Name row with inline ⓘ button
+                    HStack(spacing: 6) {
+                        Text(ex.name)
+                            .font(.subheadline)
+                            .fontWeight(.semibold)
+                        Button(action: {
+                            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                            if expandedInfoIDs.contains(exercise.id) {
+                                expandedInfoIDs.remove(exercise.id)
+                            } else {
+                                expandedInfoIDs.insert(exercise.id)
+                            }
+                        }) {
+                            Image(systemName: "info.circle")
+                                .foregroundColor(isInfoExpanded ? .blue : .secondary)
+                                .font(.system(size: 14))
+                        }
+                        .buttonStyle(.plain)
+                    }
 
                     // Loop badge
                     if let lid = exercise.loopID {
@@ -561,56 +615,76 @@ private struct EditorExerciseRow: View {
                             .cornerRadius(4)
                     }
 
-                    // Predefined sets summary or Add Sets button
+                    // Predefined sets summary (read-only label; pencil button opens editor)
                     if exercise.predefinedSets.isEmpty {
-                        Button(action: {
-                            UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                            expandedSetsIDs.insert(exercise.id)
-                        }) {
-                            Text("+ Add Sets")
-                                .font(.caption)
-                                .foregroundColor(.blue)
-                        }
-                        .buttonStyle(.plain)
+                        Text("No sets defined")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
                     } else {
-                        let count = exercise.predefinedSets.count
-                        let timedMins = exercise.timedSetDuration / 60
-                        let timedSecs = exercise.timedSetDuration % 60
-                        let timedLabel = timedMins > 0 ? "\(timedMins)m \(timedSecs)s" : "\(timedSecs)s"
-                        let firstReps = exercise.predefinedSets.first?.targetReps ?? 0
-                        let summary: String = exercise.useTimedSet
-                            ? "\(count) × \(timedLabel)"
-                            : (firstReps > 0 ? "\(count) sets" : "\(count) sets")
-                        Button(action: {
-                            UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                            if expandedSetsIDs.contains(exercise.id) {
-                                expandedSetsIDs.remove(exercise.id)
-                            } else {
-                                expandedSetsIDs.insert(exercise.id)
-                            }
-                        }) {
-                            Text(summary)
-                                .font(.caption)
-                                .foregroundColor(.secondary)
-                        }
-                        .buttonStyle(.plain)
+                        Text(exercise.predefinedSets.summaryLabel)
+                            .font(.caption)
+                            .foregroundColor(.secondary)
                     }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
 
                 // Action buttons — top-aligned with exercise name
                 HStack(spacing: 12) {
-                    // Info toggle
+                    // Loop grouping button
                     Button(action: {
                         UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                        if expandedInfoIDs.contains(exercise.id) {
-                            expandedInfoIDs.remove(exercise.id)
-                        } else {
-                            expandedInfoIDs.insert(exercise.id)
-                        }
+                        showingLoopMenu = true
                     }) {
-                        Image(systemName: "info.circle")
-                            .foregroundColor(isInfoExpanded ? .blue : .secondary)
+                        Image(systemName: exercise.loopID != nil ? "link.circle.fill" : "link.circle")
+                            .foregroundColor(exercise.loopID != nil ? (exerciseLoopColor ?? .green) : .secondary)
+                            .font(.system(size: 16))
+                    }
+                    .buttonStyle(.plain)
+                    .confirmationDialog("Loop Grouping", isPresented: $showingLoopMenu, titleVisibility: .visible) {
+                        if exercise.loopID != nil {
+                            Button("Remove from Loop", role: .destructive) {
+                                removeFromLoop()
+                            }
+                        } else {
+                            let upIdx = (0..<index).reversed().first {
+                                if case .exercise = workoutItems[$0] { return true }; return false
+                            }
+                            if let upIdx {
+                                Button("Merge Up") {
+                                    guard case .exercise(var cur) = workoutItems[index],
+                                          case .exercise(var other) = workoutItems[upIdx] else { return }
+                                    let lid = cur.loopID ?? other.loopID ?? UUID()
+                                    cur.loopID = lid; other.loopID = lid
+                                    workoutItems[index] = .exercise(cur)
+                                    workoutItems[upIdx] = .exercise(other)
+                                    UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                                }
+                            }
+                            let downIdx = ((index + 1)..<workoutItems.count).first {
+                                if case .exercise = workoutItems[$0] { return true }; return false
+                            }
+                            if let downIdx {
+                                Button("Merge Down") {
+                                    guard case .exercise(var cur) = workoutItems[index],
+                                          case .exercise(var other) = workoutItems[downIdx] else { return }
+                                    let lid = cur.loopID ?? other.loopID ?? UUID()
+                                    cur.loopID = lid; other.loopID = lid
+                                    workoutItems[index] = .exercise(cur)
+                                    workoutItems[downIdx] = .exercise(other)
+                                    UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                                }
+                            }
+                        }
+                        Button("Cancel", role: .cancel) {}
+                    }
+
+                    // Edit sets (pencil)
+                    Button(action: {
+                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                        showingSetsEditor = true
+                    }) {
+                        Image(systemName: "pencil")
+                            .foregroundColor(.blue)
                             .font(.system(size: 16))
                     }
                     .buttonStyle(.plain)
@@ -621,9 +695,7 @@ private struct EditorExerciseRow: View {
                         let cloned = WorkoutExercise(
                             exerciseID: exercise.exerciseID,
                             loopID: exercise.loopID,
-                            predefinedSets: exercise.predefinedSets.map { PredefinedSet(targetReps: $0.targetReps) },
-                            useTimedSet: exercise.useTimedSet,
-                            timedSetDuration: exercise.timedSetDuration
+                            predefinedSets: exercise.predefinedSets.map { PredefinedSet(target: $0.target) }
                         )
                         workoutItems.insert(.exercise(cloned), at: index + 1)
                     }) {
@@ -636,6 +708,7 @@ private struct EditorExerciseRow: View {
                     Button(action: {
                         UIImpactFeedbackGenerator(style: .light).impactOccurred()
                         workoutItems.remove(at: index)
+                        cleanupSingletonLoops()
                     }) {
                         Image(systemName: "xmark.circle.fill")
                             .foregroundColor(.red)
@@ -673,206 +746,243 @@ private struct EditorExerciseRow: View {
                     .padding(.bottom, 6)
                 }
 
-                // Expandable predefined sets editor
-                if isSetsExpanded {
-                    PredefinedSetsEditor(exercise: exercise, index: index, workoutItems: $workoutItems, expandedSetsIDs: $expandedSetsIDs)
-                        .padding(.leading, 12)
-                        .padding(.bottom, 8)
-                }
+
             }
-            .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-                if exercise.loopID != nil {
-                    Button {
-                        removeFromLoop()
-                    } label: {
-                        Label("Remove from Loop", systemImage: "circle.slash")
-                    }
-                    .tint(.orange)
-                } else {
-                    if let downIdx = nearestExerciseIndex(after: index) {
-                        Button {
-                            mergeWith(otherIndex: downIdx)
-                        } label: {
-                            Label("Merge Down", systemImage: "arrow.down.to.line")
-                        }
-                        .tint(.green)
-                    }
-                    if let upIdx = nearestExerciseIndex(before: index) {
-                        Button {
-                            mergeWith(otherIndex: upIdx)
-                        } label: {
-                            Label("Merge Up", systemImage: "arrow.up.to.line")
-                        }
-                        .tint(Color(red: 0.1, green: 0.6, blue: 0.3))
-                    }
-                }
+            .sheet(isPresented: $showingSetsEditor) {
+                SetsEditorSheet(exercise: exercise, index: index, workoutItems: $workoutItems)
             }
     }
 }
 
-// MARK: - Predefined Sets Editor
+// MARK: - Sets Editor Sheet
 
-private struct PredefinedSetsEditor: View {
+private struct SetsEditorSheet: View {
+    @Environment(\.dismiss) var dismiss
     let exercise: WorkoutExercise
     let index: Int
     @Binding var workoutItems: [WorkoutItem]
-    @Binding var expandedSetsIDs: Set<UUID>
 
-    private var setCount: Int { exercise.predefinedSets.count }
-    private var timedMinutes: Int { exercise.timedSetDuration / 60 }
-    private var timedSeconds: Int { exercise.timedSetDuration % 60 }
+    // Local copy edited in the sheet; committed on Done
+    @State private var sets: [PredefinedSet] = []
 
-    private func update(_ block: (inout WorkoutExercise) -> Void) {
-        guard case .exercise(var ex) = workoutItems[index] else { return }
-        block(&ex)
-        workoutItems[index] = .exercise(ex)
+    private func defaultTarget(after sets: [PredefinedSet]) -> SetTarget {
+        sets.last?.target ?? .reps(0)
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            // Timed toggle
-            HStack(spacing: 12) {
-                Text("Timed:")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-                Toggle("", isOn: Binding(
-                    get: { exercise.useTimedSet },
-                    set: { newVal in update { ex in ex.useTimedSet = newVal } }
-                ))
-                .labelsHidden()
-                .scaleEffect(0.8)
-            }
-
-            if exercise.useTimedSet {
-                // Duration steppers: minutes and seconds
-                HStack(spacing: 8) {
-                    Text("Duration:")
-                        .font(.caption)
+        NavigationStack {
+            List {
+                if sets.isEmpty {
+                    Text("No sets yet — tap + to add one.")
+                        .font(.subheadline)
                         .foregroundColor(.secondary)
-                    // Minutes
-                    Button(action: {
-                        guard timedMinutes > 0 else { return }
-                        update { ex in ex.timedSetDuration = max(0, ex.timedSetDuration - 60) }
-                    }) {
-                        Image(systemName: "minus.circle")
-                            .foregroundColor(timedMinutes > 0 ? .black : .gray)
+                } else {
+                    ForEach(Array(sets.enumerated()), id: \.element.id) { idx, set in
+                        SetEditorRow(setNumber: idx + 1, set: Binding(
+                            get: { sets[idx] },
+                            set: { sets[idx] = $0 }
+                        ))
                     }
-                    .buttonStyle(.plain)
-                    Text("\(timedMinutes)m")
-                        .font(.caption)
-                        .fontWeight(.semibold)
-                        .frame(minWidth: 24, alignment: .center)
-                    Button(action: {
-                        update { ex in ex.timedSetDuration += 60 }
-                    }) {
-                        Image(systemName: "plus.circle")
-                            .foregroundColor(.black)
-                    }
-                    .buttonStyle(.plain)
-                    // Seconds
-                    Button(action: {
-                        guard timedSeconds > 0 else { return }
-                        update { ex in ex.timedSetDuration = max(0, ex.timedSetDuration - 15) }
-                    }) {
-                        Image(systemName: "minus.circle")
-                            .foregroundColor(timedSeconds > 0 ? .black : .gray)
-                    }
-                    .buttonStyle(.plain)
-                    Text("\(timedSeconds)s")
-                        .font(.caption)
-                        .fontWeight(.semibold)
-                        .frame(minWidth: 24, alignment: .center)
-                    Button(action: {
-                        let newSecs = timedSeconds + 15
-                        if newSecs >= 60 {
-                            update { ex in ex.timedSetDuration = (timedMinutes + 1) * 60 }
-                        } else {
-                            update { ex in ex.timedSetDuration = timedMinutes * 60 + newSecs }
-                        }
-                    }) {
-                        Image(systemName: "plus.circle")
-                            .foregroundColor(.black)
-                    }
-                    .buttonStyle(.plain)
-                }
-            } else {
-                // Per-set reps rows
-                VStack(alignment: .leading, spacing: 6) {
-                    ForEach(Array(exercise.predefinedSets.enumerated()), id: \.element.id) { setIdx, predSet in
-                        HStack(spacing: 8) {
-                            Text("Set \(setIdx + 1):")
-                                .font(.caption)
-                                .foregroundColor(.secondary)
-                                .frame(minWidth: 44, alignment: .leading)
-
-                            Button(action: {
-                                guard predSet.targetReps > 0 else { return }
-                                update { ex in
-                                    ex.predefinedSets[setIdx].targetReps = max(0, predSet.targetReps - 1)
-                                }
-                            }) {
-                                Image(systemName: "minus.circle")
-                                    .foregroundColor(predSet.targetReps > 0 ? .black : .gray)
-                            }
-                            .buttonStyle(.plain)
-
-                            Text("\(predSet.targetReps) reps")
-                                .font(.caption)
-                                .fontWeight(.semibold)
-                                .frame(minWidth: 48, alignment: .center)
-
-                            Button(action: {
-                                update { ex in
-                                    ex.predefinedSets[setIdx].targetReps = predSet.targetReps + 1
-                                }
-                            }) {
-                                Image(systemName: "plus.circle")
-                                    .foregroundColor(.black)
-                            }
-                            .buttonStyle(.plain)
-
-                            Spacer()
-
-                            Button(action: {
-                                update { ex in ex.predefinedSets.remove(at: setIdx) }
-                            }) {
-                                Image(systemName: "xmark.circle")
-                                    .foregroundColor(.red)
-                            }
-                            .buttonStyle(.plain)
-                        }
-                    }
+                    .onDelete { offsets in sets.remove(atOffsets: offsets) }
+                    .onMove  { from, to  in sets.move(fromOffsets: from, toOffset: to) }
                 }
             }
-
-            // Add set button
-            Button(action: {
-                let lastReps = exercise.predefinedSets.last?.targetReps ?? 0
-                update { ex in ex.predefinedSets.append(PredefinedSet(targetReps: lastReps)) }
-            }) {
-                HStack(spacing: 4) {
-                    Image(systemName: "plus.circle.fill")
-                    Text("Add Set")
+            .listStyle(.insetGrouped)
+            .environment(\.editMode, .constant(.active))
+            .navigationTitle("Sets")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button("Cancel") { dismiss() }
                 }
-                .font(.caption)
-                .foregroundColor(.blue)
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button(action: {
+                        sets.append(PredefinedSet(target: defaultTarget(after: sets)))
+                    }) {
+                        Image(systemName: "plus")
+                    }
+                }
+                ToolbarItem(placement: .bottomBar) {
+                    Button(role: .destructive) {
+                        sets = []
+                    } label: {
+                        Text("Clear All")
+                    }
+                    .disabled(sets.isEmpty)
+                }
+                ToolbarItem(placement: .bottomBar) { Spacer() }
+                ToolbarItem(placement: .bottomBar) {
+                    Button("Done") {
+                        // Write back to the workout items
+                        guard case .exercise(var ex) = workoutItems[index] else { dismiss(); return }
+                        ex.predefinedSets = sets
+                        workoutItems[index] = .exercise(ex)
+                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                        dismiss()
+                    }
+                    .fontWeight(.semibold)
+                }
             }
-            .buttonStyle(.plain)
-
-            // Remove all sets
-            Button(action: {
-                update { ex in ex.predefinedSets = [] }
-                expandedSetsIDs.remove(exercise.id)
-            }) {
-                Text("Remove All Sets")
-                    .font(.caption)
-                    .foregroundColor(.red)
-            }
-            .buttonStyle(.plain)
+            .onAppear { sets = exercise.predefinedSets }
         }
-        .padding(10)
-        .background(Color(uiColor: .systemGray6))
-        .cornerRadius(8)
+    }
+}
+
+// MARK: - Single Set Editor Row
+
+private struct SetEditorRow: View {
+    let setNumber: Int
+    @Binding var set: PredefinedSet
+
+    private var isTimed: Bool {
+        if case .timed = set.target { return true }
+        return false
+    }
+
+    private var repCount: Int {
+        if case .reps(let n) = set.target { return n }
+        return 0
+    }
+
+    private var totalSeconds: Int {
+        if case .timed(let s) = set.target { return s }
+        return 30
+    }
+
+    private var timedMinutes: Int { totalSeconds / 60 }
+    private var timedSeconds: Int { totalSeconds % 60 }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            // Set label + type toggle
+            HStack {
+                Text("Set \(setNumber)")
+                    .font(.subheadline)
+                    .fontWeight(.semibold)
+                Spacer()
+                Picker("", selection: Binding(
+                    get: { isTimed },
+                    set: { timed in
+                        if timed {
+                            set.target = .timed(seconds: max(15, totalSeconds))
+                        } else {
+                            set.target = .reps(repCount)
+                        }
+                    }
+                )) {
+                    Text("Reps").tag(false)
+                    Text("Timed").tag(true)
+                }
+                .pickerStyle(.segmented)
+                .frame(width: 140)
+            }
+
+            // Value stepper
+            if isTimed {
+                // Minutes + seconds
+                HStack(spacing: 16) {
+                    // Minutes
+                    HStack(spacing: 8) {
+                        Button(action: {
+                            guard timedMinutes > 0 else { return }
+                            set.target = .timed(seconds: max(0, totalSeconds - 60))
+                        }) {
+                            Image(systemName: "minus.circle.fill")
+                                .font(.title2)
+                                .foregroundColor(timedMinutes > 0 ? .primary : .secondary)
+                        }
+                        .buttonStyle(.plain)
+
+                        VStack(spacing: 2) {
+                            Text("\(timedMinutes)")
+                                .font(.title2).fontWeight(.semibold).monospacedDigit()
+                            Text("min").font(.caption2).foregroundColor(.secondary)
+                        }
+                        .frame(minWidth: 36)
+
+                        Button(action: {
+                            set.target = .timed(seconds: totalSeconds + 60)
+                        }) {
+                            Image(systemName: "plus.circle.fill")
+                                .font(.title2)
+                                .foregroundColor(.primary)
+                        }
+                        .buttonStyle(.plain)
+                    }
+
+                    // Seconds (steps of 15)
+                    HStack(spacing: 8) {
+                        Button(action: {
+                            let newSecs = timedSeconds - 15
+                            if newSecs < 0 {
+                                guard timedMinutes > 0 else { return }
+                                set.target = .timed(seconds: (timedMinutes - 1) * 60 + 45)
+                            } else {
+                                set.target = .timed(seconds: timedMinutes * 60 + newSecs)
+                            }
+                        }) {
+                            Image(systemName: "minus.circle.fill")
+                                .font(.title2)
+                                .foregroundColor(totalSeconds > 0 ? .primary : .secondary)
+                        }
+                        .buttonStyle(.plain)
+
+                        VStack(spacing: 2) {
+                            Text("\(timedSeconds)")
+                                .font(.title2).fontWeight(.semibold).monospacedDigit()
+                            Text("sec").font(.caption2).foregroundColor(.secondary)
+                        }
+                        .frame(minWidth: 36)
+
+                        Button(action: {
+                            let newSecs = timedSeconds + 15
+                            if newSecs >= 60 {
+                                set.target = .timed(seconds: (timedMinutes + 1) * 60)
+                            } else {
+                                set.target = .timed(seconds: timedMinutes * 60 + newSecs)
+                            }
+                        }) {
+                            Image(systemName: "plus.circle.fill")
+                                .font(.title2)
+                                .foregroundColor(.primary)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .center)
+            } else {
+                // Reps stepper
+                HStack(spacing: 8) {
+                    Button(action: {
+                        guard repCount > 0 else { return }
+                        set.target = .reps(repCount - 1)
+                    }) {
+                        Image(systemName: "minus.circle.fill")
+                            .font(.title2)
+                            .foregroundColor(repCount > 0 ? .primary : .secondary)
+                    }
+                    .buttonStyle(.plain)
+
+                    VStack(spacing: 2) {
+                        Text("\(repCount)")
+                            .font(.title2).fontWeight(.semibold).monospacedDigit()
+                        Text("reps").font(.caption2).foregroundColor(.secondary)
+                    }
+                    .frame(minWidth: 36)
+
+                    Button(action: {
+                        set.target = .reps(repCount + 1)
+                    }) {
+                        Image(systemName: "plus.circle.fill")
+                            .font(.title2)
+                            .foregroundColor(.primary)
+                    }
+                    .buttonStyle(.plain)
+                }
+                .frame(maxWidth: .infinity, alignment: .center)
+            }
+        }
+        .padding(.vertical, 4)
     }
 }
 
@@ -1383,11 +1493,7 @@ public struct StartWorkoutView: View {
 
                 // Show "predefined" label if targets are set, otherwise show previous session hint
                 if !we.predefinedSets.isEmpty {
-                    let reps = we.predefinedSets.first?.targetReps ?? 0
-                    let label = we.useTimedSet
-                        ? "(target: \(we.predefinedSets.count) × \(we.timedSetDuration)s)"
-                        : (reps > 0 ? "(target: \(we.predefinedSets.count) × \(reps) reps)" : "(target: \(we.predefinedSets.count) sets)")
-                    Text(label)
+                    Text("(target: \(we.predefinedSets.summaryLabel))")
                         .font(.caption)
                         .italic()
                         .foregroundColor(.secondary)
@@ -1454,9 +1560,11 @@ public struct StartWorkoutView: View {
 
                                 // Predefined reps take precedence over previous-session placeholders
                                 let repPlaceholder: String = {
-                                    if !we.predefinedSets.isEmpty {
-                                        let targetReps = index < we.predefinedSets.count ? we.predefinedSets[index].targetReps : 0
-                                        return targetReps > 0 ? "\(targetReps)" : ""
+                                    if !we.predefinedSets.isEmpty && index < we.predefinedSets.count {
+                                        if case .reps(let n) = we.predefinedSets[index].target, n > 0 {
+                                            return "\(n)"
+                                        }
+                                        return ""
                                     } else if index < previousSets.count && previousSets[index].reps > 0 {
                                         return "\(previousSets[index].reps)"
                                     }
