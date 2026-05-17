@@ -67,11 +67,33 @@ public final class WorkoutsState {
     }
 
     public func cloneWorkout(_ workout: Workout) {
+        // Remap loopIDs so the cloned workout has fresh but internally consistent loop groupings.
+        var loopIDMap: [UUID: UUID] = [:]
+        let clonedItems: [WorkoutItem] = workout.items.map { item in
+            switch item {
+            case .exercise(let ex):
+                let newLoopID: UUID? = ex.loopID.map { old in
+                    if let mapped = loopIDMap[old] { return mapped }
+                    let fresh = UUID()
+                    loopIDMap[old] = fresh
+                    return fresh
+                }
+                return .exercise(WorkoutExercise(
+                    exerciseID: ex.exerciseID,
+                    loopID: newLoopID,
+                    predefinedSets: ex.predefinedSets.map { PredefinedSet(targetReps: $0.targetReps) },
+                    useTimedSet: ex.useTimedSet,
+                    timedSetDuration: ex.timedSetDuration
+                ))
+            case .rest(let r):
+                return .rest(RestItem(duration: r.duration))
+            }
+        }
         let cloned = Workout(
             id: UUID(),
             name: "\(workout.name) Copy",
             notes: workout.notes,
-            exercises: workout.exercises.map { WorkoutExercise(exerciseID: $0.exerciseID) }
+            items: clonedItems
         )
         workouts.append(cloned)
         saveWorkouts()

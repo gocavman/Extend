@@ -28,6 +28,7 @@ private struct GenerateModuleView: View {
     @Environment(ExercisesState.self) var exercisesState
     @Environment(EquipmentState.self) var equipmentState
     @Environment(MuscleGroupsState.self) var muscleGroupsState
+    @Environment(ModuleState.self) var moduleState
 
     @State private var showEquipmentFilter = false
     @State private var showMuscleFilter = false
@@ -288,6 +289,7 @@ private struct GenerateModuleView: View {
                             to: workoutsState
                         )
                         UIImpactFeedbackGenerator(style: .heavy).impactOccurred()
+                        moduleState.selectModule(ModuleIDs.workouts)
                     }
                 }
                 .disabled(saveWorkoutName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
@@ -587,9 +589,8 @@ private struct GeneratedExercisesSection: View {
 
     var body: some View {
         Section("Generated Exercises") {
-            ForEach(exercises) { item in
-                if let index = generateState.generatedExercises.firstIndex(where: { $0.id == item.id }) {
-                    HStack {
+            ForEach(Array(exercises.enumerated()), id: \.element.id) { index, item in
+                HStack {
                         VStack(alignment: .leading, spacing: 4) {
                             Text(item.exercise.name)
                                 .font(.subheadline)
@@ -640,7 +641,6 @@ private struct GeneratedExercisesSection: View {
                         .buttonStyle(.plain)
                     }
                     .padding(.vertical, 6)
-                }
             }
             .onMove { indices, newOffset in
                 generateState.generatedExercises.move(fromOffsets: indices, toOffset: newOffset)
@@ -652,7 +652,7 @@ private struct GeneratedExercisesSection: View {
                 let workout = Workout(
                     name: "Generated Workout",
                     notes: "",
-                    exercises: generateState.generatedExercises.map { WorkoutExercise(exerciseID: $0.exercise.id) }
+                    items: generateState.generatedExercises.map { WorkoutItem.exercise(WorkoutExercise(exerciseID: $0.exercise.id)) }
                 )
                 onStartWorkout(workout)
             }) {

@@ -172,7 +172,7 @@ public final class GenerateState {
         let workout = Workout(
             name: name,
             notes: notes,
-            exercises: generatedExercises.map { WorkoutExercise(exerciseID: $0.exercise.id) }
+            items: generatedExercises.map { WorkoutItem.exercise(WorkoutExercise(exerciseID: $0.exercise.id)) }
         )
         workoutsState.addWorkout(workout)
         generatedExercises = []

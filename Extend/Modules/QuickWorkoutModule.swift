@@ -64,7 +64,7 @@ private struct QuickWorkoutModuleView: View {
                                     let workout = Workout(
                                         name: "\(exercise.name) (Quick)",
                                         notes: "",
-                                        exercises: [WorkoutExercise(exerciseID: exercise.id)]
+                                        items: [WorkoutItem.exercise(WorkoutExercise(exerciseID: exercise.id))]
                                     )
                                     startingWorkout = workout
                                 }) {
@@ -129,7 +129,7 @@ private struct QuickWorkoutModuleView: View {
                             let workout = Workout(
                                 name: "\(exercise.name) (Quick)",
                                 notes: "",
-                                exercises: [WorkoutExercise(exerciseID: exercise.id)]
+                                items: [WorkoutItem.exercise(WorkoutExercise(exerciseID: exercise.id))]
                             )
                             startingWorkout = workout
                         }

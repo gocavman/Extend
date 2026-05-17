@@ -221,7 +221,7 @@ private struct DashboardModuleView: View {
                     quickStartWorkout = Workout(
                         name: "\(exercise.name) (Quick)",
                         notes: "",
-                        exercises: [WorkoutExercise(exerciseID: exercise.id)]
+                        items: [WorkoutItem.exercise(WorkoutExercise(exerciseID: exercise.id))]
                     )
                 }
             } else if let targetID = findModuleID(for: tile) {
