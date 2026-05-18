@@ -646,32 +646,46 @@ private struct EditorExerciseRow: View {
                                 removeFromLoop()
                             }
                         } else {
-                            let upIdx = (0..<index).reversed().first {
-                                if case .exercise = workoutItems[$0] { return true }; return false
-                            }
-                            if let upIdx {
-                                Button("Merge Up") {
-                                    guard case .exercise(var cur) = workoutItems[index],
-                                          case .exercise(var other) = workoutItems[upIdx] else { return }
-                                    let lid = cur.loopID ?? other.loopID ?? UUID()
-                                    cur.loopID = lid; other.loopID = lid
-                                    workoutItems[index] = .exercise(cur)
-                                    workoutItems[upIdx] = .exercise(other)
-                                    UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                            // Capture stable copies so subscript access is safe regardless of timing
+                            let items = workoutItems
+                            let idx = index
+                            if idx < items.count {
+                                let upIdx: Int? = idx > 0
+                                    ? (0..<idx).reversed().first { i in
+                                        guard case .exercise = items[i] else { return false }
+                                        return true
+                                      }
+                                    : nil
+                                if let upIdx {
+                                    Button("Merge Up") {
+                                        guard idx < workoutItems.count, upIdx < workoutItems.count,
+                                              case .exercise(var cur) = workoutItems[idx],
+                                              case .exercise(var other) = workoutItems[upIdx] else { return }
+                                        let lid = cur.loopID ?? other.loopID ?? UUID()
+                                        cur.loopID = lid; other.loopID = lid
+                                        workoutItems[idx] = .exercise(cur)
+                                        workoutItems[upIdx] = .exercise(other)
+                                        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                                    }
                                 }
-                            }
-                            let downIdx = ((index + 1)..<workoutItems.count).first {
-                                if case .exercise = workoutItems[$0] { return true }; return false
-                            }
-                            if let downIdx {
-                                Button("Merge Down") {
-                                    guard case .exercise(var cur) = workoutItems[index],
-                                          case .exercise(var other) = workoutItems[downIdx] else { return }
-                                    let lid = cur.loopID ?? other.loopID ?? UUID()
-                                    cur.loopID = lid; other.loopID = lid
-                                    workoutItems[index] = .exercise(cur)
-                                    workoutItems[downIdx] = .exercise(other)
-                                    UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                                let downStart = min(idx + 1, items.count)
+                                let downIdx: Int? = downStart < items.count
+                                    ? (downStart..<items.count).first { i in
+                                        guard case .exercise = items[i] else { return false }
+                                        return true
+                                      }
+                                    : nil
+                                if let downIdx {
+                                    Button("Merge Down") {
+                                        guard idx < workoutItems.count, downIdx < workoutItems.count,
+                                              case .exercise(var cur) = workoutItems[idx],
+                                              case .exercise(var other) = workoutItems[downIdx] else { return }
+                                        let lid = cur.loopID ?? other.loopID ?? UUID()
+                                        cur.loopID = lid; other.loopID = lid
+                                        workoutItems[idx] = .exercise(cur)
+                                        workoutItems[downIdx] = .exercise(other)
+                                        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                                    }
                                 }
                             }
                         }
