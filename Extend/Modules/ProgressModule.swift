@@ -677,7 +677,43 @@ private struct WorkoutLogDetailView: View {
 
                                 Spacer()
 
+                                // Show exercise active time if logged
+                                if !isEditing && exercise.activeSeconds > 0 {
+                                    Label(formatLogTime(exercise.activeSeconds), systemImage: "stopwatch")
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                }
+
                                 if isEditing {
+                                    // Editable active time as m / s
+                                    HStack(spacing: 2) {
+                                        Image(systemName: "stopwatch")
+                                            .font(.caption)
+                                            .foregroundColor(.secondary)
+                                        TextField("0", value: Binding(
+                                            get: { exercise.activeSeconds / 60 },
+                                            set: { exercise.activeSeconds = $0 * 60 + exercise.activeSeconds % 60 }
+                                        ), format: .number)
+                                            .keyboardType(.numberPad)
+                                            .font(.caption)
+                                            .frame(width: 30)
+                                            .textFieldStyle(.roundedBorder)
+                                        Text("min")
+                                            .font(.caption)
+                                            .foregroundColor(.secondary)
+                                        TextField("0", value: Binding(
+                                            get: { exercise.activeSeconds % 60 },
+                                            set: { exercise.activeSeconds = exercise.activeSeconds / 60 * 60 + min($0, 59) }
+                                        ), format: .number)
+                                            .keyboardType(.numberPad)
+                                            .font(.caption)
+                                            .frame(width: 30)
+                                            .textFieldStyle(.roundedBorder)
+                                        Text("sec")
+                                            .font(.caption)
+                                            .foregroundColor(.secondary)
+                                    }
+
                                     Button(action: {
                                         UIImpactFeedbackGenerator(style: .light).impactOccurred()
                                         exercise.sets.append(LoggedSet(reps: 0, weight: 0))
@@ -690,6 +726,7 @@ private struct WorkoutLogDetailView: View {
                             }
 
                             if !exercise.sets.isEmpty {
+                                let hasTimedSets = exercise.sets.contains { $0.timedSeconds > 0 }
                                 ForEach(Array(exercise.sets.indices), id: \.self) { index in
                                     HStack {
                                         Text("Set \(index + 1)")
@@ -716,8 +753,46 @@ private struct WorkoutLogDetailView: View {
                                             Text("lbs")
                                                 .font(.caption)
                                                 .foregroundColor(.gray)
+
+                                            // Timed duration as m / s
+                                            HStack(spacing: 2) {
+                                                Image(systemName: "timer")
+                                                    .font(.caption2)
+                                                    .foregroundColor(.secondary)
+                                                TextField("0", value: Binding(
+                                                    get: { exercise.sets[index].timedSeconds / 60 },
+                                                    set: { exercise.sets[index].timedSeconds = $0 * 60 + exercise.sets[index].timedSeconds % 60 }
+                                                ), format: .number)
+                                                    .keyboardType(.numberPad)
+                                                    .font(.caption)
+                                                    .frame(width: 28)
+                                                    .textFieldStyle(.roundedBorder)
+                                                Text("min")
+                                                    .font(.caption)
+                                                    .foregroundColor(.secondary)
+                                                TextField("0", value: Binding(
+                                                    get: { exercise.sets[index].timedSeconds % 60 },
+                                                    set: { exercise.sets[index].timedSeconds = exercise.sets[index].timedSeconds / 60 * 60 + min($0, 59) }
+                                                ), format: .number)
+                                                    .keyboardType(.numberPad)
+                                                    .font(.caption)
+                                                    .frame(width: 28)
+                                                    .textFieldStyle(.roundedBorder)
+                                                Text("sec")
+                                                    .font(.caption)
+                                                    .foregroundColor(.secondary)
+                                            }
                                         } else {
                                             Spacer()
+
+                                            // Timed set duration
+                                            if hasTimedSets {
+                                                let t = exercise.sets[index].timedSeconds
+                                                Text(t > 0 ? formatLogTime(t) : "—")
+                                                    .font(.caption)
+                                                    .foregroundColor(.secondary)
+                                                    .frame(width: 44, alignment: .trailing)
+                                            }
 
                                             Text("\(exercise.sets[index].reps) reps")
                                                 .font(.caption)
@@ -774,6 +849,9 @@ private struct WorkoutLogDetailView: View {
                         .cornerRadius(8)
                         .padding(.horizontal, 16)
                     }
+
+                    // Rest periods
+                    restPeriodsSection()
                 }
                 .padding(.vertical, 16)
             }
@@ -833,6 +911,106 @@ private struct WorkoutLogDetailView: View {
                 Text("This will permanently delete this workout log.")
             }
         }
+    }
+
+    @ViewBuilder
+    private func restPeriodsSection() -> some View {
+        if !log.restPeriods.isEmpty || isEditing {
+            VStack(alignment: .leading, spacing: 6) {
+                HStack {
+                    Text("Rest Periods")
+                        .font(.subheadline)
+                        .fontWeight(.semibold)
+                    Spacer()
+                    if isEditing {
+                        Button(action: {
+                            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                            log.restPeriods.append(LoggedRest(configuredDuration: 60, actualDuration: 60))
+                        }) {
+                            Image(systemName: "plus.circle.fill")
+                                .foregroundColor(.black)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+
+                ForEach(Array(log.restPeriods.indices), id: \.self) { i in
+                    HStack(spacing: 8) {
+                        Image(systemName: "zzz")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+
+                        if isEditing {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("Configured")
+                                    .font(.caption2)
+                                    .foregroundColor(.secondary)
+                                HStack(spacing: 2) {
+                                    TextField("0", value: Binding(
+                                        get: { log.restPeriods[i].configuredDuration / 60 },
+                                        set: { log.restPeriods[i].configuredDuration = $0 * 60 + log.restPeriods[i].configuredDuration % 60 }
+                                    ), format: .number)
+                                        .keyboardType(.numberPad).font(.caption).frame(width: 28).textFieldStyle(.roundedBorder)
+                                    Text("min").font(.caption).foregroundColor(.secondary)
+                                    TextField("0", value: Binding(
+                                        get: { log.restPeriods[i].configuredDuration % 60 },
+                                        set: { log.restPeriods[i].configuredDuration = log.restPeriods[i].configuredDuration / 60 * 60 + min($0, 59) }
+                                    ), format: .number)
+                                        .keyboardType(.numberPad).font(.caption).frame(width: 28).textFieldStyle(.roundedBorder)
+                                    Text("sec").font(.caption).foregroundColor(.secondary)
+                                }
+                            }
+
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("Rested")
+                                    .font(.caption2)
+                                    .foregroundColor(.secondary)
+                                HStack(spacing: 2) {
+                                    TextField("0", value: Binding(
+                                        get: { log.restPeriods[i].actualDuration / 60 },
+                                        set: { log.restPeriods[i].actualDuration = $0 * 60 + log.restPeriods[i].actualDuration % 60 }
+                                    ), format: .number)
+                                        .keyboardType(.numberPad).font(.caption).frame(width: 28).textFieldStyle(.roundedBorder)
+                                    Text("min").font(.caption).foregroundColor(.secondary)
+                                    TextField("0", value: Binding(
+                                        get: { log.restPeriods[i].actualDuration % 60 },
+                                        set: { log.restPeriods[i].actualDuration = log.restPeriods[i].actualDuration / 60 * 60 + min($0, 59) }
+                                    ), format: .number)
+                                        .keyboardType(.numberPad).font(.caption).frame(width: 28).textFieldStyle(.roundedBorder)
+                                    Text("sec").font(.caption).foregroundColor(.secondary)
+                                }
+                            }
+
+                            Spacer()
+
+                            Button(action: {
+                                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                                log.restPeriods.remove(at: i)
+                            }) {
+                                Image(systemName: "xmark.circle.fill").foregroundColor(.red)
+                            }
+                            .buttonStyle(.plain)
+                        } else {
+                            Text("Configured: \(formatLogTime(log.restPeriods[i].configuredDuration))")
+                                .font(.caption).foregroundColor(.secondary)
+                            Spacer()
+                            Text("Rested: \(formatLogTime(log.restPeriods[i].actualDuration))")
+                                .font(.caption).foregroundColor(.secondary)
+                        }
+                    }
+                }
+            }
+            .padding(12)
+            .background(Color(red: 0.96, green: 0.96, blue: 0.97))
+            .cornerRadius(8)
+            .padding(.horizontal, 16)
+        }
+    }
+
+    private func formatLogTime(_ seconds: Int) -> String {
+        let m = seconds / 60
+        let s = seconds % 60
+        return m > 0 ? "\(m)m \(s)s" : "\(s)s"
     }
 }
 

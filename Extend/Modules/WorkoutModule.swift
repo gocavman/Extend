@@ -1212,14 +1212,12 @@ public struct StartWorkoutView: View {
     /// Which set-round (0-based) we are on when cycling through a loop group.
     @State private var loopRound: Int = 0
     @State private var timerSeconds: Int = 0
-    @State private var isTimerRunning: Bool = false
-    @State private var timerTask: Task<Void, Never>?
+    @State private var isTimerRunning: Bool = true
     @State private var expandedInfo: Bool = false
     @State private var sets: [WorkoutSet] = []
     @State private var previousSets: [LoggedSet] = []
     @State private var previousLogDate: Date? = nil
     @State private var notes: String = ""
-    @State private var workoutStartTime: Date = Date()
     @State private var exerciseData: [UUID: (sets: [WorkoutSet], notes: String, timerSeconds: Int)] = [:]
     @State private var showingHistory: Bool = false
     /// Active countdown tasks keyed by WorkoutSet.id — for per-set timed countdowns.
@@ -1227,7 +1225,8 @@ public struct StartWorkoutView: View {
     // Rest screen state
     @State private var restSecondsRemaining: Int = 60
     @State private var isRestTimerRunning: Bool = false
-    @State private var restTimerTask: Task<Void, Never>?
+    /// Keyed by RestItem.id — stores (configured, secondsRemaining) when we navigate away
+    @State private var restData: [UUID: (configured: Int, remaining: Int)] = [:]
 
     private var currentItem: WorkoutItem? {
         workout.items[safe: currentItemIndex]
@@ -1303,12 +1302,20 @@ public struct StartWorkoutView: View {
         NavigationStack {
             VStack(spacing: 0) {
                 // Navigation bar with item count
+                let atStart = currentItemIndex == 0 && loopRound == 0
+                let atEnd = !canGoNext
+                let singleItem = totalItems <= 1
                 HStack {
-                    Button(action: { previousItem() }) {
-                        Image(systemName: "chevron.left")
-                            .foregroundColor(.black)
+                    // Left arrow: hidden when only 1 item or at the very start
+                    if !singleItem && !atStart {
+                        Button(action: { previousItem() }) {
+                            Image(systemName: "chevron.left")
+                                .foregroundColor(.black)
+                        }
+                    } else {
+                        // Invisible placeholder keeps the label centred
+                        Image(systemName: "chevron.left").opacity(0)
                     }
-                    .disabled(currentItemIndex == 0 && loopRound == 0)
 
                     Spacer()
 
@@ -1318,11 +1325,15 @@ public struct StartWorkoutView: View {
 
                     Spacer()
 
-                    Button(action: { nextItem() }) {
-                        Image(systemName: "chevron.right")
-                            .foregroundColor(.black)
+                    // Right arrow: hidden when only 1 item or on the last item
+                    if !singleItem && !atEnd {
+                        Button(action: { nextItem() }) {
+                            Image(systemName: "chevron.right")
+                                .foregroundColor(.black)
+                        }
+                    } else {
+                        Image(systemName: "chevron.right").opacity(0)
                     }
-                    .disabled(!canGoNext)
                 }
                 .padding(.horizontal, 16)
                 .padding(.vertical, 12)
@@ -1334,7 +1345,6 @@ public struct StartWorkoutView: View {
                         restItem: restItem,
                         secondsRemaining: $restSecondsRemaining,
                         isRunning: $isRestTimerRunning,
-                        timerTask: $restTimerTask,
                         onSkip: { nextItem() }
                     )
                 } else {
@@ -1383,12 +1393,18 @@ public struct StartWorkoutView: View {
             }
         }
         .onAppear {
-            workoutStartTime = Date()
             initializeSets()
         }
-        .onDisappear {
-            timerTask?.cancel()
-            restTimerTask?.cancel()
+        .onDisappear { }
+        // SwiftUI manages this task's lifecycle: starts when isTimerRunning becomes true,
+        // cancels automatically when it becomes false or the view disappears.
+        .task(id: isTimerRunning) {
+            guard isTimerRunning else { return }
+            while !Task.isCancelled {
+                try? await Task.sleep(nanoseconds: 1_000_000_000)
+                guard !Task.isCancelled else { return }
+                timerSeconds += 1
+            }
         }
     }
 
@@ -1583,7 +1599,10 @@ public struct StartWorkoutView: View {
                 } else if !previousSets.isEmpty {
                     let dateLabel: String = {
                         guard let date = previousLogDate else { return "" }
-                        let days = Calendar.current.dateComponents([.day], from: date, to: Date()).day ?? 0
+                        let cal = Calendar.current
+                        let startOfLog = cal.startOfDay(for: date)
+                        let startOfToday = cal.startOfDay(for: Date())
+                        let days = cal.dateComponents([.day], from: startOfLog, to: startOfToday).day ?? 0
                         if days == 0 { return ", today" }
                         if days == 1 { return ", yesterday" }
                         if days < 30 { return ", \(days)d ago" }
@@ -1700,17 +1719,24 @@ public struct StartWorkoutView: View {
                     let weightPlaceholder = index < previousSets.count && previousSets[index].weight > 0
                         ? String(format: "%.2f", previousSets[index].weight) : ""
                     TextField(weightPlaceholder, text: Binding(
-                        get: { set.weight == 0 ? "" : String(format: "%.2f", set.weight) },
-                        set: {
-                            if let v = Double($0) { sets[index].weight = v }
-                            else if $0.isEmpty { sets[index].weight = 0 }
-                        }
+                        get: { sets[index].weightText },
+                        set: { sets[index].weightText = $0 }
                     ))
                     .keyboardType(.decimalPad)
                     .font(.caption)
                     .padding(6)
                     .background(Color(red: 0.98, green: 0.98, blue: 1.0))
                     .cornerRadius(4)
+                    .onSubmit {
+                        let parsed = Double(sets[index].weightText.replacingOccurrences(of: ",", with: ".")) ?? 0
+                        sets[index].weight = parsed
+                        if parsed == 0 { sets[index].weightText = "" }
+                    }
+                    .onChange(of: sets[index].weightText) { _, newVal in
+                        // Allow digits and at most one decimal separator; commit to weight on every valid change
+                        let parsed = Double(newVal.replacingOccurrences(of: ",", with: "."))
+                        sets[index].weight = parsed ?? sets[index].weight
+                    }
                 }
 
                 Button(action: { removeSet(at: index) }) {
@@ -1847,20 +1873,25 @@ public struct StartWorkoutView: View {
 
     private func saveCurrentData() {
         cancelAllSetTimers()
-        if case .exercise(let we) = currentItem {
+        isTimerRunning = false
+        isRestTimerRunning = false
+        switch currentItem {
+        case .exercise(let we):
             exerciseData[we.exerciseID] = (sets: sets, notes: notes, timerSeconds: timerSeconds)
+        case .rest(let r):
+            restData[r.id] = (configured: r.duration, remaining: restSecondsRemaining)
+        case .none:
+            break
         }
     }
 
     private func loadItemData() {
-        // Reset rest timer
-        restTimerTask?.cancel()
+        // Reset rest timer state (RestScreen's .task handles its own lifecycle)
         isRestTimerRunning = false
 
         if case .rest(let r) = currentItem {
             restSecondsRemaining = r.duration
             isTimerRunning = false
-            timerTask?.cancel()
             return
         }
 
@@ -1879,8 +1910,8 @@ public struct StartWorkoutView: View {
             initializeSets()
         }
 
-        isTimerRunning = false
-        timerTask?.cancel()
+        // Auto-start stopwatch — user can pause/reset manually
+        isTimerRunning = true
         expandedInfo = false
 
         // Auto-start the timed countdown for the active loop round, if applicable
@@ -1903,23 +1934,10 @@ public struct StartWorkoutView: View {
 
     private func toggleTimer() {
         isTimerRunning.toggle()
-        if isTimerRunning { startTimer() } else { timerTask?.cancel() }
-    }
-
-    private func startTimer() {
-        timerTask = Task {
-            while isTimerRunning && !Task.isCancelled {
-                try? await Task.sleep(nanoseconds: 1_000_000_000)
-                if !Task.isCancelled {
-                    await MainActor.run { timerSeconds += 1 }
-                }
-            }
-        }
     }
 
     private func resetTimer() {
         isTimerRunning = false
-        timerTask?.cancel()
         timerSeconds = 0
     }
 
@@ -2037,26 +2055,52 @@ public struct StartWorkoutView: View {
         saveCurrentData()
 
         var loggedExercises: [LoggedExercise] = []
-        for item in workout.items {
-            guard case .exercise(let we) = item,
-                  let exercise = exercisesState.exercises.first(where: { $0.id == we.exerciseID }),
-                  let savedData = exerciseData[we.exerciseID] else { continue }
+        var loggedRests: [LoggedRest] = []
 
-            let loggedSets = savedData.sets.map { LoggedSet(reps: $0.reps, weight: $0.weight) }
-            loggedExercises.append(LoggedExercise(
-                exerciseID: exercise.id,
-                exerciseName: exercise.name,
-                sets: loggedSets,
-                notes: savedData.notes
-            ))
+        for item in workout.items {
+            switch item {
+            case .exercise(let we):
+                guard let exercise = exercisesState.exercises.first(where: { $0.id == we.exerciseID }),
+                      let savedData = exerciseData[we.exerciseID] else { continue }
+
+                // Include per-set timed duration: initial target minus remaining = elapsed
+                let loggedSets = savedData.sets.enumerated().map { idx, ws -> LoggedSet in
+                    var initialTimed = 0
+                    if idx < we.predefinedSets.count,
+                       case .timed(let s) = we.predefinedSets[idx].target {
+                        initialTimed = s
+                    }
+                    let elapsed = initialTimed > 0 ? max(0, initialTimed - ws.timedSecondsRemaining) : 0
+                    return LoggedSet(reps: ws.reps, weight: ws.weight, timedSeconds: elapsed)
+                }
+
+                loggedExercises.append(LoggedExercise(
+                    exerciseID: exercise.id,
+                    exerciseName: exercise.name,
+                    sets: loggedSets,
+                    notes: savedData.notes,
+                    activeSeconds: savedData.timerSeconds
+                ))
+
+            case .rest(let r):
+                let data = restData[r.id]
+                let configured = data?.configured ?? r.duration
+                let remaining = data?.remaining ?? r.duration
+                let actual = max(0, configured - remaining)
+                loggedRests.append(LoggedRest(configuredDuration: configured, actualDuration: actual))
+            }
         }
+
+        // Total active duration = sum of per-exercise stopwatch values
+        let totalActiveSeconds = exerciseData.values.reduce(0) { $0 + $1.timerSeconds }
 
         let workoutLog = WorkoutLog(
             workoutName: workout.name,
             completedAt: Date(),
             exercises: loggedExercises,
+            restPeriods: loggedRests,
             notes: "",
-            duration: Date().timeIntervalSince(workoutStartTime)
+            duration: TimeInterval(totalActiveSeconds)
         )
 
         WorkoutLogState.shared.addLog(workoutLog)
@@ -2083,7 +2127,6 @@ private struct RestScreen: View {
     let restItem: RestItem
     @Binding var secondsRemaining: Int
     @Binding var isRunning: Bool
-    @Binding var timerTask: Task<Void, Never>?
     let onSkip: () -> Void
 
     var body: some View {
@@ -2107,7 +2150,7 @@ private struct RestScreen: View {
                 .foregroundColor(.secondary)
 
             HStack(spacing: 24) {
-                Button(action: { toggleTimer() }) {
+                Button(action: { isRunning.toggle() }) {
                     Image(systemName: isRunning ? "pause.circle.fill" : "play.circle.fill")
                         .font(.system(size: 48))
                         .foregroundColor(.black)
@@ -2115,7 +2158,8 @@ private struct RestScreen: View {
                 .buttonStyle(.plain)
 
                 Button(action: {
-                    resetTimer()
+                    isRunning = false
+                    secondsRemaining = restItem.duration
                 }) {
                     Image(systemName: "arrow.counterclockwise.circle")
                         .font(.system(size: 36))
@@ -2142,37 +2186,20 @@ private struct RestScreen: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .onAppear {
             secondsRemaining = restItem.duration
+            isRunning = true
         }
-    }
-
-    private func toggleTimer() {
-        isRunning.toggle()
-        if isRunning { startTimer() } else { timerTask?.cancel() }
-    }
-
-    private func startTimer() {
-        timerTask = Task {
-            while isRunning && !Task.isCancelled && secondsRemaining > 0 {
+        .task(id: isRunning) {
+            guard isRunning else { return }
+            while !Task.isCancelled && secondsRemaining > 0 {
                 try? await Task.sleep(nanoseconds: 1_000_000_000)
-                if !Task.isCancelled {
-                    await MainActor.run {
-                        if secondsRemaining > 0 {
-                            secondsRemaining -= 1
-                        }
-                        if secondsRemaining == 0 {
-                            isRunning = false
-                            UIImpactFeedbackGenerator(style: .heavy).impactOccurred()
-                        }
-                    }
+                guard !Task.isCancelled else { return }
+                secondsRemaining -= 1
+                if secondsRemaining == 0 {
+                    isRunning = false
+                    UIImpactFeedbackGenerator(style: .heavy).impactOccurred()
                 }
             }
         }
-    }
-
-    private func resetTimer() {
-        isRunning = false
-        timerTask?.cancel()
-        secondsRemaining = restItem.duration
     }
 
     private func formatTime(_ seconds: Int) -> String {
@@ -2188,6 +2215,8 @@ private struct WorkoutSet: Identifiable {
     let id: UUID = UUID()
     var reps: Int
     var weight: Double
+    /// Raw text the user is typing into the weight field — avoids mid-entry decimal formatting.
+    var weightText: String = ""
     /// For timed sets: countdown remaining in seconds. Starts at the predefined duration.
     var timedSecondsRemaining: Int = 0
     /// Whether this set's countdown is currently running.
@@ -2210,12 +2239,18 @@ struct ExerciseHistorySheet: View {
     let exercise: Exercise
     let logState: WorkoutLogState
 
-    private var history: [(date: Date, sets: [LoggedSet], notes: String)] {
+    private var history: [(date: Date, sets: [LoggedSet], notes: String, activeSeconds: Int)] {
         logState.sortedLogs.compactMap { log in
             guard let ex = log.exercises.first(where: { $0.exerciseID == exercise.id }),
                   !ex.sets.isEmpty else { return nil }
-            return (date: log.completedAt, sets: ex.sets, notes: ex.notes)
+            return (date: log.completedAt, sets: ex.sets, notes: ex.notes, activeSeconds: ex.activeSeconds)
         }
+    }
+
+    private func formatHistoryTime(_ seconds: Int) -> String {
+        let m = seconds / 60
+        let s = seconds % 60
+        return m > 0 ? "\(m)m \(s)s" : "\(s)s"
     }
 
     var body: some View {
@@ -2247,18 +2282,32 @@ struct ExerciseHistorySheet: View {
                                     Text(entry.date, style: .time)
                                         .font(.caption)
                                         .foregroundColor(.secondary)
+                                    Spacer()
+                                    if entry.activeSeconds > 0 {
+                                        Label(formatHistoryTime(entry.activeSeconds), systemImage: "stopwatch")
+                                            .font(.caption)
+                                            .foregroundColor(.secondary)
+                                    }
                                 }
 
+                                let hasTimed = entry.sets.contains { $0.timedSeconds > 0 }
                                 VStack(spacing: 4) {
                                     HStack {
                                         Text("Set").font(.caption2).foregroundColor(.secondary).frame(maxWidth: .infinity, alignment: .leading)
                                         Text("Reps").font(.caption2).foregroundColor(.secondary).frame(maxWidth: .infinity, alignment: .center)
+                                        if hasTimed {
+                                            Text("Time").font(.caption2).foregroundColor(.secondary).frame(width: 44, alignment: .center)
+                                        }
                                         Text("Weight").font(.caption2).foregroundColor(.secondary).frame(maxWidth: .infinity, alignment: .trailing)
                                     }
                                     ForEach(Array(entry.sets.enumerated()), id: \.offset) { idx, set in
                                         HStack {
                                             Text("\(idx + 1)").font(.caption).fontWeight(.semibold).frame(maxWidth: .infinity, alignment: .leading)
                                             Text("\(set.reps)").font(.caption).frame(maxWidth: .infinity, alignment: .center)
+                                            if hasTimed {
+                                                Text(set.timedSeconds > 0 ? formatHistoryTime(set.timedSeconds) : "—")
+                                                    .font(.caption).foregroundColor(.secondary).frame(width: 44, alignment: .center)
+                                            }
                                             Text(set.weight == 0 ? "—" : String(format: "%.1f lbs", set.weight)).font(.caption).frame(maxWidth: .infinity, alignment: .trailing)
                                         }
                                     }
