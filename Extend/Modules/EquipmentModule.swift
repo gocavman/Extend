@@ -60,36 +60,34 @@ private struct EquipmentModuleView: View {
                 .padding(.horizontal, 16)
                 .padding(.vertical, 12)
 
-                List {
-                    // Favorites grid
-                    if !state.favoriteItems.isEmpty && searchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                        Section {
-                            LazyVGrid(columns: [GridItem(.adaptive(minimum: 70), spacing: 10)], spacing: 10) {
-                                ForEach(state.favoriteItems) { item in
-                                    Button(action: {
-                                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                                        statsItem = item
-                                    }) {
-                                        VStack(spacing: 4) {
-                                            Image(systemName: "figure.walk.treadmill")
-                                                .font(.system(size: 20))
-                                                .foregroundColor(.black)
-                                            Text(item.name)
-                                                .font(.caption).fontWeight(.semibold).foregroundColor(.black)
-                                                .lineLimit(2).multilineTextAlignment(.center)
-                                        }
-                                        .frame(width: 70, height: 80)
-                                        .background(Color(red: 0.92, green: 0.92, blue: 0.94))
-                                        .cornerRadius(10)
-                                    }
-                                    .buttonStyle(.plain)
+                // Favorites grid — lives outside the List so it never disrupts List row identity
+                if !state.favoriteItems.isEmpty && searchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                    LazyVGrid(columns: [GridItem(.adaptive(minimum: 70), spacing: 10)], spacing: 10) {
+                        ForEach(state.favoriteItems) { item in
+                            Button(action: {
+                                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                                statsItem = item
+                            }) {
+                                VStack(spacing: 4) {
+                                    Image(systemName: "figure.walk.treadmill")
+                                        .font(.system(size: 20))
+                                        .foregroundColor(.black)
+                                    Text(item.name)
+                                        .font(.caption).fontWeight(.semibold).foregroundColor(.black)
+                                        .lineLimit(2).multilineTextAlignment(.center)
                                 }
+                                .frame(width: 70, height: 80)
+                                .background(Color(red: 0.92, green: 0.92, blue: 0.94))
+                                .cornerRadius(10)
                             }
-                            .padding(.vertical, 4)
+                            .buttonStyle(.plain)
                         }
-                        .listRowInsets(EdgeInsets(top: 4, leading: 16, bottom: 4, trailing: 16))
                     }
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 8)
+                }
 
+                List {
                     SearchField(text: $searchText, placeholder: "Search equipment...")
 
                     ForEach(filteredItems) { item in
