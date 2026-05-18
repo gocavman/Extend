@@ -1195,6 +1195,8 @@ public struct StartWorkoutView: View {
     public let workout: Workout
 
     @State private var currentItemIndex: Int = 0
+    /// Which set-round (0-based) we are on when cycling through a loop group.
+    @State private var loopRound: Int = 0
     @State private var timerSeconds: Int = 0
     @State private var isTimerRunning: Bool = false
     @State private var timerTask: Task<Void, Never>?
@@ -1206,6 +1208,8 @@ public struct StartWorkoutView: View {
     @State private var workoutStartTime: Date = Date()
     @State private var exerciseData: [UUID: (sets: [WorkoutSet], notes: String, timerSeconds: Int)] = [:]
     @State private var showingHistory: Bool = false
+    /// Active countdown tasks keyed by WorkoutSet.id — for per-set timed countdowns.
+    @State private var setTimerTasks: [UUID: Task<Void, Never>] = [:]
     // Rest screen state
     @State private var restSecondsRemaining: Int = 60
     @State private var isRestTimerRunning: Bool = false
@@ -1232,6 +1236,51 @@ public struct StartWorkoutView: View {
 
     private var totalItems: Int { workout.items.count }
 
+    // MARK: Loop helpers
+
+    /// Indices in workout.items that belong to the same loop as the current exercise, in order.
+    private var currentLoopIndices: [Int] {
+        guard case .exercise(let we) = currentItem, let lid = we.loopID else { return [] }
+        return workout.items.indices.filter {
+            if case .exercise(let e) = workout.items[$0] { return e.loopID == lid }
+            return false
+        }
+    }
+
+    /// True if the current item is part of a loop group.
+    private var isInLoop: Bool { !currentLoopIndices.isEmpty }
+
+    /// Position of the current item within its loop group (0-based).
+    private var loopPosition: Int {
+        currentLoopIndices.firstIndex(of: currentItemIndex) ?? 0
+    }
+
+    /// Total number of set-rounds for the current loop (max predefined sets across all members, min 1).
+    private var loopTotalRounds: Int {
+        guard isInLoop else { return 0 }
+        let max = currentLoopIndices.compactMap { idx -> Int? in
+            guard case .exercise(let e) = workout.items[idx] else { return nil }
+            return e.predefinedSets.isEmpty ? nil : e.predefinedSets.count
+        }.max() ?? 0
+        return max > 0 ? max : 1
+    }
+
+    /// Nav-bar label: shows loop context when in a loop, otherwise plain "X of Y".
+    private var progressLabel: String {
+        if isInLoop {
+            let pos = loopPosition + 1
+            let total = currentLoopIndices.count
+            let round = loopRound + 1
+            let rounds = loopTotalRounds
+            if rounds > 1 {
+                return "Round \(round) of \(rounds) · Ex \(pos) of \(total)"
+            } else {
+                return "Loop · Ex \(pos) of \(total)"
+            }
+        }
+        return "\(currentItemIndex + 1) of \(totalItems)"
+    }
+
     public init(workout: Workout) {
         self.workout = workout
     }
@@ -1245,11 +1294,11 @@ public struct StartWorkoutView: View {
                         Image(systemName: "chevron.left")
                             .foregroundColor(.black)
                     }
-                    .disabled(currentItemIndex == 0)
+                    .disabled(currentItemIndex == 0 && loopRound == 0)
 
                     Spacer()
 
-                    Text("\(currentItemIndex + 1) of \(totalItems)")
+                    Text(progressLabel)
                         .font(.subheadline)
                         .fontWeight(.semibold)
 
@@ -1259,7 +1308,7 @@ public struct StartWorkoutView: View {
                         Image(systemName: "chevron.right")
                             .foregroundColor(.black)
                     }
-                    .disabled(currentItemIndex == totalItems - 1)
+                    .disabled(!canGoNext)
                 }
                 .padding(.horizontal, 16)
                 .padding(.vertical, 12)
@@ -1374,7 +1423,7 @@ public struct StartWorkoutView: View {
         // Expandable info section
         if expandedInfo {
             VStack(alignment: .leading, spacing: 8) {
-                let allMuscles = (exPrimaryGroups + exSecondaryGroups).map(\.name).joined(separator: ", ")
+                let allMuscles: String = (exPrimaryGroups + exSecondaryGroups).map(\.name).joined(separator: ", ")
                 if !allMuscles.isEmpty {
                     Text("Muscles: \(allMuscles)")
                         .font(.caption)
@@ -1484,14 +1533,34 @@ public struct StartWorkoutView: View {
         }
         .padding(.horizontal, 16)
 
-        // Sets section
+        setsSection(exercise: exercise, we: we)
+
+        // Notes section
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Notes")
+                .font(.subheadline)
+                .fontWeight(.semibold)
+
+            TextField("Add notes...", text: $notes, axis: .vertical)
+                .lineLimit(3, reservesSpace: true)
+                .font(.caption)
+                .padding(8)
+                .background(Color(red: 0.96, green: 0.96, blue: 0.97))
+                .cornerRadius(6)
+        }
+        .padding(.horizontal, 16)
+    }
+
+    // MARK: Sets Section
+
+    @ViewBuilder
+    private func setsSection(exercise: Exercise, we: WorkoutExercise) -> some View {
         VStack(spacing: 8) {
             HStack {
                 Text("Sets")
                     .font(.subheadline)
                     .fontWeight(.semibold)
 
-                // Show "predefined" label if targets are set, otherwise show previous session hint
                 if !we.predefinedSets.isEmpty {
                     Text("(target: \(we.predefinedSets.summaryLabel))")
                         .font(.caption)
@@ -1514,7 +1583,6 @@ public struct StartWorkoutView: View {
 
                 Spacer()
 
-                // History button
                 if lastLoggedSets(for: exercise.id) != nil {
                     Button(action: { showingHistory = true }) {
                         Image(systemName: "clock.arrow.circlepath")
@@ -1539,85 +1607,7 @@ public struct StartWorkoutView: View {
             } else {
                 VStack(spacing: 12) {
                     ForEach(Array(sets.enumerated()), id: \.element.id) { index, set in
-                        HStack(spacing: 12) {
-                            VStack(alignment: .leading, spacing: 4) {
-                                Text("Set")
-                                    .font(.caption2)
-                                    .foregroundColor(.primary.opacity(0.6))
-                                Text("\(index + 1)")
-                                    .font(.caption)
-                                    .fontWeight(.semibold)
-                                    .frame(maxWidth: .infinity, alignment: .center)
-                                    .padding(6)
-                                    .background(Color(red: 0.98, green: 0.98, blue: 1.0))
-                                    .cornerRadius(4)
-                            }
-
-                            VStack(alignment: .leading, spacing: 4) {
-                                Text("Reps")
-                                    .font(.caption2)
-                                    .foregroundColor(.primary.opacity(0.6))
-
-                                // Predefined reps take precedence over previous-session placeholders
-                                let repPlaceholder: String = {
-                                    if !we.predefinedSets.isEmpty && index < we.predefinedSets.count {
-                                        if case .reps(let n) = we.predefinedSets[index].target, n > 0 {
-                                            return "\(n)"
-                                        }
-                                        return ""
-                                    } else if index < previousSets.count && previousSets[index].reps > 0 {
-                                        return "\(previousSets[index].reps)"
-                                    }
-                                    return ""
-                                }()
-
-                                TextField(repPlaceholder, text: Binding(
-                                    get: { set.reps == 0 ? "" : "\(set.reps)" },
-                                    set: {
-                                        if let value = Int($0) {
-                                            sets[index].reps = value
-                                        } else if $0.isEmpty {
-                                            sets[index].reps = 0
-                                        }
-                                    }
-                                ))
-                                .keyboardType(.numberPad)
-                                .font(.caption)
-                                .padding(6)
-                                .background(Color(red: 0.98, green: 0.98, blue: 1.0))
-                                .cornerRadius(4)
-                            }
-
-                            VStack(alignment: .leading, spacing: 4) {
-                                Text("Weight")
-                                    .font(.caption2)
-                                    .foregroundColor(.primary.opacity(0.6))
-                                let weightPlaceholder = index < previousSets.count && previousSets[index].weight > 0
-                                    ? String(format: "%.2f", previousSets[index].weight) : ""
-                                TextField(weightPlaceholder, text: Binding(
-                                    get: { set.weight == 0 ? "" : String(format: "%.2f", set.weight) },
-                                    set: {
-                                        if let value = Double($0) {
-                                            sets[index].weight = value
-                                        } else if $0.isEmpty {
-                                            sets[index].weight = 0
-                                        }
-                                    }
-                                ))
-                                .keyboardType(.decimalPad)
-                                .font(.caption)
-                                .padding(6)
-                                .background(Color(red: 0.98, green: 0.98, blue: 1.0))
-                                .cornerRadius(4)
-                            }
-
-                            Button(action: { removeSet(at: index) }) {
-                                Image(systemName: "xmark.circle.fill")
-                                    .foregroundColor(.red)
-                            }
-                            .buttonStyle(.plain)
-                            .padding(.top, 20)
-                        }
+                        setRow(index: index, set: set, we: we)
                     }
                 }
 
@@ -1635,40 +1625,214 @@ public struct StartWorkoutView: View {
         .background(Color(red: 0.96, green: 0.96, blue: 0.97))
         .cornerRadius(8)
         .padding(.horizontal, 16)
+    }
 
-        // Notes section
-        VStack(alignment: .leading, spacing: 8) {
-            Text("Notes")
-                .font(.subheadline)
-                .fontWeight(.semibold)
+    @ViewBuilder
+    private func setRow(index: Int, set: WorkoutSet, we: WorkoutExercise) -> some View {
+        let isActiveRound = isInLoop && index == loopRound
+        let isTimed: Bool = {
+            guard !we.predefinedSets.isEmpty, index < we.predefinedSets.count else { return false }
+            if case .timed = we.predefinedSets[index].target { return true }
+            return false
+        }()
 
-            TextField("Add notes...", text: $notes, axis: .vertical)
-                .lineLimit(3, reservesSpace: true)
-                .font(.caption)
-                .padding(8)
-                .background(Color(red: 0.96, green: 0.96, blue: 0.97))
-                .cornerRadius(6)
+        VStack(alignment: .leading, spacing: 6) {
+            // Set / Reps / Weight / Delete row
+            HStack(spacing: 12) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Set")
+                        .font(.caption2)
+                        .foregroundColor(.primary.opacity(0.6))
+                    Text("\(index + 1)")
+                        .font(.caption)
+                        .fontWeight(.semibold)
+                        .frame(maxWidth: .infinity, alignment: .center)
+                        .padding(6)
+                        .background(Color(red: 0.98, green: 0.98, blue: 1.0))
+                        .cornerRadius(4)
+                }
+
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Reps")
+                        .font(.caption2)
+                        .foregroundColor(.primary.opacity(0.6))
+                    let repPlaceholder: String = {
+                        if !we.predefinedSets.isEmpty && index < we.predefinedSets.count {
+                            if case .reps(let n) = we.predefinedSets[index].target, n > 0 { return "\(n)" }
+                            return ""
+                        } else if index < previousSets.count && previousSets[index].reps > 0 {
+                            return "\(previousSets[index].reps)"
+                        }
+                        return ""
+                    }()
+                    TextField(repPlaceholder, text: Binding(
+                        get: { set.reps == 0 ? "" : "\(set.reps)" },
+                        set: {
+                            if let v = Int($0) { sets[index].reps = v }
+                            else if $0.isEmpty { sets[index].reps = 0 }
+                        }
+                    ))
+                    .keyboardType(.numberPad)
+                    .font(.caption)
+                    .padding(6)
+                    .background(Color(red: 0.98, green: 0.98, blue: 1.0))
+                    .cornerRadius(4)
+                }
+
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Weight")
+                        .font(.caption2)
+                        .foregroundColor(.primary.opacity(0.6))
+                    let weightPlaceholder = index < previousSets.count && previousSets[index].weight > 0
+                        ? String(format: "%.2f", previousSets[index].weight) : ""
+                    TextField(weightPlaceholder, text: Binding(
+                        get: { set.weight == 0 ? "" : String(format: "%.2f", set.weight) },
+                        set: {
+                            if let v = Double($0) { sets[index].weight = v }
+                            else if $0.isEmpty { sets[index].weight = 0 }
+                        }
+                    ))
+                    .keyboardType(.decimalPad)
+                    .font(.caption)
+                    .padding(6)
+                    .background(Color(red: 0.98, green: 0.98, blue: 1.0))
+                    .cornerRadius(4)
+                }
+
+                Button(action: { removeSet(at: index) }) {
+                    Image(systemName: "xmark.circle.fill")
+                        .foregroundColor(.red)
+                }
+                .buttonStyle(.plain)
+                .padding(.top, 20)
+            }
+
+            // Timed countdown row — shown below when this set's target is timed
+            if isTimed {
+                HStack(spacing: 10) {
+                    Text("Timer")
+                        .font(.caption2)
+                        .foregroundColor(.primary.opacity(0.6))
+                        .frame(width: 36, alignment: .leading)
+
+                    Button(action: { toggleSetTimer(setID: set.id, setIndex: index) }) {
+                        Image(systemName: set.isTimerRunning ? "pause.circle.fill" : "play.circle.fill")
+                            .font(.system(size: 20))
+                            .foregroundColor(set.timedSecondsRemaining == 0 ? .green : .black)
+                    }
+                    .buttonStyle(.plain)
+
+                    let rem = set.timedSecondsRemaining
+                    Text(rem >= 60
+                         ? String(format: "%d:%02d", rem / 60, rem % 60)
+                         : "\(rem)s")
+                        .font(.subheadline)
+                        .fontWeight(.semibold)
+                        .monospacedDigit()
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 5)
+                        .background(rem == 0 ? Color.green.opacity(0.15) : Color(red: 0.98, green: 0.98, blue: 1.0))
+                        .cornerRadius(6)
+
+                    Button(action: { resetSetTimer(setIndex: index, predefinedSets: we.predefinedSets) }) {
+                        Image(systemName: "arrow.counterclockwise")
+                            .font(.system(size: 14))
+                            .foregroundColor(.secondary)
+                    }
+                    .buttonStyle(.plain)
+
+                    Spacer()
+                }
+            }
         }
-        .padding(.horizontal, 16)
+        .padding(isActiveRound ? 6 : 0)
+        .background(isActiveRound ? Color.black.opacity(0.06) : Color.clear)
+        .cornerRadius(isActiveRound ? 6 : 0)
+        .overlay(
+            isActiveRound
+                ? RoundedRectangle(cornerRadius: 6).stroke(Color.black.opacity(0.2), lineWidth: 1)
+                : nil
+        )
     }
 
     // MARK: Navigation
 
-    private func previousItem() {
-        guard currentItemIndex > 0 else { return }
-        saveCurrentData()
-        currentItemIndex -= 1
-        loadItemData()
+    private var canGoNext: Bool {
+        if isInLoop {
+            // Can always go next inside a loop until we've exhausted all rounds at the last member
+            let isLastMember = loopPosition == currentLoopIndices.count - 1
+            let isLastRound  = loopRound >= loopTotalRounds - 1
+            if isLastMember && isLastRound {
+                // Can still advance if there's something after the loop
+                return currentLoopIndices.last.map { $0 < totalItems - 1 } ?? false
+            }
+            return true
+        }
+        return currentItemIndex < totalItems - 1
     }
 
     private func nextItem() {
-        guard currentItemIndex < totalItems - 1 else { return }
+        guard canGoNext else { return }
         saveCurrentData()
-        currentItemIndex += 1
+
+        if isInLoop {
+            let loopIndices = currentLoopIndices
+            let pos = loopPosition
+            let isLastMember = pos == loopIndices.count - 1
+            let isLastRound  = loopRound >= loopTotalRounds - 1
+
+            if !isLastMember {
+                // Move to next member of this loop at the same round
+                currentItemIndex = loopIndices[pos + 1]
+            } else if !isLastRound {
+                // All members done for this round — start next round at first member
+                loopRound += 1
+                currentItemIndex = loopIndices[0]
+            } else {
+                // All rounds done — exit the loop to the item after it
+                loopRound = 0
+                currentItemIndex = loopIndices.last! + 1
+            }
+        } else {
+            loopRound = 0
+            currentItemIndex += 1
+        }
+
+        loadItemData()
+    }
+
+    private func previousItem() {
+        saveCurrentData()
+
+        if isInLoop {
+            let loopIndices = currentLoopIndices
+            let pos = loopPosition
+
+            if pos > 0 {
+                // Move to previous member at same round
+                currentItemIndex = loopIndices[pos - 1]
+            } else if loopRound > 0 {
+                // Go back to last member of previous round
+                loopRound -= 1
+                currentItemIndex = loopIndices.last!
+            } else {
+                // At the very start of the loop — go to item before the loop
+                if let firstLoopIdx = loopIndices.first, firstLoopIdx > 0 {
+                    loopRound = 0
+                    currentItemIndex = firstLoopIdx - 1
+                }
+            }
+        } else {
+            guard currentItemIndex > 0 else { return }
+            loopRound = 0
+            currentItemIndex -= 1
+        }
+
         loadItemData()
     }
 
     private func saveCurrentData() {
+        cancelAllSetTimers()
         if case .exercise(let we) = currentItem {
             exerciseData[we.exerciseID] = (sets: sets, notes: notes, timerSeconds: timerSeconds)
         }
@@ -1704,6 +1868,21 @@ public struct StartWorkoutView: View {
         isTimerRunning = false
         timerTask?.cancel()
         expandedInfo = false
+
+        // Auto-start the timed countdown for the active loop round, if applicable
+        if isInLoop, loopRound < sets.count {
+            if case .exercise(let we) = currentItem,
+               loopRound < we.predefinedSets.count,
+               case .timed = we.predefinedSets[loopRound].target {
+                // Small delay so the view has settled before the timer fires
+                Task {
+                    try? await Task.sleep(nanoseconds: 300_000_000)
+                    await MainActor.run {
+                        toggleSetTimer(setID: sets[loopRound].id, setIndex: loopRound)
+                    }
+                }
+            }
+        }
     }
 
     // MARK: Timer
@@ -1730,6 +1909,57 @@ public struct StartWorkoutView: View {
         timerSeconds = 0
     }
 
+    // MARK: Per-set timed countdown
+
+    private func toggleSetTimer(setID: UUID, setIndex: Int) {
+        guard setIndex < sets.count else { return }
+        if sets[setIndex].isTimerRunning {
+            // Pause
+            setTimerTasks[setID]?.cancel()
+            setTimerTasks[setID] = nil
+            sets[setIndex].isTimerRunning = false
+        } else {
+            // Start (reset to predefined duration if at 0)
+            sets[setIndex].isTimerRunning = true
+            let task = Task {
+                while !Task.isCancelled {
+                    try? await Task.sleep(nanoseconds: 1_000_000_000)
+                    guard !Task.isCancelled else { break }
+                    await MainActor.run {
+                        guard setIndex < sets.count, sets[setIndex].isTimerRunning else { return }
+                        if sets[setIndex].timedSecondsRemaining > 0 {
+                            sets[setIndex].timedSecondsRemaining -= 1
+                        }
+                        if sets[setIndex].timedSecondsRemaining == 0 {
+                            sets[setIndex].isTimerRunning = false
+                            setTimerTasks[setID]?.cancel()
+                            setTimerTasks[setID] = nil
+                            UIImpactFeedbackGenerator(style: .heavy).impactOccurred()
+                        }
+                    }
+                }
+            }
+            setTimerTasks[setID] = task
+        }
+    }
+
+    private func resetSetTimer(setIndex: Int, predefinedSets: [PredefinedSet]) {
+        guard setIndex < sets.count else { return }
+        let setID = sets[setIndex].id
+        setTimerTasks[setID]?.cancel()
+        setTimerTasks[setID] = nil
+        sets[setIndex].isTimerRunning = false
+        if setIndex < predefinedSets.count, case .timed(let s) = predefinedSets[setIndex].target {
+            sets[setIndex].timedSecondsRemaining = s
+        }
+    }
+
+    private func cancelAllSetTimers() {
+        for (_, task) in setTimerTasks { task.cancel() }
+        setTimerTasks.removeAll()
+        for i in sets.indices { sets[i].isTimerRunning = false }
+    }
+
     // MARK: Sets
 
     private func addSet() {
@@ -1746,7 +1976,13 @@ public struct StartWorkoutView: View {
 
         // Predefined sets take precedence over history
         if !we.predefinedSets.isEmpty {
-            sets = we.predefinedSets.map { _ in WorkoutSet(reps: 0, weight: 0) }
+            sets = we.predefinedSets.map { predef -> WorkoutSet in
+                var ws = WorkoutSet(reps: 0, weight: 0)
+                if case .timed(let s) = predef.target {
+                    ws.timedSecondsRemaining = s
+                }
+                return ws
+            }
             // Still load weight history as placeholders; reps placeholders come from predefined
             if let (logged, logDate) = lastLoggedSetsWithDate(for: we.exerciseID), !logged.isEmpty {
                 previousSets = logged
@@ -1938,6 +2174,10 @@ private struct WorkoutSet: Identifiable {
     let id: UUID = UUID()
     var reps: Int
     var weight: Double
+    /// For timed sets: countdown remaining in seconds. Starts at the predefined duration.
+    var timedSecondsRemaining: Int = 0
+    /// Whether this set's countdown is currently running.
+    var isTimerRunning: Bool = false
 }
 
 // MARK: - Array Safe Subscript Extension
