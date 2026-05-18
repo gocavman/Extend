@@ -153,15 +153,15 @@ private struct TimerModuleView: View {
                 }
                 .listStyle(.plain)
             }
-            .navigationDestination(item: $activeConfig) { config in
+            .fullScreenCover(item: $activeConfig) { config in
                 ActiveTimerView(config: config)
             }
-            .sheet(isPresented: $showingAdd) {
+            .fullScreenCover(isPresented: $showingAdd) {
                 TimerEditorView(title: "Add Timer") { config in
                     timerState.addConfig(config)
                 }
             }
-            .sheet(item: $editingConfig) { config in
+            .fullScreenCover(item: $editingConfig) { config in
                 TimerEditorView(title: "Edit Timer", initial: config) { updated in
                     timerState.updateConfig(updated)
                 } onDelete: {
@@ -208,15 +208,9 @@ private struct TimerRowView: View {
 
     var body: some View {
         HStack(spacing: 12) {
-            Button(action: {
-                UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                onPlay()
-            }) {
-                Image(systemName: "play.circle.fill")
-                    .foregroundColor(.black)
-                    .font(.system(size: 20))
-            }
-            .buttonStyle(.plain)
+            Image(systemName: "play.circle.fill")
+                .foregroundColor(.black)
+                .font(.system(size: 20))
 
             VStack(alignment: .leading, spacing: 4) {
                 HStack(spacing: 6) {
@@ -268,6 +262,11 @@ private struct TimerRowView: View {
                     .foregroundColor(.black)
             }
             .buttonStyle(.plain)
+        }
+        .contentShape(Rectangle())
+        .onTapGesture {
+            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+            onPlay()
         }
     }
 }
@@ -510,7 +509,7 @@ private struct ActiveTimerView: View {
     @State private var isRunning = false
     @State private var timerTask: Task<Void, Never>?
     @State private var amrapRounds = 0
-    @State private var showSavedToast = false
+    @State private var showingCancelConfirm = false
 
     private var currentPhase: TimerPhase? {
         guard phaseIndex < phases.count else { return nil }
@@ -539,6 +538,7 @@ private struct ActiveTimerView: View {
     }
 
     var body: some View {
+        NavigationStack {
         VStack(spacing: 0) {
             // Progress bar
             GeometryReader { geo in
@@ -667,25 +667,22 @@ private struct ActiveTimerView: View {
         .navigationTitle(config.name.isEmpty ? config.type.rawValue : config.name)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
+            ToolbarItem(placement: .topBarLeading) {
+                Button("Cancel") { showingCancelConfirm = true }
+                    .tint(.red)
+            }
             ToolbarItem(placement: .topBarTrailing) {
-                Button(action: saveToLog) {
-                    Image(systemName: "square.and.arrow.down")
-                        .foregroundColor(.black)
+                Button("Complete") {
+                    saveToLog()
                 }
+                .fontWeight(.semibold)
             }
         }
-        .overlay(alignment: .bottom) {
-            if showSavedToast {
-                Text("Saved to Log")
-                    .font(.caption)
-                    .padding(.vertical, 6)
-                    .padding(.horizontal, 12)
-                    .background(Color.black.opacity(0.85))
-                    .foregroundColor(.white)
-                    .cornerRadius(12)
-                    .padding(.bottom, 24)
-                    .transition(.opacity)
-            }
+        .alert("Stop Timer?", isPresented: $showingCancelConfirm) {
+            Button("Keep Going", role: .cancel) { }
+            Button("Stop", role: .destructive) { dismiss() }
+        } message: {
+            Text("The timer session will be discarded.")
         }
         .onAppear {
             buildPhases()
@@ -693,6 +690,7 @@ private struct ActiveTimerView: View {
         .onDisappear {
             timerTask?.cancel()
         }
+        } // NavigationStack
     }
 
     // MARK: - Phase Building
@@ -841,7 +839,7 @@ private struct ActiveTimerView: View {
     // MARK: - Logging
 
     private func saveToLog() {
-        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+        UIImpactFeedbackGenerator(style: .heavy).impactOccurred()
         let name = config.name.isEmpty ? config.type.rawValue : config.name
         let log = WorkoutLog(
             workoutName: "\(config.type.rawValue) – \(name)",
@@ -851,11 +849,8 @@ private struct ActiveTimerView: View {
             duration: TimeInterval(totalElapsed)
         )
         WorkoutLogState.shared.addLog(log)
-        showSavedToast = true
-        Task {
-            try? await Task.sleep(nanoseconds: 1_800_000_000)
-            await MainActor.run { showSavedToast = false }
-        }
+        ModuleState.shared.selectModule(ModuleIDs.progress)
+        dismiss()
     }
 
     private func buildLogNotes() -> String {

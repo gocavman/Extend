@@ -1066,26 +1066,19 @@ private struct StatCardTileView: View {
         let bg = tileTint ?? Color(red: 0.96, green: 0.96, blue: 0.97)
         ZStack(alignment: .leading) {
             VStack(spacing: 6) {
-                // Header row: icon + title (full width), trend arrow inline after title
-                VStack(alignment: .leading, spacing: 2) {
-                    HStack(spacing: 6) {
-                        Image(systemName: icon)
-                            .font(.system(size: 14, weight: .semibold))
-                            .foregroundColor(.black)
-                            .fixedSize()
-                        Text(title)
-                            .font(.caption)
-                            .fontWeight(.bold)
-                            .foregroundColor(.black)
-                            .multilineTextAlignment(.leading)
-                            .fixedSize(horizontal: false, vertical: true)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                    }
-                    if let t = trend {
-                        Text(t.symbol)
-                            .font(.system(size: 13, weight: .bold))
-                            .foregroundColor(t.color)
-                    }
+                // Header row: icon + title
+                HStack(spacing: 6) {
+                    Image(systemName: icon)
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundColor(.black)
+                        .fixedSize()
+                    Text(title)
+                        .font(.caption)
+                        .fontWeight(.bold)
+                        .foregroundColor(.black)
+                        .multilineTextAlignment(.leading)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .frame(maxWidth: .infinity, alignment: .leading)
                 }
 
                 Spacer().frame(height: 4)
@@ -1156,6 +1149,13 @@ private struct StatCardTileView: View {
                         .lineLimit(2)
                         .minimumScaleFactor(0.6)
                         .multilineTextAlignment(.center)
+
+                    // Trend arrow below the main value
+                    if let t = trend {
+                        Text(t.symbol)
+                            .font(.system(size: 13, weight: .bold))
+                            .foregroundColor(t.color)
+                    }
 
                     // Secondary label for Personal Record card
                     if statType == .personalRecord, let exercise = personalRecordLabel {

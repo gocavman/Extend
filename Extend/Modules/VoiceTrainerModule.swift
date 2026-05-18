@@ -157,12 +157,12 @@ private struct VoiceTrainerModuleView: View {
             }
             .listStyle(.plain)
         }
-        .sheet(isPresented: $showingAdd) {
+        .fullScreenCover(isPresented: $showingAdd) {
             VoiceTrainerEditorView(title: "New Trainer") { newConfig in
                 state.saveConfiguration(name: newConfig.name, config: newConfig)
             }
         }
-        .sheet(item: $editingConfig) { config in
+        .fullScreenCover(item: $editingConfig) { config in
             VoiceTrainerEditorView(title: "Edit Trainer", initialConfig: config) { updated in
                 state.updateConfiguration(updated)
             } onDelete: {
@@ -365,12 +365,9 @@ private struct VoiceTrainerListRow: View {
 
     var body: some View {
         HStack(spacing: 12) {
-            Button(action: onPlay) {
-                Image(systemName: "play.circle.fill")
-                    .foregroundColor(.black)
-                    .font(.system(size: 20))
-            }
-            .buttonStyle(.plain)
+            Image(systemName: "play.circle.fill")
+                .foregroundColor(.black)
+                .font(.system(size: 20))
 
             VStack(alignment: .leading, spacing: 4) {
                 Text(config.name)
@@ -410,6 +407,10 @@ private struct VoiceTrainerListRow: View {
             .buttonStyle(.plain)
         }
         .padding(.vertical, 6)
+        .contentShape(Rectangle())
+        .onTapGesture {
+            onPlay()
+        }
     }
 }
 

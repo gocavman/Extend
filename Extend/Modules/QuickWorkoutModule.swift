@@ -137,7 +137,7 @@ private struct QuickWorkoutModuleView: View {
                 }
             }
             .listStyle(.plain)
-            .sheet(item: $startingWorkout) { workout in
+            .fullScreenCover(item: $startingWorkout) { workout in
                 StartWorkoutView(workout: workout)
                     .environment(ExercisesState.shared)
                     .environment(MuscleGroupsState.shared)

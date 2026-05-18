@@ -139,16 +139,10 @@ private struct WorkoutsModuleView: View {
                 } else {
                     ForEach(filteredWorkouts) { workout in
                         HStack(spacing: 12) {
-                            // Play button
-                            Button(action: {
-                                UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                                startingWorkout = workout
-                            }) {
-                                Image(systemName: "play.circle.fill")
-                                    .foregroundColor(.black)
-                                    .font(.system(size: 20))
-                            }
-                            .buttonStyle(.plain)
+                            // Play icon — tapping anywhere on row also starts workout
+                            Image(systemName: "play.circle.fill")
+                                .foregroundColor(.black)
+                                .font(.system(size: 20))
 
                             VStack(alignment: .leading, spacing: 6) {
                                 Text(workout.name)
@@ -208,6 +202,11 @@ private struct WorkoutsModuleView: View {
 
                         }
                         .padding(.vertical, 6)
+                        .contentShape(Rectangle())
+                        .onTapGesture {
+                            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                            startingWorkout = workout
+                        }
                         .swipeActions(edge: .leading, allowsFullSwipe: false) {
                             Button {
                                 UIImpactFeedbackGenerator(style: .light).impactOccurred()
@@ -229,13 +228,13 @@ private struct WorkoutsModuleView: View {
                 }
             }
             .listStyle(.plain)
-            .sheet(isPresented: $showingAdd) {
+            .fullScreenCover(isPresented: $showingAdd) {
                 WorkoutEditor(title: "Add Workout") { workout in
                     state.addWorkout(workout)
                 }
                 .environment(exercisesState)
             }
-            .sheet(item: $editingWorkout) { workout in
+            .fullScreenCover(item: $editingWorkout) { workout in
                 WorkoutEditor(title: "Edit Workout", initialWorkout: workout) { updated in
                     state.updateWorkout(updated)
                 } onDelete: {
@@ -243,7 +242,7 @@ private struct WorkoutsModuleView: View {
                 }
                 .environment(exercisesState)
             }
-            .sheet(item: $startingWorkout) { workout in
+            .fullScreenCover(item: $startingWorkout) { workout in
                 StartWorkoutView(workout: workout)
                     .environment(exercisesState)
                     .environment(MuscleGroupsState.shared)
@@ -826,7 +825,7 @@ private struct SetsEditorSheet: View {
                 }
                 ToolbarItem(placement: .bottomBar) { Spacer() }
                 ToolbarItem(placement: .bottomBar) {
-                    Button("Done") {
+                    Button("Save") {
                         // Write back to the workout items
                         guard case .exercise(var ex) = workoutItems[index] else { dismiss(); return }
                         ex.predefinedSets = sets
@@ -1227,6 +1226,7 @@ public struct StartWorkoutView: View {
     @State private var isRestTimerRunning: Bool = false
     /// Keyed by RestItem.id — stores (configured, secondsRemaining) when we navigate away
     @State private var restData: [UUID: (configured: Int, remaining: Int)] = [:]
+    @State private var showingCancelConfirm: Bool = false
 
     private var currentItem: WorkoutItem? {
         workout.items[safe: currentItemIndex]
@@ -1388,8 +1388,15 @@ public struct StartWorkoutView: View {
             .navigationTitle(workout.name)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
-                    Button("Cancel") { dismiss() }
+                    Button("Cancel") { showingCancelConfirm = true }
+                        .foregroundColor(.red)
                 }
+            }
+            .alert("Cancel Workout?", isPresented: $showingCancelConfirm) {
+                Button("Keep Going", role: .cancel) { }
+                Button("Cancel Workout", role: .destructive) { dismiss() }
+            } message: {
+                Text("Your progress will not be saved.")
             }
         }
         .onAppear {
@@ -1786,11 +1793,11 @@ public struct StartWorkoutView: View {
             }
         }
         .padding(isActiveRound ? 6 : 0)
-        .background(isActiveRound ? Color.black.opacity(0.06) : Color.clear)
+        .background(isActiveRound ? Color.black.opacity(0.07) : Color.clear)
         .cornerRadius(isActiveRound ? 6 : 0)
         .overlay(
             isActiveRound
-                ? RoundedRectangle(cornerRadius: 6).stroke(Color.black.opacity(0.2), lineWidth: 1)
+                ? RoundedRectangle(cornerRadius: 6).stroke(Color.black.opacity(0.55), lineWidth: 1.5)
                 : nil
         )
     }
