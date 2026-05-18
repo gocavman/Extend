@@ -29,7 +29,7 @@ private struct ProgressModuleView: View {
     @State private var selectedDate = Date()
     @State private var currentMonth = Date()
     @State private var selectedLog: WorkoutLog?
-    @State private var showingExportSheet = false
+
     
     private var monthYearString: String {
         let formatter = DateFormatter()
@@ -89,7 +89,17 @@ private struct ProgressModuleView: View {
 
                 Button(action: {
                     UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                    showingExportSheet = true
+                    if let url = logState.exportToCSVFileURL() {
+                        let ac = UIActivityViewController(activityItems: [url], applicationActivities: nil)
+                        if let scene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+                           let root = scene.windows.first?.rootViewController {
+                            var presenter = root
+                            while let presented = presenter.presentedViewController {
+                                presenter = presented
+                            }
+                            presenter.present(ac, animated: true)
+                        }
+                    }
                 }) {
                     Image(systemName: "square.and.arrow.up")
                         .foregroundColor(.black)
@@ -147,10 +157,7 @@ private struct ProgressModuleView: View {
                 .environment(logState)
                 .environment(exercisesState)
         }
-        .sheet(isPresented: $showingExportSheet) {
-            CSVExportView()
-                .environment(logState)
-        }
+
     }
     
     private func formattedDate(_ date: Date) -> String {
@@ -1014,77 +1021,7 @@ private struct WorkoutLogDetailView: View {
     }
 }
 
-// MARK: - CSV Export View
 
-private struct CSVExportView: View {
-    @Environment(\.dismiss) var dismiss
-    @Environment(WorkoutLogState.self) var logState
-    
-    @State private var showingShareSheet = false
-    @State private var csvData: String = ""
-    
-    var body: some View {
-        NavigationStack {
-            VStack(spacing: 20) {
-                Image(systemName: "doc.text")
-                    .font(.system(size: 64))
-                    .foregroundColor(.black)
-                
-                Text("Export Workout History")
-                    .font(.title3)
-                    .fontWeight(.semibold)
-                
-                Text("Export all workout logs to CSV format")
-                    .font(.subheadline)
-                    .foregroundColor(.gray)
-                    .multilineTextAlignment(.center)
-                
-                Button(action: {
-                    csvData = logState.exportToCSV()
-                    showingShareSheet = true
-                }) {
-                    HStack {
-                        Image(systemName: "square.and.arrow.up")
-                        Text("Export CSV")
-                    }
-                    .font(.subheadline)
-                    .fontWeight(.semibold)
-                    .foregroundColor(.white)
-                    .padding()
-                    .frame(maxWidth: .infinity)
-                    .background(Color.black)
-                    .cornerRadius(8)
-                }
-                .padding(.horizontal, 32)
-            }
-            .padding()
-            .navigationTitle("Export Data")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button("Done") {
-                        dismiss()
-                    }
-                }
-            }
-            .sheet(isPresented: $showingShareSheet) {
-                ActivityViewController(activityItems: [csvData])
-            }
-        }
-    }
-}
-
-// MARK: - Activity View Controller
-
-private struct ActivityViewController: UIViewControllerRepresentable {
-    let activityItems: [Any]
-    
-    func makeUIViewController(context: Context) -> UIActivityViewController {
-        UIActivityViewController(activityItems: activityItems, applicationActivities: nil)
-    }
-    
-    func updateUIViewController(_ uiViewController: UIActivityViewController, context: Context) {}
-}
 
 // MARK: - Clipped Text Label
 

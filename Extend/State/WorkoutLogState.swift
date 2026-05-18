@@ -277,32 +277,87 @@ public final class WorkoutLogState {
     
     /// Export logs to CSV format
     public func exportToCSV() -> String {
-        var csv = "Date,Workout Name,Exercise,Sets,Reps,Weight,Notes,Duration\n"
-        
+        // Wrap a field in quotes and escape any internal quotes
+        func escape(_ value: String) -> String {
+            let escaped = value.replacingOccurrences(of: "\"", with: "\"\"")
+            return "\"\(escaped)\""
+        }
+
+        let dateFormatter = DateFormatter()
+        dateFormatter.dateStyle = .medium
+        dateFormatter.timeStyle = .short
+
+        var csv = "Date,Workout Name,Exercise,Set,Reps,Weight (lbs),Active Time (s),Notes,Log Duration (s)\n"
+
         for log in sortedLogs {
-            let dateFormatter = DateFormatter()
-            dateFormatter.dateStyle = .medium
-            dateFormatter.timeStyle = .short
             let dateString = dateFormatter.string(from: log.completedAt)
-            
-            for exercise in log.exercises {
-                for (index, set) in exercise.sets.enumerated() {
-                    let row = [
-                        dateString,
-                        log.workoutName,
-                        exercise.exerciseName,
-                        "\(index + 1)",
-                        "\(set.reps)",
-                        String(format: "%.2f", set.weight),
-                        exercise.notes.replacingOccurrences(of: ",", with: ";"),
-                        "\(Int(log.duration))"
-                    ].joined(separator: ",")
-                    csv += row + "\n"
+
+            if log.exercises.isEmpty {
+                // Timer or other non-exercise log — emit a single summary row
+                let row = [
+                    escape(dateString),
+                    escape(log.workoutName),
+                    "\"\"",          // Exercise
+                    "\"\"",          // Set
+                    "\"\"",          // Reps
+                    "\"\"",          // Weight
+                    "\"\"",          // Active Time
+                    escape(log.notes),
+                    "\(Int(log.duration))"
+                ].joined(separator: ",")
+                csv += row + "\n"
+            } else {
+                for exercise in log.exercises {
+                    if exercise.sets.isEmpty {
+                        // Exercise logged with no sets
+                        let row = [
+                            escape(dateString),
+                            escape(log.workoutName),
+                            escape(exercise.exerciseName),
+                            "\"\"",
+                            "\"\"",
+                            "\"\"",
+                            "\(exercise.activeSeconds)",
+                            escape(exercise.notes),
+                            "\(Int(log.duration))"
+                        ].joined(separator: ",")
+                        csv += row + "\n"
+                    } else {
+                        for (index, set) in exercise.sets.enumerated() {
+                            let row = [
+                                escape(dateString),
+                                escape(log.workoutName),
+                                escape(exercise.exerciseName),
+                                "\(index + 1)",
+                                "\(set.reps)",
+                                String(format: "%.2f", set.weight),
+                                "\(exercise.activeSeconds)",
+                                escape(exercise.notes),
+                                "\(Int(log.duration))"
+                            ].joined(separator: ",")
+                            csv += row + "\n"
+                        }
+                    }
                 }
             }
         }
-        
+
         return csv
+    }
+
+    /// Write CSV to a temp file and return the URL for sharing
+    public func exportToCSVFileURL() -> URL? {
+        let csv = exportToCSV()
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyyMMddHHmmss"
+        let fileName = "Extend_Workout_History_\(formatter.string(from: Date())).csv"
+        let tempURL = FileManager.default.temporaryDirectory.appendingPathComponent(fileName)
+        do {
+            try csv.write(to: tempURL, atomically: true, encoding: .utf8)
+            return tempURL
+        } catch {
+            return nil
+        }
     }
     
     // MARK: - Persistence
