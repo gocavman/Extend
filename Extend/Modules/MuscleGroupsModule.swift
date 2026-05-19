@@ -36,6 +36,7 @@ private struct MuscleGroupsModuleView: View {
     @State private var editingGroup: MuscleGroup?
     @State private var deletingGroup: MuscleGroup?
     @State private var statsGroup: MuscleGroup?
+    @State private var historyGroup: MuscleGroup?
 
     private var filteredGroups: [MuscleGroup] {
         let trimmed = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -116,6 +117,17 @@ private struct MuscleGroupsModuleView: View {
                             }
                             .buttonStyle(.plain)
 
+                            // History button
+                            Button(action: {
+                                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                                historyGroup = group
+                            }) {
+                                Image(systemName: "clock.arrow.circlepath")
+                                    .foregroundColor(.black)
+                            }
+                            .buttonStyle(.plain)
+                            .accessibilityLabel("History for \(group.name)")
+
                             // Graph icon — navigate to stats
                             Button(action: {
                                 UIImpactFeedbackGenerator(style: .light).impactOccurred()
@@ -168,6 +180,9 @@ private struct MuscleGroupsModuleView: View {
                         state.removeGroup(id: group.id)
                     }
                     .environment(state)
+                }
+                .sheet(item: $historyGroup) { group in
+                    MuscleGroupHistorySheet(group: group, logState: logState, exercisesState: exercisesState)
                 }
                 .alert("Delete Muscle Group?", isPresented: .constant(deletingGroup != nil)) {
                     Button("Cancel", role: .cancel) { deletingGroup = nil }
@@ -438,6 +453,123 @@ private struct MuscleGroupEditor: View {
                         .foregroundColor(.secondary)
                 }
                 .buttonStyle(.plain)
+            }
+        }
+    }
+}
+
+// MARK: - Muscle Group History Sheet
+
+private struct MuscleGroupHistorySheet: View {
+    @Environment(\.dismiss) var dismiss
+
+    let group: MuscleGroup
+    let logState: WorkoutLogState
+    let exercisesState: ExercisesState
+
+    // Exercise IDs that target this muscle (primary or secondary)
+    private var targetExerciseIDs: Set<UUID> {
+        Set(exercisesState.exercises
+            .filter {
+                $0.primaryMuscleGroupIDs.contains(group.id) ||
+                $0.secondaryMuscleGroupIDs.contains(group.id)
+            }
+            .map { $0.id })
+    }
+
+    // Sessions containing at least one relevant exercise, newest first
+    private struct SessionEntry: Identifiable {
+        let id: UUID
+        let date: Date
+        let workoutName: String
+        let exercises: [(name: String, sets: [LoggedSet])]
+    }
+
+    private var sessions: [SessionEntry] {
+        let ids = targetExerciseIDs
+        return logState.sortedLogs.compactMap { log in
+            let relevant = log.exercises.filter { ids.contains($0.exerciseID) && !$0.sets.isEmpty }
+            guard !relevant.isEmpty else { return nil }
+            return SessionEntry(
+                id: log.id,
+                date: log.completedAt,
+                workoutName: log.workoutName,
+                exercises: relevant.map { (name: $0.exerciseName, sets: $0.sets) }
+            )
+        }
+    }
+
+    var body: some View {
+        NavigationStack {
+            Group {
+                if sessions.isEmpty {
+                    VStack(spacing: 12) {
+                        Image(systemName: "clock.arrow.circlepath")
+                            .font(.system(size: 40, weight: .light))
+                            .foregroundColor(.secondary)
+                        Text("No History")
+                            .font(.headline)
+                            .foregroundColor(.secondary)
+                        Text("Complete workouts with exercises targeting this muscle to see history here.")
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                            .multilineTextAlignment(.center)
+                            .padding(.horizontal, 32)
+                    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                } else {
+                    List {
+                        ForEach(sessions) { session in
+                            VStack(alignment: .leading, spacing: 8) {
+                                HStack(spacing: 6) {
+                                    Text(session.date, style: .date)
+                                        .font(.subheadline)
+                                        .fontWeight(.semibold)
+                                    Text(session.date, style: .time)
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                    Spacer()
+                                    Text(session.workoutName)
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                        .lineLimit(1)
+                                }
+
+                                ForEach(Array(session.exercises.enumerated()), id: \.offset) { _, entry in
+                                    VStack(alignment: .leading, spacing: 4) {
+                                        Text(entry.name)
+                                            .font(.caption)
+                                            .fontWeight(.semibold)
+                                        HStack {
+                                            Text("Set").font(.caption2).foregroundColor(.secondary).frame(maxWidth: .infinity, alignment: .leading)
+                                            Text("Reps").font(.caption2).foregroundColor(.secondary).frame(maxWidth: .infinity, alignment: .center)
+                                            Text("Weight").font(.caption2).foregroundColor(.secondary).frame(maxWidth: .infinity, alignment: .trailing)
+                                        }
+                                        ForEach(Array(entry.sets.enumerated()), id: \.offset) { idx, set in
+                                            HStack {
+                                                Text("\(idx + 1)").font(.caption).fontWeight(.semibold).frame(maxWidth: .infinity, alignment: .leading)
+                                                Text("\(set.reps)").font(.caption).frame(maxWidth: .infinity, alignment: .center)
+                                                Text(set.weight == 0 ? "—" : String(format: "%.1f lbs", set.weight)).font(.caption).frame(maxWidth: .infinity, alignment: .trailing)
+                                            }
+                                        }
+                                    }
+                                    .padding(8)
+                                    .background(Color(uiColor: .systemGray6))
+                                    .cornerRadius(6)
+                                }
+                            }
+                            .padding(.vertical, 4)
+                        }
+                    }
+                    .listStyle(.plain)
+                }
+            }
+            .navigationTitle("History: \(group.name)")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Done") { dismiss() }
+                }
             }
         }
     }

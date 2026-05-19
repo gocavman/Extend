@@ -33,6 +33,7 @@ private struct EquipmentModuleView: View {
     @State private var editingItem: Equipment?
     @State private var deletingItem: Equipment?
     @State private var statsItem: Equipment?
+    @State private var historyItem: Equipment?
 
     private var filteredItems: [Equipment] {
         let trimmed = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -119,6 +120,16 @@ private struct EquipmentModuleView: View {
                             }
                             .buttonStyle(.plain)
 
+                            // History button
+                            Button(action: {
+                                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                                historyItem = item
+                            }) {
+                                Image(systemName: "clock.arrow.circlepath")
+                                    .foregroundColor(.black)
+                            }
+                            .buttonStyle(.plain)
+
                             // Usage/stats button
                             Button(action: {
                                 UIImpactFeedbackGenerator(style: .light).impactOccurred()
@@ -173,6 +184,9 @@ private struct EquipmentModuleView: View {
                     } onDelete: {
                         state.removeItem(id: item.id)
                     }
+                }
+                .sheet(item: $historyItem) { item in
+                    EquipmentHistorySheet(equipment: item, logState: logState, exercisesState: exercisesState)
                 }
                 .alert("Delete Equipment?", isPresented: .constant(deletingItem != nil)) {
                     Button("Cancel", role: .cancel) { deletingItem = nil }
@@ -250,6 +264,119 @@ private struct EquipmentEditor: View {
                 }
             } message: {
                 Text("This will permanently delete the equipment.")
+            }
+        }
+    }
+}
+
+// MARK: - Equipment History Sheet
+
+private struct EquipmentHistorySheet: View {
+    @Environment(\.dismiss) var dismiss
+
+    let equipment: Equipment
+    let logState: WorkoutLogState
+    let exercisesState: ExercisesState
+
+    // Exercise IDs that use this equipment
+    private var targetExerciseIDs: Set<UUID> {
+        Set(exercisesState.exercises
+            .filter { $0.equipmentIDs.contains(equipment.id) }
+            .map { $0.id })
+    }
+
+    private struct SessionEntry: Identifiable {
+        let id: UUID
+        let date: Date
+        let workoutName: String
+        let exercises: [(name: String, sets: [LoggedSet])]
+    }
+
+    private var sessions: [SessionEntry] {
+        let ids = targetExerciseIDs
+        return logState.sortedLogs.compactMap { log in
+            let relevant = log.exercises.filter { ids.contains($0.exerciseID) && !$0.sets.isEmpty }
+            guard !relevant.isEmpty else { return nil }
+            return SessionEntry(
+                id: log.id,
+                date: log.completedAt,
+                workoutName: log.workoutName,
+                exercises: relevant.map { (name: $0.exerciseName, sets: $0.sets) }
+            )
+        }
+    }
+
+    var body: some View {
+        NavigationStack {
+            Group {
+                if sessions.isEmpty {
+                    VStack(spacing: 12) {
+                        Image(systemName: "clock.arrow.circlepath")
+                            .font(.system(size: 40, weight: .light))
+                            .foregroundColor(.secondary)
+                        Text("No History")
+                            .font(.headline)
+                            .foregroundColor(.secondary)
+                        Text("Complete workouts with exercises using this equipment to see history here.")
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                            .multilineTextAlignment(.center)
+                            .padding(.horizontal, 32)
+                    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                } else {
+                    List {
+                        ForEach(sessions) { session in
+                            VStack(alignment: .leading, spacing: 8) {
+                                HStack(spacing: 6) {
+                                    Text(session.date, style: .date)
+                                        .font(.subheadline)
+                                        .fontWeight(.semibold)
+                                    Text(session.date, style: .time)
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                    Spacer()
+                                    Text(session.workoutName)
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                        .lineLimit(1)
+                                }
+
+                                ForEach(Array(session.exercises.enumerated()), id: \.offset) { _, entry in
+                                    VStack(alignment: .leading, spacing: 4) {
+                                        Text(entry.name)
+                                            .font(.caption)
+                                            .fontWeight(.semibold)
+                                        HStack {
+                                            Text("Set").font(.caption2).foregroundColor(.secondary).frame(maxWidth: .infinity, alignment: .leading)
+                                            Text("Reps").font(.caption2).foregroundColor(.secondary).frame(maxWidth: .infinity, alignment: .center)
+                                            Text("Weight").font(.caption2).foregroundColor(.secondary).frame(maxWidth: .infinity, alignment: .trailing)
+                                        }
+                                        ForEach(Array(entry.sets.enumerated()), id: \.offset) { idx, set in
+                                            HStack {
+                                                Text("\(idx + 1)").font(.caption).fontWeight(.semibold).frame(maxWidth: .infinity, alignment: .leading)
+                                                Text("\(set.reps)").font(.caption).frame(maxWidth: .infinity, alignment: .center)
+                                                Text(set.weight == 0 ? "—" : String(format: "%.1f lbs", set.weight)).font(.caption).frame(maxWidth: .infinity, alignment: .trailing)
+                                            }
+                                        }
+                                    }
+                                    .padding(8)
+                                    .background(Color(uiColor: .systemGray6))
+                                    .cornerRadius(6)
+                                }
+                            }
+                            .padding(.vertical, 4)
+                        }
+                    }
+                    .listStyle(.plain)
+                }
+            }
+            .navigationTitle("History: \(equipment.name)")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Done") { dismiss() }
+                }
             }
         }
     }
