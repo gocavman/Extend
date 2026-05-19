@@ -185,7 +185,7 @@ private struct SettingsModuleView: View {
                         resetApp()
                     }
                 } message: {
-                    Text("This will reset the whole app back to default settings; clearing history, logs, favorites and customizations (navbars, dashboard tiles, exercises, workouts, muscle groups, equipment, timers and voice trainers.")
+                    Text("This will reset the whole app back to default settings; clearing history, logs, favorites and customizations (navbars, dashboard tiles, exercises, workouts, muscle groups, equipment, timers and voice trainers).")
                 }
             }
         }
@@ -208,7 +208,7 @@ private struct SettingsModuleView: View {
             ModuleIDs.voiceTrainer,
             ModuleIDs.exercises,
             ModuleIDs.muscles,
-            ModuleIDs.settings
+            ModuleIDs.equipment
         ]
 
         moduleState.setBottomNavBarModules(bottomModules)
@@ -234,6 +234,7 @@ private struct SettingsModuleView: View {
         // Reset Game Progress - Workout Buddy (Game 1)
         // Remove the entire stats dictionary and let it reinitialize
         UserDefaults.standard.removeObject(forKey: "game1_stats")
+        UserDefaults.standard.removeObject(forKey: "game1_muscle_state")
         
         // Reset Game Progress - Workout Match (Match Game)
         UserDefaults.standard.removeObject(forKey: "matchGameCurrentLevel")
@@ -271,10 +272,6 @@ private struct NavBarCustomizationView: View {
         ModuleIDs.dashboard
     }
     
-    private var settingsModuleID: UUID {
-        ModuleIDs.settings
-    }
-
     private var bottomCount: Int {
         min(5, allSelected.count)
     }
@@ -314,7 +311,7 @@ private struct NavBarCustomizationView: View {
 
                                 Spacer()
 
-                                if moduleID != dashboardModuleID && moduleID != settingsModuleID {
+                                if moduleID != dashboardModuleID {
                                     Button(action: {
                                         allSelected.remove(at: index)
                                         saveState()
@@ -376,21 +373,6 @@ private struct NavBarCustomizationView: View {
     private func saveState() {
         let bottom = Array(allSelected.prefix(bottomCount))
         let top = Array(allSelected.suffix(topCount))
-        
-        // Check if currently selected module is being removed
-        // Don't navigate if we're currently in Settings (to avoid disrupting the user)
-        if let selectedID = state.selectedModuleID, selectedID != settingsModuleID {
-            let allModules = bottom + top
-            if !allModules.contains(selectedID) {
-                // Navigate to Dashboard if the current module is no longer in any navbar
-                if allModules.contains(ModuleIDs.dashboard) {
-                    state.selectModule(ModuleIDs.dashboard)
-                } else if let firstModule = allModules.first {
-                    state.selectModule(firstModule)
-                }
-            }
-        }
-        
         state.setBottomNavBarModules(bottom)
         state.setTopNavBarModules(top)
     }

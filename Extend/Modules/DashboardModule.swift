@@ -294,8 +294,8 @@ private struct DashboardModuleView: View {
     }
 
     private var headerView: some View {
-        HStack {
-            Spacer(minLength: 0)
+        ZStack {
+            // Centered title + image
             HStack(spacing: 20) {
                 headerImageView
                 Text(headerState.title)
@@ -303,8 +303,20 @@ private struct DashboardModuleView: View {
                     .fontWeight(.semibold)
                     .foregroundColor(headerState.textColor)
             }
-            .padding(.horizontal, 4)
-            Spacer(minLength: 0)
+
+            // Settings gear pinned to far right
+            HStack {
+                Spacer()
+                Button(action: {
+                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                    state.selectModule(ModuleIDs.settings)
+                }) {
+                    Image(systemName: "gearshape")
+                        .font(.system(size: 18))
+                        .foregroundColor(headerState.textColor.opacity(0.7))
+                }
+                .buttonStyle(.plain)
+            }
         }
         .frame(height: 72)
         .padding(.horizontal, 16)

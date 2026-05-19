@@ -163,18 +163,6 @@ public final class DashboardState {
         tiles.append(statCard(.favoriteDay, icon: "calendar"))
         order += 1
 
-        tiles.append(
-            DashboardTile(
-                title: "Equipment",
-                icon: "figure.walk.treadmill",
-                order: order,
-                targetModuleID: ModuleIDs.equipment,
-                tileType: .moduleShortcut,
-                size: .small
-            )
-        )
-        order += 1
-
         // Mini Games Section
         tiles.append(
             DashboardTile(
