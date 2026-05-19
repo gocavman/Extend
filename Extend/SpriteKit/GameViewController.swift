@@ -320,7 +320,12 @@ class GameViewController: UIViewController {
     /// Dismiss the game and return to SwiftUI
     func dismissGame() {
         gameState?.saveStats()
-        
+
+        // Stop the game loop and pause the scene so no further logic runs after exit
+        gameplayScene?.removeAction(forKey: "gameLoop")
+        gameplayScene?.isPaused = true
+        skView?.isPaused = true
+
         DispatchQueue.main.async {
             self.onDismissGame?()
         }

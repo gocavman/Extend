@@ -192,6 +192,7 @@ private struct SettingsModuleView: View {
         dashboardHeaderState.resetDefaults()
         muscleGroupsState.resetGroups()
         muscleGroupsState.applyBodyOption(.male)
+        MusclePointsManager.shared.resetAllPoints()
         equipmentState.resetItems()
         ExercisesState.shared.resetExercises()
         WorkoutsState.shared.resetWorkouts()
