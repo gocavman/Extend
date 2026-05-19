@@ -29,28 +29,69 @@ private struct ProgressModuleView: View {
     @State private var selectedDate = Date()
     @State private var currentMonth = Date()
     @State private var selectedLog: WorkoutLog?
+    /// When false the full month grid collapses to a single week strip
+    @State private var isCalendarExpanded: Bool = true
 
     /// Persisted: "calendar" or "timeline"
     @AppStorage("logViewMode") private var logViewMode: String = "calendar"
     /// Persisted: show 60-day activity ribbon
     @AppStorage("logShowRibbon") private var showRibbon: Bool = false
 
-    
+    private let calendar = Calendar.current
+
     private var monthYearString: String {
         let formatter = DateFormatter()
+        // In collapsed mode show the week range, e.g. "May 12–18"
+        if !isCalendarExpanded {
+            let weekDays = weekDaysForDate(selectedDate)
+            guard let first = weekDays.first, let last = weekDays.last else {
+                formatter.dateFormat = "MMMM yyyy"
+                return formatter.string(from: currentMonth)
+            }
+            let mf = DateFormatter(); mf.dateFormat = "MMM d"
+            let ml = DateFormatter(); ml.dateFormat = "d"
+            let sameMonth = calendar.isDate(first, equalTo: last, toGranularity: .month)
+            if sameMonth {
+                return "\(mf.string(from: first))–\(ml.string(from: last))"
+            } else {
+                let mfl = DateFormatter(); mfl.dateFormat = "MMM d"
+                return "\(mf.string(from: first))–\(mfl.string(from: last))"
+            }
+        }
         formatter.dateFormat = "MMMM yyyy"
         return formatter.string(from: currentMonth)
     }
 
+    /// Returns the 7 dates for the week containing `date` (Sun–Sat).
+    private func weekDaysForDate(_ date: Date) -> [Date] {
+        guard let weekInterval = calendar.dateInterval(of: .weekOfYear, for: date) else { return [] }
+        return (0..<7).compactMap { calendar.date(byAdding: .day, value: $0, to: weekInterval.start) }
+    }
+
     private func previousMonth() {
-        if let newMonth = Calendar.current.date(byAdding: .month, value: -1, to: currentMonth) {
-            currentMonth = newMonth
+        if !isCalendarExpanded {
+            // Navigate by week when collapsed
+            if let prev = calendar.date(byAdding: .weekOfYear, value: -1, to: selectedDate) {
+                selectedDate = prev
+                currentMonth = prev
+            }
+        } else {
+            if let newMonth = calendar.date(byAdding: .month, value: -1, to: currentMonth) {
+                currentMonth = newMonth
+            }
         }
     }
 
     private func nextMonth() {
-        if let newMonth = Calendar.current.date(byAdding: .month, value: 1, to: currentMonth) {
-            currentMonth = newMonth
+        if !isCalendarExpanded {
+            if let next = calendar.date(byAdding: .weekOfYear, value: 1, to: selectedDate) {
+                selectedDate = next
+                currentMonth = next
+            }
+        } else {
+            if let newMonth = calendar.date(byAdding: .month, value: 1, to: currentMonth) {
+                currentMonth = newMonth
+            }
         }
     }
 
@@ -141,15 +182,52 @@ private struct ProgressModuleView: View {
                     }
 
                     if logViewMode == "calendar" {
-                        // Calendar View
-                        CalendarView(
-                            currentMonth: $currentMonth,
-                            selectedDate: $selectedDate,
-                            logState: logState
-                        )
-                        .padding(.horizontal, 16)
+                        if isCalendarExpanded {
+                            // Full month grid
+                            CalendarView(
+                                currentMonth: $currentMonth,
+                                selectedDate: $selectedDate,
+                                logState: logState
+                            ) {
+                                // Collapse when a day is tapped
+                                withAnimation(.easeInOut(duration: 0.28)) {
+                                    isCalendarExpanded = false
+                                }
+                            }
+                            .padding(.horizontal, 16)
+                            .transition(.opacity.combined(with: .move(edge: .top)))
+                        } else {
+                            // Compact week strip + expand button
+                            VStack(spacing: 0) {
+                                WeekStripView(
+                                    selectedDate: $selectedDate,
+                                    logState: logState,
+                                    weekDays: weekDaysForDate(selectedDate)
+                                )
+                                .padding(.horizontal, 16)
+                                .transition(.opacity.combined(with: .move(edge: .top)))
 
-                        // Selected Date's Workouts
+                                // Expand chevron pill
+                                Button(action: {
+                                    withAnimation(.easeInOut(duration: 0.28)) {
+                                        isCalendarExpanded = true
+                                        currentMonth = selectedDate
+                                    }
+                                }) {
+                                    Image(systemName: "chevron.down")
+                                        .font(.system(size: 11, weight: .semibold))
+                                        .foregroundColor(.secondary)
+                                        .padding(.horizontal, 20)
+                                        .padding(.vertical, 4)
+                                        .background(Color(red: 0.92, green: 0.92, blue: 0.94))
+                                        .clipShape(Capsule())
+                                }
+                                .buttonStyle(.plain)
+                                .padding(.top, 6)
+                            }
+                        }
+
+                        // Selected Day's Workouts
                         if !logState.logsForDate(selectedDate).isEmpty {
                             VStack(alignment: .leading, spacing: 12) {
                                 Text(formattedDate(selectedDate))
@@ -177,7 +255,7 @@ private struct ProgressModuleView: View {
                                     .font(.caption)
                                     .foregroundColor(.gray)
                             }
-                            .padding(.vertical, 40)
+                            .padding(.vertical, isCalendarExpanded ? 40 : 24)
                         }
                     } else {
                         // Timeline View
@@ -210,7 +288,9 @@ private struct CalendarView: View {
     @Binding var currentMonth: Date
     @Binding var selectedDate: Date
     let logState: WorkoutLogState
-    
+    /// Called after a day is selected — lets the parent collapse the calendar
+    var onDayTapped: (() -> Void)? = nil
+
     private let calendar = Calendar.current
     private let columns: [GridItem] = {
         let spacing: CGFloat = 2
@@ -271,6 +351,7 @@ private struct CalendarView: View {
                             logs: logState.logsForDate(date)
                         ) {
                             selectedDate = date
+                            onDayTapped?()
                         }
                     } else {
                         Color.clear
@@ -381,6 +462,80 @@ private struct DayCell: View {
             )
         }
         .buttonStyle(.plain)
+    }
+}
+
+// MARK: - Week Strip View
+
+/// Compact week strip shown when the calendar is collapsed.
+private struct WeekStripView: View {
+    @Binding var selectedDate: Date
+    let logState: WorkoutLogState
+    let weekDays: [Date]
+
+    private let calendar = Calendar.current
+
+    private var dayLetters: [String] {
+        ["S", "M", "T", "W", "T", "F", "S"]
+    }
+
+    var body: some View {
+        VStack(spacing: 4) {
+            // Day-of-week letter headers
+            HStack(spacing: 0) {
+                ForEach(Array(dayLetters.enumerated()), id: \.offset) { _, letter in
+                    Text(letter)
+                        .font(.system(size: 10, weight: .semibold))
+                        .foregroundColor(.secondary)
+                        .frame(maxWidth: .infinity)
+                }
+            }
+
+            // Day number circles
+            HStack(spacing: 0) {
+                ForEach(weekDays, id: \.self) { day in
+                    let isSelected = calendar.isDate(day, inSameDayAs: selectedDate)
+                    let isToday = calendar.isDateInToday(day)
+                    let count = logState.logsForDate(day).count
+                    let dayNum = calendar.component(.day, from: day)
+
+                    Button(action: {
+                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                        selectedDate = day
+                    }) {
+                        VStack(spacing: 3) {
+                            ZStack {
+                                // Selection ring
+                                if isSelected {
+                                    Circle()
+                                        .fill(Color.black)
+                                        .frame(width: 34, height: 34)
+                                } else if isToday {
+                                    Circle()
+                                        .stroke(Color.black, lineWidth: 1.5)
+                                        .frame(width: 34, height: 34)
+                                }
+                                Text("\(dayNum)")
+                                    .font(.system(size: 16, weight: isToday ? .bold : .regular))
+                                    .foregroundColor(isSelected ? .white : .primary)
+                            }
+                            .frame(width: 34, height: 34)
+
+                            // Workout dot indicator
+                            Circle()
+                                .fill(count > 0 ? Color(red: 0.2, green: 0.75, blue: 0.35) : Color.clear)
+                                .frame(width: 5, height: 5)
+                        }
+                    }
+                    .buttonStyle(.plain)
+                    .frame(maxWidth: .infinity)
+                }
+            }
+        }
+        .padding(.vertical, 8)
+        .padding(.horizontal, 4)
+        .background(Color(red: 0.96, green: 0.96, blue: 0.97))
+        .cornerRadius(12)
     }
 }
 
