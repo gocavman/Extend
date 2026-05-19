@@ -2254,6 +2254,8 @@ struct ExerciseHistorySheet: View {
         }
     }
 
+    private var best1RM: Double? { logState.bestEstimated1RM(exerciseID: exercise.id) }
+
     private func formatHistoryTime(_ seconds: Int) -> String {
         let m = seconds / 60
         let s = seconds % 60
@@ -2280,6 +2282,29 @@ struct ExerciseHistorySheet: View {
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                 } else {
                     List {
+                        // 1RM summary header
+                        if let rm = best1RM {
+                            HStack(spacing: 12) {
+                                Image(systemName: "medal.fill")
+                                    .font(.title3)
+                                    .foregroundColor(.yellow)
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text("Est. 1 Rep Max")
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                    Text(String(format: "%.0f lbs", rm))
+                                        .font(.title3)
+                                        .fontWeight(.bold)
+                                }
+                                Spacer()
+                                Text("Epley formula")
+                                    .font(.caption2)
+                                    .foregroundColor(.secondary)
+                            }
+                            .padding(.vertical, 6)
+                            .listRowBackground(Color(uiColor: .systemGray6))
+                        }
+
                         ForEach(Array(history.enumerated()), id: \.offset) { _, entry in
                             VStack(alignment: .leading, spacing: 8) {
                                 HStack(spacing: 6) {

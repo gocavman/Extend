@@ -56,6 +56,12 @@ struct ExerciseStatsView: View {
         let maxWeight: Double
         let totalVolume: Double
         let totalReps: Int
+        let estimated1RM: Double   // 0 if no qualifying sets
+    }
+
+    private static func epley(weight: Double, reps: Int) -> Double {
+        guard reps >= 3, reps <= 10, weight > 0 else { return 0 }
+        return weight * (1 + Double(reps) / 30.0)
     }
 
     private var sessionPoints: [SessionPoint] {
@@ -66,7 +72,11 @@ struct ExerciseStatsView: View {
             let maxWeight = sets.map { $0.weight }.max() ?? 0
             let totalVolume = sets.reduce(0.0) { $0 + ($1.weight * Double($1.reps)) }
             let totalReps = sets.reduce(0) { $0 + $1.reps }
-            return SessionPoint(date: log.completedAt, maxWeight: maxWeight, totalVolume: totalVolume, totalReps: totalReps)
+            let best1RM = sets.compactMap { s -> Double? in
+                let v = Self.epley(weight: s.weight, reps: s.reps)
+                return v > 0 ? v : nil
+            }.max() ?? 0
+            return SessionPoint(date: log.completedAt, maxWeight: maxWeight, totalVolume: totalVolume, totalReps: totalReps, estimated1RM: best1RM)
         }
     }
 
@@ -106,6 +116,13 @@ struct ExerciseStatsView: View {
                             unit: "reps",
                             points: sessionPoints.map { ($0.date, Double($0.totalReps)) },
                             color: Color(red: 0.8, green: 0.4, blue: 0.1)
+                        )
+
+                        statsCard(
+                            title: "Est. 1 Rep Max",
+                            unit: "lbs",
+                            points: sessionPoints.compactMap { $0.estimated1RM > 0 ? ($0.date, $0.estimated1RM) : nil },
+                            color: Color(red: 0.6, green: 0.2, blue: 0.8)
                         )
                     }
                 }

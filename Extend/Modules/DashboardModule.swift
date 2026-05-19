@@ -163,7 +163,7 @@ private struct DashboardModuleView: View {
         let span = tile.size.columns
         let tileWidth = columnWidth * CGFloat(span) + spacing * CGFloat(span - 1)
         let isDoubleHeight = tile.tileType == .statCard
-            && tile.statCardType == .muscleGroupDistribution
+            && (tile.statCardType == .muscleGroupDistribution || tile.statCardType == .oneRepMax)
         let tileHeight = isDoubleHeight ? columnWidth * 2 + spacing : columnWidth
         
         return Group {
@@ -180,7 +180,8 @@ private struct DashboardModuleView: View {
                     accentColor: tile.accentColor,
                     tileTint: tile.tileTintColor,
                     trend: trendInfo(for: statCard),
-                    personalRecordLabel: statCard == .personalRecord ? logState.personalRecord?.exerciseName : nil
+                    personalRecordLabel: statCard == .personalRecord ? logState.personalRecord?.exerciseName : nil,
+                    oneRMEntries: statCard == .oneRepMax ? oneRMEntries(for: tile) : []
                 )
                 .frame(width: tileWidth, height: tileHeight)
                 .rotationEffect(.degrees(tileRotations[tile.id] ?? 0))
@@ -398,6 +399,9 @@ private struct DashboardModuleView: View {
                 return String(format: "%.0f lbs", pr.weight)
             }
             return "—"
+        case .oneRepMax:
+            // Value not shown as text; tile renders its own leaderboard list
+            return ""
         }
     }
 
@@ -419,6 +423,25 @@ private struct DashboardModuleView: View {
             return this > last ? ("↑", .green) : this < last ? ("↓", .red) : nil
         default:
             return nil
+        }
+    }
+
+    private func oneRMEntries(for tile: DashboardTile) -> [(name: String, value: Double)] {
+        if let ids = tile.oneRMExerciseIDs, !ids.isEmpty {
+            // User-selected exercises
+            return ids.compactMap { id in
+                guard let value = logState.bestEstimated1RM(exerciseID: id) else { return nil }
+                // Find display name from any log
+                let name = logState.logs
+                    .flatMap { $0.exercises }
+                    .first(where: { $0.exerciseID == id })?.exerciseName ?? "Unknown"
+                return (name: name, value: value)
+            }
+            .sorted { $0.value > $1.value }
+        } else {
+            // Auto top-5 by best 1RM
+            return logState.topExercisesBy1RM(limit: 5)
+                .map { (name: $0.exerciseName, value: $0.estimated1RM) }
         }
     }
 
@@ -714,6 +737,8 @@ private struct AddTileSheet: View {
             return "moon"
         case .personalRecord:
             return "medal"
+        case .oneRepMax:
+            return "trophy.fill"
         }
     }
 
@@ -888,7 +913,7 @@ private struct AddTileSheet: View {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Add") {
                         for statCard in selectedStatCards {
-                            let size: TileSize = (statCard == .workoutFrequency || statCard == .muscleGroupDistribution) ? .large : .small
+                            let size: TileSize = (statCard == .workoutFrequency || statCard == .muscleGroupDistribution || statCard == .oneRepMax) ? .large : .small
                             let tile = DashboardTile(
                                 title: statCard.rawValue,
                                 icon: iconForStatCard(statCard),
@@ -946,13 +971,17 @@ private struct AddTileSheet: View {
 
 private struct EditTileSheet: View {
     @Environment(\.dismiss) var dismiss
-    
+    @Environment(ExercisesState.self) var exercisesState
+    @Environment(WorkoutLogState.self) var logState
+
     let tile: DashboardTile
     
     @State private var title: String = ""
     @State private var selectedIcon: String = ""
     @State private var selectedSize: TileSize = .small
-    
+    /// For 1RM tiles: nil = auto top-5; non-nil = user-chosen set
+    @State private var oneRMExerciseIDs: [UUID]? = nil
+
     let onSave: (DashboardTile) -> Void
 
     private let icons = [
@@ -972,7 +1001,7 @@ private struct EditTileSheet: View {
         }
         if tile.tileType == .statCard,
            let statCard = tile.statCardType,
-           (statCard == .workoutFrequency || statCard == .muscleGroupDistribution) {
+           (statCard == .workoutFrequency || statCard == .muscleGroupDistribution || statCard == .oneRepMax) {
             return [.large]
         }
         return TileSize.allCases
@@ -992,6 +1021,58 @@ private struct EditTileSheet: View {
                         }
                     }
                     .pickerStyle(.segmented)
+                }
+
+                // 1RM exercise selection — only shown for the 1RM Leaderboard tile
+                if tile.statCardType == .oneRepMax {
+                    Section {
+                        // Exercises that have 1RM history (at least one qualifying set logged)
+                        let eligibleExercises = exercisesState.exercises
+                            .filter { logState.bestEstimated1RM(exerciseID: $0.id) != nil }
+                            .sorted { $0.name < $1.name }
+
+                        if eligibleExercises.isEmpty {
+                            Text("Log sets with 3–10 reps on any exercise to populate this list.")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        } else {
+                            let selected = oneRMExerciseIDs ?? []
+                            ForEach(eligibleExercises) { exercise in
+                                Button(action: {
+                                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                                    var ids = oneRMExerciseIDs ?? []
+                                    if ids.contains(exercise.id) {
+                                        ids.removeAll { $0 == exercise.id }
+                                    } else if ids.count < 5 {
+                                        ids.append(exercise.id)
+                                    }
+                                    oneRMExerciseIDs = ids.isEmpty ? nil : ids
+                                }) {
+                                    HStack {
+                                        Text(exercise.name)
+                                            .foregroundColor(.primary)
+                                        Spacer()
+                                        if let rm = logState.bestEstimated1RM(exerciseID: exercise.id) {
+                                            Text(String(format: "%.0f lbs", rm))
+                                                .font(.caption)
+                                                .foregroundColor(.secondary)
+                                        }
+                                        if selected.contains(exercise.id) {
+                                            Image(systemName: "checkmark")
+                                                .foregroundColor(.accentColor)
+                                        }
+                                    }
+                                    .contentShape(Rectangle())
+                                }
+                                .buttonStyle(.plain)
+                            }
+                        }
+                    } header: {
+                        Text("Exercises (up to 5)")
+                    } footer: {
+                        Text(oneRMExerciseIDs == nil ? "Showing auto top-5 by best 1RM. Select exercises to pin specific ones." : "Deselect all to revert to auto top-5.")
+                            .font(.caption)
+                    }
                 }
                 
                 Section("Icon") {
@@ -1020,6 +1101,7 @@ private struct EditTileSheet: View {
                 title = tile.title
                 selectedIcon = tile.icon
                 selectedSize = tile.size
+                oneRMExerciseIDs = tile.oneRMExerciseIDs
             }
             #if os(iOS)
             .toolbar {
@@ -1029,6 +1111,7 @@ private struct EditTileSheet: View {
                         updatedTile.title = title
                         updatedTile.icon = selectedIcon
                         updatedTile.size = selectedSize
+                        updatedTile.oneRMExerciseIDs = oneRMExerciseIDs
                         onSave(updatedTile)
                         dismiss()
                     }
@@ -1061,6 +1144,7 @@ private struct StatCardTileView: View {
     let tileTint: Color?
     let trend: (symbol: String, color: Color)?
     let personalRecordLabel: String?   // exercise name for PR card
+    var oneRMEntries: [(name: String, value: Double)] = []
 
     var body: some View {
         let bg = tileTint ?? Color(red: 0.96, green: 0.96, blue: 0.97)
@@ -1090,6 +1174,60 @@ private struct StatCardTileView: View {
                             .font(.caption2)
                             .foregroundColor(.gray)
                         WeekFrequencyView(days: frequencyDays)
+                    }
+                } else if statType == .oneRepMax {
+                    if oneRMEntries.isEmpty {
+                        VStack(spacing: 4) {
+                            Spacer()
+                            Image(systemName: "trophy")
+                                .font(.system(size: 22, weight: .light))
+                                .foregroundColor(.gray)
+                            Text("Log sets with 3–10 reps\nto see your 1RM estimates")
+                                .font(.caption2)
+                                .foregroundColor(.gray)
+                                .multilineTextAlignment(.center)
+                            Spacer()
+                        }
+                        .frame(maxWidth: .infinity)
+                    } else {
+                        let best = oneRMEntries.map { $0.value }.max() ?? 1
+                        VStack(alignment: .leading, spacing: 5) {
+                            ForEach(Array(oneRMEntries.prefix(5).enumerated()), id: \.offset) { index, entry in
+                                HStack(spacing: 6) {
+                                    // Rank badge
+                                    Text("#\(index + 1)")
+                                        .font(.system(size: 10, weight: .bold, design: .rounded))
+                                        .foregroundColor(index == 0 ? .yellow : .gray)
+                                        .frame(width: 20)
+                                    // Exercise name
+                                    Text(entry.name)
+                                        .font(.caption2)
+                                        .fontWeight(.semibold)
+                                        .foregroundColor(.black)
+                                        .lineLimit(1)
+                                        .minimumScaleFactor(0.7)
+                                        .frame(maxWidth: .infinity, alignment: .leading)
+                                    // 1RM value
+                                    Text(String(format: "%.0f", entry.value))
+                                        .font(.caption2)
+                                        .fontWeight(.bold)
+                                        .foregroundColor(.black)
+                                }
+                                // Mini progress bar
+                                GeometryReader { geo in
+                                    ZStack(alignment: .leading) {
+                                        RoundedRectangle(cornerRadius: 2)
+                                            .fill(Color.black.opacity(0.08))
+                                            .frame(height: 3)
+                                        RoundedRectangle(cornerRadius: 2)
+                                            .fill(index == 0 ? Color.yellow : Color.black.opacity(0.35))
+                                            .frame(width: geo.size.width * CGFloat(entry.value / best), height: 3)
+                                    }
+                                }
+                                .frame(height: 3)
+                            }
+                        }
+                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
                     }
                 } else if statType == .muscleGroupDistribution {
                     GeometryReader { geometry in

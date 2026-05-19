@@ -275,6 +275,55 @@ public final class WorkoutLogState {
         return distribution
     }
     
+    // MARK: - 1RM Estimation
+
+    /// Epley formula: weight × (1 + reps / 30). Accurate for 3–10 rep range.
+    private static func epley(weight: Double, reps: Int) -> Double {
+        guard reps >= 3, reps <= 10, weight > 0 else { return 0 }
+        return weight * (1 + Double(reps) / 30.0)
+    }
+
+    /// Returns per-session best estimated 1RM for a given exercise, sorted chronologically.
+    public func oneRMHistory(exerciseID: UUID) -> [(date: Date, value: Double)] {
+        sortedLogs
+            .reversed()   // oldest → newest
+            .compactMap { log -> (Date, Double)? in
+                guard let ex = log.exercises.first(where: { $0.exerciseID == exerciseID }),
+                      !ex.sets.isEmpty else { return nil }
+                let best = ex.sets.compactMap { s -> Double? in
+                    let v = Self.epley(weight: s.weight, reps: s.reps)
+                    return v > 0 ? v : nil
+                }.max()
+                guard let best else { return nil }
+                return (log.completedAt, best)
+            }
+    }
+
+    /// Best all-time estimated 1RM for a given exercise.
+    public func bestEstimated1RM(exerciseID: UUID) -> Double? {
+        oneRMHistory(exerciseID: exerciseID).map { $0.value }.max()
+    }
+
+    /// Top-N exercises by all-time best estimated 1RM (exercise ID + best value).
+    public func topExercisesBy1RM(limit: Int = 5) -> [(exerciseID: UUID, exerciseName: String, estimated1RM: Double)] {
+        var best: [UUID: (name: String, value: Double)] = [:]
+        for log in logs {
+            for ex in log.exercises {
+                for s in ex.sets {
+                    let v = Self.epley(weight: s.weight, reps: s.reps)
+                    guard v > 0 else { continue }
+                    if best[ex.exerciseID] == nil || v > best[ex.exerciseID]!.value {
+                        best[ex.exerciseID] = (ex.exerciseName, v)
+                    }
+                }
+            }
+        }
+        return best
+            .sorted { $0.value.value > $1.value.value }
+            .prefix(limit)
+            .map { (exerciseID: $0.key, exerciseName: $0.value.name, estimated1RM: $0.value.value) }
+    }
+
     /// Export logs to CSV format
     public func exportToCSV() -> String {
         // Wrap a field in quotes and escape any internal quotes
@@ -287,7 +336,7 @@ public final class WorkoutLogState {
         dateFormatter.dateStyle = .medium
         dateFormatter.timeStyle = .short
 
-        var csv = "Date,Workout Name,Exercise,Set,Reps,Weight (lbs),Active Time (s),Notes,Log Duration (s)\n"
+        var csv = "Date,Workout Name,Row Type,Exercise,Set,Reps,Weight (lbs),Active Time (s),Rest Configured (s),Rest Actual (s),Notes,Log Duration (s)\n"
 
         for log in sortedLogs {
             let dateString = dateFormatter.string(from: log.completedAt)
@@ -297,11 +346,8 @@ public final class WorkoutLogState {
                 let row = [
                     escape(dateString),
                     escape(log.workoutName),
-                    "\"\"",          // Exercise
-                    "\"\"",          // Set
-                    "\"\"",          // Reps
-                    "\"\"",          // Weight
-                    "\"\"",          // Active Time
+                    "\"session\"",
+                    "\"\"", "\"\"", "\"\"", "\"\"", "\"\"", "\"\"", "\"\"",
                     escape(log.notes),
                     "\(Int(log.duration))"
                 ].joined(separator: ",")
@@ -309,15 +355,14 @@ public final class WorkoutLogState {
             } else {
                 for exercise in log.exercises {
                     if exercise.sets.isEmpty {
-                        // Exercise logged with no sets
                         let row = [
                             escape(dateString),
                             escape(log.workoutName),
+                            "\"exercise\"",
                             escape(exercise.exerciseName),
-                            "\"\"",
-                            "\"\"",
-                            "\"\"",
+                            "\"\"", "\"\"", "\"\"",
                             "\(exercise.activeSeconds)",
+                            "\"\"", "\"\"",
                             escape(exercise.notes),
                             "\(Int(log.duration))"
                         ].joined(separator: ",")
@@ -327,17 +372,35 @@ public final class WorkoutLogState {
                             let row = [
                                 escape(dateString),
                                 escape(log.workoutName),
+                                "\"exercise\"",
                                 escape(exercise.exerciseName),
                                 "\(index + 1)",
                                 "\(set.reps)",
                                 String(format: "%.2f", set.weight),
                                 "\(exercise.activeSeconds)",
+                                "\"\"", "\"\"",
                                 escape(exercise.notes),
                                 "\(Int(log.duration))"
                             ].joined(separator: ",")
                             csv += row + "\n"
                         }
                     }
+                }
+
+                // Rest periods
+                for (index, rest) in log.restPeriods.enumerated() {
+                    let row = [
+                        escape(dateString),
+                        escape(log.workoutName),
+                        "\"rest\"",
+                        "\"Rest \(index + 1)\"",
+                        "\"\"", "\"\"", "\"\"", "\"\"",
+                        "\(rest.configuredDuration)",
+                        "\(rest.actualDuration)",
+                        "\"\"",
+                        "\(Int(log.duration))"
+                    ].joined(separator: ",")
+                    csv += row + "\n"
                 }
             }
         }

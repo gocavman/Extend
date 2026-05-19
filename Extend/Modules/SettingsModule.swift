@@ -681,6 +681,7 @@ private struct DashboardAddTileSheet: View {
         case .longestStreak: return "trophy"
         case .restDays: return "moon"
         case .personalRecord: return "medal"
+        case .oneRepMax: return "trophy.fill"
         }
     }
 
@@ -697,6 +698,7 @@ private struct DashboardAddTileSheet: View {
         case .longestStreak:           return "Your all-time best consecutive workout streak."
         case .restDays:                return "Days with no workout logged in the last 14 days."
         case .personalRecord:          return "Your heaviest single set weight ever logged."
+        case .oneRepMax:               return "Leaderboard of your best estimated 1-rep maxes by exercise."
         }
     }
 
@@ -1015,7 +1017,7 @@ private struct DashboardAddTileSheet: View {
                         UIImpactFeedbackGenerator(style: .light).impactOccurred()
                         
                         for statCard in selectedStatCards {
-                            let isGraph = statCard == .workoutFrequency || statCard == .muscleGroupDistribution
+                            let isGraph = statCard == .workoutFrequency || statCard == .muscleGroupDistribution || statCard == .oneRepMax
                             let size: TileSize = isGraph ? .large : .small
                             let tile = DashboardTile(
                                 title: statCard.rawValue,
@@ -1135,6 +1137,8 @@ private struct DashboardAddTileSheet: View {
 
 private struct DashboardEditTileSheet: View {
     @Environment(\.dismiss) var dismiss
+    @Environment(ExercisesState.self) var exercisesState
+    @Environment(WorkoutLogState.self) var logState
 
     let tile: DashboardTile
 
@@ -1146,6 +1150,8 @@ private struct DashboardEditTileSheet: View {
     @State private var accentColor: Color = .gray
     @State private var tileTintEnabled: Bool = false
     @State private var tileTintColor: Color = Color(red: 0.96, green: 0.96, blue: 0.97)
+    /// For 1RM tiles: nil = auto top-5; non-nil = user-chosen IDs
+    @State private var oneRMExerciseIDs: [UUID]? = nil
 
     let onSave: (DashboardTile) -> Void
 
@@ -1164,7 +1170,7 @@ private struct DashboardEditTileSheet: View {
         if tile.tileType == .graph { return [.large] }
         if tile.tileType == .statCard,
            let statCard = tile.statCardType,
-           (statCard == .workoutFrequency || statCard == .muscleGroupDistribution) {
+           (statCard == .workoutFrequency || statCard == .muscleGroupDistribution || statCard == .oneRepMax) {
             return [.large]
         }
         return TileSize.allCases
@@ -1195,6 +1201,57 @@ private struct DashboardEditTileSheet: View {
                         }
                     }
                     .pickerStyle(.segmented)
+                }
+
+                // 1RM exercise selection
+                if tile.statCardType == .oneRepMax {
+                    let eligibleExercises = exercisesState.exercises
+                        .filter { logState.bestEstimated1RM(exerciseID: $0.id) != nil }
+                        .sorted { $0.name < $1.name }
+
+                    Section {
+                        if eligibleExercises.isEmpty {
+                            Text("Log sets with 3–10 reps on any exercise to populate this list.")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        } else {
+                            let selected = oneRMExerciseIDs ?? []
+                            ForEach(eligibleExercises) { exercise in
+                                Button(action: {
+                                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                                    var ids = oneRMExerciseIDs ?? []
+                                    if ids.contains(exercise.id) {
+                                        ids.removeAll { $0 == exercise.id }
+                                    } else if ids.count < 5 {
+                                        ids.append(exercise.id)
+                                    }
+                                    oneRMExerciseIDs = ids.isEmpty ? nil : ids
+                                }) {
+                                    HStack {
+                                        Text(exercise.name)
+                                            .foregroundColor(.primary)
+                                        Spacer()
+                                        if let rm = logState.bestEstimated1RM(exerciseID: exercise.id) {
+                                            Text(String(format: "%.0f lbs", rm))
+                                                .font(.caption)
+                                                .foregroundColor(.secondary)
+                                        }
+                                        if selected.contains(exercise.id) {
+                                            Image(systemName: "checkmark")
+                                                .foregroundColor(.accentColor)
+                                        }
+                                    }
+                                    .contentShape(Rectangle())
+                                }
+                                .buttonStyle(.plain)
+                            }
+                        }
+                    } header: {
+                        Text("Exercises (up to 5)")
+                    } footer: {
+                        Text(oneRMExerciseIDs == nil ? "Showing auto top-5 by best 1RM. Select exercises to pin specific ones." : "Deselect all to revert to auto top-5.")
+                            .font(.caption)
+                    }
                 }
 
                 Section("Accent") {
@@ -1245,6 +1302,7 @@ private struct DashboardEditTileSheet: View {
                 accentColor = tile.accentColor
                 tileTintEnabled = tile.tileTintHex != nil
                 tileTintColor = tile.tileTintColor ?? Color(red: 0.96, green: 0.96, blue: 0.97)
+                oneRMExerciseIDs = tile.oneRMExerciseIDs
             }
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
@@ -1261,6 +1319,7 @@ private struct DashboardEditTileSheet: View {
                         updatedTile.accentPlacement = accentPlacement
                         updatedTile.accentColorHex = accentColor.toHexString()
                         updatedTile.tileTintHex = tileTintEnabled ? tileTintColor.toHexString() : nil
+                        updatedTile.oneRMExerciseIDs = oneRMExerciseIDs
                         onSave(updatedTile)
                         dismiss()
                     }

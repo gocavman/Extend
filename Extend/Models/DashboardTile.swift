@@ -30,6 +30,9 @@ public struct DashboardTile: Identifiable, Hashable, Codable {
     public var shortcutType: ShortcutType?
     public var shortcutItemID: UUID?
 
+    /// 1RM leaderboard tile: user-selected exercise IDs to display (nil = auto top-5)
+    public var oneRMExerciseIDs: [UUID]?
+
     public init(
         id: UUID = UUID(),
         title: String,
@@ -44,7 +47,8 @@ public struct DashboardTile: Identifiable, Hashable, Codable {
         accentColorHex: String = "#CCCCCC",
         tileTintHex: String? = nil,
         shortcutType: ShortcutType? = nil,
-        shortcutItemID: UUID? = nil
+        shortcutItemID: UUID? = nil,
+        oneRMExerciseIDs: [UUID]? = nil
     ) {
         self.id = id
         self.title = title
@@ -60,6 +64,7 @@ public struct DashboardTile: Identifiable, Hashable, Codable {
         self.tileTintHex = tileTintHex
         self.shortcutType = shortcutType
         self.shortcutItemID = shortcutItemID
+        self.oneRMExerciseIDs = oneRMExerciseIDs
     }
 
     public func hash(into hasher: inout Hasher) {
@@ -128,6 +133,7 @@ public enum StatCardType: String, Codable, CaseIterable {
     case longestStreak = "Longest Streak"
     case restDays = "Rest Days (14 days)"
     case personalRecord = "Personal Record"
+    case oneRepMax = "1RM Leaderboard"
 }
 
 /// Tile sizes for the dashboard grid

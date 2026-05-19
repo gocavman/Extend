@@ -142,6 +142,9 @@ public final class DashboardState {
         tiles.append(statCard(.totalTime, icon: "clock"))
         order += 1
 
+        tiles.append(graphCard(.oneRepMax, icon: "trophy.fill"))
+        order += 1
+
         tiles.append(statCard(.volumeThisWeek, icon: "scalemass"))
         order += 1
 
