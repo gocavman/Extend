@@ -25,10 +25,15 @@ public struct ProgressModule: AppModule {
 private struct ProgressModuleView: View {
     @Environment(WorkoutLogState.self) var logState
     @Environment(ExercisesState.self) var exercisesState
-    
+
     @State private var selectedDate = Date()
     @State private var currentMonth = Date()
     @State private var selectedLog: WorkoutLog?
+
+    /// Persisted: "calendar" or "timeline"
+    @AppStorage("logViewMode") private var logViewMode: String = "calendar"
+    /// Persisted: show 60-day activity ribbon
+    @AppStorage("logShowRibbon") private var showRibbon: Bool = false
 
     
     private var monthYearString: String {
@@ -87,6 +92,25 @@ private struct ProgressModuleView: View {
 
                 Spacer()
 
+                // Activity ribbon toggle
+                Button(action: {
+                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                    showRibbon.toggle()
+                }) {
+                    Image(systemName: showRibbon ? "chart.bar.fill" : "chart.bar")
+                        .foregroundColor(showRibbon ? .blue : .black)
+                }
+
+                // View mode toggle
+                Button(action: {
+                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                    logViewMode = logViewMode == "calendar" ? "timeline" : "calendar"
+                }) {
+                    Image(systemName: logViewMode == "calendar" ? "list.bullet.below.rectangle" : "calendar")
+                        .foregroundColor(.black)
+                }
+
+                // Export
                 Button(action: {
                     UIImpactFeedbackGenerator(style: .light).impactOccurred()
                     if let url = logState.exportToCSVFileURL() {
@@ -107,46 +131,59 @@ private struct ProgressModuleView: View {
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 12)
-            
+
             ScrollView {
                 VStack(spacing: 16) {
-                    // Calendar View
-                    CalendarView(
-                        currentMonth: $currentMonth,
-                        selectedDate: $selectedDate,
-                        logState: logState
-                    )
-                    .padding(.horizontal, 16)
-                    
-                    // Selected Date's Workouts
-                    if !logState.logsForDate(selectedDate).isEmpty {
-                        VStack(alignment: .leading, spacing: 12) {
-                            Text(formattedDate(selectedDate))
-                                .font(.headline)
-                                .padding(.horizontal, 16)
-                            
-                            ForEach(logState.logsForDate(selectedDate)) { log in
-                                WorkoutLogCard(log: log) {
-                                    selectedLog = log
+                    // Activity ribbon (optional)
+                    if showRibbon {
+                        ActivityRibbonView(logState: logState)
+                            .padding(.horizontal, 16)
+                    }
+
+                    if logViewMode == "calendar" {
+                        // Calendar View
+                        CalendarView(
+                            currentMonth: $currentMonth,
+                            selectedDate: $selectedDate,
+                            logState: logState
+                        )
+                        .padding(.horizontal, 16)
+
+                        // Selected Date's Workouts
+                        if !logState.logsForDate(selectedDate).isEmpty {
+                            VStack(alignment: .leading, spacing: 12) {
+                                Text(formattedDate(selectedDate))
+                                    .font(.headline)
+                                    .padding(.horizontal, 16)
+
+                                ForEach(logState.logsForDate(selectedDate)) { log in
+                                    WorkoutLogCard(log: log) {
+                                        selectedLog = log
+                                    }
+                                    .padding(.horizontal, 16)
                                 }
-                                .padding(.horizontal, 16)
                             }
+                        } else {
+                            VStack(spacing: 8) {
+                                Image(systemName: "calendar.badge.clock")
+                                    .font(.system(size: 44))
+                                    .foregroundColor(.gray)
+
+                                Text("No workouts logged")
+                                    .font(.subheadline)
+                                    .foregroundColor(.gray)
+
+                                Text("for \(formattedDate(selectedDate))")
+                                    .font(.caption)
+                                    .foregroundColor(.gray)
+                            }
+                            .padding(.vertical, 40)
                         }
                     } else {
-                        VStack(spacing: 8) {
-                            Image(systemName: "calendar.badge.clock")
-                                .font(.system(size: 44))
-                                .foregroundColor(.gray)
-                            
-                            Text("No workouts logged")
-                                .font(.subheadline)
-                                .foregroundColor(.gray)
-                            
-                            Text("for \(formattedDate(selectedDate))")
-                                .font(.caption)
-                                .foregroundColor(.gray)
+                        // Timeline View
+                        TimelineLogView(logState: logState) { log in
+                            selectedLog = log
                         }
-                        .padding(.vertical, 40)
                     }
                 }
                 .padding(.vertical, 16)
@@ -348,6 +385,186 @@ private struct DayCell: View {
 }
 
 // MARK: - Workout Log Card
+
+// MARK: - Timeline View
+
+private struct TimelineLogView: View {
+    let logState: WorkoutLogState
+    let onTap: (WorkoutLog) -> Void
+
+    private var groupedLogs: [(date: Date, logs: [WorkoutLog])] {
+        let sorted = logState.sortedLogs
+        var groups: [(date: Date, logs: [WorkoutLog])] = []
+        var currentDate: Date? = nil
+        var currentGroup: [WorkoutLog] = []
+        let calendar = Calendar.current
+        for log in sorted {
+            let day = calendar.startOfDay(for: log.completedAt)
+            if let cd = currentDate, calendar.isDate(day, inSameDayAs: cd) {
+                currentGroup.append(log)
+            } else {
+                if let cd = currentDate { groups.append((date: cd, logs: currentGroup)) }
+                currentDate = day
+                currentGroup = [log]
+            }
+        }
+        if let cd = currentDate { groups.append((date: cd, logs: currentGroup)) }
+        return groups
+    }
+
+    var body: some View {
+        if groupedLogs.isEmpty {
+            VStack(spacing: 8) {
+                Image(systemName: "calendar.badge.clock")
+                    .font(.system(size: 44))
+                    .foregroundColor(.gray)
+                Text("No workouts logged yet")
+                    .font(.subheadline)
+                    .foregroundColor(.gray)
+            }
+            .padding(.vertical, 40)
+        } else {
+            VStack(alignment: .leading, spacing: 0) {
+                ForEach(Array(groupedLogs.enumerated()), id: \.offset) { groupIdx, group in
+                    HStack(alignment: .top, spacing: 12) {
+                        // Timeline spine
+                        VStack(spacing: 0) {
+                            // Connector line from previous group (skip for first)
+                            if groupIdx > 0 {
+                                Rectangle()
+                                    .fill(Color(red: 0.82, green: 0.82, blue: 0.84))
+                                    .frame(width: 2)
+                                    .frame(height: 12)
+                            } else {
+                                Spacer().frame(height: 12)
+                            }
+                            // Date bubble
+                            Circle()
+                                .fill(Color.black)
+                                .frame(width: 10, height: 10)
+                            // Connector line to next entry
+                            Rectangle()
+                                .fill(Color(red: 0.82, green: 0.82, blue: 0.84))
+                                .frame(width: 2)
+                                .frame(maxHeight: .infinity)
+                        }
+                        .frame(width: 10)
+                        .padding(.leading, 16)
+
+                        // Date + cards
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text(timelineDateString(group.date))
+                                .font(.caption)
+                                .fontWeight(.semibold)
+                                .foregroundColor(.secondary)
+                                .padding(.top, 10)
+
+                            ForEach(group.logs) { log in
+                                WorkoutLogCard(log: log) { onTap(log) }
+                            }
+                        }
+                        .padding(.trailing, 16)
+                        .padding(.bottom, 16)
+                    }
+                }
+            }
+        }
+    }
+
+    private func timelineDateString(_ date: Date) -> String {
+        let calendar = Calendar.current
+        if calendar.isDateInToday(date) { return "Today" }
+        if calendar.isDateInYesterday(date) { return "Yesterday" }
+        let formatter = DateFormatter()
+        formatter.dateFormat = "EEEE, MMM d"
+        return formatter.string(from: date)
+    }
+}
+
+// MARK: - Activity Ribbon View
+
+private struct ActivityRibbonView: View {
+    let logState: WorkoutLogState
+
+    private let cellSize: CGFloat = 11
+    private let cellSpacing: CGFloat = 3
+
+    // Nil entries = padding cells before the first real day
+    private var buckets: [(date: Date?, count: Int)] {
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: Date())
+
+        // Build 63 real days ending today, oldest first
+        let realDays: [(date: Date?, count: Int)] = (0..<63).reversed().map { offset in
+            let date = calendar.date(byAdding: .day, value: -offset, to: today)!
+            return (date: date, count: logState.logsForDate(date).count)
+        }
+
+        // Find the weekday of the oldest day (1=Sun … 7=Sat) and pad the front
+        // so column 0 always lines up under "S" (Sunday)
+        let firstDate = realDays.first!.date!
+        let weekday = calendar.component(.weekday, from: firstDate) // 1-based
+        let paddingCount = weekday - 1  // number of empty cells before first real day
+        let padding: [(date: Date?, count: Int)] = Array(repeating: (date: nil, count: -1), count: paddingCount)
+        return padding + realDays
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            // Week-day header
+            HStack(spacing: cellSpacing) {
+                ForEach(Array(["S","M","T","W","T","F","S"].enumerated()), id: \.offset) { _, d in
+                    Text(d)
+                        .font(.system(size: 9))
+                        .foregroundColor(.secondary)
+                        .frame(width: cellSize, alignment: .center)
+                }
+            }
+
+            // Grid — rows of 7, oldest top-left, aligned to weekday columns
+            let rows = buckets.chunked(into: 7)
+            VStack(spacing: cellSpacing) {
+                ForEach(Array(rows.enumerated()), id: \.offset) { _, week in
+                    HStack(spacing: cellSpacing) {
+                        ForEach(Array(week.enumerated()), id: \.offset) { _, bucket in
+                            RoundedRectangle(cornerRadius: 2)
+                                .fill(bucket.date == nil ? Color.clear : cellColor(bucket.count))
+                                .frame(width: cellSize, height: cellSize)
+                        }
+                        // Pad short final row to keep alignment
+                        if week.count < 7 {
+                            ForEach(0..<(7 - week.count), id: \.self) { _ in
+                                Color.clear.frame(width: cellSize, height: cellSize)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        .padding(10)
+        .background(Color(red: 0.96, green: 0.96, blue: 0.97))
+        .cornerRadius(8)
+    }
+
+    private func cellColor(_ count: Int) -> Color {
+        switch count {
+        case 0:       return Color(red: 0.88, green: 0.88, blue: 0.90)
+        case 1:       return Color(red: 0.4,  green: 0.75, blue: 0.4)
+        case 2:       return Color(red: 0.2,  green: 0.65, blue: 0.2)
+        default:      return Color(red: 0.05, green: 0.5,  blue: 0.05)
+        }
+    }
+}
+
+private extension Array {
+    func chunked(into size: Int) -> [[Element]] {
+        stride(from: 0, to: count, by: size).map {
+            Array(self[$0 ..< Swift.min($0 + size, count)])
+        }
+    }
+}
+
+// MARK: - Log Card
 
 private struct WorkoutLogCard: View {
     let log: WorkoutLog
