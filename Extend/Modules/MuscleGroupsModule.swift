@@ -461,6 +461,7 @@ private struct MuscleGroupEditor: View {
 // MARK: - Muscle Group History Sheet
 
 private struct MuscleGroupHistorySheet: View {
+    @AppStorage("weightUnit") private var weightUnit: String = "lbs"
     @Environment(\.dismiss) var dismiss
 
     let group: MuscleGroup
@@ -549,7 +550,7 @@ private struct MuscleGroupHistorySheet: View {
                                             HStack {
                                                 Text("\(idx + 1)").font(.caption).fontWeight(.semibold).frame(maxWidth: .infinity, alignment: .leading)
                                                 Text("\(set.reps)").font(.caption).frame(maxWidth: .infinity, alignment: .center)
-                                                Text(set.weight == 0 ? "—" : String(format: "%.1f lbs", set.weight)).font(.caption).frame(maxWidth: .infinity, alignment: .trailing)
+                                                Text(set.weight == 0 ? "—" : String(format: "%.1f \(weightUnit)", set.weight)).font(.caption).frame(maxWidth: .infinity, alignment: .trailing)
                                             }
                                         }
                                     }

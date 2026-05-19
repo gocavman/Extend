@@ -1506,7 +1506,7 @@ public struct StartWorkoutView: View {
                     equipmentState.sortedItems.first { $0.id == id }?.name
                 }.joined(separator: ", ")
                 if !equipmentNames.isEmpty {
-                    Text("Equipment: \(equipmentNames)").font(.caption).foregroundColor(.secondary)
+                    //Text("Equipment: \(equipmentNames)").font(.caption).foregroundColor(.secondary)
                 }
             }
             .padding(.vertical, 8)
@@ -2295,6 +2295,7 @@ extension Array {
 // MARK: - Exercise History Sheet
 
 struct ExerciseHistorySheet: View {
+    @AppStorage("weightUnit") private var weightUnit: String = "lbs"
     @Environment(\.dismiss) var dismiss
 
     let exercise: Exercise
@@ -2346,7 +2347,7 @@ struct ExerciseHistorySheet: View {
                                     Text("Est. 1 Rep Max")
                                         .font(.caption)
                                         .foregroundColor(.secondary)
-                                    Text(String(format: "%.0f lbs", rm))
+                                    Text(String(format: "%.0f \(weightUnit)", rm))
                                         .font(.title3)
                                         .fontWeight(.bold)
                                 }
@@ -2394,7 +2395,7 @@ struct ExerciseHistorySheet: View {
                                                 Text(set.timedSeconds > 0 ? formatHistoryTime(set.timedSeconds) : "—")
                                                     .font(.caption).foregroundColor(.secondary).frame(width: 44, alignment: .center)
                                             }
-                                            Text(set.weight == 0 ? "—" : String(format: "%.1f lbs", set.weight)).font(.caption).frame(maxWidth: .infinity, alignment: .trailing)
+                                            Text(set.weight == 0 ? "—" : String(format: "%.1f \(weightUnit)", set.weight)).font(.caption).frame(maxWidth: .infinity, alignment: .trailing)
                                         }
                                     }
                                 }

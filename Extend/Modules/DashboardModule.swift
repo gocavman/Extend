@@ -35,6 +35,7 @@ public struct DashboardModule: AppModule {
 private struct DashboardModuleView: View {
     let module: DashboardModule
 
+    @AppStorage("weightUnit") private var weightUnit: String = "lbs"
     @Environment(DashboardState.self) var dashboardState
     @Environment(ModuleRegistry.self) var registry
     @Environment(ModuleState.self) var state
@@ -408,7 +409,7 @@ private struct DashboardModuleView: View {
             return "\(logState.restDaysLast14)"
         case .personalRecord:
             if let pr = logState.personalRecord {
-                return String(format: "%.0f lbs", pr.weight)
+                return String(format: "%.0f \(weightUnit)", pr.weight)
             }
             return "—"
         case .oneRepMax:
@@ -982,6 +983,7 @@ private struct AddTileSheet: View {
 // MARK: - Edit Tile Sheet
 
 private struct EditTileSheet: View {
+    @AppStorage("weightUnit") private var weightUnit: String = "lbs"
     @Environment(\.dismiss) var dismiss
     @Environment(ExercisesState.self) var exercisesState
     @Environment(WorkoutLogState.self) var logState
@@ -1065,7 +1067,7 @@ private struct EditTileSheet: View {
                                             .foregroundColor(.primary)
                                         Spacer()
                                         if let rm = logState.bestEstimated1RM(exerciseID: exercise.id) {
-                                            Text(String(format: "%.0f lbs", rm))
+                                            Text(String(format: "%.0f \(weightUnit)", rm))
                                                 .font(.caption)
                                                 .foregroundColor(.secondary)
                                         }

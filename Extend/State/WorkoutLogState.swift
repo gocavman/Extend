@@ -336,7 +336,8 @@ public final class WorkoutLogState {
         dateFormatter.dateStyle = .medium
         dateFormatter.timeStyle = .short
 
-        var csv = "Date,Workout Name,Row Type,Exercise,Set,Reps,Weight (lbs),Active Time (s),Rest Configured (s),Rest Actual (s),Notes,Log Duration (s)\n"
+        let weightUnit = UserDefaults.standard.string(forKey: "weightUnit") ?? "lbs"
+        var csv = "Date,Workout Name,Row Type,Exercise,Set,Reps,Weight (\(weightUnit)),Active Time (s),Rest Configured (s),Rest Actual (s),Notes,Log Duration (s)\n"
 
         for log in sortedLogs {
             let dateString = dateFormatter.string(from: log.completedAt)

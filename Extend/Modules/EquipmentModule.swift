@@ -272,6 +272,7 @@ private struct EquipmentEditor: View {
 // MARK: - Equipment History Sheet
 
 private struct EquipmentHistorySheet: View {
+    @AppStorage("weightUnit") private var weightUnit: String = "lbs"
     @Environment(\.dismiss) var dismiss
 
     let equipment: Equipment
@@ -349,7 +350,7 @@ private struct EquipmentHistorySheet: View {
                                             HStack {
                                                 Text("\(idx + 1)").font(.caption).fontWeight(.semibold).frame(maxWidth: .infinity, alignment: .leading)
                                                 Text("\(set.reps)").font(.caption).frame(maxWidth: .infinity, alignment: .center)
-                                                Text(set.weight == 0 ? "—" : String(format: "%.1f lbs", set.weight)).font(.caption).frame(maxWidth: .infinity, alignment: .trailing)
+                                                Text(set.weight == 0 ? "—" : String(format: "%.1f \(weightUnit)", set.weight)).font(.caption).frame(maxWidth: .infinity, alignment: .trailing)
                                             }
                                         }
                                     }

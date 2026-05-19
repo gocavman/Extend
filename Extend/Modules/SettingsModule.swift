@@ -37,6 +37,8 @@ private struct SettingsModuleView: View {
     @Environment(DashboardHeaderState.self) var dashboardHeaderState
     @Environment(VoiceTrainerState.self) var voiceTrainerState
 
+    @AppStorage("weightUnit") private var weightUnit: String = "lbs"
+
     @State private var showingResetAlert = false
     @State private var isNavBarSectionExpanded = false
     @State private var isNavBarColorExpanded = false
@@ -55,70 +57,81 @@ private struct SettingsModuleView: View {
 
             NavigationStack {
                 Form {
-                    // MARK: - NavBar Customization Section
-                    DisclosureGroup("NavBar", isExpanded: $isNavBarSectionExpanded) {
-                        NavigationLink(destination: NavBarCustomizationView()) {
-                            Text("Customize")
-                        }
+                    // MARK: - NavBar / Dashboard / Image Set / Weight Unit Section
+                    Section {
+                        DisclosureGroup("NavBar", isExpanded: $isNavBarSectionExpanded) {
+                            NavigationLink(destination: NavBarCustomizationView()) {
+                                Text("Customize")
+                            }
 
-                        DisclosureGroup("Color", isExpanded: $isNavBarColorExpanded) {
-                            ColorPicker("Background Color", selection: Binding(
-                                get: { moduleState.navBarBackgroundColor },
-                                set: { moduleState.updateNavBarBackgroundColor($0) }
-                            ))
+                            DisclosureGroup("Color", isExpanded: $isNavBarColorExpanded) {
+                                ColorPicker("Background Color", selection: Binding(
+                                    get: { moduleState.navBarBackgroundColor },
+                                    set: { moduleState.updateNavBarBackgroundColor($0) }
+                                ))
 
-                            Toggle("Use Gradient", isOn: Binding(
-                                get: { moduleState.navBarUseGradient },
-                                set: { moduleState.updateNavBarUseGradient($0) }
-                            ))
+                                Toggle("Use Gradient", isOn: Binding(
+                                    get: { moduleState.navBarUseGradient },
+                                    set: { moduleState.updateNavBarUseGradient($0) }
+                                ))
 
-                            if moduleState.navBarUseGradient {
-                                ColorPicker("Gradient Secondary", selection: Binding(
-                                    get: { moduleState.navBarGradientSecondaryColor },
-                                    set: { moduleState.updateNavBarGradientSecondaryColor($0) }
+                                if moduleState.navBarUseGradient {
+                                    ColorPicker("Gradient Secondary", selection: Binding(
+                                        get: { moduleState.navBarGradientSecondaryColor },
+                                        set: { moduleState.updateNavBarGradientSecondaryColor($0) }
+                                    ))
+                                }
+
+                                ColorPicker("Text Color", selection: Binding(
+                                    get: { moduleState.navBarTextColor },
+                                    set: { moduleState.updateNavBarTextColor($0) }
                                 ))
                             }
-
-                            ColorPicker("Text Color", selection: Binding(
-                                get: { moduleState.navBarTextColor },
-                                set: { moduleState.updateNavBarTextColor($0) }
-                            ))
                         }
-                    }
 
-                    // MARK: - Dashboard Section
-                    DisclosureGroup("Dashboard", isExpanded: $isDashboardSectionExpanded) {
-                        NavigationLink(destination: DashboardCustomizationView()) {
-                            Text("Customize")
-                        }
-                        
-                        NavigationLink(destination: DashboardHeaderSettingsView()) {
-                            Text("Header")
-                        }
-                    }
-
-                    // MARK: - Muscles Section
-                    DisclosureGroup("Image Set", isExpanded: $isMusclesSectionExpanded) {
-                        HStack {
-                            Text("Muscles")
-                            Spacer()
-                            Picker("", selection: Binding(
-                                get: { muscleGroupsState.selectedBodyOption },
-                                set: { muscleGroupsState.applyBodyOption($0) }
-                            )) {
-                                Text("Option 1").tag(MuscleGroupsState.BodyImageOption.male)
-                                Text("Option 2").tag(MuscleGroupsState.BodyImageOption.female)
-                                Text("Custom").tag(MuscleGroupsState.BodyImageOption.custom)
+                        DisclosureGroup("Dashboard", isExpanded: $isDashboardSectionExpanded) {
+                            NavigationLink(destination: DashboardCustomizationView()) {
+                                Text("Customize")
                             }
-                            .pickerStyle(.menu)
+
+                            NavigationLink(destination: DashboardHeaderSettingsView()) {
+                                Text("Header")
+                            }
                         }
-                        Text(muscleGroupsState.selectedBodyOption == .custom
-                             ? "Custom: Edit each muscle individually to assign images."
-                             : muscleGroupsState.selectedBodyOption == .male
-                               ? "Option 1: Default images are used for all muscles."
-                               : "Option 2: Default images are used for all muscles.")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
+
+                        DisclosureGroup("Image Set", isExpanded: $isMusclesSectionExpanded) {
+                            HStack {
+                                Text("Muscles")
+                                Spacer()
+                                Picker("", selection: Binding(
+                                    get: { muscleGroupsState.selectedBodyOption },
+                                    set: { muscleGroupsState.applyBodyOption($0) }
+                                )) {
+                                    Text("Option 1").tag(MuscleGroupsState.BodyImageOption.male)
+                                    Text("Option 2").tag(MuscleGroupsState.BodyImageOption.female)
+                                    Text("Custom").tag(MuscleGroupsState.BodyImageOption.custom)
+                                }
+                                .pickerStyle(.menu)
+                            }
+                            Text(muscleGroupsState.selectedBodyOption == .custom
+                                 ? "Custom: Edit each muscle individually to assign images."
+                                 : muscleGroupsState.selectedBodyOption == .male
+                                   ? "Option 1: Default images are used for all muscles."
+                                   : "Option 2: Default images are used for all muscles.")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+
+                        HStack {
+                            Text("Weight Unit")
+                            Spacer()
+                            Picker("", selection: $weightUnit) {
+                                Text("lbs").tag("lbs")
+                                Text("kg").tag("kg")
+                            }
+                            .pickerStyle(.segmented)
+                            .frame(width: 120)
+                        }
                     }
 
                     // MARK: - Support Section
@@ -1147,6 +1160,7 @@ private struct DashboardAddTileSheet: View {
 // MARK: - Dashboard Edit Tile Sheet (Simplified for Settings)
 
 private struct DashboardEditTileSheet: View {
+    @AppStorage("weightUnit") private var weightUnit: String = "lbs"
     @Environment(\.dismiss) var dismiss
     @Environment(ExercisesState.self) var exercisesState
     @Environment(WorkoutLogState.self) var logState
@@ -1243,7 +1257,7 @@ private struct DashboardEditTileSheet: View {
                                             .foregroundColor(.primary)
                                         Spacer()
                                         if let rm = logState.bestEstimated1RM(exerciseID: exercise.id) {
-                                            Text(String(format: "%.0f lbs", rm))
+                                            Text(String(format: "%.0f \(weightUnit)", rm))
                                                 .font(.caption)
                                                 .foregroundColor(.secondary)
                                         }

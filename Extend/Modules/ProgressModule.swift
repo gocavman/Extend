@@ -816,6 +816,7 @@ private struct WorkoutLogCard: View {
 // MARK: - Workout Log Detail View
 
 private struct WorkoutLogDetailView: View {
+    @AppStorage("weightUnit") private var weightUnit: String = "lbs"
     @Environment(\.dismiss) var dismiss
     @Environment(WorkoutLogState.self) var logState
     @Environment(ExercisesState.self) var exercisesState
@@ -1130,7 +1131,7 @@ private struct WorkoutLogDetailView: View {
                                                 .frame(width: 50)
                                                 .textFieldStyle(.roundedBorder)
 
-                                            Text("lbs")
+                                            Text(weightUnit)
                                                 .font(.caption)
                                                 .foregroundColor(.gray)
 
@@ -1181,7 +1182,7 @@ private struct WorkoutLogDetailView: View {
                                                 .font(.caption)
                                                 .foregroundColor(.gray)
 
-                                            Text(String(format: "%.1f lbs", exercise.sets[index].weight))
+                                            Text(String(format: "%.1f \(weightUnit)", exercise.sets[index].weight))
                                                 .font(.caption)
                                         }
 

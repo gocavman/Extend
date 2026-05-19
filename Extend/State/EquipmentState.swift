@@ -90,6 +90,7 @@ public final class EquipmentState {
             Equipment(id: UUID(uuidString: "00000111-0000-0000-0000-000000000000")!, name: "Gymnastic rings"),
             Equipment(id: UUID(uuidString: "00000112-0000-0000-0000-000000000000")!, name: "Heavy bag"),
             Equipment(id: UUID(uuidString: "00000106-0000-0000-0000-000000000000")!, name: "Jump rope"),
+            Equipment(id: UUID(uuidString: "00000113-0000-0000-0000-000000000000")!, name: "Plyo box"),
             Equipment(id: UUID(uuidString: "00000107-0000-0000-0000-000000000000")!, name: "Kettlebell"),
             Equipment(id: UUID(uuidString: "00000104-0000-0000-0000-000000000000")!, name: "Pull up bar"),
             Equipment(id: UUID(uuidString: "00000105-0000-0000-0000-000000000000")!, name: "Rope"),

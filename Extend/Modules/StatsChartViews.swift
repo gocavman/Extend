@@ -37,6 +37,7 @@ public enum StatsTimeRange: String, CaseIterable {
 struct ExerciseStatsView: View {
     let exercise: Exercise
 
+    @AppStorage("weightUnit") private var weightUnit: String = "lbs"
     @Environment(WorkoutLogState.self) var logState
     @State private var timeRange: StatsTimeRange = .oneMonth
 
@@ -99,14 +100,14 @@ struct ExerciseStatsView: View {
                     VStack(alignment: .leading, spacing: 24) {
                         statsCard(
                             title: "Max Weight",
-                            unit: "lbs",
+                            unit: weightUnit,
                             points: sessionPoints.map { ($0.date, $0.maxWeight) },
                             color: .blue
                         )
 
                         statsCard(
                             title: "Total Volume",
-                            unit: "lbs",
+                            unit: weightUnit,
                             points: sessionPoints.map { ($0.date, $0.totalVolume) },
                             color: Color(red: 0.2, green: 0.65, blue: 0.4)
                         )
@@ -120,7 +121,7 @@ struct ExerciseStatsView: View {
 
                         statsCard(
                             title: "Est. 1 Rep Max",
-                            unit: "lbs",
+                            unit: weightUnit,
                             points: sessionPoints.compactMap { $0.estimated1RM > 0 ? ($0.date, $0.estimated1RM) : nil },
                             color: Color(red: 0.6, green: 0.2, blue: 0.8)
                         )
@@ -238,6 +239,7 @@ struct ExerciseStatsView: View {
 struct MuscleStatsView: View {
     let muscleGroup: MuscleGroup
 
+    @AppStorage("weightUnit") private var weightUnit: String = "lbs"
     @Environment(WorkoutLogState.self) var logState
     @Environment(ExercisesState.self) var exercisesState
     @State private var timeRange: StatsTimeRange = .oneMonth
@@ -339,7 +341,7 @@ struct MuscleStatsView: View {
 
                         muscleStatsCard(
                             title: "Total Volume",
-                            unit: "lbs",
+                            unit: weightUnit,
                             points: weekBuckets.map { ($0.weekStart, $0.totalVolume) },
                             color: Color(red: 0.2, green: 0.65, blue: 0.4)
                         )
@@ -666,6 +668,7 @@ private struct TrendLineOverlay: View {
 struct EquipmentStatsView: View {
     let equipment: Equipment
 
+    @AppStorage("weightUnit") private var weightUnit: String = "lbs"
     @Environment(WorkoutLogState.self) var logState
     @Environment(ExercisesState.self) var exercisesState
     @State private var timeRange: StatsTimeRange = .oneMonth
@@ -739,7 +742,7 @@ struct EquipmentStatsView: View {
                         )
                         equipmentStatsCard(
                             title: "Total Volume",
-                            unit: "lbs",
+                            unit: weightUnit,
                             points: weekBuckets.map { ($0.weekStart, $0.totalVolume) },
                             color: Color(red: 0.2, green: 0.65, blue: 0.4)
                         )
