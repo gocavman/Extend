@@ -14,7 +14,7 @@
     { "name": "Legs",       "male": { "primary": "MaleFrontLegs",                 "secondary": "MaleBackLegs" },             "female": { "primary": "FemaleFrontLegs",                  "secondary": "FemaleBackLegs" } },
     { "name": "Lower Back", "male": { "primary": "MaleBackLowerBack",                 "secondary": null },             "female": { "primary": "FemaleBackLowerBack",                  "secondary": null } },
     { "name": "Obliques",   "male": { "primary": "MaleFrontObliques",  "secondary": null },             "female": { "primary": "FemaleFrontObliques",  "secondary": null } },
-    { "name": "Pecs",       "male": { "primary": "MaleFrontChest",     "secondary": null },             "female": { "primary": "FemaleFrontChest",     "secondary": null } },
+    { "name": "Chest",       "male": { "primary": "MaleFrontChest",     "secondary": null },             "female": { "primary": "FemaleFrontChest",     "secondary": null } },
     { "name": "Quads",      "male": { "primary": "MaleFrontQuads",     "secondary": null },             "female": { "primary": "FemaleFrontQuads",     "secondary": null } },
     { "name": "Rhomboids",  "male": { "primary": "MaleBackRhomboids",                 "secondary": null },             "female": { "primary": "FemaleBackRhomboids",                  "secondary": null } },
     { "name": "Traps",      "male": { "primary": "MaleFrontTraps",     "secondary": "MaleBackTraps" },  "female": { "primary": "FemaleFrontTraps",     "secondary": "FemaleBackTraps" } },
