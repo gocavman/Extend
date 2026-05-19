@@ -447,6 +447,7 @@ private struct WorkoutLogDetailView: View {
     @Environment(\.dismiss) var dismiss
     @Environment(WorkoutLogState.self) var logState
     @Environment(ExercisesState.self) var exercisesState
+    @Environment(EquipmentState.self) var equipmentState
     
     @State var log: WorkoutLog
     @State private var showDeleteAlert = false
@@ -847,6 +848,59 @@ private struct WorkoutLogDetailView: View {
                                     Text(exercise.notes)
                                         .font(.caption)
                                         .foregroundColor(.gray)
+                                }
+                                .padding(.top, 4)
+                            }
+
+                            // Equipment used section
+                            let allEquipment = (exercisesState.exercises.first { $0.id == exercise.exerciseID }?.equipmentIDs ?? [])
+                                .compactMap { id in equipmentState.sortedItems.first { $0.id == id } }
+                            if !allEquipment.isEmpty {
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Text("Equipment Used")
+                                        .font(.caption2)
+                                        .fontWeight(.semibold)
+                                        .foregroundColor(.gray)
+                                    if isEditing {
+                                        HStack(spacing: 6) {
+                                            ForEach(allEquipment) { item in
+                                                let selected = exercise.usedEquipmentIDs.contains(item.id)
+                                                Button(action: {
+                                                    if selected {
+                                                        exercise.usedEquipmentIDs.removeAll { $0 == item.id }
+                                                    } else {
+                                                        exercise.usedEquipmentIDs.append(item.id)
+                                                    }
+                                                }) {
+                                                    HStack(spacing: 4) {
+                                                        Image(systemName: selected ? "checkmark.circle.fill" : "circle")
+                                                            .font(.system(size: 11))
+                                                            .foregroundColor(selected ? .white : .secondary)
+                                                        Text(item.name)
+                                                            .font(.caption)
+                                                            .foregroundColor(selected ? .white : .secondary)
+                                                    }
+                                                    .padding(.horizontal, 8)
+                                                    .padding(.vertical, 4)
+                                                    .background(selected ? Color.black : Color(red: 0.88, green: 0.88, blue: 0.90))
+                                                    .cornerRadius(12)
+                                                }
+                                                .buttonStyle(.plain)
+                                            }
+                                            Spacer()
+                                        }
+                                    } else {
+                                        let usedEquipment = allEquipment.filter { exercise.usedEquipmentIDs.contains($0.id) }
+                                        if usedEquipment.isEmpty {
+                                            Text("None recorded")
+                                                .font(.caption)
+                                                .foregroundColor(.secondary)
+                                        } else {
+                                            Text(usedEquipment.map { $0.name }.joined(separator: ", "))
+                                                .font(.caption)
+                                                .foregroundColor(.secondary)
+                                        }
+                                    }
                                 }
                                 .padding(.top, 4)
                             }

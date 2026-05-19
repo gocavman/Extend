@@ -603,9 +603,13 @@ private struct TrendLineOverlay: View {
             let xs: [CGFloat] = fractions.indices.map { i in
                 overflow + CGFloat(i) * (barWidth + barSpacing) + barWidth / 2
             }
-            // Y = top of each bar — baseline is shifted down by overflow, bar top is above it
+            // Y = top of each bar — clamp to [top of chart, baseline] so Catmull-Rom control
+            // points never push the curve below zero or above the chart ceiling
+            let chartFloor = overflow + baseline
+            let chartCeiling = overflow
             let ys: [CGFloat] = fractions.map { f in
-                overflow + baseline - CGFloat(f) * chartHeight
+                let y = overflow + baseline - CGFloat(f) * chartHeight
+                return min(chartFloor, max(chartCeiling, y))
             }
 
             let points = zip(xs, ys).map { CGPoint(x: $0, y: $1) }
@@ -620,13 +624,15 @@ private struct TrendLineOverlay: View {
                 let p2 = points[min(i + 1, points.count - 1)]
                 let p3 = points[min(i + 2, points.count - 1)]
 
+                // Clamp control point Y to chart bounds so the curve never dips below
+                // the baseline or above the top of the chart area
                 let cp1 = CGPoint(
                     x: p1.x + (p2.x - p0.x) / 6,
-                    y: p1.y + (p2.y - p0.y) / 6
+                    y: min(chartFloor, max(chartCeiling, p1.y + (p2.y - p0.y) / 6))
                 )
                 let cp2 = CGPoint(
                     x: p2.x - (p3.x - p1.x) / 6,
-                    y: p2.y - (p3.y - p1.y) / 6
+                    y: min(chartFloor, max(chartCeiling, p2.y - (p3.y - p1.y) / 6))
                 )
                 path.addCurve(to: p2, control1: cp1, control2: cp2)
             }
