@@ -121,6 +121,34 @@ private struct SettingsModuleView: View {
                             .foregroundColor(.secondary)
                     }
 
+                    // MARK: - Support Section
+                    Section("Support the Developer") {
+                        Link(destination: URL(string: "https://paypal.me/gocavman")!) {
+                            HStack {
+                                Image(systemName: "dollarsign.circle.fill")
+                                    .foregroundColor(Color(red: 0.0, green: 0.45, blue: 0.9))
+                                Text("Donate via PayPal")
+                                    .foregroundColor(.primary)
+                                Spacer()
+                                Image(systemName: "arrow.up.right")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            }
+                        }
+                        Link(destination: URL(string: "https://venmo.com/u/Cavan-Mannenbach")!) {
+                            HStack {
+                                Image(systemName: "dollarsign.circle.fill")
+                                    .foregroundColor(Color(red: 0.18, green: 0.72, blue: 0.40))
+                                Text("Donate via Venmo")
+                                    .foregroundColor(.primary)
+                                Spacer()
+                                Image(systemName: "arrow.up.right")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            }
+                        }
+                    }
+
                     // MARK: - Reset Section
                     Section("Reset") {
                         Button(role: .destructive) {
