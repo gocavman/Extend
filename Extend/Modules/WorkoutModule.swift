@@ -1217,7 +1217,8 @@ public struct StartWorkoutView: View {
     @State private var previousSets: [LoggedSet] = []
     @State private var previousLogDate: Date? = nil
     @State private var notes: String = ""
-    @State private var exerciseData: [UUID: (sets: [WorkoutSet], notes: String, timerSeconds: Int)] = [:]
+    @State private var usedEquipmentIDs: Set<UUID> = []
+    @State private var exerciseData: [UUID: (sets: [WorkoutSet], notes: String, timerSeconds: Int, usedEquipmentIDs: Set<UUID>)] = [:]
     @State private var showingHistory: Bool = false
     /// Active countdown tasks keyed by WorkoutSet.id — for per-set timed countdowns.
     @State private var setTimerTasks: [UUID: Task<Void, Never>] = [:]
@@ -1400,7 +1401,7 @@ public struct StartWorkoutView: View {
             }
         }
         .onAppear {
-            initializeSets()
+            loadItemData()
         }
         .onDisappear { }
         // SwiftUI manages this task's lifecycle: starts when isTimerRunning becomes true,
@@ -1571,6 +1572,41 @@ public struct StartWorkoutView: View {
         .padding(.horizontal, 16)
 
         setsSection(exercise: exercise, we: we)
+
+        // Equipment used section — compact tag chips, only shown when exercise has equipment assigned
+        let exerciseEquipment = exercise.equipmentIDs.compactMap { id in
+            equipmentState.sortedItems.first { $0.id == id }
+        }
+        if !exerciseEquipment.isEmpty {
+            HStack(spacing: 6) {
+                Text("Equipment:")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                ForEach(exerciseEquipment) { item in
+                    let selected = usedEquipmentIDs.contains(item.id)
+                    Button(action: {
+                        if selected { usedEquipmentIDs.remove(item.id) }
+                        else { usedEquipmentIDs.insert(item.id) }
+                    }) {
+                        HStack(spacing: 4) {
+                            Image(systemName: selected ? "checkmark.circle.fill" : "circle")
+                                .font(.system(size: 11))
+                                .foregroundColor(selected ? .white : .secondary)
+                            Text(item.name)
+                                .font(.caption)
+                                .foregroundColor(selected ? .white : .secondary)
+                        }
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                        .background(selected ? Color.black : Color(red: 0.93, green: 0.93, blue: 0.95))
+                        .cornerRadius(12)
+                    }
+                    .buttonStyle(.plain)
+                }
+                Spacer()
+            }
+            .padding(.horizontal, 16)
+        }
 
         // Notes section
         VStack(alignment: .leading, spacing: 8) {
@@ -1884,7 +1920,7 @@ public struct StartWorkoutView: View {
         isRestTimerRunning = false
         switch currentItem {
         case .exercise(let we):
-            exerciseData[we.exerciseID] = (sets: sets, notes: notes, timerSeconds: timerSeconds)
+            exerciseData[we.exerciseID] = (sets: sets, notes: notes, timerSeconds: timerSeconds, usedEquipmentIDs: usedEquipmentIDs)
         case .rest(let r):
             restData[r.id] = (configured: r.duration, remaining: restSecondsRemaining)
         case .none:
@@ -1908,12 +1944,29 @@ public struct StartWorkoutView: View {
             sets = savedData.sets
             notes = savedData.notes
             timerSeconds = savedData.timerSeconds
+            usedEquipmentIDs = savedData.usedEquipmentIDs
             previousSets = []
             previousLogDate = nil
         } else {
             sets = []
             notes = ""
             timerSeconds = 0
+            // Seed equipment from the exercise's defaults; fall back to "None"-only auto-select
+            if let exercise = exercisesState.exercises.first(where: { $0.id == we.exerciseID }) {
+                if !exercise.defaultEquipmentIDs.isEmpty {
+                    usedEquipmentIDs = Set(exercise.defaultEquipmentIDs)
+                } else {
+                    // Legacy fallback: auto-select if "None" is the only assigned equipment
+                    let equipment = exercise.equipmentIDs.compactMap { id in equipmentState.sortedItems.first { $0.id == id } }
+                    if equipment.count == 1, equipment[0].name.lowercased() == "none" {
+                        usedEquipmentIDs = [equipment[0].id]
+                    } else {
+                        usedEquipmentIDs = []
+                    }
+                }
+            } else {
+                usedEquipmentIDs = []
+            }
             initializeSets()
         }
 
@@ -2086,7 +2139,8 @@ public struct StartWorkoutView: View {
                     exerciseName: exercise.name,
                     sets: loggedSets,
                     notes: savedData.notes,
-                    activeSeconds: savedData.timerSeconds
+                    activeSeconds: savedData.timerSeconds,
+                    usedEquipmentIDs: Array(savedData.usedEquipmentIDs)
                 ))
 
             case .rest(let r):

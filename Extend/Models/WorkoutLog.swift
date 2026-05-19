@@ -56,6 +56,8 @@ public struct LoggedExercise: Identifiable, Codable, Hashable {
     public var notes: String
     /// Seconds the stopwatch ran for this exercise
     public var activeSeconds: Int
+    /// Equipment IDs the user indicated they actually used for this exercise session
+    public var usedEquipmentIDs: [UUID]
 
     public init(
         id: UUID = UUID(),
@@ -63,7 +65,8 @@ public struct LoggedExercise: Identifiable, Codable, Hashable {
         exerciseName: String,
         sets: [LoggedSet] = [],
         notes: String = "",
-        activeSeconds: Int = 0
+        activeSeconds: Int = 0,
+        usedEquipmentIDs: [UUID] = []
     ) {
         self.id = id
         self.exerciseID = exerciseID
@@ -71,6 +74,7 @@ public struct LoggedExercise: Identifiable, Codable, Hashable {
         self.sets = sets
         self.notes = notes
         self.activeSeconds = activeSeconds
+        self.usedEquipmentIDs = usedEquipmentIDs
     }
 
     public init(from decoder: Decoder) throws {
@@ -81,6 +85,7 @@ public struct LoggedExercise: Identifiable, Codable, Hashable {
         sets = try c.decode([LoggedSet].self, forKey: .sets)
         notes = try c.decode(String.self, forKey: .notes)
         activeSeconds = (try? c.decodeIfPresent(Int.self, forKey: .activeSeconds)) ?? 0
+        usedEquipmentIDs = (try? c.decodeIfPresent([UUID].self, forKey: .usedEquipmentIDs)) ?? []
     }
 }
 

@@ -318,6 +318,7 @@ private struct ExerciseEditor: View {
     @State private var primaryMuscleGroupIDs: Set<UUID> = []
     @State private var secondaryMuscleGroupIDs: Set<UUID> = []
     @State private var selectedEquipmentIDs: Set<UUID> = []
+    @State private var defaultEquipmentIDs: Set<UUID> = []
     @State private var hasInitialized: Bool = false
     @State private var showSecondaryMuscles: Bool = false
     @State private var showDeleteConfirm = false
@@ -332,6 +333,7 @@ private struct ExerciseEditor: View {
             _name = State(initialValue: exercise.name)
             _notes = State(initialValue: exercise.notes)
             _selectedEquipmentIDs = State(initialValue: Set(exercise.equipmentIDs))
+            _defaultEquipmentIDs = State(initialValue: Set(exercise.defaultEquipmentIDs))
         }
     }
     
@@ -404,16 +406,31 @@ private struct ExerciseEditor: View {
                             .foregroundColor(.secondary)
                     } else {
                         ForEach(equipmentState.sortedItems) { equipment in
+                            let isSelected = selectedEquipmentIDs.contains(equipment.id)
                             Toggle(equipment.name, isOn: Binding(
-                                get: { selectedEquipmentIDs.contains(equipment.id) },
-                                set: { isSelected in
-                                    if isSelected {
+                                get: { isSelected },
+                                set: { on in
+                                    if on {
                                         selectedEquipmentIDs.insert(equipment.id)
                                     } else {
                                         selectedEquipmentIDs.remove(equipment.id)
+                                        // Remove from defaults if deselected
+                                        defaultEquipmentIDs.remove(equipment.id)
                                     }
                                 }
                             ))
+                            if isSelected {
+                                Toggle("Default", isOn: Binding(
+                                    get: { defaultEquipmentIDs.contains(equipment.id) },
+                                    set: { on in
+                                        if on { defaultEquipmentIDs.insert(equipment.id) }
+                                        else { defaultEquipmentIDs.remove(equipment.id) }
+                                    }
+                                ))
+                                .font(.subheadline)
+                                .foregroundColor(.secondary)
+                                .padding(.leading, 16)
+                            }
                         }
                     }
                 }
@@ -440,7 +457,9 @@ private struct ExerciseEditor: View {
                             notes: notes,
                             primaryMuscleGroupIDs: Array(primaryMuscleGroupIDs),
                             secondaryMuscleGroupIDs: Array(secondaryMuscleGroupIDs),
-                            equipmentIDs: Array(selectedEquipmentIDs)
+                            equipmentIDs: Array(selectedEquipmentIDs),
+                            defaultEquipmentIDs: Array(defaultEquipmentIDs),
+                            isFavorite: initialExercise?.isFavorite ?? false
                         )
                         onSave(exercise)
                         dismiss()
@@ -464,6 +483,7 @@ private struct ExerciseEditor: View {
                         primaryMuscleGroupIDs = Set(exercise.primaryMuscleGroupIDs)
                         secondaryMuscleGroupIDs = Set(exercise.secondaryMuscleGroupIDs)
                         selectedEquipmentIDs = Set(exercise.equipmentIDs)
+                        defaultEquipmentIDs = Set(exercise.defaultEquipmentIDs)
                     }
                     hasInitialized = true
                 }

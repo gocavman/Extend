@@ -14,7 +14,8 @@ public struct Exercise: Identifiable, Codable, Hashable {
     public var notes: String
     public var primaryMuscleGroupIDs: [UUID]  // Primary muscles worked
     public var secondaryMuscleGroupIDs: [UUID]  // Secondary muscles engaged
-    public var equipmentIDs: [UUID]    // References to Equipment UUIDs
+    public var equipmentIDs: [UUID]           // References to Equipment UUIDs
+    public var defaultEquipmentIDs: [UUID]    // Equipment pre-selected when starting a workout
     public var isFavorite: Bool
     
     // For backwards compatibility, expose combined muscles
@@ -29,6 +30,7 @@ public struct Exercise: Identifiable, Codable, Hashable {
         primaryMuscleGroupIDs: [UUID] = [],
         secondaryMuscleGroupIDs: [UUID] = [],
         equipmentIDs: [UUID] = [],
+        defaultEquipmentIDs: [UUID] = [],
         isFavorite: Bool = false
     ) {
         self.id = id
@@ -37,6 +39,7 @@ public struct Exercise: Identifiable, Codable, Hashable {
         self.primaryMuscleGroupIDs = primaryMuscleGroupIDs
         self.secondaryMuscleGroupIDs = secondaryMuscleGroupIDs
         self.equipmentIDs = equipmentIDs
+        self.defaultEquipmentIDs = defaultEquipmentIDs
         self.isFavorite = isFavorite
     }
 
@@ -49,10 +52,11 @@ public struct Exercise: Identifiable, Codable, Hashable {
         primaryMuscleGroupIDs = try container.decodeIfPresent([UUID].self, forKey: .primaryMuscleGroupIDs) ?? []
         secondaryMuscleGroupIDs = try container.decodeIfPresent([UUID].self, forKey: .secondaryMuscleGroupIDs) ?? []
         equipmentIDs = try container.decodeIfPresent([UUID].self, forKey: .equipmentIDs) ?? []
+        defaultEquipmentIDs = try container.decodeIfPresent([UUID].self, forKey: .defaultEquipmentIDs) ?? []
         isFavorite = try container.decodeIfPresent(Bool.self, forKey: .isFavorite) ?? false
     }
 
     private enum CodingKeys: String, CodingKey {
-        case id, name, notes, primaryMuscleGroupIDs, secondaryMuscleGroupIDs, equipmentIDs, isFavorite
+        case id, name, notes, primaryMuscleGroupIDs, secondaryMuscleGroupIDs, equipmentIDs, defaultEquipmentIDs, isFavorite
     }
 }

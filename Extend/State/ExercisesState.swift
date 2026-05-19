@@ -61,7 +61,15 @@ public final class ExercisesState {
     private func loadExercises() {
         if let data = UserDefaults.standard.data(forKey: userDefaultsKey),
            let decoded = try? JSONDecoder().decode([Exercise].self, from: data) {
-            exercises = decoded
+            // Migrate: backfill defaultEquipmentIDs for exercises that have exactly one equipment
+            // and no defaults set yet (newly added field, empty on first decode)
+            exercises = decoded.map { ex in
+                guard ex.defaultEquipmentIDs.isEmpty, ex.equipmentIDs.count == 1 else { return ex }
+                var updated = ex
+                updated.defaultEquipmentIDs = ex.equipmentIDs
+                return updated
+            }
+            saveExercises()
         } else {
             exercises = Self.createDefaultExercises()
             saveExercises()
@@ -89,7 +97,9 @@ public final class ExercisesState {
                 notes: "",
                 primaryMuscleGroupIDs: primaryMuscleGroupIDs,
                 secondaryMuscleGroupIDs: secondaryMuscleGroupIDs,
-                equipmentIDs: equipmentIDs
+                equipmentIDs: equipmentIDs,
+                // Auto-default when there's only one equipment option
+                defaultEquipmentIDs: equipmentIDs.count == 1 ? equipmentIDs : []
             )
         }
         

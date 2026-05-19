@@ -278,13 +278,6 @@ private struct EquipmentHistorySheet: View {
     let logState: WorkoutLogState
     let exercisesState: ExercisesState
 
-    // Exercise IDs that use this equipment
-    private var targetExerciseIDs: Set<UUID> {
-        Set(exercisesState.exercises
-            .filter { $0.equipmentIDs.contains(equipment.id) }
-            .map { $0.id })
-    }
-
     private struct SessionEntry: Identifiable {
         let id: UUID
         let date: Date
@@ -293,9 +286,9 @@ private struct EquipmentHistorySheet: View {
     }
 
     private var sessions: [SessionEntry] {
-        let ids = targetExerciseIDs
-        return logState.sortedLogs.compactMap { log in
-            let relevant = log.exercises.filter { ids.contains($0.exerciseID) && !$0.sets.isEmpty }
+        logState.sortedLogs.compactMap { log in
+            // Only include exercises where the user confirmed they used this equipment
+            let relevant = log.exercises.filter { $0.usedEquipmentIDs.contains(equipment.id) }
             guard !relevant.isEmpty else { return nil }
             return SessionEntry(
                 id: log.id,
@@ -317,7 +310,7 @@ private struct EquipmentHistorySheet: View {
                         Text("No History")
                             .font(.headline)
                             .foregroundColor(.secondary)
-                        Text("Complete workouts with exercises using this equipment to see history here.")
+                        Text("Complete workouts and toggle this equipment as used to see history here.")
                             .font(.subheadline)
                             .foregroundColor(.secondary)
                             .multilineTextAlignment(.center)
