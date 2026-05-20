@@ -113,7 +113,8 @@ Left and Right Uppercuts
             delayBetweenLines: 5,
             numberOfRounds: 5,
             randomOrder: true,  // Enabled
-            cooldownPeriod: 0  // No cooldown by default
+            cooldownPeriod: 0,  // No cooldown by default
+            healthKitActivityType: 73  // HKWorkoutActivityType.boxing
         )
         
         savedConfigurations.append(heavyBagConfig)

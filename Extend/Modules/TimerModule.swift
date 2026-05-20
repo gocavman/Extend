@@ -300,9 +300,6 @@ private struct TimerEditorView: View {
                     TextField("Name", text: $config.name)
                     TextField("Notes (optional)", text: $config.notes, axis: .vertical)
                         .lineLimit(3, reservesSpace: true)
-                    if HealthKitState.shared.exportStrengthWorkouts {
-                        HKActivityTypePicker(rawValue: $config.healthKitActivityType)
-                    }
                 }
 
                 // Type picker — switching presets defaults
@@ -365,6 +362,12 @@ private struct TimerEditorView: View {
                 Section("Warmup & Cooldown") {
                     DurationStepper(label: "Warmup", seconds: $config.warmupDuration)
                     DurationStepper(label: "Cooldown", seconds: $config.cooldownDuration)
+                }
+
+                if HealthKitState.shared.exportStrengthWorkouts {
+                    Section("Apple Health") {
+                        HKActivityTypePicker(rawValue: $config.healthKitActivityType)
+                    }
                 }
             }
             .navigationTitle(title)
