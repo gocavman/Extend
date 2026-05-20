@@ -304,8 +304,8 @@
 				ENABLE_USER_SELECTED_FILES = readonly;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = Extend/Info.plist;
-				INFOPLIST_KEY_NSHealthShareUsageDescription = "Extend reads your cardio workouts from Apple Health to automatically add them to your workout log.";
-				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "Extend saves your strength training workouts to Apple Health so they appear in your Activity rings.";
+				INFOPLIST_KEY_NSHealthShareUsageDescription = "Extend reads your workouts from Apple Health to automatically add them to your workout log.";
+				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "Extend saves your workouts to Apple Health so they appear in your Activity rings.";
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphonesimulator*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents[sdk=iphoneos*]" = YES;
@@ -351,8 +351,8 @@
 				ENABLE_USER_SELECTED_FILES = readonly;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = Extend/Info.plist;
-				INFOPLIST_KEY_NSHealthShareUsageDescription = "Extend reads your cardio workouts from Apple Health to automatically add them to your workout log.";
-				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "Extend saves your strength training workouts to Apple Health so they appear in your Activity rings.";
+				INFOPLIST_KEY_NSHealthShareUsageDescription = "Extend reads your workouts from Apple Health to automatically add them to your workout log.";
+				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "Extend saves your workouts to Apple Health so they appear in your Activity rings.";
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphonesimulator*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents[sdk=iphoneos*]" = YES;

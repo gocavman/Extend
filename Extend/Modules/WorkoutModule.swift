@@ -1710,14 +1710,25 @@ public struct StartWorkoutView: View {
         .padding(.horizontal, 16)
     }
 
-    @ViewBuilder
-    private func setRow(index: Int, set: WorkoutSet, we: WorkoutExercise) -> some View {
+    @ViewBuilder private func setRow(index: Int, set: WorkoutSet, we: WorkoutExercise) -> some View {
         let isActiveRound = isInLoop && index == loopRound
         let isTimed: Bool = {
             guard !we.predefinedSets.isEmpty, index < we.predefinedSets.count else { return false }
             if case .timed = we.predefinedSets[index].target { return true }
             return false
         }()
+
+        let repPlaceholder: String = {
+            if !we.predefinedSets.isEmpty && index < we.predefinedSets.count {
+                if case .reps(let n) = we.predefinedSets[index].target, n > 0 { return "\(n)" }
+                return ""
+            } else if index < previousSets.count && previousSets[index].reps > 0 {
+                return "\(previousSets[index].reps)"
+            }
+            return ""
+        }()
+        let weightPlaceholder = index < previousSets.count && previousSets[index].weight > 0
+            ? String(format: "%.2f", previousSets[index].weight) : ""
 
         VStack(alignment: .leading, spacing: 6) {
             // Set / Reps / Weight / Delete row
@@ -1729,8 +1740,8 @@ public struct StartWorkoutView: View {
                     Text("\(index + 1)")
                         .font(.caption)
                         .fontWeight(.semibold)
-                        .frame(maxWidth: .infinity, alignment: .center)
-                        .padding(6)
+                        .frame(maxWidth: .infinity, minHeight: 28, alignment: .center)
+                        .padding(.horizontal, 6)
                         .background(Color(red: 0.98, green: 0.98, blue: 1.0))
                         .cornerRadius(4)
                 }
@@ -1739,15 +1750,6 @@ public struct StartWorkoutView: View {
                     Text("Reps")
                         .font(.caption2)
                         .foregroundColor(.primary.opacity(0.6))
-                    let repPlaceholder: String = {
-                        if !we.predefinedSets.isEmpty && index < we.predefinedSets.count {
-                            if case .reps(let n) = we.predefinedSets[index].target, n > 0 { return "\(n)" }
-                            return ""
-                        } else if index < previousSets.count && previousSets[index].reps > 0 {
-                            return "\(previousSets[index].reps)"
-                        }
-                        return ""
-                    }()
                     TextField(repPlaceholder, text: Binding(
                         get: { set.reps == 0 ? "" : "\(set.reps)" },
                         set: {
@@ -1757,7 +1759,8 @@ public struct StartWorkoutView: View {
                     ))
                     .keyboardType(.numberPad)
                     .font(.caption)
-                    .padding(6)
+                    .frame(minHeight: 28)
+                    .padding(.horizontal, 6)
                     .background(Color(red: 0.98, green: 0.98, blue: 1.0))
                     .cornerRadius(4)
                 }
@@ -1766,15 +1769,14 @@ public struct StartWorkoutView: View {
                     Text("Weight")
                         .font(.caption2)
                         .foregroundColor(.primary.opacity(0.6))
-                    let weightPlaceholder = index < previousSets.count && previousSets[index].weight > 0
-                        ? String(format: "%.2f", previousSets[index].weight) : ""
                     TextField(weightPlaceholder, text: Binding(
                         get: { sets[index].weightText },
                         set: { sets[index].weightText = $0 }
                     ))
                     .keyboardType(.decimalPad)
                     .font(.caption)
-                    .padding(6)
+                    .frame(minHeight: 28)
+                    .padding(.horizontal, 6)
                     .background(Color(red: 0.98, green: 0.98, blue: 1.0))
                     .cornerRadius(4)
                     .onSubmit {
