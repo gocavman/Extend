@@ -344,6 +344,7 @@ private struct SettingsModuleView: View {
 
         // Route back to Dashboard after reset
         moduleState.selectModule(ModuleIDs.dashboard)
+        if presentedAsSheet { dismiss() }
     }
 }
 
