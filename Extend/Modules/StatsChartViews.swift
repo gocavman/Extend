@@ -865,3 +865,567 @@ struct EquipmentStatsView: View {
             : String(format: "%.1f \(unit)", val)
     }
 }
+
+// MARK: - Workout History Sheet
+
+struct WorkoutHistorySheet: View {
+    @Environment(\.dismiss) var dismiss
+    let workout: Workout
+    let logState: WorkoutLogState
+
+    private var history: [WorkoutLog] {
+        logState.sortedLogs.filter { $0.workoutName == workout.name }
+    }
+
+    private func formatDuration(_ seconds: TimeInterval) -> String {
+        let total = Int(seconds)
+        let h = total / 3600
+        let m = (total % 3600) / 60
+        let s = total % 60
+        if h > 0 { return String(format: "%d:%02d:%02d", h, m, s) }
+        return String(format: "%02d:%02d", m, s)
+    }
+
+    var body: some View {
+        NavigationStack {
+            Group {
+                if history.isEmpty {
+                    VStack(spacing: 12) {
+                        Image(systemName: "clock.arrow.circlepath")
+                            .font(.system(size: 40, weight: .light))
+                            .foregroundColor(.secondary)
+                        Text("No History")
+                            .font(.headline)
+                            .foregroundColor(.secondary)
+                        Text("Complete this workout to see history here.")
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                            .multilineTextAlignment(.center)
+                            .padding(.horizontal, 32)
+                    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                } else {
+                    List {
+                        ForEach(history) { log in
+                            VStack(alignment: .leading, spacing: 8) {
+                                HStack(spacing: 6) {
+                                    Text(log.completedAt, style: .date)
+                                        .font(.subheadline).fontWeight(.semibold)
+                                    Text(log.completedAt, style: .time)
+                                        .font(.caption).foregroundColor(.secondary)
+                                    Spacer()
+                                    if log.duration > 0 {
+                                        Label(formatDuration(log.duration), systemImage: "clock")
+                                            .font(.caption).foregroundColor(.secondary)
+                                    }
+                                }
+                                ForEach(log.exercises) { ex in
+                                    VStack(alignment: .leading, spacing: 4) {
+                                        Text(ex.exerciseName)
+                                            .font(.caption).fontWeight(.semibold)
+                                        ForEach(Array(ex.sets.enumerated()), id: \.offset) { idx, set in
+                                            HStack {
+                                                Text("Set \(idx + 1)")
+                                                    .font(.caption2).foregroundColor(.secondary)
+                                                Spacer()
+                                                Text("\(set.reps) reps")
+                                                    .font(.caption2)
+                                                if set.weight > 0 {
+                                                    Text("· \(String(format: "%.1f", set.weight))")
+                                                        .font(.caption2).foregroundColor(.secondary)
+                                                }
+                                            }
+                                        }
+                                    }
+                                    .padding(6)
+                                    .background(Color(uiColor: .systemGray6))
+                                    .cornerRadius(6)
+                                }
+                                if !log.notes.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                                    Text("Notes: \(log.notes)")
+                                        .font(.caption2).foregroundColor(.secondary)
+                                        .italic()
+                                }
+                            }
+                            .padding(.vertical, 4)
+                        }
+                    }
+                    .listStyle(.plain)
+                }
+            }
+            .navigationTitle(workout.name)
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Done") { dismiss() }
+                }
+            }
+        }
+    }
+}
+
+// MARK: - Workout Stats View
+
+struct WorkoutStatsView: View {
+    let workout: Workout
+    @Environment(WorkoutLogState.self) var logState
+    @State private var timeRange: StatsTimeRange = .oneMonth
+
+    private struct SessionPoint: Identifiable {
+        let id = UUID()
+        let date: Date
+        let duration: Double      // seconds
+        let exerciseCount: Int
+        let totalSets: Int
+    }
+
+    private var sessionPoints: [SessionPoint] {
+        let start = timeRange.startDate
+        return logState.logs
+            .filter { $0.workoutName == workout.name && $0.completedAt >= start }
+            .sorted { $0.completedAt < $1.completedAt }
+            .map { log in
+                SessionPoint(
+                    date: log.completedAt,
+                    duration: log.duration,
+                    exerciseCount: log.exercises.count,
+                    totalSets: log.exercises.reduce(0) { $0 + $1.sets.count }
+                )
+            }
+    }
+
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 24) {
+                Picker("Time Range", selection: $timeRange) {
+                    ForEach(StatsTimeRange.allCases, id: \.self) { Text($0.rawValue).tag($0) }
+                }
+                .pickerStyle(.segmented)
+                .padding(.horizontal, 16)
+
+                if sessionPoints.isEmpty {
+                    workoutEmptyState
+                } else {
+                    workoutStatsCard(
+                        title: "Duration (mins)",
+                        unit: "min",
+                        points: sessionPoints.map { ($0.date, $0.duration / 60) },
+                        color: .blue
+                    )
+                    workoutStatsCard(
+                        title: "Total Sets",
+                        unit: "sets",
+                        points: sessionPoints.map { ($0.date, Double($0.totalSets)) },
+                        color: Color(red: 0.2, green: 0.65, blue: 0.4)
+                    )
+                    workoutStatsCard(
+                        title: "Exercises Done",
+                        unit: "exercises",
+                        points: sessionPoints.map { ($0.date, Double($0.exerciseCount)) },
+                        color: Color(red: 0.8, green: 0.4, blue: 0.1)
+                    )
+                }
+            }
+            .padding(.vertical, 16)
+        }
+        .navigationTitle(workout.name)
+        .navigationBarTitleDisplayMode(.inline)
+    }
+
+    private var workoutEmptyState: some View {
+        VStack(spacing: 12) {
+            Image(systemName: "chart.bar")
+                .font(.system(size: 48, weight: .light))
+                .foregroundColor(.secondary)
+            Text("No Data")
+                .font(.headline).foregroundColor(.secondary)
+            Text("Complete this workout to see stats here.")
+                .font(.subheadline).foregroundColor(.secondary)
+                .multilineTextAlignment(.center).padding(.horizontal, 32)
+        }
+        .frame(maxWidth: .infinity).padding(.top, 60)
+    }
+
+    @ViewBuilder
+    private func workoutStatsCard(title: String, unit: String, points: [(Date, Double)], color: Color) -> some View {
+        let hasData = points.contains(where: { $0.1 > 0 })
+        if !hasData {
+            HStack {
+                Text(title).font(.subheadline).fontWeight(.semibold)
+                Spacer()
+                Text("No data").font(.caption).foregroundColor(.secondary)
+            }
+            .padding(.horizontal, 16).padding(.vertical, 10)
+        } else {
+            let maxVal = points.map { $0.1 }.max() ?? 1
+            let latest = points.last?.1 ?? 0
+            let best   = points.map { $0.1 }.max() ?? 0
+            let avg    = points.isEmpty ? 0 : points.map { $0.1 }.reduce(0, +) / Double(points.count)
+            VStack(alignment: .leading, spacing: 12) {
+                Text(title).font(.subheadline).fontWeight(.semibold).padding(.horizontal, 16)
+                BarChartView(points: points, maxValue: maxVal, barColor: color)
+                    .frame(height: 120).padding(.horizontal, 16)
+                HStack(spacing: 0) {
+                    workoutSummaryCell(label: "Latest", value: workoutFormatVal(latest, unit: unit))
+                    Divider().frame(height: 28)
+                    workoutSummaryCell(label: "Best",   value: workoutFormatVal(best,   unit: unit))
+                    Divider().frame(height: 28)
+                    workoutSummaryCell(label: "Avg",    value: workoutFormatVal(avg,    unit: unit))
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 10)
+                .background(Color(uiColor: .systemGray6))
+                .cornerRadius(10)
+                .padding(.horizontal, 16)
+            }
+            .padding(.vertical, 12)
+            .background(Color(uiColor: .systemBackground))
+            .cornerRadius(14)
+            .shadow(color: .black.opacity(0.05), radius: 4, x: 0, y: 2)
+            .padding(.horizontal, 16)
+        }
+    }
+
+    private func workoutSummaryCell(label: String, value: String) -> some View {
+        VStack(spacing: 2) {
+            Text(value).font(.subheadline).fontWeight(.semibold)
+            Text(label).font(.caption2).foregroundColor(.secondary)
+        }
+        .frame(maxWidth: .infinity)
+    }
+
+    private func workoutFormatVal(_ val: Double, unit: String) -> String {
+        if val == 0 { return "—" }
+        if unit == "sets" || unit == "exercises" { return "\(Int(val))" }
+        return val.truncatingRemainder(dividingBy: 1) == 0
+            ? "\(Int(val)) \(unit)" : String(format: "%.1f \(unit)", val)
+    }
+}
+
+// MARK: - Timer History Sheet
+
+struct TimerHistorySheet: View {
+    @Environment(\.dismiss) var dismiss
+    let config: TimerConfig
+    let logState: WorkoutLogState
+
+    private var history: [WorkoutLog] {
+        logState.sortedLogs.filter { $0.workoutName.hasSuffix("– \(config.name)") && !$0.workoutName.hasPrefix("Trainer") }
+    }
+
+    private func formatDuration(_ seconds: TimeInterval) -> String {
+        let total = Int(seconds)
+        let h = total / 3600; let m = (total % 3600) / 60; let s = total % 60
+        if h > 0 { return String(format: "%d:%02d:%02d", h, m, s) }
+        return String(format: "%02d:%02d", m, s)
+    }
+
+    var body: some View {
+        NavigationStack {
+            Group {
+                if history.isEmpty {
+                    VStack(spacing: 12) {
+                        Image(systemName: "clock.arrow.circlepath")
+                            .font(.system(size: 40, weight: .light)).foregroundColor(.secondary)
+                        Text("No History").font(.headline).foregroundColor(.secondary)
+                        Text("Complete this timer to see history here.")
+                            .font(.subheadline).foregroundColor(.secondary)
+                            .multilineTextAlignment(.center).padding(.horizontal, 32)
+                    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                } else {
+                    List {
+                        ForEach(history) { log in
+                            HStack(spacing: 6) {
+                                Text(log.completedAt, style: .date)
+                                    .font(.subheadline).fontWeight(.semibold)
+                                Text(log.completedAt, style: .time)
+                                    .font(.caption).foregroundColor(.secondary)
+                                Spacer()
+                                if log.duration > 0 {
+                                    Label(formatDuration(log.duration), systemImage: "clock")
+                                        .font(.caption).foregroundColor(.secondary)
+                                }
+                            }
+                            .padding(.vertical, 4)
+                        }
+                    }
+                    .listStyle(.plain)
+                }
+            }
+            .navigationTitle(config.name)
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) { Button("Done") { dismiss() } }
+            }
+        }
+    }
+}
+
+// MARK: - Timer Stats View
+
+struct TimerStatsView: View {
+    let config: TimerConfig
+    @Environment(WorkoutLogState.self) var logState
+    @State private var timeRange: StatsTimeRange = .oneMonth
+
+    private var sessionPoints: [(Date, Double)] {
+        let start = timeRange.startDate
+        return logState.logs
+            .filter { $0.workoutName.hasSuffix("– \(config.name)") && !$0.workoutName.hasPrefix("Trainer") && $0.completedAt >= start }
+            .sorted { $0.completedAt < $1.completedAt }
+            .map { ($0.completedAt, $0.duration / 60) }
+    }
+
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 24) {
+                Picker("Time Range", selection: $timeRange) {
+                    ForEach(StatsTimeRange.allCases, id: \.self) { Text($0.rawValue).tag($0) }
+                }
+                .pickerStyle(.segmented).padding(.horizontal, 16)
+
+                if sessionPoints.isEmpty {
+                    timerEmptyState
+                } else {
+                    timerStatsCard(
+                        title: "Duration (mins)", unit: "min",
+                        points: sessionPoints, color: .blue
+                    )
+                }
+            }
+            .padding(.vertical, 16)
+        }
+        .navigationTitle(config.name)
+        .navigationBarTitleDisplayMode(.inline)
+    }
+
+    private var timerEmptyState: some View {
+        VStack(spacing: 12) {
+            Image(systemName: "chart.bar")
+                .font(.system(size: 48, weight: .light)).foregroundColor(.secondary)
+            Text("No Data").font(.headline).foregroundColor(.secondary)
+            Text("Complete this timer to see stats here.")
+                .font(.subheadline).foregroundColor(.secondary)
+                .multilineTextAlignment(.center).padding(.horizontal, 32)
+        }
+        .frame(maxWidth: .infinity).padding(.top, 60)
+    }
+
+    @ViewBuilder
+    private func timerStatsCard(title: String, unit: String, points: [(Date, Double)], color: Color) -> some View {
+        let hasData = points.contains(where: { $0.1 > 0 })
+        if !hasData {
+            HStack {
+                Text(title).font(.subheadline).fontWeight(.semibold)
+                Spacer()
+                Text("No data").font(.caption).foregroundColor(.secondary)
+            }
+            .padding(.horizontal, 16).padding(.vertical, 10)
+        } else {
+            let maxVal = points.map { $0.1 }.max() ?? 1
+            let total  = points.map { $0.1 }.reduce(0, +)
+            let best   = points.map { $0.1 }.max() ?? 0
+            let avg    = points.isEmpty ? 0 : total / Double(points.count)
+            VStack(alignment: .leading, spacing: 12) {
+                Text(title).font(.subheadline).fontWeight(.semibold).padding(.horizontal, 16)
+                BarChartView(points: points, maxValue: maxVal, barColor: color)
+                    .frame(height: 120).padding(.horizontal, 16)
+                HStack(spacing: 0) {
+                    timerSummaryCell(label: "Total",   value: timerFormatVal(total, unit: unit))
+                    Divider().frame(height: 28)
+                    timerSummaryCell(label: "Best",    value: timerFormatVal(best,  unit: unit))
+                    Divider().frame(height: 28)
+                    timerSummaryCell(label: "Avg",     value: timerFormatVal(avg,   unit: unit))
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 10)
+                .background(Color(uiColor: .systemGray6))
+                .cornerRadius(10).padding(.horizontal, 16)
+            }
+            .padding(.vertical, 12)
+            .background(Color(uiColor: .systemBackground))
+            .cornerRadius(14)
+            .shadow(color: .black.opacity(0.05), radius: 4, x: 0, y: 2)
+            .padding(.horizontal, 16)
+        }
+    }
+
+    private func timerSummaryCell(label: String, value: String) -> some View {
+        VStack(spacing: 2) {
+            Text(value).font(.subheadline).fontWeight(.semibold)
+            Text(label).font(.caption2).foregroundColor(.secondary)
+        }
+        .frame(maxWidth: .infinity)
+    }
+
+    private func timerFormatVal(_ val: Double, unit: String) -> String {
+        if val == 0 { return "—" }
+        return val.truncatingRemainder(dividingBy: 1) == 0
+            ? "\(Int(val)) \(unit)" : String(format: "%.1f \(unit)", val)
+    }
+}
+
+// MARK: - Voice Trainer History Sheet
+
+struct VoiceTrainerHistorySheet: View {
+    @Environment(\.dismiss) var dismiss
+    let config: VoiceTrainerConfig
+    let logState: WorkoutLogState
+
+    private var history: [WorkoutLog] {
+        logState.sortedLogs.filter { $0.workoutName == "Trainer – \(config.name)" }
+    }
+
+    private func formatDuration(_ seconds: TimeInterval) -> String {
+        let total = Int(seconds)
+        let h = total / 3600; let m = (total % 3600) / 60; let s = total % 60
+        if h > 0 { return String(format: "%d:%02d:%02d", h, m, s) }
+        return String(format: "%02d:%02d", m, s)
+    }
+
+    var body: some View {
+        NavigationStack {
+            Group {
+                if history.isEmpty {
+                    VStack(spacing: 12) {
+                        Image(systemName: "clock.arrow.circlepath")
+                            .font(.system(size: 40, weight: .light)).foregroundColor(.secondary)
+                        Text("No History").font(.headline).foregroundColor(.secondary)
+                        Text("Complete a session with this trainer to see history here.")
+                            .font(.subheadline).foregroundColor(.secondary)
+                            .multilineTextAlignment(.center).padding(.horizontal, 32)
+                    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                } else {
+                    List {
+                        ForEach(history) { log in
+                            HStack(spacing: 6) {
+                                Text(log.completedAt, style: .date)
+                                    .font(.subheadline).fontWeight(.semibold)
+                                Text(log.completedAt, style: .time)
+                                    .font(.caption).foregroundColor(.secondary)
+                                Spacer()
+                                if log.duration > 0 {
+                                    Label(formatDuration(log.duration), systemImage: "clock")
+                                        .font(.caption).foregroundColor(.secondary)
+                                }
+                            }
+                            .padding(.vertical, 4)
+                        }
+                    }
+                    .listStyle(.plain)
+                }
+            }
+            .navigationTitle(config.name)
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) { Button("Done") { dismiss() } }
+            }
+        }
+    }
+}
+
+// MARK: - Voice Trainer Stats View
+
+struct VoiceTrainerStatsView: View {
+    let config: VoiceTrainerConfig
+    @Environment(WorkoutLogState.self) var logState
+    @State private var timeRange: StatsTimeRange = .oneMonth
+
+    private var sessionPoints: [(Date, Double)] {
+        let start = timeRange.startDate
+        return logState.logs
+            .filter { $0.workoutName == "Trainer – \(config.name)" && $0.completedAt >= start }
+            .sorted { $0.completedAt < $1.completedAt }
+            .map { ($0.completedAt, $0.duration / 60) }
+    }
+
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 24) {
+                Picker("Time Range", selection: $timeRange) {
+                    ForEach(StatsTimeRange.allCases, id: \.self) { Text($0.rawValue).tag($0) }
+                }
+                .pickerStyle(.segmented).padding(.horizontal, 16)
+
+                if sessionPoints.isEmpty {
+                    trainerEmptyState
+                } else {
+                    trainerStatsCard(
+                        title: "Session Duration (mins)", unit: "min",
+                        points: sessionPoints, color: .blue
+                    )
+                }
+            }
+            .padding(.vertical, 16)
+        }
+        .navigationTitle(config.name)
+        .navigationBarTitleDisplayMode(.inline)
+    }
+
+    private var trainerEmptyState: some View {
+        VStack(spacing: 12) {
+            Image(systemName: "chart.bar")
+                .font(.system(size: 48, weight: .light)).foregroundColor(.secondary)
+            Text("No Data").font(.headline).foregroundColor(.secondary)
+            Text("Complete a session with this trainer to see stats here.")
+                .font(.subheadline).foregroundColor(.secondary)
+                .multilineTextAlignment(.center).padding(.horizontal, 32)
+        }
+        .frame(maxWidth: .infinity).padding(.top, 60)
+    }
+
+    @ViewBuilder
+    private func trainerStatsCard(title: String, unit: String, points: [(Date, Double)], color: Color) -> some View {
+        let hasData = points.contains(where: { $0.1 > 0 })
+        if !hasData {
+            HStack {
+                Text(title).font(.subheadline).fontWeight(.semibold)
+                Spacer()
+                Text("No data").font(.caption).foregroundColor(.secondary)
+            }
+            .padding(.horizontal, 16).padding(.vertical, 10)
+        } else {
+            let maxVal = points.map { $0.1 }.max() ?? 1
+            let total  = points.map { $0.1 }.reduce(0, +)
+            let best   = points.map { $0.1 }.max() ?? 0
+            let avg    = points.isEmpty ? 0 : total / Double(points.count)
+            VStack(alignment: .leading, spacing: 12) {
+                Text(title).font(.subheadline).fontWeight(.semibold).padding(.horizontal, 16)
+                BarChartView(points: points, maxValue: maxVal, barColor: color)
+                    .frame(height: 120).padding(.horizontal, 16)
+                HStack(spacing: 0) {
+                    trainerSummaryCell(label: "Total",   value: trainerFormatVal(total, unit: unit))
+                    Divider().frame(height: 28)
+                    trainerSummaryCell(label: "Best",    value: trainerFormatVal(best,  unit: unit))
+                    Divider().frame(height: 28)
+                    trainerSummaryCell(label: "Avg",     value: trainerFormatVal(avg,   unit: unit))
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 10)
+                .background(Color(uiColor: .systemGray6))
+                .cornerRadius(10).padding(.horizontal, 16)
+            }
+            .padding(.vertical, 12)
+            .background(Color(uiColor: .systemBackground))
+            .cornerRadius(14)
+            .shadow(color: .black.opacity(0.05), radius: 4, x: 0, y: 2)
+            .padding(.horizontal, 16)
+        }
+    }
+
+    private func trainerSummaryCell(label: String, value: String) -> some View {
+        VStack(spacing: 2) {
+            Text(value).font(.subheadline).fontWeight(.semibold)
+            Text(label).font(.caption2).foregroundColor(.secondary)
+        }
+        .frame(maxWidth: .infinity)
+    }
+
+    private func trainerFormatVal(_ val: Double, unit: String) -> String {
+        if val == 0 { return "—" }
+        return val.truncatingRemainder(dividingBy: 1) == 0
+            ? "\(Int(val)) \(unit)" : String(format: "%.1f \(unit)", val)
+    }
+}

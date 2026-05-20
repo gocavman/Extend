@@ -33,6 +33,8 @@ private struct TimerModuleView: View {
     @State private var editingConfig: TimerConfig?
     @State private var deletingConfig: TimerConfig?
     @State private var activeConfig: TimerConfig?
+    @State private var historyConfig: TimerConfig?
+    @State private var statsConfig: TimerConfig?
 
     private var filteredConfigs: [TimerConfig] {
         let trimmed = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -128,7 +130,9 @@ private struct TimerModuleView: View {
                                 onToggleFavorite: {
                                     UIImpactFeedbackGenerator(style: .light).impactOccurred()
                                     timerState.toggleFavorite(id: config.id)
-                                }
+                                },
+                                onHistory: { historyConfig = config },
+                                onStats: { statsConfig = config }
                             )
                             .padding(.vertical, 6)
                             .swipeActions(edge: .leading, allowsFullSwipe: false) {
@@ -168,6 +172,20 @@ private struct TimerModuleView: View {
                     timerState.removeConfig(id: config.id)
                 }
             }
+            .sheet(item: $historyConfig) { config in
+                TimerHistorySheet(config: config, logState: WorkoutLogState.shared)
+            }
+            .sheet(item: $statsConfig) { config in
+                NavigationStack {
+                    TimerStatsView(config: config)
+                        .environment(WorkoutLogState.shared)
+                        .toolbar {
+                            ToolbarItem(placement: .topBarTrailing) {
+                                Button("Done") { statsConfig = nil }
+                            }
+                        }
+                }
+            }
             .alert("Delete Timer?", isPresented: .constant(deletingConfig != nil)) {
                 Button("Cancel", role: .cancel) { deletingConfig = nil }
                 Button("Delete", role: .destructive) {
@@ -205,6 +223,8 @@ private struct TimerRowView: View {
     let onEdit: () -> Void
     let onClone: () -> Void
     let onToggleFavorite: () -> Void
+    let onHistory: () -> Void
+    let onStats: () -> Void
 
     var body: some View {
         HStack(spacing: 12) {
@@ -243,6 +263,26 @@ private struct TimerRowView: View {
             Button(action: onToggleFavorite) {
                 Image(systemName: config.isFavorite ? "star.fill" : "star")
                     .foregroundColor(config.isFavorite ? .black : .gray)
+            }
+            .buttonStyle(.plain)
+
+            // History
+            Button(action: {
+                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                onHistory()
+            }) {
+                Image(systemName: "clock.arrow.circlepath")
+                    .foregroundColor(.black)
+            }
+            .buttonStyle(.plain)
+
+            // Stats
+            Button(action: {
+                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                onStats()
+            }) {
+                Image(systemName: "chart.bar")
+                    .foregroundColor(.black)
             }
             .buttonStyle(.plain)
 

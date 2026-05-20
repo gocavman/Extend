@@ -68,6 +68,8 @@ private struct WorkoutsModuleView: View {
     @State private var startingWorkout: Workout?
     @State private var deletingWorkout: Workout?
     @State private var searchText: String = ""
+    @State private var historyWorkout: Workout?
+    @State private var statsWorkout: Workout?
 
     private var filteredWorkouts: [Workout] {
         let trimmedSearch = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -180,6 +182,26 @@ private struct WorkoutsModuleView: View {
                             }
                             .buttonStyle(.plain)
 
+                            // History button
+                            Button(action: {
+                                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                                historyWorkout = workout
+                            }) {
+                                Image(systemName: "clock.arrow.circlepath")
+                                    .foregroundColor(.black)
+                            }
+                            .buttonStyle(.plain)
+
+                            // Stats button
+                            Button(action: {
+                                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                                statsWorkout = workout
+                            }) {
+                                Image(systemName: "chart.bar")
+                                    .foregroundColor(.black)
+                            }
+                            .buttonStyle(.plain)
+
                             // Clone button
                             Button(action: {
                                 UIImpactFeedbackGenerator(style: .light).impactOccurred()
@@ -248,6 +270,20 @@ private struct WorkoutsModuleView: View {
                     .environment(MuscleGroupsState.shared)
                     .environment(EquipmentState.shared)
                     .environment(WorkoutLogState.shared)
+            }
+            .sheet(item: $historyWorkout) { workout in
+                WorkoutHistorySheet(workout: workout, logState: WorkoutLogState.shared)
+            }
+            .sheet(item: $statsWorkout) { workout in
+                NavigationStack {
+                    WorkoutStatsView(workout: workout)
+                        .environment(WorkoutLogState.shared)
+                        .toolbar {
+                            ToolbarItem(placement: .topBarTrailing) {
+                                Button("Done") { statsWorkout = nil }
+                            }
+                        }
+                }
             }
             .alert("Delete Workout?", isPresented: .constant(deletingWorkout != nil)) {
                 Button("Cancel", role: .cancel) {
@@ -2203,25 +2239,54 @@ private struct RestScreen: View {
     @Binding var isRunning: Bool
     let onSkip: () -> Void
 
+    private var ringProgress: Double {
+        guard restItem.duration > 0 else { return 0 }
+        return Double(secondsRemaining) / Double(restItem.duration)
+    }
+
+    private var ringColor: Color {
+        secondsRemaining <= 10 ? .red : Color.black.opacity(0.85)
+    }
+
     var body: some View {
         VStack(spacing: 24) {
             Spacer()
 
-            Image(systemName: "zzz")
-                .font(.system(size: 48, weight: .light))
-                .foregroundColor(.secondary)
+            // Circular countdown ring
+            ZStack {
+                // Track ring
+                Circle()
+                    .stroke(Color(red: 0.93, green: 0.93, blue: 0.95), lineWidth: 10)
+
+                // Progress ring — drains as rest time decreases
+                Circle()
+                    .trim(from: 0, to: ringProgress)
+                    .stroke(ringColor, style: StrokeStyle(lineWidth: 10, lineCap: .round))
+                    .rotationEffect(.degrees(-90))
+                    .animation(.linear(duration: 0.5), value: ringProgress)
+
+                // Inner content
+                VStack(spacing: 4) {
+                    Image(systemName: "zzz")
+                        .font(.system(size: 28, weight: .light))
+                        .foregroundColor(.secondary)
+
+                    Text(formatTime(secondsRemaining))
+                        .font(.system(size: 52, weight: .semibold, design: .monospaced))
+                        .foregroundColor(secondsRemaining <= 10 ? .red : .primary)
+                        .minimumScaleFactor(0.5)
+                        .lineLimit(1)
+
+                    Text("of \(formatTime(restItem.duration))")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+            }
+            .frame(width: 240, height: 240)
 
             Text("Rest")
                 .font(.title)
                 .fontWeight(.bold)
-
-            Text(formatTime(secondsRemaining))
-                .font(.system(size: 72, weight: .semibold, design: .monospaced))
-                .foregroundColor(secondsRemaining <= 10 ? .red : .primary)
-
-            Text("of \(formatTime(restItem.duration))")
-                .font(.caption)
-                .foregroundColor(.secondary)
 
             HStack(spacing: 24) {
                 Button(action: { isRunning.toggle() }) {

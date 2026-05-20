@@ -37,6 +37,8 @@ private struct VoiceTrainerModuleView: View {
     @State private var showingAdd = false
     @State private var editingConfig: VoiceTrainerConfig?
     @State private var deletingConfig: VoiceTrainerConfig?
+    @State private var historyConfig: VoiceTrainerConfig?
+    @State private var statsConfig: VoiceTrainerConfig?
 
     // Playback state
     @State private var activeConfig: VoiceTrainerConfig?
@@ -133,7 +135,9 @@ private struct VoiceTrainerModuleView: View {
                             onEdit: {
                                 UIImpactFeedbackGenerator(style: .light).impactOccurred()
                                 editingConfig = config
-                            }
+                            },
+                            onHistory: { historyConfig = config },
+                            onStats: { statsConfig = config }
                         )
                         .swipeActions(edge: .leading, allowsFullSwipe: false) {
                             Button {
@@ -186,6 +190,20 @@ private struct VoiceTrainerModuleView: View {
                 onStartPlayback: { startUpdateTimer() },
                 formatTime: formatTime
             )
+        }
+        .sheet(item: $historyConfig) { config in
+            VoiceTrainerHistorySheet(config: config, logState: WorkoutLogState.shared)
+        }
+        .sheet(item: $statsConfig) { config in
+            NavigationStack {
+                VoiceTrainerStatsView(config: config)
+                    .environment(WorkoutLogState.shared)
+                    .toolbar {
+                        ToolbarItem(placement: .topBarTrailing) {
+                            Button("Done") { statsConfig = nil }
+                        }
+                    }
+            }
         }
         .alert("Delete Trainer?", isPresented: .constant(deletingConfig != nil)) {
             Button("Cancel", role: .cancel) { deletingConfig = nil }
@@ -366,6 +384,8 @@ private struct VoiceTrainerListRow: View {
     let onStar: () -> Void
     let onClone: () -> Void
     let onEdit: () -> Void
+    let onHistory: () -> Void
+    let onStats: () -> Void
 
     var body: some View {
         HStack(spacing: 12) {
@@ -395,6 +415,24 @@ private struct VoiceTrainerListRow: View {
             Button(action: onStar) {
                 Image(systemName: config.isFavorite ? "star.fill" : "star")
                     .foregroundColor(config.isFavorite ? .yellow : .gray)
+            }
+            .buttonStyle(.plain)
+
+            Button(action: {
+                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                onHistory()
+            }) {
+                Image(systemName: "clock.arrow.circlepath")
+                    .foregroundColor(.black)
+            }
+            .buttonStyle(.plain)
+
+            Button(action: {
+                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                onStats()
+            }) {
+                Image(systemName: "chart.bar")
+                    .foregroundColor(.black)
             }
             .buttonStyle(.plain)
 
