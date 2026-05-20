@@ -23,13 +23,21 @@ public struct SettingsModule: AppModule {
     public var isVisible: Bool = true
     
     public var moduleView: AnyView {
-        AnyView(SettingsModuleView())
+        AnyView(SettingsModuleView(presentedAsSheet: false))
+    }
+
+    /// Use this when presenting Settings as a full-screen sheet (e.g. from the dashboard gear icon).
+    public var sheetView: AnyView {
+        AnyView(SettingsModuleView(presentedAsSheet: true))
     }
 }
 
 // MARK: - Settings View
 
 private struct SettingsModuleView: View {
+    var presentedAsSheet: Bool = false
+
+    @Environment(\.dismiss) var dismiss
     @Environment(ModuleRegistry.self) var registry
     @Environment(ModuleState.self) var moduleState
     @Environment(DashboardState.self) var dashboardState
@@ -51,13 +59,33 @@ private struct SettingsModuleView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            // Header with title
-            Text("Settings")
-                .font(.title2)
-                .fontWeight(.bold)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.horizontal, 16)
-                .padding(.vertical, 12)
+            // Header with title (and back button when presented as a sheet)
+            ZStack {
+                Text("Settings")
+                    .font(.title2)
+                    .fontWeight(.bold)
+                    .frame(maxWidth: .infinity, alignment: .center)
+
+                if presentedAsSheet {
+                    HStack {
+                        Button(action: {
+                            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                            dismiss()
+                        }) {
+                            HStack(spacing: 4) {
+                                Image(systemName: "chevron.left")
+                                    .font(.system(size: 16, weight: .semibold))
+                                Text("Dashboard")
+                                    .font(.subheadline)
+                            }
+                            .foregroundColor(.accentColor)
+                        }
+                        Spacer()
+                    }
+                }
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 12)
 
             NavigationStack {
                 Form {

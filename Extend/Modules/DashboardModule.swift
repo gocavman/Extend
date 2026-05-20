@@ -57,6 +57,7 @@ private struct DashboardModuleView: View {
     @State private var tileRotations: [UUID: Double] = [:]
     @State private var showBlankAlert = false
     @State private var blankAlertMessage = ""
+    @State private var showingSettings = false
     
     // Track game levels for reactive UI updates
     @State private var game1Level: Int = 1
@@ -89,6 +90,9 @@ private struct DashboardModuleView: View {
                 .environment(MuscleGroupsState.shared)
                 .environment(EquipmentState.shared)
                 .environment(WorkoutLogState.shared)
+        }
+        .fullScreenCover(isPresented: $showingSettings) {
+            SettingsModule().sheetView
         }
         .onAppear {
             // Initialize game levels from UserDefaults
@@ -312,7 +316,7 @@ private struct DashboardModuleView: View {
                 Spacer()
                 Button(action: {
                     UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                    state.selectModule(ModuleIDs.settings)
+                    showingSettings = true
                 }) {
                     Image(systemName: "gearshape")
                         .font(.system(size: 18))
