@@ -1205,6 +1205,7 @@ private struct ExercisePickerView: View {
                                     .foregroundColor(.secondary)
                             }
                         }
+                        .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
                 }
