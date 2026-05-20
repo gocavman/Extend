@@ -543,6 +543,14 @@ private struct ActiveTimerView: View {
         return min(1.0, Double(elapsed) / Double(totalDuration))
     }
 
+    // Progress within the current phase (0.0 → 1.0), always increasing
+    private var phaseProgress: Double {
+        guard let p = currentPhase else { return 0 }
+        let duration = p.duration == 0 ? config.duration : p.duration
+        guard duration > 0 else { return 0 }
+        return min(1.0, Double(phaseElapsed) / Double(duration))
+    }
+
     var body: some View {
         NavigationStack {
         VStack(spacing: 0) {
@@ -565,11 +573,26 @@ private struct ActiveTimerView: View {
                         .foregroundColor(.secondary)
                         .padding(.top, 24)
 
-                    // Big clock
-                    Text(formatTime(displaySeconds))
-                        .font(.system(size: 80, weight: .bold, design: .monospaced))
-                        .minimumScaleFactor(0.5)
-                        .lineLimit(1)
+                    // Big clock with circular progress ring
+                    ZStack {
+                        // Track ring
+                        Circle()
+                            .stroke(Color(red: 0.93, green: 0.93, blue: 0.95), lineWidth: 10)
+
+                        // Progress ring
+                        Circle()
+                            .trim(from: 0, to: phaseProgress)
+                            .stroke(Color.black.opacity(0.85), style: StrokeStyle(lineWidth: 10, lineCap: .round))
+                            .rotationEffect(.degrees(-90))
+                            .animation(.linear(duration: 0.5), value: phaseProgress)
+
+                        // Time text
+                        Text(formatTime(displaySeconds))
+                            .font(.system(size: 64, weight: .bold, design: .monospaced))
+                            .minimumScaleFactor(0.4)
+                            .lineLimit(1)
+                    }
+                    .frame(width: 240, height: 240)
 
                     // Phase navigation
                     HStack(spacing: 32) {
