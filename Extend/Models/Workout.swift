@@ -211,23 +211,27 @@ public struct Workout: Identifiable, Codable {
     /// Ordered flat list of exercises and rest periods.
     public var items: [WorkoutItem]
     public var isFavorite: Bool
+    /// Raw value of HKWorkoutActivityType. nil = use .other at export time.
+    public var healthKitActivityType: UInt?
 
     public init(
         id: UUID = UUID(),
         name: String,
         notes: String = "",
         items: [WorkoutItem] = [],
-        isFavorite: Bool = false
+        isFavorite: Bool = false,
+        healthKitActivityType: UInt? = nil
     ) {
-        self.id         = id
-        self.name       = name
-        self.notes      = notes
-        self.items      = items
-        self.isFavorite = isFavorite
+        self.id                   = id
+        self.name                 = name
+        self.notes                = notes
+        self.items                = items
+        self.isFavorite           = isFavorite
+        self.healthKitActivityType = healthKitActivityType
     }
 
     private enum CodingKeys: String, CodingKey {
-        case id, name, notes, items, isFavorite
+        case id, name, notes, items, isFavorite, healthKitActivityType
         case exercises  // legacy key from old model
     }
 
@@ -237,6 +241,7 @@ public struct Workout: Identifiable, Codable {
         name       = try c.decode(String.self, forKey: .name)
         notes      = try c.decodeIfPresent(String.self, forKey: .notes) ?? ""
         isFavorite = try c.decodeIfPresent(Bool.self, forKey: .isFavorite) ?? false
+        healthKitActivityType = try c.decodeIfPresent(UInt.self, forKey: .healthKitActivityType)
 
         if let newItems = try c.decodeIfPresent([WorkoutItem].self, forKey: .items) {
             items = newItems
@@ -253,6 +258,7 @@ public struct Workout: Identifiable, Codable {
         try c.encode(notes,      forKey: .notes)
         try c.encode(items,      forKey: .items)
         try c.encode(isFavorite, forKey: .isFavorite)
+        try c.encodeIfPresent(healthKitActivityType, forKey: .healthKitActivityType)
     }
 
     // MARK: Convenience helpers

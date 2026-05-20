@@ -8,6 +8,8 @@
 import Foundation
 import Observation
 
+private let defaults = UserDefaults(suiteName: "group.com.cavanmannenbach.extend") ?? .standard
+
 // MARK: - JSON mapping types (muscle_images.json)
 
 private struct MuscleImageMapping: Decodable {
@@ -36,7 +38,7 @@ public final class MuscleGroupsState {
     /// The image set option selected globally (male / female).
     /// Stored in UserDefaults so it persists across launches.
     public var selectedBodyOption: BodyImageOption {
-        didSet { UserDefaults.standard.set(selectedBodyOption.rawValue, forKey: bodyOptionKey) }
+        didSet { defaults.set(selectedBodyOption.rawValue, forKey: bodyOptionKey) }
     }
 
     public enum BodyImageOption: String, CaseIterable {
@@ -49,7 +51,7 @@ public final class MuscleGroupsState {
     private let bodyOptionKey = "muscle_body_option"
 
     private init() {
-        let raw = UserDefaults.standard.string(forKey: bodyOptionKey) ?? BodyImageOption.male.rawValue
+        let raw = defaults.string(forKey: bodyOptionKey) ?? BodyImageOption.male.rawValue
         selectedBodyOption = BodyImageOption(rawValue: raw) ?? .male
         loadGroups()
     }
@@ -129,12 +131,12 @@ public final class MuscleGroupsState {
 
     private func saveGroups() {
         if let data = try? JSONEncoder().encode(groups) {
-            UserDefaults.standard.set(data, forKey: storageKey)
+            defaults.set(data, forKey: storageKey)
         }
     }
 
     private func loadGroups() {
-        if let data = UserDefaults.standard.data(forKey: storageKey),
+        if let data = defaults.data(forKey: storageKey),
            let decoded = try? JSONDecoder().decode([MuscleGroup].self, from: data) {
             groups = decoded
         } else {

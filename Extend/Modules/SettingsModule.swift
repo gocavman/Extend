@@ -10,6 +10,8 @@ import UniformTypeIdentifiers
 import UIKit
 import PhotosUI
 
+private let defaults = UserDefaults(suiteName: "group.com.cavanmannenbach.extend") ?? .standard
+
 /// Settings module for app configuration
 public struct SettingsModule: AppModule {
     public let id: UUID = ModuleIDs.settings
@@ -36,10 +38,12 @@ private struct SettingsModuleView: View {
     @Environment(EquipmentState.self) var equipmentState
     @Environment(DashboardHeaderState.self) var dashboardHeaderState
     @Environment(VoiceTrainerState.self) var voiceTrainerState
+    @Environment(HealthKitState.self) var healthKitState
 
     @AppStorage("weightUnit") private var weightUnit: String = "lbs"
 
     @State private var showingResetAlert = false
+    @State private var isSyncingHealthKit = false
     @State private var isNavBarSectionExpanded = false
     @State private var isNavBarColorExpanded = false
     @State private var isDashboardSectionExpanded = false
@@ -162,6 +166,51 @@ private struct SettingsModuleView: View {
                         }
                     }
 
+                    // MARK: - Apple Health Section
+                    Section("Apple Health") {
+                        Toggle("Export Workouts to Health", isOn: Binding(
+                            get: { healthKitState.exportStrengthWorkouts },
+                            set: { healthKitState.exportStrengthWorkouts = $0 }
+                        ))
+
+                        DisclosureGroup("Import Activities") {
+                            ForEach(HKWorkoutActivityTypeHelper.allCases) { entry in
+                                Toggle(entry.label, isOn: Binding(
+                                    get: { healthKitState.isImporting(entry.rawValue) },
+                                    set: { _ in healthKitState.toggleImport(entry.rawValue) }
+                                ))
+                            }
+                        }
+
+                        if let lastDate = healthKitState.lastImportDate {
+                            HStack {
+                                Text("Last Synced")
+                                Spacer()
+                                Text(lastDate, style: .relative)
+                                    .foregroundColor(.secondary)
+                                    .font(.subheadline)
+                            }
+                        }
+
+                        Button {
+                            isSyncingHealthKit = true
+                            Task {
+                                await WorkoutLogState.shared.importFromHealthKit()
+                                await WorkoutLogState.shared.exportPendingLogsToHealthKit()
+                                isSyncingHealthKit = false
+                            }
+                        } label: {
+                            HStack {
+                                Text(isSyncingHealthKit ? "Syncing…" : "Sync Now")
+                                Spacer()
+                                if isSyncingHealthKit {
+                                    ProgressView()
+                                }
+                            }
+                        }
+                        .disabled(isSyncingHealthKit || (!healthKitState.anyImportEnabled && !healthKitState.exportStrengthWorkouts))
+                    }
+
                     // MARK: - Reset Section
                     Section("Reset") {
                         Button(role: .destructive) {
@@ -243,22 +292,23 @@ private struct SettingsModuleView: View {
         TimerState.shared.reset()
         WorkoutLogState.shared.resetLogs()
         voiceTrainerState.resetConfigurations()
+        HealthKitState.shared.resetAll()
 
         // Reset Game Progress - Workout Buddy (Game 1)
         // Remove the entire stats dictionary and let it reinitialize
-        UserDefaults.standard.removeObject(forKey: "game1_stats")
-        UserDefaults.standard.removeObject(forKey: "game1_muscle_state")
+        defaults.removeObject(forKey: "game1_stats")
+        defaults.removeObject(forKey: "game1_muscle_state")
         
         // Reset Game Progress - Workout Match (Match Game)
-        UserDefaults.standard.removeObject(forKey: "matchGameCurrentLevel")
-        UserDefaults.standard.set(1, forKey: "matchGameCurrentLevel")
-        UserDefaults.standard.removeObject(forKey: "matchGameUnlockedLevels")
-        UserDefaults.standard.set([1], forKey: "matchGameUnlockedLevels")
+        defaults.removeObject(forKey: "matchGameCurrentLevel")
+        defaults.set(1, forKey: "matchGameCurrentLevel")
+        defaults.removeObject(forKey: "matchGameUnlockedLevels")
+        defaults.set([1], forKey: "matchGameUnlockedLevels")
         
         // Reset any per-level scores
-        if let savedLevels = UserDefaults.standard.array(forKey: "matchGameUnlockedLevels") as? [Int] {
+        if let savedLevels = defaults.array(forKey: "matchGameUnlockedLevels") as? [Int] {
             for levelId in savedLevels {
-                UserDefaults.standard.removeObject(forKey: "matchGameScore_\(levelId)")
+                defaults.removeObject(forKey: "matchGameScore_\(levelId)")
             }
         }
         

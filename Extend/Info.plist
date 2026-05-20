@@ -6,5 +6,9 @@
 	<array>
 		<string>remote-notification</string>
 	</array>
+	<key>NSHealthShareUsageDescription</key>
+	<string>Extend reads your cardio workouts from Apple Health to automatically add them to your workout log.</string>
+	<key>NSHealthUpdateUsageDescription</key>
+	<string>Extend saves your strength training workouts to Apple Health so they appear in your Activity rings.</string>
 </dict>
 </plist>

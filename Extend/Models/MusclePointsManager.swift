@@ -1,6 +1,8 @@
 import Foundation
 import Observation
 
+private let defaults = UserDefaults(suiteName: "group.com.cavanmannenbach.extend") ?? .standard
+
 /// Represents a single muscle group with its development points
 struct MusclePoint: Identifiable, Codable {
     let id: UUID
@@ -81,12 +83,12 @@ final class MusclePointsManager {
     
     private func savePoints() {
         if let data = try? JSONEncoder().encode(musclePoints) {
-            UserDefaults.standard.set(data, forKey: storageKey)
+            defaults.set(data, forKey: storageKey)
         }
     }
     
     private func loadPoints() {
-        if let data = UserDefaults.standard.data(forKey: storageKey),
+        if let data = defaults.data(forKey: storageKey),
            let decoded = try? JSONDecoder().decode([UUID: CGFloat].self, from: data) {
             musclePoints = decoded
         } else {

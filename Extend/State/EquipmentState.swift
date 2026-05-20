@@ -8,6 +8,8 @@
 import Foundation
 import Observation
 
+private let defaults = UserDefaults(suiteName: "group.com.cavanmannenbach.extend") ?? .standard
+
 /// State management for equipment list.
 @Observable
 public final class EquipmentState {
@@ -62,12 +64,12 @@ public final class EquipmentState {
     
     private func saveItems() {
         if let data = try? JSONEncoder().encode(items) {
-            UserDefaults.standard.set(data, forKey: storageKey)
+            defaults.set(data, forKey: storageKey)
         }
     }
     
     private func loadItems() {
-        if let data = UserDefaults.standard.data(forKey: storageKey),
+        if let data = defaults.data(forKey: storageKey),
            let decoded = try? JSONDecoder().decode([Equipment].self, from: data) {
             items = decoded
         } else {

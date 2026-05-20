@@ -8,6 +8,8 @@
 import Observation
 import Foundation
 
+private let defaults = UserDefaults(suiteName: "group.com.cavanmannenbach.extend") ?? .standard
+
 @Observable
 public final class WorkoutsState {
     public static let shared = WorkoutsState()
@@ -103,7 +105,7 @@ public final class WorkoutsState {
     }
 
     private func loadWorkouts() {
-        if let data = UserDefaults.standard.data(forKey: storageKey),
+        if let data = defaults.data(forKey: storageKey),
            let decoded = try? JSONDecoder().decode([Workout].self, from: data) {
             workouts = decoded
         }
@@ -111,18 +113,18 @@ public final class WorkoutsState {
 
     private func saveWorkouts() {
         if let encoded = try? JSONEncoder().encode(workouts) {
-            UserDefaults.standard.set(encoded, forKey: storageKey)
+            defaults.set(encoded, forKey: storageKey)
         }
     }
 
     private func saveFavorites() {
         if let encoded = try? JSONEncoder().encode(Array(favoriteWorkoutIDs)) {
-            UserDefaults.standard.set(encoded, forKey: favoritesKey)
+            defaults.set(encoded, forKey: favoritesKey)
         }
     }
 
     private func loadFavorites() {
-        if let data = UserDefaults.standard.data(forKey: favoritesKey),
+        if let data = defaults.data(forKey: favoritesKey),
            let decoded = try? JSONDecoder().decode([UUID].self, from: data) {
             favoriteWorkoutIDs = Set(decoded)
         }

@@ -311,6 +311,7 @@ private struct WorkoutEditor: View {
     // Track which exercise rows have expanded info or sets editor
     @State private var expandedInfoIDs: Set<UUID> = []
     @State private var editMode: EditMode = .active
+    @State private var healthKitActivityType: UInt? = nil
 
     init(title: String, initialWorkout: Workout? = nil, onSave: @escaping (Workout) -> Void, onDelete: (() -> Void)? = nil) {
         self.title = title
@@ -322,6 +323,7 @@ private struct WorkoutEditor: View {
             _name = State(initialValue: workout.name)
             _notes = State(initialValue: workout.notes)
             _workoutItems = State(initialValue: workout.items)
+            _healthKitActivityType = State(initialValue: workout.healthKitActivityType)
         }
     }
 
@@ -345,6 +347,9 @@ private struct WorkoutEditor: View {
                     TextField("Workout Name", text: $name)
                     TextField("Notes (optional)", text: $notes, axis: .vertical)
                         .lineLimit(3, reservesSpace: true)
+                    if HealthKitState.shared.exportStrengthWorkouts {
+                        HKActivityTypePicker(rawValue: $healthKitActivityType)
+                    }
                 }
 
                 Section {
@@ -429,7 +434,9 @@ private struct WorkoutEditor: View {
                             id: initialWorkout?.id ?? UUID(),
                             name: name,
                             notes: notes,
-                            items: workoutItems
+                            items: workoutItems,
+                            isFavorite: initialWorkout?.isFavorite ?? false,
+                            healthKitActivityType: healthKitActivityType
                         )
                         onSave(workout)
                         dismiss()
@@ -2164,7 +2171,11 @@ public struct StartWorkoutView: View {
             duration: TimeInterval(totalActiveSeconds)
         )
 
-        WorkoutLogState.shared.addLog(workoutLog)
+        WorkoutLogState.shared.addLog(
+            workoutLog,
+            exportToHealthKit: HealthKitState.shared.exportStrengthWorkouts,
+            activityTypeRaw: workout.healthKitActivityType
+        )
         moduleState.selectModule(ModuleIDs.progress)
         UIImpactFeedbackGenerator(style: .heavy).impactOccurred()
         dismiss()

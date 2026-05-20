@@ -1,5 +1,7 @@
 import Foundation
 
+private let defaults = UserDefaults(suiteName: "group.com.cavanmannenbach.extend") ?? .standard
+
 /// Represents an object placed in the editor
 struct EditorObject: Codable, Identifiable {
     let id: UUID
@@ -519,7 +521,7 @@ class SavedFramesManager {
     
     /// Get all saved frames
     func getAllFrames() -> [SavedEditFrame] {
-        guard let data = UserDefaults.standard.data(forKey: userDefaultsKey),
+        guard let data = defaults.data(forKey: userDefaultsKey),
               let frames = try? JSONDecoder().decode([SavedEditFrame].self, from: data) else {
             return []
         }
@@ -696,7 +698,7 @@ class SavedFramesManager {
     /// Save all frames to UserDefaults
     private func saveAll(_ frames: [SavedEditFrame]) {
         if let data = try? JSONEncoder().encode(frames) {
-            UserDefaults.standard.set(data, forKey: userDefaultsKey)
+            defaults.set(data, forKey: userDefaultsKey)
         }
     }
     
@@ -813,7 +815,7 @@ class SavedFramesManager {
     
     /// Clear all saved frames (for testing)
     func clearAll() {
-        UserDefaults.standard.removeObject(forKey: userDefaultsKey)
+        defaults.removeObject(forKey: userDefaultsKey)
         print("⚠️ All saved frames cleared")
     }
 }

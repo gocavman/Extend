@@ -300,6 +300,9 @@ private struct TimerEditorView: View {
                     TextField("Name", text: $config.name)
                     TextField("Notes (optional)", text: $config.notes, axis: .vertical)
                         .lineLimit(3, reservesSpace: true)
+                    if HealthKitState.shared.exportStrengthWorkouts {
+                        HKActivityTypePicker(rawValue: $config.healthKitActivityType)
+                    }
                 }
 
                 // Type picker — switching presets defaults
@@ -848,7 +851,11 @@ private struct ActiveTimerView: View {
             notes: buildLogNotes(),
             duration: TimeInterval(totalElapsed)
         )
-        WorkoutLogState.shared.addLog(log)
+        WorkoutLogState.shared.addLog(
+            log,
+            exportToHealthKit: HealthKitState.shared.exportStrengthWorkouts,
+            activityTypeRaw: config.healthKitActivityType
+        )
         ModuleState.shared.selectModule(ModuleIDs.progress)
         dismiss()
     }

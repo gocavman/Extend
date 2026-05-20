@@ -8,6 +8,8 @@
 import Foundation
 import Observation
 
+private let defaults = UserDefaults(suiteName: "group.com.cavanmannenbach.extend") ?? .standard
+
 /// State management for Quick Workout favorite exercises
 /// Persists favorite exercise selections across app sessions
 @Observable
@@ -43,12 +45,12 @@ public final class QuickWorkoutState {
 
     private func saveFavorites() {
         if let encoded = try? JSONEncoder().encode(Array(favoriteExerciseIDs)) {
-            UserDefaults.standard.set(encoded, forKey: favoritesKey)
+            defaults.set(encoded, forKey: favoritesKey)
         }
     }
 
     private func loadFavorites() {
-        if let data = UserDefaults.standard.data(forKey: favoritesKey),
+        if let data = defaults.data(forKey: favoritesKey),
            let decoded = try? JSONDecoder().decode([UUID].self, from: data) {
             favoriteExerciseIDs = Set(decoded)
         }

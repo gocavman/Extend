@@ -3,6 +3,8 @@ import Observation
 import SwiftUI
 import UIKit
 
+private let defaults = UserDefaults(suiteName: "group.com.cavanmannenbach.extend") ?? .standard
+
 public enum HeaderImageStyle: String, CaseIterable, Codable {
     case square
     case rounded
@@ -62,11 +64,11 @@ final class DashboardHeaderState {
     }
 
     private init() {
-        let storedTitle = UserDefaults.standard.string(forKey: titleKey)
+        let storedTitle = defaults.string(forKey: titleKey)
         title = storedTitle?.isEmpty == false ? storedTitle! : "Dashboard"
-        imageData = UserDefaults.standard.data(forKey: imageKey)
+        imageData = defaults.data(forKey: imageKey)
 
-        if let styleRaw = UserDefaults.standard.string(forKey: imageStyleKey),
+        if let styleRaw = defaults.string(forKey: imageStyleKey),
            let style = HeaderImageStyle(rawValue: styleRaw) {
             imageStyle = style
         } else {
@@ -79,26 +81,26 @@ final class DashboardHeaderState {
             ?? RGBAColor(red: 0.0, green: 0.0, blue: 0.0, alpha: 1.0)
         backgroundGradientComponents = RGBAColor.load(from: backgroundGradientSecondaryKey)
             ?? RGBAColor(red: 0.96, green: 0.96, blue: 0.97, alpha: 1.0)
-        backgroundUseGradient = UserDefaults.standard.bool(forKey: backgroundUseGradientKey)
+        backgroundUseGradient = defaults.bool(forKey: backgroundUseGradientKey)
     }
 
     func updateTitle(_ newTitle: String) {
         title = newTitle
-        UserDefaults.standard.set(newTitle, forKey: titleKey)
+        defaults.set(newTitle, forKey: titleKey)
     }
 
     func updateImageData(_ data: Data?) {
         imageData = data
         if let data {
-            UserDefaults.standard.set(data, forKey: imageKey)
+            defaults.set(data, forKey: imageKey)
         } else {
-            UserDefaults.standard.removeObject(forKey: imageKey)
+            defaults.removeObject(forKey: imageKey)
         }
     }
 
     func updateImageStyle(_ style: HeaderImageStyle) {
         imageStyle = style
-        UserDefaults.standard.set(style.rawValue, forKey: imageStyleKey)
+        defaults.set(style.rawValue, forKey: imageStyleKey)
     }
 
     func updateBackgroundColor(_ color: Color) {
@@ -113,7 +115,7 @@ final class DashboardHeaderState {
 
     func updateBackgroundUseGradient(_ useGradient: Bool) {
         backgroundUseGradient = useGradient
-        UserDefaults.standard.set(useGradient, forKey: backgroundUseGradientKey)
+        defaults.set(useGradient, forKey: backgroundUseGradientKey)
     }
 
     func updateTextColor(_ color: Color) {
@@ -130,13 +132,13 @@ final class DashboardHeaderState {
         backgroundGradientComponents = RGBAColor(red: 0.96, green: 0.96, blue: 0.97, alpha: 1.0)
         backgroundUseGradient = false
 
-        UserDefaults.standard.set(title, forKey: titleKey)
-        UserDefaults.standard.removeObject(forKey: imageKey)
-        UserDefaults.standard.set(imageStyle.rawValue, forKey: imageStyleKey)
+        defaults.set(title, forKey: titleKey)
+        defaults.removeObject(forKey: imageKey)
+        defaults.set(imageStyle.rawValue, forKey: imageStyleKey)
         backgroundComponents.save(to: backgroundColorKey)
         textComponents.save(to: textColorKey)
         backgroundGradientComponents.save(to: backgroundGradientSecondaryKey)
-        UserDefaults.standard.set(backgroundUseGradient, forKey: backgroundUseGradientKey)
+        defaults.set(backgroundUseGradient, forKey: backgroundUseGradientKey)
     }
 }
 
@@ -168,12 +170,12 @@ private struct RGBAColor: Codable {
 
     func save(to key: String) {
         if let data = try? JSONEncoder().encode(self) {
-            UserDefaults.standard.set(data, forKey: key)
+            defaults.set(data, forKey: key)
         }
     }
 
     static func load(from key: String) -> RGBAColor? {
-        guard let data = UserDefaults.standard.data(forKey: key) else { return nil }
+        guard let data = defaults.data(forKey: key) else { return nil }
         return try? JSONDecoder().decode(RGBAColor.self, from: data)
     }
 }

@@ -17,6 +17,8 @@ public struct Exercise: Identifiable, Codable, Hashable {
     public var equipmentIDs: [UUID]           // References to Equipment UUIDs
     public var defaultEquipmentIDs: [UUID]    // Equipment pre-selected when starting a workout
     public var isFavorite: Bool
+    /// Raw value of HKWorkoutActivityType. nil = use .other at export time (Quick Workout).
+    public var healthKitActivityType: UInt?
     
     // For backwards compatibility, expose combined muscles
     public var muscleGroupIDs: [UUID] {
@@ -31,7 +33,8 @@ public struct Exercise: Identifiable, Codable, Hashable {
         secondaryMuscleGroupIDs: [UUID] = [],
         equipmentIDs: [UUID] = [],
         defaultEquipmentIDs: [UUID] = [],
-        isFavorite: Bool = false
+        isFavorite: Bool = false,
+        healthKitActivityType: UInt? = nil
     ) {
         self.id = id
         self.name = name
@@ -41,6 +44,7 @@ public struct Exercise: Identifiable, Codable, Hashable {
         self.equipmentIDs = equipmentIDs
         self.defaultEquipmentIDs = defaultEquipmentIDs
         self.isFavorite = isFavorite
+        self.healthKitActivityType = healthKitActivityType
     }
 
     // MARK: - Backward-compatible decoding
@@ -54,9 +58,10 @@ public struct Exercise: Identifiable, Codable, Hashable {
         equipmentIDs = try container.decodeIfPresent([UUID].self, forKey: .equipmentIDs) ?? []
         defaultEquipmentIDs = try container.decodeIfPresent([UUID].self, forKey: .defaultEquipmentIDs) ?? []
         isFavorite = try container.decodeIfPresent(Bool.self, forKey: .isFavorite) ?? false
+        healthKitActivityType = try container.decodeIfPresent(UInt.self, forKey: .healthKitActivityType)
     }
 
     private enum CodingKeys: String, CodingKey {
-        case id, name, notes, primaryMuscleGroupIDs, secondaryMuscleGroupIDs, equipmentIDs, defaultEquipmentIDs, isFavorite
+        case id, name, notes, primaryMuscleGroupIDs, secondaryMuscleGroupIDs, equipmentIDs, defaultEquipmentIDs, isFavorite, healthKitActivityType
     }
 }

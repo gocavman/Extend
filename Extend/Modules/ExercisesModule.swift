@@ -322,6 +322,7 @@ private struct ExerciseEditor: View {
     @State private var hasInitialized: Bool = false
     @State private var showSecondaryMuscles: Bool = false
     @State private var showDeleteConfirm = false
+    @State private var healthKitActivityType: UInt? = nil
     
     init(title: String, initialExercise: Exercise? = nil, onSave: @escaping (Exercise) -> Void, onDelete: (() -> Void)? = nil) {
         self.title = title
@@ -334,6 +335,7 @@ private struct ExerciseEditor: View {
             _notes = State(initialValue: exercise.notes)
             _selectedEquipmentIDs = State(initialValue: Set(exercise.equipmentIDs))
             _defaultEquipmentIDs = State(initialValue: Set(exercise.defaultEquipmentIDs))
+            _healthKitActivityType = State(initialValue: exercise.healthKitActivityType)
         }
     }
     
@@ -434,6 +436,11 @@ private struct ExerciseEditor: View {
                         }
                     }
                 }
+                if HealthKitState.shared.exportStrengthWorkouts {
+                    Section("Apple Health (Quick Workout)") {
+                        HKActivityTypePicker(rawValue: $healthKitActivityType)
+                    }
+                }
             }
             .navigationTitle(title)
             .navigationBarTitleDisplayMode(.inline)
@@ -459,7 +466,8 @@ private struct ExerciseEditor: View {
                             secondaryMuscleGroupIDs: Array(secondaryMuscleGroupIDs),
                             equipmentIDs: Array(selectedEquipmentIDs),
                             defaultEquipmentIDs: Array(defaultEquipmentIDs),
-                            isFavorite: initialExercise?.isFavorite ?? false
+                            isFavorite: initialExercise?.isFavorite ?? false,
+                            healthKitActivityType: healthKitActivityType
                         )
                         onSave(exercise)
                         dismiss()

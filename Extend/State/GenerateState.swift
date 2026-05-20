@@ -8,6 +8,8 @@
 import Foundation
 import Observation
 
+private let defaults = UserDefaults(suiteName: "group.com.cavanmannenbach.extend") ?? .standard
+
 @Observable
 public final class GenerateState {
     public static let shared = GenerateState()
@@ -82,7 +84,7 @@ public final class GenerateState {
 
     private func savePresets() {
         if let data = try? JSONEncoder().encode(filterPresets) {
-            UserDefaults.standard.set(data, forKey: presetsKey)
+            defaults.set(data, forKey: presetsKey)
         }
     }
     
@@ -91,7 +93,7 @@ public final class GenerateState {
     }
 
     private func loadPresets() {
-        guard let data = UserDefaults.standard.data(forKey: presetsKey),
+        guard let data = defaults.data(forKey: presetsKey),
               let presets = try? JSONDecoder().decode([GenerateFilterPreset].self, from: data) else {
             return
         }

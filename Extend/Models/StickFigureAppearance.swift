@@ -1,5 +1,7 @@
 import SwiftUI
 
+private let defaults = UserDefaults(suiteName: "group.com.cavanmannenbach.extend") ?? .standard
+
 /// Manages stick figure appearance colors that persist in UserDefaults
 @Observable
 class StickFigureAppearance {
@@ -94,8 +96,8 @@ class StickFigureAppearance {
     }
     
     var eyesEnabled: Bool {
-        get { UserDefaults.standard.bool(forKey: eyesEnabledKey) }
-        set { UserDefaults.standard.set(newValue, forKey: eyesEnabledKey) }
+        get { defaults.bool(forKey: eyesEnabledKey) }
+        set { defaults.set(newValue, forKey: eyesEnabledKey) }
     }
     
     var irisColor: Color {
@@ -104,14 +106,14 @@ class StickFigureAppearance {
     }
     
     var irisEnabled: Bool {
-        get { UserDefaults.standard.bool(forKey: irisEnabledKey) }
-        set { UserDefaults.standard.set(newValue, forKey: irisEnabledKey) }
+        get { defaults.bool(forKey: irisEnabledKey) }
+        set { defaults.set(newValue, forKey: irisEnabledKey) }
     }
     
     // MARK: - Helper Methods
     
     private func colorFromKey(_ key: String, default defaultColor: Color) -> Color {
-        guard let data = UserDefaults.standard.data(forKey: key),
+        guard let data = defaults.data(forKey: key),
               let decodedColor = try? JSONDecoder().decode(ColorData.self, from: data) else {
             return defaultColor
         }
@@ -121,7 +123,7 @@ class StickFigureAppearance {
     private func saveColor(_ color: Color, to key: String) {
         let colorData = ColorData(from: color)
         if let encoded = try? JSONEncoder().encode(colorData) {
-            UserDefaults.standard.set(encoded, forKey: key)
+            defaults.set(encoded, forKey: key)
         }
     }
     

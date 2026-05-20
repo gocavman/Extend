@@ -8,6 +8,8 @@
 import Foundation
 import Observation
 
+private let defaults = UserDefaults(suiteName: "group.com.cavanmannenbach.extend") ?? .standard
+
 /// State management for Dashboard tiles
 /// Persists across app sessions
 @Observable
@@ -67,12 +69,12 @@ public final class DashboardState {
     
     private func saveTiles() {
         if let encoded = try? JSONEncoder().encode(tiles) {
-            UserDefaults.standard.set(encoded, forKey: tilesKey)
+            defaults.set(encoded, forKey: tilesKey)
         }
     }
     
     private func loadTiles() {
-        if let data = UserDefaults.standard.data(forKey: tilesKey),
+        if let data = defaults.data(forKey: tilesKey),
            let decoded = try? JSONDecoder().decode([DashboardTile].self, from: data) {
             tiles = decoded
         } else {
@@ -84,12 +86,12 @@ public final class DashboardState {
     private func saveClickCounts() {
         let dict = tileClickCounts.mapKeys { $0.uuidString }
         if let encoded = try? JSONEncoder().encode(dict) {
-            UserDefaults.standard.set(encoded, forKey: clickCountsKey)
+            defaults.set(encoded, forKey: clickCountsKey)
         }
     }
     
     private func loadClickCounts() {
-        if let data = UserDefaults.standard.data(forKey: clickCountsKey),
+        if let data = defaults.data(forKey: clickCountsKey),
            let decoded = try? JSONDecoder().decode([String: Int].self, from: data) {
             tileClickCounts = decoded.compactMapKeys { UUID(uuidString: $0) }
         }

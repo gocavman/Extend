@@ -61,6 +61,8 @@ public struct TimerConfig: Identifiable, Codable, Hashable {
     public var ladderStep: Int        // seconds per ladder step
     public var ladderPeakRounds: Int  // steps up before coming back down
     public var isFavorite: Bool
+    /// Raw value of HKWorkoutActivityType. nil = use .other at export time.
+    public var healthKitActivityType: UInt?
 
     public init(
         id: UUID = UUID(),
@@ -75,7 +77,8 @@ public struct TimerConfig: Identifiable, Codable, Hashable {
         cooldownDuration: Int = 0,
         ladderStep: Int = 10,
         ladderPeakRounds: Int = 5,
-        isFavorite: Bool = false
+        isFavorite: Bool = false,
+        healthKitActivityType: UInt? = nil
     ) {
         self.id = id
         self.name = name
@@ -90,6 +93,7 @@ public struct TimerConfig: Identifiable, Codable, Hashable {
         self.ladderStep = ladderStep
         self.ladderPeakRounds = ladderPeakRounds
         self.isFavorite = isFavorite
+        self.healthKitActivityType = healthKitActivityType
     }
 
     /// Returns a copy of this config with preset defaults applied for the given type.

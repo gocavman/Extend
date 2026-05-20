@@ -9,6 +9,8 @@
 import SwiftUI
 import Combine
 
+private let defaults = UserDefaults(suiteName: "group.com.cavanmannenbach.extend") ?? .standard
+
 // MARK: - Saved Pose Model
 
 struct SavedPose: Codable, Identifiable {
@@ -153,12 +155,12 @@ class PoseManager: ObservableObject {
 
     private func persistPoses() {
         if let encoded = try? JSONEncoder().encode(savedPoses) {
-            UserDefaults.standard.set(encoded, forKey: savedPosesKey)
+            defaults.set(encoded, forKey: savedPosesKey)
         }
     }
 
     private func loadPoses() {
-        if let data = UserDefaults.standard.data(forKey: savedPosesKey),
+        if let data = defaults.data(forKey: savedPosesKey),
            let decoded = try? JSONDecoder().decode([SavedPose].self, from: data) {
             savedPoses = decoded
         }
@@ -172,11 +174,11 @@ class PoseManager: ObservableObject {
 
     private func saveDefaultStandPose(_ pose: StickFigurePose) {
         let encoded = try? JSONEncoder().encode(SavedStickFigurePose(from: pose))
-        UserDefaults.standard.set(encoded, forKey: defaultStandKey)
+        defaults.set(encoded, forKey: defaultStandKey)
     }
 
     func loadDefaultStandPose() -> StickFigurePose? {
-        guard let data = UserDefaults.standard.data(forKey: defaultStandKey),
+        guard let data = defaults.data(forKey: defaultStandKey),
               let decoded = try? JSONDecoder().decode(SavedStickFigurePose.self, from: data) else {
             return nil
         }
@@ -259,7 +261,6 @@ struct ClothingStyle {
     )
     
     func save() {
-        let defaults = UserDefaults.standard
         defaults.set(shirtColor.toHex(), forKey: "prog_stick_shirt_color")
         defaults.set(pantsColor.toHex(), forKey: "prog_stick_pants_color")
         defaults.set(shoeColor.toHex(), forKey: "prog_stick_shoe_color")
@@ -284,7 +285,6 @@ struct ClothingStyle {
     }
     
     static func load() -> ClothingStyle {
-        let defaults = UserDefaults.standard
         let skinDefault = Color(red: 0.9, green: 0.7, blue: 0.6)
         
         return ClothingStyle(

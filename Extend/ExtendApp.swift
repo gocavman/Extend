@@ -7,6 +7,7 @@
 
 import SwiftUI
 import SwiftData
+import HealthKit
 
 @main
 struct ExtendApp: App {
@@ -35,6 +36,7 @@ struct ExtendApp: App {
     let workoutLogState = WorkoutLogState.shared
     let timerState = TimerState.shared
     let voiceTrainerState = VoiceTrainerState()
+    let healthKitState = HealthKitState.shared
 
     var body: some Scene {
         WindowGroup {
@@ -52,6 +54,18 @@ struct ExtendApp: App {
                 .environment(workoutLogState)
                 .environment(timerState)
                 .environment(voiceTrainerState)
+                .environment(healthKitState)
+                .task {
+                    // Request HealthKit auth on first launch if any sync is configured
+                    guard !healthKitState.authorizationRequested else { return }
+                    guard HealthKitService.shared.isAvailable else { return }
+                    do {
+                        try await HealthKitService.shared.requestAuthorization()
+                        healthKitState.authorizationRequested = true
+                    } catch {
+                        // Non-fatal: user may have declined; we'll check status before each operation
+                    }
+                }
         }
         .modelContainer(sharedModelContainer)
     }

@@ -1,5 +1,7 @@
 import UIKit
 
+private let defaults = UserDefaults(suiteName: "group.com.cavanmannenbach.extend") ?? .standard
+
 // MARK: - Custom Header View for proper touch handling
 class StatHeaderView: UIView {
     override func hitTest(_ point: CGPoint, with event: UIEvent?) -> UIView? {
@@ -224,8 +226,8 @@ class StatsViewController: UIViewController {
             gameState.saveHighScore()
             
             // Clear coin last collected time
-            UserDefaults.standard.removeObject(forKey: "game1_coin_last_collected_time")
-            UserDefaults.standard.synchronize()
+            defaults.removeObject(forKey: "game1_coin_last_collected_time")
+            defaults.synchronize()
             
             print("🔄 DEBUG: Reloading stats UI...")
             self.loadStats()

@@ -7,6 +7,9 @@
 
 import Foundation
 import Observation
+import HealthKit
+
+private let defaults = UserDefaults(suiteName: "group.com.cavanmannenbach.extend") ?? .standard
 
 /// State management for workout logs and history
 @Observable
@@ -23,10 +26,61 @@ public final class WorkoutLogState {
     
     // MARK: - Log Management
     
-    /// Add a new workout log
-    public func addLog(_ log: WorkoutLog) {
+    /// Add a new workout log and optionally export it to Apple Health.
+    /// Pass `activityType` as the HKWorkoutActivityType raw value (nil → .other).
+    public func addLog(_ log: WorkoutLog, exportToHealthKit: Bool = false, activityTypeRaw: UInt? = nil) {
+        var log = log
+        log.healthKitActivityTypeRaw = activityTypeRaw
         logs.append(log)
         saveLogs()
+
+        if exportToHealthKit {
+            Task {
+                await exportLogToHealthKit(log, activityTypeRaw: activityTypeRaw)
+            }
+        }
+    }
+
+    /// Exports any logs that have never been sent to Apple Health (healthKitUUID == nil).
+    /// Called during Sync Now so logs created while export was disabled get back-filled.
+    @MainActor
+    public func exportPendingLogsToHealthKit() async {
+        guard HealthKitState.shared.exportStrengthWorkouts else { return }
+        guard HealthKitService.shared.isAvailable else { return }
+        let pending = logs.filter { $0.healthKitUUID == nil }
+        for log in pending {
+            await exportLogToHealthKit(log, activityTypeRaw: log.healthKitActivityTypeRaw)
+        }
+    }
+
+    /// Exports a single WorkoutLog to Apple Health.
+    /// Updates the stored log with the returned HKWorkout UUID for deduplication.
+    @MainActor
+    private func exportLogToHealthKit(_ log: WorkoutLog, activityTypeRaw: UInt? = nil) async {
+        guard HealthKitState.shared.exportStrengthWorkouts else { return }
+        guard HealthKitService.shared.isAvailable else { return }
+        guard log.healthKitUUID == nil else { return } // already exported
+
+        let startDate = log.completedAt.addingTimeInterval(-log.duration)
+        let calories = HealthKitService.shared.estimatedCalories(durationSeconds: log.duration)
+        let activityType = HKWorkoutActivityTypeHelper.hkType(from: activityTypeRaw)
+
+        do {
+            if let hkUUID = try await HealthKitService.shared.exportStrengthWorkout(
+                startDate: startDate,
+                endDate: log.completedAt,
+                totalEnergyBurned: calories,
+                activityType: activityType
+            ) {
+                // Persist the HKWorkout UUID back to the log
+                if let index = logs.firstIndex(where: { $0.id == log.id }) {
+                    logs[index].healthKitUUID = hkUUID
+                    saveLogs()
+                }
+            }
+        } catch {
+            // Non-fatal: HealthKit export failure should not surface to the user
+        }
     }
     
     /// Update an existing workout log
@@ -428,12 +482,12 @@ public final class WorkoutLogState {
     
     private func saveLogs() {
         if let encoded = try? JSONEncoder().encode(logs) {
-            UserDefaults.standard.set(encoded, forKey: logsKey)
+            defaults.set(encoded, forKey: logsKey)
         }
     }
     
     private func loadLogs() {
-        if let data = UserDefaults.standard.data(forKey: logsKey),
+        if let data = defaults.data(forKey: logsKey),
            let decoded = try? JSONDecoder().decode([WorkoutLog].self, from: data) {
             logs = decoded
         }
@@ -443,5 +497,44 @@ public final class WorkoutLogState {
     public func resetLogs() {
         logs = []
         saveLogs()
+    }
+
+    // MARK: - HealthKit Import
+
+    /// Fetches cardio workouts from Apple Health since the last import date
+    /// and adds any that aren't already in the log.
+    @MainActor
+    public func importFromHealthKit() async {
+        let hkState = HealthKitState.shared
+        guard hkState.anyImportEnabled else { return }
+        guard HealthKitService.shared.isAvailable else { return }
+
+        let since = hkState.lastImportDate ?? Calendar.current.date(byAdding: .year, value: -1, to: Date()) ?? Date()
+        let activityTypes = HealthKitService.shared.enabledActivityTypes(state: hkState)
+
+        do {
+            let hkWorkouts = try await HealthKitService.shared.fetchCardioWorkouts(
+                since: since,
+                activityTypes: activityTypes
+            )
+
+            // Collect UUIDs already in the log so we don't duplicate
+            let existingUUIDs = Set(logs.compactMap { $0.healthKitUUID })
+
+            var addedAny = false
+            for hkWorkout in hkWorkouts {
+                guard !existingUUIDs.contains(hkWorkout.uuid) else { continue }
+                let newLog = HealthKitService.shared.workoutLog(from: hkWorkout)
+                logs.append(newLog)
+                addedAny = true
+            }
+
+            if addedAny {
+                saveLogs()
+            }
+            hkState.lastImportDate = Date()
+        } catch {
+            // Non-fatal: import failure is silent
+        }
     }
 }

@@ -9,6 +9,8 @@ import SwiftUI
 import Observation
 import UIKit
 
+private let defaults = UserDefaults(suiteName: "group.com.cavanmannenbach.extend") ?? .standard
+
 /// Dashboard module - the main landing page with customizable tiles
 public struct DashboardModule: AppModule {
     public let id: UUID = ModuleIDs.dashboard
@@ -90,26 +92,26 @@ private struct DashboardModuleView: View {
         }
         .onAppear {
             // Initialize game levels from UserDefaults
-            if let statsDict = UserDefaults.standard.dictionary(forKey: "game1_stats"),
+            if let statsDict = defaults.dictionary(forKey: "game1_stats"),
                let savedLevel = statsDict["currentLevel"] as? Int {
                 game1Level = savedLevel > 0 ? savedLevel : 1
             } else {
                 game1Level = 1
             }
             
-            matchGameLevel = UserDefaults.standard.integer(forKey: "matchGameCurrentLevel")
+            matchGameLevel = defaults.integer(forKey: "matchGameCurrentLevel")
             if matchGameLevel <= 0 { matchGameLevel = 1 }
         }
         .onReceive(NotificationCenter.default.publisher(for: UIApplication.didBecomeActiveNotification)) { _ in
             // Refresh game levels when app becomes active (returning from game)
-            if let statsDict = UserDefaults.standard.dictionary(forKey: "game1_stats"),
+            if let statsDict = defaults.dictionary(forKey: "game1_stats"),
                let savedLevel = statsDict["currentLevel"] as? Int {
                 game1Level = savedLevel > 0 ? savedLevel : 1
             } else {
                 game1Level = 1
             }
             
-            matchGameLevel = UserDefaults.standard.integer(forKey: "matchGameCurrentLevel")
+            matchGameLevel = defaults.integer(forKey: "matchGameCurrentLevel")
             if matchGameLevel <= 0 { matchGameLevel = 1 }
         }
     }

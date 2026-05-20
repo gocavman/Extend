@@ -7,6 +7,125 @@
 
 import Foundation
 import HealthKit
+import SwiftUI
+
+// MARK: - HKWorkoutActivityType Helper
+
+/// A single entry in the activity type picker.
+public struct HKActivityTypeEntry: Identifiable {
+    public let label: String
+    public let rawValue: UInt
+    public var id: UInt { rawValue }
+}
+
+/// Provides a sorted list of all meaningful HKWorkoutActivityType values with
+/// human-readable display names, plus a converter from raw UInt? back to the enum.
+public enum HKWorkoutActivityTypeHelper {
+    public static let allCases: [HKActivityTypeEntry] = [
+        .init(label: "American Football",          rawValue: HKWorkoutActivityType.americanFootball.rawValue),
+        .init(label: "Archery",                    rawValue: HKWorkoutActivityType.archery.rawValue),
+        .init(label: "Australian Football",        rawValue: HKWorkoutActivityType.australianFootball.rawValue),
+        .init(label: "Badminton",                  rawValue: HKWorkoutActivityType.badminton.rawValue),
+        .init(label: "Baseball",                   rawValue: HKWorkoutActivityType.baseball.rawValue),
+        .init(label: "Basketball",                 rawValue: HKWorkoutActivityType.basketball.rawValue),
+        .init(label: "Bowling",                    rawValue: HKWorkoutActivityType.bowling.rawValue),
+        .init(label: "Boxing",                     rawValue: HKWorkoutActivityType.boxing.rawValue),
+        .init(label: "Climbing",                   rawValue: HKWorkoutActivityType.climbing.rawValue),
+        .init(label: "Cricket",                    rawValue: HKWorkoutActivityType.cricket.rawValue),
+        .init(label: "Cross Country Skiing",       rawValue: HKWorkoutActivityType.crossCountrySkiing.rawValue),
+        .init(label: "Cross Training",             rawValue: HKWorkoutActivityType.crossTraining.rawValue),
+        .init(label: "Curling",                    rawValue: HKWorkoutActivityType.curling.rawValue),
+        .init(label: "Cycling",                    rawValue: HKWorkoutActivityType.cycling.rawValue),
+        .init(label: "Dance (Cardio)",              rawValue: HKWorkoutActivityType.cardioDance.rawValue),
+        .init(label: "Dance (Social)",              rawValue: HKWorkoutActivityType.socialDance.rawValue),
+        .init(label: "Disc Sports",                rawValue: HKWorkoutActivityType.discSports.rawValue),
+        .init(label: "Downhill Skiing",            rawValue: HKWorkoutActivityType.downhillSkiing.rawValue),
+        .init(label: "Elliptical",                 rawValue: HKWorkoutActivityType.elliptical.rawValue),
+        .init(label: "Equestrian Sports",          rawValue: HKWorkoutActivityType.equestrianSports.rawValue),
+        .init(label: "Fencing",                    rawValue: HKWorkoutActivityType.fencing.rawValue),
+        .init(label: "Fishing",                    rawValue: HKWorkoutActivityType.fishing.rawValue),
+        .init(label: "Functional Strength Training", rawValue: HKWorkoutActivityType.functionalStrengthTraining.rawValue),
+        .init(label: "Golf",                       rawValue: HKWorkoutActivityType.golf.rawValue),
+        .init(label: "Gymnastics",                 rawValue: HKWorkoutActivityType.gymnastics.rawValue),
+        .init(label: "Handball",                   rawValue: HKWorkoutActivityType.handball.rawValue),
+        .init(label: "High Intensity Interval Training", rawValue: HKWorkoutActivityType.highIntensityIntervalTraining.rawValue),
+        .init(label: "Hiking",                     rawValue: HKWorkoutActivityType.hiking.rawValue),
+        .init(label: "Hockey",                     rawValue: HKWorkoutActivityType.hockey.rawValue),
+        .init(label: "Hunting",                    rawValue: HKWorkoutActivityType.hunting.rawValue),
+        .init(label: "Jump Rope",                  rawValue: HKWorkoutActivityType.jumpRope.rawValue),
+        .init(label: "Kickboxing",                 rawValue: HKWorkoutActivityType.kickboxing.rawValue),
+        .init(label: "Lacrosse",                   rawValue: HKWorkoutActivityType.lacrosse.rawValue),
+        .init(label: "Martial Arts",               rawValue: HKWorkoutActivityType.martialArts.rawValue),
+        .init(label: "Mind and Body",              rawValue: HKWorkoutActivityType.mindAndBody.rawValue),
+        .init(label: "Mixed Cardio",               rawValue: HKWorkoutActivityType.mixedCardio.rawValue),
+        .init(label: "Other",                      rawValue: HKWorkoutActivityType.other.rawValue),
+        .init(label: "Paddle Sports",              rawValue: HKWorkoutActivityType.paddleSports.rawValue),
+        .init(label: "Pickleball",                 rawValue: HKWorkoutActivityType.pickleball.rawValue),
+        .init(label: "Pilates",                    rawValue: HKWorkoutActivityType.pilates.rawValue),
+        .init(label: "Play",                       rawValue: HKWorkoutActivityType.play.rawValue),
+        .init(label: "Preparation and Recovery",   rawValue: HKWorkoutActivityType.preparationAndRecovery.rawValue),
+        .init(label: "Racquetball",                rawValue: HKWorkoutActivityType.racquetball.rawValue),
+        .init(label: "Rowing",                     rawValue: HKWorkoutActivityType.rowing.rawValue),
+        .init(label: "Rugby",                      rawValue: HKWorkoutActivityType.rugby.rawValue),
+        .init(label: "Running",                    rawValue: HKWorkoutActivityType.running.rawValue),
+        .init(label: "Sailing",                    rawValue: HKWorkoutActivityType.sailing.rawValue),
+        .init(label: "Skating Sports",             rawValue: HKWorkoutActivityType.skatingSports.rawValue),
+        .init(label: "Snowboarding",               rawValue: HKWorkoutActivityType.snowboarding.rawValue),
+        .init(label: "Snow Sports",                rawValue: HKWorkoutActivityType.snowSports.rawValue),
+        .init(label: "Soccer",                     rawValue: HKWorkoutActivityType.soccer.rawValue),
+        .init(label: "Softball",                   rawValue: HKWorkoutActivityType.softball.rawValue),
+        .init(label: "Squash",                     rawValue: HKWorkoutActivityType.squash.rawValue),
+        .init(label: "Stair Climbing",             rawValue: HKWorkoutActivityType.stairClimbing.rawValue),
+        .init(label: "Stairs",                     rawValue: HKWorkoutActivityType.stairs.rawValue),
+        .init(label: "Step Training",              rawValue: HKWorkoutActivityType.stepTraining.rawValue),
+        .init(label: "Strength Training (Traditional)", rawValue: HKWorkoutActivityType.traditionalStrengthTraining.rawValue),
+        .init(label: "Surfing Sports",             rawValue: HKWorkoutActivityType.surfingSports.rawValue),
+        .init(label: "Swimming",                   rawValue: HKWorkoutActivityType.swimming.rawValue),
+        .init(label: "Table Tennis",               rawValue: HKWorkoutActivityType.tableTennis.rawValue),
+        .init(label: "Tennis",                     rawValue: HKWorkoutActivityType.tennis.rawValue),
+        .init(label: "Track and Field",            rawValue: HKWorkoutActivityType.trackAndField.rawValue),
+        .init(label: "Volleyball",                 rawValue: HKWorkoutActivityType.volleyball.rawValue),
+        .init(label: "Walking",                    rawValue: HKWorkoutActivityType.walking.rawValue),
+        .init(label: "Water Fitness",              rawValue: HKWorkoutActivityType.waterFitness.rawValue),
+        .init(label: "Water Polo",                 rawValue: HKWorkoutActivityType.waterPolo.rawValue),
+        .init(label: "Water Sports",               rawValue: HKWorkoutActivityType.waterSports.rawValue),
+        .init(label: "Wrestling",                  rawValue: HKWorkoutActivityType.wrestling.rawValue),
+        .init(label: "Yoga",                       rawValue: HKWorkoutActivityType.yoga.rawValue),
+    ].sorted { $0.label < $1.label }
+
+    /// Convert a stored raw UInt? back to an HKWorkoutActivityType. nil → .other.
+    public static func hkType(from rawValue: UInt?) -> HKWorkoutActivityType {
+        guard let raw = rawValue,
+              let type = HKWorkoutActivityType(rawValue: raw) else {
+            return .other
+        }
+        return type
+    }
+
+    /// Human-readable label for a given raw value, or nil if not found.
+    public static func label(for rawValue: UInt?) -> String? {
+        guard let raw = rawValue else { return nil }
+        return allCases.first(where: { $0.rawValue == raw })?.label
+    }
+}
+
+// MARK: - HKActivityTypePicker
+
+/// A reusable picker for HKWorkoutActivityType, binding to a UInt? raw value.
+/// Shows only when HealthKit export is enabled.
+struct HKActivityTypePicker: View {
+    @Binding var rawValue: UInt?
+
+    var body: some View {
+        Picker("Apple Health Activity", selection: $rawValue) {
+            Text("Default (Other)").tag(UInt?.none)
+            ForEach(HKWorkoutActivityTypeHelper.allCases) { entry in
+                Text(entry.label).tag(UInt?.some(entry.rawValue))
+            }
+        }
+        .pickerStyle(.navigationLink)
+    }
+}
 
 /// Wraps HKHealthStore operations for exporting strength workouts and
 /// importing cardio workouts from Apple Health.
@@ -39,17 +158,18 @@ public final class HealthKitService {
 
     // MARK: - Export: Strength Workout
 
-    /// Saves a completed strength workout to Apple Health.
+    /// Saves a completed workout to Apple Health.
     /// Returns the UUID of the created HKWorkout, or nil on failure.
     @discardableResult
     public func exportStrengthWorkout(
         startDate: Date,
         endDate: Date,
-        totalEnergyBurned: Double? = nil
+        totalEnergyBurned: Double? = nil,
+        activityType: HKWorkoutActivityType = .other
     ) async throws -> UUID? {
         guard isAvailable else { return nil }
 
-        let builder = HKWorkoutBuilder(healthStore: store, configuration: workoutConfiguration(), device: .local())
+        let builder = HKWorkoutBuilder(healthStore: store, configuration: workoutConfiguration(activityType: activityType), device: .local())
 
         try await builder.beginCollection(at: startDate)
 
@@ -62,12 +182,12 @@ public final class HealthKitService {
 
         try await builder.endCollection(at: endDate)
         let workout = try await builder.finishWorkout()
-        return workout.uuid
+        return workout?.uuid
     }
 
-    private func workoutConfiguration() -> HKWorkoutConfiguration {
+    private func workoutConfiguration(activityType: HKWorkoutActivityType = .other) -> HKWorkoutConfiguration {
         let config = HKWorkoutConfiguration()
-        config.activityType = .traditionalStrengthTraining
+        config.activityType = activityType
         return config
     }
 
@@ -139,11 +259,6 @@ public final class HealthKitService {
     // MARK: - Activity type helpers
 
     public func enabledActivityTypes(state: HealthKitState) -> Set<HKWorkoutActivityType> {
-        var types = Set<HKWorkoutActivityType>()
-        if state.importRunning  { types.insert(.running) }
-        if state.importCycling  { types.insert(.cycling) }
-        if state.importRowing   { types.insert(.rowing) }
-        if state.importWalking  { types.insert(.walking); types.insert(.hiking) }
-        return types
+        Set(state.importActivityTypes.compactMap { HKWorkoutActivityType(rawValue: $0) })
     }
 }

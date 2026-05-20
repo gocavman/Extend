@@ -8,6 +8,8 @@
 import Foundation
 import Observation
 
+private let defaults = UserDefaults(suiteName: "group.com.cavanmannenbach.extend") ?? .standard
+
 @Observable
 final class VoiceTrainerState {
     // Configuration
@@ -51,12 +53,12 @@ final class VoiceTrainerState {
     private func createDefaultConfigurationsIfNeeded() {
         // Check if defaults have ever been created (stored in UserDefaults)
         let defaultsCreatedKey = "VoiceTrainerDefaultsCreated"
-        let defaultsAlreadyCreated = UserDefaults.standard.bool(forKey: defaultsCreatedKey)
+        let defaultsAlreadyCreated = defaults.bool(forKey: defaultsCreatedKey)
         
         // Only create defaults on first launch
         if !defaultsAlreadyCreated {
             createDefaultConfigurations()
-            UserDefaults.standard.set(true, forKey: defaultsCreatedKey)
+            defaults.set(true, forKey: defaultsCreatedKey)
         }
     }
     
@@ -195,7 +197,7 @@ Left and Right Uppercuts
     
     func resetConfigurations() {
         savedConfigurations = []
-        UserDefaults.standard.removeObject(forKey: "VoiceTrainerDefaultsCreated")
+        defaults.removeObject(forKey: "VoiceTrainerDefaultsCreated")
         createDefaultConfigurations()
         saveToDefaults()
     }
@@ -206,7 +208,7 @@ Left and Right Uppercuts
     
     private func saveToDefaults() {
         if let encoded = try? JSONEncoder().encode(savedConfigurations) {
-            UserDefaults.standard.set(encoded, forKey: "VoiceTrainerConfigs")
+            defaults.set(encoded, forKey: "VoiceTrainerConfigs")
         }
     }
     
@@ -215,7 +217,7 @@ Left and Right Uppercuts
     }
     
     private func loadSavedConfigurations() {
-        if let data = UserDefaults.standard.data(forKey: "VoiceTrainerConfigs"),
+        if let data = defaults.data(forKey: "VoiceTrainerConfigs"),
            let decoded = try? JSONDecoder().decode([VoiceTrainerConfig].self, from: data) {
             savedConfigurations = decoded
         }
@@ -263,6 +265,8 @@ struct VoiceTrainerConfig: Identifiable, Codable, Hashable {
     var workoutStartWarning: Int  // seconds countdown before workout starts (0-30)
     var restEndWarning: Int       // seconds countdown before rest ends (0-30)
     var isFavorite: Bool
+    /// Raw value of HKWorkoutActivityType. nil = use .other at export time.
+    var healthKitActivityType: UInt?
     
     // Custom decoding to provide default values for new fields (backward compatibility)
     init(from decoder: Decoder) throws {
@@ -280,10 +284,11 @@ struct VoiceTrainerConfig: Identifiable, Codable, Hashable {
         workoutStartWarning = try container.decodeIfPresent(Int.self, forKey: .workoutStartWarning) ?? 10
         restEndWarning = try container.decodeIfPresent(Int.self, forKey: .restEndWarning) ?? 10
         isFavorite = try container.decodeIfPresent(Bool.self, forKey: .isFavorite) ?? false
+        healthKitActivityType = try container.decodeIfPresent(UInt.self, forKey: .healthKitActivityType)
     }
     
     // Standard initializer for creating new configs
-    init(id: UUID = UUID(), name: String, notes: String = "", text: String, roundLength: Int, restLength: Int, delayBetweenLines: Int, numberOfRounds: Int, randomOrder: Bool, cooldownPeriod: Int, workoutStartWarning: Int = 10, restEndWarning: Int = 10, isFavorite: Bool = false) {
+    init(id: UUID = UUID(), name: String, notes: String = "", text: String, roundLength: Int, restLength: Int, delayBetweenLines: Int, numberOfRounds: Int, randomOrder: Bool, cooldownPeriod: Int, workoutStartWarning: Int = 10, restEndWarning: Int = 10, isFavorite: Bool = false, healthKitActivityType: UInt? = nil) {
         self.id = id
         self.name = name
         self.notes = notes
@@ -297,6 +302,7 @@ struct VoiceTrainerConfig: Identifiable, Codable, Hashable {
         self.workoutStartWarning = workoutStartWarning
         self.restEndWarning = restEndWarning
         self.isFavorite = isFavorite
+        self.healthKitActivityType = healthKitActivityType
     }
     
     var parameterSummary: String {

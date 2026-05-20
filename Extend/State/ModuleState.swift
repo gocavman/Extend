@@ -9,6 +9,8 @@ import SwiftUI
 import Observation
 import UIKit
 
+private let defaults = UserDefaults(suiteName: "group.com.cavanmannenbach.extend") ?? .standard
+
 /// Navbar position preference
 public enum NavBarPosition: String, CaseIterable {
     case top = "Top"
@@ -56,7 +58,7 @@ public final class ModuleState {
             ?? Color(red: 0.98, green: 0.98, blue: 1.0)
         navBarTextColor = ModuleState.loadColor(for: navBarTextColorKey)
             ?? Color.black
-        navBarUseGradient = UserDefaults.standard.bool(forKey: navBarUseGradientKey)
+        navBarUseGradient = defaults.bool(forKey: navBarUseGradientKey)
         navBarGradientSecondaryColor = ModuleState.loadColor(for: navBarGradientSecondaryColorKey)
             ?? Color(red: 0.96, green: 0.96, blue: 0.97)
 
@@ -117,7 +119,7 @@ public final class ModuleState {
 
     public func updateNavBarUseGradient(_ useGradient: Bool) {
         navBarUseGradient = useGradient
-        UserDefaults.standard.set(useGradient, forKey: navBarUseGradientKey)
+        defaults.set(useGradient, forKey: navBarUseGradientKey)
     }
 
     public func updateNavBarGradientSecondaryColor(_ color: Color) {
@@ -134,20 +136,20 @@ public final class ModuleState {
         navBarGradientSecondaryColor = defaultSecondary
         ModuleState.saveColor(defaultBg, for: navBarBackgroundColorKey)
         ModuleState.saveColor(.black, for: navBarTextColorKey)
-        UserDefaults.standard.set(false, forKey: navBarUseGradientKey)
+        defaults.set(false, forKey: navBarUseGradientKey)
         ModuleState.saveColor(defaultSecondary, for: navBarGradientSecondaryColorKey)
     }
 
     private func saveNavBarPreferences() {
-        UserDefaults.standard.set(topNavBarModules.map { $0.uuidString }, forKey: topNavBarKey)
-        UserDefaults.standard.set(bottomNavBarModules.map { $0.uuidString }, forKey: bottomNavBarKey)
+        defaults.set(topNavBarModules.map { $0.uuidString }, forKey: topNavBarKey)
+        defaults.set(bottomNavBarModules.map { $0.uuidString }, forKey: bottomNavBarKey)
     }
 
     private func loadNavBarPreferences() {
-        if let topStrings = UserDefaults.standard.stringArray(forKey: topNavBarKey) {
+        if let topStrings = defaults.stringArray(forKey: topNavBarKey) {
             topNavBarModules = topStrings.compactMap { UUID(uuidString: $0) }
         }
-        if let bottomStrings = UserDefaults.standard.stringArray(forKey: bottomNavBarKey) {
+        if let bottomStrings = defaults.stringArray(forKey: bottomNavBarKey) {
             bottomNavBarModules = bottomStrings.compactMap { UUID(uuidString: $0) }
         }
     }
@@ -172,12 +174,12 @@ private extension ModuleState {
         uiColor.getRed(&r, green: &g, blue: &b, alpha: &a)
         let rgba = NavBarRGBAColor(red: Double(r), green: Double(g), blue: Double(b), alpha: Double(a))
         if let data = try? JSONEncoder().encode(rgba) {
-            UserDefaults.standard.set(data, forKey: key)
+            defaults.set(data, forKey: key)
         }
     }
 
     static func loadColor(for key: String) -> Color? {
-        guard let data = UserDefaults.standard.data(forKey: key),
+        guard let data = defaults.data(forKey: key),
               let rgba = try? JSONDecoder().decode(NavBarRGBAColor.self, from: data) else {
             return nil
         }

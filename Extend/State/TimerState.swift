@@ -8,6 +8,8 @@
 import Foundation
 import Observation
 
+private let defaults = UserDefaults(suiteName: "group.com.cavanmannenbach.extend") ?? .standard
+
 @Observable
 public final class TimerState {
     public static let shared = TimerState()
@@ -85,12 +87,12 @@ public final class TimerState {
 
     private func saveConfigs() {
         if let encoded = try? JSONEncoder().encode(configs) {
-            UserDefaults.standard.set(encoded, forKey: storageKey)
+            defaults.set(encoded, forKey: storageKey)
         }
     }
 
     private func loadConfigs() {
-        if let data = UserDefaults.standard.data(forKey: storageKey),
+        if let data = defaults.data(forKey: storageKey),
            let decoded = try? JSONDecoder().decode([TimerConfig].self, from: data) {
             configs = decoded
         }

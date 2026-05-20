@@ -1,5 +1,7 @@
 import Foundation
 
+private let defaults = UserDefaults(suiteName: "group.com.cavanmannenbach.extend") ?? .standard
+
 /// Shared utility for managing animation persistence
 /// Loads frames from animations.json and tracks which frames are marked for export
 /// Does NOT write to animations.json - developer manually copies JSON to clipboard
@@ -54,7 +56,7 @@ struct AnimationPersistence {
         do {
             let encoder = JSONEncoder()
             let data = try encoder.encode(Array(persistedIDs))
-            UserDefaults.standard.set(data, forKey: "persisted_frame_ids")
+            defaults.set(data, forKey: "persisted_frame_ids")
         } catch {
         }
     }
@@ -62,7 +64,7 @@ struct AnimationPersistence {
     /// Load persisted frame marker IDs from UserDefaults
     /// - Returns: Set of frame IDs that are marked for export
     static func loadPersistedFrameMarkers() -> Set<UUID> {
-        guard let data = UserDefaults.standard.data(forKey: "persisted_frame_ids") else {
+        guard let data = defaults.data(forKey: "persisted_frame_ids") else {
             return []
         }
         

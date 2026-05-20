@@ -333,7 +333,11 @@ Total Lines Read: \(playbackState.linesSpoken)
             notes: logNotes,
             duration: TimeInterval(playbackState.elapsedTime)
         )
-        logState.addLog(workoutLog)
+        logState.addLog(
+            workoutLog,
+            exportToHealthKit: HealthKitState.shared.exportStrengthWorkouts,
+            activityTypeRaw: config.healthKitActivityType
+        )
         resetPlayback()
         ModuleState.shared.selectedModuleID = ModuleIDs.progress
     }
@@ -436,6 +440,7 @@ private struct VoiceTrainerEditorView: View {
     @State private var cooldownPeriod: Int = 0
     @State private var workoutStartWarning: Int = 10
     @State private var restEndWarning: Int = 10
+    @State private var healthKitActivityType: UInt? = nil
 
     init(title: String, initialConfig: VoiceTrainerConfig? = nil, onSave: @escaping (VoiceTrainerConfig) -> Void, onDelete: (() -> Void)? = nil) {
         self.title = title
@@ -455,6 +460,7 @@ private struct VoiceTrainerEditorView: View {
             _cooldownPeriod = State(initialValue: c.cooldownPeriod)
             _workoutStartWarning = State(initialValue: c.workoutStartWarning)
             _restEndWarning = State(initialValue: c.restEndWarning)
+            _healthKitActivityType = State(initialValue: c.healthKitActivityType)
         }
     }
 
@@ -630,6 +636,11 @@ private struct VoiceTrainerEditorView: View {
 
                     Toggle("Random Order", isOn: $randomOrder)
                 }
+                if HealthKitState.shared.exportStrengthWorkouts {
+                    Section("Apple Health") {
+                        HKActivityTypePicker(rawValue: $healthKitActivityType)
+                    }
+                }
             }
             .navigationTitle(title)
             .navigationBarTitleDisplayMode(.inline)
@@ -660,7 +671,8 @@ private struct VoiceTrainerEditorView: View {
                             cooldownPeriod: cooldownPeriod,
                             workoutStartWarning: workoutStartWarning,
                             restEndWarning: restEndWarning,
-                            isFavorite: initialConfig?.isFavorite ?? false
+                            isFavorite: initialConfig?.isFavorite ?? false,
+                            healthKitActivityType: healthKitActivityType
                         )
                         onSave(config)
                         dismiss()

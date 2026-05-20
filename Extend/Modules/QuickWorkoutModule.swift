@@ -64,7 +64,8 @@ private struct QuickWorkoutModuleView: View {
                                     let workout = Workout(
                                         name: "\(exercise.name) (Quick)",
                                         notes: "",
-                                        items: [WorkoutItem.exercise(WorkoutExercise(exerciseID: exercise.id))]
+                                        items: [WorkoutItem.exercise(WorkoutExercise(exerciseID: exercise.id))],
+                                        healthKitActivityType: exercise.healthKitActivityType
                                     )
                                     startingWorkout = workout
                                 }) {
@@ -129,7 +130,8 @@ private struct QuickWorkoutModuleView: View {
                             let workout = Workout(
                                 name: "\(exercise.name) (Quick)",
                                 notes: "",
-                                items: [WorkoutItem.exercise(WorkoutExercise(exerciseID: exercise.id))]
+                                items: [WorkoutItem.exercise(WorkoutExercise(exerciseID: exercise.id))],
+                                healthKitActivityType: exercise.healthKitActivityType
                             )
                             startingWorkout = workout
                         }

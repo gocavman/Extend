@@ -1,5 +1,7 @@
 import UIKit
 
+private let defaults = UserDefaults(suiteName: "group.com.cavanmannenbach.extend") ?? .standard
+
 // MARK: - Data Structures
 
 struct MatchGameLevel: Codable {
@@ -6269,28 +6271,28 @@ class MatchGameViewController: UIViewController {
             totalElapsed += Date().timeIntervalSince(start)
             timerSessionStart = Date()   // reset reference so we don't double-count
         }
-        UserDefaults.standard.set(currentLevelId, forKey: "matchGameCurrentLevel")
-        UserDefaults.standard.set(score, forKey: "matchGameScore_\(currentLevelId)")
-        UserDefaults.standard.set(unlockedLevels, forKey: "matchGameUnlockedLevels")
-        UserDefaults.standard.set(totalElapsed, forKey: "matchGameTotalTime")
+        defaults.set(currentLevelId, forKey: "matchGameCurrentLevel")
+        defaults.set(score, forKey: "matchGameScore_\(currentLevelId)")
+        defaults.set(unlockedLevels, forKey: "matchGameUnlockedLevels")
+        defaults.set(totalElapsed, forKey: "matchGameTotalTime")
         // Save mid-level grid state
         saveMidLevelState()
         print("💾 Game state saved: Level \(currentLevelId), Score \(score), TotalTime \(Int(totalElapsed))s")
     }
     
     private func loadSavedState() {
-        let savedLevel = UserDefaults.standard.integer(forKey: "matchGameCurrentLevel")
+        let savedLevel = defaults.integer(forKey: "matchGameCurrentLevel")
         if savedLevel > 0 {
             currentLevelId = savedLevel
             levelSelectorButton.setTitle("Level \(savedLevel) ▼", for: .normal)
         }
-        let savedScore = UserDefaults.standard.integer(forKey: "matchGameScore_\(currentLevelId)")
+        let savedScore = defaults.integer(forKey: "matchGameScore_\(currentLevelId)")
         if savedScore > 0 { score = savedScore }
-        if let saved = UserDefaults.standard.array(forKey: "matchGameUnlockedLevels") as? [Int] {
+        if let saved = defaults.array(forKey: "matchGameUnlockedLevels") as? [Int] {
             unlockedLevels = saved
         }
         // Restore total elapsed time
-        totalElapsed = UserDefaults.standard.double(forKey: "matchGameTotalTime")
+        totalElapsed = defaults.double(forKey: "matchGameTotalTime")
     }
     
     // MARK: - Session / Total Timer
@@ -6311,21 +6313,21 @@ class MatchGameViewController: UIViewController {
             totalElapsed += Date().timeIntervalSince(start)
             timerSessionStart = nil
         }
-        UserDefaults.standard.set(totalElapsed, forKey: "matchGameTotalTime")
+        defaults.set(totalElapsed, forKey: "matchGameTotalTime")
     }
 
     private func tickTimer() {
         if let start = timerSessionStart {
             sessionElapsed = Date().timeIntervalSince(start)
         }
-        totalElapsed = (UserDefaults.standard.double(forKey: "matchGameTotalTime"))
+        totalElapsed = (defaults.double(forKey: "matchGameTotalTime"))
             + sessionElapsed
         updateTimerLabels()
     }
 
     private func updateTimerLabels() {
         sessionTimeLabel.text = "Session  \(formatTime(sessionElapsed))"
-        let saved = UserDefaults.standard.double(forKey: "matchGameTotalTime")
+        let saved = defaults.double(forKey: "matchGameTotalTime")
         totalTimeLabel.text  = "Total  \(formatTime(saved + sessionElapsed))"
     }
 
@@ -6358,27 +6360,27 @@ class MatchGameViewController: UIViewController {
         }
         // JSON-encode the flat string array — avoids plist cast ambiguity on read-back
         if let data = try? JSONEncoder().encode(flat) {
-            UserDefaults.standard.set(data, forKey: key)
+            defaults.set(data, forKey: key)
         }
         // Armor, moves, score stored as primitives (plist-safe)
-        UserDefaults.standard.set(armorGrid.flatMap { $0 }, forKey: "\(key)_armor")
-        UserDefaults.standard.set(movesRemaining, forKey: "\(key)_moves")
-        UserDefaults.standard.set(score, forKey: "\(key)_score")
-        UserDefaults.standard.set(gameGrid.count, forKey: "\(key)_rows")
-        UserDefaults.standard.set(gameGrid.first?.count ?? 0, forKey: "\(key)_cols")
+        defaults.set(armorGrid.flatMap { $0 }, forKey: "\(key)_armor")
+        defaults.set(movesRemaining, forKey: "\(key)_moves")
+        defaults.set(score, forKey: "\(key)_score")
+        defaults.set(gameGrid.count, forKey: "\(key)_rows")
+        defaults.set(gameGrid.first?.count ?? 0, forKey: "\(key)_cols")
         print("💾 Mid-level grid saved: level \(currentLevelId), \(flat.filter { !$0.isEmpty }.count) pieces")
     }
 
     private func restoreMidLevelState(levelId: Int) -> Bool {
         let key = "matchGameMidLevel_\(levelId)"
-        guard let data = UserDefaults.standard.data(forKey: key),
+        guard let data = defaults.data(forKey: key),
               let flat = try? JSONDecoder().decode([String].self, from: data),
               let level = currentLevel else {
             print("📥 No saved mid-level data for level \(levelId)")
             return false
         }
-        let savedRows = UserDefaults.standard.integer(forKey: "\(key)_rows")
-        let savedCols = UserDefaults.standard.integer(forKey: "\(key)_cols")
+        let savedRows = defaults.integer(forKey: "\(key)_rows")
+        let savedCols = defaults.integer(forKey: "\(key)_cols")
         guard savedRows == level.gridHeight,
               savedCols == level.gridWidth,
               flat.count == level.gridHeight * level.gridWidth else {
@@ -6386,9 +6388,9 @@ class MatchGameViewController: UIViewController {
             clearMidLevelState(levelId: levelId)
             return false
         }
-        let armorRaw = UserDefaults.standard.array(forKey: "\(key)_armor") as? [Int] ?? []
-        let savedMoves = UserDefaults.standard.integer(forKey: "\(key)_moves")
-        let savedScore = UserDefaults.standard.integer(forKey: "\(key)_score")
+        let armorRaw = defaults.array(forKey: "\(key)_armor") as? [Int] ?? []
+        let savedMoves = defaults.integer(forKey: "\(key)_moves")
+        let savedScore = defaults.integer(forKey: "\(key)_score")
 
         var powerupCount = 0
         for r in 0..<level.gridHeight {
@@ -6425,10 +6427,10 @@ class MatchGameViewController: UIViewController {
     /// Clears the saved mid-level state (call on level completion or when starting fresh).
     private func clearMidLevelState(levelId: Int) {
         let key = "matchGameMidLevel_\(levelId)"
-        UserDefaults.standard.removeObject(forKey: key)
-        UserDefaults.standard.removeObject(forKey: "\(key)_armor")
-        UserDefaults.standard.removeObject(forKey: "\(key)_moves")
-        UserDefaults.standard.removeObject(forKey: "\(key)_score")
+        defaults.removeObject(forKey: key)
+        defaults.removeObject(forKey: "\(key)_armor")
+        defaults.removeObject(forKey: "\(key)_moves")
+        defaults.removeObject(forKey: "\(key)_score")
     }
 
     private func pieceTypeRaw(_ t: PieceType) -> Int {

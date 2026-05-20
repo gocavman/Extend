@@ -8,6 +8,8 @@
 
 import SwiftUI
 
+private let defaults = UserDefaults(suiteName: "group.com.cavanmannenbach.extend") ?? .standard
+
 // MARK: - Stick Figure Animation Manager
 
 struct StickFigureAnimationConfig: Codable {
@@ -408,7 +410,7 @@ class StickFigureGameState {
     // Debug flags
     var showDebugGestureAreas: Bool = false {
         didSet {
-            UserDefaults.standard.set(showDebugGestureAreas, forKey: "game1_showDebugGestureAreas")
+            defaults.set(showDebugGestureAreas, forKey: "game1_showDebugGestureAreas")
         }
     }
     
@@ -564,7 +566,7 @@ class StickFigureGameState {
         }
         
         // Load debug flag
-        showDebugGestureAreas = UserDefaults.standard.bool(forKey: "game1_showDebugGestureAreas")
+        showDebugGestureAreas = defaults.bool(forKey: "game1_showDebugGestureAreas")
         
         // Initialize muscle system
         MuscleSystem.shared.loadMuscleConfig()
@@ -723,8 +725,8 @@ class StickFigureGameState {
             "selectedAction": selectedAction,
             "actionTimes": actionTimes
         ]
-        UserDefaults.standard.set(payload, forKey: statsKey)
-        UserDefaults.standard.synchronize()
+        defaults.set(payload, forKey: statsKey)
+        defaults.synchronize()
         
         //print("📊 saveStats: Saved Level=\(currentLevel), Points=\(currentPoints), Score=\(score)")
         
@@ -752,7 +754,7 @@ class StickFigureGameState {
     }
 
     private func loadStats() {
-        guard let payload = UserDefaults.standard.dictionary(forKey: statsKey) else {
+        guard let payload = defaults.dictionary(forKey: statsKey) else {
             //print("📊 loadStats: No saved stats found")
             return
         }
@@ -774,13 +776,13 @@ class StickFigureGameState {
             selectedAction = "Rest"
         }
         
-        highScore = UserDefaults.standard.integer(forKey: highScoreKey)
+        highScore = defaults.integer(forKey: highScoreKey)
         //print("📊 loadStats: Loaded Level=\(currentLevel), Points=\(currentPoints), Score=\(score)")
     }
     
     private func loadMuscleState() {
         // Load muscle points from UserDefaults
-        if let muscleData = UserDefaults.standard.data(forKey: "game1_muscle_state") {
+        if let muscleData = defaults.data(forKey: "game1_muscle_state") {
             let decoder = JSONDecoder()
             if let decodedState = try? decoder.decode(MuscleState.self, from: muscleData) {
                 muscleState = decodedState
@@ -792,7 +794,7 @@ class StickFigureGameState {
         // Save muscle points to UserDefaults
         let encoder = JSONEncoder()
         if let muscleData = try? encoder.encode(muscleState) {
-            UserDefaults.standard.set(muscleData, forKey: "game1_muscle_state")
+            defaults.set(muscleData, forKey: "game1_muscle_state")
         }
     }
     
@@ -851,8 +853,8 @@ class StickFigureGameState {
     }
 
     func saveHighScore() {
-        UserDefaults.standard.set(highScore, forKey: highScoreKey)
-        UserDefaults.standard.synchronize()
+        defaults.set(highScore, forKey: highScoreKey)
+        defaults.synchronize()
     }
 
     func initializeRoom(_ roomId: String) {
@@ -1674,7 +1676,7 @@ class GameMapState {
         let maxAttempts = 100
         
         // Load last collected time from UserDefaults
-        let timestamp = UserDefaults.standard.double(forKey: "game1_coin_last_collected_time")
+        let timestamp = defaults.double(forKey: "game1_coin_last_collected_time")
         var lastCollectedTime: Date? = nil
         if timestamp > 0 {
             lastCollectedTime = Date(timeIntervalSince1970: timestamp)
@@ -1756,12 +1758,12 @@ class GameMapState {
     
     func saveCoinLastCollectedTime() {
         if let lastCollectedTime = coin?.lastCollectedTime {
-            UserDefaults.standard.set(lastCollectedTime.timeIntervalSince1970, forKey: "game1_coin_last_collected_time")
+            defaults.set(lastCollectedTime.timeIntervalSince1970, forKey: "game1_coin_last_collected_time")
         }
     }
     
     func loadCoinLastCollectedTime() {
-        let timestamp = UserDefaults.standard.double(forKey: "game1_coin_last_collected_time")
+        let timestamp = defaults.double(forKey: "game1_coin_last_collected_time")
         if timestamp > 0 {
             coin?.lastCollectedTime = Date(timeIntervalSince1970: timestamp)
         }
@@ -2035,7 +2037,7 @@ struct StatsOverlayView: View {
                         gameState.highScore = 0
                         gameState.saveStats()
                         gameState.saveHighScore()
-                        UserDefaults.standard.removeObject(forKey: "game1_coin_last_collected_time")
+                        defaults.removeObject(forKey: "game1_coin_last_collected_time")
                     }
                 )
 

@@ -24,20 +24,10 @@ public final class HealthKitState {
     private let authRequestedKey         = "hk_authRequested"
 
     // MARK: - Default imported activity types (raw UInt values)
-    /// Cardio activities on by default, plus Walking, Hiking, and Yoga.
-    public static let defaultImportActivityTypes: Set<UInt> = [
-        HKWorkoutActivityType.cycling.rawValue,
-        HKWorkoutActivityType.elliptical.rawValue,
-        HKWorkoutActivityType.hiking.rawValue,
-        HKWorkoutActivityType.highIntensityIntervalTraining.rawValue,
-        HKWorkoutActivityType.jumpRope.rawValue,
-        HKWorkoutActivityType.mixedCardio.rawValue,
-        HKWorkoutActivityType.rowing.rawValue,
-        HKWorkoutActivityType.running.rawValue,
-        HKWorkoutActivityType.swimming.rawValue,
-        HKWorkoutActivityType.walking.rawValue,
-        HKWorkoutActivityType.yoga.rawValue,
-    ]
+    /// All activity types enabled by default.
+    public static let defaultImportActivityTypes: Set<UInt> = Set(
+        HKWorkoutActivityTypeHelper.allCases.map { $0.rawValue }
+    )
 
     // MARK: - Preferences
 

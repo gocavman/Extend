@@ -16,6 +16,10 @@ public struct WorkoutLog: Identifiable, Codable, Hashable {
     public var restPeriods: [LoggedRest]
     public var notes: String
     public var duration: TimeInterval // in seconds
+    /// UUID of the matching HKWorkout in Apple Health (nil if not yet exported)
+    public var healthKitUUID: UUID?
+    /// Raw value of HKWorkoutActivityType used when exporting to Apple Health (nil → .other)
+    public var healthKitActivityTypeRaw: UInt?
 
     public init(
         id: UUID = UUID(),
@@ -24,7 +28,9 @@ public struct WorkoutLog: Identifiable, Codable, Hashable {
         exercises: [LoggedExercise] = [],
         restPeriods: [LoggedRest] = [],
         notes: String = "",
-        duration: TimeInterval = 0
+        duration: TimeInterval = 0,
+        healthKitUUID: UUID? = nil,
+        healthKitActivityTypeRaw: UInt? = nil
     ) {
         self.id = id
         self.workoutName = workoutName
@@ -33,6 +39,8 @@ public struct WorkoutLog: Identifiable, Codable, Hashable {
         self.restPeriods = restPeriods
         self.notes = notes
         self.duration = duration
+        self.healthKitUUID = healthKitUUID
+        self.healthKitActivityTypeRaw = healthKitActivityTypeRaw
     }
 
     public init(from decoder: Decoder) throws {
@@ -44,6 +52,8 @@ public struct WorkoutLog: Identifiable, Codable, Hashable {
         restPeriods = (try? c.decodeIfPresent([LoggedRest].self, forKey: .restPeriods)) ?? []
         notes = try c.decode(String.self, forKey: .notes)
         duration = try c.decode(TimeInterval.self, forKey: .duration)
+        healthKitUUID = try? c.decodeIfPresent(UUID.self, forKey: .healthKitUUID)
+        healthKitActivityTypeRaw = try? c.decodeIfPresent(UInt.self, forKey: .healthKitActivityTypeRaw)
     }
 }
 
