@@ -327,7 +327,21 @@ private struct DashboardModuleView: View {
         }
         .frame(height: 72)
         .padding(.horizontal, 16)
+        .padding(.top, topNavBarHeight)
         .background(headerBackgroundView)
+    }
+
+    // Returns the height needed to clear the top safe area when no top navbar is present.
+    // When a top navbar exists it already handles safe area, so no extra padding is needed.
+    private var topNavBarHeight: CGFloat {
+        let hasTopBar = !ModuleState.shared.topNavBarModules.isEmpty
+        if hasTopBar { return 0 }
+        // Use the key window's safe area top inset
+        let inset = UIApplication.shared.connectedScenes
+            .compactMap { $0 as? UIWindowScene }
+            .flatMap { $0.windows }
+            .first(where: { $0.isKeyWindow })?.safeAreaInsets.top ?? 0
+        return inset
     }
 
     // MARK: - Helper Methods
