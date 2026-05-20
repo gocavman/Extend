@@ -31,6 +31,7 @@ private struct ProgressModuleView: View {
     @State private var selectedLog: WorkoutLog?
     /// When false the full month grid collapses to a single week strip
     @State private var isCalendarExpanded: Bool = true
+    @State private var showMonthPicker = false
 
     /// Persisted: "calendar" or "timeline"
     @AppStorage("logViewMode") private var logViewMode: String = "calendar"
@@ -76,8 +77,10 @@ private struct ProgressModuleView: View {
                 currentMonth = prev
             }
         } else {
-            if let newMonth = calendar.date(byAdding: .month, value: -1, to: currentMonth) {
+            if let newMonth = calendar.date(byAdding: .month, value: -1, to: currentMonth),
+               let firstOfMonth = calendar.date(from: calendar.dateComponents([.year, .month], from: newMonth)) {
                 currentMonth = newMonth
+                selectedDate = firstOfMonth
             }
         }
     }
@@ -89,8 +92,10 @@ private struct ProgressModuleView: View {
                 currentMonth = next
             }
         } else {
-            if let newMonth = calendar.date(byAdding: .month, value: 1, to: currentMonth) {
+            if let newMonth = calendar.date(byAdding: .month, value: 1, to: currentMonth),
+               let firstOfMonth = calendar.date(from: calendar.dateComponents([.year, .month], from: newMonth)) {
                 currentMonth = newMonth
+                selectedDate = firstOfMonth
             }
         }
     }
@@ -98,15 +103,15 @@ private struct ProgressModuleView: View {
     var body: some View {
         VStack(spacing: 0) {
             // Header
-            HStack {
+            HStack(spacing: 12) {
                 Text("Log")
                     .font(.title2)
                     .fontWeight(.bold)
 
-                Spacer()
+                Spacer(minLength: 0)
 
-                // Month navigation — centered between title and export button
-                HStack(spacing: 8) {
+                // Month navigation
+                HStack(spacing: 4) {
                     Button(action: {
                         UIImpactFeedbackGenerator(style: .light).impactOccurred()
                         previousMonth()
@@ -116,10 +121,16 @@ private struct ProgressModuleView: View {
                             .frame(width: 28, height: 28)
                     }
 
-                    Text(monthYearString)
-                        .font(.title2)
-                        .fontWeight(.semibold)
-                        .fixedSize()
+                    Button(action: {
+                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                        showMonthPicker = true
+                    }) {
+                        Text(monthYearString)
+                            .font(.headline)
+                            .fontWeight(.semibold)
+                            .lineLimit(1)
+                    }
+                    .buttonStyle(.plain)
 
                     Button(action: {
                         UIImpactFeedbackGenerator(style: .light).impactOccurred()
@@ -131,43 +142,46 @@ private struct ProgressModuleView: View {
                     }
                 }
 
-                Spacer()
+                Spacer(minLength: 0)
 
-                // Activity ribbon toggle
-                Button(action: {
-                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                    showRibbon.toggle()
-                }) {
-                    Image(systemName: showRibbon ? "chart.bar.fill" : "chart.bar")
-                        .foregroundColor(showRibbon ? .blue : .black)
-                }
-
-                // View mode toggle
-                Button(action: {
-                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                    logViewMode = logViewMode == "calendar" ? "timeline" : "calendar"
-                }) {
-                    Image(systemName: logViewMode == "calendar" ? "list.bullet.below.rectangle" : "calendar")
-                        .foregroundColor(.black)
-                }
-
-                // Export
-                Button(action: {
-                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                    if let url = logState.exportToCSVFileURL() {
-                        let ac = UIActivityViewController(activityItems: [url], applicationActivities: nil)
-                        if let scene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
-                           let root = scene.windows.first?.rootViewController {
-                            var presenter = root
-                            while let presented = presenter.presentedViewController {
-                                presenter = presented
-                            }
-                            presenter.present(ac, animated: true)
-                        }
+                // Action buttons
+                HStack(spacing: 14) {
+                    // Activity ribbon toggle
+                    Button(action: {
+                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                        showRibbon.toggle()
+                    }) {
+                        Image(systemName: showRibbon ? "chart.bar.fill" : "chart.bar")
+                            .foregroundColor(showRibbon ? .blue : .black)
                     }
-                }) {
-                    Image(systemName: "square.and.arrow.up")
-                        .foregroundColor(.black)
+
+                    // View mode toggle
+                    Button(action: {
+                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                        logViewMode = logViewMode == "calendar" ? "timeline" : "calendar"
+                    }) {
+                        Image(systemName: logViewMode == "calendar" ? "list.bullet.below.rectangle" : "calendar")
+                            .foregroundColor(.black)
+                    }
+
+                    // Export
+                    Button(action: {
+                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                        if let url = logState.exportToCSVFileURL() {
+                            let ac = UIActivityViewController(activityItems: [url], applicationActivities: nil)
+                            if let scene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+                               let root = scene.windows.first?.rootViewController {
+                                var presenter = root
+                                while let presented = presenter.presentedViewController {
+                                    presenter = presented
+                                }
+                                presenter.present(ac, animated: true)
+                            }
+                        }
+                    }) {
+                        Image(systemName: "square.and.arrow.up")
+                            .foregroundColor(.black)
+                    }
                 }
             }
             .padding(.horizontal, 16)
@@ -271,6 +285,9 @@ private struct ProgressModuleView: View {
             WorkoutLogDetailView(log: log)
                 .environment(logState)
                 .environment(exercisesState)
+        }
+        .sheet(isPresented: $showMonthPicker) {
+            MonthYearPickerSheet(currentMonth: $currentMonth, selectedDate: $selectedDate)
         }
 
     }
@@ -547,7 +564,11 @@ private struct TimelineLogView: View {
     let logState: WorkoutLogState
     let onTap: (WorkoutLog) -> Void
 
-    private var groupedLogs: [(date: Date, logs: [WorkoutLog])] {
+    private static let pageSize = 30  // day-groups per page
+
+    @State private var visibleGroupCount = TimelineLogView.pageSize
+
+    private var allGroupedLogs: [(date: Date, logs: [WorkoutLog])] {
         let sorted = logState.sortedLogs
         var groups: [(date: Date, logs: [WorkoutLog])] = []
         var currentDate: Date? = nil
@@ -567,8 +588,12 @@ private struct TimelineLogView: View {
         return groups
     }
 
+    private var visibleGroups: [(date: Date, logs: [WorkoutLog])] {
+        Array(allGroupedLogs.prefix(visibleGroupCount))
+    }
+
     var body: some View {
-        if groupedLogs.isEmpty {
+        if allGroupedLogs.isEmpty {
             VStack(spacing: 8) {
                 Image(systemName: "calendar.badge.clock")
                     .font(.system(size: 44))
@@ -580,7 +605,7 @@ private struct TimelineLogView: View {
             .padding(.vertical, 40)
         } else {
             VStack(alignment: .leading, spacing: 0) {
-                ForEach(Array(groupedLogs.enumerated()), id: \.offset) { groupIdx, group in
+                ForEach(Array(visibleGroups.enumerated()), id: \.offset) { groupIdx, group in
                     HStack(alignment: .top, spacing: 12) {
                         // Timeline spine
                         VStack(spacing: 0) {
@@ -603,6 +628,7 @@ private struct TimelineLogView: View {
                                 .frame(width: 2)
                                 .frame(maxHeight: .infinity)
                         }
+
                         .frame(width: 10)
                         .padding(.leading, 16)
 
@@ -621,6 +647,22 @@ private struct TimelineLogView: View {
                         .padding(.trailing, 16)
                         .padding(.bottom, 16)
                     }
+                }
+
+                // Load more
+                if visibleGroupCount < allGroupedLogs.count {
+                    Button(action: {
+                        visibleGroupCount += TimelineLogView.pageSize
+                    }) {
+                        Text("Load older entries")
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                            .padding(.vertical, 12)
+                            .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.plain)
+                    .padding(.leading, 42)
+                    .padding(.trailing, 16)
                 }
             }
         }
@@ -1472,6 +1514,40 @@ private struct ClippedTextLabel: UIViewRepresentable {
         uiView.text = text
         uiView.font = UIFont.systemFont(ofSize: fontSize)
         uiView.textColor = UIColor(textColor)
+    }
+}
+
+private struct MonthYearPickerSheet: View {
+    @Binding var currentMonth: Date
+    @Binding var selectedDate: Date
+    @Environment(\.dismiss) var dismiss
+    private let calendar = Calendar.current
+
+    var body: some View {
+        NavigationStack {
+            DatePicker(
+                "Jump to Month",
+                selection: $currentMonth,
+                displayedComponents: [.date]
+            )
+            .datePickerStyle(.graphical)
+            .padding()
+            .navigationTitle("Jump to Month")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Done") { dismiss() }
+                }
+            }
+            .onChange(of: currentMonth) {
+                // Move selectedDate to the 1st of the chosen month so the list refreshes
+                if let firstOfMonth = calendar.date(from: calendar.dateComponents([.year, .month], from: currentMonth)) {
+                    selectedDate = firstOfMonth
+                }
+                dismiss()
+            }
+        }
+        .presentationDetents([.medium])
     }
 }
 
