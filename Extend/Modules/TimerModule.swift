@@ -410,6 +410,8 @@ private struct TimerEditorView: View {
                     }
                 }
             }
+            .scrollContentBackground(.hidden)
+            .background(Color.white)
             .navigationTitle(title)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {

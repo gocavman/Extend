@@ -171,12 +171,12 @@ private struct EquipmentModuleView: View {
                     }
                 }
                 .listStyle(.plain)
-                .sheet(isPresented: $showingAdd) {
+                .fullScreenCover(isPresented: $showingAdd) {
                     EquipmentEditor(title: "Add Equipment") { name in
                         state.addItem(name: name)
                     }
                 }
-                .sheet(item: $editingItem) { item in
+                .fullScreenCover(item: $editingItem) { item in
                     EquipmentEditor(title: "Edit Equipment", initialName: item.name) { name in
                         var updated = item
                         updated.name = name
@@ -234,6 +234,8 @@ private struct EquipmentEditor: View {
                     TextField("Name", text: $name)
                 }
             }
+            .scrollContentBackground(.hidden)
+            .background(Color.white)
             .navigationTitle(title)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {

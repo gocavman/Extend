@@ -680,6 +680,8 @@ private struct VoiceTrainerEditorView: View {
                     }
                 }
             }
+            .scrollContentBackground(.hidden)
+            .background(Color.white)
             .navigationTitle(title)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {

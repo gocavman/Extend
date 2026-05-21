@@ -220,14 +220,14 @@ private struct ExercisesModuleView: View {
                     }
                 }
                 .listStyle(.plain)
-                .sheet(isPresented: $showingAdd) {
+                .fullScreenCover(isPresented: $showingAdd) {
                     ExerciseEditor(title: "Add Exercise") { exercise in
                         state.addExercise(exercise)
                     }
                     .environment(muscleGroupsState)
                     .environment(equipmentState)
                 }
-                .sheet(item: $editingExercise) { exercise in
+                .fullScreenCover(item: $editingExercise) { exercise in
                     ExerciseEditor(title: "Edit Exercise", initialExercise: exercise) { updated in
                         state.updateExercise(updated)
                     } onDelete: {
@@ -442,6 +442,8 @@ private struct ExerciseEditor: View {
                     }
                 }
             }
+            .scrollContentBackground(.hidden)
+            .background(Color.white)
             .navigationTitle(title)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {

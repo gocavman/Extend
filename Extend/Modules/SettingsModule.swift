@@ -201,13 +201,9 @@ private struct SettingsModuleView: View {
                             set: { healthKitState.exportStrengthWorkouts = $0 }
                         ))
 
-                        DisclosureGroup("Import Activities") {
-                            ForEach(HKWorkoutActivityTypeHelper.allCases) { entry in
-                                Toggle(entry.label, isOn: Binding(
-                                    get: { healthKitState.isImporting(entry.rawValue) },
-                                    set: { _ in healthKitState.toggleImport(entry.rawValue) }
-                                ))
-                            }
+                        NavigationLink("Import Activities") {
+                            ImportActivitiesView()
+                                .environment(healthKitState)
                         }
 
                         if let lastDate = healthKitState.lastImportDate {
@@ -450,6 +446,8 @@ private struct NavBarCustomizationView: View {
                 }
             }
         }
+        .scrollContentBackground(.hidden)
+        .background(Color.white)
         .navigationTitle("NavBar Items")
         .onAppear {
             if !hasInitialized {
@@ -701,6 +699,8 @@ private struct DashboardCustomizationView: View {
                 }
             }
         }
+        .scrollContentBackground(.hidden)
+        .background(Color.white)
         .navigationTitle("Dashboard Tiles")
         .environment(\.editMode, .constant(.active))
         .sheet(isPresented: $showingAddTile) {
@@ -1515,6 +1515,8 @@ private struct DashboardHeaderSettingsView: View {
                 ))
             }
         }
+        .scrollContentBackground(.hidden)
+        .background(Color.white)
         .navigationTitle("Header")
         .navigationBarTitleDisplayMode(.inline)
         .alert("Remove dashboard image?", isPresented: $showingClearHeaderImageAlert) {
@@ -1534,6 +1536,29 @@ private struct DashboardHeaderSettingsView: View {
                 }
             }
         }
+    }
+}
+
+// MARK: - Import Activities View
+
+private struct ImportActivitiesView: View {
+    @Environment(HealthKitState.self) var healthKitState
+
+    var body: some View {
+        List {
+            Section {
+                ForEach(HKWorkoutActivityTypeHelper.allCases) { entry in
+                    Toggle(entry.label, isOn: Binding(
+                        get: { healthKitState.isImporting(entry.rawValue) },
+                        set: { _ in healthKitState.toggleImport(entry.rawValue) }
+                    ))
+                }
+            }
+        }
+        .scrollContentBackground(.hidden)
+        .background(Color.white)
+        .navigationTitle("Import Activities")
+        .navigationBarTitleDisplayMode(.inline)
     }
 }
 

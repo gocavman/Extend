@@ -166,14 +166,14 @@ private struct MuscleGroupsModuleView: View {
                     }
                 }
                 .listStyle(.plain)
-                .sheet(isPresented: $showingAdd) {
+                .fullScreenCover(isPresented: $showingAdd) {
                     MuscleGroupEditor(title: "Add Muscle Group") { updated in
                         state.groups.append(updated)
                         state.updateGroup(updated)
                     }
                     .environment(state)
                 }
-                .sheet(item: $editingGroup) { group in
+                .fullScreenCover(item: $editingGroup) { group in
                     MuscleGroupEditor(title: "Edit Muscle Group", group: group) { updated in
                         state.updateGroup(updated)
                     } onDelete: {
@@ -336,6 +336,8 @@ private struct MuscleGroupEditor: View {
                     }
                 }
             }
+            .scrollContentBackground(.hidden)
+            .background(Color.white)
             .navigationTitle(title)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {

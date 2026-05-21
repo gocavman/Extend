@@ -441,7 +441,7 @@ private struct WorkoutEditor: View {
                 }
             }
             .environment(\.editMode, $editMode)
-            .sheet(isPresented: $showingPicker) {
+            .fullScreenCover(isPresented: $showingPicker) {
                 ExercisePickerView(searchText: $searchText) { exerciseID in
                     let item = WorkoutExercise(exerciseID: exerciseID)
                     workoutItems.append(.exercise(item))
@@ -450,6 +450,8 @@ private struct WorkoutEditor: View {
                 .environment(muscleGroupsState)
                 .environment(equipmentState)
             }
+            .scrollContentBackground(.hidden)
+            .background(Color.white)
             .navigationTitle(title)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -804,7 +806,7 @@ private struct EditorExerciseRow: View {
 
 
             }
-            .sheet(isPresented: $showingSetsEditor) {
+            .fullScreenCover(isPresented: $showingSetsEditor) {
                 SetsEditorSheet(exercise: exercise, index: index, workoutItems: $workoutItems)
             }
     }
@@ -844,6 +846,8 @@ private struct SetsEditorSheet: View {
                 }
             }
             .listStyle(.insetGrouped)
+            .scrollContentBackground(.hidden)
+            .background(Color.white)
             .environment(\.editMode, .constant(.active))
             .navigationTitle("Sets")
             .navigationBarTitleDisplayMode(.inline)
@@ -1210,6 +1214,8 @@ private struct ExercisePickerView: View {
                     .buttonStyle(.plain)
                 }
             }
+            .scrollContentBackground(.hidden)
+            .background(Color.white)
             .navigationTitle("Add Exercise")
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
@@ -1429,6 +1435,7 @@ public struct StartWorkoutView: View {
                 }
                 .padding(16)
             }
+            .background(Color.white)
             .navigationBarTitleDisplayMode(.inline)
             .navigationTitle(workout.name)
             .toolbar {
@@ -1966,7 +1973,7 @@ public struct StartWorkoutView: View {
         isRestTimerRunning = false
         switch currentItem {
         case .exercise(let we):
-            exerciseData[we.exerciseID] = (sets: sets, notes: notes, timerSeconds: timerSeconds, usedEquipmentIDs: usedEquipmentIDs)
+            exerciseData[we.id] = (sets: sets, notes: notes, timerSeconds: timerSeconds, usedEquipmentIDs: usedEquipmentIDs)
         case .rest(let r):
             restData[r.id] = (configured: r.duration, remaining: restSecondsRemaining)
         case .none:
@@ -1986,7 +1993,7 @@ public struct StartWorkoutView: View {
 
         guard case .exercise(let we) = currentItem else { return }
 
-        if let savedData = exerciseData[we.exerciseID] {
+        if let savedData = exerciseData[we.id] {
             sets = savedData.sets
             notes = savedData.notes
             timerSeconds = savedData.timerSeconds
@@ -2167,7 +2174,7 @@ public struct StartWorkoutView: View {
             switch item {
             case .exercise(let we):
                 guard let exercise = exercisesState.exercises.first(where: { $0.id == we.exerciseID }),
-                      let savedData = exerciseData[we.exerciseID] else { continue }
+                      let savedData = exerciseData[we.id] else { continue }
 
                 // Include per-set timed duration: initial target minus remaining = elapsed
                 let loggedSets = savedData.sets.enumerated().map { idx, ws -> LoggedSet in
