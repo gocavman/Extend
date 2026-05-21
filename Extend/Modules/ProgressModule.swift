@@ -180,7 +180,7 @@ private struct ProgressModuleView: View {
                     showMonthPicker = true
                 }) {
                     Text(monthYearString)
-                        .font(.headline)
+                        .font(.title3)
                         .fontWeight(.semibold)
                         .lineLimit(1)
                 }
@@ -1547,31 +1547,62 @@ private struct MonthYearPickerSheet: View {
     @Environment(\.dismiss) var dismiss
     private let calendar = Calendar.current
 
+    private static let monthNames = DateFormatter().monthSymbols ?? (1...12).map { "\($0)" }
+    private static let currentYear = Calendar.current.component(.year, from: Date())
+    private static let years = Array((2000...currentYear + 1))
+
+    @State private var selectedMonth: Int = 0
+    @State private var selectedYear: Int = 0
+
     var body: some View {
         NavigationStack {
-            DatePicker(
-                "Jump to Month",
-                selection: $currentMonth,
-                displayedComponents: [.date]
-            )
-            .datePickerStyle(.graphical)
-            .padding()
+            HStack(spacing: 0) {
+                // Month wheel
+                Picker("Month", selection: $selectedMonth) {
+                    ForEach(0..<12, id: \.self) { i in
+                        Text(Self.monthNames[i]).tag(i)
+                    }
+                }
+                .pickerStyle(.wheel)
+                .frame(maxWidth: .infinity)
+
+                // Year wheel
+                Picker("Year", selection: $selectedYear) {
+                    ForEach(Self.years, id: \.self) { year in
+                        Text(String(year)).tag(year)
+                    }
+                }
+                .pickerStyle(.wheel)
+                .frame(maxWidth: .infinity)
+            }
+            .padding(.horizontal, 8)
             .navigationTitle("Jump to Month")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button("Cancel") { dismiss() }
+                }
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button("Done") { dismiss() }
+                    Button("Go") {
+                        var comps = DateComponents()
+                        comps.year = selectedYear
+                        comps.month = selectedMonth + 1
+                        comps.day = 1
+                        if let date = calendar.date(from: comps) {
+                            currentMonth = date
+                            selectedDate = date
+                        }
+                        dismiss()
+                    }
+                    .fontWeight(.semibold)
                 }
-            }
-            .onChange(of: currentMonth) {
-                // Move selectedDate to the 1st of the chosen month so the list refreshes
-                if let firstOfMonth = calendar.date(from: calendar.dateComponents([.year, .month], from: currentMonth)) {
-                    selectedDate = firstOfMonth
-                }
-                dismiss()
             }
         }
-        .presentationDetents([.medium])
+        .presentationDetents([.height(280)])
+        .onAppear {
+            selectedMonth = calendar.component(.month, from: currentMonth) - 1
+            selectedYear = calendar.component(.year, from: currentMonth)
+        }
     }
 }
 
