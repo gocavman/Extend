@@ -27,6 +27,8 @@ private struct ProgressModuleView: View {
     @Environment(ExercisesState.self) var exercisesState
 
     @State private var selectedDate = Date()
+    /// Whether the user has explicitly tapped a day. False when just browsing months.
+    @State private var hasSelectedDate = true
     @State private var currentMonth = Date()
     @State private var selectedLog: WorkoutLog?
     /// When false the full month grid collapses to a single week strip
@@ -79,10 +81,9 @@ private struct ProgressModuleView: View {
                 currentMonth = prev
             }
         } else {
-            if let newMonth = calendar.date(byAdding: .month, value: -1, to: currentMonth),
-               let firstOfMonth = calendar.date(from: calendar.dateComponents([.year, .month], from: newMonth)) {
+            if let newMonth = calendar.date(byAdding: .month, value: -1, to: currentMonth) {
                 currentMonth = newMonth
-                selectedDate = firstOfMonth
+                applyDefaultSelection(for: newMonth)
             }
         }
     }
@@ -94,11 +95,21 @@ private struct ProgressModuleView: View {
                 currentMonth = next
             }
         } else {
-            if let newMonth = calendar.date(byAdding: .month, value: 1, to: currentMonth),
-               let firstOfMonth = calendar.date(from: calendar.dateComponents([.year, .month], from: newMonth)) {
+            if let newMonth = calendar.date(byAdding: .month, value: 1, to: currentMonth) {
                 currentMonth = newMonth
-                selectedDate = firstOfMonth
+                applyDefaultSelection(for: newMonth)
             }
+        }
+    }
+
+    /// If navigating to the current month, select today. Otherwise clear the selection.
+    private func applyDefaultSelection(for month: Date) {
+        let isCurrentMonth = calendar.isDate(month, equalTo: Date(), toGranularity: .month)
+        if isCurrentMonth {
+            selectedDate = Date()
+            hasSelectedDate = true
+        } else {
+            hasSelectedDate = false
         }
     }
 
@@ -214,7 +225,9 @@ private struct ProgressModuleView: View {
                             CalendarView(
                                 currentMonth: $currentMonth,
                                 selectedDate: $selectedDate,
-                                logState: logState
+                                logState: logState,
+                                hasSelectedDate: hasSelectedDate,
+                                onDaySelected: { hasSelectedDate = true }
                             ) {
                                 // Collapse when a day is tapped
                                 withAnimation(.easeInOut(duration: 0.28)) {
@@ -229,7 +242,8 @@ private struct ProgressModuleView: View {
                                 WeekStripView(
                                     selectedDate: $selectedDate,
                                     logState: logState,
-                                    weekDays: weekDaysForDate(selectedDate)
+                                    weekDays: weekDaysForDate(selectedDate),
+                                    onDaySelected: { hasSelectedDate = true }
                                 )
                                 .padding(.horizontal, 16)
                                 .transition(.opacity.combined(with: .move(edge: .top)))
@@ -254,39 +268,41 @@ private struct ProgressModuleView: View {
                             }
                         }
 
-                        // Selected Day's Workouts
-                        if !logState.logsForDate(selectedDate).isEmpty {
-                            VStack(alignment: .leading, spacing: 12) {
-                                Text(formattedDate(selectedDate))
-                                    .font(.headline)
-                                    .padding(.horizontal, 16)
+                        // Selected Day's Workouts — only shown when a day has been explicitly tapped
+                        if hasSelectedDate {
+                            if !logState.logsForDate(selectedDate).isEmpty {
+                                VStack(alignment: .leading, spacing: 12) {
+                                    Text(formattedDate(selectedDate))
+                                        .font(.headline)
+                                        .padding(.horizontal, 16)
 
-                                ForEach(logState.logsForDate(selectedDate)) { log in
-                                    WorkoutLogCard(log: log) {
-                                        selectedLog = log
+                                    ForEach(logState.logsForDate(selectedDate)) { log in
+                                        WorkoutLogCard(log: log) {
+                                            selectedLog = log
+                                        }
+                                        .padding(.horizontal, 16)
                                     }
-                                    .padding(.horizontal, 16)
                                 }
-                            }
-                        } else {
-                            VStack(spacing: 8) {
-                                Image(systemName: "calendar.badge.clock")
-                                    .font(.system(size: 44))
-                                    .foregroundColor(.gray)
+                            } else {
+                                VStack(spacing: 8) {
+                                    Image(systemName: "calendar.badge.clock")
+                                        .font(.system(size: 44))
+                                        .foregroundColor(.gray)
 
-                                Text("No workouts logged")
-                                    .font(.subheadline)
-                                    .foregroundColor(.gray)
+                                    Text("No workouts logged")
+                                        .font(.subheadline)
+                                        .foregroundColor(.gray)
 
-                                Text("for \(formattedDate(selectedDate))")
-                                    .font(.caption)
-                                    .foregroundColor(.gray)
+                                    Text("for \(formattedDate(selectedDate))")
+                                        .font(.caption)
+                                        .foregroundColor(.gray)
+                                }
+                                .padding(.vertical, isCalendarExpanded ? 40 : 24)
                             }
-                            .padding(.vertical, isCalendarExpanded ? 40 : 24)
                         }
                     } else {
-                        // Timeline View
-                        TimelineLogView(logState: logState) { log in
+                        // Timeline View — scoped to the selected month
+                        TimelineLogView(logState: logState, month: currentMonth) { log in
                             selectedLog = log
                         }
                     }
@@ -300,7 +316,7 @@ private struct ProgressModuleView: View {
                 .environment(exercisesState)
         }
         .sheet(isPresented: $showMonthPicker) {
-            MonthYearPickerSheet(currentMonth: $currentMonth, selectedDate: $selectedDate)
+            MonthYearPickerSheet(currentMonth: $currentMonth, onNavigate: applyDefaultSelection)
         }
         .sheet(isPresented: $showSearch) {
             LogSearchView(logState: logState, selectedLog: $selectedLog)
@@ -321,6 +337,9 @@ private struct CalendarView: View {
     @Binding var currentMonth: Date
     @Binding var selectedDate: Date
     let logState: WorkoutLogState
+    var hasSelectedDate: Bool = true
+    /// Called when user explicitly taps a day — lets parent mark a day as selected
+    var onDaySelected: (() -> Void)? = nil
     /// Called after a day is selected — lets the parent collapse the calendar
     var onDayTapped: (() -> Void)? = nil
 
@@ -377,13 +396,14 @@ private struct CalendarView: View {
                     if let date = days[index] {
                         DayCell(
                             date: date,
-                            isSelected: calendar.isDate(date, inSameDayAs: selectedDate),
+                            isSelected: hasSelectedDate && calendar.isDate(date, inSameDayAs: selectedDate),
                             isToday: calendar.isDateInToday(date),
                             isCurrentMonth: isCurrentMonth(date),
                             workoutCount: logState.logsForDate(date).count,
                             logs: logState.logsForDate(date)
                         ) {
                             selectedDate = date
+                            onDaySelected?()
                             onDayTapped?()
                         }
                     } else {
@@ -505,6 +525,7 @@ private struct WeekStripView: View {
     @Binding var selectedDate: Date
     let logState: WorkoutLogState
     let weekDays: [Date]
+    var onDaySelected: (() -> Void)? = nil
 
     private let calendar = Calendar.current
 
@@ -535,6 +556,7 @@ private struct WeekStripView: View {
                     Button(action: {
                         UIImpactFeedbackGenerator(style: .light).impactOccurred()
                         selectedDate = day
+                        onDaySelected?()
                     }) {
                         VStack(spacing: 3) {
                             ZStack {
@@ -578,19 +600,21 @@ private struct WeekStripView: View {
 
 private struct TimelineLogView: View {
     let logState: WorkoutLogState
+    let month: Date
     let onTap: (WorkoutLog) -> Void
 
-    private static let pageSize = 30  // day-groups per page
+    private let calendar = Calendar.current
 
-    @State private var visibleGroupCount = TimelineLogView.pageSize
-
-    private var allGroupedLogs: [(date: Date, logs: [WorkoutLog])] {
-        let sorted = logState.sortedLogs
+    private var groupedLogs: [(date: Date, logs: [WorkoutLog])] {
+        let comps = calendar.dateComponents([.year, .month], from: month)
+        let filtered = logState.sortedLogs.filter {
+            let c = calendar.dateComponents([.year, .month], from: $0.completedAt)
+            return c.year == comps.year && c.month == comps.month
+        }
         var groups: [(date: Date, logs: [WorkoutLog])] = []
         var currentDate: Date? = nil
         var currentGroup: [WorkoutLog] = []
-        let calendar = Calendar.current
-        for log in sorted {
+        for log in filtered {
             let day = calendar.startOfDay(for: log.completedAt)
             if let cd = currentDate, calendar.isDate(day, inSameDayAs: cd) {
                 currentGroup.append(log)
@@ -604,24 +628,23 @@ private struct TimelineLogView: View {
         return groups
     }
 
-    private var visibleGroups: [(date: Date, logs: [WorkoutLog])] {
-        Array(allGroupedLogs.prefix(visibleGroupCount))
-    }
-
     var body: some View {
-        if allGroupedLogs.isEmpty {
+        if groupedLogs.isEmpty {
             VStack(spacing: 8) {
                 Image(systemName: "calendar.badge.clock")
                     .font(.system(size: 44))
                     .foregroundColor(.gray)
-                Text("No workouts logged yet")
+                Text("No workouts logged")
                     .font(.subheadline)
+                    .foregroundColor(.gray)
+                Text("for \(monthYearLabel)")
+                    .font(.caption)
                     .foregroundColor(.gray)
             }
             .padding(.vertical, 40)
         } else {
             VStack(alignment: .leading, spacing: 0) {
-                ForEach(Array(visibleGroups.enumerated()), id: \.offset) { groupIdx, group in
+                ForEach(Array(groupedLogs.enumerated()), id: \.offset) { groupIdx, group in
                     HStack(alignment: .top, spacing: 12) {
                         // Timeline spine
                         VStack(spacing: 0) {
@@ -644,7 +667,6 @@ private struct TimelineLogView: View {
                                 .frame(width: 2)
                                 .frame(maxHeight: .infinity)
                         }
-
                         .frame(width: 10)
                         .padding(.leading, 16)
 
@@ -664,28 +686,17 @@ private struct TimelineLogView: View {
                         .padding(.bottom, 16)
                     }
                 }
-
-                // Load more
-                if visibleGroupCount < allGroupedLogs.count {
-                    Button(action: {
-                        visibleGroupCount += TimelineLogView.pageSize
-                    }) {
-                        Text("Load older entries")
-                            .font(.subheadline)
-                            .foregroundColor(.secondary)
-                            .padding(.vertical, 12)
-                            .frame(maxWidth: .infinity)
-                    }
-                    .buttonStyle(.plain)
-                    .padding(.leading, 42)
-                    .padding(.trailing, 16)
-                }
             }
         }
     }
 
+    private var monthYearLabel: String {
+        let f = DateFormatter()
+        f.dateFormat = "MMMM yyyy"
+        return f.string(from: month)
+    }
+
     private func timelineDateString(_ date: Date) -> String {
-        let calendar = Calendar.current
         if calendar.isDateInToday(date) { return "Today" }
         if calendar.isDateInYesterday(date) { return "Yesterday" }
         let formatter = DateFormatter()
@@ -708,17 +719,17 @@ private struct ActivityRibbonView: View {
         let calendar = Calendar.current
         let today = calendar.startOfDay(for: Date())
 
-        // End on the last day of the viewed month, capped at today
-        let lastOfMonth = calendar.date(
-            byAdding: DateComponents(month: 1, day: -1),
-            to: calendar.date(from: calendar.dateComponents([.year, .month], from: anchorMonth))!
-        ) ?? today
-        let anchor = min(lastOfMonth, today)
+        // End on the last day of the viewed month (future months just show 0-count cells)
+        let firstOfMonth = calendar.date(from: calendar.dateComponents([.year, .month], from: anchorMonth))!
+        let lastOfMonth = calendar.date(byAdding: DateComponents(month: 1, day: -1), to: firstOfMonth) ?? today
+        let anchor = lastOfMonth
 
         // Build 63 real days ending at anchor, oldest first
         let realDays: [(date: Date?, count: Int)] = (0..<63).reversed().map { offset in
             let date = calendar.date(byAdding: .day, value: -offset, to: anchor)!
-            return (date: date, count: logState.logsForDate(date).count)
+            // Future dates have no logs — show as empty without querying
+            let count = date <= today ? logState.logsForDate(date).count : 0
+            return (date: date, count: count)
         }
 
         // Find the weekday of the oldest day (1=Sun … 7=Sat) and pad the front
@@ -1543,7 +1554,7 @@ private struct ClippedTextLabel: UIViewRepresentable {
 
 private struct MonthYearPickerSheet: View {
     @Binding var currentMonth: Date
-    @Binding var selectedDate: Date
+    let onNavigate: (Date) -> Void
     @Environment(\.dismiss) var dismiss
     private let calendar = Calendar.current
 
@@ -1590,7 +1601,7 @@ private struct MonthYearPickerSheet: View {
                         comps.day = 1
                         if let date = calendar.date(from: comps) {
                             currentMonth = date
-                            selectedDate = date
+                            onNavigate(date)
                         }
                         dismiss()
                     }
