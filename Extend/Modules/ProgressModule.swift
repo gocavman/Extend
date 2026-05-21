@@ -32,6 +32,8 @@ private struct ProgressModuleView: View {
     /// When false the full month grid collapses to a single week strip
     @State private var isCalendarExpanded: Bool = true
     @State private var showMonthPicker = false
+    @State private var showSearch = false
+    @State private var searchText = ""
 
     /// Persisted: "calendar" or "timeline"
     @AppStorage("logViewMode") private var logViewMode: String = "calendar"
@@ -102,96 +104,107 @@ private struct ProgressModuleView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            // Header
-            HStack(spacing: 12) {
+            // Row 1: title + action icons
+            HStack(spacing: 14) {
                 Text("Log")
                     .font(.title2)
                     .fontWeight(.bold)
 
-                Spacer(minLength: 0)
+                Spacer()
 
-                // Month navigation
-                HStack(spacing: 4) {
-                    Button(action: {
-                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                        previousMonth()
-                    }) {
-                        Image(systemName: "chevron.left")
-                            .foregroundColor(.black)
-                            .frame(width: 28, height: 28)
-                    }
-
-                    Button(action: {
-                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                        showMonthPicker = true
-                    }) {
-                        Text(monthYearString)
-                            .font(.headline)
-                            .fontWeight(.semibold)
-                            .lineLimit(1)
-                    }
-                    .buttonStyle(.plain)
-
-                    Button(action: {
-                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                        nextMonth()
-                    }) {
-                        Image(systemName: "chevron.right")
-                            .foregroundColor(.black)
-                            .frame(width: 28, height: 28)
-                    }
+                // Search
+                Button(action: {
+                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                    showSearch = true
+                }) {
+                    Image(systemName: "magnifyingglass")
+                        .foregroundColor(.black)
                 }
 
-                Spacer(minLength: 0)
+                // Activity ribbon toggle
+                Button(action: {
+                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                    showRibbon.toggle()
+                }) {
+                    Image(systemName: showRibbon ? "chart.bar.fill" : "chart.bar")
+                        .foregroundColor(showRibbon ? .blue : .black)
+                }
 
-                // Action buttons
-                HStack(spacing: 14) {
-                    // Activity ribbon toggle
-                    Button(action: {
-                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                        showRibbon.toggle()
-                    }) {
-                        Image(systemName: showRibbon ? "chart.bar.fill" : "chart.bar")
-                            .foregroundColor(showRibbon ? .blue : .black)
-                    }
+                // View mode toggle
+                Button(action: {
+                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                    logViewMode = logViewMode == "calendar" ? "timeline" : "calendar"
+                }) {
+                    Image(systemName: logViewMode == "calendar" ? "list.bullet.below.rectangle" : "calendar")
+                        .foregroundColor(.black)
+                }
 
-                    // View mode toggle
-                    Button(action: {
-                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                        logViewMode = logViewMode == "calendar" ? "timeline" : "calendar"
-                    }) {
-                        Image(systemName: logViewMode == "calendar" ? "list.bullet.below.rectangle" : "calendar")
-                            .foregroundColor(.black)
-                    }
-
-                    // Export
-                    Button(action: {
-                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                        if let url = logState.exportToCSVFileURL() {
-                            let ac = UIActivityViewController(activityItems: [url], applicationActivities: nil)
-                            if let scene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
-                               let root = scene.windows.first?.rootViewController {
-                                var presenter = root
-                                while let presented = presenter.presentedViewController {
-                                    presenter = presented
-                                }
-                                presenter.present(ac, animated: true)
+                // Export
+                Button(action: {
+                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                    if let url = logState.exportToCSVFileURL() {
+                        let ac = UIActivityViewController(activityItems: [url], applicationActivities: nil)
+                        if let scene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+                           let root = scene.windows.first?.rootViewController {
+                            var presenter = root
+                            while let presented = presenter.presentedViewController {
+                                presenter = presented
                             }
+                            presenter.present(ac, animated: true)
                         }
-                    }) {
-                        Image(systemName: "square.and.arrow.up")
-                            .foregroundColor(.black)
                     }
+                }) {
+                    Image(systemName: "square.and.arrow.up")
+                        .foregroundColor(.black)
                 }
             }
             .padding(.horizontal, 16)
-            .padding(.vertical, 12)
+            .padding(.top, 12)
+            .padding(.bottom, 6)
+
+            // Row 2: month navigation (has all the room it needs)
+            HStack(spacing: 4) {
+                Button(action: {
+                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                    previousMonth()
+                }) {
+                    Image(systemName: "chevron.left")
+                        .foregroundColor(.black)
+                        .frame(width: 28, height: 28)
+                }
+
+                Spacer()
+
+                Button(action: {
+                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                    showMonthPicker = true
+                }) {
+                    Text(monthYearString)
+                        .font(.headline)
+                        .fontWeight(.semibold)
+                        .lineLimit(1)
+                }
+                .buttonStyle(.plain)
+
+                Spacer()
+
+                Button(action: {
+                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                    nextMonth()
+                }) {
+                    Image(systemName: "chevron.right")
+                        .foregroundColor(.black)
+                        .frame(width: 28, height: 28)
+                }
+            }
+            .padding(.horizontal, 16)
+            .padding(.bottom, 8)
 
             ScrollView {
                 VStack(spacing: 16) {
                     // Activity ribbon (optional)
                     if showRibbon {
-                        ActivityRibbonView(logState: logState)
+                        ActivityRibbonView(logState: logState, anchorMonth: currentMonth)
                             .padding(.horizontal, 16)
                     }
 
@@ -288,6 +301,9 @@ private struct ProgressModuleView: View {
         }
         .sheet(isPresented: $showMonthPicker) {
             MonthYearPickerSheet(currentMonth: $currentMonth, selectedDate: $selectedDate)
+        }
+        .sheet(isPresented: $showSearch) {
+            LogSearchView(logState: logState, selectedLog: $selectedLog)
         }
 
     }
@@ -682,6 +698,7 @@ private struct TimelineLogView: View {
 
 private struct ActivityRibbonView: View {
     let logState: WorkoutLogState
+    let anchorMonth: Date
 
     private let cellSize: CGFloat = 11
     private let cellSpacing: CGFloat = 3
@@ -691,9 +708,16 @@ private struct ActivityRibbonView: View {
         let calendar = Calendar.current
         let today = calendar.startOfDay(for: Date())
 
-        // Build 63 real days ending today, oldest first
+        // End on the last day of the viewed month, capped at today
+        let lastOfMonth = calendar.date(
+            byAdding: DateComponents(month: 1, day: -1),
+            to: calendar.date(from: calendar.dateComponents([.year, .month], from: anchorMonth))!
+        ) ?? today
+        let anchor = min(lastOfMonth, today)
+
+        // Build 63 real days ending at anchor, oldest first
         let realDays: [(date: Date?, count: Int)] = (0..<63).reversed().map { offset in
-            let date = calendar.date(byAdding: .day, value: -offset, to: today)!
+            let date = calendar.date(byAdding: .day, value: -offset, to: anchor)!
             return (date: date, count: logState.logsForDate(date).count)
         }
 
@@ -1548,6 +1572,128 @@ private struct MonthYearPickerSheet: View {
             }
         }
         .presentationDetents([.medium])
+    }
+}
+
+private struct LogSearchView: View {
+    let logState: WorkoutLogState
+    @Binding var selectedLog: WorkoutLog?
+    @Environment(\.dismiss) var dismiss
+
+    @State private var query = ""
+    @FocusState private var isFocused: Bool
+
+    private var results: [WorkoutLog] {
+        let trimmed = query.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return [] }
+        let lower = trimmed.lowercased()
+        return logState.sortedLogs.filter { log in
+            if log.workoutName.lowercased().contains(lower) { return true }
+            if log.notes.lowercased().contains(lower) { return true }
+            if log.exercises.contains(where: { $0.exerciseName.lowercased().contains(lower) }) { return true }
+            return false
+        }
+    }
+
+    private let dateFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.dateStyle = .medium
+        f.timeStyle = .short
+        return f
+    }()
+
+    var body: some View {
+        NavigationStack {
+            VStack(spacing: 0) {
+                // Search field
+                HStack(spacing: 8) {
+                    Image(systemName: "magnifyingglass")
+                        .foregroundColor(.secondary)
+                    TextField("Search logs…", text: $query)
+                        .focused($isFocused)
+                        .submitLabel(.search)
+                    if !query.isEmpty {
+                        Button(action: { query = "" }) {
+                            Image(systemName: "xmark.circle.fill")
+                                .foregroundColor(.secondary)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+                .padding(10)
+                .background(Color(.systemGray6))
+                .cornerRadius(10)
+                .padding(.horizontal, 16)
+                .padding(.top, 12)
+                .padding(.bottom, 8)
+
+                Divider()
+
+                if query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                    VStack(spacing: 8) {
+                        Image(systemName: "magnifyingglass")
+                            .font(.system(size: 44))
+                            .foregroundColor(.gray)
+                        Text("Search by workout name,\nexercise, or notes")
+                            .font(.subheadline)
+                            .foregroundColor(.gray)
+                            .multilineTextAlignment(.center)
+                    }
+                    .padding(.top, 60)
+                    Spacer()
+                } else if results.isEmpty {
+                    VStack(spacing: 8) {
+                        Image(systemName: "doc.text.magnifyingglass")
+                            .font(.system(size: 44))
+                            .foregroundColor(.gray)
+                        Text("No results for \"\(query)\"")
+                            .font(.subheadline)
+                            .foregroundColor(.gray)
+                    }
+                    .padding(.top, 60)
+                    Spacer()
+                } else {
+                    List(results) { log in
+                        Button(action: {
+                            dismiss()
+                            // Brief delay so the search sheet finishes dismissing before the detail sheet opens
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
+                                selectedLog = log
+                            }
+                        }) {
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text(log.workoutName)
+                                    .font(.subheadline)
+                                    .fontWeight(.semibold)
+                                    .foregroundColor(.primary)
+                                Text(dateFormatter.string(from: log.completedAt))
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                                if !log.exercises.isEmpty {
+                                    Text(log.exercises.map { $0.exerciseName }.joined(separator: ", "))
+                                        .font(.caption2)
+                                        .foregroundColor(.secondary)
+                                        .lineLimit(1)
+                                }
+                            }
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(.vertical, 4)
+                            .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
+                    }
+                    .listStyle(.plain)
+                }
+            }
+            .navigationTitle("Search Log")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Done") { dismiss() }
+                }
+            }
+            .onAppear { isFocused = true }
+        }
     }
 }
 
