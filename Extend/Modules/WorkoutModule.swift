@@ -1421,7 +1421,7 @@ public struct StartWorkoutView: View {
                     Button(action: { completeWorkout() }) {
                         HStack(spacing: 8) {
                             Image(systemName: "checkmark.circle.fill")
-                            Text("Complete Workout")
+                            Text("End Workout")
                         }
                         .font(.subheadline)
                         .fontWeight(.semibold)

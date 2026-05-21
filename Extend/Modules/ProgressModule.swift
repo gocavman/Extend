@@ -41,13 +41,17 @@ private struct ProgressModuleView: View {
     @AppStorage("logViewMode") private var logViewMode: String = "calendar"
     /// Persisted: show 60-day activity ribbon
     @AppStorage("logShowRibbon") private var showRibbon: Bool = false
+    /// Week vs month scope in list (timeline) view
+    @State private var listShowWeek: Bool = false
 
     private let calendar = Calendar.current
 
     private var monthYearString: String {
         let formatter = DateFormatter()
-        // In collapsed mode show the week range, e.g. "May 12–18"
-        if !isCalendarExpanded {
+        // Show week range when: calendar is collapsed, or list view is in week scope
+        let showingWeekRange = (logViewMode == "calendar" && !isCalendarExpanded) ||
+                               (logViewMode == "timeline" && listShowWeek)
+        if showingWeekRange {
             let weekDays = weekDaysForDate(selectedDate)
             guard let first = weekDays.first, let last = weekDays.last else {
                 formatter.dateFormat = "MMMM yyyy"
@@ -74,8 +78,9 @@ private struct ProgressModuleView: View {
     }
 
     private func previousMonth() {
-        if !isCalendarExpanded {
-            // Navigate by week when collapsed
+        let navigateByWeek = (logViewMode == "calendar" && !isCalendarExpanded) ||
+                             (logViewMode == "timeline" && listShowWeek)
+        if navigateByWeek {
             if let prev = calendar.date(byAdding: .weekOfYear, value: -1, to: selectedDate) {
                 selectedDate = prev
                 currentMonth = prev
@@ -89,7 +94,9 @@ private struct ProgressModuleView: View {
     }
 
     private func nextMonth() {
-        if !isCalendarExpanded {
+        let navigateByWeek = (logViewMode == "calendar" && !isCalendarExpanded) ||
+                             (logViewMode == "timeline" && listShowWeek)
+        if navigateByWeek {
             if let next = calendar.date(byAdding: .weekOfYear, value: 1, to: selectedDate) {
                 selectedDate = next
                 currentMonth = next
@@ -144,7 +151,13 @@ private struct ProgressModuleView: View {
                 // View mode toggle
                 Button(action: {
                     UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                    logViewMode = logViewMode == "calendar" ? "timeline" : "calendar"
+                    if logViewMode == "calendar" {
+                        // Default list scope to week when switching from collapsed calendar
+                        listShowWeek = !isCalendarExpanded
+                        logViewMode = "timeline"
+                    } else {
+                        logViewMode = "calendar"
+                    }
                 }) {
                     Image(systemName: logViewMode == "calendar" ? "list.bullet.below.rectangle" : "calendar")
                         .foregroundColor(.black)
@@ -301,8 +314,13 @@ private struct ProgressModuleView: View {
                             }
                         }
                     } else {
-                        // Timeline View — scoped to the selected month
-                        TimelineLogView(logState: logState, month: currentMonth) { log in
+                        // Timeline View — week or month scope with toggle
+                        TimelineLogView(
+                            logState: logState,
+                            month: currentMonth,
+                            selectedDate: selectedDate,
+                            showWeek: $listShowWeek
+                        ) { log in
                             selectedLog = log
                         }
                     }
@@ -601,15 +619,30 @@ private struct WeekStripView: View {
 private struct TimelineLogView: View {
     let logState: WorkoutLogState
     let month: Date
+    let selectedDate: Date
+    @Binding var showWeek: Bool
     let onTap: (WorkoutLog) -> Void
 
     private let calendar = Calendar.current
 
+    private var weekDays: [Date] {
+        guard let interval = calendar.dateInterval(of: .weekOfYear, for: selectedDate) else { return [] }
+        return (0..<7).compactMap { calendar.date(byAdding: .day, value: $0, to: interval.start) }
+    }
+
     private var groupedLogs: [(date: Date, logs: [WorkoutLog])] {
-        let comps = calendar.dateComponents([.year, .month], from: month)
-        let filtered = logState.sortedLogs.filter {
-            let c = calendar.dateComponents([.year, .month], from: $0.completedAt)
-            return c.year == comps.year && c.month == comps.month
+        let filtered: [WorkoutLog]
+        if showWeek {
+            guard let first = weekDays.first, let last = weekDays.last else { return [] }
+            let start = calendar.startOfDay(for: first)
+            let end = calendar.date(byAdding: .day, value: 1, to: calendar.startOfDay(for: last)) ?? last
+            filtered = logState.sortedLogs.filter { $0.completedAt >= start && $0.completedAt < end }
+        } else {
+            let comps = calendar.dateComponents([.year, .month], from: month)
+            filtered = logState.sortedLogs.filter {
+                let c = calendar.dateComponents([.year, .month], from: $0.completedAt)
+                return c.year == comps.year && c.month == comps.month
+            }
         }
         var groups: [(date: Date, logs: [WorkoutLog])] = []
         var currentDate: Date? = nil
@@ -629,71 +662,72 @@ private struct TimelineLogView: View {
     }
 
     var body: some View {
-        if groupedLogs.isEmpty {
-            VStack(spacing: 8) {
-                Image(systemName: "calendar.badge.clock")
-                    .font(.system(size: 44))
-                    .foregroundColor(.gray)
-                Text("No workouts logged")
-                    .font(.subheadline)
-                    .foregroundColor(.gray)
-                Text("for \(monthYearLabel)")
-                    .font(.caption)
-                    .foregroundColor(.gray)
+        VStack(spacing: 0) {
+            // Scope toggle
+            Picker("Scope", selection: $showWeek) {
+                Text("Week").tag(true)
+                Text("Month").tag(false)
             }
-            .padding(.vertical, 40)
-        } else {
-            VStack(alignment: .leading, spacing: 0) {
-                ForEach(Array(groupedLogs.enumerated()), id: \.offset) { groupIdx, group in
-                    HStack(alignment: .top, spacing: 12) {
-                        // Timeline spine
-                        VStack(spacing: 0) {
-                            // Connector line from previous group (skip for first)
-                            if groupIdx > 0 {
+            .pickerStyle(.segmented)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 8)
+
+            if groupedLogs.isEmpty {
+                VStack(spacing: 8) {
+                    Image(systemName: "calendar.badge.clock")
+                        .font(.system(size: 44))
+                        .foregroundColor(.gray)
+                    Text("No workouts logged")
+                        .font(.subheadline)
+                        .foregroundColor(.gray)
+                    Text(showWeek ? "this week" : "this month")
+                        .font(.caption)
+                        .foregroundColor(.gray)
+                }
+                .padding(.vertical, 40)
+            } else {
+                VStack(alignment: .leading, spacing: 0) {
+                    ForEach(Array(groupedLogs.enumerated()), id: \.offset) { groupIdx, group in
+                        HStack(alignment: .top, spacing: 12) {
+                            // Timeline spine
+                            VStack(spacing: 0) {
+                                if groupIdx > 0 {
+                                    Rectangle()
+                                        .fill(Color(red: 0.82, green: 0.82, blue: 0.84))
+                                        .frame(width: 2)
+                                        .frame(height: 12)
+                                } else {
+                                    Spacer().frame(height: 12)
+                                }
+                                Circle()
+                                    .fill(Color.black)
+                                    .frame(width: 10, height: 10)
                                 Rectangle()
                                     .fill(Color(red: 0.82, green: 0.82, blue: 0.84))
                                     .frame(width: 2)
-                                    .frame(height: 12)
-                            } else {
-                                Spacer().frame(height: 12)
+                                    .frame(maxHeight: .infinity)
                             }
-                            // Date bubble
-                            Circle()
-                                .fill(Color.black)
-                                .frame(width: 10, height: 10)
-                            // Connector line to next entry
-                            Rectangle()
-                                .fill(Color(red: 0.82, green: 0.82, blue: 0.84))
-                                .frame(width: 2)
-                                .frame(maxHeight: .infinity)
-                        }
-                        .frame(width: 10)
-                        .padding(.leading, 16)
+                            .frame(width: 10)
+                            .padding(.leading, 16)
 
-                        // Date + cards
-                        VStack(alignment: .leading, spacing: 8) {
-                            Text(timelineDateString(group.date))
-                                .font(.caption)
-                                .fontWeight(.semibold)
-                                .foregroundColor(.secondary)
-                                .padding(.top, 10)
+                            VStack(alignment: .leading, spacing: 8) {
+                                Text(timelineDateString(group.date))
+                                    .font(.caption)
+                                    .fontWeight(.semibold)
+                                    .foregroundColor(.secondary)
+                                    .padding(.top, 10)
 
-                            ForEach(group.logs) { log in
-                                WorkoutLogCard(log: log) { onTap(log) }
+                                ForEach(group.logs) { log in
+                                    WorkoutLogCard(log: log) { onTap(log) }
+                                }
                             }
+                            .padding(.trailing, 16)
+                            .padding(.bottom, 16)
                         }
-                        .padding(.trailing, 16)
-                        .padding(.bottom, 16)
                     }
                 }
             }
         }
-    }
-
-    private var monthYearLabel: String {
-        let f = DateFormatter()
-        f.dateFormat = "MMMM yyyy"
-        return f.string(from: month)
     }
 
     private func timelineDateString(_ date: Date) -> String {
