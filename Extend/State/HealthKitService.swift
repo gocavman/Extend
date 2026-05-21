@@ -123,7 +123,8 @@ struct HKActivityTypePicker: View {
                 Text(entry.label).tag(UInt?.some(entry.rawValue))
             }
         }
-        .pickerStyle(.navigationLink)
+        .pickerStyle(.menu)
+        .tint(.primary)
     }
 }
 

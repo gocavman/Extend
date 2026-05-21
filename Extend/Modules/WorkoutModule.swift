@@ -1158,7 +1158,16 @@ private struct ExercisePickerView: View {
             return exercisesState.exercises.sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
         }
         return exercisesState.exercises
-            .filter { $0.name.localizedCaseInsensitiveContains(trimmed) }
+            .filter { exercise in
+                if exercise.name.localizedCaseInsensitiveContains(trimmed) { return true }
+                let muscleNames = (exercise.primaryMuscleGroupIDs + exercise.secondaryMuscleGroupIDs)
+                    .compactMap { id in muscleGroupsState.sortedGroups.first { $0.id == id }?.name }
+                if muscleNames.contains(where: { $0.localizedCaseInsensitiveContains(trimmed) }) { return true }
+                let equipmentNames = exercise.equipmentIDs
+                    .compactMap { id in equipmentState.items.first { $0.id == id }?.name }
+                if equipmentNames.contains(where: { $0.localizedCaseInsensitiveContains(trimmed) }) { return true }
+                return false
+            }
             .sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
     }
 

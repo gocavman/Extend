@@ -9,7 +9,7 @@ import Foundation
 
 public enum TimerType: String, Codable, CaseIterable, Identifiable {
     case standard = "Standard"
-    case round    = "Round"
+    case interval = "Interval"
     case tabata   = "Tabata"
     case emom     = "EMOM"
     case amrap    = "AMRAP"
@@ -20,7 +20,7 @@ public enum TimerType: String, Codable, CaseIterable, Identifiable {
     public var iconName: String {
         switch self {
         case .standard: return "timer"
-        case .round:    return "arrow.2.circlepath"
+        case .interval: return "arrow.2.circlepath"
         case .tabata:   return "bolt.fill"
         case .emom:     return "clock.fill"
         case .amrap:    return "infinity"
@@ -31,7 +31,7 @@ public enum TimerType: String, Codable, CaseIterable, Identifiable {
     public var description: String {
         switch self {
         case .standard: return "Simple count up or down timer"
-        case .round:    return "Alternating work and rest intervals"
+        case .interval: return "Alternating work and rest intervals"
         case .tabata:   return "20s work / 10s rest × 8 rounds"
         case .emom:     return "Every minute on the minute"
         case .amrap:    return "As many rounds as possible"
@@ -104,7 +104,7 @@ public struct TimerConfig: Identifiable, Codable, Hashable {
         case .standard:
             c.duration = 300
             c.direction = .countDown
-        case .round:
+        case .interval:
             c.duration = 45
             c.restDuration = 15
             c.rounds = 10
@@ -132,7 +132,7 @@ public struct TimerConfig: Identifiable, Codable, Hashable {
         switch type {
         case .standard:
             return "\(direction.rawValue) · \(formattedSeconds(duration))"
-        case .round:
+        case .interval:
             return "\(rounds) rounds · \(formattedSeconds(duration)) work / \(formattedSeconds(restDuration)) rest"
         case .tabata:
             return "\(rounds) rounds · \(duration)s work / \(restDuration)s rest"

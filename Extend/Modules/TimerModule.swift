@@ -371,19 +371,19 @@ private struct TimerEditorView: View {
                 }
 
                 // Work / main duration
-                Section(config.type == .round || config.type == .tabata ? "Work Duration" : "Duration") {
+                Section(config.type == .interval || config.type == .tabata ? "Work Duration" : "Duration") {
                     DurationStepper(label: "", seconds: $config.duration)
                 }
 
                 // Rest duration
-                if config.type == .round || config.type == .tabata || config.type == .emom {
+                if config.type == .interval || config.type == .tabata || config.type == .emom {
                     Section("Rest Duration") {
                         DurationStepper(label: "", seconds: $config.restDuration)
                     }
                 }
 
                 // Rounds
-                if config.type == .round || config.type == .tabata || config.type == .emom || config.type == .ladder {
+                if config.type == .interval || config.type == .tabata || config.type == .emom || config.type == .ladder {
                     Section("Rounds") {
                         IntStepper(label: "Rounds", value: $config.rounds, range: 1...999)
                     }
@@ -786,11 +786,11 @@ private struct ActiveTimerView: View {
             let isUp = config.direction == .countUp
             list.append(TimerPhase(label: "Go", duration: isUp ? 0 : config.duration, isCountUp: isUp))
 
-        case .round:
+        case .interval:
             for r in 1...max(1, config.rounds) {
-                list.append(TimerPhase(label: "Round \(r) of \(config.rounds) — Work", duration: config.duration, isCountUp: false))
+                list.append(TimerPhase(label: "Interval \(r) of \(config.rounds) — Work", duration: config.duration, isCountUp: false))
                 if config.restDuration > 0 && r < config.rounds {
-                    list.append(TimerPhase(label: "Round \(r) of \(config.rounds) — Rest", duration: config.restDuration, isCountUp: false))
+                    list.append(TimerPhase(label: "Interval \(r) of \(config.rounds) — Rest", duration: config.restDuration, isCountUp: false))
                 }
             }
 
@@ -936,7 +936,7 @@ private struct ActiveTimerView: View {
         if config.type != .standard && config.type != .amrap {
             lines.append("Rounds: \(config.rounds)")
         }
-        if config.type == .round || config.type == .tabata || config.type == .emom {
+        if config.type == .interval || config.type == .tabata || config.type == .emom {
             lines.append("Rest: \(formattedDuration(config.restDuration))")
         }
         if config.warmupDuration > 0 { lines.append("Warmup: \(formattedDuration(config.warmupDuration))") }
