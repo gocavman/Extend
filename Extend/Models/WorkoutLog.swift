@@ -68,6 +68,10 @@ public struct LoggedExercise: Identifiable, Codable, Hashable {
     public var activeSeconds: Int
     /// Equipment IDs the user indicated they actually used for this exercise session
     public var usedEquipmentIDs: [UUID]
+    /// Position of this item in the original workout's item list (for ordering in the log view)
+    public var orderIndex: Int
+    /// Loop group ID — exercises sharing the same non-nil loopID were in a superset/circuit
+    public var loopID: UUID?
 
     public init(
         id: UUID = UUID(),
@@ -76,7 +80,9 @@ public struct LoggedExercise: Identifiable, Codable, Hashable {
         sets: [LoggedSet] = [],
         notes: String = "",
         activeSeconds: Int = 0,
-        usedEquipmentIDs: [UUID] = []
+        usedEquipmentIDs: [UUID] = [],
+        orderIndex: Int = 0,
+        loopID: UUID? = nil
     ) {
         self.id = id
         self.exerciseID = exerciseID
@@ -85,6 +91,8 @@ public struct LoggedExercise: Identifiable, Codable, Hashable {
         self.notes = notes
         self.activeSeconds = activeSeconds
         self.usedEquipmentIDs = usedEquipmentIDs
+        self.orderIndex = orderIndex
+        self.loopID = loopID
     }
 
     public init(from decoder: Decoder) throws {
@@ -96,6 +104,8 @@ public struct LoggedExercise: Identifiable, Codable, Hashable {
         notes = try c.decode(String.self, forKey: .notes)
         activeSeconds = (try? c.decodeIfPresent(Int.self, forKey: .activeSeconds)) ?? 0
         usedEquipmentIDs = (try? c.decodeIfPresent([UUID].self, forKey: .usedEquipmentIDs)) ?? []
+        orderIndex = (try? c.decodeIfPresent(Int.self, forKey: .orderIndex)) ?? 0
+        loopID = try? c.decodeIfPresent(UUID.self, forKey: .loopID)
     }
 }
 
@@ -130,10 +140,21 @@ public struct LoggedRest: Identifiable, Codable, Hashable {
     public var configuredDuration: Int
     /// How long the user actually rested (timer value when they moved on)
     public var actualDuration: Int
+    /// Position of this item in the original workout's item list (for ordering in the log view)
+    public var orderIndex: Int
 
-    public init(id: UUID = UUID(), configuredDuration: Int, actualDuration: Int) {
+    public init(id: UUID = UUID(), configuredDuration: Int, actualDuration: Int, orderIndex: Int = 0) {
         self.id = id
         self.configuredDuration = configuredDuration
         self.actualDuration = actualDuration
+        self.orderIndex = orderIndex
+    }
+
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = try c.decode(UUID.self, forKey: .id)
+        configuredDuration = try c.decode(Int.self, forKey: .configuredDuration)
+        actualDuration = try c.decode(Int.self, forKey: .actualDuration)
+        orderIndex = (try? c.decodeIfPresent(Int.self, forKey: .orderIndex)) ?? 0
     }
 }

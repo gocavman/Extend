@@ -937,6 +937,70 @@ private struct WorkoutLogDetailView: View {
             }
         )
     }
+
+    /// Unified ordered list of exercises and rests, sorted by their original workout position.
+    /// Exercises that share a loopID are grouped together; the first one in the group carries
+    /// a loop header. Falls back to array order when orderIndex values are all 0 (old logs).
+    private enum OrderedLogItem {
+        case exercise(index: Int)   // index into log.exercises
+        case rest(index: Int)       // index into log.restPeriods
+        case loopHeader(loopID: UUID, exerciseIndices: [Int])
+    }
+
+    private var orderedItems: [OrderedLogItem] {
+        // If any item has a non-zero orderIndex, use proper ordering.
+        // Otherwise fall back to exercises-then-rests (legacy logs).
+        let hasOrdering = log.exercises.contains { $0.orderIndex != 0 } ||
+                          log.restPeriods.contains { $0.orderIndex != 0 }
+
+        guard hasOrdering else {
+            // Legacy: exercises first, then rests
+            var items: [OrderedLogItem] = []
+            // Group exercises by loopID
+            var seenLoops: Set<UUID> = []
+            for (i, ex) in log.exercises.enumerated() {
+                if let lid = ex.loopID {
+                    if seenLoops.contains(lid) { continue }
+                    seenLoops.insert(lid)
+                    let indices = log.exercises.indices.filter { log.exercises[$0].loopID == lid }
+                    items.append(.loopHeader(loopID: lid, exerciseIndices: indices))
+                    for idx in indices { items.append(.exercise(index: idx)) }
+                } else {
+                    items.append(.exercise(index: i))
+                }
+            }
+            for i in log.restPeriods.indices { items.append(.rest(index: i)) }
+            return items
+        }
+
+        // Build a combined list sorted by orderIndex
+        struct Slot { var orderIndex: Int; var item: OrderedLogItem }
+        var slots: [Slot] = []
+
+        // Track which loop groups have already emitted their header
+        var seenLoops: Set<UUID> = []
+
+        for (i, ex) in log.exercises.enumerated() {
+            if let lid = ex.loopID {
+                if seenLoops.contains(lid) { continue }
+                seenLoops.insert(lid)
+                let indices = log.exercises.indices.filter { log.exercises[$0].loopID == lid }
+                let minOrder = indices.map { log.exercises[$0].orderIndex }.min() ?? ex.orderIndex
+                // Header sits just before the first exercise in the loop
+                slots.append(Slot(orderIndex: minOrder, item: .loopHeader(loopID: lid, exerciseIndices: indices)))
+                for idx in indices {
+                    slots.append(Slot(orderIndex: log.exercises[idx].orderIndex, item: .exercise(index: idx)))
+                }
+            } else {
+                slots.append(Slot(orderIndex: ex.orderIndex, item: .exercise(index: i)))
+            }
+        }
+        for (i, rest) in log.restPeriods.enumerated() {
+            slots.append(Slot(orderIndex: rest.orderIndex, item: .rest(index: i)))
+        }
+
+        return slots.sorted { $0.orderIndex < $1.orderIndex }.map { $0.item }
+    }
     
     private func extractLinesCount(from notes: String) -> Int {
         // First try to find "Total Lines Read:" which explicitly states the count
@@ -1125,244 +1189,51 @@ private struct WorkoutLogDetailView: View {
                     
                     Divider()
                     
-                    // Exercises
-                    ForEach($log.exercises) { $exercise in
-                        VStack(alignment: .leading, spacing: 8) {
-                            HStack {
-                                Text(exercise.exerciseName)
-                                    .font(.subheadline)
+                    // Exercises, rests, and loop headers in original workout order
+                    ForEach(Array(orderedItems.enumerated()), id: \.offset) { _, item in
+                        switch item {
+                        case .loopHeader(_, let indices):
+                            // Loop / superset label
+                            HStack(spacing: 6) {
+                                Image(systemName: "arrow.triangle.2.circlepath")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                                Text("Loop / Superset")
+                                    .font(.caption)
                                     .fontWeight(.semibold)
-
-                                Spacer()
-
-                                // Show exercise active time if logged
-                                if !isEditing && exercise.activeSeconds > 0 {
-                                    Label(formatLogTime(exercise.activeSeconds), systemImage: "stopwatch")
-                                        .font(.caption)
-                                        .foregroundColor(.secondary)
-                                }
-
-                                if isEditing {
-                                    // Editable active time as m / s
-                                    HStack(spacing: 2) {
-                                        Image(systemName: "stopwatch")
-                                            .font(.caption)
-                                            .foregroundColor(.secondary)
-                                        TextField("0", value: Binding(
-                                            get: { exercise.activeSeconds / 60 },
-                                            set: { exercise.activeSeconds = $0 * 60 + exercise.activeSeconds % 60 }
-                                        ), format: .number)
-                                            .keyboardType(.numberPad)
-                                            .font(.caption)
-                                            .frame(width: 30)
-                                            .textFieldStyle(.roundedBorder)
-                                        Text("min")
-                                            .font(.caption)
-                                            .foregroundColor(.secondary)
-                                        TextField("0", value: Binding(
-                                            get: { exercise.activeSeconds % 60 },
-                                            set: { exercise.activeSeconds = exercise.activeSeconds / 60 * 60 + min($0, 59) }
-                                        ), format: .number)
-                                            .keyboardType(.numberPad)
-                                            .font(.caption)
-                                            .frame(width: 30)
-                                            .textFieldStyle(.roundedBorder)
-                                        Text("sec")
-                                            .font(.caption)
-                                            .foregroundColor(.secondary)
-                                    }
-
-                                    Button(action: {
-                                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                                        exercise.sets.append(LoggedSet(reps: 0, weight: 0))
-                                    }) {
-                                        Image(systemName: "plus.circle.fill")
-                                            .foregroundColor(.black)
-                                    }
-                                    .buttonStyle(.plain)
-                                }
+                                    .foregroundColor(.secondary)
+                                Text("(\(indices.count) exercises)")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
                             }
+                            .padding(.horizontal, 16)
+                            .padding(.top, 4)
 
-                            if !exercise.sets.isEmpty {
-                                let hasTimedSets = exercise.sets.contains { $0.timedSeconds > 0 }
-                                ForEach(Array(exercise.sets.indices), id: \.self) { index in
-                                    HStack {
-                                        Text("Set \(index + 1)")
-                                            .font(.caption)
-                                            .foregroundColor(.gray)
+                        case .exercise(let exIdx):
+                            exerciseRow(exIdx: exIdx)
 
-                                        if isEditing {
-                                            TextField("Reps", value: $exercise.sets[index].reps, format: .number)
-                                                .keyboardType(.numberPad)
-                                                .font(.caption)
-                                                .frame(width: 40)
-                                                .textFieldStyle(.roundedBorder)
-
-                                            Text("×")
-                                                .font(.caption)
-                                                .foregroundColor(.gray)
-
-                                            TextField("Weight", value: $exercise.sets[index].weight, format: .number)
-                                                .keyboardType(.decimalPad)
-                                                .font(.caption)
-                                                .frame(width: 50)
-                                                .textFieldStyle(.roundedBorder)
-
-                                            Text(weightUnit)
-                                                .font(.caption)
-                                                .foregroundColor(.gray)
-
-                                            // Timed duration as m / s
-                                            HStack(spacing: 2) {
-                                                Image(systemName: "timer")
-                                                    .font(.caption2)
-                                                    .foregroundColor(.secondary)
-                                                TextField("0", value: Binding(
-                                                    get: { exercise.sets[index].timedSeconds / 60 },
-                                                    set: { exercise.sets[index].timedSeconds = $0 * 60 + exercise.sets[index].timedSeconds % 60 }
-                                                ), format: .number)
-                                                    .keyboardType(.numberPad)
-                                                    .font(.caption)
-                                                    .frame(width: 28)
-                                                    .textFieldStyle(.roundedBorder)
-                                                Text("min")
-                                                    .font(.caption)
-                                                    .foregroundColor(.secondary)
-                                                TextField("0", value: Binding(
-                                                    get: { exercise.sets[index].timedSeconds % 60 },
-                                                    set: { exercise.sets[index].timedSeconds = exercise.sets[index].timedSeconds / 60 * 60 + min($0, 59) }
-                                                ), format: .number)
-                                                    .keyboardType(.numberPad)
-                                                    .font(.caption)
-                                                    .frame(width: 28)
-                                                    .textFieldStyle(.roundedBorder)
-                                                Text("sec")
-                                                    .font(.caption)
-                                                    .foregroundColor(.secondary)
-                                            }
-                                        } else {
-                                            Spacer()
-
-                                            // Timed set duration
-                                            if hasTimedSets {
-                                                let t = exercise.sets[index].timedSeconds
-                                                Text(t > 0 ? formatLogTime(t) : "—")
-                                                    .font(.caption)
-                                                    .foregroundColor(.secondary)
-                                                    .frame(width: 44, alignment: .trailing)
-                                            }
-
-                                            Text("\(exercise.sets[index].reps) reps")
-                                                .font(.caption)
-
-                                            Text("×")
-                                                .font(.caption)
-                                                .foregroundColor(.gray)
-
-                                            Text(String(format: "%.1f \(weightUnit)", exercise.sets[index].weight))
-                                                .font(.caption)
-                                        }
-
-                                        if isEditing {
-                                            Button(action: {
-                                                UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                                                exercise.sets.remove(at: index)
-                                            }) {
-                                                Image(systemName: "xmark.circle.fill")
-                                                    .foregroundColor(.red)
-                                            }
-                                            .buttonStyle(.plain)
-                                        }
-                                    }
-                                }
-                            }
-
-                            if isEditing {
-                                VStack(alignment: .leading, spacing: 2) {
-                                    Text("Notes")
-                                        .font(.caption2)
-                                        .fontWeight(.semibold)
-                                        .foregroundColor(.gray)
-                                    TextField("Exercise notes", text: $exercise.notes, axis: .vertical)
-                                        .font(.caption)
-                                        .textFieldStyle(.roundedBorder)
-                                        .lineLimit(2, reservesSpace: true)
-                                }
-                                .padding(.top, 4)
-                            } else if !exercise.notes.isEmpty {
-                                VStack(alignment: .leading, spacing: 2) {
-                                    Text("Notes")
-                                        .font(.caption2)
-                                        .fontWeight(.semibold)
-                                        .foregroundColor(.gray)
-                                    Text(exercise.notes)
-                                        .font(.caption)
-                                        .foregroundColor(.gray)
-                                }
-                                .padding(.top, 4)
-                            }
-
-                            // Equipment used section
-                            let allEquipment = (exercisesState.exercises.first { $0.id == exercise.exerciseID }?.equipmentIDs ?? [])
-                                .compactMap { id in equipmentState.sortedItems.first { $0.id == id } }
-                            if !allEquipment.isEmpty {
-                                VStack(alignment: .leading, spacing: 4) {
-                                    Text("Equipment Used")
-                                        .font(.caption2)
-                                        .fontWeight(.semibold)
-                                        .foregroundColor(.gray)
-                                    if isEditing {
-                                        HStack(spacing: 6) {
-                                            ForEach(allEquipment) { item in
-                                                let selected = exercise.usedEquipmentIDs.contains(item.id)
-                                                Button(action: {
-                                                    if selected {
-                                                        exercise.usedEquipmentIDs.removeAll { $0 == item.id }
-                                                    } else {
-                                                        exercise.usedEquipmentIDs.append(item.id)
-                                                    }
-                                                }) {
-                                                    HStack(spacing: 4) {
-                                                        Image(systemName: selected ? "checkmark.circle.fill" : "circle")
-                                                            .font(.system(size: 11))
-                                                            .foregroundColor(selected ? .white : .secondary)
-                                                        Text(item.name)
-                                                            .font(.caption)
-                                                            .foregroundColor(selected ? .white : .secondary)
-                                                    }
-                                                    .padding(.horizontal, 8)
-                                                    .padding(.vertical, 4)
-                                                    .background(selected ? Color.black : Color(red: 0.88, green: 0.88, blue: 0.90))
-                                                    .cornerRadius(12)
-                                                }
-                                                .buttonStyle(.plain)
-                                            }
-                                            Spacer()
-                                        }
-                                    } else {
-                                        let usedEquipment = allEquipment.filter { exercise.usedEquipmentIDs.contains($0.id) }
-                                        if usedEquipment.isEmpty {
-                                            Text("None recorded")
-                                                .font(.caption)
-                                                .foregroundColor(.secondary)
-                                        } else {
-                                            Text(usedEquipment.map { $0.name }.joined(separator: ", "))
-                                                .font(.caption)
-                                                .foregroundColor(.secondary)
-                                        }
-                                    }
-                                }
-                                .padding(.top, 4)
-                            }
+                        case .rest(let restIdx):
+                            restRow(restIdx: restIdx)
                         }
-                        .padding(12)
-                        .background(Color(red: 0.96, green: 0.96, blue: 0.97))
-                        .cornerRadius(8)
-                        .padding(.horizontal, 16)
                     }
 
-                    // Rest periods
-                    restPeriodsSection()
+                    // In edit mode also show an add-rest button at the bottom
+                    if isEditing {
+                        HStack {
+                            Spacer()
+                            Button(action: {
+                                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                                log.restPeriods.append(LoggedRest(configuredDuration: 60, actualDuration: 60))
+                            }) {
+                                Label("Add Rest", systemImage: "plus.circle.fill")
+                                    .font(.caption)
+                                    .foregroundColor(.black)
+                            }
+                            .buttonStyle(.plain)
+                            Spacer()
+                        }
+                        .padding(.horizontal, 16)
+                    }
                 }
                 .padding(.vertical, 16)
             }
@@ -1425,97 +1296,251 @@ private struct WorkoutLogDetailView: View {
     }
 
     @ViewBuilder
-    private func restPeriodsSection() -> some View {
-        if !log.restPeriods.isEmpty || isEditing {
-            VStack(alignment: .leading, spacing: 6) {
-                HStack {
-                    Text("Rest Periods")
-                        .font(.subheadline)
-                        .fontWeight(.semibold)
-                    Spacer()
-                    if isEditing {
-                        Button(action: {
-                            UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                            log.restPeriods.append(LoggedRest(configuredDuration: 60, actualDuration: 60))
-                        }) {
-                            Image(systemName: "plus.circle.fill")
-                                .foregroundColor(.black)
-                        }
-                        .buttonStyle(.plain)
-                    }
+    private func exerciseRow(exIdx: Int) -> some View {
+        // We need a binding to the exercise at this index
+        let exercise = log.exercises[exIdx]
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Text(exercise.exerciseName)
+                    .font(.subheadline)
+                    .fontWeight(.semibold)
+
+                Spacer()
+
+                if !isEditing && exercise.activeSeconds > 0 {
+                    Label(formatLogTime(exercise.activeSeconds), systemImage: "stopwatch")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
                 }
 
-                ForEach(Array(log.restPeriods.indices), id: \.self) { i in
-                    HStack(spacing: 8) {
-                        Image(systemName: "zzz")
+                if isEditing {
+                    HStack(spacing: 2) {
+                        Image(systemName: "stopwatch")
                             .font(.caption)
                             .foregroundColor(.secondary)
+                        TextField("0", value: Binding(
+                            get: { log.exercises[exIdx].activeSeconds / 60 },
+                            set: { log.exercises[exIdx].activeSeconds = $0 * 60 + log.exercises[exIdx].activeSeconds % 60 }
+                        ), format: .number)
+                            .keyboardType(.numberPad).font(.caption).frame(width: 30).textFieldStyle(.roundedBorder)
+                        Text("min").font(.caption).foregroundColor(.secondary)
+                        TextField("0", value: Binding(
+                            get: { log.exercises[exIdx].activeSeconds % 60 },
+                            set: { log.exercises[exIdx].activeSeconds = log.exercises[exIdx].activeSeconds / 60 * 60 + min($0, 59) }
+                        ), format: .number)
+                            .keyboardType(.numberPad).font(.caption).frame(width: 30).textFieldStyle(.roundedBorder)
+                        Text("sec").font(.caption).foregroundColor(.secondary)
+                    }
+
+                    Button(action: {
+                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                        log.exercises[exIdx].sets.append(LoggedSet(reps: 0, weight: 0))
+                    }) {
+                        Image(systemName: "plus.circle.fill").foregroundColor(.black)
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+
+            if !exercise.sets.isEmpty {
+                let hasTimedSets = exercise.sets.contains { $0.timedSeconds > 0 }
+                ForEach(Array(exercise.sets.indices), id: \.self) { index in
+                    HStack {
+                        Text("Set \(index + 1)")
+                            .font(.caption)
+                            .foregroundColor(.gray)
 
                         if isEditing {
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text("Configured")
-                                    .font(.caption2)
-                                    .foregroundColor(.secondary)
-                                HStack(spacing: 2) {
-                                    TextField("0", value: Binding(
-                                        get: { log.restPeriods[i].configuredDuration / 60 },
-                                        set: { log.restPeriods[i].configuredDuration = $0 * 60 + log.restPeriods[i].configuredDuration % 60 }
-                                    ), format: .number)
-                                        .keyboardType(.numberPad).font(.caption).frame(width: 28).textFieldStyle(.roundedBorder)
-                                    Text("min").font(.caption).foregroundColor(.secondary)
-                                    TextField("0", value: Binding(
-                                        get: { log.restPeriods[i].configuredDuration % 60 },
-                                        set: { log.restPeriods[i].configuredDuration = log.restPeriods[i].configuredDuration / 60 * 60 + min($0, 59) }
-                                    ), format: .number)
-                                        .keyboardType(.numberPad).font(.caption).frame(width: 28).textFieldStyle(.roundedBorder)
-                                    Text("sec").font(.caption).foregroundColor(.secondary)
-                                }
+                            TextField("Reps", value: Binding(
+                                get: { log.exercises[exIdx].sets[index].reps },
+                                set: { log.exercises[exIdx].sets[index].reps = $0 }
+                            ), format: .number)
+                                .keyboardType(.numberPad).font(.caption).frame(width: 40).textFieldStyle(.roundedBorder)
+                            Text("×").font(.caption).foregroundColor(.gray)
+                            TextField("Weight", value: Binding(
+                                get: { log.exercises[exIdx].sets[index].weight },
+                                set: { log.exercises[exIdx].sets[index].weight = $0 }
+                            ), format: .number)
+                                .keyboardType(.decimalPad).font(.caption).frame(width: 50).textFieldStyle(.roundedBorder)
+                            Text(weightUnit).font(.caption).foregroundColor(.gray)
+                            HStack(spacing: 2) {
+                                Image(systemName: "timer").font(.caption2).foregroundColor(.secondary)
+                                TextField("0", value: Binding(
+                                    get: { log.exercises[exIdx].sets[index].timedSeconds / 60 },
+                                    set: { log.exercises[exIdx].sets[index].timedSeconds = $0 * 60 + log.exercises[exIdx].sets[index].timedSeconds % 60 }
+                                ), format: .number)
+                                    .keyboardType(.numberPad).font(.caption).frame(width: 28).textFieldStyle(.roundedBorder)
+                                Text("min").font(.caption).foregroundColor(.secondary)
+                                TextField("0", value: Binding(
+                                    get: { log.exercises[exIdx].sets[index].timedSeconds % 60 },
+                                    set: { log.exercises[exIdx].sets[index].timedSeconds = log.exercises[exIdx].sets[index].timedSeconds / 60 * 60 + min($0, 59) }
+                                ), format: .number)
+                                    .keyboardType(.numberPad).font(.caption).frame(width: 28).textFieldStyle(.roundedBorder)
+                                Text("sec").font(.caption).foregroundColor(.secondary)
                             }
-
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text("Rested")
-                                    .font(.caption2)
-                                    .foregroundColor(.secondary)
-                                HStack(spacing: 2) {
-                                    TextField("0", value: Binding(
-                                        get: { log.restPeriods[i].actualDuration / 60 },
-                                        set: { log.restPeriods[i].actualDuration = $0 * 60 + log.restPeriods[i].actualDuration % 60 }
-                                    ), format: .number)
-                                        .keyboardType(.numberPad).font(.caption).frame(width: 28).textFieldStyle(.roundedBorder)
-                                    Text("min").font(.caption).foregroundColor(.secondary)
-                                    TextField("0", value: Binding(
-                                        get: { log.restPeriods[i].actualDuration % 60 },
-                                        set: { log.restPeriods[i].actualDuration = log.restPeriods[i].actualDuration / 60 * 60 + min($0, 59) }
-                                    ), format: .number)
-                                        .keyboardType(.numberPad).font(.caption).frame(width: 28).textFieldStyle(.roundedBorder)
-                                    Text("sec").font(.caption).foregroundColor(.secondary)
-                                }
-                            }
-
+                        } else {
                             Spacer()
+                            if hasTimedSets {
+                                let t = exercise.sets[index].timedSeconds
+                                Text(t > 0 ? formatLogTime(t) : "—")
+                                    .font(.caption).foregroundColor(.secondary).frame(width: 44, alignment: .trailing)
+                            }
+                            Text("\(exercise.sets[index].reps) reps").font(.caption)
+                            Text("×").font(.caption).foregroundColor(.gray)
+                            Text(String(format: "%.1f \(weightUnit)", exercise.sets[index].weight)).font(.caption)
+                        }
 
+                        if isEditing {
                             Button(action: {
                                 UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                                log.restPeriods.remove(at: i)
+                                log.exercises[exIdx].sets.remove(at: index)
                             }) {
                                 Image(systemName: "xmark.circle.fill").foregroundColor(.red)
                             }
                             .buttonStyle(.plain)
-                        } else {
-                            Text("Configured: \(formatLogTime(log.restPeriods[i].configuredDuration))")
-                                .font(.caption).foregroundColor(.secondary)
-                            Spacer()
-                            Text("Rested: \(formatLogTime(log.restPeriods[i].actualDuration))")
-                                .font(.caption).foregroundColor(.secondary)
                         }
                     }
                 }
             }
-            .padding(12)
-            .background(Color(red: 0.96, green: 0.96, blue: 0.97))
-            .cornerRadius(8)
-            .padding(.horizontal, 16)
+
+            if isEditing {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Notes").font(.caption2).fontWeight(.semibold).foregroundColor(.gray)
+                    TextField("Exercise notes", text: Binding(
+                        get: { log.exercises[exIdx].notes },
+                        set: { log.exercises[exIdx].notes = $0 }
+                    ), axis: .vertical)
+                        .font(.caption).textFieldStyle(.roundedBorder).lineLimit(2, reservesSpace: true)
+                }
+                .padding(.top, 4)
+            } else if !exercise.notes.isEmpty {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Notes").font(.caption2).fontWeight(.semibold).foregroundColor(.gray)
+                    Text(exercise.notes).font(.caption).foregroundColor(.gray)
+                }
+                .padding(.top, 4)
+            }
+
+            let allEquipment = (exercisesState.exercises.first { $0.id == exercise.exerciseID }?.equipmentIDs ?? [])
+                .compactMap { id in equipmentState.sortedItems.first { $0.id == id } }
+            if !allEquipment.isEmpty {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Equipment Used").font(.caption2).fontWeight(.semibold).foregroundColor(.gray)
+                    if isEditing {
+                        HStack(spacing: 6) {
+                            ForEach(allEquipment) { item in
+                                let selected = exercise.usedEquipmentIDs.contains(item.id)
+                                Button(action: {
+                                    if selected {
+                                        log.exercises[exIdx].usedEquipmentIDs.removeAll { $0 == item.id }
+                                    } else {
+                                        log.exercises[exIdx].usedEquipmentIDs.append(item.id)
+                                    }
+                                }) {
+                                    HStack(spacing: 4) {
+                                        Image(systemName: selected ? "checkmark.circle.fill" : "circle")
+                                            .font(.system(size: 11))
+                                            .foregroundColor(selected ? .white : .secondary)
+                                        Text(item.name).font(.caption).foregroundColor(selected ? .white : .secondary)
+                                    }
+                                    .padding(.horizontal, 8).padding(.vertical, 4)
+                                    .background(selected ? Color.black : Color(red: 0.88, green: 0.88, blue: 0.90))
+                                    .cornerRadius(12)
+                                }
+                                .buttonStyle(.plain)
+                            }
+                            Spacer()
+                        }
+                    } else {
+                        let usedEquipment = allEquipment.filter { exercise.usedEquipmentIDs.contains($0.id) }
+                        if usedEquipment.isEmpty {
+                            Text("None recorded").font(.caption).foregroundColor(.secondary)
+                        } else {
+                            Text(usedEquipment.map { $0.name }.joined(separator: ", ")).font(.caption).foregroundColor(.secondary)
+                        }
+                    }
+                }
+                .padding(.top, 4)
+            }
         }
+        .padding(12)
+        .background(Color(red: 0.96, green: 0.96, blue: 0.97))
+        .cornerRadius(8)
+        .padding(.horizontal, 16)
+    }
+
+    @ViewBuilder
+    private func restRow(restIdx: Int) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(spacing: 8) {
+                Image(systemName: "zzz")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                Text("Rest")
+                    .font(.caption)
+                    .fontWeight(.semibold)
+                    .foregroundColor(.secondary)
+                Spacer()
+                if isEditing {
+                    Button(action: {
+                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                        log.restPeriods.remove(at: restIdx)
+                    }) {
+                        Image(systemName: "xmark.circle.fill").foregroundColor(.red)
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+
+            HStack(spacing: 12) {
+                if isEditing {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Configured").font(.caption2).foregroundColor(.secondary)
+                        HStack(spacing: 2) {
+                            TextField("0", value: Binding(
+                                get: { log.restPeriods[restIdx].configuredDuration / 60 },
+                                set: { log.restPeriods[restIdx].configuredDuration = $0 * 60 + log.restPeriods[restIdx].configuredDuration % 60 }
+                            ), format: .number)
+                                .keyboardType(.numberPad).font(.caption).frame(width: 28).textFieldStyle(.roundedBorder)
+                            Text("min").font(.caption).foregroundColor(.secondary)
+                            TextField("0", value: Binding(
+                                get: { log.restPeriods[restIdx].configuredDuration % 60 },
+                                set: { log.restPeriods[restIdx].configuredDuration = log.restPeriods[restIdx].configuredDuration / 60 * 60 + min($0, 59) }
+                            ), format: .number)
+                                .keyboardType(.numberPad).font(.caption).frame(width: 28).textFieldStyle(.roundedBorder)
+                            Text("sec").font(.caption).foregroundColor(.secondary)
+                        }
+                    }
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Rested").font(.caption2).foregroundColor(.secondary)
+                        HStack(spacing: 2) {
+                            TextField("0", value: Binding(
+                                get: { log.restPeriods[restIdx].actualDuration / 60 },
+                                set: { log.restPeriods[restIdx].actualDuration = $0 * 60 + log.restPeriods[restIdx].actualDuration % 60 }
+                            ), format: .number)
+                                .keyboardType(.numberPad).font(.caption).frame(width: 28).textFieldStyle(.roundedBorder)
+                            Text("min").font(.caption).foregroundColor(.secondary)
+                            TextField("0", value: Binding(
+                                get: { log.restPeriods[restIdx].actualDuration % 60 },
+                                set: { log.restPeriods[restIdx].actualDuration = log.restPeriods[restIdx].actualDuration / 60 * 60 + min($0, 59) }
+                            ), format: .number)
+                                .keyboardType(.numberPad).font(.caption).frame(width: 28).textFieldStyle(.roundedBorder)
+                            Text("sec").font(.caption).foregroundColor(.secondary)
+                        }
+                    }
+                } else {
+                    Text("Configured: \(formatLogTime(log.restPeriods[restIdx].configuredDuration))")
+                        .font(.caption).foregroundColor(.secondary)
+                    Spacer()
+                    Text("Rested: \(formatLogTime(log.restPeriods[restIdx].actualDuration))")
+                        .font(.caption).foregroundColor(.secondary)
+                }
+            }
+        }
+        .padding(12)
+        .background(Color(red: 0.96, green: 0.96, blue: 0.97))
+        .cornerRadius(8)
+        .padding(.horizontal, 16)
     }
 
     private func formatLogTime(_ seconds: Int) -> String {

@@ -2170,7 +2170,7 @@ public struct StartWorkoutView: View {
         var loggedExercises: [LoggedExercise] = []
         var loggedRests: [LoggedRest] = []
 
-        for item in workout.items {
+        for (orderIndex, item) in workout.items.enumerated() {
             switch item {
             case .exercise(let we):
                 guard let exercise = exercisesState.exercises.first(where: { $0.id == we.exerciseID }),
@@ -2193,7 +2193,9 @@ public struct StartWorkoutView: View {
                     sets: loggedSets,
                     notes: savedData.notes,
                     activeSeconds: savedData.timerSeconds,
-                    usedEquipmentIDs: Array(savedData.usedEquipmentIDs)
+                    usedEquipmentIDs: Array(savedData.usedEquipmentIDs),
+                    orderIndex: orderIndex,
+                    loopID: we.loopID
                 ))
 
             case .rest(let r):
@@ -2201,7 +2203,7 @@ public struct StartWorkoutView: View {
                 let configured = data?.configured ?? r.duration
                 let remaining = data?.remaining ?? r.duration
                 let actual = max(0, configured - remaining)
-                loggedRests.append(LoggedRest(configuredDuration: configured, actualDuration: actual))
+                loggedRests.append(LoggedRest(configuredDuration: configured, actualDuration: actual, orderIndex: orderIndex))
             }
         }
 
