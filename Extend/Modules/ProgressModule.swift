@@ -1193,12 +1193,13 @@ private struct WorkoutLogDetailView: View {
                     ForEach(Array(orderedItems.enumerated()), id: \.offset) { _, item in
                         switch item {
                         case .loopHeader(_, let indices):
-                            // Loop / superset label
+                            // Loop header: superset for 2, circuit for 3+
+                            let loopLabel = indices.count == 2 ? "Loop / Superset" : "Loop / Circuit"
                             HStack(spacing: 6) {
                                 Image(systemName: "arrow.triangle.2.circlepath")
                                     .font(.caption)
                                     .foregroundColor(.secondary)
-                                Text("Loop / Superset")
+                                Text(loopLabel)
                                     .font(.caption)
                                     .fontWeight(.semibold)
                                     .foregroundColor(.secondary)
