@@ -57,6 +57,48 @@ private extension Array where Element == PredefinedSet {
     }
 }
 
+// MARK: - Flow Layout
+
+/// Wraps chips left-to-right, flowing onto new lines as needed.
+private struct FlowLayout: Layout {
+    var spacing: CGFloat = 5
+
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        let maxWidth = proposal.width ?? .infinity
+        var x: CGFloat = 0
+        var y: CGFloat = 0
+        var rowHeight: CGFloat = 0
+        for view in subviews {
+            let size = view.sizeThatFits(.unspecified)
+            if x + size.width > maxWidth && x > 0 {
+                y += rowHeight + spacing
+                x = 0
+                rowHeight = 0
+            }
+            x += size.width + spacing
+            rowHeight = max(rowHeight, size.height)
+        }
+        return CGSize(width: maxWidth, height: y + rowHeight)
+    }
+
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+        var x = bounds.minX
+        var y = bounds.minY
+        var rowHeight: CGFloat = 0
+        for view in subviews {
+            let size = view.sizeThatFits(.unspecified)
+            if x + size.width > bounds.maxX && x > bounds.minX {
+                y += rowHeight + spacing
+                x = bounds.minX
+                rowHeight = 0
+            }
+            view.place(at: CGPoint(x: x, y: y), proposal: ProposedViewSize(size))
+            x += size.width + spacing
+            rowHeight = max(rowHeight, size.height)
+        }
+    }
+}
+
 // MARK: - Workout Info Chip
 
 private struct WorkoutInfoChip: View {
@@ -161,99 +203,115 @@ private struct WorkoutsModuleView: View {
                         .padding(.vertical, 20)
                 } else {
                     ForEach(filteredWorkouts) { workout in
-                        HStack(spacing: 12) {
-                            // Play icon — tapping anywhere on row also starts workout
-                            Image(systemName: "play.circle.fill")
-                                .foregroundColor(.black)
-                                .font(.system(size: 20))
+                        VStack(alignment: .leading, spacing: 4) {
+                            // Top row: play icon, name, action buttons
+                            HStack(spacing: 12) {
+                                Image(systemName: "play.circle.fill")
+                                    .foregroundColor(.black)
+                                    .font(.system(size: 20))
 
-                            VStack(alignment: .leading, spacing: 5) {
                                 Text(workout.name)
                                     .font(.subheadline)
                                     .fontWeight(.semibold)
                                     .foregroundColor(.primary)
+                                    .frame(maxWidth: .infinity, alignment: .leading)
 
-                                // Info chips row
-                                let exerciseItems = workout.exerciseItems
-                                let loopCount = workout.orderedLoopIDs.count
-                                let totalSets = exerciseItems.reduce(0) { $0 + $1.predefinedSets.count }
-                                let hasTimer = { if case .none = workout.timerMode { return false }; return true }()
+                                // Star / Favorite button
+                                Button(action: {
+                                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                                    state.toggleFavorite(id: workout.id)
+                                }) {
+                                    Image(systemName: state.isFavorite(workout.id) ? "star.fill" : "star")
+                                        .foregroundColor(state.isFavorite(workout.id) ? .yellow : .gray)
+                                }
+                                .buttonStyle(.plain)
 
-                                ScrollView(.horizontal, showsIndicators: false) {
-                                    HStack(spacing: 5) {
-                                        if !exerciseItems.isEmpty {
-                                            WorkoutInfoChip(label: "\(exerciseItems.count) exercise\(exerciseItems.count == 1 ? "" : "s")", icon: "dumbbell")
-                                        }
-                                        if loopCount > 0 {
-                                            WorkoutInfoChip(label: "\(loopCount) loop\(loopCount == 1 ? "" : "s")", icon: "arrow.2.circlepath")
-                                        }
-                                        if totalSets > 0 {
-                                            WorkoutInfoChip(label: "\(totalSets) set\(totalSets == 1 ? "" : "s")", icon: "list.number")
-                                        }
-                                        if hasTimer {
-                                            WorkoutInfoChip(label: workout.timerMode.displayName, icon: "timer")
-                                        }
-                                        if workout.warmupSeconds > 0 {
-                                            WorkoutInfoChip(label: "Warmup", icon: "flame")
-                                        }
-                                        if workout.cooldownSeconds > 0 {
-                                            WorkoutInfoChip(label: "Cooldown", icon: "snowflake")
-                                        }
+                                // History button
+                                Button(action: {
+                                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                                    historyWorkout = workout
+                                }) {
+                                    Image(systemName: "clock.arrow.circlepath")
+                                        .foregroundColor(.black)
+                                }
+                                .buttonStyle(.plain)
+
+                                // Stats button
+                                Button(action: {
+                                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                                    statsWorkout = workout
+                                }) {
+                                    Image(systemName: "chart.bar")
+                                        .foregroundColor(.black)
+                                }
+                                .buttonStyle(.plain)
+
+                                // Clone button
+                                Button(action: {
+                                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                                    state.cloneWorkout(workout)
+                                }) {
+                                    Image(systemName: "doc.on.doc")
+                                        .foregroundColor(.black)
+                                }
+                                .buttonStyle(.plain)
+
+                                // Edit button
+                                Button(action: {
+                                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                                    editingWorkout = workout
+                                }) {
+                                    Image(systemName: "pencil")
+                                        .foregroundColor(.black)
+                                }
+                                .buttonStyle(.plain)
+                            }
+
+                            // Notes line (only shown when non-empty)
+                            if !workout.notes.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                                Text(workout.notes)
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                                    .lineLimit(2)
+                            }
+
+                            // Info chips — full width, wrapping
+                            let exerciseItems = workout.exerciseItems
+                            let totalSets = exerciseItems.reduce(0) { $0 + $1.predefinedSets.count }
+                            let hasTimer = { if case .none = workout.timerMode { return false }; return true }()
+                            // Count how many loops are supersets (2 exercises) vs circuits (3+)
+                            let loopMemberCounts: [UUID: Int] = workout.orderedLoopIDs.reduce(into: [:]) { counts, lid in
+                                counts[lid] = exerciseItems.filter { $0.loopID == lid }.count
+                            }
+                            let supersetCount = loopMemberCounts.values.filter { $0 == 2 }.count
+                            let circuitCount  = loopMemberCounts.values.filter { $0 >= 3 }.count
+                            let hasChips = !exerciseItems.isEmpty || supersetCount > 0 || circuitCount > 0 || totalSets > 0 || hasTimer || workout.warmupSeconds > 0 || workout.cooldownSeconds > 0
+
+                            if hasChips {
+                                FlowLayout(spacing: 5) {
+                                    if !exerciseItems.isEmpty {
+                                        WorkoutInfoChip(label: "\(exerciseItems.count) exercise\(exerciseItems.count == 1 ? "" : "s")", icon: "dumbbell")
+                                    }
+                                    if totalSets > 0 {
+                                        WorkoutInfoChip(label: "\(totalSets) set\(totalSets == 1 ? "" : "s")", icon: "list.number")
+                                    }
+                                    if hasTimer {
+                                        WorkoutInfoChip(label: workout.timerMode.displayName, icon: "timer")
+                                    }
+                                    if supersetCount > 0 {
+                                        WorkoutInfoChip(label: "\(supersetCount) superset\(supersetCount == 1 ? "" : "s")", icon: "arrow.2.circlepath")
+                                    }
+                                    if circuitCount > 0 {
+                                        WorkoutInfoChip(label: "\(circuitCount) circuit\(circuitCount == 1 ? "" : "s")", icon: "arrow.2.circlepath")
+                                    }
+                                    if workout.warmupSeconds > 0 {
+                                        WorkoutInfoChip(label: "Warmup", icon: "flame")
+                                    }
+                                    if workout.cooldownSeconds > 0 {
+                                        WorkoutInfoChip(label: "Cooldown", icon: "snowflake")
                                     }
                                 }
                             }
-                            .frame(maxWidth: .infinity, alignment: .leading)
-
-                            // Star / Favorite button
-                            Button(action: {
-                                UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                                state.toggleFavorite(id: workout.id)
-                            }) {
-                                Image(systemName: state.isFavorite(workout.id) ? "star.fill" : "star")
-                                    .foregroundColor(state.isFavorite(workout.id) ? .yellow : .gray)
-                            }
-                            .buttonStyle(.plain)
-
-                            // History button
-                            Button(action: {
-                                UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                                historyWorkout = workout
-                            }) {
-                                Image(systemName: "clock.arrow.circlepath")
-                                    .foregroundColor(.black)
-                            }
-                            .buttonStyle(.plain)
-
-                            // Stats button
-                            Button(action: {
-                                UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                                statsWorkout = workout
-                            }) {
-                                Image(systemName: "chart.bar")
-                                    .foregroundColor(.black)
-                            }
-                            .buttonStyle(.plain)
-
-                            // Clone button
-                            Button(action: {
-                                UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                                state.cloneWorkout(workout)
-                            }) {
-                                Image(systemName: "doc.on.doc")
-                                    .foregroundColor(.black)
-                            }
-                            .buttonStyle(.plain)
-
-                            // Edit button
-                            Button(action: {
-                                UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                                editingWorkout = workout
-                            }) {
-                                Image(systemName: "pencil")
-                                    .foregroundColor(.black)
-                            }
-                            .buttonStyle(.plain)
-
                         }
                         .padding(.vertical, 6)
                         .contentShape(Rectangle())
