@@ -358,9 +358,9 @@ private struct TimerEditorView: View {
                         .foregroundColor(.secondary)
                 }
 
-                // Direction (Standard and AMRAP only)
+                // Direction (Standard and AMRAP only) — no section header
                 if config.type == .standard || config.type == .amrap {
-                    Section("Direction") {
+                    Section {
                         Picker("Direction", selection: $config.direction) {
                             ForEach(TimerDirection.allCases) { dir in
                                 Text(dir.rawValue).tag(dir)
@@ -370,42 +370,130 @@ private struct TimerEditorView: View {
                     }
                 }
 
-                // Work / main duration
-                Section(config.type == .interval || config.type == .tabata ? "Work Duration" : "Duration") {
-                    DurationStepper(label: "", seconds: $config.duration)
-                }
-
-                // Rest duration
+                // Duration / Work+Rest
                 if config.type == .interval || config.type == .tabata || config.type == .emom {
-                    Section("Rest Duration") {
-                        DurationStepper(label: "", seconds: $config.restDuration)
+                    // Work + Rest side by side — no section header
+                    Section {
+                        HStack(spacing: 0) {
+                            VStack(spacing: 2) {
+                                Text("Work")
+                                    .font(.subheadline)
+                                    .frame(maxWidth: .infinity)
+                                DurationStepper(label: "", seconds: $config.duration)
+                            }
+                            Divider()
+                            VStack(spacing: 2) {
+                                Text("Rest")
+                                    .font(.subheadline)
+                                    .frame(maxWidth: .infinity)
+                                DurationStepper(label: "", seconds: $config.restDuration)
+                            }
+                        }
+                    }
+                } else if config.type != .ladder {
+                    // Standard / AMRAP — Duration in left column, right empty — no section header
+                    Section {
+                        HStack(spacing: 0) {
+                            VStack(spacing: 2) {
+                                Text("Duration")
+                                    .font(.subheadline)
+                                    .frame(maxWidth: .infinity)
+                                DurationStepper(label: "", seconds: $config.duration)
+                            }
+                            Divider()
+                            Color.clear.frame(maxWidth: .infinity)
+                        }
                     }
                 }
 
-                // Rounds
+                // Rounds — left column wheel, right empty — no section header
                 if config.type == .interval || config.type == .tabata || config.type == .emom || config.type == .ladder {
-                    Section("Rounds") {
-                        IntStepper(label: "Rounds", value: $config.rounds, range: 1...999)
+                    Section {
+                        HStack(spacing: 0) {
+                            VStack(spacing: 2) {
+                                Text("Rounds")
+                                    .font(.subheadline)
+                                    .frame(maxWidth: .infinity)
+                                Picker("", selection: $config.rounds) {
+                                    ForEach(1...999, id: \.self) { n in Text("\(n)").tag(n) }
+                                }
+                                .pickerStyle(.wheel)
+                                .frame(maxWidth: .infinity)
+                                .clipped()
+                            }
+                            Divider()
+                            Color.clear.frame(maxWidth: .infinity)
+                        }
+                        .frame(height: 110)
                     }
                 }
 
-                // Ladder-specific
+                // Ladder-specific — no section header
                 if config.type == .ladder {
-                    Section("Ladder Settings") {
-                        IntStepper(label: "Peak Rounds", value: $config.ladderPeakRounds, range: 1...50)
-                        DurationStepper(label: "Step Size", seconds: $config.ladderStep)
-                        DurationStepper(label: "Rest Between Steps", seconds: $config.restDuration)
+                    Section {
+                        // Duration + Peak Rounds side by side
+                        HStack(spacing: 0) {
+                            VStack(spacing: 2) {
+                                Text("Duration")
+                                    .font(.subheadline)
+                                    .frame(maxWidth: .infinity)
+                                DurationStepper(label: "", seconds: $config.duration)
+                            }
+                            Divider()
+                            VStack(spacing: 2) {
+                                Text("Peak Rounds")
+                                    .font(.subheadline)
+                                    .frame(maxWidth: .infinity)
+                                Picker("", selection: $config.ladderPeakRounds) {
+                                    ForEach(1...50, id: \.self) { n in Text("\(n)").tag(n) }
+                                }
+                                .pickerStyle(.wheel)
+                                .frame(maxWidth: .infinity)
+                                .clipped()
+                            }
+                        }
+                        .frame(height: 130)
+
+                        // Step Size + Rest side by side
+                        HStack(spacing: 0) {
+                            VStack(spacing: 2) {
+                                Text("Step Size")
+                                    .font(.subheadline)
+                                    .frame(maxWidth: .infinity)
+                                DurationStepper(label: "", seconds: $config.ladderStep)
+                            }
+                            Divider()
+                            VStack(spacing: 2) {
+                                Text("Rest Between Steps")
+                                    .font(.subheadline)
+                                    .frame(maxWidth: .infinity)
+                                DurationStepper(label: "", seconds: $config.restDuration)
+                            }
+                        }
                     }
                 }
 
-                // Warmup / Cooldown (all types)
-                Section("Warmup & Cooldown") {
-                    DurationStepper(label: "Warmup", seconds: $config.warmupDuration)
-                    DurationStepper(label: "Cooldown", seconds: $config.cooldownDuration)
+                // Warmup & Cooldown — no section header, labels above wheels are sufficient
+                Section {
+                    HStack(spacing: 0) {
+                        VStack(spacing: 2) {
+                            Text("Warmup")
+                                .font(.subheadline)
+                                .frame(maxWidth: .infinity)
+                            DurationStepper(label: "", seconds: $config.warmupDuration)
+                        }
+                        Divider()
+                        VStack(spacing: 2) {
+                            Text("Cooldown")
+                                .font(.subheadline)
+                                .frame(maxWidth: .infinity)
+                            DurationStepper(label: "", seconds: $config.cooldownDuration)
+                        }
+                    }
                 }
 
                 if HealthKitState.shared.exportStrengthWorkouts {
-                    Section("Apple Health") {
+                    Section("Apple Health Activity") {
                         HKActivityTypePicker(rawValue: $config.healthKitActivityType)
                     }
                 }

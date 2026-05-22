@@ -89,11 +89,23 @@ public final class WorkoutsState {
                 return .rest(RestItem(duration: r.duration))
             }
         }
+        // Remap loop entries using the same UUID map built above
+        var clonedLoops: [String: WorkoutLoop] = [:]
+        for (oldKey, loop) in workout.loops {
+            let oldUUID = UUID(uuidString: oldKey) ?? UUID()
+            let newUUID = loopIDMap[oldUUID] ?? UUID()
+            clonedLoops[newUUID.uuidString] = WorkoutLoop(id: newUUID, rounds: loop.rounds, timerMode: loop.timerMode)
+        }
         let cloned = Workout(
             id: UUID(),
             name: "\(workout.name) Copy",
             notes: workout.notes,
-            items: clonedItems
+            items: clonedItems,
+            timerMode: workout.timerMode,
+            autoAdvance: workout.autoAdvance,
+            loops: clonedLoops,
+            warmupSeconds: workout.warmupSeconds,
+            cooldownSeconds: workout.cooldownSeconds
         )
         workouts.append(cloned)
         saveWorkouts()

@@ -117,7 +117,7 @@ struct HKActivityTypePicker: View {
     @Binding var rawValue: UInt?
 
     var body: some View {
-        Picker("Apple Health Activity", selection: $rawValue) {
+        Picker("", selection: $rawValue) {
             Text("Default (Other)").tag(UInt?.none)
             ForEach(HKWorkoutActivityTypeHelper.allCases) { entry in
                 Text(entry.label).tag(UInt?.some(entry.rawValue))

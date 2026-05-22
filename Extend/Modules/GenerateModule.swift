@@ -111,71 +111,44 @@ private struct GenerateModuleView: View {
             List {
                 // Min/Max Exercise Count Section
                 Section("Workout Size") {
-                    HStack {
-                        Text("Minimum")
-                        Spacer()
-                        HStack(spacing: 12) {
-                            Button(action: {
-                                if generateState.minExercises > 1 {
-                                    generateState.minExercises -= 1
-                                    selectedPresetId = nil
+                    HStack(spacing: 0) {
+                        VStack(spacing: 2) {
+                            Text("Minimum")
+                                .font(.subheadline)
+                                .frame(maxWidth: .infinity)
+                            Picker("", selection: Binding(
+                                get: { generateState.minExercises },
+                                set: { generateState.minExercises = $0; selectedPresetId = nil }
+                            )) {
+                                ForEach(1...100, id: \.self) { n in
+                                    Text("\(n)").tag(n)
                                 }
-                            }) {
-                                Image(systemName: "minus.circle.fill")
-                                    .foregroundColor(generateState.minExercises > 1 ? .black : .gray)
                             }
-                            .buttonStyle(.plain)
-                            .disabled(generateState.minExercises <= 1)
-                            
-                            Text("\(generateState.minExercises)")
-                                .frame(width: 30, alignment: .center)
-                            
-                            Button(action: {
-                                if generateState.minExercises < 100 {
-                                    generateState.minExercises += 1
-                                    selectedPresetId = nil
-                                }
-                            }) {
-                                Image(systemName: "plus.circle.fill")
-                                    .foregroundColor(generateState.minExercises < 100 ? .black : .gray)
-                            }
-                            .buttonStyle(.plain)
-                            .disabled(generateState.minExercises >= 100)
+                            .pickerStyle(.wheel)
+                            .frame(maxWidth: .infinity)
+                            .clipped()
                         }
-                    }
 
-                    HStack {
-                        Text("Maximum")
-                        Spacer()
-                        HStack(spacing: 12) {
-                            Button(action: {
-                                if generateState.maxExercises > 1 {
-                                    generateState.maxExercises -= 1
-                                    selectedPresetId = nil
+                        Divider()
+
+                        VStack(spacing: 2) {
+                            Text("Maximum")
+                                .font(.subheadline)
+                                .frame(maxWidth: .infinity)
+                            Picker("", selection: Binding(
+                                get: { generateState.maxExercises },
+                                set: { generateState.maxExercises = $0; selectedPresetId = nil }
+                            )) {
+                                ForEach(1...100, id: \.self) { n in
+                                    Text("\(n)").tag(n)
                                 }
-                            }) {
-                                Image(systemName: "minus.circle.fill")
-                                    .foregroundColor(generateState.maxExercises > 1 ? .black : .gray)
                             }
-                            .buttonStyle(.plain)
-                            .disabled(generateState.maxExercises <= 1)
-                            
-                            Text("\(generateState.maxExercises)")
-                                .frame(width: 30, alignment: .center)
-                            
-                            Button(action: {
-                                if generateState.maxExercises < 100 {
-                                    generateState.maxExercises += 1
-                                    selectedPresetId = nil
-                                }
-                            }) {
-                                Image(systemName: "plus.circle.fill")
-                                    .foregroundColor(generateState.maxExercises < 100 ? .black : .gray)
-                            }
-                            .buttonStyle(.plain)
-                            .disabled(generateState.maxExercises >= 100)
+                            .pickerStyle(.wheel)
+                            .frame(maxWidth: .infinity)
+                            .clipped()
                         }
                     }
+                    .frame(height: 110)
                 }
 
                 // Filter Selection Section

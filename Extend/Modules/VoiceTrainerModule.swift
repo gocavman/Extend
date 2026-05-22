@@ -526,151 +526,136 @@ private struct VoiceTrainerEditorView: View {
                 }
 
                 Section("Rounds") {
+                    // Number of Rounds — wheel picker
                     HStack {
-                        Text("Number of Rounds")
+                        Text("Rounds")
                             .font(.subheadline)
-                        Spacer()
-                        Button(action: {
-                            UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                            if numberOfRounds > 1 { numberOfRounds -= 1 }
-                        }) {
-                            Image(systemName: "minus.circle.fill")
-                                .foregroundColor(.black)
-                                .font(.system(size: 22))
+                        Picker("", selection: $numberOfRounds) {
+                            ForEach(1...100, id: \.self) { n in
+                                Text("\(n)").tag(n)
+                            }
                         }
-                        .buttonStyle(.plain)
-                        Text("\(numberOfRounds)")
-                            .font(.subheadline.monospacedDigit())
-                            .frame(width: 44, alignment: .center)
-                            .padding(6)
-                            .background(Color(red: 0.96, green: 0.96, blue: 0.97))
-                            .cornerRadius(6)
-                        Button(action: {
-                            UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                            if numberOfRounds < 100 { numberOfRounds += 1 }
-                        }) {
-                            Image(systemName: "plus.circle.fill")
-                                .foregroundColor(.black)
-                                .font(.system(size: 22))
-                        }
-                        .buttonStyle(.plain)
+                        .pickerStyle(.wheel)
+                        .frame(maxWidth: .infinity)
+                        .clipped()
                     }
+                    .frame(height: 100)
 
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("Round Length")
-                            .font(.subheadline)
-                        HStack(spacing: 0) {
-                            Picker("", selection: Binding(
-                                get: { roundLength / 60 },
-                                set: { roundLength = $0 * 60 + (roundLength % 60) / 5 * 5 }
-                            )) {
-                                ForEach(0..<100, id: \.self) { m in
-                                    Text("\(m) min").tag(m)
+                    // Round Length + Rest Between Rounds side by side
+                    HStack(spacing: 0) {
+                        VStack(spacing: 2) {
+                            Text("Round Length")
+                                .font(.subheadline)
+                                .frame(maxWidth: .infinity)
+                            HStack(spacing: 0) {
+                                Picker("", selection: Binding(
+                                    get: { roundLength / 60 },
+                                    set: { roundLength = $0 * 60 + (roundLength % 60) / 5 * 5 }
+                                )) {
+                                    ForEach(0..<100, id: \.self) { m in Text("\(m) min").tag(m) }
                                 }
-                            }
-                            .pickerStyle(.wheel)
-                            .frame(maxWidth: .infinity)
-                            .clipped()
-
-                            Picker("", selection: Binding(
-                                get: { (roundLength % 60) / 5 * 5 },
-                                set: { roundLength = (roundLength / 60) * 60 + $0 }
-                            )) {
-                                ForEach(Array(stride(from: 0, through: 55, by: 5)), id: \.self) { s in
-                                    Text("\(s) sec").tag(s)
+                                .pickerStyle(.wheel).frame(maxWidth: .infinity).clipped()
+                                Picker("", selection: Binding(
+                                    get: { (roundLength % 60) / 5 * 5 },
+                                    set: { roundLength = (roundLength / 60) * 60 + $0 }
+                                )) {
+                                    ForEach(Array(stride(from: 0, through: 55, by: 5)), id: \.self) { s in Text("\(s) sec").tag(s) }
                                 }
+                                .pickerStyle(.wheel).frame(maxWidth: .infinity).clipped()
                             }
-                            .pickerStyle(.wheel)
-                            .frame(maxWidth: .infinity)
-                            .clipped()
                         }
-                        .frame(height: 120)
-                    }
 
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("Rest Between Rounds")
-                            .font(.subheadline)
-                        HStack(spacing: 0) {
-                            Picker("", selection: Binding(
-                                get: { restLength / 60 },
-                                set: { restLength = $0 * 60 + (restLength % 60) / 5 * 5 }
-                            )) {
-                                ForEach(0..<100, id: \.self) { m in
-                                    Text("\(m) min").tag(m)
-                                }
-                            }
-                            .pickerStyle(.wheel)
-                            .frame(maxWidth: .infinity)
-                            .clipped()
+                        Divider()
 
-                            Picker("", selection: Binding(
-                                get: { (restLength % 60) / 5 * 5 },
-                                set: { restLength = (restLength / 60) * 60 + $0 }
-                            )) {
-                                ForEach(Array(stride(from: 0, through: 55, by: 5)), id: \.self) { s in
-                                    Text("\(s) sec").tag(s)
+                        VStack(spacing: 2) {
+                            Text("Rest Between")
+                                .font(.subheadline)
+                                .frame(maxWidth: .infinity)
+                            HStack(spacing: 0) {
+                                Picker("", selection: Binding(
+                                    get: { restLength / 60 },
+                                    set: { restLength = $0 * 60 + (restLength % 60) / 5 * 5 }
+                                )) {
+                                    ForEach(0..<100, id: \.self) { m in Text("\(m) min").tag(m) }
                                 }
+                                .pickerStyle(.wheel).frame(maxWidth: .infinity).clipped()
+                                Picker("", selection: Binding(
+                                    get: { (restLength % 60) / 5 * 5 },
+                                    set: { restLength = (restLength / 60) * 60 + $0 }
+                                )) {
+                                    ForEach(Array(stride(from: 0, through: 55, by: 5)), id: \.self) { s in Text("\(s) sec").tag(s) }
+                                }
+                                .pickerStyle(.wheel).frame(maxWidth: .infinity).clipped()
                             }
-                            .pickerStyle(.wheel)
-                            .frame(maxWidth: .infinity)
-                            .clipped()
                         }
-                        .frame(height: 120)
                     }
+                    .frame(height: 110)
                 }
 
                 Section("Timing") {
-                    HStack {
-                        Text("Delay Between Lines")
-                        Spacer()
-                        Picker("", selection: $delayBetweenLines) {
-                            ForEach(0...10, id: \.self) { s in
-                                Text(s == 0 ? "None" : "\(s) sec").tag(s)
+                    // Delay Between Lines + Start Countdown side by side
+                    HStack(spacing: 0) {
+                        VStack(spacing: 2) {
+                            Text("Delay Between Lines")
+                                .font(.subheadline)
+                                .multilineTextAlignment(.center)
+                                .frame(maxWidth: .infinity)
+                            Picker("", selection: $delayBetweenLines) {
+                                ForEach(0...10, id: \.self) { s in
+                                    Text(s == 0 ? "None" : "\(s) sec").tag(s)
+                                }
                             }
+                            .pickerStyle(.wheel).frame(maxWidth: .infinity).clipped()
                         }
-                        .pickerStyle(.wheel)
-                        .frame(width: 110, height: 100)
-                        .clipped()
-                    }
 
-                    HStack {
-                        Text("Start Countdown")
-                        Spacer()
-                        Picker("", selection: $workoutStartWarning) {
-                            ForEach(0...30, id: \.self) { s in
-                                Text(s == 0 ? "None" : "\(s) sec").tag(s)
-                            }
-                        }
-                        .pickerStyle(.wheel)
-                        .frame(width: 110, height: 100)
-                        .clipped()
-                    }
+                        Divider()
 
-                    HStack {
-                        Text("Rest Ending Countdown")
-                        Spacer()
-                        Picker("", selection: $restEndWarning) {
-                            ForEach(0...30, id: \.self) { s in
-                                Text(s == 0 ? "None" : "\(s) sec").tag(s)
+                        VStack(spacing: 2) {
+                            Text("Start Countdown")
+                                .font(.subheadline)
+                                .multilineTextAlignment(.center)
+                                .frame(maxWidth: .infinity)
+                            Picker("", selection: $workoutStartWarning) {
+                                ForEach(0...30, id: \.self) { s in
+                                    Text(s == 0 ? "None" : "\(s) sec").tag(s)
+                                }
                             }
+                            .pickerStyle(.wheel).frame(maxWidth: .infinity).clipped()
                         }
-                        .pickerStyle(.wheel)
-                        .frame(width: 110, height: 100)
-                        .clipped()
                     }
+                    .frame(height: 110)
 
-                    HStack {
-                        Text("Cooldown")
-                        Spacer()
-                        Picker("", selection: $cooldownPeriod) {
-                            ForEach(0...60, id: \.self) { m in
-                                Text(m == 0 ? "None" : "\(m) min").tag(m)
+                    // Rest Ending Countdown + Cooldown side by side
+                    HStack(spacing: 0) {
+                        VStack(spacing: 2) {
+                            Text("Rest Ending Countdown")
+                                .font(.subheadline)
+                                .multilineTextAlignment(.center)
+                                .frame(maxWidth: .infinity)
+                            Picker("", selection: $restEndWarning) {
+                                ForEach(0...30, id: \.self) { s in
+                                    Text(s == 0 ? "None" : "\(s) sec").tag(s)
+                                }
                             }
+                            .pickerStyle(.wheel).frame(maxWidth: .infinity).clipped()
                         }
-                        .pickerStyle(.wheel)
-                        .frame(width: 110, height: 100)
-                        .clipped()
+
+                        Divider()
+
+                        VStack(spacing: 2) {
+                            Text("Cooldown")
+                                .font(.subheadline)
+                                .multilineTextAlignment(.center)
+                                .frame(maxWidth: .infinity)
+                            Picker("", selection: $cooldownPeriod) {
+                                ForEach(0...60, id: \.self) { m in
+                                    Text(m == 0 ? "None" : "\(m) min").tag(m)
+                                }
+                            }
+                            .pickerStyle(.wheel).frame(maxWidth: .infinity).clipped()
+                        }
                     }
+                    .frame(height: 110)
 
                     Toggle("Random Order", isOn: $randomOrder)
                 }
