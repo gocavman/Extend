@@ -117,14 +117,18 @@ struct HKActivityTypePicker: View {
     @Binding var rawValue: UInt?
 
     var body: some View {
-        Picker("", selection: $rawValue) {
-            Text("Default (Other)").tag(UInt?.none)
-            ForEach(HKWorkoutActivityTypeHelper.allCases) { entry in
-                Text(entry.label).tag(UInt?.some(entry.rawValue))
+        VStack(alignment: .leading, spacing: 0) {
+            Picker("", selection: $rawValue) {
+                Text("Default (Other)").tag(UInt?.none)
+                ForEach(HKWorkoutActivityTypeHelper.allCases) { entry in
+                    Text(entry.label).tag(UInt?.some(entry.rawValue))
+                }
             }
+            .pickerStyle(.menu)
+            .tint(.primary)
+            .labelsHidden()
         }
-        .pickerStyle(.menu)
-        .tint(.primary)
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 }
 

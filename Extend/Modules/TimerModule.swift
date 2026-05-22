@@ -339,7 +339,7 @@ private struct TimerEditorView: View {
                 Section("Details") {
                     TextField("Name", text: $config.name)
                     TextField("Notes (optional)", text: $config.notes, axis: .vertical)
-                        .lineLimit(3, reservesSpace: true)
+                        .lineLimit(1...6)
                 }
 
                 // Type picker — switching presets defaults

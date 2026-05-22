@@ -345,7 +345,7 @@ private struct ExerciseEditor: View {
                 Section("Exercise Details") {
                     TextField("Exercise Name", text: $name)
                     TextField("Notes (optional)", text: $notes, axis: .vertical)
-                        .lineLimit(3, reservesSpace: true)
+                        .lineLimit(1...6)
                 }
                 
                 Section("Primary Muscle Groups") {
@@ -437,7 +437,7 @@ private struct ExerciseEditor: View {
                     }
                 }
                 if HealthKitState.shared.exportStrengthWorkouts {
-                    Section("Apple Health (Quick Workout)") {
+                    Section("Apple Health Activity") {
                         HKActivityTypePicker(rawValue: $healthKitActivityType)
                     }
                 }

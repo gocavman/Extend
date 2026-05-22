@@ -508,7 +508,7 @@ private struct VoiceTrainerEditorView: View {
                 Section("Details") {
                     TextField("Name", text: $name)
                     TextField("Notes (optional)", text: $notes, axis: .vertical)
-                        .lineLimit(3, reservesSpace: true)
+                        .lineLimit(1...6)
                 }
 
                 Section("Text to Read") {
@@ -660,7 +660,7 @@ private struct VoiceTrainerEditorView: View {
                     Toggle("Random Order", isOn: $randomOrder)
                 }
                 if HealthKitState.shared.exportStrengthWorkouts {
-                    Section("Apple Health") {
+                    Section("Apple Health Activity") {
                         HKActivityTypePicker(rawValue: $healthKitActivityType)
                     }
                 }
