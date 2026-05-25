@@ -39,6 +39,20 @@ private func loopColor(for loopID: UUID, in orderedLoopIDs: [UUID]) -> Color {
     return loopColorPalette[index % loopColorPalette.count]
 }
 
+// MARK: - Complex Color Palette
+
+private let complexColorPalette: [Color] = [
+    Color(red: 0.85, green: 0.30, blue: 0.60),  // magenta-pink
+    Color(red: 0.65, green: 0.40, blue: 0.90),  // purple-violet
+    Color(red: 0.90, green: 0.55, blue: 0.10),  // amber-orange
+    Color(red: 0.10, green: 0.60, blue: 0.85),  // steel blue
+]
+
+private func complexColor(for complexID: UUID, in orderedComplexIDs: [UUID]) -> Color {
+    let index = orderedComplexIDs.firstIndex(of: complexID) ?? 0
+    return complexColorPalette[index % complexColorPalette.count]
+}
+
 // MARK: - PredefinedSet collection helpers
 
 private extension Array where Element == PredefinedSet {
@@ -278,14 +292,32 @@ private struct WorkoutsModuleView: View {
                             // Info chips — full width, wrapping
                             let exerciseItems = workout.exerciseItems
                             let totalSets = exerciseItems.reduce(0) { $0 + $1.predefinedSets.count }
-                            let hasTimer = { if case .none = workout.timerMode { return false }; return true }()
+                            // Collect unique non-none timer mode names from all loops
+                            let timerModeNames: [String] = {
+                                var seen = Set<String>()
+                                var names: [String] = []
+                                for lid in workout.orderedLoopIDs {
+                                    if let mode = workout.loops[lid.uuidString]?.timerMode,
+                                       case .none = mode { continue }
+                                    if let name = workout.loops[lid.uuidString]?.timerMode?.displayName,
+                                       seen.insert(name).inserted {
+                                        names.append(name)
+                                    }
+                                }
+                                return names
+                            }()
                             // Count how many loops are supersets (2 exercises) vs circuits (3+)
                             let loopMemberCounts: [UUID: Int] = workout.orderedLoopIDs.reduce(into: [:]) { counts, lid in
                                 counts[lid] = exerciseItems.filter { $0.loopID == lid }.count
                             }
                             let supersetCount = loopMemberCounts.values.filter { $0 == 2 }.count
                             let circuitCount  = loopMemberCounts.values.filter { $0 >= 3 }.count
-                            let hasChips = !exerciseItems.isEmpty || supersetCount > 0 || circuitCount > 0 || totalSets > 0 || hasTimer || workout.warmupSeconds > 0 || workout.cooldownSeconds > 0
+                            // Count complexes (groups of 2+ exercises with a shared complexID)
+                            let complexMemberCounts: [UUID: Int] = workout.orderedComplexIDs.reduce(into: [:]) { counts, cid in
+                                counts[cid] = exerciseItems.filter { $0.complexID == cid }.count
+                            }
+                            let complexCount = complexMemberCounts.values.filter { $0 >= 2 }.count
+                            let hasChips = !exerciseItems.isEmpty || supersetCount > 0 || circuitCount > 0 || complexCount > 0 || totalSets > 0 || !timerModeNames.isEmpty || workout.warmupSeconds > 0 || workout.cooldownSeconds > 0
 
                             if hasChips {
                                 FlowLayout(spacing: 5) {
@@ -295,14 +327,17 @@ private struct WorkoutsModuleView: View {
                                     if totalSets > 0 {
                                         WorkoutInfoChip(label: "\(totalSets) set\(totalSets == 1 ? "" : "s")", icon: "list.number")
                                     }
-                                    if hasTimer {
-                                        WorkoutInfoChip(label: workout.timerMode.displayName, icon: "timer")
+                                    ForEach(timerModeNames, id: \.self) { name in
+                                        WorkoutInfoChip(label: name, icon: "timer")
                                     }
                                     if supersetCount > 0 {
                                         WorkoutInfoChip(label: "\(supersetCount) superset\(supersetCount == 1 ? "" : "s")", icon: "arrow.2.circlepath")
                                     }
                                     if circuitCount > 0 {
                                         WorkoutInfoChip(label: "\(circuitCount) circuit\(circuitCount == 1 ? "" : "s")", icon: "arrow.2.circlepath")
+                                    }
+                                    if complexCount > 0 {
+                                        WorkoutInfoChip(label: "\(complexCount) complex\(complexCount == 1 ? "" : "es")", icon: "square.stack.3d.up")
                                     }
                                     if workout.warmupSeconds > 0 {
                                         WorkoutInfoChip(label: "Warmup", icon: "flame")
@@ -438,10 +473,10 @@ private struct WorkoutEditor: View {
     @State private var expandedInfoIDs: Set<UUID> = []
     @State private var editMode: EditMode = .active
     @State private var healthKitActivityType: UInt? = nil
-    @State private var timerMode: WorkoutTimerMode = .none
-    @State private var autoAdvance: Bool = false
     @State private var loops: [String: WorkoutLoop] = [:]
     @State private var editingLoopID: UUID? = nil
+    @State private var complexes: [String: WorkoutComplex] = [:]
+    @State private var editingComplexID: UUID? = nil
     @State private var warmupSeconds: Int = 0
     @State private var cooldownSeconds: Int = 0
 
@@ -454,29 +489,11 @@ private struct WorkoutEditor: View {
         )
     }
 
-    /// Tag enum for the timer mode picker (avoids associated-value issues with Picker).
-    private enum WorkoutTimerModeTag: Hashable { case none, interval, tabata, emom }
-    private var timerModeBinding: Binding<WorkoutTimerModeTag> {
+    private struct ComplexEditTarget: Identifiable { let id: UUID }
+    private var complexEditTarget: Binding<ComplexEditTarget?> {
         Binding(
-            get: {
-                switch timerMode {
-                case .none:     return .none
-                case .interval: return .interval
-                case .tabata:   return .tabata
-                case .emom:     return .emom
-                }
-            },
-            set: { tag in
-                switch tag {
-                case .none:     timerMode = WorkoutTimerMode.none
-                case .interval:
-                    if case .interval = timerMode { } else {
-                        timerMode = .interval(workSeconds: 45, restSeconds: 15)
-                    }
-                case .tabata:   timerMode = .tabata
-                case .emom:     timerMode = .emom
-                }
-            }
+            get: { editingComplexID.map { ComplexEditTarget(id: $0) } },
+            set: { editingComplexID = $0?.id }
         )
     }
 
@@ -491,9 +508,8 @@ private struct WorkoutEditor: View {
             _notes = State(initialValue: workout.notes)
             _workoutItems = State(initialValue: workout.items)
             _healthKitActivityType = State(initialValue: workout.healthKitActivityType)
-            _timerMode = State(initialValue: workout.timerMode)
-            _autoAdvance = State(initialValue: workout.autoAdvance)
             _loops = State(initialValue: workout.loops)
+            _complexes = State(initialValue: workout.complexes)
             _warmupSeconds = State(initialValue: workout.warmupSeconds)
             _cooldownSeconds = State(initialValue: workout.cooldownSeconds)
         }
@@ -526,6 +542,37 @@ private struct WorkoutEditor: View {
             if case .exercise(let e) = item, let lid = e.loopID, !seen.contains(lid) {
                 seen.insert(lid)
                 result.append(lid)
+            }
+        }
+        return result
+    }
+
+    /// Syncs the complexes dict so it contains exactly one entry per active complexID.
+    private func syncComplexesDict() {
+        var activeIDs = Set<String>()
+        for item in workoutItems {
+            if case .exercise(let e) = item, let cid = e.complexID {
+                activeIDs.insert(cid.uuidString)
+            }
+        }
+        for key in activeIDs where complexes[key] == nil {
+            if let uuid = UUID(uuidString: key) {
+                complexes[key] = WorkoutComplex(id: uuid)
+            }
+        }
+        for key in complexes.keys where !activeIDs.contains(key) {
+            complexes.removeValue(forKey: key)
+        }
+    }
+
+    /// Ordered distinct complexIDs for color assignment.
+    private var orderedComplexIDs: [UUID] {
+        var seen = Set<UUID>()
+        var result: [UUID] = []
+        for item in workoutItems {
+            if case .exercise(let e) = item, let cid = e.complexID, !seen.contains(cid) {
+                seen.insert(cid)
+                result.append(cid)
             }
         }
         return result
@@ -589,66 +636,6 @@ private struct WorkoutEditor: View {
                     }
                     .frame(height: 110)
 
-                    // Timer mode picker
-                    Picker("Timer Mode", selection: timerModeBinding) {
-                        Text("None").tag(WorkoutTimerModeTag.none)
-                        Text("Interval").tag(WorkoutTimerModeTag.interval)
-                        Text("Tabata").tag(WorkoutTimerModeTag.tabata)
-                        Text("EMOM").tag(WorkoutTimerModeTag.emom)
-                    }
-                    .pickerStyle(.menu)
-                    .tint(.primary)
-
-                    // Timer mode descriptions
-                    if case .none = timerMode {
-                        Text("No automatic timing. Use the stopwatch and advance manually.")
-                            .font(.caption).foregroundColor(.secondary)
-                    }
-
-                    // Interval work/rest duration side by side
-                    if case .interval(let w, let r) = timerMode {
-                        Text("Countdown per set with a rest between sets.")
-                            .font(.caption).foregroundColor(.secondary)
-                        HStack(spacing: 0) {
-                            VStack(spacing: 2) {
-                                Text("Work Duration")
-                                    .font(.subheadline)
-                                    .frame(maxWidth: .infinity)
-                                WorkoutDurationStepper(label: "", seconds: Binding(
-                                    get: { w },
-                                    set: { timerMode = .interval(workSeconds: $0, restSeconds: r) }
-                                ))
-                            }
-                            Divider()
-                            VStack(spacing: 2) {
-                                Text("Rest Duration")
-                                    .font(.subheadline)
-                                    .frame(maxWidth: .infinity)
-                                WorkoutDurationStepper(label: "", seconds: Binding(
-                                    get: { r },
-                                    set: { timerMode = .interval(workSeconds: w, restSeconds: $0) }
-                                ))
-                            }
-                        }
-                        .frame(height: 110)
-                    }
-
-                    // Tabata note
-                    if case .tabata = timerMode {
-                        Text("Fixed 20 seconds work / 10 seconds rest per set.")
-                            .font(.caption).foregroundColor(.secondary)
-                    }
-
-                    // EMOM note
-                    if case .emom = timerMode {
-                        Text("Fixed 60 seconds per set, no rest between sets.")
-                            .font(.caption).foregroundColor(.secondary)
-                    }
-
-                    // Auto-advance toggle — only when a timer is active
-                    if case .none = timerMode { } else {
-                        Toggle("Auto-advance to next exercise", isOn: $autoAdvance)
-                    }
                 }
 
                 Section {
@@ -666,11 +653,14 @@ private struct WorkoutEditor: View {
                                     workoutItems: $workoutItems,
                                     expandedInfoIDs: $expandedInfoIDs,
                                     orderedLoopIDs: orderedLoopIDs,
+                                    orderedComplexIDs: orderedComplexIDs,
                                     muscleGroupsState: muscleGroupsState,
                                     equipmentState: equipmentState,
                                     exercisesState: exercisesState,
                                     loops: $loops,
-                                    onEditLoop: { lid in editingLoopID = lid }
+                                    complexes: $complexes,
+                                    onEditLoop: { lid in editingLoopID = lid },
+                                    onEditComplex: { cid in editingComplexID = cid }
                                 )
                             case .rest(let r):
                                 EditorRestRow(
@@ -747,6 +737,7 @@ private struct WorkoutEditor: View {
                     Button("Save") {
                         UIImpactFeedbackGenerator(style: .light).impactOccurred()
                         syncLoopsDict()
+                        syncComplexesDict()
                         let workout = Workout(
                             id: initialWorkout?.id ?? UUID(),
                             name: name,
@@ -754,9 +745,8 @@ private struct WorkoutEditor: View {
                             items: workoutItems,
                             isFavorite: initialWorkout?.isFavorite ?? false,
                             healthKitActivityType: healthKitActivityType,
-                            timerMode: timerMode,
-                            autoAdvance: autoAdvance,
                             loops: loops,
+                            complexes: complexes,
                             warmupSeconds: warmupSeconds,
                             cooldownSeconds: cooldownSeconds
                         )
@@ -775,8 +765,30 @@ private struct WorkoutEditor: View {
             } message: {
                 Text("This will permanently delete the workout.")
             }
-            .sheet(item: loopEditTarget) { target in
-                LoopEditorSheet(loopID: target.id, loops: $loops, workoutTimerMode: timerMode)
+            .fullScreenCover(item: loopEditTarget) { target in
+                LoopEditorSheet(loopID: target.id, loops: $loops) {
+                    // Clear loopID from every item that belonged to this loop
+                    for i in workoutItems.indices {
+                        switch workoutItems[i] {
+                        case .exercise(var e) where e.loopID == target.id:
+                            e.loopID = nil; workoutItems[i] = .exercise(e)
+                        case .rest(var r) where r.loopID == target.id:
+                            r.loopID = nil; workoutItems[i] = .rest(r)
+                        default: break
+                        }
+                    }
+                }
+            }
+            .fullScreenCover(item: complexEditTarget) { target in
+                ComplexEditorSheet(complexID: target.id, complexes: $complexes) {
+                    // Clear complexID from every exercise that belonged to this complex
+                    for i in workoutItems.indices {
+                        if case .exercise(var e) = workoutItems[i], e.complexID == target.id {
+                            e.complexID = nil
+                            workoutItems[i] = .exercise(e)
+                        }
+                    }
+                }
             }
 
         }
@@ -791,11 +803,14 @@ private struct EditorExerciseRow: View {
     @Binding var workoutItems: [WorkoutItem]
     @Binding var expandedInfoIDs: Set<UUID>
     let orderedLoopIDs: [UUID]
+    let orderedComplexIDs: [UUID]
     let muscleGroupsState: MuscleGroupsState
     let equipmentState: EquipmentState
     let exercisesState: ExercisesState
     @Binding var loops: [String: WorkoutLoop]
+    @Binding var complexes: [String: WorkoutComplex]
     let onEditLoop: (UUID) -> Void
+    let onEditComplex: (UUID) -> Void
 
     private var resolvedExercise: Exercise? {
         exercisesState.exercises.first { $0.id == exercise.exerciseID }
@@ -803,12 +818,18 @@ private struct EditorExerciseRow: View {
 
     @State private var showingSetsEditor = false
     @State private var showingLoopMenu = false
+    @State private var newLoopID: UUID? = nil
 
     private var isInfoExpanded: Bool { expandedInfoIDs.contains(exercise.id) }
 
     private var exerciseLoopColor: Color? {
         guard let lid = exercise.loopID else { return nil }
         return loopColor(for: lid, in: orderedLoopIDs)
+    }
+
+    private var exerciseComplexColor: Color? {
+        guard let cid = exercise.complexID else { return nil }
+        return complexColor(for: cid, in: orderedComplexIDs)
     }
 
     private var adjacentExercise: WorkoutExercise? {
@@ -866,6 +887,35 @@ private struct EditorExerciseRow: View {
         UIImpactFeedbackGenerator(style: .medium).impactOccurred()
     }
 
+    private func removeFromComplex() {
+        guard case .exercise(var ex) = workoutItems[index] else { return }
+        ex.complexID = nil
+        workoutItems[index] = .exercise(ex)
+        cleanupSingletonComplexes()
+        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+    }
+
+    /// After any mutation, clear complexID from items that are the sole remaining member of their complex.
+    private func cleanupSingletonComplexes() {
+        var counts: [UUID: Int] = [:]
+        for item in workoutItems {
+            if case .exercise(let e) = item, let cid = e.complexID {
+                counts[cid, default: 0] += 1
+            }
+        }
+        for i in workoutItems.indices {
+            if case .exercise(var e) = workoutItems[i], let cid = e.complexID, (counts[cid] ?? 0) < 2 {
+                e.complexID = nil
+                workoutItems[i] = .exercise(e)
+            }
+        }
+        for (key, _) in complexes {
+            if let uid = UUID(uuidString: key), (counts[uid] ?? 0) < 2 {
+                complexes.removeValue(forKey: key)
+            }
+        }
+    }
+
     /// After any mutation, clear loopID from items that are the sole remaining member of their loop.
     private func cleanupSingletonLoops() {
         // Count members per loopID (exercises and rests both count)
@@ -876,24 +926,24 @@ private struct EditorExerciseRow: View {
             case .rest(let r):     if let lid = r.loopID { counts[lid, default: 0] += 1 }
             }
         }
-        // Clear loopID for any item whose loop has fewer than 2 members
+        // Clear loopID for any item whose loop has no remaining members
         for i in workoutItems.indices {
             switch workoutItems[i] {
             case .exercise(var e):
-                if let lid = e.loopID, counts[lid, default: 0] < 2 {
+                if let lid = e.loopID, counts[lid, default: 0] < 1 {
                     e.loopID = nil
                     workoutItems[i] = .exercise(e)
                 }
             case .rest(var r):
-                if let lid = r.loopID, counts[lid, default: 0] < 2 {
+                if let lid = r.loopID, counts[lid, default: 0] < 1 {
                     r.loopID = nil
                     workoutItems[i] = .rest(r)
                 }
             }
         }
-        // Remove stale loop dict entries
+        // Remove stale loop dict entries (no members left)
         for (key, _) in loops {
-            if let uid = UUID(uuidString: key), (counts[uid] ?? 0) < 2 {
+            if let uid = UUID(uuidString: key), (counts[uid] ?? 0) < 1 {
                 loops.removeValue(forKey: key)
             }
         }
@@ -917,8 +967,14 @@ private struct EditorExerciseRow: View {
     private func rowContent(ex: Exercise) -> some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack(alignment: .top, spacing: 0) {
-                // Loop color bracket
-                if let color = exerciseLoopColor {
+                // Color bracket — complex color takes priority over loop color
+                if let color = exerciseComplexColor {
+                    RoundedRectangle(cornerRadius: 2)
+                        .fill(color)
+                        .frame(width: 4)
+                        .padding(.vertical, 2)
+                        .padding(.trailing, 8)
+                } else if let color = exerciseLoopColor {
                     RoundedRectangle(cornerRadius: 2)
                         .fill(color)
                         .frame(width: 4)
@@ -959,7 +1015,67 @@ private struct EditorExerciseRow: View {
                             onEditLoop(lid)
                         }) {
                             HStack(spacing: 4) {
-                                Text("Loop \(loopIdx + 1)")
+                                let loopLabel: String = {
+                                    let loop = loops[lid.uuidString]
+                                    let rounds = loop?.rounds ?? 1
+                                    let mode = loop?.timerMode
+
+                                    func fmt(_ s: Int) -> String {
+                                        s >= 60 ? "\(s / 60)m\(s % 60 > 0 ? "\(s % 60)s" : "")" : "\(s)s"
+                                    }
+
+                                    var parts: [String] = ["Loop \(loopIdx + 1)"]
+                                    if let mode, case .none = mode {} else if let mode {
+                                        parts.append(mode.displayName)
+                                    }
+                                    if rounds > 1 { parts.append("\(rounds)×") }
+                                    switch mode {
+                                    case .interval(let w, let r), .tabata(let w, let r):
+                                        parts.append("\(fmt(w))/\(fmt(r))")
+                                    case .emom(let i):
+                                        parts.append(fmt(i))
+                                    default: break
+                                    }
+                                    return parts.joined(separator: " · ")
+                                }()
+                                Text(loopLabel)
+                                    .font(.caption2)
+                                    .fontWeight(.semibold)
+                                    .foregroundColor(.white)
+                                Image(systemName: "chevron.right")
+                                    .font(.system(size: 9, weight: .semibold))
+                                    .foregroundColor(.white.opacity(0.8))
+                            }
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 2)
+                            .background(color)
+                            .cornerRadius(4)
+                        }
+                        .buttonStyle(.plain)
+                    }
+
+                    // Complex badge — tap to open ComplexEditorSheet
+                    if let cid = exercise.complexID {
+                        let complexIdx = orderedComplexIDs.firstIndex(of: cid) ?? 0
+                        let color = complexColorPalette[complexIdx % complexColorPalette.count]
+                        Button(action: {
+                            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                            onEditComplex(cid)
+                        }) {
+                            HStack(spacing: 4) {
+                                let complexLabel: String = {
+                                    let cx = complexes[cid.uuidString]
+                                    let rounds = cx?.rounds ?? 5
+                                    let secs = cx?.intervalSeconds ?? 45
+                                    func fmt(_ s: Int) -> String {
+                                        s >= 60 ? "\(s / 60)m\(s % 60 > 0 ? "\(s % 60)s" : "")" : "\(s)s"
+                                    }
+                                    var parts: [String] = ["Complex \(complexIdx + 1)"]
+                                    parts.append(fmt(secs))
+                                    if rounds > 1 { parts.append("\(rounds)×") }
+                                    return parts.joined(separator: " · ")
+                                }()
+                                Text(complexLabel)
                                     .font(.caption2)
                                     .fontWeight(.semibold)
                                     .foregroundColor(.white)
@@ -995,17 +1111,86 @@ private struct EditorExerciseRow: View {
                         UIImpactFeedbackGenerator(style: .light).impactOccurred()
                         showingLoopMenu = true
                     }) {
-                        Image(systemName: exercise.loopID != nil ? "link.circle.fill" : "link.circle")
-                            .foregroundColor(exercise.loopID != nil ? (exerciseLoopColor ?? .green) : .secondary)
+                        Image(systemName: (exercise.loopID != nil || exercise.complexID != nil) ? "link.circle.fill" : "link.circle")
+                            .foregroundColor(exercise.complexID != nil ? (exerciseComplexColor ?? .purple) : (exercise.loopID != nil ? (exerciseLoopColor ?? .green) : .secondary))
                             .font(.system(size: 16))
                     }
                     .buttonStyle(.plain)
-                    .confirmationDialog("Loop Grouping", isPresented: $showingLoopMenu, titleVisibility: .visible) {
-                        if exercise.loopID != nil {
+                    .confirmationDialog("Grouping", isPresented: $showingLoopMenu, titleVisibility: .visible) {
+                        if exercise.complexID != nil {
+                            Button("Remove from Complex", role: .destructive) {
+                                removeFromComplex()
+                            }
+                        } else if exercise.loopID != nil {
                             Button("Remove from Loop", role: .destructive) {
                                 removeFromLoop()
                             }
                         } else {
+                            // Complex grouping option
+                            Button("Start New Complex") {
+                                let cid = UUID()
+                                guard index < workoutItems.count,
+                                      case .exercise(var ex) = workoutItems[index] else { return }
+                                ex.complexID = cid
+                                workoutItems[index] = .exercise(ex)
+                                complexes[cid.uuidString] = WorkoutComplex(id: cid)
+                                UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                                onEditComplex(cid)
+                            }
+                            let itemsForComplex = workoutItems
+                            let idxForComplex = index
+                            if idxForComplex < itemsForComplex.count {
+                                let upIdxC: Int? = idxForComplex > 0
+                                    ? (0..<idxForComplex).reversed().first { i in
+                                        if case .exercise = itemsForComplex[i] { return true }
+                                        return false
+                                      }
+                                    : nil
+                                if let upIdxC {
+                                    Button("Add to Complex Above") {
+                                        guard idxForComplex < workoutItems.count, upIdxC < workoutItems.count,
+                                              case .exercise(var cur) = workoutItems[idxForComplex],
+                                              case .exercise(var other) = workoutItems[upIdxC] else { return }
+                                        let cid = cur.complexID ?? other.complexID ?? UUID()
+                                        cur.complexID = cid; other.complexID = cid
+                                        workoutItems[idxForComplex] = .exercise(cur)
+                                        workoutItems[upIdxC] = .exercise(other)
+                                        if complexes[cid.uuidString] == nil { complexes[cid.uuidString] = WorkoutComplex(id: cid) }
+                                        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                                    }
+                                }
+                                let downStartC = min(idxForComplex + 1, itemsForComplex.count)
+                                let downIdxC: Int? = downStartC < itemsForComplex.count
+                                    ? (downStartC..<itemsForComplex.count).first { i in
+                                        if case .exercise = itemsForComplex[i] { return true }
+                                        return false
+                                      }
+                                    : nil
+                                if let downIdxC {
+                                    Button("Add to Complex Below") {
+                                        guard idxForComplex < workoutItems.count, downIdxC < workoutItems.count,
+                                              case .exercise(var cur) = workoutItems[idxForComplex],
+                                              case .exercise(var other) = workoutItems[downIdxC] else { return }
+                                        let cid = cur.complexID ?? other.complexID ?? UUID()
+                                        cur.complexID = cid; other.complexID = cid
+                                        workoutItems[idxForComplex] = .exercise(cur)
+                                        workoutItems[downIdxC] = .exercise(other)
+                                        if complexes[cid.uuidString] == nil { complexes[cid.uuidString] = WorkoutComplex(id: cid) }
+                                        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                                    }
+                                }
+                            }
+                            // Loop grouping options
+                            Button("Start New Loop") {
+                                let lid = UUID()
+                                guard index < workoutItems.count,
+                                      case .exercise(var ex) = workoutItems[index] else { return }
+                                ex.loopID = lid
+                                workoutItems[index] = .exercise(ex)
+                                loops[lid.uuidString] = WorkoutLoop(id: lid)
+                                UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                                newLoopID = lid
+                            }
                             // Capture stable copies so subscript access is safe regardless of timing
                             let items = workoutItems
                             let idx = index
@@ -1071,6 +1256,7 @@ private struct EditorExerciseRow: View {
                         let cloned = WorkoutExercise(
                             exerciseID: exercise.exerciseID,
                             loopID: exercise.loopID,
+                            complexID: exercise.complexID,
                             predefinedSets: exercise.predefinedSets.map { PredefinedSet(target: $0.target) }
                         )
                         workoutItems.insert(.exercise(cloned), at: index + 1)
@@ -1085,6 +1271,7 @@ private struct EditorExerciseRow: View {
                         UIImpactFeedbackGenerator(style: .light).impactOccurred()
                         workoutItems.remove(at: index)
                         cleanupSingletonLoops()
+                        cleanupSingletonComplexes()
                     }) {
                         Image(systemName: "xmark.circle.fill")
                             .foregroundColor(.red)
@@ -1126,6 +1313,22 @@ private struct EditorExerciseRow: View {
             }
             .fullScreenCover(isPresented: $showingSetsEditor) {
                 SetsEditorSheet(exercise: exercise, index: index, workoutItems: $workoutItems)
+            }
+            .fullScreenCover(item: Binding<IdentifiableUUID?>(
+                get: { newLoopID.map { IdentifiableUUID(id: $0) } },
+                set: { newLoopID = $0?.id }
+            )) { target in
+                LoopEditorSheet(loopID: target.id, loops: $loops) {
+                    for i in workoutItems.indices {
+                        switch workoutItems[i] {
+                        case .exercise(var e) where e.loopID == target.id:
+                            e.loopID = nil; workoutItems[i] = .exercise(e)
+                        case .rest(var r) where r.loopID == target.id:
+                            r.loopID = nil; workoutItems[i] = .rest(r)
+                        default: break
+                        }
+                    }
+                }
             }
     }
 }
@@ -1345,13 +1548,13 @@ private struct EditorRestRow: View {
         for i in workoutItems.indices {
             switch workoutItems[i] {
             case .exercise(var e):
-                if let lid = e.loopID, counts[lid, default: 0] < 2 { e.loopID = nil; workoutItems[i] = .exercise(e) }
+                if let lid = e.loopID, counts[lid, default: 0] < 1 { e.loopID = nil; workoutItems[i] = .exercise(e) }
             case .rest(var rv):
-                if let lid = rv.loopID, counts[lid, default: 0] < 2 { rv.loopID = nil; workoutItems[i] = .rest(rv) }
+                if let lid = rv.loopID, counts[lid, default: 0] < 1 { rv.loopID = nil; workoutItems[i] = .rest(rv) }
             }
         }
         for (key, _) in loops {
-            if let uid = UUID(uuidString: key), (counts[uid] ?? 0) < 2 { loops.removeValue(forKey: key) }
+            if let uid = UUID(uuidString: key), (counts[uid] ?? 0) < 1 { loops.removeValue(forKey: key) }
         }
         UIImpactFeedbackGenerator(style: .medium).impactOccurred()
     }
@@ -1732,7 +1935,7 @@ public struct StartWorkoutView: View {
     /// Which set-round (0-based) we are on when cycling through a loop group.
     @State private var loopRound: Int = 0
     @State private var timerSeconds: Int = 0
-    @State private var isTimerRunning: Bool = true
+    @State private var isTimerRunning: Bool = false
     @State private var expandedInfo: Bool = false
     @State private var sets: [WorkoutSet] = []
     @State private var previousSets: [LoggedSet] = []
@@ -1756,11 +1959,21 @@ public struct StartWorkoutView: View {
     /// Keyed by RestItem.id — stores (configured, secondsRemaining) when we navigate away
     @State private var restData: [UUID: (configured: Int, remaining: Int)] = [:]
     @State private var showingCancelConfirm: Bool = false
+    @State private var showingFinishEarlyConfirm: Bool = false
     // Warmup / cooldown phase
     @State private var warmupCooldownSecondsRemaining: Int = 0
     @State private var warmupCooldownRunning: Bool = false
     @State private var showingWarmup: Bool = false
     @State private var showingCooldown: Bool = false
+    // Complex phase state
+    /// Which round (0-based) the user is currently on in a complex.
+    @State private var complexRound: Int = 0
+    /// Seconds remaining on the complex interval countdown for the current round.
+    @State private var complexSecondsRemaining: Int = 0
+    /// Whether the complex interval countdown is running.
+    @State private var complexTimerRunning: Bool = false
+    /// Whether the current complex round's timer has expired.
+    @State private var complexTimerDone: Bool = false
 
     private var currentItem: WorkoutItem? {
         workout.items[safe: currentItemIndex]
@@ -1824,26 +2037,68 @@ public struct StartWorkoutView: View {
         currentLoopIndices.firstIndex(of: currentItemIndex) ?? 0
     }
 
-    /// Total number of set-rounds for the current loop (prefer WorkoutLoop.rounds, fall back to max predefined sets, min 1).
+    /// Total number of set-rounds for the current loop.
+    /// WorkoutLoop.rounds is authoritative. Falls back to max predefined set count, then 1.
     private var loopTotalRounds: Int {
         guard isInLoop else { return 0 }
-        // Fallback: max predefined set count across all loop members
+        // If the loop has an explicit rounds value, use it exclusively.
+        if case .exercise(let we) = currentItem,
+           let lid = we.loopID,
+           let loop = workout.loops[lid.uuidString] {
+            return max(loop.rounds, 1)
+        }
+        // No loop entry — fall back to max predefined set count across members, min 1.
         let predefinedMax = currentLoopIndices.compactMap { idx -> Int? in
             guard case .exercise(let e) = workout.items[idx] else { return nil }
             return e.predefinedSets.isEmpty ? nil : e.predefinedSets.count
         }.max() ?? 0
-        let fallback = predefinedMax > 0 ? predefinedMax : 1
-        // Explicit WorkoutLoop.rounds takes precedence, but keep predefined max if it's higher
-        if case .exercise(let we) = currentItem,
-           let lid = we.loopID,
-           let loop = workout.loops[lid.uuidString] {
-            return Swift.max(loop.rounds, fallback)
+        return predefinedMax > 0 ? predefinedMax : 1
+    }
+
+    // MARK: Complex helpers
+
+    /// The complexID of the current exercise item, if any.
+    private var currentComplexID: UUID? {
+        guard case .exercise(let we) = currentItem else { return nil }
+        return we.complexID
+    }
+
+    /// True if the current item belongs to a complex group.
+    private var isInComplex: Bool { currentComplexID != nil }
+
+    /// Ordered indices of all exercises in the current complex group.
+    private var currentComplexIndices: [Int] {
+        guard let cid = currentComplexID else { return [] }
+        return workout.items.indices.filter { i in
+            if case .exercise(let e) = workout.items[i] { return e.complexID == cid }
+            return false
         }
-        return fallback
+    }
+
+    /// The first index in the current complex group (the "entry point").
+    private var complexStartIndex: Int {
+        currentComplexIndices.first ?? currentItemIndex
+    }
+
+    /// True only when currentItemIndex is at the first item of its complex group.
+    private var isAtComplexEntry: Bool {
+        isInComplex && currentItemIndex == complexStartIndex
+    }
+
+    /// Total rounds defined for the current complex.
+    private var complexTotalRounds: Int {
+        guard let cid = currentComplexID,
+              let cx = workout.complexes[cid.uuidString] else { return 5 }
+        return max(cx.rounds, 1)
     }
 
     /// Nav-bar label: shows loop context when in a loop, otherwise plain "X of Y".
     private var progressLabel: String {
+        if showingWarmup { return "Warmup" }
+        if showingCooldown { return "Cooldown" }
+        if isInComplex && isAtComplexEntry {
+            return "Complex · Round \(complexRound + 1) of \(complexTotalRounds)"
+        }
         if isInLoop {
             // Count only exercise members for the "Ex X of Y" label
             let exerciseIndices = currentLoopIndices.filter {
@@ -1871,12 +2126,11 @@ public struct StartWorkoutView: View {
         NavigationStack {
             VStack(spacing: 0) {
                 // Navigation bar with item count
-                let atStart = currentItemIndex == 0 && loopRound == 0
-                let atEnd = !canGoNext
-                let singleItem = totalItems <= 1
+                let atStart = currentItemIndex == 0 && loopRound == 0 && complexRound == 0
+                let multipleItems = totalItems > 1
                 HStack {
-                    // Left arrow: hidden when only 1 item or at the very start
-                    if !singleItem && !atStart {
+                    // Left arrow: hidden on warmup/cooldown, when only 1 item, or at the very start
+                    if multipleItems && !atStart && !showingWarmup && !showingCooldown {
                         Button(action: { previousItem() }) {
                             Image(systemName: "chevron.left")
                                 .foregroundColor(.black)
@@ -1894,8 +2148,23 @@ public struct StartWorkoutView: View {
 
                     Spacer()
 
-                    // Right arrow: hidden when only 1 item or on the last item
-                    if !singleItem && !atEnd {
+                    // Right arrow: visible during warmup (to skip it) and between exercises;
+                    // hidden during cooldown, and hidden on the last item when there's no cooldown
+                    // (Finish button is the correct exit in those cases)
+                    if showingWarmup {
+                        Button(action: {
+                            showingWarmup = false
+                            startExerciseTimerAfterWarmup()
+                        }) {
+                            Image(systemName: "chevron.right")
+                                .foregroundColor(.black)
+                        }
+                    } else if showingCooldown || (isAtLastItem && workout.cooldownSeconds == 0) {
+                        Image(systemName: "chevron.right").opacity(0)
+                    } else if isInComplex && isAtComplexEntry {
+                        // Complex screen handles its own "+Round" / "Done" button; hide nav arrow
+                        Image(systemName: "chevron.right").opacity(0)
+                    } else if totalItems > 0 {
                         Button(action: { nextItem() }) {
                             Image(systemName: "chevron.right")
                                 .foregroundColor(.black)
@@ -1916,7 +2185,10 @@ public struct StartWorkoutView: View {
                         totalSeconds: workout.warmupSeconds,
                         secondsRemaining: $warmupCooldownSecondsRemaining,
                         isRunning: $warmupCooldownRunning,
-                        onFinish: { showingWarmup = false }
+                        onFinish: {
+                            showingWarmup = false
+                            startExerciseTimerAfterWarmup()
+                        }
                     )
                 } else if showingCooldown {
                     // COOLDOWN SCREEN
@@ -1926,18 +2198,53 @@ public struct StartWorkoutView: View {
                         totalSeconds: workout.cooldownSeconds,
                         secondsRemaining: $warmupCooldownSecondsRemaining,
                         isRunning: $warmupCooldownRunning,
-                        onFinish: {
-                            showingCooldown = false
-                            completeWorkout()
-                        }
+                        autoAdvanceOnComplete: false,
+                        onFinish: { showingCooldown = false }
                     )
                 } else if let restItem = currentRestItem {
                     // REST SCREEN
                     RestScreen(
                         restItem: restItem,
                         secondsRemaining: $restSecondsRemaining,
-                        isRunning: $isRestTimerRunning,
-                        onSkip: { nextItem() }
+                        isRunning: $isRestTimerRunning
+                    )
+                } else if isInComplex && isAtComplexEntry {
+                    // COMPLEX SCREEN — all exercises shown simultaneously
+                    ComplexScreen(
+                        workout: workout,
+                        complexID: currentComplexID!,
+                        complexIndices: currentComplexIndices,
+                        currentRound: complexRound,
+                        totalRounds: complexTotalRounds,
+                        secondsRemaining: $complexSecondsRemaining,
+                        isTimerRunning: $complexTimerRunning,
+                        timerDone: $complexTimerDone,
+                        exerciseData: $exerciseData,
+                        onRoundComplete: {
+                            complexTimerDone = false
+                            complexTimerRunning = false
+                            let isLastRound = complexRound >= complexTotalRounds - 1
+                            if isLastRound {
+                                // All complex rounds done — advance past the complex group
+                                complexRound = 0
+                                let nextIndex = (currentComplexIndices.last ?? currentItemIndex) + 1
+                                if nextIndex >= totalItems {
+                                    triggerCooldownOrComplete()
+                                } else {
+                                    currentItemIndex = nextIndex
+                                    loadItemData()
+                                }
+                            } else {
+                                complexRound += 1
+                                // Reset countdown for next round
+                                if let cid = currentComplexID, let cx = workout.complexes[cid.uuidString] {
+                                    complexSecondsRemaining = cx.intervalSeconds
+                                    complexTimerRunning = true
+                                    complexTimerDone = false
+                                }
+                            }
+                        },
+                        exercisesState: exercisesState
                     )
                 } else {
                     // EXERCISE SCREEN
@@ -1967,12 +2274,11 @@ public struct StartWorkoutView: View {
                 }
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("🏁 Finish") {
-                        if workout.cooldownSeconds > 0 {
-                            warmupCooldownSecondsRemaining = workout.cooldownSeconds
-                            warmupCooldownRunning = true
-                            showingCooldown = true
+                        let needsConfirm = !showingCooldown && (showingWarmup || !isAtLastItem)
+                        if needsConfirm {
+                            showingFinishEarlyConfirm = true
                         } else {
-                            completeWorkout()
+                            triggerCooldownOrComplete()
                         }
                     }
                     .fontWeight(.semibold)
@@ -1985,12 +2291,28 @@ public struct StartWorkoutView: View {
             } message: {
                 Text("Your progress will not be saved.")
             }
+            .alert("Finish Early?", isPresented: $showingFinishEarlyConfirm) {
+                Button("Keep Going", role: .cancel) { }
+                Button("Finish Workout", role: .destructive) {
+                    if showingWarmup {
+                        showingWarmup = false
+                        warmupCooldownRunning = false
+                        startExerciseTimerAfterWarmup()
+                    }
+                    triggerCooldownOrComplete()
+                }
+            } message: {
+                Text("The workout isn't done yet. Finish and log it anyway?")
+            }
         }
         .onAppear {
             if workout.warmupSeconds > 0 {
                 warmupCooldownSecondsRemaining = workout.warmupSeconds
                 warmupCooldownRunning = true
                 showingWarmup = true
+                // Workout timer starts after warmup completes
+            } else {
+                isTimerRunning = true
             }
             loadItemData()
         }
@@ -2177,32 +2499,34 @@ public struct StartWorkoutView: View {
             equipmentState.sortedItems.first { $0.id == id }
         }
         if !exerciseEquipment.isEmpty {
-            HStack(spacing: 6) {
+            VStack(alignment: .leading, spacing: 6) {
                 Text("Equipment:")
                     .font(.caption)
                     .foregroundColor(.secondary)
-                ForEach(exerciseEquipment) { item in
-                    let selected = usedEquipmentIDs.contains(item.id)
-                    Button(action: {
-                        if selected { usedEquipmentIDs.remove(item.id) }
-                        else { usedEquipmentIDs.insert(item.id) }
-                    }) {
-                        HStack(spacing: 4) {
-                            Image(systemName: selected ? "checkmark.circle.fill" : "circle")
-                                .font(.system(size: 11))
-                                .foregroundColor(selected ? .white : .secondary)
-                            Text(item.name)
-                                .font(.caption)
-                                .foregroundColor(selected ? .white : .secondary)
+                FlowLayout(spacing: 6) {
+                    ForEach(exerciseEquipment) { item in
+                        let selected = usedEquipmentIDs.contains(item.id)
+                        Button(action: {
+                            if selected { usedEquipmentIDs.remove(item.id) }
+                            else { usedEquipmentIDs.insert(item.id) }
+                        }) {
+                            HStack(spacing: 4) {
+                                Image(systemName: selected ? "checkmark.circle.fill" : "circle")
+                                    .font(.system(size: 11))
+                                    .foregroundColor(selected ? .white : .secondary)
+                                Text(item.name)
+                                    .font(.caption)
+                                    .foregroundColor(selected ? .white : .secondary)
+                                    .fixedSize()
+                            }
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 4)
+                            .background(selected ? Color.black : Color(red: 0.93, green: 0.93, blue: 0.95))
+                            .cornerRadius(12)
                         }
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 4)
-                        .background(selected ? Color.black : Color(red: 0.93, green: 0.93, blue: 0.95))
-                        .cornerRadius(12)
+                        .buttonStyle(.plain)
                     }
-                    .buttonStyle(.plain)
                 }
-                Spacer()
             }
             .padding(.horizontal, 16)
         }
@@ -2237,7 +2561,7 @@ public struct StartWorkoutView: View {
 
         VStack(spacing: 16) {
             // Phase label
-            Text(phaseTimerDone ? (workout.autoAdvance ? "Advancing..." : "Done") : (currentPhase?.label ?? ""))
+            Text(phaseTimerDone ? "Done" : (currentPhase?.label ?? ""))
                 .font(.headline)
                 .fontWeight(.semibold)
                 .foregroundColor(phaseTimerDone ? .green : .primary)
@@ -2257,16 +2581,9 @@ public struct StartWorkoutView: View {
 
                 // Center content
                 if phaseTimerDone {
-                    VStack(spacing: 4) {
-                        Image(systemName: "checkmark.circle.fill")
-                            .font(.system(size: 36))
-                            .foregroundColor(.green)
-                        if !workout.autoAdvance {
-                            Text("Tap to continue")
-                                .font(.caption)
-                                .foregroundColor(.secondary)
-                        }
-                    }
+                    Image(systemName: "checkmark.circle.fill")
+                        .font(.system(size: 36))
+                        .foregroundColor(.green)
                 } else {
                     Text(remaining >= 60
                          ? String(format: "%d:%02d", remaining / 60, remaining % 60)
@@ -2279,7 +2596,7 @@ public struct StartWorkoutView: View {
 
             // Controls
             if phaseTimerDone {
-                if !workout.autoAdvance {
+                if !isAtLastItem {
                     Button(action: { nextItem() }) {
                         Text("Next Exercise")
                             .font(.headline)
@@ -2290,7 +2607,19 @@ public struct StartWorkoutView: View {
                             .cornerRadius(10)
                     }
                     .buttonStyle(.plain)
+                } else if workout.cooldownSeconds > 0 {
+                    Button(action: { triggerCooldownOrComplete() }) {
+                        Text("Continue to Cooldown")
+                            .font(.headline)
+                            .foregroundColor(.white)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 12)
+                            .background(Color.black)
+                            .cornerRadius(10)
+                    }
+                    .buttonStyle(.plain)
                 }
+                // At last item with no cooldown: only Finish button in toolbar is shown
             } else {
                 HStack(spacing: 32) {
                     // Restart
@@ -2557,6 +2886,23 @@ public struct StartWorkoutView: View {
         }
     }
 
+    /// True when the user is on the final item of the workout (or final round of a loop).
+    private var isAtLastItem: Bool {
+        if isInLoop {
+            let loopIndices = currentLoopIndices
+            let pos = loopPosition
+            let isLastRound = loopRound >= loopTotalRounds - 1
+            if !isLastRound { return false }
+            // Check if no later active members exist in this round after the current one
+            for candidatePos in (pos + 1)..<loopIndices.count {
+                if loopMemberActive(at: loopIndices[candidatePos], round: loopRound) { return false }
+            }
+            // At the last active member of the last round — check nothing follows the loop
+            return loopIndices.last.map { $0 >= totalItems - 1 } ?? true
+        }
+        return currentItemIndex >= totalItems - 1
+    }
+
     private var canGoNext: Bool {
         if isInLoop {
             let loopIndices = currentLoopIndices
@@ -2569,14 +2915,16 @@ public struct StartWorkoutView: View {
             }
             // No more active members this round — can go next if there are more rounds
             if !isLastRound { return true }
-            // All rounds done — can still advance if there's an item after the loop
-            return loopIndices.last.map { $0 < totalItems - 1 } ?? false
+            // All rounds done — can still advance if there's an item after the loop, or to trigger cooldown
+            if loopIndices.last.map({ $0 < totalItems - 1 }) ?? false { return true }
+            // At the very end of the workout — allow advancing to trigger cooldown
+            return true
         }
-        return currentItemIndex < totalItems - 1
+        // Always allow advancing (at the end it triggers cooldown instead of moving index)
+        return true
     }
 
     private func nextItem() {
-        guard canGoNext else { return }
         saveCurrentData()
 
         if isInLoop {
@@ -2611,14 +2959,50 @@ public struct StartWorkoutView: View {
             } else {
                 // All rounds done — exit the loop to the item after it
                 loopRound = 0
-                currentItemIndex = loopIndices.last! + 1
+                let nextIndex = loopIndices.last! + 1
+                if nextIndex >= totalItems {
+                    // Past the last item — trigger cooldown or complete
+                    triggerCooldownOrComplete()
+                    return
+                }
+                currentItemIndex = nextIndex
             }
         } else {
             loopRound = 0
-            currentItemIndex += 1
+            let nextIndex = currentItemIndex + 1
+            if nextIndex >= totalItems {
+                // Past the last item — trigger cooldown or complete
+                triggerCooldownOrComplete()
+                return
+            }
+            currentItemIndex = nextIndex
+            // If we just landed on an item that belongs to a complex, jump to its entry point
+            if case .exercise(let we) = workout.items[safe: nextIndex], let cid = we.complexID {
+                let firstComplexIdx = workout.items.indices.first { i in
+                    if case .exercise(let e) = workout.items[i] { return e.complexID == cid }
+                    return false
+                } ?? nextIndex
+                currentItemIndex = firstComplexIdx
+                complexRound = 0
+            }
         }
 
         loadItemData()
+    }
+
+    private func triggerCooldownOrComplete() {
+        if showingCooldown {
+            // Finish pressed while cooldown is showing — complete immediately
+            showingCooldown = false
+            completeWorkout()
+        } else if workout.cooldownSeconds > 0 {
+            // Show cooldown first; user must click Finish after to log
+            warmupCooldownSecondsRemaining = workout.cooldownSeconds
+            warmupCooldownRunning = true
+            showingCooldown = true
+        } else {
+            completeWorkout()
+        }
     }
 
     private func previousItem() {
@@ -2676,6 +3060,32 @@ public struct StartWorkoutView: View {
             return
         }
 
+        // If entering a complex at its entry point, seed complex state and all member exercise data
+        if isInComplex && isAtComplexEntry {
+            complexTimerRunning = false
+            complexTimerDone = false
+            if let cid = currentComplexID, let cx = workout.complexes[cid.uuidString] {
+                complexSecondsRemaining = cx.intervalSeconds
+            }
+            for idx in currentComplexIndices {
+                if case .exercise(let we) = workout.items[idx], exerciseData[we.id] == nil {
+                    let cx = currentComplexID.flatMap { workout.complexes[$0.uuidString] }
+                    let totalRds = max(cx?.rounds ?? 5, 1)
+                    let count = we.predefinedSets.isEmpty ? totalRds : we.predefinedSets.count
+                    exerciseData[we.id] = (
+                        sets: (0..<count).map { _ in WorkoutSet(reps: 0, weight: 0) },
+                        notes: "",
+                        timerSeconds: 0,
+                        usedEquipmentIDs: [],
+                        phaseIndex: 0,
+                        phaseElapsed: 0,
+                        phaseTimerDone: false
+                    )
+                }
+            }
+            return
+        }
+
         guard case .exercise(let we) = currentItem else { return }
 
         if let savedData = exerciseData[we.id] {
@@ -2720,13 +3130,13 @@ public struct StartWorkoutView: View {
             // Phase timer mode: build phases and start the tick
             exercisePhases = buildExercisePhases(for: we, mode: currentTimerMode)
             isTimerRunning = false  // disable stopwatch in timed mode
-            if !phaseTimerDone {
+            if !phaseTimerDone && !showingWarmup {
                 startPhaseTick()
             }
         } else {
             // Standard stopwatch mode
             cancelPhaseTimer()
-            isTimerRunning = true
+            isTimerRunning = showingWarmup ? false : true
 
             // Auto-start the timed countdown for the active loop round, if applicable
             if !isTimedMode, isInLoop, loopRound < sets.count {
@@ -2784,6 +3194,16 @@ public struct StartWorkoutView: View {
             }
         }
         return phases
+    }
+
+    /// Called when warmup finishes to start whichever timer the current exercise needs.
+    private func startExerciseTimerAfterWarmup() {
+        guard case .exercise = currentItem else { return }
+        if isTimedMode {
+            if !phaseTimerDone { startPhaseTick() }
+        } else {
+            isTimerRunning = true
+        }
     }
 
     private func startPhaseTick() {
@@ -2844,16 +3264,6 @@ public struct StartWorkoutView: View {
         pausePhaseTimer()
         phaseTimerDone = true
         UINotificationFeedbackGenerator().notificationOccurred(.success)
-        if workout.autoAdvance && canGoNext {
-            Task {
-                try? await Task.sleep(nanoseconds: 1_500_000_000)
-                await MainActor.run {
-                    // Guard: only advance if phaseTimerDone is still true (user hasn't navigated away)
-                    guard phaseTimerDone else { return }
-                    nextItem()
-                }
-            }
-        }
     }
 
     // MARK: Per-set timed countdown
@@ -3021,7 +3431,8 @@ public struct StartWorkoutView: View {
                     activeSeconds: savedData.timerSeconds,
                     usedEquipmentIDs: Array(savedData.usedEquipmentIDs),
                     orderIndex: orderIndex,
-                    loopID: we.loopID
+                    loopID: we.loopID,
+                    complexID: we.complexID
                 ))
 
             case .rest(let r):
@@ -3073,7 +3484,6 @@ private struct RestScreen: View {
     let restItem: RestItem
     @Binding var secondsRemaining: Int
     @Binding var isRunning: Bool
-    let onSkip: () -> Void
 
     private var ringProgress: Double {
         guard restItem.duration > 0 else { return 0 }
@@ -3143,19 +3553,6 @@ private struct RestScreen: View {
                 .buttonStyle(.plain)
             }
 
-            Button(action: { onSkip() }) {
-                Text("Skip Rest")
-                    .font(.subheadline)
-                    .foregroundColor(.secondary)
-                    .padding(.horizontal, 20)
-                    .padding(.vertical, 8)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 8)
-                            .stroke(Color.secondary.opacity(0.4), lineWidth: 1)
-                    )
-            }
-            .buttonStyle(.plain)
-
             Spacer()
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -3192,6 +3589,9 @@ private struct WarmupCooldownScreen: View {
     let totalSeconds: Int
     @Binding var secondsRemaining: Int
     @Binding var isRunning: Bool
+    /// When true, the timer calls onFinish() automatically when it reaches 0.
+    /// Set to false for cooldown — user must click Finish manually.
+    var autoAdvanceOnComplete: Bool = true
     let onFinish: () -> Void
 
     private var ringProgress: Double {
@@ -3261,19 +3661,6 @@ private struct WarmupCooldownScreen: View {
                 .buttonStyle(.plain)
             }
 
-            Button(action: { onFinish() }) {
-                Text("Skip \(label)")
-                    .font(.subheadline)
-                    .foregroundColor(.secondary)
-                    .padding(.horizontal, 20)
-                    .padding(.vertical, 8)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 8)
-                            .stroke(Color.secondary.opacity(0.4), lineWidth: 1)
-                    )
-            }
-            .buttonStyle(.plain)
-
             Spacer()
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -3286,10 +3673,228 @@ private struct WarmupCooldownScreen: View {
                 if secondsRemaining == 0 {
                     isRunning = false
                     UIImpactFeedbackGenerator(style: .heavy).impactOccurred()
-                    onFinish()
+                    if autoAdvanceOnComplete {
+                        onFinish()
+                    }
                 }
             }
         }
+    }
+}
+
+// MARK: - Complex Screen
+
+private struct ComplexScreen: View {
+    let workout: Workout
+    let complexID: UUID
+    let complexIndices: [Int]
+    let currentRound: Int
+    let totalRounds: Int
+    @Binding var secondsRemaining: Int
+    @Binding var isTimerRunning: Bool
+    @Binding var timerDone: Bool
+    @Binding var exerciseData: [UUID: (sets: [WorkoutSet], notes: String, timerSeconds: Int, usedEquipmentIDs: Set<UUID>, phaseIndex: Int, phaseElapsed: Int, phaseTimerDone: Bool)]
+    let onRoundComplete: () -> Void
+    let exercisesState: ExercisesState
+
+    private var complex: WorkoutComplex? {
+        workout.complexes[complexID.uuidString]
+    }
+
+    private var totalSeconds: Int { complex?.intervalSeconds ?? 45 }
+
+    private var ringProgress: Double {
+        guard totalSeconds > 0 else { return 1 }
+        return Double(secondsRemaining) / Double(totalSeconds)
+    }
+
+    private var ringColor: Color {
+        secondsRemaining <= 10 ? .red : Color.black.opacity(0.85)
+    }
+
+    private func formatTime(_ seconds: Int) -> String {
+        let m = seconds / 60; let s = seconds % 60
+        return String(format: "%02d:%02d", m, s)
+    }
+
+    var body: some View {
+        ScrollView {
+            VStack(spacing: 20) {
+                // Shared countdown ring
+                ZStack {
+                    Circle()
+                        .stroke(Color(red: 0.93, green: 0.93, blue: 0.95), lineWidth: 10)
+                    Circle()
+                        .trim(from: 0, to: ringProgress)
+                        .stroke(
+                            timerDone ? Color.green : ringColor,
+                            style: StrokeStyle(lineWidth: 10, lineCap: .round)
+                        )
+                        .rotationEffect(.degrees(-90))
+                        .animation(.linear(duration: 0.5), value: ringProgress)
+                    VStack(spacing: 2) {
+                        Text(timerDone ? "Done!" : formatTime(secondsRemaining))
+                            .font(.system(size: 42, weight: .semibold, design: .monospaced))
+                            .foregroundColor(timerDone ? .green : (secondsRemaining <= 10 ? .red : .primary))
+                        Text("of \(formatTime(totalSeconds))")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                }
+                .frame(width: 180, height: 180)
+
+                // Timer controls
+                HStack(spacing: 24) {
+                    Button(action: { isTimerRunning.toggle() }) {
+                        Image(systemName: isTimerRunning ? "pause.circle.fill" : "play.circle.fill")
+                            .font(.system(size: 40))
+                            .foregroundColor(.black)
+                    }
+                    .buttonStyle(.plain)
+
+                    Button(action: {
+                        isTimerRunning = false
+                        secondsRemaining = totalSeconds
+                        timerDone = false
+                    }) {
+                        Image(systemName: "arrow.counterclockwise.circle")
+                            .font(.system(size: 32))
+                            .foregroundColor(.secondary)
+                    }
+                    .buttonStyle(.plain)
+                }
+
+                Divider().padding(.horizontal, 16)
+
+                // All exercises in the complex shown simultaneously
+                VStack(spacing: 10) {
+                    ForEach(complexIndices, id: \.self) { itemIndex in
+                        if case .exercise(let we) = workout.items[safe: itemIndex],
+                           let exercise = exercisesState.exercises.first(where: { $0.id == we.exerciseID }) {
+                            ComplexExerciseRow(
+                                exercise: exercise,
+                                workoutExercise: we,
+                                round: currentRound,
+                                exerciseData: $exerciseData
+                            )
+                        }
+                    }
+                }
+                .padding(.horizontal, 16)
+
+                // +Round / Done button
+                let isLastRound = currentRound >= totalRounds - 1
+                Button(action: { onRoundComplete() }) {
+                    HStack(spacing: 8) {
+                        Image(systemName: isLastRound ? "checkmark.circle.fill" : "plus.circle.fill")
+                        Text(isLastRound ? "Done" : "+Round")
+                    }
+                    .font(.headline)
+                    .foregroundColor(.white)
+                    .padding(.vertical, 14)
+                    .frame(maxWidth: .infinity)
+                    .background(isLastRound ? Color.green : Color.black)
+                    .cornerRadius(12)
+                }
+                .buttonStyle(.plain)
+                .padding(.horizontal, 16)
+            }
+            .padding(.vertical, 16)
+        }
+        .onAppear {
+            secondsRemaining = totalSeconds
+            isTimerRunning = true
+            timerDone = false
+        }
+        .task(id: isTimerRunning) {
+            guard isTimerRunning else { return }
+            while !Task.isCancelled && secondsRemaining > 0 {
+                try? await Task.sleep(nanoseconds: 1_000_000_000)
+                guard !Task.isCancelled else { return }
+                secondsRemaining -= 1
+                if secondsRemaining == 0 {
+                    isTimerRunning = false
+                    timerDone = true
+                    UIImpactFeedbackGenerator(style: .heavy).impactOccurred()
+                }
+            }
+        }
+    }
+}
+
+// MARK: - Complex Exercise Row
+
+private struct ComplexExerciseRow: View {
+    let exercise: Exercise
+    let workoutExercise: WorkoutExercise
+    let round: Int
+    @Binding var exerciseData: [UUID: (sets: [WorkoutSet], notes: String, timerSeconds: Int, usedEquipmentIDs: Set<UUID>, phaseIndex: Int, phaseElapsed: Int, phaseTimerDone: Bool)]
+
+    private var targetSet: PredefinedSet? {
+        guard round < workoutExercise.predefinedSets.count else { return nil }
+        return workoutExercise.predefinedSets[round]
+    }
+
+    private var currentSets: [WorkoutSet] {
+        exerciseData[workoutExercise.id]?.sets ?? []
+    }
+
+    private func updateReps(delta: Int) {
+        guard var data = exerciseData[workoutExercise.id],
+              round < data.sets.count else { return }
+        data.sets[round].reps = max(0, data.sets[round].reps + delta)
+        exerciseData[workoutExercise.id] = data
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(exercise.name)
+                .font(.subheadline)
+                .fontWeight(.semibold)
+
+            if let target = targetSet {
+                Text("Target: \(target.target.label)")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
+
+            // Compact reps counter for this round
+            if round < currentSets.count {
+                HStack(spacing: 12) {
+                    Text("Round \(round + 1):")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+
+                    HStack(spacing: 8) {
+                        Button(action: { updateReps(delta: -1) }) {
+                            Image(systemName: "minus.circle")
+                                .foregroundColor(.black)
+                                .font(.system(size: 22))
+                        }
+                        .buttonStyle(.plain)
+
+                        Text("\(currentSets[round].reps)")
+                            .font(.system(size: 18, weight: .semibold, design: .monospaced))
+                            .frame(minWidth: 32, alignment: .center)
+
+                        Button(action: { updateReps(delta: 1) }) {
+                            Image(systemName: "plus.circle")
+                                .foregroundColor(.black)
+                                .font(.system(size: 22))
+                        }
+                        .buttonStyle(.plain)
+
+                        Text("reps")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                }
+            }
+        }
+        .padding(12)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color(uiColor: .systemGray6))
+        .cornerRadius(8)
     }
 }
 
@@ -3372,48 +3977,28 @@ private struct LoopEditorSheet: View {
 
     let loopID: UUID
     @Binding var loops: [String: WorkoutLoop]
-    /// The workout-level timer mode, shown in the "Inherit" description.
-    let workoutTimerMode: WorkoutTimerMode
+    /// Called when the user deletes this loop; clears loopID from all affected items.
+    var onDelete: (() -> Void)? = nil
 
     @State private var rounds: Int = 1
-    @State private var timerModeTag: LoopTimerModeTag = .inherit
+    @State private var timerModeTag: LoopTimerModeTag = .none
     @State private var intervalWork: Int = 45
     @State private var intervalRest: Int = 15
+    @State private var tabataWork: Int = 20
+    @State private var tabataRest: Int = 10
+    @State private var emomDuration: Int = 60
+    @State private var showingDeleteConfirm = false
 
     private enum LoopTimerModeTag: String, CaseIterable, Hashable {
-        case inherit = "Inherit from Workout"
-        case none    = "None"
+        case none     = "None"
         case interval = "Interval"
-        case tabata  = "Tabata"
-        case emom    = "EMOM"
+        case tabata   = "Tabata"
+        case emom     = "EMOM"
     }
 
     var body: some View {
         NavigationStack {
             Form {
-                Section("Loop Rounds") {
-                    HStack {
-                        Text("Rounds")
-                        Spacer()
-                        Button(action: { if rounds > 1 { rounds -= 1 } }) {
-                            Image(systemName: "minus.circle.fill")
-                                .font(.title2)
-                                .foregroundColor(rounds > 1 ? .primary : .secondary)
-                        }
-                        .buttonStyle(.plain)
-                        Text("\(rounds)")
-                            .font(.title2).fontWeight(.semibold).monospacedDigit()
-                            .frame(minWidth: 36, alignment: .center)
-                        Button(action: { rounds += 1 }) {
-                            Image(systemName: "plus.circle.fill")
-                                .font(.title2).foregroundColor(.primary)
-                        }
-                        .buttonStyle(.plain)
-                    }
-                    Text("How many times to cycle through all exercises in this loop.")
-                        .font(.caption).foregroundColor(.secondary)
-                }
-
                 Section("Timer Mode") {
                     Picker("Timer Mode", selection: $timerModeTag) {
                         ForEach(LoopTimerModeTag.allCases, id: \.self) { tag in
@@ -3421,24 +4006,50 @@ private struct LoopEditorSheet: View {
                         }
                     }
                     .pickerStyle(.menu)
+                    .labelsHidden()
                     .tint(.primary)
 
-                    if timerModeTag == .inherit {
-                        Text("Uses the workout-level timer mode: \(workoutTimerMode.displayName).")
+                    if timerModeTag == .none {
+                        Text("No automatic timing. Use the stopwatch and advance manually.")
                             .font(.caption).foregroundColor(.secondary)
                     }
-                    if timerModeTag == .interval {
-                        WorkoutDurationStepper(label: "Work Duration", seconds: $intervalWork)
-                        WorkoutDurationStepper(label: "Rest Duration", seconds: $intervalRest)
+                }
+
+                if timerModeTag == .interval {
+                    Section("Work Duration") {
+                        WorkoutDurationStepper(label: "", seconds: $intervalWork)
                     }
-                    if timerModeTag == .tabata {
-                        Text("Fixed 20s work / 10s rest per set.")
-                            .font(.caption).foregroundColor(.secondary)
+                    Section("Rest Duration") {
+                        WorkoutDurationStepper(label: "", seconds: $intervalRest)
                     }
-                    if timerModeTag == .emom {
-                        Text("Fixed 60 seconds per exercise, no rest.")
-                            .font(.caption).foregroundColor(.secondary)
+                }
+
+                if timerModeTag == .tabata {
+                    Section("Work Duration") {
+                        WorkoutDurationStepper(label: "", seconds: $tabataWork)
                     }
+                    Section("Rest Duration") {
+                        WorkoutDurationStepper(label: "", seconds: $tabataRest)
+                    }
+                }
+
+                if timerModeTag == .emom {
+                    Section("Interval Duration") {
+                        WorkoutDurationStepper(label: "", seconds: $emomDuration)
+                    }
+                }
+
+                Section("Rounds") {
+                    Picker("Rounds", selection: $rounds) {
+                        ForEach(1...50, id: \.self) { n in
+                            Text("\(n)").tag(n)
+                        }
+                    }
+                    .pickerStyle(.wheel)
+                    .labelsHidden()
+                    .frame(height: 120)
+                    Text("How many times to cycle through all exercises in this loop.")
+                        .font(.caption).foregroundColor(.secondary)
                 }
             }
             .scrollContentBackground(.hidden)
@@ -3446,18 +4057,22 @@ private struct LoopEditorSheet: View {
             .navigationTitle("Edit Loop")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
+                ToolbarItemGroup(placement: .topBarLeading) {
                     Button("Cancel") { dismiss() }
+                    Button(action: { showingDeleteConfirm = true }) {
+                        Image(systemName: "trash.circle.fill")
+                            .foregroundColor(.red)
+                            .font(.system(size: 22))
+                    }
                 }
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Save") {
-                        let resolvedMode: WorkoutTimerMode? = {
+                        let resolvedMode: WorkoutTimerMode = {
                             switch timerModeTag {
-                            case .inherit:  return nil
                             case .none:     return WorkoutTimerMode.none
                             case .interval: return .interval(workSeconds: intervalWork, restSeconds: intervalRest)
-                            case .tabata:   return .tabata
-                            case .emom:     return .emom
+                            case .tabata:   return .tabata(workSeconds: tabataWork, restSeconds: tabataRest)
+                            case .emom:     return .emom(intervalSeconds: emomDuration)
                             }
                         }()
                         loops[loopID.uuidString] = WorkoutLoop(id: loopID, rounds: rounds, timerMode: resolvedMode)
@@ -3467,29 +4082,126 @@ private struct LoopEditorSheet: View {
                     .fontWeight(.semibold)
                 }
             }
+            .alert("Delete Loop?", isPresented: $showingDeleteConfirm) {
+                Button("Cancel", role: .cancel) { }
+                Button("Delete", role: .destructive) {
+                    loops.removeValue(forKey: loopID.uuidString)
+                    UINotificationFeedbackGenerator().notificationOccurred(.warning)
+                    onDelete?()
+                    dismiss()
+                }
+            } message: {
+                Text("This will remove the loop grouping from all exercises in it.")
+            }
             .onAppear {
                 let existing = loops[loopID.uuidString]
                 rounds = existing?.rounds ?? 1
-                if let mode = existing?.timerMode {
-                    switch mode {
-                    case .none:
-                        timerModeTag = .none
-                    case .interval(let w, let r):
-                        timerModeTag = .interval
-                        intervalWork = w
-                        intervalRest = r
-                    case .tabata:
-                        timerModeTag = .tabata
-                    case .emom:
-                        timerModeTag = .emom
-                    }
-                } else {
-                    timerModeTag = .inherit
+                switch existing?.timerMode {
+                case .interval(let w, let r):
+                    timerModeTag = .interval
+                    intervalWork = w
+                    intervalRest = r
+                case .tabata(let w, let r):
+                    timerModeTag = .tabata
+                    tabataWork = w
+                    tabataRest = r
+                case .emom(let i):
+                    timerModeTag = .emom
+                    emomDuration = i
+                default:
+                    timerModeTag = .none
                 }
             }
         }
     }
 }
+
+// MARK: - Complex Editor Sheet
+
+private struct ComplexEditorSheet: View {
+    @Environment(\.dismiss) var dismiss
+
+    let complexID: UUID
+    @Binding var complexes: [String: WorkoutComplex]
+    /// Called when the user deletes this complex; clears complexID from all affected items.
+    var onDelete: (() -> Void)? = nil
+
+    @State private var rounds: Int = 5
+    @State private var intervalSeconds: Int = 45
+    @State private var showingDeleteConfirm = false
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section("Interval Duration") {
+                    WorkoutDurationStepper(label: "", seconds: $intervalSeconds)
+                    Text("How long the countdown runs per round. Complete all exercises within this window.")
+                        .font(.caption).foregroundColor(.secondary)
+                }
+
+                Section("Rounds") {
+                    Picker("Rounds", selection: $rounds) {
+                        ForEach(1...50, id: \.self) { n in
+                            Text("\(n)").tag(n)
+                        }
+                    }
+                    .pickerStyle(.wheel)
+                    .labelsHidden()
+                    .frame(height: 120)
+                    Text("How many times to complete all exercises in this complex.")
+                        .font(.caption).foregroundColor(.secondary)
+                }
+            }
+            .scrollContentBackground(.hidden)
+            .background(Color.white)
+            .navigationTitle("Edit Complex")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItemGroup(placement: .topBarLeading) {
+                    Button("Cancel") { dismiss() }
+                    Button(action: { showingDeleteConfirm = true }) {
+                        Image(systemName: "trash.circle.fill")
+                            .foregroundColor(.red)
+                            .font(.system(size: 22))
+                    }
+                }
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Save") {
+                        complexes[complexID.uuidString] = WorkoutComplex(
+                            id: complexID,
+                            rounds: rounds,
+                            intervalSeconds: intervalSeconds
+                        )
+                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                        dismiss()
+                    }
+                    .fontWeight(.semibold)
+                }
+            }
+            .alert("Delete Complex?", isPresented: $showingDeleteConfirm) {
+                Button("Cancel", role: .cancel) { }
+                Button("Delete", role: .destructive) {
+                    complexes.removeValue(forKey: complexID.uuidString)
+                    UINotificationFeedbackGenerator().notificationOccurred(.warning)
+                    onDelete?()
+                    dismiss()
+                }
+            } message: {
+                Text("This will remove the complex grouping from all exercises in it.")
+            }
+            .onAppear {
+                let existing = complexes[complexID.uuidString]
+                rounds          = existing?.rounds ?? 5
+                intervalSeconds = existing?.intervalSeconds ?? 45
+            }
+        }
+    }
+}
+
+// MARK: - Helpers
+
+/// Wraps a UUID so it can be used as a SwiftUI sheet item.
+private struct IdentifiableUUID: Identifiable { let id: UUID }
 
 // MARK: - Array Safe Subscript Extension
 

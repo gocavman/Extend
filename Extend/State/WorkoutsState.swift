@@ -69,8 +69,9 @@ public final class WorkoutsState {
     }
 
     public func cloneWorkout(_ workout: Workout) {
-        // Remap loopIDs so the cloned workout has fresh but internally consistent loop groupings.
+        // Remap loopIDs and complexIDs so the cloned workout has fresh but internally consistent groupings.
         var loopIDMap: [UUID: UUID] = [:]
+        var complexIDMap: [UUID: UUID] = [:]
         let clonedItems: [WorkoutItem] = workout.items.map { item in
             switch item {
             case .exercise(let ex):
@@ -80,9 +81,16 @@ public final class WorkoutsState {
                     loopIDMap[old] = fresh
                     return fresh
                 }
+                let newComplexID: UUID? = ex.complexID.map { old in
+                    if let mapped = complexIDMap[old] { return mapped }
+                    let fresh = UUID()
+                    complexIDMap[old] = fresh
+                    return fresh
+                }
                 return .exercise(WorkoutExercise(
                     exerciseID: ex.exerciseID,
                     loopID: newLoopID,
+                    complexID: newComplexID,
                     predefinedSets: ex.predefinedSets.map { PredefinedSet(target: $0.target) }
                 ))
             case .rest(let r):
@@ -96,14 +104,20 @@ public final class WorkoutsState {
             let newUUID = loopIDMap[oldUUID] ?? UUID()
             clonedLoops[newUUID.uuidString] = WorkoutLoop(id: newUUID, rounds: loop.rounds, timerMode: loop.timerMode)
         }
+        // Remap complex entries using the same UUID map built above
+        var clonedComplexes: [String: WorkoutComplex] = [:]
+        for (oldKey, cx) in workout.complexes {
+            guard let oldUUID = UUID(uuidString: oldKey) else { continue }
+            let newUUID = complexIDMap[oldUUID] ?? UUID()
+            clonedComplexes[newUUID.uuidString] = WorkoutComplex(id: newUUID, rounds: cx.rounds, intervalSeconds: cx.intervalSeconds)
+        }
         let cloned = Workout(
             id: UUID(),
             name: "\(workout.name) Copy",
             notes: workout.notes,
             items: clonedItems,
-            timerMode: workout.timerMode,
-            autoAdvance: workout.autoAdvance,
             loops: clonedLoops,
+            complexes: clonedComplexes,
             warmupSeconds: workout.warmupSeconds,
             cooldownSeconds: workout.cooldownSeconds
         )

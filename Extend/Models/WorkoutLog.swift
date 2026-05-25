@@ -72,6 +72,8 @@ public struct LoggedExercise: Identifiable, Codable, Hashable {
     public var orderIndex: Int
     /// Loop group ID — exercises sharing the same non-nil loopID were in a superset/circuit
     public var loopID: UUID?
+    /// Complex group ID — exercises sharing the same non-nil complexID were in a complex
+    public var complexID: UUID?
 
     public init(
         id: UUID = UUID(),
@@ -82,7 +84,8 @@ public struct LoggedExercise: Identifiable, Codable, Hashable {
         activeSeconds: Int = 0,
         usedEquipmentIDs: [UUID] = [],
         orderIndex: Int = 0,
-        loopID: UUID? = nil
+        loopID: UUID? = nil,
+        complexID: UUID? = nil
     ) {
         self.id = id
         self.exerciseID = exerciseID
@@ -93,6 +96,7 @@ public struct LoggedExercise: Identifiable, Codable, Hashable {
         self.usedEquipmentIDs = usedEquipmentIDs
         self.orderIndex = orderIndex
         self.loopID = loopID
+        self.complexID = complexID
     }
 
     public init(from decoder: Decoder) throws {
@@ -106,6 +110,7 @@ public struct LoggedExercise: Identifiable, Codable, Hashable {
         usedEquipmentIDs = (try? c.decodeIfPresent([UUID].self, forKey: .usedEquipmentIDs)) ?? []
         orderIndex = (try? c.decodeIfPresent(Int.self, forKey: .orderIndex)) ?? 0
         loopID = try? c.decodeIfPresent(UUID.self, forKey: .loopID)
+        complexID = try? c.decodeIfPresent(UUID.self, forKey: .complexID)
     }
 }
 

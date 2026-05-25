@@ -979,6 +979,7 @@ private struct WorkoutLogDetailView: View {
         case exercise(index: Int)   // index into log.exercises
         case rest(index: Int)       // index into log.restPeriods
         case loopHeader(loopID: UUID, exerciseIndices: [Int])
+        case complexHeader(complexID: UUID, exerciseIndices: [Int])
     }
 
     private var orderedItems: [OrderedLogItem] {
@@ -990,14 +991,20 @@ private struct WorkoutLogDetailView: View {
         guard hasOrdering else {
             // Legacy: exercises first, then rests
             var items: [OrderedLogItem] = []
-            // Group exercises by loopID
             var seenLoops: Set<UUID> = []
+            var seenComplexes: Set<UUID> = []
             for (i, ex) in log.exercises.enumerated() {
                 if let lid = ex.loopID {
                     if seenLoops.contains(lid) { continue }
                     seenLoops.insert(lid)
                     let indices = log.exercises.indices.filter { log.exercises[$0].loopID == lid }
                     items.append(.loopHeader(loopID: lid, exerciseIndices: indices))
+                    for idx in indices { items.append(.exercise(index: idx)) }
+                } else if let cid = ex.complexID {
+                    if seenComplexes.contains(cid) { continue }
+                    seenComplexes.insert(cid)
+                    let indices = log.exercises.indices.filter { log.exercises[$0].complexID == cid }
+                    items.append(.complexHeader(complexID: cid, exerciseIndices: indices))
                     for idx in indices { items.append(.exercise(index: idx)) }
                 } else {
                     items.append(.exercise(index: i))
@@ -1011,8 +1018,8 @@ private struct WorkoutLogDetailView: View {
         struct Slot { var orderIndex: Int; var item: OrderedLogItem }
         var slots: [Slot] = []
 
-        // Track which loop groups have already emitted their header
         var seenLoops: Set<UUID> = []
+        var seenComplexes: Set<UUID> = []
 
         for (i, ex) in log.exercises.enumerated() {
             if let lid = ex.loopID {
@@ -1020,8 +1027,16 @@ private struct WorkoutLogDetailView: View {
                 seenLoops.insert(lid)
                 let indices = log.exercises.indices.filter { log.exercises[$0].loopID == lid }
                 let minOrder = indices.map { log.exercises[$0].orderIndex }.min() ?? ex.orderIndex
-                // Header sits just before the first exercise in the loop
                 slots.append(Slot(orderIndex: minOrder, item: .loopHeader(loopID: lid, exerciseIndices: indices)))
+                for idx in indices {
+                    slots.append(Slot(orderIndex: log.exercises[idx].orderIndex, item: .exercise(index: idx)))
+                }
+            } else if let cid = ex.complexID {
+                if seenComplexes.contains(cid) { continue }
+                seenComplexes.insert(cid)
+                let indices = log.exercises.indices.filter { log.exercises[$0].complexID == cid }
+                let minOrder = indices.map { log.exercises[$0].orderIndex }.min() ?? ex.orderIndex
+                slots.append(Slot(orderIndex: minOrder, item: .complexHeader(complexID: cid, exerciseIndices: indices)))
                 for idx in indices {
                     slots.append(Slot(orderIndex: log.exercises[idx].orderIndex, item: .exercise(index: idx)))
                 }
@@ -1234,6 +1249,22 @@ private struct WorkoutLogDetailView: View {
                                     .font(.caption)
                                     .foregroundColor(.secondary)
                                 Text(loopLabel)
+                                    .font(.caption)
+                                    .fontWeight(.semibold)
+                                    .foregroundColor(.secondary)
+                                Text("(\(indices.count) exercises)")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            }
+                            .padding(.horizontal, 16)
+                            .padding(.top, 4)
+
+                        case .complexHeader(_, let indices):
+                            HStack(spacing: 6) {
+                                Image(systemName: "square.stack.3d.up")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                                Text("Complex")
                                     .font(.caption)
                                     .fontWeight(.semibold)
                                     .foregroundColor(.secondary)
