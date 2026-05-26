@@ -224,18 +224,22 @@ public enum SetTarget: Codable, Equatable {
 public struct PredefinedSet: Identifiable, Codable {
     public let id: UUID
     public var target: SetTarget   // .reps(n) or .timed(seconds:)
+    /// Target weight in the user's preferred unit. 0 = no target weight.
+    public var weight: Double
 
-    public init(id: UUID = UUID(), target: SetTarget = .reps(0)) {
+    public init(id: UUID = UUID(), target: SetTarget = .reps(0), weight: Double = 0) {
         self.id     = id
         self.target = target
+        self.weight = weight
     }
 
     // Legacy migration: old format stored just targetReps as an Int
-    private enum CodingKeys: String, CodingKey { case id, target, targetReps }
+    private enum CodingKeys: String, CodingKey { case id, target, targetReps, weight }
 
     public init(from decoder: Decoder) throws {
         let c  = try decoder.container(keyedBy: CodingKeys.self)
         id     = try c.decode(UUID.self, forKey: .id)
+        weight = try c.decodeIfPresent(Double.self, forKey: .weight) ?? 0
         if let t = try c.decodeIfPresent(SetTarget.self, forKey: .target) {
             target = t
         } else {
@@ -249,6 +253,7 @@ public struct PredefinedSet: Identifiable, Codable {
         var c = encoder.container(keyedBy: CodingKeys.self)
         try c.encode(id,     forKey: .id)
         try c.encode(target, forKey: .target)
+        if weight > 0 { try c.encode(weight, forKey: .weight) }
     }
 }
 
