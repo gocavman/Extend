@@ -328,7 +328,7 @@ private struct ProgressModuleView: View {
                 .padding(.vertical, 16)
             }
         }
-        .sheet(item: $selectedLog) { log in
+        .fullScreenCover(item: $selectedLog) { log in
             WorkoutLogDetailView(log: log)
                 .environment(logState)
                 .environment(exercisesState)
@@ -1410,13 +1410,12 @@ private struct WorkoutLogDetailView: View {
 
             if !exercise.sets.isEmpty {
                 let hasTimedSets = exercise.sets.contains { $0.timedSeconds > 0 }
-                ForEach(Array(exercise.sets.indices), id: \.self) { index in
-                    HStack {
-                        Text("Set \(index + 1)")
-                            .font(.caption)
-                            .foregroundColor(.gray)
-
-                        if isEditing {
+                if isEditing {
+                    ForEach(Array(exercise.sets.indices), id: \.self) { index in
+                        HStack {
+                            Text("Set \(index + 1)")
+                                .font(.caption)
+                                .foregroundColor(.gray)
                             TextField("Reps", value: Binding(
                                 get: { log.exercises[exIdx].sets[index].reps },
                                 set: { log.exercises[exIdx].sets[index].reps = $0 }
@@ -1444,19 +1443,6 @@ private struct WorkoutLogDetailView: View {
                                     .keyboardType(.numberPad).font(.caption).frame(width: 28).textFieldStyle(.roundedBorder)
                                 Text("sec").font(.caption).foregroundColor(.secondary)
                             }
-                        } else {
-                            Spacer()
-                            if hasTimedSets {
-                                let t = exercise.sets[index].timedSeconds
-                                Text(t > 0 ? formatLogTime(t) : "—")
-                                    .font(.caption).foregroundColor(.secondary).frame(width: 44, alignment: .trailing)
-                            }
-                            Text("\(exercise.sets[index].reps) reps").font(.caption)
-                            Text("×").font(.caption).foregroundColor(.gray)
-                            Text(String(format: "%.1f \(weightUnit)", exercise.sets[index].weight)).font(.caption)
-                        }
-
-                        if isEditing {
                             Button(action: {
                                 UIImpactFeedbackGenerator(style: .light).impactOccurred()
                                 log.exercises[exIdx].sets.remove(at: index)
@@ -1464,6 +1450,22 @@ private struct WorkoutLogDetailView: View {
                                 Image(systemName: "xmark.circle.fill").foregroundColor(.red)
                             }
                             .buttonStyle(.plain)
+                        }
+                    }
+                } else {
+                    ForEach(Array(exercise.sets.groupedRuns().enumerated()), id: \.offset) { _, run in
+                        HStack {
+                            Text(run.label)
+                                .font(.caption)
+                                .foregroundColor(.gray)
+                            Spacer()
+                            if hasTimedSets {
+                                Text(run.set.timedSeconds > 0 ? formatLogTime(run.set.timedSeconds) : "—")
+                                    .font(.caption).foregroundColor(.secondary).frame(width: 44, alignment: .trailing)
+                            }
+                            Text("\(run.set.reps) reps").font(.caption)
+                            Text("×").font(.caption).foregroundColor(.gray)
+                            Text(String(format: "%.1f \(weightUnit)", run.set.weight)).font(.caption)
                         }
                     }
                 }

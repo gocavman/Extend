@@ -185,7 +185,7 @@ private struct EquipmentModuleView: View {
                         state.removeItem(id: item.id)
                     }
                 }
-                .sheet(item: $historyItem) { item in
+                .fullScreenCover(item: $historyItem) { item in
                     EquipmentHistorySheet(equipment: item, logState: logState, exercisesState: exercisesState)
                 }
                 .alert("Delete Equipment?", isPresented: .constant(deletingItem != nil)) {

@@ -7,6 +7,7 @@
 
 import SwiftUI
 import UIKit
+import AVFoundation
 
 /// Module for viewing and creating workouts.
 public struct WorkoutModule: AppModule {
@@ -396,19 +397,12 @@ private struct WorkoutsModuleView: View {
                     .environment(EquipmentState.shared)
                     .environment(WorkoutLogState.shared)
             }
-            .sheet(item: $historyWorkout) { workout in
+            .fullScreenCover(item: $historyWorkout) { workout in
                 WorkoutHistorySheet(workout: workout, logState: WorkoutLogState.shared)
             }
-            .sheet(item: $statsWorkout) { workout in
-                NavigationStack {
-                    WorkoutStatsView(workout: workout)
-                        .environment(WorkoutLogState.shared)
-                        .toolbar {
-                            ToolbarItem(placement: .topBarTrailing) {
-                                Button("Done") { statsWorkout = nil }
-                            }
-                        }
-                }
+            .fullScreenCover(item: $statsWorkout) { workout in
+                WorkoutStatsView(workout: workout)
+                    .environment(WorkoutLogState.shared)
             }
             .alert("Delete Workout?", isPresented: .constant(deletingWorkout != nil)) {
                 Button("Cancel", role: .cancel) {
@@ -1974,6 +1968,8 @@ public struct StartWorkoutView: View {
     @State private var complexTimerRunning: Bool = false
     /// Whether the current complex round's timer has expired.
     @State private var complexTimerDone: Bool = false
+    /// Tracks the highest round index reached per complex UUID. Used to trim unfinished sets at log time.
+    @State private var complexRoundsReached: [UUID: Int] = [:]
 
     private var currentItem: WorkoutItem? {
         workout.items[safe: currentItemIndex]
@@ -2225,7 +2221,10 @@ public struct StartWorkoutView: View {
                             complexTimerRunning = false
                             let isLastRound = complexRound >= complexTotalRounds - 1
                             if isLastRound {
-                                // All complex rounds done — advance past the complex group
+                                // All complex rounds done — record full completion, then advance
+                                if let cid = currentComplexID {
+                                    complexRoundsReached[cid] = complexTotalRounds
+                                }
                                 complexRound = 0
                                 let nextIndex = (currentComplexIndices.last ?? currentItemIndex) + 1
                                 if nextIndex >= totalItems {
@@ -2236,6 +2235,10 @@ public struct StartWorkoutView: View {
                                 }
                             } else {
                                 complexRound += 1
+                                // Record new highest round reached
+                                if let cid = currentComplexID {
+                                    complexRoundsReached[cid] = complexRound
+                                }
                                 // Reset countdown for next round
                                 if let cid = currentComplexID, let cx = workout.complexes[cid.uuidString] {
                                     complexSecondsRemaining = cx.intervalSeconds
@@ -2256,7 +2259,7 @@ public struct StartWorkoutView: View {
                         }
                         .padding(.vertical, 16)
                     }
-                    .sheet(isPresented: $showingHistory) {
+                    .fullScreenCover(isPresented: $showingHistory) {
                         if let exercise = currentExercise {
                             ExerciseHistorySheet(exercise: exercise, logState: logState)
                         }
@@ -3042,6 +3045,8 @@ public struct StartWorkoutView: View {
         isRestTimerRunning = false
         switch currentItem {
         case .exercise(let we):
+            // Skip overwriting for the complex entry point — ComplexExerciseRow writes to exerciseData directly
+            guard !(isInComplex && isAtComplexEntry) else { break }
             exerciseData[we.id] = (sets: sets, notes: notes, timerSeconds: timerSeconds, usedEquipmentIDs: usedEquipmentIDs, phaseIndex: phaseIndex, phaseElapsed: phaseElapsed, phaseTimerDone: phaseTimerDone)
         case .rest(let r):
             restData[r.id] = (configured: r.duration, remaining: restSecondsRemaining)
@@ -3066,6 +3071,10 @@ public struct StartWorkoutView: View {
             complexTimerDone = false
             if let cid = currentComplexID, let cx = workout.complexes[cid.uuidString] {
                 complexSecondsRemaining = cx.intervalSeconds
+                // Initialize round tracking — will be updated as rounds are completed
+                if complexRoundsReached[cid] == nil {
+                    complexRoundsReached[cid] = 0
+                }
             }
             for idx in currentComplexIndices {
                 if case .exercise(let we) = workout.items[idx], exerciseData[we.id] == nil {
@@ -3073,7 +3082,14 @@ public struct StartWorkoutView: View {
                     let totalRds = max(cx?.rounds ?? 5, 1)
                     let count = we.predefinedSets.isEmpty ? totalRds : we.predefinedSets.count
                     exerciseData[we.id] = (
-                        sets: (0..<count).map { _ in WorkoutSet(reps: 0, weight: 0) },
+                        sets: (0..<count).map { i in
+                            let defaultReps: Int = {
+                                guard i < we.predefinedSets.count,
+                                      case .reps(let n) = we.predefinedSets[i].target else { return 0 }
+                                return n
+                            }()
+                            return WorkoutSet(reps: defaultReps, weight: 0)
+                        },
                         notes: "",
                         timerSeconds: 0,
                         usedEquipmentIDs: [],
@@ -3412,8 +3428,19 @@ public struct StartWorkoutView: View {
                 guard let exercise = exercisesState.exercises.first(where: { $0.id == we.exerciseID }),
                       let savedData = exerciseData[we.id] else { continue }
 
+                // For complex exercises, trim sets to only the rounds actually completed
+                let setsToLog: [WorkoutSet]
+                if let cid = we.complexID, let roundsReached = complexRoundsReached[cid], roundsReached > 0 {
+                    setsToLog = Array(savedData.sets.prefix(roundsReached))
+                } else if let cid = we.complexID, complexRoundsReached[cid] != nil {
+                    // Complex was entered but no rounds completed — skip entirely
+                    continue
+                } else {
+                    setsToLog = savedData.sets
+                }
+
                 // Include per-set timed duration: initial target minus remaining = elapsed
-                let loggedSets = savedData.sets.enumerated().map { idx, ws -> LoggedSet in
+                let loggedSets = setsToLog.enumerated().map { idx, ws -> LoggedSet in
                     var initialTimed = 0
                     if idx < we.predefinedSets.count,
                        case .timed(let s) = we.predefinedSets[idx].target {
@@ -3697,6 +3724,11 @@ private struct ComplexScreen: View {
     let onRoundComplete: () -> Void
     let exercisesState: ExercisesState
 
+    @State private var isCountingDown: Bool = false
+    @State private var countdownValue: Int = 3
+    // Synthesizer kept as a stored property so ARC doesn't release it mid-speech
+    @State private var synthesizer = AVSpeechSynthesizer()
+
     private var complex: WorkoutComplex? {
         workout.complexes[complexID.uuidString]
     }
@@ -3717,51 +3749,134 @@ private struct ComplexScreen: View {
         return String(format: "%02d:%02d", m, s)
     }
 
+    /// Speak a single number using the stored synthesizer.
+    private func speakNumber(_ n: Int) {
+        let utterance = AVSpeechUtterance(string: "\(n)")
+        utterance.rate = 0.45
+        utterance.pitchMultiplier = 1.15
+        synthesizer.speak(utterance)
+        UIImpactFeedbackGenerator(style: .rigid).impactOccurred()
+    }
+
+    /// Runs a 3-2-1 countdown (used when +Round is tapped mid-round with no active timer),
+    /// then calls `completion`.
+    private func startInterRoundCountdown(completion: @escaping () -> Void) {
+        isCountingDown = true
+        countdownValue = 3
+        Task {
+            for n in stride(from: 3, through: 1, by: -1) {
+                await MainActor.run {
+                    countdownValue = n
+                    speakNumber(n)
+                }
+                try? await Task.sleep(nanoseconds: 1_000_000_000)
+            }
+            await MainActor.run {
+                isCountingDown = false
+                completion()
+            }
+        }
+    }
+
     var body: some View {
         ScrollView {
             VStack(spacing: 20) {
-                // Shared countdown ring
-                ZStack {
-                    Circle()
-                        .stroke(Color(red: 0.93, green: 0.93, blue: 0.95), lineWidth: 10)
-                    Circle()
-                        .trim(from: 0, to: ringProgress)
-                        .stroke(
-                            timerDone ? Color.green : ringColor,
-                            style: StrokeStyle(lineWidth: 10, lineCap: .round)
-                        )
-                        .rotationEffect(.degrees(-90))
-                        .animation(.linear(duration: 0.5), value: ringProgress)
-                    VStack(spacing: 2) {
-                        Text(timerDone ? "Done!" : formatTime(secondsRemaining))
-                            .font(.system(size: 42, weight: .semibold, design: .monospaced))
-                            .foregroundColor(timerDone ? .green : (secondsRemaining <= 10 ? .red : .primary))
-                        Text("of \(formatTime(totalSeconds))")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                    }
-                }
-                .frame(width: 180, height: 180)
+                // Timer display — ring or bar depending on complex setting
+                if complex?.timerStyle == .bar {
+                    // BAR STYLE: slim horizontal strip
+                    VStack(spacing: 6) {
+                        HStack(spacing: 16) {
+                            // Play/pause
+                            Button(action: { isTimerRunning.toggle() }) {
+                                Image(systemName: isTimerRunning ? "pause.circle.fill" : "play.circle.fill")
+                                    .font(.system(size: 32))
+                                    .foregroundColor(.black)
+                            }
+                            .buttonStyle(.plain)
 
-                // Timer controls
-                HStack(spacing: 24) {
-                    Button(action: { isTimerRunning.toggle() }) {
-                        Image(systemName: isTimerRunning ? "pause.circle.fill" : "play.circle.fill")
-                            .font(.system(size: 40))
-                            .foregroundColor(.black)
-                    }
-                    .buttonStyle(.plain)
+                            // Time display
+                            Text(timerDone ? "Done!" : formatTime(secondsRemaining))
+                                .font(.system(size: 28, weight: .semibold, design: .monospaced))
+                                .foregroundColor(timerDone ? .green : (secondsRemaining <= 10 ? .red : .primary))
+                                .frame(minWidth: 72, alignment: .center)
 
-                    Button(action: {
-                        isTimerRunning = false
-                        secondsRemaining = totalSeconds
-                        timerDone = false
-                    }) {
-                        Image(systemName: "arrow.counterclockwise.circle")
-                            .font(.system(size: 32))
-                            .foregroundColor(.secondary)
+                            Text("/ \(formatTime(totalSeconds))")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+
+                            Spacer()
+
+                            // Reset
+                            Button(action: {
+                                isTimerRunning = false
+                                secondsRemaining = totalSeconds
+                                timerDone = false
+                            }) {
+                                Image(systemName: "arrow.counterclockwise.circle")
+                                    .font(.system(size: 26))
+                                    .foregroundColor(.secondary)
+                            }
+                            .buttonStyle(.plain)
+                        }
+                        .padding(.horizontal, 16)
+
+                        // Progress bar
+                        GeometryReader { geo in
+                            ZStack(alignment: .leading) {
+                                RoundedRectangle(cornerRadius: 3)
+                                    .fill(Color(red: 0.93, green: 0.93, blue: 0.95))
+                                    .frame(height: 6)
+                                RoundedRectangle(cornerRadius: 3)
+                                    .fill(timerDone ? Color.green : ringColor)
+                                    .frame(width: geo.size.width * ringProgress, height: 6)
+                                    .animation(.linear(duration: 0.5), value: ringProgress)
+                            }
+                        }
+                        .frame(height: 6)
+                        .padding(.horizontal, 16)
                     }
-                    .buttonStyle(.plain)
+                } else {
+                    // RING STYLE: compact ring with controls inside
+                    ZStack {
+                        Circle()
+                            .stroke(Color(red: 0.93, green: 0.93, blue: 0.95), lineWidth: 10)
+                        Circle()
+                            .trim(from: 0, to: ringProgress)
+                            .stroke(
+                                timerDone ? Color.green : ringColor,
+                                style: StrokeStyle(lineWidth: 10, lineCap: .round)
+                            )
+                            .rotationEffect(.degrees(-90))
+                            .animation(.linear(duration: 0.5), value: ringProgress)
+                        VStack(spacing: 4) {
+                            Text(timerDone ? "Done!" : formatTime(secondsRemaining))
+                                .font(.system(size: 36, weight: .semibold, design: .monospaced))
+                                .foregroundColor(timerDone ? .green : (secondsRemaining <= 10 ? .red : .primary))
+                            Text("of \(formatTime(totalSeconds))")
+                                .font(.caption2)
+                                .foregroundColor(.secondary)
+                            // Controls inside the ring
+                            HStack(spacing: 16) {
+                                Button(action: { isTimerRunning.toggle() }) {
+                                    Image(systemName: isTimerRunning ? "pause.circle.fill" : "play.circle.fill")
+                                        .font(.system(size: 28))
+                                        .foregroundColor(.black)
+                                }
+                                .buttonStyle(.plain)
+                                Button(action: {
+                                    isTimerRunning = false
+                                    secondsRemaining = totalSeconds
+                                    timerDone = false
+                                }) {
+                                    Image(systemName: "arrow.counterclockwise.circle")
+                                        .font(.system(size: 22))
+                                        .foregroundColor(.secondary)
+                                }
+                                .buttonStyle(.plain)
+                            }
+                        }
+                    }
+                    .frame(width: 170, height: 170)
                 }
 
                 Divider().padding(.horizontal, 16)
@@ -3784,16 +3899,29 @@ private struct ComplexScreen: View {
 
                 // +Round / Done button
                 let isLastRound = currentRound >= totalRounds - 1
-                Button(action: { onRoundComplete() }) {
+                Button(action: {
+                    guard !isCountingDown else { return }
+                    if !isLastRound && complex?.roundCountdown == true {
+                        isTimerRunning = false
+                        startInterRoundCountdown { onRoundComplete() }
+                    } else {
+                        onRoundComplete()
+                    }
+                }) {
                     HStack(spacing: 8) {
-                        Image(systemName: isLastRound ? "checkmark.circle.fill" : "plus.circle.fill")
-                        Text(isLastRound ? "Done" : "+Round")
+                        if isCountingDown {
+                            Text("\(countdownValue)")
+                                .font(.system(size: 28, weight: .bold, design: .monospaced))
+                        } else {
+                            Image(systemName: isLastRound ? "checkmark.circle.fill" : "plus.circle.fill")
+                            Text(isLastRound ? "Done" : "+Round")
+                        }
                     }
                     .font(.headline)
                     .foregroundColor(.white)
                     .padding(.vertical, 14)
                     .frame(maxWidth: .infinity)
-                    .background(isLastRound ? Color.green : Color.black)
+                    .background(isCountingDown ? Color.orange : (isLastRound ? Color.green : Color.black))
                     .cornerRadius(12)
                 }
                 .buttonStyle(.plain)
@@ -3805,6 +3933,12 @@ private struct ComplexScreen: View {
             secondsRemaining = totalSeconds
             isTimerRunning = true
             timerDone = false
+            // Warm up AVSpeechSynthesizer so the first "3" isn't delayed/rushed
+            if complex?.roundCountdown == true {
+                let warmup = AVSpeechUtterance(string: " ")
+                warmup.volume = 0
+                synthesizer.speak(warmup)
+            }
         }
         .task(id: isTimerRunning) {
             guard isTimerRunning else { return }
@@ -3812,10 +3946,24 @@ private struct ComplexScreen: View {
                 try? await Task.sleep(nanoseconds: 1_000_000_000)
                 guard !Task.isCancelled else { return }
                 secondsRemaining -= 1
+                // Speak countdown numbers during the last 3 seconds (if enabled and not last round)
+                let isLastRound = currentRound >= totalRounds - 1
+                if complex?.roundCountdown == true && !isLastRound && secondsRemaining > 0 && secondsRemaining <= 3 {
+                    speakNumber(secondsRemaining)
+                }
                 if secondsRemaining == 0 {
                     isTimerRunning = false
                     timerDone = true
                     UIImpactFeedbackGenerator(style: .heavy).impactOccurred()
+                    if complex?.autoAdvance == true {
+                        if !isLastRound {
+                            // Small delay so the haptic/done state is visible before advancing
+                            try? await Task.sleep(nanoseconds: 300_000_000)
+                            onRoundComplete()
+                        } else {
+                            onRoundComplete()
+                        }
+                    }
                 }
             }
         }
@@ -3848,14 +3996,16 @@ private struct ComplexExerciseRow: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text(exercise.name)
-                .font(.subheadline)
-                .fontWeight(.semibold)
-
-            if let target = targetSet {
-                Text("Target: \(target.target.label)")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
+            HStack(alignment: .firstTextBaseline) {
+                Text(exercise.name)
+                    .font(.subheadline)
+                    .fontWeight(.semibold)
+                Spacer()
+                if let target = targetSet {
+                    Text(target.target.label)
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
             }
 
             // Compact reps counter for this round
@@ -4128,6 +4278,9 @@ private struct ComplexEditorSheet: View {
 
     @State private var rounds: Int = 5
     @State private var intervalSeconds: Int = 45
+    @State private var autoAdvance: Bool = false
+    @State private var roundCountdown: Bool = false
+    @State private var timerStyle: ComplexTimerStyle = .ring
     @State private var showingDeleteConfirm = false
 
     var body: some View {
@@ -4151,6 +4304,28 @@ private struct ComplexEditorSheet: View {
                     Text("How many times to complete all exercises in this complex.")
                         .font(.caption).foregroundColor(.secondary)
                 }
+
+                Section("Timer Display") {
+                    Picker("Style", selection: $timerStyle) {
+                        Text("Ring").tag(ComplexTimerStyle.ring)
+                        Text("Bar").tag(ComplexTimerStyle.bar)
+                    }
+                    .pickerStyle(.segmented)
+                    Text("Ring shows a circular countdown. Bar shows a slim horizontal progress strip.")
+                        .font(.caption).foregroundColor(.secondary)
+                }
+
+                Section("Auto-Advance") {
+                    Toggle("Advance on interval end", isOn: $autoAdvance)
+                    Text("When on, the round advances automatically when the countdown reaches zero.")
+                        .font(.caption).foregroundColor(.secondary)
+                }
+
+                Section("Round Countdown") {
+                    Toggle("3-2-1 countdown between rounds", isOn: $roundCountdown)
+                    Text("Speaks a 3, 2, 1 countdown before each new round begins.")
+                        .font(.caption).foregroundColor(.secondary)
+                }
             }
             .scrollContentBackground(.hidden)
             .background(Color.white)
@@ -4170,7 +4345,10 @@ private struct ComplexEditorSheet: View {
                         complexes[complexID.uuidString] = WorkoutComplex(
                             id: complexID,
                             rounds: rounds,
-                            intervalSeconds: intervalSeconds
+                            intervalSeconds: intervalSeconds,
+                            autoAdvance: autoAdvance,
+                            roundCountdown: roundCountdown,
+                            timerStyle: timerStyle
                         )
                         UIImpactFeedbackGenerator(style: .light).impactOccurred()
                         dismiss()
@@ -4193,6 +4371,9 @@ private struct ComplexEditorSheet: View {
                 let existing = complexes[complexID.uuidString]
                 rounds          = existing?.rounds ?? 5
                 intervalSeconds = existing?.intervalSeconds ?? 45
+                autoAdvance     = existing?.autoAdvance ?? false
+                roundCountdown  = existing?.roundCountdown ?? false
+                timerStyle      = existing?.timerStyle ?? .ring
             }
         }
     }
@@ -4306,15 +4487,15 @@ struct ExerciseHistorySheet: View {
                                         }
                                         Text("Weight").font(.caption2).foregroundColor(.secondary).frame(maxWidth: .infinity, alignment: .trailing)
                                     }
-                                    ForEach(Array(entry.sets.enumerated()), id: \.offset) { idx, set in
+                                    ForEach(Array(entry.sets.groupedRuns().enumerated()), id: \.offset) { _, run in
                                         HStack {
-                                            Text("\(idx + 1)").font(.caption).fontWeight(.semibold).frame(maxWidth: .infinity, alignment: .leading)
-                                            Text("\(set.reps)").font(.caption).frame(maxWidth: .infinity, alignment: .center)
+                                            Text(run.label).font(.caption).fontWeight(.semibold).frame(maxWidth: .infinity, alignment: .leading)
+                                            Text("\(run.set.reps)").font(.caption).frame(maxWidth: .infinity, alignment: .center)
                                             if hasTimed {
-                                                Text(set.timedSeconds > 0 ? formatHistoryTime(set.timedSeconds) : "—")
+                                                Text(run.set.timedSeconds > 0 ? formatHistoryTime(run.set.timedSeconds) : "—")
                                                     .font(.caption).foregroundColor(.secondary).frame(width: 44, alignment: .center)
                                             }
-                                            Text(set.weight == 0 ? "—" : String(format: "%.1f \(weightUnit)", set.weight)).font(.caption).frame(maxWidth: .infinity, alignment: .trailing)
+                                            Text(run.set.weight == 0 ? "—" : String(format: "%.1f \(weightUnit)", run.set.weight)).font(.caption).frame(maxWidth: .infinity, alignment: .trailing)
                                         }
                                     }
                                 }

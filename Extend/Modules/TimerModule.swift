@@ -172,19 +172,12 @@ private struct TimerModuleView: View {
                     timerState.removeConfig(id: config.id)
                 }
             }
-            .sheet(item: $historyConfig) { config in
+            .fullScreenCover(item: $historyConfig) { config in
                 TimerHistorySheet(config: config, logState: WorkoutLogState.shared)
             }
-            .sheet(item: $statsConfig) { config in
-                NavigationStack {
-                    TimerStatsView(config: config)
-                        .environment(WorkoutLogState.shared)
-                        .toolbar {
-                            ToolbarItem(placement: .topBarTrailing) {
-                                Button("Done") { statsConfig = nil }
-                            }
-                        }
-                }
+            .fullScreenCover(item: $statsConfig) { config in
+                TimerStatsView(config: config)
+                    .environment(WorkoutLogState.shared)
             }
             .alert("Delete Timer?", isPresented: .constant(deletingConfig != nil)) {
                 Button("Cancel", role: .cancel) { deletingConfig = nil }

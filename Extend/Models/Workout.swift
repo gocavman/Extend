@@ -130,20 +130,32 @@ public struct WorkoutComplex: Identifiable, Codable {
     public var rounds: Int
     /// Shared countdown duration in seconds per round (e.g. 45 seconds to perform all exercises).
     public var intervalSeconds: Int
+    /// When true, the round advances automatically when the interval countdown reaches zero.
+    public var autoAdvance: Bool
+    /// When true, a spoken 3-2-1 countdown plays on the last 3 seconds of each round's timer.
+    public var roundCountdown: Bool
+    /// Whether to display the interval timer as a ring or a horizontal bar.
+    public var timerStyle: ComplexTimerStyle
 
-    public init(id: UUID = UUID(), rounds: Int = 5, intervalSeconds: Int = 45) {
+    public init(id: UUID = UUID(), rounds: Int = 5, intervalSeconds: Int = 45, autoAdvance: Bool = false, roundCountdown: Bool = false, timerStyle: ComplexTimerStyle = .ring) {
         self.id              = id
         self.rounds          = rounds
         self.intervalSeconds = intervalSeconds
+        self.autoAdvance     = autoAdvance
+        self.roundCountdown  = roundCountdown
+        self.timerStyle      = timerStyle
     }
 
-    private enum CodingKeys: String, CodingKey { case id, rounds, intervalSeconds }
+    private enum CodingKeys: String, CodingKey { case id, rounds, intervalSeconds, autoAdvance, roundCountdown, timerStyle }
 
     public init(from decoder: Decoder) throws {
         let c           = try decoder.container(keyedBy: CodingKeys.self)
         id              = try c.decode(UUID.self, forKey: .id)
         rounds          = try c.decodeIfPresent(Int.self, forKey: .rounds) ?? 5
         intervalSeconds = try c.decodeIfPresent(Int.self, forKey: .intervalSeconds) ?? 45
+        autoAdvance     = try c.decodeIfPresent(Bool.self, forKey: .autoAdvance) ?? false
+        roundCountdown  = try c.decodeIfPresent(Bool.self, forKey: .roundCountdown) ?? false
+        timerStyle      = try c.decodeIfPresent(ComplexTimerStyle.self, forKey: .timerStyle) ?? .ring
     }
 
     public func encode(to encoder: Encoder) throws {
@@ -151,7 +163,16 @@ public struct WorkoutComplex: Identifiable, Codable {
         try c.encode(id,              forKey: .id)
         try c.encode(rounds,          forKey: .rounds)
         try c.encode(intervalSeconds, forKey: .intervalSeconds)
+        try c.encode(autoAdvance,     forKey: .autoAdvance)
+        try c.encode(roundCountdown,  forKey: .roundCountdown)
+        try c.encode(timerStyle,      forKey: .timerStyle)
     }
+}
+
+/// Display style for the complex interval timer.
+public enum ComplexTimerStyle: String, Codable, CaseIterable {
+    case ring
+    case bar
 }
 
 // MARK: - Set Target

@@ -181,7 +181,7 @@ private struct MuscleGroupsModuleView: View {
                     }
                     .environment(state)
                 }
-                .sheet(item: $historyGroup) { group in
+                .fullScreenCover(item: $historyGroup) { group in
                     MuscleGroupHistorySheet(group: group, logState: logState, exercisesState: exercisesState)
                 }
                 .alert("Delete Muscle Group?", isPresented: .constant(deletingGroup != nil)) {

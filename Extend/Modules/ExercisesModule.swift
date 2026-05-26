@@ -236,7 +236,7 @@ private struct ExercisesModuleView: View {
                     .environment(muscleGroupsState)
                     .environment(equipmentState)
                 }
-                .sheet(item: $historyExercise) { exercise in
+                .fullScreenCover(item: $historyExercise) { exercise in
                     ExerciseHistorySheet(exercise: exercise, logState: logState)
                 }
                 .alert("Delete Exercise?", isPresented: .constant(deletingExercise != nil)) {

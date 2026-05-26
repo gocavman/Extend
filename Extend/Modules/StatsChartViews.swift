@@ -923,15 +923,15 @@ struct WorkoutHistorySheet: View {
                                     VStack(alignment: .leading, spacing: 4) {
                                         Text(ex.exerciseName)
                                             .font(.caption).fontWeight(.semibold)
-                                        ForEach(Array(ex.sets.enumerated()), id: \.offset) { idx, set in
+                                        ForEach(Array(ex.sets.groupedRuns().enumerated()), id: \.offset) { _, run in
                                             HStack {
-                                                Text("Set \(idx + 1)")
+                                                Text(run.label)
                                                     .font(.caption2).foregroundColor(.secondary)
                                                 Spacer()
-                                                Text("\(set.reps) reps")
+                                                Text("\(run.set.reps) reps")
                                                     .font(.caption2)
-                                                if set.weight > 0 {
-                                                    Text("· \(String(format: "%.1f", set.weight))")
+                                                if run.set.weight > 0 {
+                                                    Text("· \(String(format: "%.1f", run.set.weight))")
                                                         .font(.caption2).foregroundColor(.secondary)
                                                 }
                                             }
@@ -969,6 +969,7 @@ struct WorkoutHistorySheet: View {
 struct WorkoutStatsView: View {
     let workout: Workout
     @Environment(WorkoutLogState.self) var logState
+    @Environment(\.dismiss) private var dismiss
     @State private var timeRange: StatsTimeRange = .oneMonth
 
     private struct SessionPoint: Identifiable {
@@ -995,41 +996,46 @@ struct WorkoutStatsView: View {
     }
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 24) {
-                Picker("Time Range", selection: $timeRange) {
-                    ForEach(StatsTimeRange.allCases, id: \.self) { Text($0.rawValue).tag($0) }
-                }
-                .pickerStyle(.segmented)
-                .padding(.horizontal, 16)
+        NavigationStack {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 24) {
+                    Picker("Time Range", selection: $timeRange) {
+                        ForEach(StatsTimeRange.allCases, id: \.self) { Text($0.rawValue).tag($0) }
+                    }
+                    .pickerStyle(.segmented)
+                    .padding(.horizontal, 16)
 
-                if sessionPoints.isEmpty {
-                    workoutEmptyState
-                } else {
-                    workoutStatsCard(
-                        title: "Duration (mins)",
-                        unit: "min",
-                        points: sessionPoints.map { ($0.date, $0.duration / 60) },
-                        color: .blue
-                    )
-                    workoutStatsCard(
-                        title: "Total Sets",
-                        unit: "sets",
-                        points: sessionPoints.map { ($0.date, Double($0.totalSets)) },
-                        color: Color(red: 0.2, green: 0.65, blue: 0.4)
-                    )
-                    workoutStatsCard(
-                        title: "Exercises Done",
-                        unit: "exercises",
-                        points: sessionPoints.map { ($0.date, Double($0.exerciseCount)) },
-                        color: Color(red: 0.8, green: 0.4, blue: 0.1)
-                    )
+                    if sessionPoints.isEmpty {
+                        workoutEmptyState
+                    } else {
+                        workoutStatsCard(
+                            title: "Duration (mins)",
+                            unit: "min",
+                            points: sessionPoints.map { ($0.date, $0.duration / 60) },
+                            color: .blue
+                        )
+                        workoutStatsCard(
+                            title: "Total Sets",
+                            unit: "sets",
+                            points: sessionPoints.map { ($0.date, Double($0.totalSets)) },
+                            color: Color(red: 0.2, green: 0.65, blue: 0.4)
+                        )
+                        workoutStatsCard(
+                            title: "Exercises Done",
+                            unit: "exercises",
+                            points: sessionPoints.map { ($0.date, Double($0.exerciseCount)) },
+                            color: Color(red: 0.8, green: 0.4, blue: 0.1)
+                        )
+                    }
                 }
+                .padding(.vertical, 16)
             }
-            .padding(.vertical, 16)
+            .navigationTitle(workout.name)
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) { Button("Done") { dismiss() } }
+            }
         }
-        .navigationTitle(workout.name)
-        .navigationBarTitleDisplayMode(.inline)
     }
 
     private var workoutEmptyState: some View {
@@ -1167,6 +1173,7 @@ struct TimerHistorySheet: View {
 struct TimerStatsView: View {
     let config: TimerConfig
     @Environment(WorkoutLogState.self) var logState
+    @Environment(\.dismiss) private var dismiss
     @State private var timeRange: StatsTimeRange = .oneMonth
 
     private var sessionPoints: [(Date, Double)] {
@@ -1178,26 +1185,31 @@ struct TimerStatsView: View {
     }
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 24) {
-                Picker("Time Range", selection: $timeRange) {
-                    ForEach(StatsTimeRange.allCases, id: \.self) { Text($0.rawValue).tag($0) }
-                }
-                .pickerStyle(.segmented).padding(.horizontal, 16)
+        NavigationStack {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 24) {
+                    Picker("Time Range", selection: $timeRange) {
+                        ForEach(StatsTimeRange.allCases, id: \.self) { Text($0.rawValue).tag($0) }
+                    }
+                    .pickerStyle(.segmented).padding(.horizontal, 16)
 
-                if sessionPoints.isEmpty {
-                    timerEmptyState
-                } else {
-                    timerStatsCard(
-                        title: "Duration (mins)", unit: "min",
-                        points: sessionPoints, color: .blue
-                    )
+                    if sessionPoints.isEmpty {
+                        timerEmptyState
+                    } else {
+                        timerStatsCard(
+                            title: "Duration (mins)", unit: "min",
+                            points: sessionPoints, color: .blue
+                        )
+                    }
                 }
+                .padding(.vertical, 16)
             }
-            .padding(.vertical, 16)
+            .navigationTitle(config.name)
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) { Button("Done") { dismiss() } }
+            }
         }
-        .navigationTitle(config.name)
-        .navigationBarTitleDisplayMode(.inline)
     }
 
     private var timerEmptyState: some View {
@@ -1331,6 +1343,7 @@ struct VoiceTrainerHistorySheet: View {
 struct VoiceTrainerStatsView: View {
     let config: VoiceTrainerConfig
     @Environment(WorkoutLogState.self) var logState
+    @Environment(\.dismiss) private var dismiss
     @State private var timeRange: StatsTimeRange = .oneMonth
 
     private var sessionPoints: [(Date, Double)] {
@@ -1342,26 +1355,31 @@ struct VoiceTrainerStatsView: View {
     }
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 24) {
-                Picker("Time Range", selection: $timeRange) {
-                    ForEach(StatsTimeRange.allCases, id: \.self) { Text($0.rawValue).tag($0) }
-                }
-                .pickerStyle(.segmented).padding(.horizontal, 16)
+        NavigationStack {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 24) {
+                    Picker("Time Range", selection: $timeRange) {
+                        ForEach(StatsTimeRange.allCases, id: \.self) { Text($0.rawValue).tag($0) }
+                    }
+                    .pickerStyle(.segmented).padding(.horizontal, 16)
 
-                if sessionPoints.isEmpty {
-                    trainerEmptyState
-                } else {
-                    trainerStatsCard(
-                        title: "Session Duration (mins)", unit: "min",
-                        points: sessionPoints, color: .blue
-                    )
+                    if sessionPoints.isEmpty {
+                        trainerEmptyState
+                    } else {
+                        trainerStatsCard(
+                            title: "Session Duration (mins)", unit: "min",
+                            points: sessionPoints, color: .blue
+                        )
+                    }
                 }
+                .padding(.vertical, 16)
             }
-            .padding(.vertical, 16)
+            .navigationTitle(config.name)
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) { Button("Done") { dismiss() } }
+            }
         }
-        .navigationTitle(config.name)
-        .navigationBarTitleDisplayMode(.inline)
     }
 
     private var trainerEmptyState: some View {

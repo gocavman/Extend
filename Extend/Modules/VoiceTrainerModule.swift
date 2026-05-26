@@ -191,19 +191,12 @@ private struct VoiceTrainerModuleView: View {
                 formatTime: formatTime
             )
         }
-        .sheet(item: $historyConfig) { config in
+        .fullScreenCover(item: $historyConfig) { config in
             VoiceTrainerHistorySheet(config: config, logState: WorkoutLogState.shared)
         }
-        .sheet(item: $statsConfig) { config in
-            NavigationStack {
-                VoiceTrainerStatsView(config: config)
-                    .environment(WorkoutLogState.shared)
-                    .toolbar {
-                        ToolbarItem(placement: .topBarTrailing) {
-                            Button("Done") { statsConfig = nil }
-                        }
-                    }
-            }
+        .fullScreenCover(item: $statsConfig) { config in
+            VoiceTrainerStatsView(config: config)
+                .environment(WorkoutLogState.shared)
         }
         .alert("Delete Trainer?", isPresented: .constant(deletingConfig != nil)) {
             Button("Cancel", role: .cancel) { deletingConfig = nil }

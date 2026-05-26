@@ -138,6 +138,42 @@ public struct LoggedSet: Identifiable, Codable, Hashable {
     }
 }
 
+// MARK: - Set Run Grouping
+
+/// A run of consecutive identical sets, used to compact log display.
+public struct LoggedSetRun {
+    /// 1-based index of the first set in this run.
+    public let startIndex: Int
+    /// 1-based index of the last set in this run.
+    public let endIndex: Int
+    /// The representative set value for the run.
+    public let set: LoggedSet
+
+    /// "Set N" or "Sets N–M"
+    public var label: String {
+        startIndex == endIndex ? "Set \(startIndex)" : "Sets \(startIndex)–\(endIndex)"
+    }
+}
+
+public extension Array where Element == LoggedSet {
+    /// Groups consecutive sets with identical reps, weight, and timedSeconds into runs.
+    func groupedRuns() -> [LoggedSetRun] {
+        var result: [LoggedSetRun] = []
+        for (i, set) in enumerated() {
+            let oneBasedIndex = i + 1
+            if let last = result.last,
+               last.set.reps == set.reps,
+               last.set.weight == set.weight,
+               last.set.timedSeconds == set.timedSeconds {
+                result[result.count - 1] = LoggedSetRun(startIndex: last.startIndex, endIndex: oneBasedIndex, set: last.set)
+            } else {
+                result.append(LoggedSetRun(startIndex: oneBasedIndex, endIndex: oneBasedIndex, set: set))
+            }
+        }
+        return result
+    }
+}
+
 /// A rest period that was part of a logged workout
 public struct LoggedRest: Identifiable, Codable, Hashable {
     public let id: UUID

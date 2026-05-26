@@ -109,7 +109,7 @@ public final class WorkoutsState {
         for (oldKey, cx) in workout.complexes {
             guard let oldUUID = UUID(uuidString: oldKey) else { continue }
             let newUUID = complexIDMap[oldUUID] ?? UUID()
-            clonedComplexes[newUUID.uuidString] = WorkoutComplex(id: newUUID, rounds: cx.rounds, intervalSeconds: cx.intervalSeconds)
+            clonedComplexes[newUUID.uuidString] = WorkoutComplex(id: newUUID, rounds: cx.rounds, intervalSeconds: cx.intervalSeconds, autoAdvance: cx.autoAdvance, roundCountdown: cx.roundCountdown, timerStyle: cx.timerStyle)
         }
         let cloned = Workout(
             id: UUID(),
