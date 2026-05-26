@@ -220,12 +220,13 @@ private struct TimerRowView: View {
     let onStats: () -> Void
 
     var body: some View {
-        HStack(spacing: 12) {
-            Image(systemName: "play.circle.fill")
-                .foregroundColor(.black)
-                .font(.system(size: 20))
+        VStack(alignment: .leading, spacing: 4) {
+            // Top row: play icon, name, action buttons
+            HStack(spacing: 12) {
+                Image(systemName: "play.circle.fill")
+                    .foregroundColor(.black)
+                    .font(.system(size: 20))
 
-            VStack(alignment: .leading, spacing: 4) {
                 HStack(spacing: 6) {
                     Text(config.name.isEmpty ? "Unnamed Timer" : config.name)
                         .font(.subheadline)
@@ -240,61 +241,62 @@ private struct TimerRowView: View {
                         .background(Color.black)
                         .cornerRadius(4)
                 }
-                Text(config.parameterSummary)
+                .frame(maxWidth: .infinity, alignment: .leading)
+
+                // Star / favorite
+                Button(action: onToggleFavorite) {
+                    Image(systemName: config.isFavorite ? "star.fill" : "star")
+                        .foregroundColor(config.isFavorite ? .black : .gray)
+                }
+                .buttonStyle(.plain)
+
+                // History
+                Button(action: {
+                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                    onHistory()
+                }) {
+                    Image(systemName: "clock.arrow.circlepath")
+                        .foregroundColor(.black)
+                }
+                .buttonStyle(.plain)
+
+                // Stats
+                Button(action: {
+                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                    onStats()
+                }) {
+                    Image(systemName: "chart.bar")
+                        .foregroundColor(.black)
+                }
+                .buttonStyle(.plain)
+
+                // Clone
+                Button(action: onClone) {
+                    Image(systemName: "doc.on.doc")
+                        .foregroundColor(.black)
+                }
+                .buttonStyle(.plain)
+
+                // Edit
+                Button(action: {
+                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                    onEdit()
+                }) {
+                    Image(systemName: "pencil")
+                        .foregroundColor(.black)
+                }
+                .buttonStyle(.plain)
+            }
+
+            Text(config.parameterSummary)
+                .font(.caption2)
+                .foregroundColor(.secondary)
+            if !config.notes.isEmpty {
+                Text(config.notes)
                     .font(.caption2)
                     .foregroundColor(.secondary)
-                if !config.notes.isEmpty {
-                    Text(config.notes)
-                        .font(.caption2)
-                        .foregroundColor(.secondary)
-                        .lineLimit(1)
-                }
+                    .lineLimit(1)
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
-
-            // Star / favorite
-            Button(action: onToggleFavorite) {
-                Image(systemName: config.isFavorite ? "star.fill" : "star")
-                    .foregroundColor(config.isFavorite ? .black : .gray)
-            }
-            .buttonStyle(.plain)
-
-            // History
-            Button(action: {
-                UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                onHistory()
-            }) {
-                Image(systemName: "clock.arrow.circlepath")
-                    .foregroundColor(.black)
-            }
-            .buttonStyle(.plain)
-
-            // Stats
-            Button(action: {
-                UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                onStats()
-            }) {
-                Image(systemName: "chart.bar")
-                    .foregroundColor(.black)
-            }
-            .buttonStyle(.plain)
-
-            // Clone
-            Button(action: onClone) {
-                Image(systemName: "doc.on.doc")
-                    .foregroundColor(.black)
-            }
-            .buttonStyle(.plain)
-
-            // Edit
-            Button(action: {
-                UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                onEdit()
-            }) {
-                Image(systemName: "pencil")
-                    .foregroundColor(.black)
-            }
-            .buttonStyle(.plain)
         }
         .contentShape(Rectangle())
         .onTapGesture {

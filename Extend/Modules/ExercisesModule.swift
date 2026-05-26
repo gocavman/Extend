@@ -105,100 +105,101 @@ private struct ExercisesModuleView: View {
                             .padding(.vertical, 20)
                     } else {
                         ForEach(filteredExercises) { exercise in
-                            HStack(spacing: 12) {
-                                VStack(alignment: .leading, spacing: 8) {
+                            VStack(alignment: .leading, spacing: 4) {
+                                // Top row: name, action buttons
+                                HStack(spacing: 12) {
                                     Text(exercise.name)
                                         .font(.subheadline)
                                         .fontWeight(.semibold)
                                         .foregroundColor(.primary)
+                                        .frame(maxWidth: .infinity, alignment: .leading)
 
-                                    // Show muscle groups
-                                    if !exercise.primaryMuscleGroupIDs.isEmpty || !exercise.secondaryMuscleGroupIDs.isEmpty {
-                                        HStack(alignment: .firstTextBaseline, spacing: 4) {
-                                            Text("Muscles:")
-                                                .font(.caption)
-                                                .fontWeight(.semibold)
-                                                .foregroundColor(.gray)
-                                            Text(formattedMuscleGroups(primaryIDs: exercise.primaryMuscleGroupIDs,
-                                                                       secondaryIDs: exercise.secondaryMuscleGroupIDs))
-                                                .font(.caption2)
-                                                .foregroundColor(.secondary)
-                                        }
+                                    // Favorite star
+                                    Button(action: {
+                                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                                        state.toggleFavorite(exercise)
+                                    }) {
+                                        Image(systemName: exercise.isFavorite ? "star.fill" : "star")
+                                            .foregroundColor(exercise.isFavorite ? .yellow : .gray)
                                     }
+                                    .buttonStyle(.plain)
 
-                                    if !exercise.equipmentIDs.isEmpty {
-                                        HStack(alignment: .firstTextBaseline, spacing: 4) {
-                                            Text("Equipment:")
-                                                .font(.caption)
-                                                .fontWeight(.semibold)
-                                                .foregroundColor(.gray)
-                                            Text(equipmentNames(exercise.equipmentIDs).joined(separator: ", "))
-                                                .font(.caption2)
-                                                .foregroundColor(.secondary)
-                                        }
+                                    // History icon — opens exercise history sheet
+                                    Button(action: {
+                                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                                        historyExercise = exercise
+                                    }) {
+                                        Image(systemName: "clock.arrow.circlepath")
+                                            .foregroundColor(.black)
                                     }
+                                    .buttonStyle(.plain)
 
-                                    let trimmedNotes = exercise.notes.trimmingCharacters(in: .whitespacesAndNewlines)
-                                    if !trimmedNotes.isEmpty {
-                                        HStack(alignment: .firstTextBaseline, spacing: 4) {
-                                            Text("Notes:")
-                                                .font(.caption)
-                                                .fontWeight(.semibold)
-                                                .foregroundColor(.gray)
-                                            Text(trimmedNotes)
-                                                .font(.caption2)
-                                                .foregroundColor(.secondary)
-                                        }
+                                    // Graph icon — navigate to stats
+                                    Button(action: {
+                                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                                        statsExercise = exercise
+                                    }) {
+                                        Image(systemName: "chart.bar")
+                                            .foregroundColor(.black)
+                                    }
+                                    .buttonStyle(.plain)
+
+                                    // Edit icon
+                                    Button(action: {
+                                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                                        editingExercise = exercise
+                                    }) {
+                                        Image(systemName: "pencil")
+                                            .foregroundColor(.black)
+                                    }
+                                    .buttonStyle(.plain)
+                                }
+
+                                // Show muscle groups
+                                if !exercise.primaryMuscleGroupIDs.isEmpty || !exercise.secondaryMuscleGroupIDs.isEmpty {
+                                    HStack(alignment: .firstTextBaseline, spacing: 4) {
+                                        Text("Muscles:")
+                                            .font(.caption)
+                                            .fontWeight(.semibold)
+                                            .foregroundColor(.gray)
+                                        Text(formattedMuscleGroups(primaryIDs: exercise.primaryMuscleGroupIDs,
+                                                                   secondaryIDs: exercise.secondaryMuscleGroupIDs))
+                                            .font(.caption2)
+                                            .foregroundColor(.secondary)
                                     }
                                 }
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                                .contentShape(Rectangle())
-                                .onTapGesture {
-                                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                                    statsExercise = exercise
+
+                                if !exercise.equipmentIDs.isEmpty {
+                                    HStack(alignment: .firstTextBaseline, spacing: 4) {
+                                        Text("Equipment:")
+                                            .font(.caption)
+                                            .fontWeight(.semibold)
+                                            .foregroundColor(.gray)
+                                        Text(equipmentNames(exercise.equipmentIDs).joined(separator: ", "))
+                                            .font(.caption2)
+                                            .foregroundColor(.secondary)
+                                    }
                                 }
 
-                                // Favorite star
-                                Button(action: {
-                                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                                    state.toggleFavorite(exercise)
-                                }) {
-                                    Image(systemName: exercise.isFavorite ? "star.fill" : "star")
-                                        .foregroundColor(exercise.isFavorite ? .yellow : .gray)
+                                let trimmedNotes = exercise.notes.trimmingCharacters(in: .whitespacesAndNewlines)
+                                if !trimmedNotes.isEmpty {
+                                    HStack(alignment: .firstTextBaseline, spacing: 4) {
+                                        Text("Notes:")
+                                            .font(.caption)
+                                            .fontWeight(.semibold)
+                                            .foregroundColor(.gray)
+                                        Text(trimmedNotes)
+                                            .font(.caption2)
+                                            .foregroundColor(.secondary)
+                                    }
                                 }
-                                .buttonStyle(.plain)
-
-                                // History icon — opens exercise history sheet
-                                Button(action: {
-                                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                                    historyExercise = exercise
-                                }) {
-                                    Image(systemName: "clock.arrow.circlepath")
-                                        .foregroundColor(.black)
-                                }
-                                .buttonStyle(.plain)
-
-                                // Graph icon — navigate to stats
-                                Button(action: {
-                                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                                    statsExercise = exercise
-                                }) {
-                                    Image(systemName: "chart.bar")
-                                        .foregroundColor(.black)
-                                }
-                                .buttonStyle(.plain)
-
-                                // Edit icon
-                                Button(action: {
-                                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                                    editingExercise = exercise
-                                }) {
-                                    Image(systemName: "pencil")
-                                        .foregroundColor(.black)
-                                }
-                                .buttonStyle(.plain)
                             }
                             .padding(.vertical, 8)
+                            .contentShape(Rectangle())
+                            .onTapGesture {
+                                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                                statsExercise = exercise
+                            }
                             .swipeActions(edge: .leading, allowsFullSwipe: false) {
                                 Button {
                                     UIImpactFeedbackGenerator(style: .light).impactOccurred()

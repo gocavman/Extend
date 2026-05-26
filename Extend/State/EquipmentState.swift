@@ -90,15 +90,18 @@ public final class EquipmentState {
             Equipment(id: UUID(uuidString: "00000101-0000-0000-0000-000000000000")!, name: "Dumbbell"),
             Equipment(id: UUID(uuidString: "0000010C-0000-0000-0000-000000000000")!, name: "Elliptical machine"),
             Equipment(id: UUID(uuidString: "00000111-0000-0000-0000-000000000000")!, name: "Gymnastic rings"),
-            Equipment(id: UUID(uuidString: "00000112-0000-0000-0000-000000000000")!, name: "Heavy bag"),
+            Equipment(id: UUID(uuidString: "00000112-0000-0000-0000-000000000000")!, name: "Boxing bag"),
             Equipment(id: UUID(uuidString: "00000106-0000-0000-0000-000000000000")!, name: "Jump rope"),
+            Equipment(id: UUID(uuidString: "00000114-0000-0000-0000-000000000000")!, name: "Medicine ball"),
             Equipment(id: UUID(uuidString: "00000113-0000-0000-0000-000000000000")!, name: "Plyo box"),
             Equipment(id: UUID(uuidString: "00000107-0000-0000-0000-000000000000")!, name: "Kettlebell"),
             Equipment(id: UUID(uuidString: "00000104-0000-0000-0000-000000000000")!, name: "Pull up bar"),
             Equipment(id: UUID(uuidString: "00000105-0000-0000-0000-000000000000")!, name: "Rope"),
             Equipment(id: UUID(uuidString: "00000108-0000-0000-0000-000000000000")!, name: "Rower"),
             Equipment(id: UUID(uuidString: "0000010B-0000-0000-0000-000000000000")!, name: "Stairclimber"),
-            Equipment(id: UUID(uuidString: "0000010A-0000-0000-0000-000000000000")!, name: "Treadmill")
+            Equipment(id: UUID(uuidString: "0000010A-0000-0000-0000-000000000000")!, name: "Treadmill"),
+            Equipment(id: UUID(uuidString: "00000115-0000-0000-0000-000000000000")!, name: "Bicycle (outdoor)"),
+            Equipment(id: UUID(uuidString: "00000116-0000-0000-0000-000000000000")!, name: "Bicycle (stationary)")
         ]
     }
 }

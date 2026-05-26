@@ -381,65 +381,66 @@ private struct VoiceTrainerListRow: View {
     let onStats: () -> Void
 
     var body: some View {
-        HStack(spacing: 12) {
-            Image(systemName: "play.circle.fill")
-                .foregroundColor(.black)
-                .font(.system(size: 20))
+        VStack(alignment: .leading, spacing: 4) {
+            // Top row: play icon, name, action buttons
+            HStack(spacing: 12) {
+                Image(systemName: "play.circle.fill")
+                    .foregroundColor(.black)
+                    .font(.system(size: 20))
 
-            VStack(alignment: .leading, spacing: 4) {
                 Text(config.name)
                     .font(.subheadline)
                     .fontWeight(.semibold)
                     .foregroundColor(.primary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
 
-                if !config.notes.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                    Text(config.notes.trimmingCharacters(in: .whitespacesAndNewlines))
-                        .font(.caption2)
-                        .foregroundColor(.secondary)
-                        .lineLimit(2)
+                Button(action: onStar) {
+                    Image(systemName: config.isFavorite ? "star.fill" : "star")
+                        .foregroundColor(config.isFavorite ? .yellow : .gray)
                 }
+                .buttonStyle(.plain)
 
-                Text(config.parameterSummary)
+                Button(action: {
+                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                    onHistory()
+                }) {
+                    Image(systemName: "clock.arrow.circlepath")
+                        .foregroundColor(.black)
+                }
+                .buttonStyle(.plain)
+
+                Button(action: {
+                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                    onStats()
+                }) {
+                    Image(systemName: "chart.bar")
+                        .foregroundColor(.black)
+                }
+                .buttonStyle(.plain)
+
+                Button(action: onClone) {
+                    Image(systemName: "doc.on.doc")
+                        .foregroundColor(.black)
+                }
+                .buttonStyle(.plain)
+
+                Button(action: onEdit) {
+                    Image(systemName: "pencil")
+                        .foregroundColor(.black)
+                }
+                .buttonStyle(.plain)
+            }
+
+            if !config.notes.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                Text(config.notes.trimmingCharacters(in: .whitespacesAndNewlines))
                     .font(.caption2)
                     .foregroundColor(.secondary)
+                    .lineLimit(2)
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
 
-            Button(action: onStar) {
-                Image(systemName: config.isFavorite ? "star.fill" : "star")
-                    .foregroundColor(config.isFavorite ? .yellow : .gray)
-            }
-            .buttonStyle(.plain)
-
-            Button(action: {
-                UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                onHistory()
-            }) {
-                Image(systemName: "clock.arrow.circlepath")
-                    .foregroundColor(.black)
-            }
-            .buttonStyle(.plain)
-
-            Button(action: {
-                UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                onStats()
-            }) {
-                Image(systemName: "chart.bar")
-                    .foregroundColor(.black)
-            }
-            .buttonStyle(.plain)
-
-            Button(action: onClone) {
-                Image(systemName: "doc.on.doc")
-                    .foregroundColor(.black)
-            }
-            .buttonStyle(.plain)
-
-            Button(action: onEdit) {
-                Image(systemName: "pencil")
-                    .foregroundColor(.black)
-            }
-            .buttonStyle(.plain)
+            Text(config.parameterSummary)
+                .font(.caption2)
+                .foregroundColor(.secondary)
         }
         .padding(.vertical, 6)
         .contentShape(Rectangle())
