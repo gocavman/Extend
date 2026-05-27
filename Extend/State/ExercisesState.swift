@@ -88,8 +88,10 @@ public final class ExercisesState {
     // MARK: - Default Exercises
     
     private static func createDefaultExercises() -> [Exercise] {
-        // Helper: auto-defaults to the single equipment if only one; otherwise uses explicit defaultIDs
+        // Helper: auto-defaults to the single equipment if only one; otherwise uses explicit defaultIDs.
+        // Pass a stable `id` for exercises referenced by default workouts so they survive reset.
         func exercise(
+            id: UUID = UUID(),
             name: String,
             primaryMuscleGroupIDs: [UUID],
             secondaryMuscleGroupIDs: [UUID] = [],
@@ -106,6 +108,7 @@ public final class ExercisesState {
                 defaults = []
             }
             return Exercise(
+                id: id,
                 name: name,
                 notes: "",
                 primaryMuscleGroupIDs: primaryMuscleGroupIDs,
@@ -219,7 +222,7 @@ public final class ExercisesState {
 
             // K
             exercise(name: "Kettlebell Halo",       primaryMuscleGroupIDs: [deltsID, upperBackID],            secondaryMuscleGroupIDs: [tricepsID, absID],            equipmentIDs: [kettlebellID],                                                               hkType: .traditionalStrengthTraining),
-            exercise(name: "Kettlebell Clean",      primaryMuscleGroupIDs: [glutesID, hamstringsID],          secondaryMuscleGroupIDs: [lowerBackID, deltsID, absID], equipmentIDs: [kettlebellID],                                                               hkType: .traditionalStrengthTraining),
+            exercise(id: UUID(uuidString: "C59510E0-3885-4D18-B80F-C21AFBE779BD")!, name: "Kettlebell Clean",      primaryMuscleGroupIDs: [glutesID, hamstringsID],          secondaryMuscleGroupIDs: [lowerBackID, deltsID, absID], equipmentIDs: [kettlebellID],                                                               hkType: .traditionalStrengthTraining),
             exercise(name: "Kettlebell Snatch",     primaryMuscleGroupIDs: [glutesID, hamstringsID],          secondaryMuscleGroupIDs: [lowerBackID, deltsID, absID], equipmentIDs: [kettlebellID],                                                               hkType: .traditionalStrengthTraining),
             exercise(name: "Kettlebell Swing",      primaryMuscleGroupIDs: [glutesID, hamstringsID],          secondaryMuscleGroupIDs: [lowerBackID, deltsID, absID], equipmentIDs: [kettlebellID],                                                               hkType: .traditionalStrengthTraining),
 
@@ -236,7 +239,7 @@ public final class ExercisesState {
             exercise(name: "Muscle Ups",            primaryMuscleGroupIDs: [latsID, tricepsID, pecsID],       secondaryMuscleGroupIDs: [bicepsID, deltsID],           equipmentIDs: [pullupBarID, ringsID],             defaultEquipmentIDs: [pullupBarID],            hkType: .traditionalStrengthTraining),
 
             // O
-            exercise(name: "Overhead Press",        primaryMuscleGroupIDs: [deltsID, tricepsID],              secondaryMuscleGroupIDs: [upperBackID, absID],          equipmentIDs: [barbellID, dumbbellID, kettlebellID],                                         hkType: .traditionalStrengthTraining),
+            exercise(id: UUID(uuidString: "82527C8B-1AAF-4702-90DF-F8897614A106")!, name: "Overhead Press",        primaryMuscleGroupIDs: [deltsID, tricepsID],              secondaryMuscleGroupIDs: [upperBackID, absID],          equipmentIDs: [barbellID, dumbbellID, kettlebellID],                                         hkType: .traditionalStrengthTraining),
 
             // P
             exercise(name: "Pistol Squat",          primaryMuscleGroupIDs: [quadsID, glutesID],               secondaryMuscleGroupIDs: [hamstringsID, calvesID],      equipmentIDs: [noneID],                                                                     hkType: .traditionalStrengthTraining),
@@ -271,7 +274,7 @@ public final class ExercisesState {
             exercise(name: "Sit Ups",               primaryMuscleGroupIDs: [absID],                                                                                    equipmentIDs: [noneID],                                                                     hkType: .traditionalStrengthTraining),
             exercise(name: "Skull Crusher",         primaryMuscleGroupIDs: [tricepsID],                       secondaryMuscleGroupIDs: [deltsID],                     equipmentIDs: [barbellID, dumbbellID],           defaultEquipmentIDs: [dumbbellID],             hkType: .traditionalStrengthTraining),
             exercise(name: "Squat Jumps",           primaryMuscleGroupIDs: [quadsID, glutesID],                                                                       equipmentIDs: [noneID],                                                                     hkType: .highIntensityIntervalTraining),
-            exercise(name: "Squats",                primaryMuscleGroupIDs: [quadsID, glutesID],               secondaryMuscleGroupIDs: [hamstringsID],                equipmentIDs: [barbellID, dumbbellID, kettlebellID, noneID],                                 hkType: .traditionalStrengthTraining),
+            exercise(id: UUID(uuidString: "D95A4C3A-B832-463C-BCA7-4C47771CE2C9")!, name: "Squats",                primaryMuscleGroupIDs: [quadsID, glutesID],               secondaryMuscleGroupIDs: [hamstringsID],                equipmentIDs: [barbellID, dumbbellID, kettlebellID, noneID],                                 hkType: .traditionalStrengthTraining),
             exercise(name: "Stairclimber",          primaryMuscleGroupIDs: [quadsID, glutesID],               secondaryMuscleGroupIDs: [calvesID],                    equipmentIDs: [stairclimberID],                                                             hkType: .stairClimbing),
             exercise(name: "Step Ups",              primaryMuscleGroupIDs: [quadsID, glutesID],               secondaryMuscleGroupIDs: [hamstringsID, calvesID],      equipmentIDs: [dumbbellID, benchID, noneID],                                                hkType: .stepTraining),
             exercise(name: "Superman",              primaryMuscleGroupIDs: [lowerBackID, glutesID],           secondaryMuscleGroupIDs: [hamstringsID, trapsID],       equipmentIDs: [noneID],                                                                     hkType: .traditionalStrengthTraining),

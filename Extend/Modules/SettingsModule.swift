@@ -47,6 +47,7 @@ private struct SettingsModuleView: View {
     @Environment(DashboardHeaderState.self) var dashboardHeaderState
     @Environment(VoiceTrainerState.self) var voiceTrainerState
     @Environment(HealthKitState.self) var healthKitState
+    @Environment(ExercisesState.self) var exercisesState
 
     @AppStorage("weightUnit") private var weightUnit: String = "lbs"
 
@@ -56,6 +57,20 @@ private struct SettingsModuleView: View {
     @State private var isNavBarColorExpanded = false
     @State private var isDashboardSectionExpanded = false
     @State private var isMusclesSectionExpanded = false
+    @State private var showingExportSheet = false
+    @State private var showingImportPicker = false
+    @State private var importResult: ImportResult? = nil
+
+    private enum ImportResult: Identifiable {
+        case success(Int)
+        case failure(String)
+        var id: String {
+            switch self {
+            case .success(let n): return "success_\(n)"
+            case .failure(let m): return "failure_\(m)"
+            }
+        }
+    }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -235,6 +250,36 @@ private struct SettingsModuleView: View {
                         .disabled(isSyncingHealthKit || (!healthKitState.anyImportEnabled && !healthKitState.exportStrengthWorkouts))
                     }
 
+                    // MARK: - Workouts Section
+                    Section("Workouts") {
+                        Button {
+                            showingExportSheet = true
+                        } label: {
+                            HStack {
+                                Image(systemName: "square.and.arrow.up")
+                                    .foregroundColor(.accentColor)
+                                Text("Export Workouts")
+                                    .foregroundColor(.primary)
+                                Spacer()
+                                Text("\(workoutsState.workouts.count)")
+                                    .foregroundColor(.secondary)
+                                    .font(.subheadline)
+                            }
+                        }
+                        .disabled(workoutsState.workouts.isEmpty)
+
+                        Button {
+                            showingImportPicker = true
+                        } label: {
+                            HStack {
+                                Image(systemName: "square.and.arrow.down")
+                                    .foregroundColor(.accentColor)
+                                Text("Import Workouts")
+                                    .foregroundColor(.primary)
+                            }
+                        }
+                    }
+
                     // MARK: - Reset Section
                     Section("Reset") {
                         Button(role: .destructive) {
@@ -272,6 +317,59 @@ private struct SettingsModuleView: View {
                     }
                 } message: {
                     Text("This will reset the whole app back to default settings; clearing history, logs, favorites and customizations (navbars, dashboard tiles, exercises, workouts, muscle groups, equipment, timers and voice trainers).")
+                }
+                .fullScreenCover(isPresented: $showingExportSheet) {
+                    WorkoutExportSheet(
+                        workouts: workoutsState.workouts,
+                        exercisesState: exercisesState,
+                        equipmentState: equipmentState,
+                        muscleGroupsState: muscleGroupsState
+                    )
+                }
+                .fileImporter(
+                    isPresented: $showingImportPicker,
+                    allowedContentTypes: [.json],
+                    allowsMultipleSelection: false
+                ) { result in
+                    switch result {
+                    case .success(let urls):
+                        guard let url = urls.first else { return }
+                        do {
+                            guard url.startAccessingSecurityScopedResource() else {
+                                importResult = .failure("Permission denied for selected file.")
+                                return
+                            }
+                            defer { url.stopAccessingSecurityScopedResource() }
+                            let data = try Data(contentsOf: url)
+                            let count = try workoutsState.importWorkouts(
+                                from: data,
+                                exercisesState: exercisesState,
+                                equipmentState: equipmentState,
+                                muscleGroupsState: muscleGroupsState
+                            )
+                            importResult = .success(count)
+                        } catch {
+                            importResult = .failure(error.localizedDescription)
+                        }
+                    case .failure(let error):
+                        importResult = .failure(error.localizedDescription)
+                    }
+                }
+                .alert(item: $importResult) { result in
+                    switch result {
+                    case .success(let count):
+                        return Alert(
+                            title: Text("Import Complete"),
+                            message: Text("\(count) workout\(count == 1 ? "" : "s") imported successfully."),
+                            dismissButton: .default(Text("OK"))
+                        )
+                    case .failure(let message):
+                        return Alert(
+                            title: Text("Import Failed"),
+                            message: Text(message),
+                            dismissButton: .default(Text("OK"))
+                        )
+                    }
                 }
             }
         }
@@ -342,6 +440,173 @@ private struct SettingsModuleView: View {
         moduleState.selectModule(ModuleIDs.dashboard)
         if presentedAsSheet { dismiss() }
     }
+}
+
+// MARK: - Workout Export Sheet
+
+private struct WorkoutExportSheet: View {
+    @Environment(\.dismiss) private var dismiss
+    let workouts: [Workout]
+    let exercisesState: ExercisesState
+    let equipmentState: EquipmentState
+    let muscleGroupsState: MuscleGroupsState
+
+    @State private var selectedIDs: Set<UUID> = []
+    @State private var shareItem: ExportItem? = nil
+    @State private var searchText: String = ""
+    @State private var showingExportSuccess = false
+
+    private struct ExportItem: Identifiable {
+        let id = UUID()
+        let url: URL
+    }
+
+    private var filteredWorkouts: [Workout] {
+        guard !searchText.isEmpty else { return workouts }
+        return workouts.filter { $0.name.localizedCaseInsensitiveContains(searchText) }
+    }
+
+    var body: some View {
+        VStack(spacing: 0) {
+            // Header
+            HStack {
+                Button("Cancel") { dismiss() }
+                    .foregroundColor(.blue)
+                Spacer()
+                Text("Export Workouts")
+                    .font(.headline)
+                Spacer()
+                Button("Select All") {
+                    if selectedIDs.count == filteredWorkouts.count {
+                        selectedIDs = []
+                    } else {
+                        selectedIDs = Set(filteredWorkouts.map { $0.id })
+                    }
+                }
+                .foregroundColor(.blue)
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 12)
+            .background(Color(uiColor: .systemBackground))
+            .overlay(alignment: .bottom) { Divider() }
+
+            // Search bar
+            HStack(spacing: 8) {
+                Image(systemName: "magnifyingglass")
+                    .foregroundColor(.secondary)
+                TextField("Search workouts", text: $searchText)
+                    .autocorrectionDisabled()
+                if !searchText.isEmpty {
+                    Button { searchText = "" } label: {
+                        Image(systemName: "xmark.circle.fill")
+                            .foregroundColor(.secondary)
+                    }
+                }
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
+            .background(Color(uiColor: .secondarySystemBackground))
+            .cornerRadius(10)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 8)
+
+            List(filteredWorkouts) { workout in
+                Button {
+                    if selectedIDs.contains(workout.id) {
+                        selectedIDs.remove(workout.id)
+                    } else {
+                        selectedIDs.insert(workout.id)
+                    }
+                } label: {
+                    HStack(spacing: 12) {
+                        Image(systemName: selectedIDs.contains(workout.id) ? "checkmark.circle.fill" : "circle")
+                            .foregroundColor(selectedIDs.contains(workout.id) ? .black : .secondary)
+                            .font(.system(size: 20))
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(workout.name)
+                                .font(.body)
+                                .foregroundColor(.primary)
+                            let exerciseCount = workout.items.filter {
+                                if case .exercise = $0 { return true }; return false
+                            }.count
+                            Text("\(exerciseCount) exercise\(exerciseCount == 1 ? "" : "s")")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                        Spacer()
+                    }
+                }
+                .buttonStyle(.plain)
+            }
+            .listStyle(.plain)
+            .scrollContentBackground(.hidden)
+            .background(Color.white)
+
+            // Export button
+            Button {
+                exportSelected()
+            } label: {
+                Text("Export \(selectedIDs.count) Workout\(selectedIDs.count == 1 ? "" : "s")")
+                    .font(.body)
+                    .fontWeight(.semibold)
+                    .foregroundColor(selectedIDs.isEmpty ? .secondary : .white)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 14)
+                    .background(selectedIDs.isEmpty ? Color(uiColor: .systemGray4) : Color.black)
+                    .cornerRadius(12)
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 12)
+            }
+            .disabled(selectedIDs.isEmpty)
+        }
+        .background(Color.white.ignoresSafeArea())
+        .sheet(item: $shareItem) { item in
+            ShareSheet(url: item.url) {
+                showingExportSuccess = true
+            }
+        }
+        .alert("Export Successful", isPresented: $showingExportSuccess) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text("Your workout\(selectedIDs.count == 1 ? "" : "s") \(selectedIDs.count == 1 ? "was" : "were") exported successfully.")
+        }
+    }
+
+    private func exportSelected() {
+        let toExport = workouts.filter { selectedIDs.contains($0.id) }
+        guard let data = WorkoutsState.shared.exportData(
+            for: toExport,
+            exercisesState: exercisesState,
+            equipmentState: equipmentState,
+            muscleGroupsState: muscleGroupsState
+        ) else { return }
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy-MM-dd_HH-mm-ss"
+        let stamp = formatter.string(from: Date())
+        let tempURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent("extend-workouts-\(stamp).json")
+        do {
+            try data.write(to: tempURL)
+            shareItem = ExportItem(url: tempURL)
+        } catch {}
+    }
+}
+
+// MARK: - Share Sheet wrapper
+
+private struct ShareSheet: UIViewControllerRepresentable {
+    let url: URL
+    var onComplete: (() -> Void)? = nil
+
+    func makeUIViewController(context: Context) -> UIActivityViewController {
+        let vc = UIActivityViewController(activityItems: [url], applicationActivities: nil)
+        vc.completionWithItemsHandler = { _, completed, _, _ in
+            if completed { onComplete?() }
+        }
+        return vc
+    }
+
+    func updateUIViewController(_ uiViewController: UIActivityViewController, context: Context) {}
 }
 
 // MARK: - NavBar Customization View
