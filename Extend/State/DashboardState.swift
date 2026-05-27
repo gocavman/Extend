@@ -129,12 +129,26 @@ public final class DashboardState {
             )
         }
 
+        // Large tiles
         tiles.append(graphCard(.workoutFrequency, icon: "chart.bar"))
         order += 1
 
         tiles.append(graphCard(.muscleGroupDistribution, icon: "chart.pie"))
         order += 1
 
+        tiles.append(graphCard(.volumeThisWeek, icon: "scalemass"))
+        order += 1
+
+        tiles.append(graphCard(.personalRecord, icon: "medal"))
+        order += 1
+
+        tiles.append(graphCard(.oneRepMax, icon: "trophy.fill"))
+        order += 1
+
+        tiles.append(graphCard(.favoriteDay, icon: "calendar"))
+        order += 1
+
+        // Small tiles
         tiles.append(statCard(.totalWorkouts, icon: "list.bullet"))
         order += 1
 
@@ -144,50 +158,14 @@ public final class DashboardState {
         tiles.append(statCard(.totalTime, icon: "clock"))
         order += 1
 
-        tiles.append(graphCard(.oneRepMax, icon: "trophy.fill"))
-        order += 1
-
-        tiles.append(statCard(.volumeThisWeek, icon: "scalemass"))
-        order += 1
-
         tiles.append(statCard(.longestStreak, icon: "trophy"))
-        order += 1
-
-        tiles.append(statCard(.restDays, icon: "moon"))
-        order += 1
-
-        tiles.append(statCard(.personalRecord, icon: "medal"))
         order += 1
 
         tiles.append(statCard(.favoriteExercise, icon: "star"))
         order += 1
 
-        tiles.append(statCard(.favoriteDay, icon: "calendar"))
+        tiles.append(statCard(.restDays, icon: "moon"))
         order += 1
-
-        // Mini Games Section
-        tiles.append(
-            DashboardTile(
-                title: "Workout Buddy",
-                icon: "gamecontroller.fill",
-                order: order,
-                targetModuleID: ModuleIDs.game1,
-                tileType: .moduleShortcut,
-                size: .small
-            )
-        )
-        order += 1
-
-        tiles.append(
-            DashboardTile(
-                title: "Workout Match",
-                icon: "gamecontroller.fill",
-                order: order,
-                targetModuleID: ModuleIDs.matchGame,
-                tileType: .moduleShortcut,
-                size: .small
-            )
-        )
 
         return tiles
     }

@@ -33,6 +33,9 @@ public struct DashboardTile: Identifiable, Hashable, Codable {
     /// 1RM leaderboard tile: user-selected exercise IDs to display (nil = auto top-5)
     public var oneRMExerciseIDs: [UUID]?
 
+    /// Personal Record tile: user-selected exercise IDs to display (nil = auto top-5 by weight)
+    public var personalRecordExerciseIDs: [UUID]?
+
     public init(
         id: UUID = UUID(),
         title: String,
@@ -48,7 +51,8 @@ public struct DashboardTile: Identifiable, Hashable, Codable {
         tileTintHex: String? = nil,
         shortcutType: ShortcutType? = nil,
         shortcutItemID: UUID? = nil,
-        oneRMExerciseIDs: [UUID]? = nil
+        oneRMExerciseIDs: [UUID]? = nil,
+        personalRecordExerciseIDs: [UUID]? = nil
     ) {
         self.id = id
         self.title = title
@@ -65,6 +69,7 @@ public struct DashboardTile: Identifiable, Hashable, Codable {
         self.shortcutType = shortcutType
         self.shortcutItemID = shortcutItemID
         self.oneRMExerciseIDs = oneRMExerciseIDs
+        self.personalRecordExerciseIDs = personalRecordExerciseIDs
     }
 
     public func hash(into hasher: inout Hasher) {

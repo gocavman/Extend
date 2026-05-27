@@ -66,7 +66,9 @@ private struct DashboardModuleView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            headerView
+            if headerState.isVisible {
+                headerView
+            }
             
             // MARK: - Tiles Content
             if dashboardState.tiles.isEmpty {
@@ -78,6 +80,11 @@ private struct DashboardModuleView: View {
             }
             
             Spacer()
+        }
+        .overlay(alignment: .topTrailing) {
+            if !headerState.isVisible {
+                floatingGearButton
+            }
         }
         .alert("Blank Tile", isPresented: $showBlankAlert) {
             Button("OK", role: .cancel) {}
@@ -170,13 +177,26 @@ private struct DashboardModuleView: View {
         let span = tile.size.columns
         let tileWidth = columnWidth * CGFloat(span) + spacing * CGFloat(span - 1)
         let isDoubleHeight = tile.tileType == .statCard
-            && (tile.statCardType == .muscleGroupDistribution || tile.statCardType == .oneRepMax)
-        let tileHeight = isDoubleHeight ? columnWidth * 2 + spacing : columnWidth
+            && tile.statCardType == .muscleGroupDistribution
+        // Dynamic-height entries for PR and 1RM tiles
+        let prEntries: [(name: String, value: Double)] = tile.statCardType == .personalRecord ? personalRecordEntries(for: tile) : []
+        let rmEntries: [(name: String, value: Double)] = tile.statCardType == .oneRepMax ? oneRMEntries(for: tile) : []
+        // Height: header row (44pt) + padding (24pt) + per-entry row height (24pt each, capped at 10)
+        let dynamicEntryCount: Int = tile.statCardType == .personalRecord ? min(max(prEntries.count, 1), 10)
+            : tile.statCardType == .oneRepMax ? min(max(rmEntries.count, 1), 10)
+            : 0
+        // favoriteDay: header(44) + 7 rows × 19pt each + bottom padding(12) ≈ 189
+        // volumeThisWeek: header(44) + bars(107) + trend(20) + padding(16) ≈ 187
+        let tileHeight: CGFloat = isDoubleHeight ? columnWidth * 2 + spacing
+            : tile.statCardType == .favoriteDay ? CGFloat(44 + 7 * 19 + 12)
+            : tile.statCardType == .volumeThisWeek ? CGFloat(44 + 107 + 20 + 16)
+            : dynamicEntryCount > 0 ? CGFloat(44 + 24 + dynamicEntryCount * 26)
+            : columnWidth
         
         return Group {
             if tile.tileType == .statCard, let statCard = tile.statCardType {
                 StatCardTileView(
-                    title: statCard.rawValue,
+                    title: tile.title,
                     icon: tile.icon,
                     value: statValue(for: statCard),
                     statType: statCard,
@@ -188,7 +208,10 @@ private struct DashboardModuleView: View {
                     tileTint: tile.tileTintColor,
                     trend: trendInfo(for: statCard),
                     personalRecordLabel: statCard == .personalRecord ? logState.personalRecord?.exerciseName : nil,
-                    oneRMEntries: statCard == .oneRepMax ? oneRMEntries(for: tile) : []
+                    oneRMEntries: rmEntries,
+                    personalRecordEntries: prEntries,
+                    volumeWeeks: statCard == .volumeThisWeek ? logState.volumeByWeek(weeks: 5) : [],
+                    dayOfWeekCounts: statCard == .favoriteDay ? logState.workoutCountByDayOfWeek : []
                 )
                 .frame(width: tileWidth, height: tileHeight)
                 .rotationEffect(.degrees(tileRotations[tile.id] ?? 0))
@@ -298,6 +321,21 @@ private struct DashboardModuleView: View {
         .animation(.easeOut(duration: 2.5), value: tileOffsets[tile.id]?.x)
         .animation(.easeOut(duration: 2.5), value: tileOffsets[tile.id]?.y)
         .animation(.easeOut(duration: 2.5), value: flyingTiles.contains(tile.id))
+    }
+
+    private var floatingGearButton: some View {
+        Button(action: {
+            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+            showingSettings = true
+        }) {
+            Image(systemName: "gearshape")
+                .font(.system(size: 18))
+                .foregroundColor(Color.primary.opacity(0.7))
+                .padding(10)
+        }
+        .buttonStyle(.plain)
+        .padding(.trailing, 6)
+        .padding(.top, topNavBarHeight)
     }
 
     private var headerView: some View {
@@ -456,6 +494,22 @@ private struct DashboardModuleView: View {
             return this > last ? ("↑", .green) : this < last ? ("↓", .red) : nil
         default:
             return nil
+        }
+    }
+
+    private func personalRecordEntries(for tile: DashboardTile) -> [(name: String, value: Double)] {
+        if let ids = tile.personalRecordExerciseIDs, !ids.isEmpty {
+            return ids.compactMap { id in
+                guard let weight = logState.bestWeight(exerciseID: id) else { return nil }
+                let name = logState.logs
+                    .flatMap { $0.exercises }
+                    .first(where: { $0.exerciseID == id })?.exerciseName ?? "Unknown"
+                return (name: name, value: weight)
+            }
+            .sorted { $0.value > $1.value }
+        } else {
+            return logState.topExercisesByWeight(limit: 5)
+                .map { (name: $0.exerciseName, value: $0.weight) }
         }
     }
 
@@ -946,7 +1000,7 @@ private struct AddTileSheet: View {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Add") {
                         for statCard in selectedStatCards {
-                            let size: TileSize = (statCard == .workoutFrequency || statCard == .muscleGroupDistribution || statCard == .oneRepMax) ? .large : .small
+                            let size: TileSize = (statCard == .workoutFrequency || statCard == .muscleGroupDistribution || statCard == .oneRepMax || statCard == .personalRecord) ? .large : .small
                             let tile = DashboardTile(
                                 title: statCard.rawValue,
                                 icon: iconForStatCard(statCard),
@@ -1015,6 +1069,8 @@ private struct EditTileSheet: View {
     @State private var selectedSize: TileSize = .small
     /// For 1RM tiles: nil = auto top-5; non-nil = user-chosen set
     @State private var oneRMExerciseIDs: [UUID]? = nil
+    /// For PR tiles: nil = auto top-5 by weight; non-nil = user-chosen set
+    @State private var personalRecordExerciseIDs: [UUID]? = nil
 
     let onSave: (DashboardTile) -> Void
 
@@ -1033,10 +1089,14 @@ private struct EditTileSheet: View {
         if tile.tileType == .graph {
             return [.large]
         }
-        if tile.tileType == .statCard,
-           let statCard = tile.statCardType,
-           (statCard == .workoutFrequency || statCard == .muscleGroupDistribution || statCard == .oneRepMax) {
-            return [.large]
+        if tile.tileType == .statCard, let statCard = tile.statCardType {
+            if statCard == .workoutFrequency || statCard == .muscleGroupDistribution
+                || statCard == .volumeThisWeek || statCard == .favoriteDay {
+                return [.large]
+            }
+            if statCard == .oneRepMax || statCard == .personalRecord {
+                return [.medium, .large]
+            }
         }
         return TileSize.allCases
     }
@@ -1108,6 +1168,57 @@ private struct EditTileSheet: View {
                             .font(.caption)
                     }
                 }
+
+                // PR exercise selection — only shown for Personal Record tile
+                if tile.statCardType == .personalRecord {
+                    Section {
+                        let eligibleExercises = exercisesState.exercises
+                            .filter { logState.bestWeight(exerciseID: $0.id) != nil }
+                            .sorted { $0.name < $1.name }
+
+                        if eligibleExercises.isEmpty {
+                            Text("Log sets with weights on any exercise to populate this list.")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        } else {
+                            let selected = personalRecordExerciseIDs ?? []
+                            ForEach(eligibleExercises) { exercise in
+                                Button(action: {
+                                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                                    var ids = personalRecordExerciseIDs ?? []
+                                    if ids.contains(exercise.id) {
+                                        ids.removeAll { $0 == exercise.id }
+                                    } else if ids.count < 5 {
+                                        ids.append(exercise.id)
+                                    }
+                                    personalRecordExerciseIDs = ids.isEmpty ? nil : ids
+                                }) {
+                                    HStack {
+                                        Text(exercise.name)
+                                            .foregroundColor(.primary)
+                                        Spacer()
+                                        if let w = logState.bestWeight(exerciseID: exercise.id) {
+                                            Text(String(format: "%.0f \(weightUnit)", w))
+                                                .font(.caption)
+                                                .foregroundColor(.secondary)
+                                        }
+                                        if selected.contains(exercise.id) {
+                                            Image(systemName: "checkmark")
+                                                .foregroundColor(.accentColor)
+                                        }
+                                    }
+                                    .contentShape(Rectangle())
+                                }
+                                .buttonStyle(.plain)
+                            }
+                        }
+                    } header: {
+                        Text("Exercises (up to 5)")
+                    } footer: {
+                        Text(personalRecordExerciseIDs == nil ? "Showing auto top-5 by best weight. Select exercises to pin specific ones." : "Deselect all to revert to auto top-5.")
+                            .font(.caption)
+                    }
+                }
                 
                 Section("Icon") {
                     LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible()), GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
@@ -1136,6 +1247,7 @@ private struct EditTileSheet: View {
                 selectedIcon = tile.icon
                 selectedSize = tile.size
                 oneRMExerciseIDs = tile.oneRMExerciseIDs
+                personalRecordExerciseIDs = tile.personalRecordExerciseIDs
             }
             #if os(iOS)
             .toolbar {
@@ -1146,6 +1258,7 @@ private struct EditTileSheet: View {
                         updatedTile.icon = selectedIcon
                         updatedTile.size = selectedSize
                         updatedTile.oneRMExerciseIDs = oneRMExerciseIDs
+                        updatedTile.personalRecordExerciseIDs = personalRecordExerciseIDs
                         onSave(updatedTile)
                         dismiss()
                     }
@@ -1177,8 +1290,11 @@ private struct StatCardTileView: View {
     let accentColor: Color
     let tileTint: Color?
     let trend: (symbol: String, color: Color)?
-    let personalRecordLabel: String?   // exercise name for PR card
+    let personalRecordLabel: String?   // exercise name for PR card (legacy single-value path)
     var oneRMEntries: [(name: String, value: Double)] = []
+    var personalRecordEntries: [(name: String, value: Double)] = []
+    var volumeWeeks: [(label: String, volume: Double)] = []
+    var dayOfWeekCounts: [(label: String, count: Int)] = []
 
     var body: some View {
         let bg = tileTint ?? Color(red: 0.96, green: 0.96, blue: 0.97)
@@ -1226,7 +1342,7 @@ private struct StatCardTileView: View {
                     } else {
                         let best = oneRMEntries.map { $0.value }.max() ?? 1
                         VStack(alignment: .leading, spacing: 5) {
-                            ForEach(Array(oneRMEntries.prefix(5).enumerated()), id: \.offset) { index, entry in
+                            ForEach(Array(oneRMEntries.prefix(10).enumerated()), id: \.offset) { index, entry in
                                 HStack(spacing: 6) {
                                     // Rank badge
                                     Text("#\(index + 1)")
@@ -1255,6 +1371,56 @@ private struct StatCardTileView: View {
                                             .frame(height: 3)
                                         RoundedRectangle(cornerRadius: 2)
                                             .fill(index == 0 ? Color.yellow : Color.black.opacity(0.35))
+                                            .frame(width: geo.size.width * CGFloat(entry.value / best), height: 3)
+                                    }
+                                }
+                                .frame(height: 3)
+                            }
+                        }
+                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                    }
+                } else if statType == .personalRecord {
+                    if personalRecordEntries.isEmpty {
+                        VStack(spacing: 4) {
+                            Spacer()
+                            Image(systemName: "star")
+                                .font(.system(size: 22, weight: .light))
+                                .foregroundColor(.gray)
+                            Text("Log sets with weights\nto see your records")
+                                .font(.caption2)
+                                .foregroundColor(.gray)
+                                .multilineTextAlignment(.center)
+                            Spacer()
+                        }
+                        .frame(maxWidth: .infinity)
+                    } else {
+                        let best = personalRecordEntries.map { $0.value }.max() ?? 1
+                        VStack(alignment: .leading, spacing: 5) {
+                            ForEach(Array(personalRecordEntries.prefix(10).enumerated()), id: \.offset) { index, entry in
+                                HStack(spacing: 6) {
+                                    Text("#\(index + 1)")
+                                        .font(.system(size: 10, weight: .bold, design: .rounded))
+                                        .foregroundColor(index == 0 ? Color(red: 1, green: 0.8, blue: 0) : .gray)
+                                        .frame(width: 20)
+                                    Text(entry.name)
+                                        .font(.caption2)
+                                        .fontWeight(.semibold)
+                                        .foregroundColor(.black)
+                                        .lineLimit(1)
+                                        .minimumScaleFactor(0.7)
+                                        .frame(maxWidth: .infinity, alignment: .leading)
+                                    Text(String(format: "%.0f", entry.value))
+                                        .font(.caption2)
+                                        .fontWeight(.bold)
+                                        .foregroundColor(.black)
+                                }
+                                GeometryReader { geo in
+                                    ZStack(alignment: .leading) {
+                                        RoundedRectangle(cornerRadius: 2)
+                                            .fill(Color.black.opacity(0.08))
+                                            .frame(height: 3)
+                                        RoundedRectangle(cornerRadius: 2)
+                                            .fill(index == 0 ? Color(red: 1, green: 0.8, blue: 0) : Color.black.opacity(0.35))
                                             .frame(width: geo.size.width * CGFloat(entry.value / best), height: 3)
                                     }
                                 }
@@ -1311,9 +1477,43 @@ private struct StatCardTileView: View {
                             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
                         }
                     }
+                } else if statType == .volumeThisWeek {
+                    if volumeWeeks.isEmpty || volumeWeeks.allSatisfy({ $0.volume == 0 }) {
+                        VStack(spacing: 4) {
+                            Spacer()
+                            Image(systemName: "chart.bar")
+                                .font(.system(size: 22, weight: .light))
+                                .foregroundColor(.gray)
+                            Text("No volume logged yet")
+                                .font(.caption2)
+                                .foregroundColor(.gray)
+                            Spacer()
+                        }
+                        .frame(maxWidth: .infinity)
+                    } else {
+                        VolumeBarChartView(weeks: volumeWeeks)
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    }
+                } else if statType == .favoriteDay {
+                    if dayOfWeekCounts.allSatisfy({ $0.count == 0 }) {
+                        VStack(spacing: 4) {
+                            Spacer()
+                            Image(systemName: "calendar")
+                                .font(.system(size: 22, weight: .light))
+                                .foregroundColor(.gray)
+                            Text("No workouts logged yet")
+                                .font(.caption2)
+                                .foregroundColor(.gray)
+                            Spacer()
+                        }
+                        .frame(maxWidth: .infinity)
+                    } else {
+                        DayOfWeekBarChartView(days: dayOfWeekCounts)
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    }
                 } else {
                     let isNumeric = statType == .totalWorkouts || statType == .dayStreaks
-                        || statType == .totalTime || statType == .volumeThisWeek
+                        || statType == .totalTime
                         || statType == .longestStreak || statType == .restDays
                     Text(value)
                         .font(.system(size: isNumeric ? 28 : 16, weight: .bold, design: isNumeric ? .rounded : .default))
@@ -1415,6 +1615,115 @@ private struct WeekFrequencyView: View {
             }
         }
         .frame(maxWidth: .infinity)
+    }
+}
+
+// MARK: - Volume Bar Chart (weekly, past 5 weeks)
+
+private struct VolumeBarChartView: View {
+    let weeks: [(label: String, volume: Double)]
+
+    var body: some View {
+        let maxVol = weeks.map { $0.volume }.max() ?? 1
+        let currentWeekIdx = weeks.count - 1
+        let barAreaH: CGFloat = 90
+        let labelH: CGFloat = 14
+
+        VStack(alignment: .leading, spacing: 4) {
+            // Bars
+            HStack(alignment: .bottom, spacing: 6) {
+                ForEach(Array(weeks.enumerated()), id: \.offset) { idx, week in
+                    let fraction = maxVol > 0 ? CGFloat(week.volume / maxVol) : 0
+                    let barHeight = max(18, barAreaH * fraction)
+                    let isCurrentWeek = idx == currentWeekIdx
+                    VStack(spacing: 3) {
+                        ZStack {
+                            RoundedRectangle(cornerRadius: 3)
+                                .fill(isCurrentWeek ? Color.black : Color.black.opacity(0.25))
+                                .frame(height: barHeight)
+                            if week.volume > 0 {
+                                let volLabel = week.volume >= 1000
+                                    ? String(format: "%.0fk", week.volume / 1000)
+                                    : String(format: "%.0f", week.volume)
+                                Text(volLabel)
+                                    .font(.system(size: 11, weight: .bold))
+                                    .foregroundColor(isCurrentWeek ? .white : .black.opacity(0.6))
+                                    .minimumScaleFactor(0.5)
+                                    .lineLimit(1)
+                            }
+                        }
+                        .frame(height: barHeight)
+                        Text(week.label)
+                            .font(.system(size: 8))
+                            .foregroundColor(.gray)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.5)
+                            .frame(maxWidth: .infinity)
+                            .frame(height: labelH)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .bottom)
+                }
+            }
+            .frame(maxWidth: .infinity, minHeight: 107)
+
+            // Trend line label
+            if weeks.count >= 2 {
+                let prev = weeks[weeks.count - 2].volume
+                let curr = weeks[weeks.count - 1].volume
+                if prev > 0 {
+                    let pct = Int(((curr - prev) / prev) * 100)
+                    HStack(spacing: 2) {
+                        Image(systemName: pct >= 0 ? "arrow.up" : "arrow.down")
+                            .font(.system(size: 9, weight: .bold))
+                            .foregroundColor(pct >= 0 ? .green : .red)
+                        Text("\(abs(pct))% vs last week")
+                            .font(.system(size: 9))
+                            .foregroundColor(.gray)
+                    }
+                }
+            }
+        }
+        .frame(maxWidth: .infinity)
+    }
+}
+
+// MARK: - Day of Week Bar Chart (horizontal)
+
+private struct DayOfWeekBarChartView: View {
+    let days: [(label: String, count: Int)]
+
+    var body: some View {
+        let sorted = days.sorted { $0.count > $1.count }
+        let maxCount = sorted.map { $0.count }.max() ?? 1
+
+        VStack(alignment: .leading, spacing: 5) {
+            ForEach(Array(sorted.enumerated()), id: \.offset) { idx, day in
+                let fraction = maxCount > 0 ? CGFloat(day.count) / CGFloat(maxCount) : 0
+                HStack(spacing: 6) {
+                    Text(String(day.label.prefix(3)))
+                        .font(.system(size: 9, weight: .semibold))
+                        .foregroundColor(idx == 0 ? .black : .gray)
+                        .frame(width: 26, alignment: .leading)
+                    GeometryReader { barGeo in
+                        ZStack(alignment: .leading) {
+                            RoundedRectangle(cornerRadius: 2)
+                                .fill(Color.black.opacity(0.08))
+                                .frame(height: 10)
+                            RoundedRectangle(cornerRadius: 2)
+                                .fill(idx == 0 ? Color.black : Color.black.opacity(0.3))
+                                .frame(width: barGeo.size.width * fraction, height: 10)
+                        }
+                    }
+                    .frame(height: 10)
+                    Text("\(day.count)")
+                        .font(.system(size: 9, weight: .bold))
+                        .foregroundColor(idx == 0 ? .black : .gray)
+                        .frame(width: 18, alignment: .trailing)
+                }
+                .frame(height: 14)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 }
 

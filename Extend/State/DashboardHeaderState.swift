@@ -30,6 +30,7 @@ final class DashboardHeaderState {
     private let textColorKey = "dashboardHeaderTextColor"
     private let backgroundUseGradientKey = "dashboardHeaderBackgroundUseGradient"
     private let backgroundGradientSecondaryKey = "dashboardHeaderBackgroundGradientSecondary"
+    private let isVisibleKey = "dashboardHeaderIsVisible"
 
     var title: String
     var imageData: Data?
@@ -38,6 +39,7 @@ final class DashboardHeaderState {
     private var textComponents: RGBAColor
     private var backgroundGradientComponents: RGBAColor
     var backgroundUseGradient: Bool
+    var isVisible: Bool
 
     var backgroundColor: Color {
         Color(.sRGB,
@@ -82,6 +84,7 @@ final class DashboardHeaderState {
         backgroundGradientComponents = RGBAColor.load(from: backgroundGradientSecondaryKey)
             ?? RGBAColor(red: 0.96, green: 0.96, blue: 0.97, alpha: 1.0)
         backgroundUseGradient = defaults.bool(forKey: backgroundUseGradientKey)
+        isVisible = defaults.object(forKey: isVisibleKey) as? Bool ?? true
     }
 
     func updateTitle(_ newTitle: String) {
@@ -123,6 +126,11 @@ final class DashboardHeaderState {
         textComponents.save(to: textColorKey)
     }
 
+    func updateIsVisible(_ visible: Bool) {
+        isVisible = visible
+        defaults.set(visible, forKey: isVisibleKey)
+    }
+
     func resetDefaults() {
         title = "Dashboard"
         imageData = nil
@@ -131,6 +139,7 @@ final class DashboardHeaderState {
         textComponents = RGBAColor(red: 0.0, green: 0.0, blue: 0.0, alpha: 1.0)
         backgroundGradientComponents = RGBAColor(red: 0.96, green: 0.96, blue: 0.97, alpha: 1.0)
         backgroundUseGradient = false
+        isVisible = true
 
         defaults.set(title, forKey: titleKey)
         defaults.removeObject(forKey: imageKey)
@@ -139,6 +148,7 @@ final class DashboardHeaderState {
         textComponents.save(to: textColorKey)
         backgroundGradientComponents.save(to: backgroundGradientSecondaryKey)
         defaults.set(backgroundUseGradient, forKey: backgroundUseGradientKey)
+        defaults.set(true, forKey: isVisibleKey)
     }
 }
 

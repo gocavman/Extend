@@ -209,6 +209,36 @@ private struct SettingsModuleView: View {
                         }
                     }
 
+                    // MARK: - Workouts Section
+                    Section("Workouts") {
+                        Button {
+                            showingExportSheet = true
+                        } label: {
+                            HStack {
+                                Image(systemName: "square.and.arrow.up")
+                                    .foregroundColor(.accentColor)
+                                Text("Export Workouts")
+                                    .foregroundColor(.primary)
+                                Spacer()
+                                Text("\(workoutsState.workouts.count)")
+                                    .foregroundColor(.secondary)
+                                    .font(.subheadline)
+                            }
+                        }
+                        .disabled(workoutsState.workouts.isEmpty)
+
+                        Button {
+                            showingImportPicker = true
+                        } label: {
+                            HStack {
+                                Image(systemName: "square.and.arrow.down")
+                                    .foregroundColor(.accentColor)
+                                Text("Import Workouts")
+                                    .foregroundColor(.primary)
+                            }
+                        }
+                    }
+
                     // MARK: - Apple Health Section
                     Section("Apple Health") {
                         Toggle("Export Workouts to Health", isOn: Binding(
@@ -248,36 +278,6 @@ private struct SettingsModuleView: View {
                             }
                         }
                         .disabled(isSyncingHealthKit || (!healthKitState.anyImportEnabled && !healthKitState.exportStrengthWorkouts))
-                    }
-
-                    // MARK: - Workouts Section
-                    Section("Workouts") {
-                        Button {
-                            showingExportSheet = true
-                        } label: {
-                            HStack {
-                                Image(systemName: "square.and.arrow.up")
-                                    .foregroundColor(.accentColor)
-                                Text("Export Workouts")
-                                    .foregroundColor(.primary)
-                                Spacer()
-                                Text("\(workoutsState.workouts.count)")
-                                    .foregroundColor(.secondary)
-                                    .font(.subheadline)
-                            }
-                        }
-                        .disabled(workoutsState.workouts.isEmpty)
-
-                        Button {
-                            showingImportPicker = true
-                        } label: {
-                            HStack {
-                                Image(systemName: "square.and.arrow.down")
-                                    .foregroundColor(.accentColor)
-                                Text("Import Workouts")
-                                    .foregroundColor(.primary)
-                            }
-                        }
                     }
 
                     // MARK: - Reset Section
@@ -968,7 +968,7 @@ private struct DashboardCustomizationView: View {
         .background(Color.white)
         .navigationTitle("Dashboard Tiles")
         .environment(\.editMode, .constant(.active))
-        .sheet(isPresented: $showingAddTile) {
+        .fullScreenCover(isPresented: $showingAddTile) {
             DashboardAddTileSheet { newTile in
                 dashboardState.addTile(newTile)
             }
@@ -979,7 +979,7 @@ private struct DashboardCustomizationView: View {
             .environment(voiceTrainerState)
             .environment(exercisesState)
         }
-        .sheet(item: $editingTile) { tile in
+        .fullScreenCover(item: $editingTile) { tile in
             DashboardEditTileSheet(tile: tile) { updatedTile in
                 dashboardState.updateTile(updatedTile)
             }
@@ -1027,9 +1027,12 @@ private struct DashboardAddTileSheet: View {
             .sorted { $0.displayName.localizedCaseInsensitiveCompare($1.displayName) == .orderedAscending }
     }
 
+    // PR and 1RM can be added multiple times (they're customizable per-tile)
+    private let multipleAllowed: Set<StatCardType> = [.personalRecord, .oneRepMax]
+
     private var statCardOptions: [StatCardType] {
         let used = Set(dashboardState.tiles.compactMap { $0.statCardType })
-        return StatCardType.allCases.filter { !used.contains($0) }
+        return StatCardType.allCases.filter { !used.contains($0) || multipleAllowed.contains($0) }
     }
 
     private var hasSelection: Bool {
@@ -1373,6 +1376,8 @@ private struct DashboardAddTileSheet: View {
                 }
                 } // end Blank Tile visibility
             }
+            .scrollContentBackground(.hidden)
+            .background(Color.white)
             .navigationTitle("Add Tile")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -1385,7 +1390,9 @@ private struct DashboardAddTileSheet: View {
                         UIImpactFeedbackGenerator(style: .light).impactOccurred()
                         
                         for statCard in selectedStatCards {
-                            let isGraph = statCard == .workoutFrequency || statCard == .muscleGroupDistribution || statCard == .oneRepMax
+                            let isGraph = statCard == .workoutFrequency || statCard == .muscleGroupDistribution
+                                || statCard == .oneRepMax || statCard == .personalRecord
+                                || statCard == .volumeThisWeek || statCard == .favoriteDay
                             let size: TileSize = isGraph ? .large : .small
                             let tile = DashboardTile(
                                 title: statCard.rawValue,
@@ -1521,6 +1528,8 @@ private struct DashboardEditTileSheet: View {
     @State private var tileTintColor: Color = Color(red: 0.96, green: 0.96, blue: 0.97)
     /// For 1RM tiles: nil = auto top-5; non-nil = user-chosen IDs
     @State private var oneRMExerciseIDs: [UUID]? = nil
+    /// For PR tiles: nil = auto top-5 by weight; non-nil = user-chosen IDs
+    @State private var personalRecordExerciseIDs: [UUID]? = nil
 
     let onSave: (DashboardTile) -> Void
 
@@ -1537,10 +1546,14 @@ private struct DashboardEditTileSheet: View {
 
     private func availableSizes() -> [TileSize] {
         if tile.tileType == .graph { return [.large] }
-        if tile.tileType == .statCard,
-           let statCard = tile.statCardType,
-           (statCard == .workoutFrequency || statCard == .muscleGroupDistribution || statCard == .oneRepMax) {
-            return [.large]
+        if tile.tileType == .statCard, let statCard = tile.statCardType {
+            if statCard == .workoutFrequency || statCard == .muscleGroupDistribution
+                || statCard == .volumeThisWeek || statCard == .favoriteDay {
+                return [.large]
+            }
+            if statCard == .oneRepMax || statCard == .personalRecord {
+                return [.medium, .large]
+            }
         }
         return TileSize.allCases
     }
@@ -1623,6 +1636,57 @@ private struct DashboardEditTileSheet: View {
                     }
                 }
 
+                // PR exercise selection
+                if tile.statCardType == .personalRecord {
+                    let eligibleExercises = exercisesState.exercises
+                        .filter { logState.bestWeight(exerciseID: $0.id) != nil }
+                        .sorted { $0.name < $1.name }
+
+                    Section {
+                        if eligibleExercises.isEmpty {
+                            Text("Log sets with weights on any exercise to populate this list.")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        } else {
+                            let selected = personalRecordExerciseIDs ?? []
+                            ForEach(eligibleExercises) { exercise in
+                                Button(action: {
+                                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                                    var ids = personalRecordExerciseIDs ?? []
+                                    if ids.contains(exercise.id) {
+                                        ids.removeAll { $0 == exercise.id }
+                                    } else if ids.count < 10 {
+                                        ids.append(exercise.id)
+                                    }
+                                    personalRecordExerciseIDs = ids.isEmpty ? nil : ids
+                                }) {
+                                    HStack {
+                                        Text(exercise.name)
+                                            .foregroundColor(.primary)
+                                        Spacer()
+                                        if let w = logState.bestWeight(exerciseID: exercise.id) {
+                                            Text(String(format: "%.0f \(weightUnit)", w))
+                                                .font(.caption)
+                                                .foregroundColor(.secondary)
+                                        }
+                                        if selected.contains(exercise.id) {
+                                            Image(systemName: "checkmark")
+                                                .foregroundColor(.accentColor)
+                                        }
+                                    }
+                                    .contentShape(Rectangle())
+                                }
+                                .buttonStyle(.plain)
+                            }
+                        }
+                    } header: {
+                        Text("Exercises (up to 10)")
+                    } footer: {
+                        Text(personalRecordExerciseIDs == nil ? "Showing auto top-5 by best weight. Select exercises to pin specific ones." : "Deselect all to revert to auto top-5.")
+                            .font(.caption)
+                    }
+                }
+
                 Section("Accent") {
                     Picker("Placement", selection: $accentPlacement) {
                         ForEach(AccentPlacement.allCases, id: \.self) { p in
@@ -1660,6 +1724,8 @@ private struct DashboardEditTileSheet: View {
                     }
                 }
             }
+            .scrollContentBackground(.hidden)
+            .background(Color.white)
             .navigationTitle("Edit Tile")
             .navigationBarTitleDisplayMode(.inline)
             .onAppear {
@@ -1672,6 +1738,7 @@ private struct DashboardEditTileSheet: View {
                 tileTintEnabled = tile.tileTintHex != nil
                 tileTintColor = tile.tileTintColor ?? Color(red: 0.96, green: 0.96, blue: 0.97)
                 oneRMExerciseIDs = tile.oneRMExerciseIDs
+                personalRecordExerciseIDs = tile.personalRecordExerciseIDs
             }
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
@@ -1689,6 +1756,7 @@ private struct DashboardEditTileSheet: View {
                         updatedTile.accentColorHex = accentColor.toHexString()
                         updatedTile.tileTintHex = tileTintEnabled ? tileTintColor.toHexString() : nil
                         updatedTile.oneRMExerciseIDs = oneRMExerciseIDs
+                        updatedTile.personalRecordExerciseIDs = personalRecordExerciseIDs
                         onSave(updatedTile)
                         dismiss()
                     }
@@ -1711,6 +1779,16 @@ private struct DashboardHeaderSettingsView: View {
     
     var body: some View {
         Form {
+            Section {
+                Toggle("Show Header", isOn: Binding(
+                    get: { dashboardHeaderState.isVisible },
+                    set: { dashboardHeaderState.updateIsVisible($0) }
+                ))
+            } footer: {
+                Text("When hidden, the settings gear remains visible in the top-right corner.")
+                    .font(.caption)
+            }
+
             Section("Title") {
                 TextField(
                     "Title",

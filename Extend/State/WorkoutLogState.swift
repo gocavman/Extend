@@ -210,6 +210,42 @@ public final class WorkoutLogState {
             .reduce(0) { $0 + Double($1.reps) * $1.weight }
     }
 
+    /// Volume per calendar week for the past N weeks (oldest first). Each element is (weekLabel, volume).
+    public func volumeByWeek(weeks: Int) -> [(label: String, volume: Double)] {
+        let calendar = Calendar.current
+        let now = Date()
+        guard let currentWeekStart = calendar.dateInterval(of: .weekOfYear, for: now)?.start else { return [] }
+        let formatter = DateFormatter()
+        formatter.dateFormat = "MMM d"
+        return (0..<weeks).reversed().map { offset in
+            let weekStart = calendar.date(byAdding: .weekOfYear, value: -offset, to: currentWeekStart)!
+            let weekEnd = offset == 0 ? now : calendar.date(byAdding: .second, value: -1, to:
+                calendar.date(byAdding: .weekOfYear, value: 1, to: weekStart)!)!
+            let volume = logsInRange(from: weekStart, to: weekEnd)
+                .flatMap { $0.exercises }
+                .flatMap { $0.sets }
+                .reduce(0.0) { $0 + Double($1.reps) * $1.weight }
+            return (label: formatter.string(from: weekStart), volume: volume)
+        }
+    }
+
+    /// Workout count per day of week (Sun=1…Sat=7), sorted by weekday order.
+    public var workoutCountByDayOfWeek: [(label: String, count: Int)] {
+        let calendar = Calendar.current
+        var counts = [Int: Int]()
+        for log in logs {
+            let wd = calendar.component(.weekday, from: log.completedAt)
+            counts[wd, default: 0] += 1
+        }
+        let formatter = DateFormatter()
+        formatter.dateFormat = "EEEE"
+        // Sunday=1 … Saturday=7
+        return (1...7).map { wd in
+            let date = calendar.date(from: DateComponents(weekday: wd))!
+            return (label: formatter.string(from: date), count: counts[wd] ?? 0)
+        }
+    }
+
     /// Volume for the previous calendar week — used for trend comparison
     public var volumeLastWeek: Double {
         let calendar = Calendar.current
@@ -273,6 +309,39 @@ public final class WorkoutLogState {
               let lastWeekStart = calendar.date(byAdding: .weekOfYear, value: -1, to: thisWeekStart),
               let lastWeekEnd   = calendar.date(byAdding: .second, value: -1, to: thisWeekStart) else { return 0 }
         return logsInRange(from: lastWeekStart, to: lastWeekEnd).count
+    }
+
+    /// Best weight ever logged for a specific exercise ID
+    public func bestWeight(exerciseID: UUID) -> Double? {
+        var best: Double? = nil
+        for log in logs {
+            for ex in log.exercises where ex.exerciseID == exerciseID {
+                for s in ex.sets where s.weight > 0 {
+                    if best == nil || s.weight > best! { best = s.weight }
+                }
+            }
+        }
+        return best
+    }
+
+    /// Top exercises by best logged weight, limited to N
+    public func topExercisesByWeight(limit: Int) -> [(exerciseID: UUID, exerciseName: String, weight: Double)] {
+        var seen: [UUID: (String, Double)] = [:]
+        for log in logs {
+            for ex in log.exercises {
+                for s in ex.sets where s.weight > 0 {
+                    if let existing = seen[ex.exerciseID] {
+                        if s.weight > existing.1 { seen[ex.exerciseID] = (ex.exerciseName, s.weight) }
+                    } else {
+                        seen[ex.exerciseID] = (ex.exerciseName, s.weight)
+                    }
+                }
+            }
+        }
+        return seen.map { (exerciseID: $0.key, exerciseName: $0.value.0, weight: $0.value.1) }
+            .sorted { $0.weight > $1.weight }
+            .prefix(limit)
+            .map { $0 }
     }
 
     /// Heaviest single set weight ever logged, and the exercise name
