@@ -411,6 +411,8 @@ public struct Workout: Identifiable, Codable {
     public var warmupSeconds: Int
     /// Cooldown countdown duration in seconds (0 = no cooldown).
     public var cooldownSeconds: Int
+    /// When true, the workout notes are shown as a small caption below the timer during the workout.
+    public var showNotes: Bool
 
     public init(
         id: UUID = UUID(),
@@ -422,7 +424,8 @@ public struct Workout: Identifiable, Codable {
         loops: [String: WorkoutLoop] = [:],
         complexes: [String: WorkoutComplex] = [:],
         warmupSeconds: Int = 0,
-        cooldownSeconds: Int = 0
+        cooldownSeconds: Int = 0,
+        showNotes: Bool = false
     ) {
         self.id                    = id
         self.name                  = name
@@ -434,12 +437,13 @@ public struct Workout: Identifiable, Codable {
         self.complexes             = complexes
         self.warmupSeconds         = warmupSeconds
         self.cooldownSeconds       = cooldownSeconds
+        self.showNotes             = showNotes
     }
 
     private enum CodingKeys: String, CodingKey {
         case id, name, notes, items, isFavorite, healthKitActivityType
         case timerMode, autoAdvance, loops, complexes   // timerMode/autoAdvance kept for backward-compatible decoding only
-        case warmupSeconds, cooldownSeconds
+        case warmupSeconds, cooldownSeconds, showNotes
         case exercises  // legacy key from old model
     }
 
@@ -457,6 +461,7 @@ public struct Workout: Identifiable, Codable {
         complexes  = try c.decodeIfPresent([String: WorkoutComplex].self, forKey: .complexes) ?? [:]
         warmupSeconds   = try c.decodeIfPresent(Int.self, forKey: .warmupSeconds) ?? 0
         cooldownSeconds = try c.decodeIfPresent(Int.self, forKey: .cooldownSeconds) ?? 0
+        showNotes       = try c.decodeIfPresent(Bool.self, forKey: .showNotes) ?? false
 
         if let newItems = try c.decodeIfPresent([WorkoutItem].self, forKey: .items) {
             items = newItems
@@ -478,6 +483,7 @@ public struct Workout: Identifiable, Codable {
         try c.encode(complexes,       forKey: .complexes)
         try c.encode(warmupSeconds,   forKey: .warmupSeconds)
         try c.encode(cooldownSeconds, forKey: .cooldownSeconds)
+        if showNotes { try c.encode(showNotes, forKey: .showNotes) }
     }
 
     // MARK: Convenience helpers

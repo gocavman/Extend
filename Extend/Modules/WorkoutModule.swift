@@ -56,8 +56,11 @@ private func complexColor(for complexID: UUID, in orderedComplexIDs: [UUID]) -> 
 
 // MARK: - PredefinedSet collection helpers
 
+private struct PredefinedSetGroup { var count: Int; var target: SetTarget; var weight: Double }
+
 private extension Array where Element == PredefinedSet {
-    /// Compact summary shown on the exercise row, e.g. "3 × 8 reps @ 45 lbs", "3 × 30s", "8 reps · 30s"
+    /// Compact summary shown on the exercise row, e.g. "3 × 8 reps @ 45 lbs", "8 reps · 29 × 8 reps @ 50 lbs"
+    /// Consecutive sets with identical target+weight are collapsed into a single "N × …" group.
     func summaryLabel(weightUnit: String) -> String {
         guard !isEmpty else { return "" }
 
@@ -65,28 +68,25 @@ private extension Array where Element == PredefinedSet {
             w.truncatingRemainder(dividingBy: 1) == 0 ? "\(Int(w))" : String(format: "%g", w)
         }
 
-        let weights = map { $0.weight }
-        let hasWeight = weights.contains { $0 > 0 }
-        let allSameWeight = hasWeight && weights.allSatisfy({ $0 == weights[0] })
-
-        if allSameWeight {
-            // All sets share the same weight — collapse to "N × label @ W unit"
-            let labels = map { $0.target.label }
-            let allSameTarget = Set(labels).count == 1
-            let base = allSameTarget ? "\(count) × \(labels[0])" : labels.joined(separator: " · ")
-            return "\(base) @ \(wLabel(weights[0])) \(weightUnit)"
-        } else if hasWeight {
-            // Mixed weights — show each set individually
-            return map { s in
-                let w = s.weight
-                return w > 0 ? "\(s.target.label) @ \(wLabel(w))" : s.target.label
-            }.joined(separator: " · ")
-        } else {
-            // No weights — original compact format
-            let labels = map { $0.target.label }
-            let allSame = Set(labels).count == 1
-            return allSame ? "\(count) × \(labels[0])" : labels.joined(separator: " · ")
+        // Build run-length encoded groups of consecutive identical (target, weight) pairs
+        var groups: [PredefinedSetGroup] = []
+        for s in self {
+            if let last = groups.last, last.target == s.target, last.weight == s.weight {
+                groups[groups.count - 1].count += 1
+            } else {
+                groups.append(PredefinedSetGroup(count: 1, target: s.target, weight: s.weight))
+            }
         }
+
+        let parts = groups.map { g -> String in
+            let targetLabel = g.target.label
+            let base = g.count > 1 ? "\(g.count) × \(targetLabel)" : targetLabel
+            if g.weight > 0 {
+                return "\(base) @ \(wLabel(g.weight)) \(weightUnit)"
+            }
+            return base
+        }
+        return parts.joined(separator: " · ")
     }
 }
 
@@ -492,6 +492,7 @@ private struct WorkoutEditor: View {
     @State private var editingSetsExerciseID: UUID? = nil
     @State private var warmupSeconds: Int = 0
     @State private var cooldownSeconds: Int = 0
+    @State private var showNotes: Bool = false
 
     /// Wrapper to use UUID? as sheet item (UUID is not Identifiable by default).
     private struct LoopEditTarget: Identifiable { let id: UUID }
@@ -533,6 +534,7 @@ private struct WorkoutEditor: View {
             _complexes = State(initialValue: workout.complexes)
             _warmupSeconds = State(initialValue: workout.warmupSeconds)
             _cooldownSeconds = State(initialValue: workout.cooldownSeconds)
+            _showNotes = State(initialValue: workout.showNotes)
         }
     }
 
@@ -655,8 +657,19 @@ private struct WorkoutEditor: View {
         Form {
                 Section("Workout Details") {
                     TextField("Workout Name", text: $name)
-                    TextField("Notes (optional)", text: $notes, axis: .vertical)
-                        .lineLimit(1...6)
+                    ZStack(alignment: .topLeading) {
+                        if notes.isEmpty {
+                            Text("Notes (optional)")
+                                .foregroundColor(Color(uiColor: .placeholderText))
+                                .padding(.horizontal, 4)
+                                .padding(.vertical, 8)
+                        }
+                        TextEditor(text: $notes)
+                            .frame(minHeight: 60)
+                    }
+                    if !notes.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                        Toggle("Show notes during workout", isOn: $showNotes)
+                    }
 
                     // Warmup + Cooldown side by side
                     HStack(spacing: 0) {
@@ -812,7 +825,8 @@ private struct WorkoutEditor: View {
                             loops: loops,
                             complexes: complexes,
                             warmupSeconds: warmupSeconds,
-                            cooldownSeconds: cooldownSeconds
+                            cooldownSeconds: cooldownSeconds,
+                            showNotes: showNotes
                         )
                         onSave(workout)
                         dismiss()
@@ -1296,7 +1310,7 @@ private struct SetsEditorSheet: View {
                         .foregroundColor(.blue)
                     }
                     Button {
-                        sets.append(PredefinedSet(target: defaultTarget(after: sets)))
+                        sets.append(PredefinedSet(target: defaultTarget(after: sets), weight: sets.last?.weight ?? 0))
                     } label: {
                         Image(systemName: "plus")
                     }
@@ -2190,6 +2204,7 @@ public struct StartWorkoutView: View {
     @State private var phaseIndex: Int = 0
     @State private var phaseElapsed: Int = 0
     @State private var phaseTimerRunning: Bool = false
+    @State private var notesExpanded: Bool = true
     @State private var phaseTimerTask: Task<Void, Never>? = nil
     @State private var phaseTimerDone: Bool = false
     // Rest screen state
@@ -2418,6 +2433,28 @@ public struct StartWorkoutView: View {
                 .padding(.horizontal, 16)
                 .padding(.vertical, 12)
                 .background(Color(red: 0.98, green: 0.98, blue: 1.0))
+
+                if workout.showNotes && !workout.notes.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                    HStack(alignment: .top, spacing: 6) {
+                        if notesExpanded {
+                            Text(workout.notes)
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                        }
+                        Button {
+                            withAnimation(.easeInOut(duration: 0.2)) {
+                                notesExpanded.toggle()
+                            }
+                        } label: {
+                            Image(systemName: notesExpanded ? "chevron.up" : "note.text")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 6)
+                }
 
                 if showingWarmup {
                     // WARMUP SCREEN
@@ -3972,7 +4009,7 @@ private struct WarmupCooldownScreen: View {
                 guard !Task.isCancelled else { return }
                 secondsRemaining -= 1
                 if speakCountdown && secondsRemaining > 0 && secondsRemaining <= 3 {
-                    speakNumber(secondsRemaining)
+                    await MainActor.run { speakNumber(secondsRemaining) }
                 }
                 if secondsRemaining == 0 {
                     isRunning = false
@@ -4238,7 +4275,7 @@ private struct ComplexScreen: View {
                 // Speak countdown numbers during the last 3 seconds (if enabled and not last round)
                 let isLastRound = currentRound >= totalRounds - 1
                 if complex?.roundCountdown == true && !isLastRound && secondsRemaining > 0 && secondsRemaining <= 3 {
-                    speakNumber(secondsRemaining)
+                    await MainActor.run { speakNumber(secondsRemaining) }
                 }
                 if secondsRemaining == 0 {
                     isTimerRunning = false
