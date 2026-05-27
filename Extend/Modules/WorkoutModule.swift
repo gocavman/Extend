@@ -646,7 +646,9 @@ private struct WorkoutEditor: View {
                     exercise: ex,
                     index: idx,
                     workoutItems: $workoutItems,
-                    complexRounds: ex.complexID.flatMap { complexes[$0.uuidString]?.rounds }
+                    complexRounds: ex.complexID.flatMap { complexes[$0.uuidString]?.rounds },
+                    resolvedExercise: exercisesState.exercises.first { $0.id == ex.exerciseID },
+                    equipmentState: equipmentState
                 )
             }
         }
@@ -1279,23 +1281,34 @@ private struct SetsEditorSheet: View {
     @Binding var workoutItems: [WorkoutItem]
     /// Non-nil when the exercise belongs to a complex — enables the "Fill N×" button.
     let complexRounds: Int?
+    /// The resolved Exercise model — used to show name and available equipment.
+    let resolvedExercise: Exercise?
+    let equipmentState: EquipmentState
 
-    // Local copy edited in the sheet; committed on Done
+    // Local copies edited in the sheet; committed on Save
     @State private var sets: [PredefinedSet] = []
+    @State private var selectedEquipmentIDs: Set<UUID> = []
 
     private func defaultTarget(after sets: [PredefinedSet]) -> SetTarget {
         sets.last?.target ?? .reps(0)
     }
 
+    /// Equipment items assigned to this exercise (respects the exercise's equipmentIDs list).
+    private var availableEquipment: [Equipment] {
+        guard let ex = resolvedExercise else { return [] }
+        return ex.equipmentIDs.compactMap { id in equipmentState.sortedItems.first { $0.id == id } }
+    }
+
     var body: some View {
         VStack(spacing: 0) {
-            // Custom header — replaces NavigationStack toolbar to avoid UIKitToolbar warning
+            // Custom header
             HStack {
                 Button("Cancel") { dismiss() }
                     .foregroundColor(.blue)
                 Spacer()
-                Text("Sets")
+                Text(resolvedExercise?.name ?? "Exercise")
                     .font(.headline)
+                    .lineLimit(1)
                 Spacer()
                 HStack(spacing: 16) {
                     if let n = complexRounds, sets.count < n {
@@ -1317,6 +1330,7 @@ private struct SetsEditorSheet: View {
                     Button("Save") {
                         guard case .exercise(var ex) = workoutItems[index] else { dismiss(); return }
                         ex.predefinedSets = sets
+                        ex.defaultEquipmentIDs = Array(selectedEquipmentIDs)
                         workoutItems[index] = .exercise(ex)
                         UIImpactFeedbackGenerator(style: .light).impactOccurred()
                         dismiss()
@@ -1327,24 +1341,58 @@ private struct SetsEditorSheet: View {
             .padding(.horizontal, 16)
             .padding(.vertical, 12)
             .background(Color.white)
-            .overlay(alignment: .bottom) {
-                Divider()
-            }
+            .overlay(alignment: .bottom) { Divider() }
 
             List {
-                if sets.isEmpty {
-                    Text("No sets yet — tap + to add one.")
-                        .font(.subheadline)
-                        .foregroundColor(.secondary)
-                } else {
-                    ForEach(Array(sets.enumerated()), id: \.element.id) { idx, set in
-                        SetEditorRow(setNumber: idx + 1, set: Binding(
-                            get: { sets[idx] },
-                            set: { sets[idx] = $0 }
-                        ))
+                // ── Equipment section ──────────────────────────────────────
+                if !availableEquipment.isEmpty {
+                    Section("Equipment") {
+                        // Chip-style flow layout matching the live workout UI
+                        FlowLayout(spacing: 8) {
+                            ForEach(availableEquipment) { item in
+                                let selected = selectedEquipmentIDs.contains(item.id)
+                                Button {
+                                    if selected { selectedEquipmentIDs.remove(item.id) }
+                                    else        { selectedEquipmentIDs.insert(item.id) }
+                                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                                } label: {
+                                    HStack(spacing: 4) {
+                                        Image(systemName: selected ? "checkmark.circle.fill" : "circle")
+                                            .font(.system(size: 11))
+                                            .foregroundColor(selected ? .white : .secondary)
+                                        Text(item.name)
+                                            .font(.caption)
+                                            .foregroundColor(selected ? .white : .secondary)
+                                            .fixedSize()
+                                    }
+                                    .padding(.horizontal, 10)
+                                    .padding(.vertical, 5)
+                                    .background(selected ? Color.black : Color(uiColor: .systemGray5))
+                                    .cornerRadius(12)
+                                }
+                                .buttonStyle(.plain)
+                            }
+                        }
+                        .padding(.vertical, 4)
                     }
-                    .onDelete { offsets in sets.remove(atOffsets: offsets) }
-                    .onMove  { from, to  in sets.move(fromOffsets: from, toOffset: to) }
+                }
+
+                // ── Sets section ───────────────────────────────────────────
+                Section("Sets") {
+                    if sets.isEmpty {
+                        Text("No sets yet — tap + to add one.")
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                    } else {
+                        ForEach(Array(sets.enumerated()), id: \.element.id) { idx, set in
+                            SetEditorRow(setNumber: idx + 1, set: Binding(
+                                get: { sets[idx] },
+                                set: { sets[idx] = $0 }
+                            ))
+                        }
+                        .onDelete { offsets in sets.remove(atOffsets: offsets) }
+                        .onMove  { from, to  in sets.move(fromOffsets: from, toOffset: to) }
+                    }
                 }
             }
             .listStyle(.insetGrouped)
@@ -1352,13 +1400,13 @@ private struct SetsEditorSheet: View {
             .background(Color.white)
             .environment(\.editMode, .constant(.active))
 
-            // Footer row with Clear All
+            // Footer row with Clear All sets
             HStack {
                 Spacer()
                 Button(role: .destructive) {
                     sets = []
                 } label: {
-                    Text("Clear All")
+                    Text("Clear All Sets")
                         .foregroundColor(sets.isEmpty ? .secondary : .red)
                 }
                 .disabled(sets.isEmpty)
@@ -1366,12 +1414,18 @@ private struct SetsEditorSheet: View {
             }
             .padding(.vertical, 10)
             .background(Color.white)
-            .overlay(alignment: .top) {
-                Divider()
-            }
+            .overlay(alignment: .top) { Divider() }
         }
         .background(Color.white)
-        .onAppear { sets = exercise.predefinedSets }
+        .onAppear {
+            sets = exercise.predefinedSets
+            // Seed equipment: workout-level override first, then exercise defaults
+            if !exercise.defaultEquipmentIDs.isEmpty {
+                selectedEquipmentIDs = Set(exercise.defaultEquipmentIDs)
+            } else if let ex = resolvedExercise, !ex.defaultEquipmentIDs.isEmpty {
+                selectedEquipmentIDs = Set(ex.defaultEquipmentIDs)
+            }
+        }
     }
 }
 
@@ -3331,7 +3385,27 @@ public struct StartWorkoutView: View {
         case .exercise(let we):
             // Skip overwriting for the complex entry point — ComplexExerciseRow writes to exerciseData directly
             guard !(isInComplex && isAtComplexEntry) else { break }
-            exerciseData[we.id] = (sets: sets, notes: notes, timerSeconds: timerSeconds, usedEquipmentIDs: usedEquipmentIDs, phaseIndex: phaseIndex, phaseElapsed: phaseElapsed, phaseTimerDone: phaseTimerDone)
+            // Apply placeholder values for any set where the user left the field blank
+            var filledSets = sets
+            for i in filledSets.indices {
+                // Reps: if blank (0), fall back to predefined target then previous log
+                if filledSets[i].reps == 0 {
+                    if i < we.predefinedSets.count, case .reps(let n) = we.predefinedSets[i].target, n > 0 {
+                        filledSets[i].reps = n
+                    } else if i < previousSets.count, previousSets[i].reps > 0 {
+                        filledSets[i].reps = previousSets[i].reps
+                    }
+                }
+                // Weight: if blank (0), fall back to predefined weight then previous log
+                if filledSets[i].weight == 0 {
+                    if i < we.predefinedSets.count, we.predefinedSets[i].weight > 0 {
+                        filledSets[i].weight = we.predefinedSets[i].weight
+                    } else if i < previousSets.count, previousSets[i].weight > 0 {
+                        filledSets[i].weight = previousSets[i].weight
+                    }
+                }
+            }
+            exerciseData[we.id] = (sets: filledSets, notes: notes, timerSeconds: timerSeconds, usedEquipmentIDs: usedEquipmentIDs, phaseIndex: phaseIndex, phaseElapsed: phaseElapsed, phaseTimerDone: phaseTimerDone)
         case .rest(let r):
             restData[r.id] = (configured: r.duration, remaining: restSecondsRemaining)
         case .none:
@@ -3365,6 +3439,24 @@ public struct StartWorkoutView: View {
                     let cx = currentComplexID.flatMap { workout.complexes[$0.uuidString] }
                     let totalRds = max(cx?.rounds ?? 5, 1)
                     let count = we.predefinedSets.isEmpty ? totalRds : we.predefinedSets.count
+                    // Seed equipment: workout-level override → exercise defaults → "None"-only fallback
+                    let seededEquipment: Set<UUID>
+                    if !we.defaultEquipmentIDs.isEmpty {
+                        seededEquipment = Set(we.defaultEquipmentIDs)
+                    } else if let exercise = exercisesState.exercises.first(where: { $0.id == we.exerciseID }) {
+                        if !exercise.defaultEquipmentIDs.isEmpty {
+                            seededEquipment = Set(exercise.defaultEquipmentIDs)
+                        } else {
+                            let equipment = exercise.equipmentIDs.compactMap { id in equipmentState.sortedItems.first { $0.id == id } }
+                            if equipment.count == 1, equipment[0].name.lowercased() == "none" {
+                                seededEquipment = [equipment[0].id]
+                            } else {
+                                seededEquipment = []
+                            }
+                        }
+                    } else {
+                        seededEquipment = []
+                    }
                     exerciseData[we.id] = (
                         sets: (0..<count).map { i in
                             let defaultReps: Int = {
@@ -3377,7 +3469,7 @@ public struct StartWorkoutView: View {
                         },
                         notes: "",
                         timerSeconds: 0,
-                        usedEquipmentIDs: [],
+                        usedEquipmentIDs: seededEquipment,
                         phaseIndex: 0,
                         phaseElapsed: 0,
                         phaseTimerDone: false
@@ -3406,8 +3498,11 @@ public struct StartWorkoutView: View {
             phaseIndex = 0
             phaseElapsed = 0
             phaseTimerDone = false
-            // Seed equipment from the exercise's defaults; fall back to "None"-only auto-select
-            if let exercise = exercisesState.exercises.first(where: { $0.id == we.exerciseID }) {
+            // Seed equipment: workout-level override → exercise defaults → "None"-only fallback
+            if !we.defaultEquipmentIDs.isEmpty {
+                // Per-workout equipment override set in the editor
+                usedEquipmentIDs = Set(we.defaultEquipmentIDs)
+            } else if let exercise = exercisesState.exercises.first(where: { $0.id == we.exerciseID }) {
                 if !exercise.defaultEquipmentIDs.isEmpty {
                     usedEquipmentIDs = Set(exercise.defaultEquipmentIDs)
                 } else {
@@ -3724,7 +3819,11 @@ public struct StartWorkoutView: View {
                     setsToLog = savedData.sets
                 }
 
+                // Resolve previous log for placeholder fallback
+                let prevLogged = lastLoggedSets(for: we.exerciseID) ?? []
+
                 // Include per-set timed duration: initial target minus remaining = elapsed
+                // Also apply placeholder values for any set the user left blank
                 let loggedSets = setsToLog.enumerated().map { idx, ws -> LoggedSet in
                     var initialTimed = 0
                     if idx < we.predefinedSets.count,
@@ -3732,7 +3831,26 @@ public struct StartWorkoutView: View {
                         initialTimed = s
                     }
                     let elapsed = initialTimed > 0 ? max(0, initialTimed - ws.timedSecondsRemaining) : 0
-                    return LoggedSet(reps: ws.reps, weight: ws.weight, timedSeconds: elapsed)
+
+                    // Fill blank reps from predefined target then previous log
+                    var reps = ws.reps
+                    if reps == 0 {
+                        if idx < we.predefinedSets.count, case .reps(let n) = we.predefinedSets[idx].target, n > 0 {
+                            reps = n
+                        } else if idx < prevLogged.count, prevLogged[idx].reps > 0 {
+                            reps = prevLogged[idx].reps
+                        }
+                    }
+                    // Fill blank weight from predefined weight then previous log
+                    var weight = ws.weight
+                    if weight == 0 {
+                        if idx < we.predefinedSets.count, we.predefinedSets[idx].weight > 0 {
+                            weight = we.predefinedSets[idx].weight
+                        } else if idx < prevLogged.count, prevLogged[idx].weight > 0 {
+                            weight = prevLogged[idx].weight
+                        }
+                    }
+                    return LoggedSet(reps: reps, weight: weight, timedSeconds: elapsed)
                 }
 
                 loggedExercises.append(LoggedExercise(

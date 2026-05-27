@@ -971,6 +971,7 @@ struct WorkoutStatsView: View {
     @Environment(WorkoutLogState.self) var logState
     @Environment(\.dismiss) private var dismiss
     @State private var timeRange: StatsTimeRange = .oneMonth
+    @AppStorage("weightUnit") private var weightUnit: String = "lbs"
 
     private struct SessionPoint: Identifiable {
         let id = UUID()
@@ -978,6 +979,8 @@ struct WorkoutStatsView: View {
         let duration: Double      // seconds
         let exerciseCount: Int
         let totalSets: Int
+        let totalVolume: Double   // sum of reps × weight across all sets
+        let maxWeight: Double     // heaviest single set weight logged
     }
 
     private var sessionPoints: [SessionPoint] {
@@ -986,11 +989,16 @@ struct WorkoutStatsView: View {
             .filter { $0.workoutName == workout.name && $0.completedAt >= start }
             .sorted { $0.completedAt < $1.completedAt }
             .map { log in
-                SessionPoint(
+                let allSets = log.exercises.flatMap { $0.sets }
+                let volume = allSets.reduce(0.0) { $0 + Double($1.reps) * $1.weight }
+                let maxW = allSets.map { $0.weight }.max() ?? 0
+                return SessionPoint(
                     date: log.completedAt,
                     duration: log.duration,
                     exerciseCount: log.exercises.count,
-                    totalSets: log.exercises.reduce(0) { $0 + $1.sets.count }
+                    totalSets: allSets.count,
+                    totalVolume: volume,
+                    maxWeight: maxW
                 )
             }
     }
@@ -1025,6 +1033,18 @@ struct WorkoutStatsView: View {
                             unit: "exercises",
                             points: sessionPoints.map { ($0.date, Double($0.exerciseCount)) },
                             color: Color(red: 0.8, green: 0.4, blue: 0.1)
+                        )
+                        workoutStatsCard(
+                            title: "Total Volume",
+                            unit: weightUnit,
+                            points: sessionPoints.map { ($0.date, $0.totalVolume) },
+                            color: Color(red: 0.5, green: 0.2, blue: 0.8)
+                        )
+                        workoutStatsCard(
+                            title: "Max Weight",
+                            unit: weightUnit,
+                            points: sessionPoints.map { ($0.date, $0.maxWeight) },
+                            color: Color(red: 0.85, green: 0.2, blue: 0.35)
                         )
                     }
                 }

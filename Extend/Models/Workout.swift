@@ -301,33 +301,39 @@ public struct WorkoutExercise: Identifiable, Codable {
     public var complexID: UUID?
     /// Predefined target sets. Empty = no targets. Each set has its own type (reps or timed).
     public var predefinedSets: [PredefinedSet]
+    /// Per-workout equipment override. When non-empty, replaces the Exercise model's defaultEquipmentIDs
+    /// so different workouts can pre-select different equipment for the same exercise.
+    public var defaultEquipmentIDs: [UUID]
 
     public init(
         id: UUID = UUID(),
         exerciseID: UUID,
         loopID: UUID? = nil,
         complexID: UUID? = nil,
-        predefinedSets: [PredefinedSet] = []
+        predefinedSets: [PredefinedSet] = [],
+        defaultEquipmentIDs: [UUID] = []
     ) {
-        self.id             = id
-        self.exerciseID     = exerciseID
-        self.loopID         = loopID
-        self.complexID      = complexID
-        self.predefinedSets = predefinedSets
+        self.id                   = id
+        self.exerciseID           = exerciseID
+        self.loopID               = loopID
+        self.complexID            = complexID
+        self.predefinedSets       = predefinedSets
+        self.defaultEquipmentIDs  = defaultEquipmentIDs
     }
 
     private enum CodingKeys: String, CodingKey {
-        case id, exerciseID, loopID, complexID, predefinedSets
+        case id, exerciseID, loopID, complexID, predefinedSets, defaultEquipmentIDs
         // Legacy keys — kept for backwards-compatible decoding only
         case useTimedSet, timedSetDuration
     }
 
     public init(from decoder: Decoder) throws {
-        let c           = try decoder.container(keyedBy: CodingKeys.self)
-        id              = try c.decode(UUID.self, forKey: .id)
-        exerciseID      = try c.decode(UUID.self, forKey: .exerciseID)
-        loopID          = try c.decodeIfPresent(UUID.self, forKey: .loopID)
-        complexID       = try c.decodeIfPresent(UUID.self, forKey: .complexID)
+        let c                = try decoder.container(keyedBy: CodingKeys.self)
+        id                   = try c.decode(UUID.self, forKey: .id)
+        exerciseID           = try c.decode(UUID.self, forKey: .exerciseID)
+        loopID               = try c.decodeIfPresent(UUID.self, forKey: .loopID)
+        complexID            = try c.decodeIfPresent(UUID.self, forKey: .complexID)
+        defaultEquipmentIDs  = try c.decodeIfPresent([UUID].self, forKey: .defaultEquipmentIDs) ?? []
 
         if let sets = try c.decodeIfPresent([PredefinedSet].self, forKey: .predefinedSets) {
             predefinedSets = sets
@@ -348,6 +354,7 @@ public struct WorkoutExercise: Identifiable, Codable {
         try c.encodeIfPresent(loopID,    forKey: .loopID)
         try c.encodeIfPresent(complexID, forKey: .complexID)
         try c.encode(predefinedSets, forKey: .predefinedSets)
+        if !defaultEquipmentIDs.isEmpty { try c.encode(defaultEquipmentIDs, forKey: .defaultEquipmentIDs) }
     }
 }
 
