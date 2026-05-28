@@ -2677,24 +2677,28 @@ public struct StartWorkoutView: View {
 
     @ViewBuilder
     private func exerciseContent(exercise: Exercise, we: WorkoutExercise) -> some View {
-        // Exercise name with info button
-        HStack(spacing: 12) {
-            Spacer()
+        // Exercise name with info button — name is truly centered, button is overlaid on the trailing edge
+        ZStack {
             Text(exercise.name)
                 .font(.title2)
                 .fontWeight(.bold)
-            Spacer()
+                .multilineTextAlignment(.center)
+                .frame(maxWidth: .infinity)
 
-            Button(action: { expandedInfo.toggle() }) {
-                Image(systemName: "info.circle")
-                    .font(.system(size: 20))
-                    .foregroundColor(.black)
+            HStack {
+                Spacer()
+                Button(action: { expandedInfo.toggle() }) {
+                    Image(systemName: "info.circle")
+                        .font(.system(size: 20))
+                        .foregroundColor(.black)
+                }
+                .buttonStyle(.plain)
             }
-            .buttonStyle(.plain)
         }
         .padding(.horizontal, 16)
 
         // Muscle image data
+        let showMuscleImages = muscleGroupsState.selectedBodyOption != .none
         let exPrimaryGroups = exercise.primaryMuscleGroupIDs.compactMap { id in
             muscleGroupsState.sortedGroups.first { $0.id == id }
         }
@@ -2715,16 +2719,24 @@ public struct StartWorkoutView: View {
         let exFrontMasksSecondary = exSecondaryAssets.filter { $0.contains("Front") }
         let exBackMasksSecondary  = exSecondaryAssets.filter { $0.contains("Back") && !$0.contains("FullBody") }
 
+        // Custom-muscle groups (user-created, no asset masks): collected for standalone display
+        let allGroups = exPrimaryGroups + exSecondaryGroups
+        let customImageGroups = allGroups.filter { g in
+            (g.primaryImageAssetName ?? "").isEmpty && (g.secondaryImageAssetName ?? "").isEmpty &&
+            (g.customPrimaryImageFilename != nil || g.customSecondaryImageFilename != nil)
+        }
+
         // Expandable info section
         if expandedInfo {
             VStack(alignment: .leading, spacing: 8) {
-                let allMuscles: String = (exPrimaryGroups + exSecondaryGroups).map(\.name).joined(separator: ", ")
+                let allMuscles: String = allGroups.map(\.name).joined(separator: ", ")
                 if !allMuscles.isEmpty {
                     Text("Muscles: \(allMuscles)")
                         .font(.caption)
                         .foregroundColor(.secondary)
                 }
 
+                if showMuscleImages {
                 GeometryReader { geo in
                     let panelWidth = (geo.size.width - 12) / 2
                     HStack(spacing: 12) {
@@ -2758,6 +2770,39 @@ public struct StartWorkoutView: View {
                 }
                 .frame(height: 220)
                 .padding(.vertical, 4)
+                } // showMuscleImages
+
+                // Custom muscle images (user-uploaded standalone images for user-created muscles)
+                if showMuscleImages && !customImageGroups.isEmpty {
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 12) {
+                            ForEach(customImageGroups, id: \.id) { g in
+                                VStack(spacing: 4) {
+                                    HStack(spacing: 4) {
+                                        if let fn = g.customPrimaryImageFilename,
+                                           let data = try? Data(contentsOf: MuscleGroup.imageStorageDirectory.appendingPathComponent(fn)),
+                                           let ui = UIImage(data: data) {
+                                            Image(uiImage: ui).resizable().scaledToFit()
+                                                .frame(width: 90, height: 110)
+                                                .clipShape(RoundedRectangle(cornerRadius: 8))
+                                        }
+                                        if let fn = g.customSecondaryImageFilename,
+                                           let data = try? Data(contentsOf: MuscleGroup.imageStorageDirectory.appendingPathComponent(fn)),
+                                           let ui = UIImage(data: data) {
+                                            Image(uiImage: ui).resizable().scaledToFit()
+                                                .frame(width: 90, height: 110)
+                                                .clipShape(RoundedRectangle(cornerRadius: 8))
+                                        }
+                                    }
+                                    Text(g.name)
+                                        .font(.system(size: 11))
+                                        .foregroundColor(.secondary)
+                                }
+                            }
+                        }
+                        .padding(.horizontal, 2)
+                    }
+                }
 
                 let equipmentNames = exercise.equipmentIDs.compactMap { id in
                     equipmentState.sortedItems.first { $0.id == id }?.name
@@ -2778,7 +2823,7 @@ public struct StartWorkoutView: View {
                 .padding(.horizontal, 16)
         } else {
             HStack(spacing: 8) {
-                if !expandedInfo {
+                if !expandedInfo && showMuscleImages {
                     ZStack {
                         Image(exFrontBase).resizable().scaledToFit()
                         ForEach(exFrontMasksPrimary, id: \.self) { mask in
@@ -2817,7 +2862,7 @@ public struct StartWorkoutView: View {
                 .background(Color(red: 0.96, green: 0.96, blue: 0.97))
                 .cornerRadius(8)
 
-                if !expandedInfo {
+                if !expandedInfo && showMuscleImages {
                     ZStack {
                         Image(exBackBase).resizable().scaledToFit()
                         ForEach(exBackMasksPrimary, id: \.self) { mask in

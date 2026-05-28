@@ -93,7 +93,7 @@ private struct SettingsModuleView: View {
                                 Text("Dashboard")
                                     .font(.subheadline)
                             }
-                            .foregroundColor(.accentColor)
+                            .foregroundColor(.primary)
                         }
                         Spacer()
                     }
@@ -156,15 +156,18 @@ private struct SettingsModuleView: View {
                                 )) {
                                     Text("Option 1").tag(MuscleGroupsState.BodyImageOption.male)
                                     Text("Option 2").tag(MuscleGroupsState.BodyImageOption.female)
-                                    Text("Custom").tag(MuscleGroupsState.BodyImageOption.custom)
+                                    Text("None").tag(MuscleGroupsState.BodyImageOption.none)
                                 }
                                 .pickerStyle(.menu)
+                                .tint(.primary)
                             }
-                            Text(muscleGroupsState.selectedBodyOption == .custom
-                                 ? "Custom: Edit each muscle individually to assign images."
-                                 : muscleGroupsState.selectedBodyOption == .male
-                                   ? "Option 1: Default images are used for all muscles."
-                                   : "Option 2: Default images are used for all muscles.")
+                            Text({
+                                switch muscleGroupsState.selectedBodyOption {
+                                case .male:   return "Option 1: Default images are used for all muscles. Open a muscle in the Muscles section to upload a custom override."
+                                case .female: return "Option 2: Default images are used for all muscles. Open a muscle in the Muscles section to upload a custom override."
+                                case .none:   return "None: Muscle images are hidden everywhere in the app."
+                                }
+                            }())
                                 .font(.caption)
                                 .foregroundColor(.secondary)
                         }
@@ -216,7 +219,7 @@ private struct SettingsModuleView: View {
                         } label: {
                             HStack {
                                 Image(systemName: "square.and.arrow.up")
-                                    .foregroundColor(.accentColor)
+                                    .foregroundColor(.primary)
                                 Text("Export Workouts")
                                     .foregroundColor(.primary)
                                 Spacer()
@@ -232,7 +235,7 @@ private struct SettingsModuleView: View {
                         } label: {
                             HStack {
                                 Image(systemName: "square.and.arrow.down")
-                                    .foregroundColor(.accentColor)
+                                    .foregroundColor(.primary)
                                 Text("Import Workouts")
                                     .foregroundColor(.primary)
                             }
@@ -271,6 +274,7 @@ private struct SettingsModuleView: View {
                         } label: {
                             HStack {
                                 Text(isSyncingHealthKit ? "Syncing…" : "Sync Now")
+                                    .foregroundColor(.primary)
                                 Spacer()
                                 if isSyncingHealthKit {
                                     ProgressView()

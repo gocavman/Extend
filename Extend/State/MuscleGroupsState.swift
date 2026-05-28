@@ -44,7 +44,7 @@ public final class MuscleGroupsState {
     public enum BodyImageOption: String, CaseIterable {
         case male = "male"
         case female = "female"
-        case custom = "custom"
+        case none = "none"
     }
 
     private let storageKey = "muscle_groups"
@@ -52,6 +52,7 @@ public final class MuscleGroupsState {
 
     private init() {
         let raw = defaults.string(forKey: bodyOptionKey) ?? BodyImageOption.male.rawValue
+        // "custom" was a legacy option — fall back to .male if encountered
         selectedBodyOption = BodyImageOption(rawValue: raw) ?? .male
         loadGroups()
     }
@@ -90,19 +91,52 @@ public final class MuscleGroupsState {
     }
 
     public func removeGroup(id: UUID) {
+        if let group = groups.first(where: { $0.id == id }) {
+            deleteCustomImage(filename: group.customPrimaryImageFilename)
+            deleteCustomImage(filename: group.customSecondaryImageFilename)
+        }
         groups.removeAll { $0.id == id }
         saveGroups()
     }
+
+    // MARK: - Custom image disk helpers
+
+    /// Saves image data to disk and returns the filename.
+    public func saveCustomImage(_ data: Data, for groupID: UUID, slot: ImageSlot) -> String {
+        let filename = "muscle_\(groupID.uuidString)_\(slot == .primary ? "primary" : "secondary").png"
+        let url = MuscleGroup.imageStorageDirectory.appendingPathComponent(filename)
+        try? data.write(to: url, options: .atomic)
+        return filename
+    }
+
+    /// Loads image data from disk for a given filename.
+    public func loadCustomImage(filename: String?) -> Data? {
+        guard let filename else { return nil }
+        let url = MuscleGroup.imageStorageDirectory.appendingPathComponent(filename)
+        return try? Data(contentsOf: url)
+    }
+
+    /// Deletes a custom image file from disk.
+    public func deleteCustomImage(filename: String?) {
+        guard let filename else { return }
+        let url = MuscleGroup.imageStorageDirectory.appendingPathComponent(filename)
+        try? FileManager.default.removeItem(at: url)
+    }
+
+    public enum ImageSlot { case primary, secondary }
 
     public func resetGroups() {
         groups = defaultGroups()
         saveGroups()
     }
 
-    /// Applies the chosen body option to every group, re-seeding images from the JSON mapping.
+    /// Applies the chosen body option to every group, re-seeding asset image names from the JSON mapping.
+    /// Per-muscle custom image uploads are always preserved — they take priority over asset images at display time.
     /// Custom groups (those not found in the JSON) are left untouched.
     public func applyBodyOption(_ option: BodyImageOption) {
         selectedBodyOption = option
+        // .none just stores the preference — images are hidden at display time.
+        guard option != .none else { return }
         let mappings = loadImageMappings()
         for i in groups.indices {
             guard let map = mappings.first(where: { $0.name == groups[i].name }) else { continue }
@@ -110,19 +144,14 @@ public final class MuscleGroupsState {
             case .male:
                 groups[i].primaryImageAssetName   = map.male.primary
                 groups[i].secondaryImageAssetName  = map.male.secondary
-                groups[i].customPrimaryImageData   = nil
-                groups[i].customSecondaryImageData = nil
             case .female:
                 groups[i].primaryImageAssetName   = map.female.primary
                 groups[i].secondaryImageAssetName  = map.female.secondary
-                groups[i].customPrimaryImageData   = nil
-                groups[i].customSecondaryImageData = nil
-            case .custom:
-                // Clear asset images so the blank placeholder shows; preserve any existing custom data
-                groups[i].primaryImageAssetName   = nil
-                groups[i].secondaryImageAssetName  = nil
-                // Leave customPrimaryImageData / customSecondaryImageData as-is
+            case .none:
+                break
             }
+            // Custom uploaded images are intentionally preserved so per-muscle overrides
+            // survive switching between options.
         }
         saveGroups()
     }

@@ -212,33 +212,45 @@ public struct MuscleGroupThumbnail: View {
     public let group: MuscleGroup
     public let size: CGFloat
 
+    @Environment(MuscleGroupsState.self) private var muscleGroupsState
+
     public init(group: MuscleGroup, size: CGFloat = 40) {
         self.group = group
         self.size = size
     }
 
+    private var imagesHidden: Bool {
+        muscleGroupsState.selectedBodyOption == .none
+    }
+
     private var hasPrimary: Bool {
-        group.customPrimaryImageData != nil || (group.primaryImageAssetName ?? "").isEmpty == false
+        group.customPrimaryImageFilename != nil || (group.primaryImageAssetName ?? "").isEmpty == false
     }
 
     private var hasSecondary: Bool {
-        group.customSecondaryImageData != nil || (group.secondaryImageAssetName ?? "").isEmpty == false
+        group.customSecondaryImageFilename != nil || (group.secondaryImageAssetName ?? "").isEmpty == false
     }
 
     public var body: some View {
-        if hasPrimary && hasSecondary {
-            // Side-by-side: each image gets half the width
+        if imagesHidden {
+            Image(systemName: "figure.strengthtraining.traditional")
+                .font(.system(size: size * 0.5, weight: .semibold))
+                .foregroundColor(.blue)
+                .frame(width: size, height: size)
+                .background(Color.blue.opacity(0.1))
+                .clipShape(RoundedRectangle(cornerRadius: size * 0.15))
+        } else if hasPrimary && hasSecondary {
             HStack(spacing: 2) {
-                singleImage(data: group.customPrimaryImageData, assetName: group.primaryImageAssetName)
+                singleImage(filename: group.customPrimaryImageFilename, assetName: group.primaryImageAssetName)
                     .frame(width: (size - 2) / 2, height: size)
                     .clipShape(RoundedRectangle(cornerRadius: size * 0.1))
-                singleImage(data: group.customSecondaryImageData, assetName: group.secondaryImageAssetName)
+                singleImage(filename: group.customSecondaryImageFilename, assetName: group.secondaryImageAssetName)
                     .frame(width: (size - 2) / 2, height: size)
                     .clipShape(RoundedRectangle(cornerRadius: size * 0.1))
             }
             .frame(width: size, height: size)
         } else if hasPrimary {
-            singleImage(data: group.customPrimaryImageData, assetName: group.primaryImageAssetName)
+            singleImage(filename: group.customPrimaryImageFilename, assetName: group.primaryImageAssetName)
                 .frame(width: size, height: size)
                 .clipShape(RoundedRectangle(cornerRadius: size * 0.15))
         } else {
@@ -252,13 +264,13 @@ public struct MuscleGroupThumbnail: View {
     }
 
     @ViewBuilder
-    private func singleImage(data: Data?, assetName: String?) -> some View {
-        if let data, let ui = UIImage(data: data) {
-            Image(uiImage: ui)
-                .resizable().scaledToFit()
+    private func singleImage(filename: String?, assetName: String?) -> some View {
+        if let filename,
+           let data = try? Data(contentsOf: MuscleGroup.imageStorageDirectory.appendingPathComponent(filename)),
+           let ui = UIImage(data: data) {
+            Image(uiImage: ui).resizable().scaledToFit()
         } else if let name = assetName, !name.isEmpty {
-            Image(name)
-                .resizable().scaledToFit()
+            Image(name).resizable().scaledToFit()
         } else {
             Color.clear
         }
@@ -267,7 +279,7 @@ public struct MuscleGroupThumbnail: View {
 
 // MARK: - Editor
 
-private enum ImageSlot { case primary, secondary }
+private typealias ImageSlot = MuscleGroupsState.ImageSlot
 
 private struct MuscleGroupEditor: View {
     @Environment(\.dismiss) var dismiss
@@ -292,8 +304,9 @@ private struct MuscleGroupEditor: View {
         _group = State(initialValue: group ?? MuscleGroup(name: ""))
     }
 
-    private var isCustomMode: Bool {
-        state.selectedBodyOption == .custom
+    /// True when this muscle has no built-in asset images — i.e. it was user-created.
+    private var isCustomMuscle: Bool {
+        (group.primaryImageAssetName ?? "").isEmpty && (group.secondaryImageAssetName ?? "").isEmpty
     }
 
     var body: some View {
@@ -303,36 +316,65 @@ private struct MuscleGroupEditor: View {
                     TextField("Name", text: $group.name)
                 }
 
-                Section("Image") {
-                    // Preview row — always visible
-                    HStack(spacing: 16) {
-                        Spacer()
-                        imagePreview(data: group.customPrimaryImageData, assetName: group.primaryImageAssetName, label: "Primary")
-                        if group.secondaryImageAssetName != nil || group.customSecondaryImageData != nil {
-                            imagePreview(data: group.customSecondaryImageData, assetName: group.secondaryImageAssetName, label: "Secondary")
-                        }
-                        Spacer()
-                    }
-                    .padding(.vertical, 4)
+                if isCustomMuscle {
+                    // Custom muscles: allow uploading primary and secondary images
+                    imageSection(
+                        slotLabel: "Primary Image",
+                        customFilename: group.customPrimaryImageFilename,
+                        slot: .primary
+                    )
+                    imageSection(
+                        slotLabel: "Secondary Image",
+                        customFilename: group.customSecondaryImageFilename,
+                        slot: .secondary
+                    )
 
-                    if isCustomMode {
-                        // Custom mode: show choose / clear buttons for each slot
-                        imageRow(
-                            label: "Primary",
-                            assetName: group.primaryImageAssetName,
-                            customData: group.customPrimaryImageData,
-                            slot: .primary
-                        )
-                        imageRow(
-                            label: "Secondary",
-                            assetName: group.secondaryImageAssetName,
-                            customData: group.customSecondaryImageData,
-                            slot: .secondary
-                        )
-                    } else {
-                        Text("Images are controlled by the Image Set option in Settings → Muscles.")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
+                    Section {
+                        VStack(alignment: .leading, spacing: 6) {
+                            Label("Image Guidelines", systemImage: "info.circle")
+                                .font(.caption)
+                                .fontWeight(.semibold)
+                                .foregroundColor(.secondary)
+                            Text("For best results, use a PNG with a transparent background. The body outline should be black, with the highlighted muscle(s) shown in a contrasting colour. A square or portrait aspect ratio works best.")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                        .padding(.vertical, 2)
+                    }
+                } else {
+                    // Default muscles: show asset images read-only (hidden when image set is None)
+                    let hasPrimary = (group.primaryImageAssetName ?? "").isEmpty == false
+                    let hasSecondary = (group.secondaryImageAssetName ?? "").isEmpty == false
+                    if (hasPrimary || hasSecondary) && state.selectedBodyOption != .none {
+                        Section("Images") {
+                            HStack(spacing: 16) {
+                                Spacer()
+                                if hasPrimary {
+                                    VStack(spacing: 4) {
+                                        Image(group.primaryImageAssetName!)
+                                            .resizable().scaledToFit()
+                                            .frame(width: 110, height: 130)
+                                            .clipShape(RoundedRectangle(cornerRadius: 10))
+                                        Text("Primary")
+                                            .font(.caption2)
+                                            .foregroundColor(.secondary)
+                                    }
+                                }
+                                if hasSecondary {
+                                    VStack(spacing: 4) {
+                                        Image(group.secondaryImageAssetName!)
+                                            .resizable().scaledToFit()
+                                            .frame(width: 110, height: 130)
+                                            .clipShape(RoundedRectangle(cornerRadius: 10))
+                                        Text("Secondary")
+                                            .font(.caption2)
+                                            .foregroundColor(.secondary)
+                                    }
+                                }
+                                Spacer()
+                            }
+                            .padding(.vertical, 4)
+                        }
                     }
                 }
             }
@@ -379,14 +421,17 @@ private struct MuscleGroupEditor: View {
                 Task {
                     if let data = try? await item.loadTransferable(type: Data.self) {
                         await MainActor.run {
+                            let filename = state.saveCustomImage(data, for: group.id, slot: activeSlot)
                             switch activeSlot {
                             case .primary:
-                                group.customPrimaryImageData = data
-                                group.primaryImageAssetName = nil
+                                // Delete old file if replacing
+                                state.deleteCustomImage(filename: group.customPrimaryImageFilename)
+                                group.customPrimaryImageFilename = filename
                             case .secondary:
-                                group.customSecondaryImageData = data
-                                group.secondaryImageAssetName = nil
+                                state.deleteCustomImage(filename: group.customSecondaryImageFilename)
+                                group.customSecondaryImageFilename = filename
                             }
+                            photoPickerItem = nil
                         }
                     }
                 }
@@ -394,67 +439,71 @@ private struct MuscleGroupEditor: View {
         }
     }
 
-    // MARK: - Large preview helper (shown at top of Image section)
+    // MARK: - Per-slot image section
 
     @ViewBuilder
-    private func imagePreview(data: Data?, assetName: String?, label: String) -> some View {
-        VStack(spacing: 4) {
-            Group {
-                if let data, let ui = UIImage(data: data) {
-                    Image(uiImage: ui).resizable().scaledToFit()
-                } else if let name = assetName, !name.isEmpty {
-                    Image(name).resizable().scaledToFit()
-                } else {
-                    Image(systemName: "photo")
-                        .font(.system(size: 48))
-                        .foregroundColor(.secondary)
-                        .frame(width: 144, height: 144)
-                        .background(Color(uiColor: .systemGray6))
-                        .cornerRadius(12)
-                }
-            }
-            .frame(width: 144, height: 144)
-            .clipShape(RoundedRectangle(cornerRadius: 12))
-
-            Text(label)
-                .font(.caption2)
-                .foregroundColor(.secondary)
+    private func imageSection(slotLabel: String, customFilename: String?, slot: ImageSlot) -> some View {
+        let customImage: UIImage? = customFilename.flatMap { fn in
+            guard let data = try? Data(contentsOf: MuscleGroup.imageStorageDirectory.appendingPathComponent(fn))
+            else { return nil }
+            return UIImage(data: data)
         }
-    }
 
-    // MARK: - Image row helper (Custom mode only)
+        Section(slotLabel) {
+            // Preview
+            HStack {
+                Spacer()
+                VStack(spacing: 6) {
+                    Group {
+                        if let ui = customImage {
+                            Image(uiImage: ui).resizable().scaledToFit()
+                        } else {
+                            Image(systemName: "photo")
+                                .font(.system(size: 44))
+                                .foregroundColor(.secondary)
+                                .frame(width: 130, height: 130)
+                                .background(Color(uiColor: .systemGray6))
+                                .cornerRadius(12)
+                        }
+                    }
+                    .frame(width: 130, height: 130)
+                    .clipShape(RoundedRectangle(cornerRadius: 12))
 
-    @ViewBuilder
-    private func imageRow(label: String, assetName: String?, customData: Data?, slot: ImageSlot) -> some View {
-        HStack(spacing: 12) {
-            Text(label)
-                .font(.subheadline)
+                    if customFilename != nil {
+                        Text("Custom")
+                            .font(.caption2)
+                            .foregroundColor(.accentColor)
+                            .fontWeight(.semibold)
+                    }
+                }
+                Spacer()
+            }
+            .padding(.vertical, 4)
 
-            Spacer()
-
-            Button(action: {
+            // Upload image
+            Button {
                 activeSlot = slot
                 showingPhotoPicker = true
-            }) {
-                Text("Choose")
-                    .font(.caption)
-                    .foregroundColor(.accentColor)
+            } label: {
+                Label("Upload Image", systemImage: "square.and.arrow.up")
+                    .font(.subheadline)
             }
-            .buttonStyle(.plain)
 
-            if (slot == .primary && customData != nil) || (slot == .secondary && customData != nil) {
-                Button(action: {
+            // Remove image (only shown when one exists)
+            if customFilename != nil {
+                Button(role: .destructive) {
                     switch slot {
                     case .primary:
-                        group.customPrimaryImageData = nil
+                        state.deleteCustomImage(filename: group.customPrimaryImageFilename)
+                        group.customPrimaryImageFilename = nil
                     case .secondary:
-                        group.customSecondaryImageData = nil
+                        state.deleteCustomImage(filename: group.customSecondaryImageFilename)
+                        group.customSecondaryImageFilename = nil
                     }
-                }) {
-                    Image(systemName: "xmark.circle.fill")
-                        .foregroundColor(.secondary)
+                } label: {
+                    Label("Remove Image", systemImage: "trash")
+                        .font(.subheadline)
                 }
-                .buttonStyle(.plain)
             }
         }
     }

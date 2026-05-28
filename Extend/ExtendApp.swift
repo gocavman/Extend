@@ -38,6 +38,52 @@ struct ExtendApp: App {
     let voiceTrainerState = VoiceTrainerState()
     let healthKitState = HealthKitState.shared
 
+    init() {
+        // Register all modules synchronously before the first render so the
+        // registry is never empty when ContentView draws its first frame.
+        let registry = ModuleRegistry.shared
+        let state = ModuleState.shared
+
+        registry.registerModule(DashboardModule())
+        registry.registerModule(WorkoutModule())
+        registry.registerModule(QuickWorkoutModule())
+        registry.registerModule(TimerModule())
+        registry.registerModule(ProgressModule())
+        registry.registerModule(ExercisesModule())
+        registry.registerModule(MuscleGroupsModule())
+        registry.registerModule(EquipmentModule())
+        registry.registerModule(GenerateModule())
+        registry.registerModule(SettingsModule())
+        registry.registerModule(VoiceTrainerModule())
+        registry.registerModule(Game1Module())
+        registry.registerModule(StickFigureAnimatorModule())
+        registry.registerModule(MatchGameModule())
+
+        // Set default navbar layout on first launch
+        if state.topNavBarModules.isEmpty && state.bottomNavBarModules.isEmpty {
+            state.setBottomNavBarModules([
+                ModuleIDs.dashboard,
+                ModuleIDs.workouts,
+                ModuleIDs.generate,
+                ModuleIDs.quickWorkout,
+                ModuleIDs.settings
+            ])
+            state.setTopNavBarModules([
+                ModuleIDs.progress,
+                ModuleIDs.timer,
+                ModuleIDs.exercises,
+                ModuleIDs.muscles,
+                ModuleIDs.equipment
+            ])
+        }
+
+        // Auto-select the first module if nothing is persisted
+        if state.selectedModuleID == nil,
+           let first = registry.visibleModules.first {
+            state.selectModule(first.id)
+        }
+    }
+
     var body: some Scene {
         WindowGroup {
             ContentView()

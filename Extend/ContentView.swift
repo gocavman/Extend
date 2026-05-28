@@ -51,66 +51,6 @@ struct ContentView: View {
                     .frame(height: 0)
             }
         }
-        .task {
-            registerSampleModules()
-            // Only auto-select on genuine first launch (no module selected yet)
-            if state.selectedModuleID == nil,
-               let firstModule = registry.visibleModules.first {
-                state.selectModule(firstModule.id)
-            }
-        }
-    }
-
-    private func registerSampleModules() {
-        let dashboardModule = DashboardModule()
-        let workoutModule = WorkoutModule()
-        let quickWorkoutModule = QuickWorkoutModule()
-        let timerModule = TimerModule()
-        let progressModule = ProgressModule()
-        let exercisesModule = ExercisesModule()
-        let muscleGroupsModule = MuscleGroupsModule()
-        let equipmentModule = EquipmentModule()
-        let generateModule = GenerateModule()
-        let settingsModule = SettingsModule()
-        let voiceTrainerModule = VoiceTrainerModule()
-        let game1Module = Game1Module()
-        let stickFigureAnimatorModule = StickFigureAnimatorModule()
-        let matchGameModule = MatchGameModule()
-
-        registry.registerModule(dashboardModule)
-        registry.registerModule(workoutModule)
-        registry.registerModule(quickWorkoutModule)
-        registry.registerModule(timerModule)
-        registry.registerModule(progressModule)
-        registry.registerModule(exercisesModule)
-        registry.registerModule(muscleGroupsModule)
-        registry.registerModule(equipmentModule)
-        registry.registerModule(generateModule)
-        registry.registerModule(settingsModule)
-        registry.registerModule(voiceTrainerModule)
-        registry.registerModule(game1Module)
-        registry.registerModule(stickFigureAnimatorModule)
-        registry.registerModule(matchGameModule)
-
-        // Only set default navbar modules on first launch (when both are empty)
-        // This preserves user customizations
-        if state.topNavBarModules.isEmpty && state.bottomNavBarModules.isEmpty {
-            state.setBottomNavBarModules([
-                ModuleIDs.dashboard,
-                ModuleIDs.workouts,
-                ModuleIDs.generate,
-                ModuleIDs.quickWorkout,
-                ModuleIDs.settings
-            ])
-
-            state.setTopNavBarModules([
-                ModuleIDs.progress,
-                ModuleIDs.timer,
-                ModuleIDs.exercises,
-                ModuleIDs.muscles,
-                ModuleIDs.equipment
-            ])
-        }
     }
 
     private var navBarBackground: some View {
