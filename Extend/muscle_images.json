@@ -20,6 +20,7 @@
     { "name": "Traps",      "male": { "primary": "MaleFrontTraps",     "secondary": "MaleBackTraps" },  "female": { "primary": "FemaleFrontTraps",     "secondary": "FemaleBackTraps" } },
     { "name": "Triceps",    "male": { "primary": "MaleBackTriceps",    "secondary": null },             "female": { "primary": "FemaleBackTriceps",    "secondary": null } },
     { "name": "Upper Back", "male": { "primary": "MaleBackUpperBack",  "secondary": null },             "female": { "primary": "FemaleBackUpperBack",             "secondary": null } },
-    { "name": "Neck", "male": { "primary": "MaleFrontNeck",  "secondary": null },             "female": { "primary": "FemaleFrontNeck",             "secondary": null } }
+    { "name": "Neck", "male": { "primary": "MaleFrontNeck",  "secondary": null },             "female": { "primary": "FemaleFrontNeck",             "secondary": null } },
+    { "name": "Adductors", "male": { "primary": "MaleFrontAdductors",  "secondary": null },             "female": { "primary": "FemaleFrontAdductors",             "secondary": null } }
   ]
 }

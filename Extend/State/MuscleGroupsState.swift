@@ -214,6 +214,7 @@ public final class MuscleGroupsState {
         // Fixed UUIDs so references from exercises survive a reset
         let stubs: [(uuid: String, name: String)] = [
             ("00000020-0000-0000-0000-000000000000", "Abdominals"),
+            ("0000002C-0000-0000-0000-000000000000", "Adductors"),
             ("00000010-0000-0000-0000-000000000000", "Biceps"),
             ("00000019-0000-0000-0000-000000000000", "Calves"),
             ("00000022-0000-0000-0000-000000000000", "Cardio"),
