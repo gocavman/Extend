@@ -18,6 +18,12 @@ public final class TimerState {
 
     public var configs: [TimerConfig] = []
 
+    /// Whether to keep the screen on during active sessions. Defaults to true.
+    public var keepScreenOn: Bool {
+        get { defaults.object(forKey: "keepScreenOnDuringSession") as? Bool ?? true }
+        set { defaults.set(newValue, forKey: "keepScreenOnDuringSession") }
+    }
+
     /// Set by the dashboard to deep-link directly into a specific timer's active screen
     public var pendingLaunchID: UUID? = nil
 

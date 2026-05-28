@@ -2656,10 +2656,14 @@ public struct StartWorkoutView: View {
                 isTimerRunning = true
             }
             loadItemData()
+            if TimerState.shared.keepScreenOn {
+                UIApplication.shared.isIdleTimerDisabled = true
+            }
         }
         .onDisappear {
             cancelPhaseTimer()
             cancelAllSetTimers()
+            UIApplication.shared.isIdleTimerDisabled = false
         }
         // SwiftUI manages this task's lifecycle: starts when isTimerRunning becomes true,
         // cancels automatically when it becomes false or the view disappears.

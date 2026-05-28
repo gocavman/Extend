@@ -50,6 +50,7 @@ private struct SettingsModuleView: View {
     @Environment(ExercisesState.self) var exercisesState
 
     @AppStorage("weightUnit") private var weightUnit: String = "lbs"
+    @AppStorage("keepScreenOnDuringSession") private var keepScreenOnDuringSession: Bool = true
 
     @State private var showingResetAlert = false
     @State private var isSyncingHealthKit = false
@@ -181,6 +182,13 @@ private struct SettingsModuleView: View {
                             }
                             .pickerStyle(.segmented)
                             .frame(width: 120)
+                        }
+
+                        VStack(alignment: .leading, spacing: 4) {
+                            Toggle("Keep Screen On During Sessions", isOn: $keepScreenOnDuringSession)
+                            Text("Prevents the screen from locking during active timers, workouts, and voice trainer sessions. Uses more battery.")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
                         }
                     }
 

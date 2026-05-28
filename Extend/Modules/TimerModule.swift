@@ -840,9 +840,13 @@ private struct ActiveTimerView: View {
         }
         .onAppear {
             buildPhases()
+            if TimerState.shared.keepScreenOn {
+                UIApplication.shared.isIdleTimerDisabled = true
+            }
         }
         .onDisappear {
             timerTask?.cancel()
+            UIApplication.shared.isIdleTimerDisabled = false
         }
         } // NavigationStack
     }

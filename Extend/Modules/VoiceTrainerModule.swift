@@ -6,6 +6,7 @@
 ////
 
 import SwiftUI
+import UIKit
 import Observation
 import AVFoundation
 
@@ -1638,6 +1639,14 @@ private struct PlaybackScreen: View {
                 timerStarted = true
                 onStartPlayback()
             }
+        }
+        .onAppear {
+            if TimerState.shared.keepScreenOn {
+                UIApplication.shared.isIdleTimerDisabled = true
+            }
+        }
+        .onDisappear {
+            UIApplication.shared.isIdleTimerDisabled = false
         }
     }
 }
