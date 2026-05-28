@@ -347,32 +347,34 @@ private struct MuscleGroupEditor: View {
                     let hasSecondary = (group.secondaryImageAssetName ?? "").isEmpty == false
                     if (hasPrimary || hasSecondary) && state.selectedBodyOption != .none {
                         Section("Images") {
-                            HStack(spacing: 16) {
-                                Spacer()
-                                if hasPrimary {
-                                    VStack(spacing: 4) {
-                                        Image(group.primaryImageAssetName!)
-                                            .resizable().scaledToFit()
-                                            .frame(width: 110, height: 130)
-                                            .clipShape(RoundedRectangle(cornerRadius: 10))
-                                        Text("Primary")
-                                            .font(.caption2)
-                                            .foregroundColor(.secondary)
+                            GeometryReader { geo in
+                                let count = (hasPrimary ? 1 : 0) + (hasSecondary ? 1 : 0)
+                                let spacing: CGFloat = count > 1 ? 12 : 0
+                                let imgWidth = (geo.size.width - spacing * CGFloat(count - 1)) / CGFloat(count)
+                                HStack(spacing: spacing) {
+                                    if hasPrimary {
+                                        VStack(spacing: 4) {
+                                            Image(group.primaryImageAssetName!)
+                                                .resizable().scaledToFit()
+                                                .frame(width: imgWidth)
+                                            Text("Primary")
+                                                .font(.caption2)
+                                                .foregroundColor(.secondary)
+                                        }
+                                    }
+                                    if hasSecondary {
+                                        VStack(spacing: 4) {
+                                            Image(group.secondaryImageAssetName!)
+                                                .resizable().scaledToFit()
+                                                .frame(width: imgWidth)
+                                            Text("Secondary")
+                                                .font(.caption2)
+                                                .foregroundColor(.secondary)
+                                        }
                                     }
                                 }
-                                if hasSecondary {
-                                    VStack(spacing: 4) {
-                                        Image(group.secondaryImageAssetName!)
-                                            .resizable().scaledToFit()
-                                            .frame(width: 110, height: 130)
-                                            .clipShape(RoundedRectangle(cornerRadius: 10))
-                                        Text("Secondary")
-                                            .font(.caption2)
-                                            .foregroundColor(.secondary)
-                                    }
-                                }
-                                Spacer()
                             }
+                            .frame(height: 220)
                             .padding(.vertical, 4)
                         }
                     }

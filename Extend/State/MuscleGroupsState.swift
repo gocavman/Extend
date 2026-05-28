@@ -168,10 +168,42 @@ public final class MuscleGroupsState {
         if let data = defaults.data(forKey: storageKey),
            let decoded = try? JSONDecoder().decode([MuscleGroup].self, from: data) {
             groups = decoded
+            migrateGroupNames()
+            injectMissingDefaults()
         } else {
             groups = defaultGroups()
             saveGroups()
         }
+    }
+
+    /// Renames any groups that have a known stale name, identified by their fixed UUID.
+    private func migrateGroupNames() {
+        let renames: [String: String] = [
+            "00000020-0000-0000-0000-000000000000": "Abdominals",
+            "00000019-0000-0000-0000-000000000000": "Calves",
+            "00000022-0000-0000-0000-000000000000": "Cardio",
+            "00000013-0000-0000-0000-000000000000": "Shoulders",
+            "00000016-0000-0000-0000-000000000000": "Quadriceps"
+        ]
+        var changed = false
+        for i in groups.indices {
+            let key = groups[i].id.uuidString.uppercased()
+            if let newName = renames[key], groups[i].name != newName {
+                groups[i].name = newName
+                changed = true
+            }
+        }
+        if changed { saveGroups() }
+    }
+
+    /// Adds any default groups that are missing from the persisted list (e.g. newly added entries).
+    private func injectMissingDefaults() {
+        let existingIDs = Set(groups.map { $0.id })
+        let seeds = defaultGroups()
+        let missing = seeds.filter { !existingIDs.contains($0.id) }
+        guard !missing.isEmpty else { return }
+        groups.append(contentsOf: missing)
+        saveGroups()
     }
 
     // MARK: - Default groups (seeded from muscle_images.json)
@@ -181,23 +213,24 @@ public final class MuscleGroupsState {
 
         // Fixed UUIDs so references from exercises survive a reset
         let stubs: [(uuid: String, name: String)] = [
-            ("00000020-0000-0000-0000-000000000000", "Abs"),
+            ("00000020-0000-0000-0000-000000000000", "Abdominals"),
             ("00000010-0000-0000-0000-000000000000", "Biceps"),
-            ("00000019-0000-0000-0000-000000000000", "Calfs"),
-            ("00000013-0000-0000-0000-000000000000", "Delts"),
+            ("00000019-0000-0000-0000-000000000000", "Calves"),
+            ("00000022-0000-0000-0000-000000000000", "Cardio"),
+            ("00000013-0000-0000-0000-000000000000", "Shoulders"),
             ("0000002A-0000-0000-0000-000000000000", "Full Body"),
             ("00000023-0000-0000-0000-000000000000", "Forearms"),
             ("00000017-0000-0000-0000-000000000000", "Glutes"),
             ("00000024-0000-0000-0000-000000000000", "Grip"),
             ("00000018-0000-0000-0000-000000000000", "Hamstrings"),
-            ("00000022-0000-0000-0000-000000000000", "Heart"),
             ("00000025-0000-0000-0000-000000000000", "Legs"),
             ("00000015-0000-0000-0000-000000000000", "Lats"),
             ("00000026-0000-0000-0000-000000000000", "Lower Back"),
+            ("0000002B-0000-0000-0000-000000000000", "Neck"),
             ("00000021-0000-0000-0000-000000000000", "Obliques"),
             ("00000012-0000-0000-0000-000000000000", "Chest"),
             ("00000028-0000-0000-0000-000000000000", "Rhomboids"),
-            ("00000016-0000-0000-0000-000000000000", "Quads"),
+            ("00000016-0000-0000-0000-000000000000", "Quadriceps"),
             ("00000014-0000-0000-0000-000000000000", "Traps"),
             ("00000011-0000-0000-0000-000000000000", "Triceps"),
             ("00000029-0000-0000-0000-000000000000", "Upper Back")

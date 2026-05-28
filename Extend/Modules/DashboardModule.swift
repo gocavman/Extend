@@ -1634,14 +1634,16 @@ private struct VolumeTrendLine: View {
     var body: some View {
         Canvas { ctx, size in
             let baseline: CGFloat = size.height - labelH - 3
-            // Only connect bars that actually have volume
             let allXs: [CGFloat] = fractions.indices.map { i in
                 barWidth / 2 + CGFloat(i) * (barWidth + barSpacing)
             }
-            let pts: [CGPoint] = fractions.indices.compactMap { i in
-                guard fractions[i] > 0 else { return nil }
-                let clamped: CGFloat = max(18.0 / barAreaH, CGFloat(fractions[i]))
-                return CGPoint(x: allXs[i], y: baseline - clamped * barAreaH)
+            let pts: [CGPoint] = fractions.indices.map { i in
+                if fractions[i] > 0 {
+                    let clamped: CGFloat = max(18.0 / barAreaH, CGFloat(fractions[i]))
+                    return CGPoint(x: allXs[i], y: baseline - clamped * barAreaH)
+                } else {
+                    return CGPoint(x: allXs[i], y: baseline)
+                }
             }
             guard pts.count > 1 else { return }
 
@@ -1660,7 +1662,8 @@ private struct VolumeTrendLine: View {
                        style: StrokeStyle(lineWidth: 4, lineCap: .round, lineJoin: .round))
             ctx.stroke(path, with: .color(Color.blue.opacity(0.65)),
                        style: StrokeStyle(lineWidth: 1.5, lineCap: .round, lineJoin: .round))
-            for pt in pts {
+            for (i, pt) in pts.enumerated() {
+                guard fractions[i] > 0 else { continue }
                 ctx.fill(Path(ellipseIn: CGRect(x: pt.x - 3, y: pt.y - 3, width: 6, height: 6)),
                          with: .color(Color.blue.opacity(0.75)))
                 ctx.fill(Path(ellipseIn: CGRect(x: pt.x - 1.5, y: pt.y - 1.5, width: 3, height: 3)),

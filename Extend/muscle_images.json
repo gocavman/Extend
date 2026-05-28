@@ -1,24 +1,25 @@
 {
   "mappings": [
-    { "name": "Abs",        "male": { "primary": "MaleFrontAbs",       "secondary": null },             "female": { "primary": "FemaleFrontAbs",       "secondary": null } },
+    { "name": "Abdominals",        "male": { "primary": "MaleFrontAbs",       "secondary": null },             "female": { "primary": "FemaleFrontAbs",       "secondary": null } },
     { "name": "Biceps",     "male": { "primary": "MaleFrontBiceps",    "secondary": null },             "female": { "primary": "FemaleFrontBiceps",    "secondary": null } },
-    { "name": "Calfs",      "male": { "primary": "MaleBackCalfs",      "secondary": null },             "female": { "primary": "FemaleBackCalfs",      "secondary": null } },
-    { "name": "Delts",      "male": { "primary": "MaleFrontDelts",     "secondary": "MaleBackDelts" },  "female": { "primary": "FemaleFrontDelts",     "secondary": "FemaleBackDelts" } },
+    { "name": "Calves",      "male": { "primary": "MaleBackCalfs",      "secondary": null },             "female": { "primary": "FemaleBackCalfs",      "secondary": null } },
+    { "name": "Shoulders",      "male": { "primary": "MaleFrontDelts",     "secondary": "MaleBackDelts" },  "female": { "primary": "FemaleFrontDelts",     "secondary": "FemaleBackDelts" } },
     { "name": "Forearms",   "male": { "primary": "MaleFrontForearms",                 "secondary": null },             "female": { "primary": "FemaleFrontForearms",                  "secondary": null } },
     { "name": "Full Body",  "male": { "primary": "MaleFrontFullBody",  "secondary": "MaleBackFullBody" }, "female": { "primary": "FemaleFrontFullBody", "secondary": "FemaleBackFullBody" } },
     { "name": "Glutes",     "male": { "primary": "MaleBackGlutes",     "secondary": null },             "female": { "primary": "FemaleBackGlutes",     "secondary": null } },
     { "name": "Grip",       "male": { "primary": "MaleFrontGrip",                 "secondary": null },             "female": { "primary": "FemaleFrontGrip",                  "secondary": null } },
     { "name": "Hamstrings", "male": { "primary": "MaleBackHamstrings", "secondary": null },             "female": { "primary": "FemaleBackHamstrings", "secondary": null } },
-    { "name": "Heart",      "male": { "primary": "MaleFrontHeart",                 "secondary": null },             "female": { "primary": "FemaleFrontHeart",                  "secondary": null } },
+    { "name": "Cardio",      "male": { "primary": "MaleFrontHeart",                 "secondary": null },             "female": { "primary": "FemaleFrontHeart",                  "secondary": null } },
     { "name": "Lats",       "male": { "primary": "MaleBackLats",       "secondary": null },             "female": { "primary": "FemaleBackLats",       "secondary": null } },
     { "name": "Legs",       "male": { "primary": "MaleFrontLegs",                 "secondary": "MaleBackLegs" },             "female": { "primary": "FemaleFrontLegs",                  "secondary": "FemaleBackLegs" } },
     { "name": "Lower Back", "male": { "primary": "MaleBackLowerBack",                 "secondary": null },             "female": { "primary": "FemaleBackLowerBack",                  "secondary": null } },
     { "name": "Obliques",   "male": { "primary": "MaleFrontObliques",  "secondary": null },             "female": { "primary": "FemaleFrontObliques",  "secondary": null } },
     { "name": "Chest",       "male": { "primary": "MaleFrontChest",     "secondary": null },             "female": { "primary": "FemaleFrontChest",     "secondary": null } },
-    { "name": "Quads",      "male": { "primary": "MaleFrontQuads",     "secondary": null },             "female": { "primary": "FemaleFrontQuads",     "secondary": null } },
+    { "name": "Quadriceps",      "male": { "primary": "MaleFrontQuads",     "secondary": null },             "female": { "primary": "FemaleFrontQuads",     "secondary": null } },
     { "name": "Rhomboids",  "male": { "primary": "MaleBackRhomboids",                 "secondary": null },             "female": { "primary": "FemaleBackRhomboids",                  "secondary": null } },
     { "name": "Traps",      "male": { "primary": "MaleFrontTraps",     "secondary": "MaleBackTraps" },  "female": { "primary": "FemaleFrontTraps",     "secondary": "FemaleBackTraps" } },
     { "name": "Triceps",    "male": { "primary": "MaleBackTriceps",    "secondary": null },             "female": { "primary": "FemaleBackTriceps",    "secondary": null } },
-    { "name": "Upper Back", "male": { "primary": "MaleBackUpperBack",  "secondary": null },             "female": { "primary": "FemaleBackUpperBack",             "secondary": null } }
+    { "name": "Upper Back", "male": { "primary": "MaleBackUpperBack",  "secondary": null },             "female": { "primary": "FemaleBackUpperBack",             "secondary": null } },
+    { "name": "Neck", "male": { "primary": "MaleFrontNeck",  "secondary": null },             "female": { "primary": "FemaleFrontNeck",             "secondary": null } }
   ]
 }
