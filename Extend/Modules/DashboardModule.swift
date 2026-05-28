@@ -68,6 +68,9 @@ private struct DashboardModuleView: View {
         VStack(spacing: 0) {
             if headerState.isVisible {
                 headerView
+            } else {
+                // Reserve safe area at top so tiles don't bleed under the status bar
+                Color.clear.frame(height: topNavBarHeight)
             }
             
             // MARK: - Tiles Content
@@ -156,7 +159,8 @@ private struct DashboardModuleView: View {
                         tilesRowView(row: row, columnWidth: columnWidth, spacing: spacing)
                     }
                 }
-                .padding(10)
+                .padding(.horizontal, 16)
+                .padding(.vertical, 10)
             }
             .scrollIndicators(.hidden)
         }

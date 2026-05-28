@@ -204,12 +204,12 @@ public final class WorkoutsState {
         )
 
         // ── ABC - Single Kettlebell ───────────────────────────────────────
-        // Complex: 30 rounds × 60s, auto-advance, round countdown, bar style
+        // Complex: 30 rounds × 90s, auto-advance, round countdown, bar style
         let sglComplexID = UUID(uuidString: "402AFA25-45F9-45DF-AEFE-C83FCF4FB5B0")!
         let sglComplex   = WorkoutComplex(
             id: sglComplexID,
             rounds: 30,
-            intervalSeconds: 60,
+            intervalSeconds: 90,
             autoAdvance: true,
             roundCountdown: true,
             timerStyle: .bar
