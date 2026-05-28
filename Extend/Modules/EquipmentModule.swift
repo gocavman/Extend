@@ -200,7 +200,7 @@ private struct EquipmentModuleView: View {
                     Text("This will permanently delete the equipment.")
                 }
             }
-            .navigationDestination(item: $statsItem) { item in
+            .fullScreenCover(item: $statsItem) { item in
                 EquipmentStatsView(equipment: item)
                     .environment(logState)
                     .environment(exercisesState)

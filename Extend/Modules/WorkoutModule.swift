@@ -646,7 +646,8 @@ private struct WorkoutEditor: View {
                     exercise: ex,
                     index: idx,
                     workoutItems: $workoutItems,
-                    complexRounds: ex.complexID.flatMap { complexes[$0.uuidString]?.rounds },
+                    complexRounds: ex.complexID.flatMap { complexes[$0.uuidString]?.rounds }
+                        ?? ex.loopID.flatMap { loops[$0.uuidString]?.rounds },
                     resolvedExercise: exercisesState.exercises.first { $0.id == ex.exerciseID },
                     equipmentState: equipmentState
                 )
@@ -1279,7 +1280,7 @@ private struct SetsEditorSheet: View {
     let exercise: WorkoutExercise
     let index: Int
     @Binding var workoutItems: [WorkoutItem]
-    /// Non-nil when the exercise belongs to a complex — enables the "Fill N×" button.
+    /// Non-nil when the exercise belongs to a complex or loop — enables the "Fill N×" button.
     let complexRounds: Int?
     /// The resolved Exercise model — used to show name and available equipment.
     let resolvedExercise: Exercise?
@@ -2250,6 +2251,8 @@ public struct StartWorkoutView: View {
     @State private var notes: String = ""
     @State private var usedEquipmentIDs: Set<UUID> = []
     @State private var exerciseData: [UUID: (sets: [WorkoutSet], notes: String, timerSeconds: Int, usedEquipmentIDs: Set<UUID>, phaseIndex: Int, phaseElapsed: Int, phaseTimerDone: Bool)] = [:]
+    /// Wall-clock time when the workout session actually started (after warmup)
+    @State private var sessionStartDate: Date? = nil
     @State private var showingHistory: Bool = false
     /// Active countdown tasks keyed by WorkoutSet.id — for per-set timed countdowns.
     @State private var setTimerTasks: [UUID: Task<Void, Never>] = [:]
@@ -2285,6 +2288,7 @@ public struct StartWorkoutView: View {
     /// Tracks the highest round index reached per complex UUID. Used to trim unfinished sets at log time.
     @State private var complexRoundsReached: [UUID: Int] = [:]
     @AppStorage("weightUnit") private var weightUnit: String = "lbs"
+    @State private var synthesizer = AVSpeechSynthesizer()
 
     private var currentItem: WorkoutItem? {
         workout.items[safe: currentItemIndex]
@@ -2582,6 +2586,11 @@ public struct StartWorkoutView: View {
                                     complexSecondsRemaining = cx.intervalSeconds
                                     complexTimerRunning = true
                                     complexTimerDone = false
+                                    let go = AVSpeechUtterance(string: "Go")
+                                    go.rate = 0.45
+                                    go.pitchMultiplier = 1.15
+                                    synthesizer.speak(go)
+                                    UINotificationFeedbackGenerator().notificationOccurred(.success)
                                 }
                             }
                         },
@@ -2653,6 +2662,7 @@ public struct StartWorkoutView: View {
                 showingWarmup = true
                 // Workout timer starts after warmup completes
             } else {
+                sessionStartDate = Date()
                 isTimerRunning = true
             }
             loadItemData()
@@ -3583,15 +3593,19 @@ public struct StartWorkoutView: View {
             cancelPhaseTimer()
             isTimerRunning = showingWarmup ? false : true
 
-            // Auto-start the timed countdown for the active loop round, if applicable
-            if !isTimedMode, isInLoop, loopRound < sets.count {
-                if loopRound < we.predefinedSets.count,
-                   case .timed = we.predefinedSets[loopRound].target {
+            // Auto-start the timed countdown for the first applicable set when loading an exercise
+            if !isTimedMode {
+                let activeIndex = isInLoop ? loopRound : 0
+                if activeIndex < sets.count,
+                   activeIndex < we.predefinedSets.count,
+                   case .timed = we.predefinedSets[activeIndex].target,
+                   !sets[activeIndex].isTimerRunning,
+                   sets[activeIndex].timedSecondsRemaining > 0 {
                     // Small delay so the view has settled before the timer fires
                     Task {
                         try? await Task.sleep(nanoseconds: 300_000_000)
                         await MainActor.run {
-                            toggleSetTimer(setID: sets[loopRound].id, setIndex: loopRound)
+                            toggleSetTimer(setID: sets[activeIndex].id, setIndex: activeIndex)
                         }
                     }
                 }
@@ -3644,6 +3658,12 @@ public struct StartWorkoutView: View {
     /// Called when warmup finishes to start whichever timer the current exercise needs.
     private func startExerciseTimerAfterWarmup() {
         guard case .exercise = currentItem else { return }
+        sessionStartDate = sessionStartDate ?? Date()
+        let go = AVSpeechUtterance(string: "Go")
+        go.rate = 0.45
+        go.pitchMultiplier = 1.15
+        synthesizer.speak(go)
+        UINotificationFeedbackGenerator().notificationOccurred(.success)
         if isTimedMode {
             if !phaseTimerDone { startPhaseTick() }
         } else {
@@ -3923,16 +3943,23 @@ public struct StartWorkoutView: View {
             }
         }
 
-        // Total active duration = sum of per-exercise stopwatch values
-        let totalActiveSeconds = exerciseData.values.reduce(0) { $0 + $1.timerSeconds }
+        // Use wall-clock elapsed time so complex interval rounds are included in duration.
+        // Fall back to summing per-exercise stopwatch values if sessionStartDate was never set.
+        let completedAt = Date()
+        let totalDuration: TimeInterval
+        if let start = sessionStartDate {
+            totalDuration = completedAt.timeIntervalSince(start)
+        } else {
+            totalDuration = TimeInterval(exerciseData.values.reduce(0) { $0 + $1.timerSeconds })
+        }
 
         let workoutLog = WorkoutLog(
             workoutName: workout.name,
-            completedAt: Date(),
+            completedAt: completedAt,
             exercises: loggedExercises,
             restPeriods: loggedRests,
             notes: "",
-            duration: TimeInterval(totalActiveSeconds)
+            duration: totalDuration
         )
 
         WorkoutLogState.shared.addLog(
@@ -4180,7 +4207,6 @@ private struct WarmupCooldownScreen: View {
                 }
                 if secondsRemaining == 0 {
                     isRunning = false
-                    UIImpactFeedbackGenerator(style: .heavy).impactOccurred()
                     if autoAdvanceOnComplete {
                         onFinish()
                     }
@@ -5007,7 +5033,7 @@ struct ExerciseHistorySheet: View {
                                         Text("Set").font(.caption2).foregroundColor(.secondary).frame(maxWidth: .infinity, alignment: .leading)
                                         Text("Reps").font(.caption2).foregroundColor(.secondary).frame(maxWidth: .infinity, alignment: .center)
                                         if hasTimed {
-                                            Text("Time").font(.caption2).foregroundColor(.secondary).frame(width: 44, alignment: .center)
+                                            Text("Time").font(.caption2).foregroundColor(.secondary).frame(width: 64, alignment: .center)
                                         }
                                         Text("Weight").font(.caption2).foregroundColor(.secondary).frame(maxWidth: .infinity, alignment: .trailing)
                                     }
@@ -5017,7 +5043,7 @@ struct ExerciseHistorySheet: View {
                                             Text("\(run.set.reps)").font(.caption).frame(maxWidth: .infinity, alignment: .center)
                                             if hasTimed {
                                                 Text(run.set.timedSeconds > 0 ? formatHistoryTime(run.set.timedSeconds) : "—")
-                                                    .font(.caption).foregroundColor(.secondary).frame(width: 44, alignment: .center)
+                                                    .font(.caption).foregroundColor(.secondary).frame(width: 64, alignment: .center)
                                             }
                                             Text(run.set.weight == 0 ? "—" : String(format: "%.1f \(weightUnit)", run.set.weight)).font(.caption).frame(maxWidth: .infinity, alignment: .trailing)
                                         }

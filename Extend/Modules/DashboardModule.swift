@@ -1624,53 +1624,118 @@ private struct WeekFrequencyView: View {
 
 // MARK: - Volume Bar Chart (weekly, past 5 weeks)
 
+private struct VolumeTrendLine: View {
+    let fractions: [Double]
+    let barWidth: CGFloat
+    let barSpacing: CGFloat
+    let barAreaH: CGFloat
+    let labelH: CGFloat
+
+    var body: some View {
+        Canvas { ctx, size in
+            let baseline: CGFloat = size.height - labelH - 3
+            // Only connect bars that actually have volume
+            let allXs: [CGFloat] = fractions.indices.map { i in
+                barWidth / 2 + CGFloat(i) * (barWidth + barSpacing)
+            }
+            let pts: [CGPoint] = fractions.indices.compactMap { i in
+                guard fractions[i] > 0 else { return nil }
+                let clamped: CGFloat = max(18.0 / barAreaH, CGFloat(fractions[i]))
+                return CGPoint(x: allXs[i], y: baseline - clamped * barAreaH)
+            }
+            guard pts.count > 1 else { return }
+
+            var path = Path()
+            path.move(to: pts[0])
+            for i in 0 ..< pts.count - 1 {
+                let p0 = pts[max(i - 1, 0)]
+                let p1 = pts[i]
+                let p2 = pts[min(i + 1, pts.count - 1)]
+                let p3 = pts[min(i + 2, pts.count - 1)]
+                let cp1 = CGPoint(x: p1.x + (p2.x - p0.x) / 6, y: p1.y + (p2.y - p0.y) / 6)
+                let cp2 = CGPoint(x: p2.x - (p3.x - p1.x) / 6, y: p2.y - (p3.y - p1.y) / 6)
+                path.addCurve(to: p2, control1: cp1, control2: cp2)
+            }
+            ctx.stroke(path, with: .color(Color.blue.opacity(0.15)),
+                       style: StrokeStyle(lineWidth: 4, lineCap: .round, lineJoin: .round))
+            ctx.stroke(path, with: .color(Color.blue.opacity(0.65)),
+                       style: StrokeStyle(lineWidth: 1.5, lineCap: .round, lineJoin: .round))
+            for pt in pts {
+                ctx.fill(Path(ellipseIn: CGRect(x: pt.x - 3, y: pt.y - 3, width: 6, height: 6)),
+                         with: .color(Color.blue.opacity(0.75)))
+                ctx.fill(Path(ellipseIn: CGRect(x: pt.x - 1.5, y: pt.y - 1.5, width: 3, height: 3)),
+                         with: .color(.white))
+            }
+        }
+        .allowsHitTesting(false)
+    }
+}
+
 private struct VolumeBarChartView: View {
     let weeks: [(label: String, volume: Double)]
+
+    private let barAreaH: CGFloat = 90
+    private let labelH: CGFloat = 14
+    private let barSpacing: CGFloat = 6
 
     var body: some View {
         let maxVol = weeks.map { $0.volume }.max() ?? 1
         let currentWeekIdx = weeks.count - 1
-        let barAreaH: CGFloat = 90
-        let labelH: CGFloat = 14
+        let fractions: [Double] = weeks.map { maxVol > 0 ? $0.volume / maxVol : 0 }
 
         VStack(alignment: .leading, spacing: 4) {
-            // Bars
-            HStack(alignment: .bottom, spacing: 6) {
-                ForEach(Array(weeks.enumerated()), id: \.offset) { idx, week in
-                    let fraction = maxVol > 0 ? CGFloat(week.volume / maxVol) : 0
-                    let barHeight = max(18, barAreaH * fraction)
-                    let isCurrentWeek = idx == currentWeekIdx
-                    VStack(spacing: 3) {
-                        ZStack {
-                            RoundedRectangle(cornerRadius: 3)
-                                .fill(isCurrentWeek ? Color.black : Color.black.opacity(0.25))
+            // Bar area with trend line overlaid
+            GeometryReader { geo in
+                let barWidth = (geo.size.width - barSpacing * CGFloat(weeks.count - 1)) / CGFloat(weeks.count)
+                ZStack(alignment: .bottom) {
+                    HStack(alignment: .bottom, spacing: barSpacing) {
+                        ForEach(Array(weeks.enumerated()), id: \.offset) { idx, week in
+                            let fraction = CGFloat(fractions[idx])
+                            let barHeight = week.volume > 0 ? max(18, barAreaH * fraction) : 0
+                            let isCurrentWeek = idx == currentWeekIdx
+                            VStack(spacing: 3) {
+                                ZStack {
+                                    if week.volume > 0 {
+                                        RoundedRectangle(cornerRadius: 3)
+                                            .fill(isCurrentWeek ? Color.black : Color.black.opacity(0.25))
+                                            .frame(height: barHeight)
+                                        let volLabel = week.volume >= 1000
+                                            ? String(format: "%.0fk", week.volume / 1000)
+                                            : String(format: "%.0f", week.volume)
+                                        Text(volLabel)
+                                            .font(.system(size: 11, weight: .bold))
+                                            .foregroundColor(isCurrentWeek ? .white : .black.opacity(0.6))
+                                            .minimumScaleFactor(0.5)
+                                            .lineLimit(1)
+                                    }
+                                }
                                 .frame(height: barHeight)
-                            if week.volume > 0 {
-                                let volLabel = week.volume >= 1000
-                                    ? String(format: "%.0fk", week.volume / 1000)
-                                    : String(format: "%.0f", week.volume)
-                                Text(volLabel)
-                                    .font(.system(size: 11, weight: .bold))
-                                    .foregroundColor(isCurrentWeek ? .white : .black.opacity(0.6))
-                                    .minimumScaleFactor(0.5)
+                                Text(week.label)
+                                    .font(.system(size: 8))
+                                    .foregroundColor(.gray)
                                     .lineLimit(1)
+                                    .minimumScaleFactor(0.5)
+                                    .frame(maxWidth: .infinity)
+                                    .frame(height: labelH)
                             }
+                            .frame(maxWidth: .infinity, alignment: .bottom)
                         }
-                        .frame(height: barHeight)
-                        Text(week.label)
-                            .font(.system(size: 8))
-                            .foregroundColor(.gray)
-                            .lineLimit(1)
-                            .minimumScaleFactor(0.5)
-                            .frame(maxWidth: .infinity)
-                            .frame(height: labelH)
                     }
-                    .frame(maxWidth: .infinity, alignment: .bottom)
+                    .frame(maxWidth: .infinity)
+
+                    VolumeTrendLine(
+                        fractions: fractions,
+                        barWidth: barWidth,
+                        barSpacing: barSpacing,
+                        barAreaH: barAreaH,
+                        labelH: labelH
+                    )
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
             }
             .frame(maxWidth: .infinity, minHeight: 107)
 
-            // Trend line label
+            // % vs last week
             if weeks.count >= 2 {
                 let prev = weeks[weeks.count - 2].volume
                 let curr = weeks[weeks.count - 1].volume

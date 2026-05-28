@@ -199,3 +199,18 @@ public struct LoggedRest: Identifiable, Codable, Hashable {
         orderIndex = (try? c.decodeIfPresent(Int.self, forKey: .orderIndex)) ?? 0
     }
 }
+
+/// A freeform journal/note entry attached to a calendar date
+public struct JournalEntry: Identifiable, Codable, Hashable {
+    public let id: UUID
+    public var date: Date
+    public var title: String
+    public var body: String
+
+    public init(id: UUID = UUID(), date: Date = Date(), title: String = "", body: String = "") {
+        self.id = id
+        self.date = date
+        self.title = title
+        self.body = body
+    }
+}

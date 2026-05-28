@@ -39,6 +39,7 @@ struct ExerciseStatsView: View {
 
     @AppStorage("weightUnit") private var weightUnit: String = "lbs"
     @Environment(WorkoutLogState.self) var logState
+    @Environment(\.dismiss) private var dismiss
     @State private var timeRange: StatsTimeRange = .oneMonth
 
     // Filtered logs containing this exercise
@@ -82,6 +83,7 @@ struct ExerciseStatsView: View {
     }
 
     var body: some View {
+        NavigationStack {
         ScrollView {
             VStack(alignment: .leading, spacing: 24) {
 
@@ -132,6 +134,16 @@ struct ExerciseStatsView: View {
         }
         .navigationTitle(exercise.name)
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .topBarLeading) {
+                Button(action: { dismiss() }) {
+                    Image(systemName: "xmark")
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundColor(.primary)
+                }
+            }
+        }
+        } // NavigationStack
     }
 
     // MARK: - Empty state
@@ -242,6 +254,7 @@ struct MuscleStatsView: View {
     @AppStorage("weightUnit") private var weightUnit: String = "lbs"
     @Environment(WorkoutLogState.self) var logState
     @Environment(ExercisesState.self) var exercisesState
+    @Environment(\.dismiss) private var dismiss
     @State private var timeRange: StatsTimeRange = .oneMonth
 
     // Exercise IDs targeting this muscle (primary or secondary)
@@ -316,6 +329,7 @@ struct MuscleStatsView: View {
     }
 
     var body: some View {
+        NavigationStack {
         ScrollView {
             VStack(alignment: .leading, spacing: 24) {
 
@@ -352,6 +366,16 @@ struct MuscleStatsView: View {
         }
         .navigationTitle(muscleGroup.name)
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .topBarLeading) {
+                Button(action: { dismiss() }) {
+                    Image(systemName: "xmark")
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundColor(.primary)
+                }
+            }
+        }
+        } // NavigationStack
     }
 
     private var emptyState: some View {
@@ -671,6 +695,7 @@ struct EquipmentStatsView: View {
     @AppStorage("weightUnit") private var weightUnit: String = "lbs"
     @Environment(WorkoutLogState.self) var logState
     @Environment(ExercisesState.self) var exercisesState
+    @Environment(\.dismiss) private var dismiss
     @State private var timeRange: StatsTimeRange = .oneMonth
 
     /// Exercises that use this piece of equipment
@@ -719,67 +744,77 @@ struct EquipmentStatsView: View {
     }
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 16) {
-                // Time range picker
-                Picker("Time Range", selection: $timeRange) {
-                    ForEach(StatsTimeRange.allCases, id: \.self) { range in
-                        Text(range.rawValue).tag(range)
-                    }
-                }
-                .pickerStyle(.segmented)
-                .padding(.horizontal, 16)
-
-                if weekBuckets.isEmpty {
-                    equipmentEmptyState
-                } else {
-                    VStack(alignment: .leading, spacing: 24) {
-                        equipmentStatsCard(
-                            title: "Sessions Used",
-                            unit: "sessions",
-                            points: weekBuckets.map { ($0.weekStart, Double($0.sessions)) },
-                            color: .blue
-                        )
-                        equipmentStatsCard(
-                            title: "Total Volume",
-                            unit: weightUnit,
-                            points: weekBuckets.map { ($0.weekStart, $0.totalVolume) },
-                            color: Color(red: 0.2, green: 0.65, blue: 0.4)
-                        )
-                    }
-                }
-
-                // Linked exercises list
-                if !linkedExercises.isEmpty {
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("Exercises Using This Equipment")
-                            .font(.subheadline)
-                            .fontWeight(.semibold)
-                            .padding(.horizontal, 16)
-                        ForEach(linkedExercises) { exercise in
-                            HStack {
-                                Image(systemName: "flame.fill")
-                                    .foregroundColor(.orange)
-                                    .font(.caption)
-                                Text(exercise.name)
-                                    .font(.subheadline)
-                                    .foregroundColor(.primary)
-                            }
-                            .padding(.horizontal, 20)
-                            .padding(.vertical, 4)
+        NavigationStack {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 16) {
+                    // Time range picker
+                    Picker("Time Range", selection: $timeRange) {
+                        ForEach(StatsTimeRange.allCases, id: \.self) { range in
+                            Text(range.rawValue).tag(range)
                         }
                     }
-                    .padding(.vertical, 12)
-                    .background(Color(uiColor: .systemBackground))
-                    .cornerRadius(14)
-                    .shadow(color: .black.opacity(0.05), radius: 4, x: 0, y: 2)
+                    .pickerStyle(.segmented)
                     .padding(.horizontal, 16)
+
+                    if weekBuckets.isEmpty {
+                        equipmentEmptyState
+                    } else {
+                        VStack(alignment: .leading, spacing: 24) {
+                            equipmentStatsCard(
+                                title: "Sessions Used",
+                                unit: "sessions",
+                                points: weekBuckets.map { ($0.weekStart, Double($0.sessions)) },
+                                color: .blue
+                            )
+                            equipmentStatsCard(
+                                title: "Total Volume",
+                                unit: weightUnit,
+                                points: weekBuckets.map { ($0.weekStart, $0.totalVolume) },
+                                color: Color(red: 0.2, green: 0.65, blue: 0.4)
+                            )
+                        }
+                    }
+
+                    // Linked exercises list
+                    if !linkedExercises.isEmpty {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Exercises Using This Equipment")
+                                .font(.subheadline)
+                                .fontWeight(.semibold)
+                                .padding(.horizontal, 16)
+                            ForEach(linkedExercises) { exercise in
+                                HStack {
+                                    Image(systemName: "flame.fill")
+                                        .foregroundColor(.orange)
+                                        .font(.caption)
+                                    Text(exercise.name)
+                                        .font(.subheadline)
+                                        .foregroundColor(.primary)
+                                }
+                                .padding(.horizontal, 20)
+                                .padding(.vertical, 4)
+                            }
+                        }
+                        .padding(.vertical, 12)
+                        .background(Color(uiColor: .systemBackground))
+                        .cornerRadius(14)
+                        .shadow(color: .black.opacity(0.05), radius: 4, x: 0, y: 2)
+                        .padding(.horizontal, 16)
+                    }
+                }
+                .padding(.vertical, 16)
+            }
+            .navigationTitle(equipment.name)
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button { dismiss() } label: {
+                        Image(systemName: "xmark")
+                            .foregroundColor(.primary)
+                    }
                 }
             }
-            .padding(.vertical, 16)
-        }
-        .navigationTitle(equipment.name)
-        .navigationBarTitleDisplayMode(.inline)
+        } // NavigationStack
     }
 
     private var equipmentEmptyState: some View {

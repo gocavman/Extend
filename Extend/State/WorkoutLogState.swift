@@ -17,11 +17,14 @@ public final class WorkoutLogState {
     public static let shared = WorkoutLogState()
     
     public var logs: [WorkoutLog] = []
-    
+    public var journalEntries: [JournalEntry] = []
+
     private let logsKey = "workout_logs"
-    
+    private let journalKey = "journal_entries"
+
     private init() {
         loadLogs()
+        loadJournalEntries()
     }
     
     // MARK: - Log Management
@@ -529,6 +532,17 @@ public final class WorkoutLogState {
             }
         }
 
+        // Journal entries
+        if !journalEntries.isEmpty {
+            csv += "\n\"--- Journal Entries ---\"\n"
+            csv += "Date,Title,Body\n"
+            for entry in sortedJournalEntries {
+                let dateString = dateFormatter.string(from: entry.date)
+                let row = [escape(dateString), escape(entry.title), escape(entry.body)].joined(separator: ",")
+                csv += row + "\n"
+            }
+        }
+
         return csv
     }
 
@@ -547,6 +561,38 @@ public final class WorkoutLogState {
         }
     }
     
+    // MARK: - Journal Entries
+
+    public func addJournalEntry(_ entry: JournalEntry) {
+        journalEntries.append(entry)
+        saveJournalEntries()
+    }
+
+    public func updateJournalEntry(_ entry: JournalEntry) {
+        if let idx = journalEntries.firstIndex(where: { $0.id == entry.id }) {
+            journalEntries[idx] = entry
+            saveJournalEntries()
+        }
+    }
+
+    public func deleteJournalEntry(id: UUID) {
+        journalEntries.removeAll { $0.id == id }
+        saveJournalEntries()
+    }
+
+    /// Journal entries for a specific date, sorted newest first
+    public func journalEntriesForDate(_ date: Date) -> [JournalEntry] {
+        let calendar = Calendar.current
+        return journalEntries
+            .filter { calendar.isDate($0.date, inSameDayAs: date) }
+            .sorted { $0.date > $1.date }
+    }
+
+    /// All journal entries sorted newest first
+    public var sortedJournalEntries: [JournalEntry] {
+        journalEntries.sorted { $0.date > $1.date }
+    }
+
     // MARK: - Persistence
     
     private func saveLogs() {
@@ -559,6 +605,19 @@ public final class WorkoutLogState {
         if let data = defaults.data(forKey: logsKey),
            let decoded = try? JSONDecoder().decode([WorkoutLog].self, from: data) {
             logs = decoded
+        }
+    }
+
+    private func saveJournalEntries() {
+        if let encoded = try? JSONEncoder().encode(journalEntries) {
+            defaults.set(encoded, forKey: journalKey)
+        }
+    }
+
+    private func loadJournalEntries() {
+        if let data = defaults.data(forKey: journalKey),
+           let decoded = try? JSONDecoder().decode([JournalEntry].self, from: data) {
+            journalEntries = decoded
         }
     }
     

@@ -196,7 +196,7 @@ private struct MuscleGroupsModuleView: View {
                     Text("This will permanently delete the muscle group.")
                 }
             }
-            .navigationDestination(item: $statsGroup) { group in
+            .fullScreenCover(item: $statsGroup) { group in
                 MuscleStatsView(muscleGroup: group)
                     .environment(logState)
                     .environment(exercisesState)

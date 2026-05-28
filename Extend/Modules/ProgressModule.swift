@@ -31,6 +31,9 @@ private struct ProgressModuleView: View {
     @State private var hasSelectedDate = true
     @State private var currentMonth = Date()
     @State private var selectedLog: WorkoutLog?
+    @State private var selectedJournalEntry: JournalEntry? = nil
+    @State private var showJournalEditor = false
+    @State private var journalEditorDate: Date = Date()
     /// When false the full month grid collapses to a single week strip
     @State private var isCalendarExpanded: Bool = true
     @State private var showMonthPicker = false
@@ -136,6 +139,17 @@ private struct ProgressModuleView: View {
                     showSearch = true
                 }) {
                     Image(systemName: "magnifyingglass")
+                        .foregroundColor(.black)
+                }
+
+                // New journal entry
+                Button(action: {
+                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                    selectedJournalEntry = nil
+                    journalEditorDate = hasSelectedDate ? selectedDate : Date()
+                    showJournalEditor = true
+                }) {
+                    Image(systemName: "square.and.pencil")
                         .foregroundColor(.black)
                 }
 
@@ -281,19 +295,34 @@ private struct ProgressModuleView: View {
                             }
                         }
 
-                        // Selected Day's Workouts — only shown when a day has been explicitly tapped
+                        // Selected Day's entries — only shown when a day has been explicitly tapped
                         if hasSelectedDate {
-                            if !logState.logsForDate(selectedDate).isEmpty {
+                            let dayLogs = logState.logsForDate(selectedDate)
+                            let dayJournal = logState.journalEntriesForDate(selectedDate)
+                            if !dayLogs.isEmpty || !dayJournal.isEmpty {
                                 VStack(alignment: .leading, spacing: 12) {
                                     Text(formattedDate(selectedDate))
                                         .font(.headline)
                                         .padding(.horizontal, 16)
 
-                                    ForEach(logState.logsForDate(selectedDate)) { log in
-                                        WorkoutLogCard(log: log) {
-                                            selectedLog = log
-                                        }
-                                        .padding(.horizontal, 16)
+                                    // Interleave workouts and journal entries sorted by time
+                                    let workoutItems: [(date: Date, view: AnyView)] = dayLogs.map { log in
+                                        (date: log.completedAt, view: AnyView(
+                                            WorkoutLogCard(log: log) { selectedLog = log }
+                                                .padding(.horizontal, 16)
+                                        ))
+                                    }
+                                    let journalItems: [(date: Date, view: AnyView)] = dayJournal.map { entry in
+                                        (date: entry.date, view: AnyView(
+                                            JournalEntryCard(entry: entry) {
+                                                selectedJournalEntry = entry
+                                            }
+                                            .padding(.horizontal, 16)
+                                        ))
+                                    }
+                                    let combined = (workoutItems + journalItems).sorted { $0.date > $1.date }
+                                    ForEach(Array(combined.enumerated()), id: \.offset) { _, item in
+                                        item.view
                                     }
                                 }
                             } else {
@@ -322,6 +351,8 @@ private struct ProgressModuleView: View {
                             showWeek: $listShowWeek
                         ) { log in
                             selectedLog = log
+                        } onJournalTap: { entry in
+                            selectedJournalEntry = entry
                         }
                     }
                 }
@@ -337,7 +368,22 @@ private struct ProgressModuleView: View {
             MonthYearPickerSheet(currentMonth: $currentMonth, onNavigate: applyDefaultSelection)
         }
         .sheet(isPresented: $showSearch) {
-            LogSearchView(logState: logState, selectedLog: $selectedLog)
+            LogSearchView(logState: logState, selectedLog: $selectedLog,
+                          selectedJournalEntry: $selectedJournalEntry)
+        }
+        .fullScreenCover(isPresented: $showJournalEditor) {
+            JournalEntryEditorSheet(
+                logState: logState,
+                existingEntry: selectedJournalEntry,
+                initialDate: journalEditorDate
+            )
+        }
+        .fullScreenCover(item: $selectedJournalEntry) { entry in
+            JournalEntryEditorSheet(
+                logState: logState,
+                existingEntry: entry,
+                initialDate: entry.date
+            )
         }
 
     }
@@ -418,7 +464,8 @@ private struct CalendarView: View {
                             isToday: calendar.isDateInToday(date),
                             isCurrentMonth: isCurrentMonth(date),
                             workoutCount: logState.logsForDate(date).count,
-                            logs: logState.logsForDate(date)
+                            logs: logState.logsForDate(date),
+                            journalEntries: logState.journalEntriesForDate(date)
                         ) {
                             selectedDate = date
                             onDaySelected?()
@@ -447,8 +494,11 @@ private struct DayCell: View {
     let isCurrentMonth: Bool
     let workoutCount: Int
     let logs: [WorkoutLog]
+    var journalEntries: [JournalEntry] = []
     let onTap: () -> Void
-    
+
+    private var hasJournalOnly: Bool { workoutCount == 0 && !journalEntries.isEmpty }
+
     private var backgroundColor: Color {
         if workoutCount > 0 {
             // Greener with more workouts
@@ -490,18 +540,25 @@ private struct DayCell: View {
                     .frame(maxWidth: .infinity, alignment: .center)
                     .padding(.top, 10)
                 
-                if !logs.isEmpty {
+                // Workout name labels
+                let allLabels: [(text: String, isJournal: Bool)] =
+                    logs.prefix(3).map { (text: String($0.workoutName.prefix(10)), isJournal: false) } +
+                    (logs.count < 3 ? journalEntries.prefix(3 - logs.count).map { (text: String($0.title.prefix(10)), isJournal: true) } : [])
+
+                if !allLabels.isEmpty {
                     VStack(spacing: 1) {
-                        ForEach(logs.prefix(3)) { log in
+                        ForEach(Array(allLabels.enumerated()), id: \.offset) { _, item in
                             ZStack(alignment: .leading) {
                                 ClippedTextLabel(
-                                    text: String(log.workoutName.prefix(10)),
+                                    text: item.text,
                                     fontSize: 9,
-                                    textColor: textColor.opacity(isCurrentMonth ? 0.8 : 0.5)
+                                    textColor: (item.isJournal
+                                        ? Color(red: 0.4, green: 0.35, blue: 0.75)
+                                        : textColor)
+                                        .opacity(isCurrentMonth ? 0.85 : 0.45)
                                 )
                                 .frame(maxWidth: .infinity, alignment: .leading)
 
-                                // Gradient fade on the right edge to simulate iPhone calendar effect
                                 LinearGradient(
                                     gradient: Gradient(stops: [
                                         .init(color: .clear, location: 0),
@@ -519,8 +576,15 @@ private struct DayCell: View {
                     }
                     .padding(.leading, 4)
                     .padding(.trailing, 4)
+                } else if hasJournalOnly {
+                    // Journal-only day: show a small purple dot
+                    Circle()
+                        .fill(Color(red: 0.4, green: 0.35, blue: 0.75).opacity(isCurrentMonth ? 0.75 : 0.35))
+                        .frame(width: 6, height: 6)
+                        .frame(maxWidth: .infinity, alignment: .center)
+                        .padding(.top, 2)
                 }
-                
+
                 Spacer()
             }
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -569,6 +633,7 @@ private struct WeekStripView: View {
                     let isSelected = calendar.isDate(day, inSameDayAs: selectedDate)
                     let isToday = calendar.isDateInToday(day)
                     let count = logState.logsForDate(day).count
+                    let journalCount = logState.journalEntriesForDate(day).count
                     let dayNum = calendar.component(.day, from: day)
 
                     Button(action: {
@@ -594,9 +659,13 @@ private struct WeekStripView: View {
                             }
                             .frame(width: 34, height: 34)
 
-                            // Workout dot indicator
+                            // Dot indicator: green for workouts, purple for journal-only, clear for nothing
                             Circle()
-                                .fill(count > 0 ? Color(red: 0.2, green: 0.75, blue: 0.35) : Color.clear)
+                                .fill(count > 0
+                                    ? Color(red: 0.2, green: 0.75, blue: 0.35)
+                                    : journalCount > 0
+                                        ? Color(red: 0.4, green: 0.35, blue: 0.75)
+                                        : Color.clear)
                                 .frame(width: 5, height: 5)
                         }
                     }
@@ -616,12 +685,26 @@ private struct WeekStripView: View {
 
 // MARK: - Timeline View
 
+/// An item in the timeline — either a workout log or a journal entry
+private enum TimelineItem {
+    case workout(WorkoutLog)
+    case journal(JournalEntry)
+
+    var date: Date {
+        switch self {
+        case .workout(let l): return l.completedAt
+        case .journal(let e): return e.date
+        }
+    }
+}
+
 private struct TimelineLogView: View {
     let logState: WorkoutLogState
     let month: Date
     let selectedDate: Date
     @Binding var showWeek: Bool
     let onTap: (WorkoutLog) -> Void
+    var onJournalTap: ((JournalEntry) -> Void)? = nil
 
     private let calendar = Calendar.current
 
@@ -630,34 +713,40 @@ private struct TimelineLogView: View {
         return (0..<7).compactMap { calendar.date(byAdding: .day, value: $0, to: interval.start) }
     }
 
-    private var groupedLogs: [(date: Date, logs: [WorkoutLog])] {
-        let filtered: [WorkoutLog]
+    private var groupedItems: [(date: Date, items: [TimelineItem])] {
+        let start: Date
+        let end: Date
         if showWeek {
             guard let first = weekDays.first, let last = weekDays.last else { return [] }
-            let start = calendar.startOfDay(for: first)
-            let end = calendar.date(byAdding: .day, value: 1, to: calendar.startOfDay(for: last)) ?? last
-            filtered = logState.sortedLogs.filter { $0.completedAt >= start && $0.completedAt < end }
+            start = calendar.startOfDay(for: first)
+            end = calendar.date(byAdding: .day, value: 1, to: calendar.startOfDay(for: last)) ?? last
         } else {
             let comps = calendar.dateComponents([.year, .month], from: month)
-            filtered = logState.sortedLogs.filter {
-                let c = calendar.dateComponents([.year, .month], from: $0.completedAt)
-                return c.year == comps.year && c.month == comps.month
-            }
+            let firstOfMonth = calendar.date(from: comps) ?? month
+            start = calendar.startOfDay(for: firstOfMonth)
+            end = calendar.date(byAdding: DateComponents(month: 1), to: firstOfMonth) ?? month
         }
-        var groups: [(date: Date, logs: [WorkoutLog])] = []
-        var currentDate: Date? = nil
-        var currentGroup: [WorkoutLog] = []
-        for log in filtered {
-            let day = calendar.startOfDay(for: log.completedAt)
-            if let cd = currentDate, calendar.isDate(day, inSameDayAs: cd) {
-                currentGroup.append(log)
+
+        let filteredLogs = logState.sortedLogs.filter { $0.completedAt >= start && $0.completedAt < end }
+        let filteredJournal = logState.sortedJournalEntries.filter { $0.date >= start && $0.date < end }
+        let allItems: [TimelineItem] = (filteredLogs.map { TimelineItem.workout($0) } +
+                                        filteredJournal.map { TimelineItem.journal($0) })
+            .sorted { $0.date > $1.date }
+
+        var groups: [(date: Date, items: [TimelineItem])] = []
+        var currentDay: Date? = nil
+        var currentGroup: [TimelineItem] = []
+        for item in allItems {
+            let day = calendar.startOfDay(for: item.date)
+            if let cd = currentDay, calendar.isDate(day, inSameDayAs: cd) {
+                currentGroup.append(item)
             } else {
-                if let cd = currentDate { groups.append((date: cd, logs: currentGroup)) }
-                currentDate = day
-                currentGroup = [log]
+                if let cd = currentDay { groups.append((date: cd, items: currentGroup)) }
+                currentDay = day
+                currentGroup = [item]
             }
         }
-        if let cd = currentDate { groups.append((date: cd, logs: currentGroup)) }
+        if let cd = currentDay { groups.append((date: cd, items: currentGroup)) }
         return groups
     }
 
@@ -672,12 +761,12 @@ private struct TimelineLogView: View {
             .padding(.horizontal, 16)
             .padding(.vertical, 8)
 
-            if groupedLogs.isEmpty {
+            if groupedItems.isEmpty {
                 VStack(spacing: 8) {
                     Image(systemName: "calendar.badge.clock")
                         .font(.system(size: 44))
                         .foregroundColor(.gray)
-                    Text("No workouts logged")
+                    Text("No entries")
                         .font(.subheadline)
                         .foregroundColor(.gray)
                     Text(showWeek ? "this week" : "this month")
@@ -687,7 +776,7 @@ private struct TimelineLogView: View {
                 .padding(.vertical, 40)
             } else {
                 VStack(alignment: .leading, spacing: 0) {
-                    ForEach(Array(groupedLogs.enumerated()), id: \.offset) { groupIdx, group in
+                    ForEach(Array(groupedItems.enumerated()), id: \.offset) { groupIdx, group in
                         HStack(alignment: .top, spacing: 12) {
                             // Timeline spine
                             VStack(spacing: 0) {
@@ -717,8 +806,13 @@ private struct TimelineLogView: View {
                                     .foregroundColor(.secondary)
                                     .padding(.top, 10)
 
-                                ForEach(group.logs) { log in
-                                    WorkoutLogCard(log: log) { onTap(log) }
+                                ForEach(Array(group.items.enumerated()), id: \.offset) { _, item in
+                                    switch item {
+                                    case .workout(let log):
+                                        WorkoutLogCard(log: log) { onTap(log) }
+                                    case .journal(let entry):
+                                        JournalEntryCard(entry: entry) { onJournalTap?(entry) }
+                                    }
                                 }
                             }
                             .padding(.trailing, 16)
@@ -749,7 +843,7 @@ private struct ActivityRibbonView: View {
     private let cellSpacing: CGFloat = 3
 
     // Nil entries = padding cells before the first real day
-    private var buckets: [(date: Date?, count: Int)] {
+    private var buckets: [(date: Date?, workoutCount: Int, journalOnly: Bool)] {
         let calendar = Calendar.current
         let today = calendar.startOfDay(for: Date())
 
@@ -759,11 +853,12 @@ private struct ActivityRibbonView: View {
         let anchor = lastOfMonth
 
         // Build 63 real days ending at anchor, oldest first
-        let realDays: [(date: Date?, count: Int)] = (0..<63).reversed().map { offset in
+        let realDays: [(date: Date?, workoutCount: Int, journalOnly: Bool)] = (0..<63).reversed().map { offset in
             let date = calendar.date(byAdding: .day, value: -offset, to: anchor)!
-            // Future dates have no logs — show as empty without querying
-            let count = date <= today ? logState.logsForDate(date).count : 0
-            return (date: date, count: count)
+            guard date <= today else { return (date: date, workoutCount: 0, journalOnly: false) }
+            let wCount = logState.logsForDate(date).count
+            let jCount = logState.journalEntriesForDate(date).count
+            return (date: date, workoutCount: wCount, journalOnly: jCount > 0)
         }
 
         // Find the weekday of the oldest day (1=Sun … 7=Sat) and pad the front
@@ -771,7 +866,8 @@ private struct ActivityRibbonView: View {
         let firstDate = realDays.first!.date!
         let weekday = calendar.component(.weekday, from: firstDate) // 1-based
         let paddingCount = weekday - 1  // number of empty cells before first real day
-        let padding: [(date: Date?, count: Int)] = Array(repeating: (date: nil, count: -1), count: paddingCount)
+        let padding: [(date: Date?, workoutCount: Int, journalOnly: Bool)] = Array(
+            repeating: (date: nil, workoutCount: -1, journalOnly: false), count: paddingCount)
         return padding + realDays
     }
 
@@ -793,9 +889,18 @@ private struct ActivityRibbonView: View {
                 ForEach(Array(rows.enumerated()), id: \.offset) { _, week in
                     HStack(spacing: cellSpacing) {
                         ForEach(Array(week.enumerated()), id: \.offset) { _, bucket in
-                            RoundedRectangle(cornerRadius: 2)
-                                .fill(bucket.date == nil ? Color.clear : cellColor(bucket.count))
-                                .frame(width: cellSize, height: cellSize)
+                            ZStack {
+                                RoundedRectangle(cornerRadius: 2)
+                                    .fill(bucket.date == nil ? Color.clear : cellColor(bucket.workoutCount))
+                                    .frame(width: cellSize, height: cellSize)
+                                // Purple dot overlay for journal-only days
+                                if bucket.journalOnly {
+                                    Circle()
+                                        .fill(Color(red: 0.4, green: 0.35, blue: 0.75).opacity(0.85))
+                                        .frame(width: cellSize * 0.45, height: cellSize * 0.45)
+                                }
+                            }
+                            .frame(width: cellSize, height: cellSize)
                         }
                         // Pad short final row to keep alignment
                         if week.count < 7 {
@@ -826,6 +931,178 @@ private extension Array {
     func chunked(into size: Int) -> [[Element]] {
         stride(from: 0, to: count, by: size).map {
             Array(self[$0 ..< Swift.min($0 + size, count)])
+        }
+    }
+}
+
+// MARK: - Journal Entry Card
+
+private struct JournalEntryCard: View {
+    let entry: JournalEntry
+    let onTap: () -> Void
+
+    private var timeString: String {
+        let f = DateFormatter()
+        f.timeStyle = .short
+        return f.string(from: entry.date)
+    }
+
+    var body: some View {
+        Button(action: {
+            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+            onTap()
+        }) {
+            VStack(alignment: .leading, spacing: 6) {
+                HStack {
+                    HStack(spacing: 6) {
+                        Image(systemName: "note.text")
+                            .font(.caption)
+                            .foregroundColor(Color(red: 0.4, green: 0.35, blue: 0.75))
+                        Text(entry.title.isEmpty ? "Untitled" : entry.title)
+                            .font(.subheadline)
+                            .fontWeight(.semibold)
+                            .foregroundColor(.black)
+                    }
+                    Spacer()
+                    Text(timeString)
+                        .font(.caption)
+                        .foregroundColor(.gray)
+                }
+                if !entry.body.isEmpty {
+                    Text(entry.body)
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                        .lineLimit(2)
+                }
+            }
+            .padding(12)
+            .background(Color(red: 0.95, green: 0.94, blue: 0.99))
+            .cornerRadius(8)
+        }
+        .buttonStyle(.plain)
+    }
+}
+
+// MARK: - Journal Entry Editor Sheet
+
+private struct JournalEntryEditorSheet: View {
+    let logState: WorkoutLogState
+    var existingEntry: JournalEntry?
+    var initialDate: Date
+
+    @Environment(\.dismiss) var dismiss
+
+    @State private var entryTitle: String = ""
+    @State private var entryBody: String = ""
+    @State private var entryDate: Date = Date()
+    @State private var showDeleteConfirm = false
+
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 0) {
+                    // Date picker row
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("Date & Time")
+                            .font(.caption)
+                            .fontWeight(.semibold)
+                            .foregroundColor(.secondary)
+                            .padding(.horizontal, 16)
+                        DatePicker("", selection: $entryDate, displayedComponents: [.date, .hourAndMinute])
+                            .labelsHidden()
+                            .padding(.horizontal, 16)
+                    }
+                    .padding(.top, 20)
+                    .padding(.bottom, 16)
+
+                    Divider().padding(.horizontal, 16)
+
+                    // Title field
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("Title")
+                            .font(.caption)
+                            .fontWeight(.semibold)
+                            .foregroundColor(.secondary)
+                        TextField("Add a title…", text: $entryTitle)
+                            .font(.title3)
+                            .fontWeight(.semibold)
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 16)
+
+                    Divider().padding(.horizontal, 16)
+
+                    // Body text editor
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("Notes")
+                            .font(.caption)
+                            .fontWeight(.semibold)
+                            .foregroundColor(.secondary)
+                        TextEditor(text: $entryBody)
+                            .font(.body)
+                            .frame(minHeight: 260)
+                            .scrollContentBackground(.hidden)
+                            .background(Color.clear)
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 16)
+
+                    // Delete button (edit mode only)
+                    if existingEntry != nil {
+                        Divider().padding(.horizontal, 16)
+                        Button(role: .destructive) {
+                            showDeleteConfirm = true
+                        } label: {
+                            Text("Delete Entry")
+                                .frame(maxWidth: .infinity, alignment: .center)
+                                .padding(.vertical, 14)
+                        }
+                        .padding(.horizontal, 16)
+                    }
+                }
+            }
+            .background(Color.white)
+            .navigationTitle(existingEntry == nil ? "New Entry" : "Edit Entry")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button("Cancel") { dismiss() }
+                }
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Save") {
+                        if var existing = existingEntry {
+                            existing.date = entryDate
+                            existing.title = entryTitle
+                            existing.body = entryBody
+                            logState.updateJournalEntry(existing)
+                        } else {
+                            logState.addJournalEntry(JournalEntry(date: entryDate, title: entryTitle, body: entryBody))
+                        }
+                        dismiss()
+                    }
+                    .fontWeight(.semibold)
+                    .disabled(entryTitle.isEmpty && entryBody.isEmpty)
+                }
+            }
+            .toolbarBackground(Color.white, for: .navigationBar)
+            .toolbarBackground(.visible, for: .navigationBar)
+            .confirmationDialog("Delete this journal entry?", isPresented: $showDeleteConfirm, titleVisibility: .visible) {
+                Button("Delete", role: .destructive) {
+                    if let entry = existingEntry {
+                        logState.deleteJournalEntry(id: entry.id)
+                    }
+                    dismiss()
+                }
+                Button("Cancel", role: .cancel) {}
+            }
+            .onAppear {
+                entryDate = initialDate
+                if let entry = existingEntry {
+                    entryTitle = entry.title
+                    entryBody = entry.body
+                    entryDate = entry.date
+                }
+            }
         }
     }
 }
@@ -1434,13 +1711,13 @@ private struct WorkoutLogDetailView: View {
                                     get: { log.exercises[exIdx].sets[index].timedSeconds / 60 },
                                     set: { log.exercises[exIdx].sets[index].timedSeconds = $0 * 60 + log.exercises[exIdx].sets[index].timedSeconds % 60 }
                                 ), format: .number)
-                                    .keyboardType(.numberPad).font(.caption).frame(width: 28).textFieldStyle(.roundedBorder)
+                                    .keyboardType(.numberPad).font(.caption).frame(width: 30).textFieldStyle(.roundedBorder)
                                 Text("min").font(.caption).foregroundColor(.secondary)
                                 TextField("0", value: Binding(
                                     get: { log.exercises[exIdx].sets[index].timedSeconds % 60 },
                                     set: { log.exercises[exIdx].sets[index].timedSeconds = log.exercises[exIdx].sets[index].timedSeconds / 60 * 60 + min($0, 59) }
                                 ), format: .number)
-                                    .keyboardType(.numberPad).font(.caption).frame(width: 28).textFieldStyle(.roundedBorder)
+                                    .keyboardType(.numberPad).font(.caption).frame(width: 30).textFieldStyle(.roundedBorder)
                                 Text("sec").font(.caption).foregroundColor(.secondary)
                             }
                             Button(action: {
@@ -1461,7 +1738,7 @@ private struct WorkoutLogDetailView: View {
                             Spacer()
                             if hasTimedSets {
                                 Text(run.set.timedSeconds > 0 ? formatLogTime(run.set.timedSeconds) : "—")
-                                    .font(.caption).foregroundColor(.secondary).frame(width: 44, alignment: .trailing)
+                                    .font(.caption).foregroundColor(.secondary).frame(width: 64, alignment: .trailing)
                             }
                             Text("\(run.set.reps) reps").font(.caption)
                             Text("×").font(.caption).foregroundColor(.gray)
@@ -1710,24 +1987,39 @@ private struct MonthYearPickerSheet: View {
     }
 }
 
+private enum SearchResult {
+    case workout(WorkoutLog)
+    case journal(JournalEntry)
+    var date: Date {
+        switch self { case .workout(let l): return l.completedAt; case .journal(let e): return e.date }
+    }
+}
+
 private struct LogSearchView: View {
     let logState: WorkoutLogState
     @Binding var selectedLog: WorkoutLog?
+    @Binding var selectedJournalEntry: JournalEntry?
     @Environment(\.dismiss) var dismiss
 
     @State private var query = ""
     @FocusState private var isFocused: Bool
 
-    private var results: [WorkoutLog] {
+    private var results: [SearchResult] {
         let trimmed = query.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return [] }
         let lower = trimmed.lowercased()
-        return logState.sortedLogs.filter { log in
-            if log.workoutName.lowercased().contains(lower) { return true }
-            if log.notes.lowercased().contains(lower) { return true }
-            if log.exercises.contains(where: { $0.exerciseName.lowercased().contains(lower) }) { return true }
-            return false
+        let workouts: [SearchResult] = logState.sortedLogs.compactMap { log in
+            if log.workoutName.lowercased().contains(lower) { return .workout(log) }
+            if log.notes.lowercased().contains(lower) { return .workout(log) }
+            if log.exercises.contains(where: { $0.exerciseName.lowercased().contains(lower) }) { return .workout(log) }
+            return nil
         }
+        let journal: [SearchResult] = logState.sortedJournalEntries.compactMap { entry in
+            if entry.title.lowercased().contains(lower) { return .journal(entry) }
+            if entry.body.lowercased().contains(lower) { return .journal(entry) }
+            return nil
+        }
+        return (workouts + journal).sorted { $0.date > $1.date }
     }
 
     private let dateFormatter: DateFormatter = {
@@ -1769,7 +2061,7 @@ private struct LogSearchView: View {
                         Image(systemName: "magnifyingglass")
                             .font(.system(size: 44))
                             .foregroundColor(.gray)
-                        Text("Search by workout name,\nexercise, or notes")
+                        Text("Search by workout name,\nexercise, notes, or journal")
                             .font(.subheadline)
                             .foregroundColor(.gray)
                             .multilineTextAlignment(.center)
@@ -1788,39 +2080,58 @@ private struct LogSearchView: View {
                     .padding(.top, 60)
                     Spacer()
                 } else {
-                    List(results) { log in
+                    List(Array(results.enumerated()), id: \.offset) { _, result in
                         Button(action: {
                             dismiss()
-                            // Brief delay so the search sheet finishes dismissing before the detail sheet opens
                             DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
-                                selectedLog = log
-                            }
-                        }) {
-                            VStack(alignment: .leading, spacing: 4) {
-                                Text(log.workoutName)
-                                    .font(.subheadline)
-                                    .fontWeight(.semibold)
-                                    .foregroundColor(.primary)
-                                Text(dateFormatter.string(from: log.completedAt))
-                                    .font(.caption)
-                                    .foregroundColor(.secondary)
-                                if !log.exercises.isEmpty {
-                                    Text(log.exercises.map { $0.exerciseName }.joined(separator: ", "))
-                                        .font(.caption2)
-                                        .foregroundColor(.secondary)
-                                        .lineLimit(1)
+                                switch result {
+                                case .workout(let log): selectedLog = log
+                                case .journal(let entry): selectedJournalEntry = entry
                                 }
                             }
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .padding(.vertical, 4)
-                            .contentShape(Rectangle())
+                        }) {
+                            switch result {
+                            case .workout(let log):
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Text(log.workoutName)
+                                        .font(.subheadline).fontWeight(.semibold).foregroundColor(.primary)
+                                    Text(dateFormatter.string(from: log.completedAt))
+                                        .font(.caption).foregroundColor(.secondary)
+                                    if !log.exercises.isEmpty {
+                                        Text(log.exercises.map { $0.exerciseName }.joined(separator: ", "))
+                                            .font(.caption2).foregroundColor(.secondary).lineLimit(1)
+                                    }
+                                }
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .padding(.vertical, 4)
+                                .contentShape(Rectangle())
+                            case .journal(let entry):
+                                HStack(spacing: 8) {
+                                    Image(systemName: "note.text")
+                                        .foregroundColor(Color(red: 0.4, green: 0.35, blue: 0.75))
+                                        .font(.subheadline)
+                                    VStack(alignment: .leading, spacing: 2) {
+                                        Text(entry.title.isEmpty ? "Untitled" : entry.title)
+                                            .font(.subheadline).fontWeight(.semibold).foregroundColor(.primary)
+                                        Text(dateFormatter.string(from: entry.date))
+                                            .font(.caption).foregroundColor(.secondary)
+                                        if !entry.body.isEmpty {
+                                            Text(entry.body)
+                                                .font(.caption2).foregroundColor(.secondary).lineLimit(1)
+                                        }
+                                    }
+                                }
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .padding(.vertical, 4)
+                                .contentShape(Rectangle())
+                            }
                         }
                         .buttonStyle(.plain)
                     }
                     .listStyle(.plain)
                 }
             }
-            .navigationTitle("Search Log")
+            .navigationTitle("Search")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {

@@ -252,7 +252,7 @@ private struct ExercisesModuleView: View {
                     Text("This will permanently delete the exercise.")
                 }
             }
-            .navigationDestination(item: $statsExercise) { exercise in
+            .fullScreenCover(item: $statsExercise) { exercise in
                 ExerciseStatsView(exercise: exercise)
                     .environment(logState)
             }
