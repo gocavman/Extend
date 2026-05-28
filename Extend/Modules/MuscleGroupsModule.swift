@@ -231,6 +231,11 @@ public struct MuscleGroupThumbnail: View {
         group.customSecondaryImageFilename != nil || (group.secondaryImageAssetName ?? "").isEmpty == false
     }
 
+    private var isFullBody: Bool {
+        (group.primaryImageAssetName ?? "").contains("FullBody")
+            || (group.secondaryImageAssetName ?? "").contains("FullBody")
+    }
+
     public var body: some View {
         if imagesHidden {
             Image(systemName: "figure.strengthtraining.traditional")
@@ -241,16 +246,16 @@ public struct MuscleGroupThumbnail: View {
                 .clipShape(RoundedRectangle(cornerRadius: size * 0.15))
         } else if hasPrimary && hasSecondary {
             HStack(spacing: 2) {
-                singleImage(filename: group.customPrimaryImageFilename, assetName: group.primaryImageAssetName)
+                glowWrapped(singleImage(filename: group.customPrimaryImageFilename, assetName: group.primaryImageAssetName), assetName: group.primaryImageAssetName)
                     .frame(width: (size - 2) / 2, height: size)
                     .clipShape(RoundedRectangle(cornerRadius: size * 0.1))
-                singleImage(filename: group.customSecondaryImageFilename, assetName: group.secondaryImageAssetName)
+                glowWrapped(singleImage(filename: group.customSecondaryImageFilename, assetName: group.secondaryImageAssetName), assetName: group.secondaryImageAssetName)
                     .frame(width: (size - 2) / 2, height: size)
                     .clipShape(RoundedRectangle(cornerRadius: size * 0.1))
             }
             .frame(width: size, height: size)
         } else if hasPrimary {
-            singleImage(filename: group.customPrimaryImageFilename, assetName: group.primaryImageAssetName)
+            glowWrapped(singleImage(filename: group.customPrimaryImageFilename, assetName: group.primaryImageAssetName), assetName: group.primaryImageAssetName)
                 .frame(width: size, height: size)
                 .clipShape(RoundedRectangle(cornerRadius: size * 0.15))
         } else {
@@ -273,6 +278,20 @@ public struct MuscleGroupThumbnail: View {
             Image(name).resizable().scaledToFit()
         } else {
             Color.clear
+        }
+    }
+
+    @ViewBuilder
+    private func glowWrapped(_ content: some View, assetName: String?) -> some View {
+        let shouldGlow = (assetName ?? "").contains("FullBody")
+        ZStack {
+            if shouldGlow {
+                Color.red
+                    .mask(content)
+                    .blur(radius: 6)
+                    .opacity(0.7)
+            }
+            content
         }
     }
 }
@@ -346,6 +365,8 @@ private struct MuscleGroupEditor: View {
                     let hasPrimary = (group.primaryImageAssetName ?? "").isEmpty == false
                     let hasSecondary = (group.secondaryImageAssetName ?? "").isEmpty == false
                     if (hasPrimary || hasSecondary) && state.selectedBodyOption != .none {
+                        let isFullBody = (group.primaryImageAssetName ?? "").contains("FullBody")
+                            || (group.secondaryImageAssetName ?? "").contains("FullBody")
                         Section("Images") {
                             GeometryReader { geo in
                                 let count = (hasPrimary ? 1 : 0) + (hasSecondary ? 1 : 0)
@@ -354,9 +375,17 @@ private struct MuscleGroupEditor: View {
                                 HStack(spacing: spacing) {
                                     if hasPrimary {
                                         VStack(spacing: 4) {
-                                            Image(group.primaryImageAssetName!)
-                                                .resizable().scaledToFit()
-                                                .frame(width: imgWidth)
+                                            ZStack {
+                                                if isFullBody {
+                                                    Color.red
+                                                        .mask(Image(group.primaryImageAssetName!).resizable().scaledToFit())
+                                                        .blur(radius: 10)
+                                                        .opacity(0.7)
+                                                }
+                                                Image(group.primaryImageAssetName!)
+                                                    .resizable().scaledToFit()
+                                            }
+                                            .frame(width: imgWidth)
                                             Text("Primary")
                                                 .font(.caption2)
                                                 .foregroundColor(.secondary)
@@ -364,9 +393,17 @@ private struct MuscleGroupEditor: View {
                                     }
                                     if hasSecondary {
                                         VStack(spacing: 4) {
-                                            Image(group.secondaryImageAssetName!)
-                                                .resizable().scaledToFit()
-                                                .frame(width: imgWidth)
+                                            ZStack {
+                                                if isFullBody {
+                                                    Color.red
+                                                        .mask(Image(group.secondaryImageAssetName!).resizable().scaledToFit())
+                                                        .blur(radius: 10)
+                                                        .opacity(0.7)
+                                                }
+                                                Image(group.secondaryImageAssetName!)
+                                                    .resizable().scaledToFit()
+                                            }
+                                            .frame(width: imgWidth)
                                             Text("Secondary")
                                                 .font(.caption2)
                                                 .foregroundColor(.secondary)

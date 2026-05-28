@@ -448,6 +448,10 @@ private struct SettingsModuleView: View {
         
         print("🔄 Game progress reset: Workout Buddy & Workout Match back to level 1")
 
+        // Reset Progress module calendar view state
+        UserDefaults.standard.removeObject(forKey: "logViewMode")
+        UserDefaults.standard.removeObject(forKey: "logShowRibbon")
+
         // Route back to Dashboard after reset
         moduleState.selectModule(ModuleIDs.dashboard)
         if presentedAsSheet { dismiss() }

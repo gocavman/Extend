@@ -167,7 +167,7 @@ public final class ExercisesState {
         return [
             // A
             exercise(name: "Ab Wheel",             primaryMuscleGroupIDs: [absID],                           secondaryMuscleGroupIDs: [deltsID],                     equipmentIDs: [abWheelID],                                                                  hkType: .traditionalStrengthTraining),
-            exercise(name: "Assault Bike",          primaryMuscleGroupIDs: [quadsID, hamstringsID],                                                                   equipmentIDs: [assaultBikeID],                                                              hkType: .cycling),
+            exercise(name: "Assault Bike",          primaryMuscleGroupIDs: [heartID, fullBodyID],                                                                   equipmentIDs: [assaultBikeID],                                                              hkType: .cycling),
 
             // A
             exercise(name: "Arnold Press",          primaryMuscleGroupIDs: [deltsID],                         secondaryMuscleGroupIDs: [tricepsID, trapsID],           equipmentIDs: [dumbbellID],                                                                 hkType: .traditionalStrengthTraining),

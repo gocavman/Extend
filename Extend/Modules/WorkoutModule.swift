@@ -2732,6 +2732,8 @@ public struct StartWorkoutView: View {
         }
         let exFrontMasksSecondary = exSecondaryAssets.filter { $0.contains("Front") }
         let exBackMasksSecondary  = exSecondaryAssets.filter { $0.contains("Back") && !$0.contains("FullBody") }
+        // Full Body glow: shown when a FullBody asset is among the primary or secondary muscles
+        let exIsFullBody = (exPrimaryAssets + exSecondaryAssets).contains { $0.contains("FullBody") }
 
         // Custom-muscle groups (user-created, no asset masks): collected for standalone display
         let allGroups = exPrimaryGroups + exSecondaryGroups
@@ -2756,6 +2758,12 @@ public struct StartWorkoutView: View {
                     HStack(spacing: 12) {
                         VStack(spacing: 4) {
                             ZStack {
+                                if exIsFullBody {
+                                    Color.red
+                                        .mask(Image(exFrontBase).resizable().scaledToFit())
+                                        .blur(radius: 10)
+                                        .opacity(0.7)
+                                }
                                 Image(exFrontBase).resizable().scaledToFit()
                                 ForEach(exFrontMasksPrimary, id: \.self) { mask in
                                     Image(mask).resizable().scaledToFit().blendMode(.screen)
@@ -2769,6 +2777,12 @@ public struct StartWorkoutView: View {
                         }
                         VStack(spacing: 4) {
                             ZStack {
+                                if exIsFullBody {
+                                    Color.red
+                                        .mask(Image(exBackBase).resizable().scaledToFit())
+                                        .blur(radius: 10)
+                                        .opacity(0.7)
+                                }
                                 Image(exBackBase).resizable().scaledToFit()
                                 ForEach(exBackMasksPrimary, id: \.self) { mask in
                                     Image(mask).resizable().scaledToFit().blendMode(.screen)
@@ -2839,6 +2853,12 @@ public struct StartWorkoutView: View {
             HStack(spacing: 8) {
                 if !expandedInfo && showMuscleImages {
                     ZStack {
+                        if exIsFullBody {
+                            Color.red
+                                .mask(Image(exFrontBase).resizable().scaledToFit())
+                                .blur(radius: 6)
+                                .opacity(0.7)
+                        }
                         Image(exFrontBase).resizable().scaledToFit()
                         ForEach(exFrontMasksPrimary, id: \.self) { mask in
                             Image(mask).resizable().scaledToFit().blendMode(.screen)
@@ -2878,6 +2898,12 @@ public struct StartWorkoutView: View {
 
                 if !expandedInfo && showMuscleImages {
                     ZStack {
+                        if exIsFullBody {
+                            Color.red
+                                .mask(Image(exBackBase).resizable().scaledToFit())
+                                .blur(radius: 6)
+                                .opacity(0.7)
+                        }
                         Image(exBackBase).resizable().scaledToFit()
                         ForEach(exBackMasksPrimary, id: \.self) { mask in
                             Image(mask).resizable().scaledToFit().blendMode(.screen)

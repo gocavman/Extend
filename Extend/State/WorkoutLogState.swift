@@ -625,6 +625,8 @@ public final class WorkoutLogState {
     public func resetLogs() {
         logs = []
         saveLogs()
+        journalEntries = []
+        saveJournalEntries()
     }
 
     // MARK: - HealthKit Import
