@@ -13,134 +13,54 @@ struct ContentView: View {
     @Environment(ModuleRegistry.self) var registry
     @Environment(ModuleState.self) var state
     @Environment(DashboardState.self) var dashboardState
-    
+
     var body: some View {
         let hasTopModules = !state.topNavBarModules.isEmpty
-        let hasBottomModules = !state.bottomNavBarModules.isEmpty
         let selectedModule = state.selectedModuleID.flatMap { registry.moduleWithID($0) }
         let shouldHideNavBars = selectedModule?.hidesNavBars ?? false
-        
-        if hasTopModules && hasBottomModules {
-            // MARK: - Both NavBars Layout
-            return AnyView(
-                VStack(spacing: 0) {
-                    if !shouldHideNavBars {
-                        navBarBackground
-                            .ignoresSafeArea(edges: .top)
-                            .frame(height: 0)
-                        
-                        ModuleNavBar(position: .top)
-                    }
-                
-                    ZStack {
-                        if let selectedModuleID = state.selectedModuleID,
-                           let selectedModule = registry.moduleWithID(selectedModuleID) {
-                            selectedModule.moduleView
-                                .transition(.opacity)
-                        } else {
-                            EmptyStateView()
-                                .transition(.opacity)
-                        }
-                    }
-                    .ignoresSafeArea()
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    
-                    if !shouldHideNavBars {
-                        ModuleNavBar(position: .bottom)
-                        
-                        navBarBackground
-                            .ignoresSafeArea(edges: .bottom)
-                            .frame(height: 0)
-                    }
+
+        // Single stable VStack — no branch switching, so SwiftUI never tears down
+        // the view tree when top/bottom navbar membership changes.
+        VStack(spacing: 0) {
+            if hasTopModules && !shouldHideNavBars {
+                navBarBackground
+                    .ignoresSafeArea(edges: .top)
+                    .frame(height: 0)
+
+                ModuleNavBar(position: .top)
+            }
+
+            ZStack {
+                if let selectedModuleID = state.selectedModuleID,
+                   let selectedModule = registry.moduleWithID(selectedModuleID) {
+                    selectedModule.moduleView
+                        .transition(.opacity)
+                } else {
+                    EmptyStateView()
+                        .transition(.opacity)
                 }
-                .onAppear {
-                    registerSampleModules()
-                    if let firstModule = registry.visibleModules.first {
-                        state.selectModule(firstModule.id)
-                    }
-                }
-            )
-        } else if hasTopModules {
-            // MARK: - Top NavBar Only Layout
-            return AnyView(
-                VStack(spacing: 0) {
-                    if !shouldHideNavBars {
-                        navBarBackground
-                            .ignoresSafeArea(edges: .top)
-                            .frame(height: 0)
-                        
-                        ModuleNavBar(position: .top)
-                    }
-                
-                    ZStack {
-                        if let selectedModuleID = state.selectedModuleID,
-                           let selectedModule = registry.moduleWithID(selectedModuleID) {
-                            selectedModule.moduleView
-                                .transition(.opacity)
-                        } else {
-                            EmptyStateView()
-                                .transition(.opacity)
-                        }
-                    }
-                    .ignoresSafeArea()
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    
-                    if !shouldHideNavBars {
-                        navBarBackground
-                            .ignoresSafeArea(edges: .bottom)
-                            .frame(height: 0)
-                    }
-                }
-                .onAppear {
-                    registerSampleModules()
-                    if let firstModule = registry.visibleModules.first {
-                        state.selectModule(firstModule.id)
-                    }
-                }
-            )
-        } else {
-            // MARK: - Bottom NavBar Layout (Default)
-            return AnyView(
-                VStack(spacing: 0) {
-                    if !shouldHideNavBars {
-                        navBarBackground
-                            .ignoresSafeArea(edges: .top)
-                            .frame(height: 0)
-                    }
-                    
-                    ZStack {
-                        if let selectedModuleID = state.selectedModuleID,
-                           let selectedModule = registry.moduleWithID(selectedModuleID) {
-                            selectedModule.moduleView
-                                .transition(.opacity)
-                        } else {
-                            EmptyStateView()
-                                .transition(.opacity)
-                        }
-                    }
-                    .ignoresSafeArea()
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    
-                    if !shouldHideNavBars {
-                        ModuleNavBar(position: .bottom)
-                        
-                        navBarBackground
-                            .ignoresSafeArea(edges: .bottom)
-                            .frame(height: 0)
-                    }
-                }
-                .onAppear {
-                    registerSampleModules()
-                    if let firstModule = registry.visibleModules.first {
-                        state.selectModule(firstModule.id)
-                    }
-                }
-            )
+            }
+            .ignoresSafeArea()
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+
+            if !shouldHideNavBars {
+                ModuleNavBar(position: .bottom)
+
+                navBarBackground
+                    .ignoresSafeArea(edges: .bottom)
+                    .frame(height: 0)
+            }
+        }
+        .task {
+            registerSampleModules()
+            // Only auto-select on genuine first launch (no module selected yet)
+            if state.selectedModuleID == nil,
+               let firstModule = registry.visibleModules.first {
+                state.selectModule(firstModule.id)
+            }
         }
     }
-    
-    // ...existing code...
-    
+
     private func registerSampleModules() {
         let dashboardModule = DashboardModule()
         let workoutModule = WorkoutModule()
@@ -175,9 +95,6 @@ struct ContentView: View {
         // Only set default navbar modules on first launch (when both are empty)
         // This preserves user customizations
         if state.topNavBarModules.isEmpty && state.bottomNavBarModules.isEmpty {
-            // Set default navbar modules using ModuleIDs (UUID-based identification)
-            // Bottom (5 max): Dashboard, Workout, Generate, Quick, Settings
-            // Top: Log, Timer, Exercises, Muscles, Equipment
             state.setBottomNavBarModules([
                 ModuleIDs.dashboard,
                 ModuleIDs.workouts,
@@ -185,7 +102,7 @@ struct ContentView: View {
                 ModuleIDs.quickWorkout,
                 ModuleIDs.settings
             ])
-            
+
             state.setTopNavBarModules([
                 ModuleIDs.progress,
                 ModuleIDs.timer,
@@ -219,10 +136,10 @@ private struct EmptyStateView: View {
             Image(systemName: "square.grid.2x2")
                 .font(.system(size: 48))
                 .foregroundColor(.gray)
-            
+
             Text("No Module Selected")
                 .font(.headline)
-            
+
             Text("Select a module from the navbar to get started")
                 .font(.subheadline)
                 .foregroundColor(.gray)
