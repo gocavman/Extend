@@ -24,7 +24,8 @@ final class DashboardHeaderState {
     static let shared = DashboardHeaderState()
 
     private let titleKey = "dashboardHeaderTitle"
-    private let imageKey = "dashboardHeaderImageData"
+    private let imageFilenameKey = "dashboardHeaderImageFilename"
+    private let legacyImageKey = "dashboardHeaderImageData"     // legacy — migration only
     private let imageStyleKey = "dashboardHeaderImageStyle"
     private let backgroundColorKey = "dashboardHeaderBackgroundColor"
     private let textColorKey = "dashboardHeaderTextColor"
@@ -32,7 +33,16 @@ final class DashboardHeaderState {
     private let backgroundGradientSecondaryKey = "dashboardHeaderBackgroundGradientSecondary"
     private let isVisibleKey = "dashboardHeaderIsVisible"
 
+    private static let imageFilename = "dashboard_header_image.jpg"
+
+    private static var imageStorageURL: URL {
+        let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
+        try? FileManager.default.createDirectory(at: appSupport, withIntermediateDirectories: true)
+        return appSupport.appendingPathComponent(imageFilename)
+    }
+
     var title: String
+    /// In-memory image loaded from disk. Nil when no image is set.
     var imageData: Data?
     var imageStyle: HeaderImageStyle
     private var backgroundComponents: RGBAColor
@@ -68,7 +78,19 @@ final class DashboardHeaderState {
     private init() {
         let storedTitle = defaults.string(forKey: titleKey)
         title = storedTitle?.isEmpty == false ? storedTitle! : "Dashboard"
-        imageData = defaults.data(forKey: imageKey)
+
+        // Load image from disk
+        if defaults.string(forKey: imageFilenameKey) != nil {
+            imageData = try? Data(contentsOf: DashboardHeaderState.imageStorageURL)
+        } else if let legacyData = defaults.data(forKey: legacyImageKey) {
+            // Migrate legacy blob to disk
+            try? legacyData.write(to: DashboardHeaderState.imageStorageURL, options: .atomic)
+            defaults.set(DashboardHeaderState.imageFilename, forKey: imageFilenameKey)
+            defaults.removeObject(forKey: legacyImageKey)
+            imageData = legacyData
+        } else {
+            imageData = nil
+        }
 
         if let styleRaw = defaults.string(forKey: imageStyleKey),
            let style = HeaderImageStyle(rawValue: styleRaw) {
@@ -95,9 +117,11 @@ final class DashboardHeaderState {
     func updateImageData(_ data: Data?) {
         imageData = data
         if let data {
-            defaults.set(data, forKey: imageKey)
+            try? data.write(to: DashboardHeaderState.imageStorageURL, options: .atomic)
+            defaults.set(DashboardHeaderState.imageFilename, forKey: imageFilenameKey)
         } else {
-            defaults.removeObject(forKey: imageKey)
+            try? FileManager.default.removeItem(at: DashboardHeaderState.imageStorageURL)
+            defaults.removeObject(forKey: imageFilenameKey)
         }
     }
 
@@ -142,7 +166,8 @@ final class DashboardHeaderState {
         isVisible = true
 
         defaults.set(title, forKey: titleKey)
-        defaults.removeObject(forKey: imageKey)
+        try? FileManager.default.removeItem(at: DashboardHeaderState.imageStorageURL)
+        defaults.removeObject(forKey: imageFilenameKey)
         defaults.set(imageStyle.rawValue, forKey: imageStyleKey)
         backgroundComponents.save(to: backgroundColorKey)
         textComponents.save(to: textColorKey)
