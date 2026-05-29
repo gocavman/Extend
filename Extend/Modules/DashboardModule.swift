@@ -1323,11 +1323,11 @@ private struct StatCardTileView: View {
 
                 // Data / Content
                 if statType == .workoutFrequency {
-                    VStack(spacing: 4) {
+                    VStack(spacing: 6) {
+                        WeekFrequencyView(days: frequencyDays)
                         Text(frequencyRangeLabel)
                             .font(.caption2)
                             .foregroundColor(.gray)
-                        WeekFrequencyView(days: frequencyDays)
                     }
                 } else if statType == .oneRepMax {
                     if oneRMEntries.isEmpty {
@@ -1602,20 +1602,27 @@ private struct WeekFrequencyView: View {
     let days: [WeekdayFrequency]
 
     var body: some View {
-        HStack(spacing: 8) {
+        HStack(spacing: 4) {
             ForEach(days) { day in
-                VStack(spacing: 6) {
+                VStack(spacing: 4) {
                     Text(day.label)
-                        .font(.caption)
+                        .font(.system(size: 9, weight: .medium))
                         .foregroundColor(.gray)
 
-                    Circle()
-                        .stroke(Color.black, lineWidth: 1.5)
-                        .background(
-                            Circle().fill(day.hasWorkout ? Color.black : Color.clear)
-                        )
-                        .frame(width: 14, height: 14)
+                    if day.hasWorkout {
+                        Image(systemName: "checkmark.circle.fill")
+                            .foregroundColor(.green)
+                            .font(.system(size: 14))
+                    } else {
+                        Circle()
+                            .stroke(Color.gray.opacity(0.55), lineWidth: 1.5)
+                            .frame(width: 14, height: 14)
+                    }
                 }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 5)
+                .background(Color.gray.opacity(0.12))
+                .cornerRadius(6)
             }
         }
         .frame(maxWidth: .infinity)
@@ -1654,8 +1661,10 @@ private struct VolumeTrendLine: View {
                 let p1 = pts[i]
                 let p2 = pts[min(i + 1, pts.count - 1)]
                 let p3 = pts[min(i + 2, pts.count - 1)]
-                let cp1 = CGPoint(x: p1.x + (p2.x - p0.x) / 6, y: p1.y + (p2.y - p0.y) / 6)
-                let cp2 = CGPoint(x: p2.x - (p3.x - p1.x) / 6, y: p2.y - (p3.y - p1.y) / 6)
+                let cp1 = CGPoint(x: p1.x + (p2.x - p0.x) / 6,
+                                  y: min(baseline, p1.y + (p2.y - p0.y) / 6))
+                let cp2 = CGPoint(x: p2.x - (p3.x - p1.x) / 6,
+                                  y: min(baseline, p2.y - (p3.y - p1.y) / 6))
                 path.addCurve(to: p2, control1: cp1, control2: cp2)
             }
             ctx.stroke(path, with: .color(Color.blue.opacity(0.15)),
@@ -1714,7 +1723,7 @@ private struct VolumeBarChartView: View {
                                 }
                                 .frame(height: barHeight)
                                 Text(week.label)
-                                    .font(.system(size: 8))
+                                    .font(.system(size: 10))
                                     .foregroundColor(.gray)
                                     .lineLimit(1)
                                     .minimumScaleFactor(0.5)

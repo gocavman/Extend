@@ -2287,6 +2287,7 @@ public struct StartWorkoutView: View {
     @State private var complexTimerDone: Bool = false
     /// Tracks the highest round index reached per complex UUID. Used to trim unfinished sets at log time.
     @State private var complexRoundsReached: [UUID: Int] = [:]
+    @State private var complexAdvanceRound: Bool = false
     @AppStorage("weightUnit") private var weightUnit: String = "lbs"
     @State private var synthesizer = AVSpeechSynthesizer()
 
@@ -2444,8 +2445,13 @@ public struct StartWorkoutView: View {
                 let atStart = currentItemIndex == 0 && loopRound == 0 && complexRound == 0
                 let multipleItems = totalItems > 1
                 HStack {
-                    // Left arrow: hidden on warmup/cooldown, when only 1 item, or at the very start
-                    if multipleItems && !atStart && !showingWarmup && !showingCooldown {
+                    // Left arrow: goes back a round within a complex, or to the previous item
+                    if isInComplex && isAtComplexEntry && complexRound > 0 {
+                        Button(action: { previousComplexRound() }) {
+                            Image(systemName: "chevron.left")
+                                .foregroundColor(.black)
+                        }
+                    } else if multipleItems && !atStart && !showingWarmup && !showingCooldown {
                         Button(action: { previousItem() }) {
                             Image(systemName: "chevron.left")
                                 .foregroundColor(.black)
@@ -2477,8 +2483,11 @@ public struct StartWorkoutView: View {
                     } else if showingCooldown || (isAtLastItem && workout.cooldownSeconds == 0) {
                         Image(systemName: "chevron.right").opacity(0)
                     } else if isInComplex && isAtComplexEntry {
-                        // Complex screen handles its own "+Round" / "Done" button; hide nav arrow
-                        Image(systemName: "chevron.right").opacity(0)
+                        // Forward arrow triggers the same logic as the "Next Round" button
+                        Button(action: { complexAdvanceRound = true }) {
+                            Image(systemName: "chevron.right")
+                                .foregroundColor(.black)
+                        }
                     } else if totalItems > 0 {
                         Button(action: { nextItem() }) {
                             Image(systemName: "chevron.right")
@@ -2558,6 +2567,7 @@ public struct StartWorkoutView: View {
                         isTimerRunning: $complexTimerRunning,
                         timerDone: $complexTimerDone,
                         exerciseData: $exerciseData,
+                        advanceRound: $complexAdvanceRound,
                         onRoundComplete: {
                             complexTimerDone = false
                             complexTimerRunning = false
@@ -2647,9 +2657,8 @@ public struct StartWorkoutView: View {
                     if showingWarmup {
                         showingWarmup = false
                         warmupCooldownRunning = false
-                        startExerciseTimerAfterWarmup()
                     }
-                    triggerCooldownOrComplete()
+                    completeWorkout()
                 }
             } message: {
                 Text("The workout isn't done yet. Finish and log it anyway?")
@@ -3428,6 +3437,17 @@ public struct StartWorkoutView: View {
             showingCooldown = true
         } else {
             completeWorkout()
+        }
+    }
+
+    private func previousComplexRound() {
+        guard complexRound > 0 else { return }
+        saveCurrentData()
+        complexTimerRunning = false
+        complexTimerDone = false
+        complexRound -= 1
+        if let cid = currentComplexID, let cx = workout.complexes[cid.uuidString] {
+            complexSecondsRemaining = cx.intervalSeconds
         }
     }
 
@@ -4254,6 +4274,7 @@ private struct ComplexScreen: View {
     @Binding var isTimerRunning: Bool
     @Binding var timerDone: Bool
     @Binding var exerciseData: [UUID: (sets: [WorkoutSet], notes: String, timerSeconds: Int, usedEquipmentIDs: Set<UUID>, phaseIndex: Int, phaseElapsed: Int, phaseTimerDone: Bool)]
+    @Binding var advanceRound: Bool
     let onRoundComplete: () -> Void
     let exercisesState: ExercisesState
 
@@ -4479,6 +4500,20 @@ private struct ComplexScreen: View {
                 .padding(.horizontal, 16)
             }
             .padding(.vertical, 16)
+        }
+        .onChange(of: advanceRound) { _, newValue in
+            guard newValue, !isCountingDown else {
+                advanceRound = false
+                return
+            }
+            advanceRound = false
+            let isLastRound = currentRound >= totalRounds - 1
+            if !isLastRound && complex?.roundCountdown == true {
+                isTimerRunning = false
+                startInterRoundCountdown { onRoundComplete() }
+            } else {
+                onRoundComplete()
+            }
         }
         .onAppear {
             secondsRemaining = totalSeconds

@@ -240,7 +240,7 @@ private struct GenerateModuleView: View {
             }
             .listStyle(.plain)
             .environment(\.editMode, .constant(generateState.generatedExercises.isEmpty ? .inactive : .active))
-            .sheet(item: $startingWorkout) { workout in
+            .fullScreenCover(item: $startingWorkout) { workout in
                 StartWorkoutView(workout: workout)
                     .environment(ExercisesState.shared)
                     .environment(MuscleGroupsState.shared)
