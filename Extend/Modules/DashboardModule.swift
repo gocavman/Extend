@@ -214,7 +214,7 @@ private struct DashboardModuleView: View {
                     personalRecordLabel: statCard == .personalRecord ? logState.personalRecord?.exerciseName : nil,
                     oneRMEntries: rmEntries,
                     personalRecordEntries: prEntries,
-                    volumeWeeks: statCard == .volumeThisWeek ? logState.volumeByWeek(weeks: 5, workoutName: tile.volumeWorkoutName, exerciseID: tile.volumeExerciseID) : [],
+                    volumeWeeks: statCard == .volumeThisWeek ? logState.volumeByWeek(weeks: 7, workoutName: tile.volumeWorkoutName, exerciseID: tile.volumeExerciseID) : [],
                     dayOfWeekCounts: statCard == .favoriteDay ? logState.workoutCountByDayOfWeek : []
                 )
                 .frame(width: tileWidth, height: tileHeight)
@@ -1733,7 +1733,7 @@ private struct WeekFrequencyView: View {
     }
 }
 
-// MARK: - Volume Bar Chart (weekly, past 5 weeks)
+// MARK: - Volume Bar Chart (weekly, past 6 weeks)
 
 private struct VolumeTrendLine: View {
     let fractions: [Double]
