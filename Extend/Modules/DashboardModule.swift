@@ -214,7 +214,7 @@ private struct DashboardModuleView: View {
                     personalRecordLabel: statCard == .personalRecord ? logState.personalRecord?.exerciseName : nil,
                     oneRMEntries: rmEntries,
                     personalRecordEntries: prEntries,
-                    volumeWeeks: statCard == .volumeThisWeek ? logState.volumeByWeek(weeks: 5) : [],
+                    volumeWeeks: statCard == .volumeThisWeek ? logState.volumeByWeek(weeks: 5, workoutName: tile.volumeWorkoutName, exerciseID: tile.volumeExerciseID) : [],
                     dayOfWeekCounts: statCard == .favoriteDay ? logState.workoutCountByDayOfWeek : []
                 )
                 .frame(width: tileWidth, height: tileHeight)
@@ -793,7 +793,8 @@ private struct AddTileSheet: View {
 
     private var statCardOptions: [StatCardType] {
         let used = Set(dashboardState.tiles.compactMap { $0.statCardType })
-        return StatCardType.allCases.filter { !used.contains($0) }
+        // volumeThisWeek can be added multiple times (each instance can be filtered differently)
+        return StatCardType.allCases.filter { !used.contains($0) || $0 == .volumeThisWeek }
     }
 
     private var hasSelection: Bool {
@@ -1065,6 +1066,7 @@ private struct EditTileSheet: View {
     @Environment(\.dismiss) var dismiss
     @Environment(ExercisesState.self) var exercisesState
     @Environment(WorkoutLogState.self) var logState
+    @Environment(WorkoutsState.self) var workoutsState
 
     let tile: DashboardTile
     
@@ -1075,6 +1077,10 @@ private struct EditTileSheet: View {
     @State private var oneRMExerciseIDs: [UUID]? = nil
     /// For PR tiles: nil = auto top-5 by weight; non-nil = user-chosen set
     @State private var personalRecordExerciseIDs: [UUID]? = nil
+    /// For Volume tiles: nil = all workouts; non-nil = specific workout name
+    @State private var volumeWorkoutName: String? = nil
+    /// For Volume tiles: nil = all exercises; non-nil = specific exercise ID
+    @State private var volumeExerciseID: UUID? = nil
 
     let onSave: (DashboardTile) -> Void
 
@@ -1223,7 +1229,101 @@ private struct EditTileSheet: View {
                             .font(.caption)
                     }
                 }
-                
+
+                // Volume This Week: workout and exercise filter
+                if tile.statCardType == .volumeThisWeek {
+                    Section {
+                        // Workout filter — pick from saved workouts (or clear for all)
+                        let workoutNames = workoutsState.workouts.map { $0.name }.sorted()
+                        if workoutNames.isEmpty {
+                            Text("No saved workouts yet.")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        } else {
+                            // "All Workouts" row
+                            Button(action: { volumeWorkoutName = nil; volumeExerciseID = nil }) {
+                                HStack {
+                                    Text("All Workouts")
+                                    Spacer()
+                                    if volumeWorkoutName == nil {
+                                        Image(systemName: "checkmark").foregroundColor(.black)
+                                    }
+                                }
+                                .contentShape(Rectangle())
+                            }
+                            .buttonStyle(.plain)
+                            ForEach(workoutNames, id: \.self) { name in
+                                Button(action: {
+                                    volumeWorkoutName = (volumeWorkoutName == name) ? nil : name
+                                    volumeExerciseID = nil
+                                }) {
+                                    HStack {
+                                        Text(name)
+                                        Spacer()
+                                        if volumeWorkoutName == name {
+                                            Image(systemName: "checkmark").foregroundColor(.black)
+                                        }
+                                    }
+                                    .contentShape(Rectangle())
+                                }
+                                .buttonStyle(.plain)
+                            }
+                        }
+                    } header: {
+                        Text("Filter by Workout")
+                    } footer: {
+                        Text(volumeWorkoutName == nil ? "Showing volume across all workouts." : "Showing volume for \"\(volumeWorkoutName!)\" only.")
+                            .font(.caption)
+                    }
+
+                    Section {
+                        // Exercise filter — pick from exercises that have been logged
+                        let loggedExercises: [Exercise] = {
+                            let loggedIDs = Set(logState.logs.flatMap { $0.exercises }.map { $0.exerciseID })
+                            return exercisesState.exercises
+                                .filter { loggedIDs.contains($0.id) }
+                                .sorted { $0.name < $1.name }
+                        }()
+                        if loggedExercises.isEmpty {
+                            Text("No exercises logged yet.")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        } else {
+                            Button(action: { volumeExerciseID = nil }) {
+                                HStack {
+                                    Text("All Exercises")
+                                    Spacer()
+                                    if volumeExerciseID == nil {
+                                        Image(systemName: "checkmark").foregroundColor(.black)
+                                    }
+                                }
+                                .contentShape(Rectangle())
+                            }
+                            .buttonStyle(.plain)
+                            ForEach(loggedExercises) { exercise in
+                                Button(action: {
+                                    volumeExerciseID = (volumeExerciseID == exercise.id) ? nil : exercise.id
+                                }) {
+                                    HStack {
+                                        Text(exercise.name)
+                                        Spacer()
+                                        if volumeExerciseID == exercise.id {
+                                            Image(systemName: "checkmark").foregroundColor(.black)
+                                        }
+                                    }
+                                    .contentShape(Rectangle())
+                                }
+                                .buttonStyle(.plain)
+                            }
+                        }
+                    } header: {
+                        Text("Filter by Exercise")
+                    } footer: {
+                        Text(volumeExerciseID == nil ? "Showing volume across all exercises." : "Showing volume for selected exercise only.")
+                            .font(.caption)
+                    }
+                }
+
                 Section("Icon") {
                     LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible()), GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
                         ForEach(icons, id: \.self) { icon in
@@ -1252,6 +1352,8 @@ private struct EditTileSheet: View {
                 selectedSize = tile.size
                 oneRMExerciseIDs = tile.oneRMExerciseIDs
                 personalRecordExerciseIDs = tile.personalRecordExerciseIDs
+                volumeWorkoutName = tile.volumeWorkoutName
+                volumeExerciseID = tile.volumeExerciseID
             }
             #if os(iOS)
             .toolbar {
@@ -1263,6 +1365,8 @@ private struct EditTileSheet: View {
                         updatedTile.size = selectedSize
                         updatedTile.oneRMExerciseIDs = oneRMExerciseIDs
                         updatedTile.personalRecordExerciseIDs = personalRecordExerciseIDs
+                        updatedTile.volumeWorkoutName = volumeWorkoutName
+                        updatedTile.volumeExerciseID = volumeExerciseID
                         onSave(updatedTile)
                         dismiss()
                     }
@@ -1712,7 +1816,7 @@ private struct VolumeBarChartView: View {
                                             .fill(isCurrentWeek ? Color.black : Color.black.opacity(0.25))
                                             .frame(height: barHeight)
                                         let volLabel = week.volume >= 1000
-                                            ? String(format: "%.0fk", week.volume / 1000)
+                                            ? String(format: "%.1fk", week.volume / 1000)
                                             : String(format: "%.0f", week.volume)
                                         Text(volLabel)
                                             .font(.system(size: 11, weight: .bold))

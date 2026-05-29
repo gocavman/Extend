@@ -215,6 +215,11 @@ public final class WorkoutLogState {
 
     /// Volume per calendar week for the past N weeks (oldest first). Each element is (weekLabel, volume).
     public func volumeByWeek(weeks: Int) -> [(label: String, volume: Double)] {
+        volumeByWeek(weeks: weeks, workoutName: nil, exerciseID: nil)
+    }
+
+    /// Volume per calendar week filtered by optional workout name and/or exercise ID.
+    public func volumeByWeek(weeks: Int, workoutName: String?, exerciseID: UUID?) -> [(label: String, volume: Double)] {
         let calendar = Calendar.current
         let now = Date()
         guard let currentWeekStart = calendar.dateInterval(of: .weekOfYear, for: now)?.start else { return [] }
@@ -224,8 +229,13 @@ public final class WorkoutLogState {
             let weekStart = calendar.date(byAdding: .weekOfYear, value: -offset, to: currentWeekStart)!
             let weekEnd = offset == 0 ? now : calendar.date(byAdding: .second, value: -1, to:
                 calendar.date(byAdding: .weekOfYear, value: 1, to: weekStart)!)!
-            let volume = logsInRange(from: weekStart, to: weekEnd)
+            var weekLogs = logsInRange(from: weekStart, to: weekEnd)
+            if let name = workoutName {
+                weekLogs = weekLogs.filter { $0.workoutName == name }
+            }
+            let volume = weekLogs
                 .flatMap { $0.exercises }
+                .filter { exerciseID == nil || $0.exerciseID == exerciseID }
                 .flatMap { $0.sets }
                 .reduce(0.0) { $0 + Double($1.reps) * $1.weight }
             return (label: formatter.string(from: weekStart), volume: volume)

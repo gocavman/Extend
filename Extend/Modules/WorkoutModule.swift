@@ -3923,13 +3923,20 @@ public struct StartWorkoutView: View {
                 guard let exercise = exercisesState.exercises.first(where: { $0.id == we.exerciseID }),
                       let savedData = exerciseData[we.id] else { continue }
 
-                // For complex exercises, trim sets to only the rounds actually completed
+                // For complex exercises, trim sets to only the rounds actually completed.
+                // If finishing mid-round on the active complex, include the current in-progress
+                // round since ComplexExerciseRow has already written its data to exerciseData.
                 let setsToLog: [WorkoutSet]
-                if let cid = we.complexID, let roundsReached = complexRoundsReached[cid], roundsReached > 0 {
-                    setsToLog = Array(savedData.sets.prefix(roundsReached))
-                } else if let cid = we.complexID, complexRoundsReached[cid] != nil {
-                    // Complex was entered but no rounds completed — skip entirely
-                    continue
+                if let cid = we.complexID {
+                    let completedRounds = complexRoundsReached[cid] ?? 0
+                    // If this is the complex currently on screen and we have an in-progress round, count it
+                    let activeBonus = (isInComplex && currentComplexID == cid && complexRound >= completedRounds) ? 1 : 0
+                    let roundsToInclude = completedRounds + activeBonus
+                    if roundsToInclude == 0 {
+                        // Complex was entered but no data at all — skip
+                        continue
+                    }
+                    setsToLog = Array(savedData.sets.prefix(roundsToInclude))
                 } else {
                     setsToLog = savedData.sets
                 }
