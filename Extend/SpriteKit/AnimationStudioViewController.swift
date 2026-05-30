@@ -7,7 +7,7 @@ import SwiftUI
 // MARK: - AnimationStudioViewController
 
 /// Full-screen Animation Studio — pick saved frames, play them as a walking animation, export GIF.
-class AnimationStudioViewController: UIViewController, UITableViewDelegate, UITableViewDataSource {
+class AnimationStudioViewController: UIViewController, UITableViewDelegate, UITableViewDataSource, UISearchBarDelegate {
 
     // MARK: - UI
     private let previewView = SKView()
@@ -32,6 +32,11 @@ class AnimationStudioViewController: UIViewController, UITableViewDelegate, UITa
 
     private var allFrames: [SavedEditFrame] = []
     private var groups: [FrameGroup] = []
+    private var filteredGroups: [FrameGroup] = []
+    private var searchText: String = ""
+
+    // Persistent search bar — kept alive across reloads so it never loses focus
+    private let persistentSearchBar = UISearchBar()
 
     // MARK: - Animation state
     private var sequenceItems: [(frameIndex: Int, label: String)] = []
@@ -41,8 +46,9 @@ class AnimationStudioViewController: UIViewController, UITableViewDelegate, UITa
 
     // MARK: - Section layout
     // Section 0        — ANIMATION SEQUENCE (1 auto-height row)
-    // Sections 1…G     — one section per FrameGroup
-    private var numGroups: Int { groups.count }
+    // Section 1        — SEARCH BAR (1 row)
+    // Sections 2…G+1   — one section per filtered FrameGroup
+    private var numGroups: Int { filteredGroups.count }
 
     // MARK: - Lifecycle
 
@@ -53,6 +59,10 @@ class AnimationStudioViewController: UIViewController, UITableViewDelegate, UITa
         allFrames = SavedFramesManager.shared.getAllFrames()
             .sorted { $0.frameNumber < $1.frameNumber }
         buildGroups()
+
+        persistentSearchBar.placeholder = "Search frames..."
+        persistentSearchBar.searchBarStyle = .minimal
+        persistentSearchBar.delegate = self
 
         setupHeader()
         setupControlBar()
@@ -87,6 +97,16 @@ class AnimationStudioViewController: UIViewController, UITableViewDelegate, UITa
             }
         }
         groups = result
+        applySearch()
+    }
+
+    private func applySearch() {
+        if searchText.isEmpty {
+            filteredGroups = groups
+        } else {
+            let q = searchText.lowercased()
+            filteredGroups = groups.filter { $0.name.lowercased().contains(q) }
+        }
     }
 
     private func setupHeader() {
@@ -101,6 +121,17 @@ class AnimationStudioViewController: UIViewController, UITableViewDelegate, UITa
         titleLabel.font = UIFont.systemFont(ofSize: 13, weight: .bold)
         titleLabel.translatesAutoresizingMaskIntoConstraints = false
         headerView.addSubview(titleLabel)
+
+        let gifButton = UIButton(type: .system)
+        gifButton.setTitle("GIF", for: .normal)
+        gifButton.titleLabel?.font = UIFont.systemFont(ofSize: 12, weight: .bold)
+        gifButton.tintColor = .white
+        gifButton.backgroundColor = UIColor.systemBlue.withAlphaComponent(0.35)
+        gifButton.layer.cornerRadius = 6
+        gifButton.contentEdgeInsets = UIEdgeInsets(top: 3, left: 8, bottom: 3, right: 8)
+        gifButton.translatesAutoresizingMaskIntoConstraints = false
+        gifButton.addTarget(self, action: #selector(exportGIFTapped), for: .touchUpInside)
+        headerView.addSubview(gifButton)
 
         let closeButton = UIButton(type: .system)
         closeButton.setTitle("✕", for: .normal)
@@ -117,14 +148,16 @@ class AnimationStudioViewController: UIViewController, UITableViewDelegate, UITa
             headerView.heightAnchor.constraint(equalToConstant: 36),
             titleLabel.leadingAnchor.constraint(equalTo: headerView.leadingAnchor, constant: 16),
             titleLabel.centerYAnchor.constraint(equalTo: headerView.centerYAnchor),
-            closeButton.trailingAnchor.constraint(equalTo: headerView.trailingAnchor, constant: -16),
-            closeButton.centerYAnchor.constraint(equalTo: headerView.centerYAnchor)
+            closeButton.trailingAnchor.constraint(equalTo: headerView.trailingAnchor, constant: -12),
+            closeButton.centerYAnchor.constraint(equalTo: headerView.centerYAnchor),
+            gifButton.trailingAnchor.constraint(equalTo: closeButton.leadingAnchor, constant: -10),
+            gifButton.centerYAnchor.constraint(equalTo: headerView.centerYAnchor)
         ])
         self.headerTopView = headerView
     }
 
     /// Compact control bar sitting between the preview and the tableView.
-    /// Row 1: ▶ Play/Stop  |  Export GIF  |  🔍- Zoom Out  |  🔍+ Zoom In
+    /// Row 1: ▶ Play/Stop  |  🔍- Zoom Out  |  🔍+ Zoom In
     /// Row 2: Speed: [slider] 0.25s   Loop [switch]
     private func setupControlBar() {
         guard let header = headerTopView else { return }
@@ -145,9 +178,6 @@ class AnimationStudioViewController: UIViewController, UITableViewDelegate, UITa
         playBtn.addTarget(self, action: #selector(playStopTapped), for: .touchUpInside)
         playStopButton = playBtn
 
-        let exportBtn = makeBarButton(title: "GIF", color: .systemBlue)
-        exportBtn.addTarget(self, action: #selector(exportGIFTapped), for: .touchUpInside)
-
         let zoomOutBtn = makeBarButton(title: "−", color: .systemOrange)
         zoomOutBtn.addTarget(self, action: #selector(zoomOutTapped), for: .touchUpInside)
         zoomOutBtn.titleLabel?.font = UIFont.systemFont(ofSize: 18, weight: .bold)
@@ -156,7 +186,7 @@ class AnimationStudioViewController: UIViewController, UITableViewDelegate, UITa
         zoomInBtn.addTarget(self, action: #selector(zoomInTapped), for: .touchUpInside)
         zoomInBtn.titleLabel?.font = UIFont.systemFont(ofSize: 18, weight: .bold)
 
-        let btnStack = UIStackView(arrangedSubviews: [playBtn, exportBtn, zoomOutBtn, zoomInBtn])
+        let btnStack = UIStackView(arrangedSubviews: [playBtn, zoomOutBtn, zoomInBtn])
         btnStack.axis = .horizontal
         btnStack.spacing = 8
         btnStack.distribution = .fillEqually
@@ -260,6 +290,7 @@ class AnimationStudioViewController: UIViewController, UITableViewDelegate, UITa
         // Auto-sizing rows for the sequence cell
         tableView.estimatedRowHeight = 60
         tableView.rowHeight = UITableView.automaticDimension
+
         view.addSubview(tableView)
 
         guard let bar = controlBarView else { return }
@@ -298,21 +329,23 @@ class AnimationStudioViewController: UIViewController, UITableViewDelegate, UITa
     // MARK: - UITableViewDataSource
 
     func numberOfSections(in tableView: UITableView) -> Int {
-        return 1 + numGroups   // sequence + frame groups
+        return 2 + numGroups   // sequence + search + frame groups
     }
 
     func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
-        if section == 0 { return 1 }
-        let g = section - 1
-        guard g >= 0, g < groups.count else { return 0 }
-        return groups[g].indices.count
+        if section == 0 { return 1 }   // sequence
+        if section == 1 { return 1 }   // search bar
+        let g = section - 2
+        guard g >= 0, g < filteredGroups.count else { return 0 }
+        return filteredGroups[g].indices.count
     }
 
     func tableView(_ tableView: UITableView, titleForHeaderInSection section: Int) -> String? {
         if section == 0 { return "ANIMATION SEQUENCE" }
-        let g = section - 1
-        guard g >= 0, g < groups.count else { return nil }
-        return groups[g].name.uppercased()
+        if section == 1 { return nil }  // search bar — no header
+        let g = section - 2
+        guard g >= 0, g < filteredGroups.count else { return nil }
+        return filteredGroups[g].name.uppercased()
     }
 
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
@@ -323,31 +356,36 @@ class AnimationStudioViewController: UIViewController, UITableViewDelegate, UITa
 
         if indexPath.section == 0 {
             buildSequenceCell(cell)
+        } else if indexPath.section == 1 {
+            buildSearchCell(cell)
         } else {
-            let g = indexPath.section - 1
-            guard g >= 0, g < groups.count else { return cell }
-            let frameIndex = groups[g].indices[indexPath.row]
+            let g = indexPath.section - 2
+            guard g >= 0, g < filteredGroups.count else { return cell }
+            let frameIndex = filteredGroups[g].indices[indexPath.row]
             buildFramePickerCell(cell, frameIndex: frameIndex)
         }
         return cell
     }
 
     func tableView(_ tableView: UITableView, heightForRowAt indexPath: IndexPath) -> CGFloat {
-        // Sequence row is auto-sizing; frame rows are fixed
-        return indexPath.section == 0 ? UITableView.automaticDimension : 46
+        if indexPath.section == 0 { return UITableView.automaticDimension }
+        if indexPath.section == 1 { return 44 }
+        return 34
     }
 
     func tableView(_ tableView: UITableView, estimatedHeightForRowAt indexPath: IndexPath) -> CGFloat {
-        return indexPath.section == 0 ? 60 : 46
+        if indexPath.section == 0 { return 60 }
+        if indexPath.section == 1 { return 44 }
+        return 34
     }
 
     // MARK: - Tap to add frame to sequence
 
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
-        guard indexPath.section > 0 else { return }
-        let g = indexPath.section - 1
-        guard g >= 0, g < groups.count else { return }
-        let frameIndex = groups[g].indices[indexPath.row]
+        guard indexPath.section > 1 else { return }
+        let g = indexPath.section - 2
+        guard g >= 0, g < filteredGroups.count else { return }
+        let frameIndex = filteredGroups[g].indices[indexPath.row]
         let frame = allFrames[frameIndex]
         let label = frame.name.isEmpty
             ? "Frame \(frame.frameNumber)"
@@ -369,12 +407,12 @@ class AnimationStudioViewController: UIViewController, UITableViewDelegate, UITa
 
         let label = UILabel()
         label.text = "Frame \(frame.frameNumber)"
-        label.font = UIFont.systemFont(ofSize: 13, weight: .semibold)
+        label.font = UIFont.systemFont(ofSize: 11, weight: .medium)
         label.translatesAutoresizingMaskIntoConstraints = false
 
         let badge = UILabel()
-        badge.text = count > 0 ? "×\(count)  +" : "+"
-        badge.font = UIFont.monospacedSystemFont(ofSize: 13, weight: count > 0 ? .bold : .regular)
+        badge.text = count > 0 ? "×\(count) +" : "+"
+        badge.font = UIFont.monospacedSystemFont(ofSize: 11, weight: count > 0 ? .bold : .regular)
         badge.textColor = count > 0 ? .systemGreen : .tertiaryLabel
         badge.translatesAutoresizingMaskIntoConstraints = false
         cell.selectionStyle = .default
@@ -382,11 +420,25 @@ class AnimationStudioViewController: UIViewController, UITableViewDelegate, UITa
         cell.contentView.addSubview(label)
         cell.contentView.addSubview(badge)
         NSLayoutConstraint.activate([
-            label.leadingAnchor.constraint(equalTo: cell.contentView.leadingAnchor, constant: 16),
+            label.leadingAnchor.constraint(equalTo: cell.contentView.leadingAnchor, constant: 14),
             label.centerYAnchor.constraint(equalTo: cell.contentView.centerYAnchor),
             label.trailingAnchor.constraint(lessThanOrEqualTo: badge.leadingAnchor, constant: -4),
-            badge.trailingAnchor.constraint(equalTo: cell.contentView.trailingAnchor, constant: -16),
+            badge.trailingAnchor.constraint(equalTo: cell.contentView.trailingAnchor, constant: -14),
             badge.centerYAnchor.constraint(equalTo: cell.contentView.centerYAnchor)
+        ])
+    }
+
+    private func buildSearchCell(_ cell: UITableViewCell) {
+        // Use the persistent search bar so focus is never lost on reload
+        let searchBar = persistentSearchBar
+        searchBar.removeFromSuperview()
+        searchBar.translatesAutoresizingMaskIntoConstraints = false
+        cell.contentView.addSubview(searchBar)
+        NSLayoutConstraint.activate([
+            searchBar.leadingAnchor.constraint(equalTo: cell.contentView.leadingAnchor),
+            searchBar.trailingAnchor.constraint(equalTo: cell.contentView.trailingAnchor),
+            searchBar.topAnchor.constraint(equalTo: cell.contentView.topAnchor),
+            searchBar.bottomAnchor.constraint(equalTo: cell.contentView.bottomAnchor)
         ])
     }
 
@@ -427,8 +479,9 @@ class AnimationStudioViewController: UIViewController, UITableViewDelegate, UITa
         cell.contentView.addSubview(label)
         cell.contentView.addSubview(btnStack)
         NSLayoutConstraint.activate([
-            btnStack.topAnchor.constraint(equalTo: cell.contentView.topAnchor, constant: 8),
+            // Buttons pinned to trailing edge, centered vertically with the first line of the label
             btnStack.trailingAnchor.constraint(equalTo: cell.contentView.trailingAnchor, constant: -8),
+            btnStack.centerYAnchor.constraint(equalTo: cell.contentView.topAnchor, constant: 8 + 10), // ~first line center
 
             label.leadingAnchor.constraint(equalTo: cell.contentView.leadingAnchor, constant: 16),
             label.topAnchor.constraint(equalTo: cell.contentView.topAnchor, constant: 8),
@@ -442,6 +495,32 @@ class AnimationStudioViewController: UIViewController, UITableViewDelegate, UITa
     @objc private func closeTapped() {
         stopPlayback()
         dismiss(animated: true)
+    }
+
+    // MARK: - UISearchBarDelegate
+
+    func searchBar(_ searchBar: UISearchBar, textDidChange searchText: String) {
+        self.searchText = searchText
+        applySearch()
+        // Reload only the frame group sections (section 2+) to preserve search bar focus
+        let oldCount = tableView.numberOfSections
+        let newCount = 2 + filteredGroups.count
+        tableView.performBatchUpdates({
+            if newCount > oldCount {
+                tableView.insertSections(IndexSet(integersIn: oldCount..<newCount), with: .none)
+            } else if newCount < oldCount {
+                tableView.deleteSections(IndexSet(integersIn: newCount..<oldCount), with: .none)
+            }
+            // Reload any sections that exist in both old and new
+            let reloadCount = min(oldCount, newCount)
+            if reloadCount > 2 {
+                tableView.reloadSections(IndexSet(integersIn: 2..<reloadCount), with: .none)
+            }
+        }, completion: nil)
+    }
+
+    func searchBarSearchButtonClicked(_ searchBar: UISearchBar) {
+        searchBar.resignFirstResponder()
     }
 
     @objc private func backspaceTapped() {
@@ -635,12 +714,22 @@ class AnimationStageScene: SKScene {
     private var idleFrame: SavedEditFrame?
     private var idleFigure: StickFigure2D?
 
-    // Base Y for the figure (center of scene); frames may offset from this
+    // Base center of the scene; frames may offset from this
     private var baseFigureY: CGFloat { size.height / 2 }
-    // Per-frame Y offset (from SavedEditFrame.positionY)
+    // Per-frame offsets (from SavedEditFrame.positionX/Y), scaled to preview pixels
+    private var currentFrameOffsetX: CGFloat = 0
     private var currentFrameOffsetY: CGFloat = 0
 
     private var currentFigureY: CGFloat { baseFigureY + currentFrameOffsetY }
+
+    /// Scale factor for X: the editor and preview share the same width, so X is 1:1.
+    private var positionScaleFactorX: CGFloat { 1.0 }
+    /// Scale factor for Y: the editor scene is square (W×W), the preview is W×(W*0.33).
+    /// Scale Y offsets so they appear proportional to the preview's smaller height.
+    private var positionScaleFactorY: CGFloat {
+        guard size.width > 0 else { return 1.0 }
+        return size.height / size.width
+    }
 
     override func didMove(to view: SKView) {
         backgroundColor = UIColor(red: 0.85, green: 0.92, blue: 0.85, alpha: 1.0)
@@ -669,8 +758,9 @@ class AnimationStageScene: SKScene {
         idleFigure = figure
         idleFrame = nil
         figureNode?.removeFromParent()
-        figureX = size.width / 2
-        currentFrameOffsetY = figure.figureOffsetY
+        currentFrameOffsetX = CGFloat(figure.figureOffsetX) * positionScaleFactorX
+        currentFrameOffsetY = CGFloat(figure.figureOffsetY) * positionScaleFactorY
+        figureX = size.width / 2 + currentFrameOffsetX
         let node = buildFigureNode(figure)
         node.position = CGPoint(x: figureX, y: currentFigureY)
         node.setScale(zoomScale)
@@ -683,8 +773,9 @@ class AnimationStageScene: SKScene {
         idleFrame = frame
         idleFigure = nil
         figureNode?.removeFromParent()
-        figureX = size.width / 2
-        currentFrameOffsetY = CGFloat(frame.positionY)
+        currentFrameOffsetX = CGFloat(frame.positionX) * positionScaleFactorX
+        currentFrameOffsetY = CGFloat(frame.positionY) * positionScaleFactorY
+        figureX = size.width / 2 + currentFrameOffsetX
         let node = buildFrameNode(frame)
         node.position = CGPoint(x: figureX, y: currentFigureY)
         node.setScale(zoomScale)
@@ -790,14 +881,15 @@ class AnimationStageScene: SKScene {
     private func restoreIdleFrame() {
         figureNode?.removeFromParent()
         if let frame = idleFrame {
-            currentFrameOffsetY = CGFloat(frame.positionY)
+            // Keep figureX where movement stopped; only update Y from frame offset
+            currentFrameOffsetY = CGFloat(frame.positionY) * positionScaleFactorY
             let node = buildFrameNode(frame)
             node.position = CGPoint(x: figureX, y: currentFigureY)
             node.setScale(zoomScale)
             addChild(node)
             figureNode = node
         } else if let figure = idleFigure {
-            currentFrameOffsetY = figure.figureOffsetY
+            currentFrameOffsetY = CGFloat(figure.figureOffsetY) * positionScaleFactorY
             let node = buildFigureNode(figure)
             node.position = CGPoint(x: figureX, y: currentFigureY)
             node.setScale(zoomScale)
@@ -806,14 +898,15 @@ class AnimationStageScene: SKScene {
         }
     }
 
-    // MARK: - Update loop (position only while moving)
+    // MARK: - Update loop (position + wrap-around while moving)
 
     override func update(_ currentTime: TimeInterval) {
         guard moveDirection != 0 else { return }
         let dt: CGFloat = 1.0 / 60.0
         figureX += moveSpeed * moveDirection * dt
-        let margin: CGFloat = 40
-        figureX = max(margin, min(size.width - margin, figureX))
+        // Wrap around: exit left → enter right, exit right → enter left
+        if figureX < -40 { figureX = size.width + 40 }
+        else if figureX > size.width + 40 { figureX = -40 }
         figureNode?.position = CGPoint(x: figureX, y: currentFigureY)
     }
 
@@ -822,7 +915,9 @@ class AnimationStageScene: SKScene {
     private func showNextFrame() {
         guard isAnimating, !frames.isEmpty else { return }
         let frame = frames[frameIndex]
-        currentFrameOffsetY = CGFloat(frame.positionY)
+        currentFrameOffsetX = CGFloat(frame.positionX) * positionScaleFactorX
+        currentFrameOffsetY = CGFloat(frame.positionY) * positionScaleFactorY
+        figureX = size.width / 2 + currentFrameOffsetX
         figureNode?.removeFromParent()
         let node = buildFrameNode(frame)
         node.position = CGPoint(x: figureX, y: currentFigureY)
@@ -845,38 +940,45 @@ class AnimationStageScene: SKScene {
     private func buildFrameNode(_ frame: SavedEditFrame) -> SKNode {
         let container = SKNode()
         let figure = frame.toStickFigure2D()
-        let tempScene = GameScene(size: size)
         let renderScale = min(size.width, size.height) / 520.0
+        // The editor renders the figure at scale 1.2; objects are in editor-pixel space.
+        // Use scaleFactor to convert editor pixels → preview pixels.
+        let scaleFactor = renderScale / 1.2
+        let tempScene = GameScene(size: size)
         let figNode = tempScene.renderStickFigure(figure, at: .zero, scale: renderScale)
         container.addChild(figNode)
 
         for obj in frame.objects {
+            let pos = objectPosition(for: obj, scaleFactor: scaleFactor)
             if obj.assetName.hasPrefix("BOX_") {
-                let parts = obj.assetName.dropFirst(4).components(separatedBy: "_")
-                let hexColor = parts.first ?? "000000"
+                // Format: BOX_#RRGGBB_width_height
+                let stripped = String(obj.assetName.dropFirst(4))  // "#000000_66_50"
+                let parts = stripped.components(separatedBy: "_")   // ["#000000","66","50"]
+                let hexColor = parts.first ?? "#000000"
                 let w = CGFloat(parts.dropFirst().first.flatMap { Double($0) } ?? 40)
                 let h = CGFloat(parts.dropFirst(2).first.flatMap { Double($0) } ?? 40)
-                let box = SKShapeNode(rectOf: CGSize(width: w * obj.scaleX, height: h * obj.scaleY))
-                box.fillColor = UIColor(hex: hexColor) ?? .gray
-                box.strokeColor = .clear
-                box.position = scenePosition(for: obj)
+                let box = SKShapeNode(rectOf: CGSize(width: w * obj.scaleX * scaleFactor, height: h * obj.scaleY * scaleFactor))
+                box.fillColor = UIColor(hex: hexColor) ?? .darkGray
+                box.strokeColor = .black
+                box.lineWidth = 1
+                box.position = pos
                 box.zRotation = obj.rotation
                 container.addChild(box)
             } else if obj.assetName.hasPrefix("EMOJI_") {
                 let emoji = String(obj.assetName.dropFirst(6))
                 let label = SKLabelNode(text: emoji)
-                label.fontSize = 40 * obj.scaleX
+                label.fontSize = 40 * obj.scaleX * scaleFactor
                 label.verticalAlignmentMode = .center
-                label.position = scenePosition(for: obj)
+                label.position = pos
                 label.zRotation = obj.rotation
                 container.addChild(label)
             } else {
                 let sprite = SKSpriteNode(imageNamed: obj.assetName)
                 sprite.size = CGSize(
-                    width: (obj.baseWidth ?? 40) * obj.scaleX,
-                    height: (obj.baseHeight ?? 40) * obj.scaleY
+                    width: (obj.baseWidth ?? 40) * obj.scaleX * scaleFactor,
+                    height: (obj.baseHeight ?? 40) * obj.scaleY * scaleFactor
                 )
-                sprite.position = scenePosition(for: obj)
+                sprite.position = pos
                 sprite.zRotation = obj.rotation
                 container.addChild(sprite)
             }
@@ -886,14 +988,20 @@ class AnimationStageScene: SKScene {
     }
 
     private func buildFigureNode(_ figure: StickFigure2D) -> SKNode {
-        let tempScene = GameScene(size: size)
         let renderScale = min(size.width, size.height) / 520.0
+        let tempScene = GameScene(size: size)
         return tempScene.renderStickFigure(figure, at: .zero, scale: renderScale)
     }
 
-    private func scenePosition(for obj: EditorObject) -> CGPoint {
-        let scaleX = size.width / obj.editorSceneWidth
-        let scaleY = scaleX
-        return CGPoint(x: obj.position.x * scaleX, y: obj.position.y * scaleY)
+    /// Convert a saved object position to preview scene coordinates relative to the figure center (0,0).
+    ///
+    /// Object positions in SavedEditFrame are absolute editor-scene coordinates.
+    /// The editor's characterNode sits at (editorSceneWidth/2, editorSceneWidth/2).
+    /// scaleFactor = renderScale / 1.2 converts editor pixels to preview pixels.
+    private func objectPosition(for obj: EditorObject, scaleFactor: CGFloat) -> CGPoint {
+        let editorCenter = obj.editorSceneWidth / 2
+        let dx = obj.position.x - editorCenter
+        let dy = obj.position.y - editorCenter
+        return CGPoint(x: dx * scaleFactor, y: dy * scaleFactor)
     }
 }

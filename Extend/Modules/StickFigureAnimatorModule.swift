@@ -10,6 +10,7 @@ public struct StickFigureAnimatorModule: AppModule {
 
     public var order: Int = 100
     public var isVisible: Bool = true
+    public var hidesNavBars: Bool { true }
 
     public var moduleView: AnyView {
         AnyView(StickFigureAnimatorModuleView())
@@ -19,23 +20,34 @@ public struct StickFigureAnimatorModule: AppModule {
 // MARK: - Module View
 
 private struct StickFigureAnimatorModuleView: View {
+    @Environment(ModuleState.self) private var moduleState
+
     var body: some View {
-        StickFigureEditorWrapper()
-            .ignoresSafeArea()
-            .navigationBarHidden(true)
+        StickFigureEditorWrapper(onClose: {
+            moduleState.selectModule(ModuleIDs.dashboard)
+        })
+        .ignoresSafeArea()
+        .navigationBarHidden(true)
     }
 }
 
 // MARK: - UIViewControllerRepresentable wrapper
 
 private struct StickFigureEditorWrapper: UIViewControllerRepresentable {
+    let onClose: () -> Void
+
     func makeUIViewController(context: Context) -> StickFigureGameplayEditorViewController {
         let vc = StickFigureGameplayEditorViewController()
         vc.gameState = nil  // standalone animator — no gameplay state
+        vc.onDismiss = onClose
         return vc
     }
 
     func updateUIViewController(_ uiViewController: StickFigureGameplayEditorViewController, context: Context) {}
+
+    func makeCoordinator() -> Coordinator { Coordinator() }
+
+    class Coordinator {}
 }
 
 #Preview {

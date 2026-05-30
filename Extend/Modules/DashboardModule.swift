@@ -285,12 +285,7 @@ private struct DashboardModuleView: View {
                     Spacer(minLength: 0)
 
                     // Show game levels at bottom
-                    if tile.targetModuleID == ModuleIDs.game1 {
-                        Text("Level \(game1Level)")
-                            .font(.caption2)
-                            .foregroundColor(.gray)
-                            .padding(.bottom, 4)
-                    } else if tile.targetModuleID == ModuleIDs.matchGame {
+                    if tile.targetModuleID == ModuleIDs.matchGame {
                         Text("Level \(matchGameLevel)")
                             .font(.caption2)
                             .foregroundColor(.gray)
@@ -391,12 +386,16 @@ private struct DashboardModuleView: View {
     private func findModuleID(for tile: DashboardTile) -> UUID? {
         // Prefer an explicit target when available
         if let targetID = tile.targetModuleID {
+            // Workout Buddy tiles may have been saved pointing at game1 — redirect to the animator
+            if targetID == ModuleIDs.game1 { return ModuleIDs.stickFigureAnimator }
             return targetID
         }
 
         // Try to find a module matching the tile's title
         let modules = registry.registeredModules
         if let module = modules.first(where: { $0.displayName.lowercased() == tile.title.lowercased() }) {
+            // Same redirect: "Workout Buddy" display-name match should go to the animator
+            if module.id == ModuleIDs.game1 { return ModuleIDs.stickFigureAnimator }
             return module.id
         }
 
@@ -426,8 +425,8 @@ private struct DashboardModuleView: View {
             blankAlertMessage = "Animation 3 Coming Soon"
             showBlankAlert = true
         case .game1:
-            // Navigate to Game 1 module
-            state.selectModule(ModuleIDs.game1)
+            // Navigate to Stick Figure Animator
+            state.selectModule(ModuleIDs.stickFigureAnimator)
         case .game2:
             blankAlertMessage = "Game 2 coming soon"
             showBlankAlert = true

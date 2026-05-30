@@ -108,7 +108,23 @@ class GameScene: SKScene {
         let container = SKNode()
         container.position = position
         container.xScale = flipped ? -1 : 1
+        // Preserve per-frame fields before applyToStickFigure overwrites them
+        let savedShowChest   = mutableFigure.showChest
+        let savedShowAbs     = mutableFigure.showAbs
+        let savedEyesEnabled = mutableFigure.eyesEnabled
+        let savedEyeColor    = mutableFigure.eyeColor
+        let savedIrisEnabled = mutableFigure.irisEnabled
+        let savedIrisColor   = mutableFigure.irisColor
+        let savedHeadMult    = mutableFigure.headRadiusMultiplier
         StickFigureAppearance.shared.applyToStickFigure(&mutableFigure)
+        // Restore per-frame fields that should not be overridden by global appearance
+        mutableFigure.showChest           = savedShowChest
+        mutableFigure.showAbs             = savedShowAbs
+        mutableFigure.eyesEnabled         = savedEyesEnabled
+        mutableFigure.eyeColor            = savedEyeColor
+        mutableFigure.irisEnabled         = savedIrisEnabled
+        mutableFigure.irisColor           = savedIrisColor
+        mutableFigure.headRadiusMultiplier = savedHeadMult
 
         let baseCenter = CGPoint(x: 300, y: 360)
 
@@ -365,7 +381,7 @@ class GameScene: SKScene {
                         lowerBulge: legBaseHalf * (0.3 + legMuscleScale * 0.5), lowerBulgePeak: 0.2,
                         color: rightLegCol, zPos: 1.0)
 
-        // Torso
+        // Torso — always drawn (toggling chest/abs only affects the overlay lines on top)
         drawUnifiedTorso(leftShoulder: leftShoulderPos, rightShoulder: rightShoulderPos,
                          waist: waistPos, leftHip: leftHipPos, rightHip: rightHipPos,
                          latFlare: muscleScale * 0.45, waistIn: max(0, 0.4 - muscleScale * 0.15),
@@ -374,7 +390,7 @@ class GameScene: SKScene {
 
         // Abs grid — 1 vertical centre line + 2 horizontal lines (2-wide × 3-tall interior grid)
         // Only draw in front view (not side view)
-        if mutableFigure.shoulderWidthMultiplier > 0.1 {
+        if mutableFigure.showAbs && mutableFigure.shoulderWidthMultiplier > 0.1 {
             let sTop  = rel(leftShoulderPos)
             let sTopR = rel(rightShoulderPos)
             let hBot  = rel(leftHipPos)
@@ -452,7 +468,7 @@ class GameScene: SKScene {
         // Pec outlines — two 3/4 arcs, missing the upper-inner quarter each
         // Left pec: missing top-right (inner-top) quarter
         // Right pec: missing top-left (inner-top) quarter
-        if mutableFigure.shoulderWidthMultiplier > 0.1 {
+        if mutableFigure.showChest && mutableFigure.shoulderWidthMultiplier > 0.1 {
             let sTopL = rel(leftShoulderPos),  sTopR = rel(rightShoulderPos)
             let hBotL = rel(leftHipPos),        hBotR = rel(rightHipPos)
             let topY  = (sTopL.y + sTopR.y) / 2
@@ -584,7 +600,7 @@ class GameScene: SKScene {
         }
 
         // Neck — tapered rectangle, extended slightly into torso so there's no gap
-        let headCanvasRadius = mutableFigure.headRadius * 1.2
+        let headCanvasRadius = mutableFigure.headRadius * 1.2 * CGFloat(mutableFigure.headRadiusMultiplier)
         let neckHalfWide   = mutableFigure.neckWidth * scale * (0.5 + muscleScale * 0.15)
         let neckHalfNarrow = mutableFigure.neckWidth * scale * 0.38
         let neckRel = rel(neckPos)
@@ -631,23 +647,23 @@ class GameScene: SKScene {
         headCircle.zPosition = 3.0
         container.addChild(headCircle)
 
-        // Eyes
-        if mutableFigure.eyesEnabled {
+        // Eyes / Irises — each can be shown independently
+        if mutableFigure.eyesEnabled || mutableFigure.irisEnabled {
             let eyeSceneR  = headSceneRadius * 0.3
             let irisSceneR = eyeSceneR * 0.5
-            let eyeVertOff: CGFloat = headCanvasRadius * 0.1   // canvas space → converted via rel()
-            let eyeColor  = SKColor(mutableFigure.eyeColor)
-            let irisColor = mutableFigure.irisEnabled ? SKColor(mutableFigure.irisColor) : nil
+            let eyeVertOff: CGFloat = headCanvasRadius * 0.1
 
             func addEye(at canvasPos: CGPoint) {
                 let ep = rel(canvasPos)
-                let eye = SKShapeNode(circleOfRadius: eyeSceneR)
-                eye.fillColor = eyeColor; eye.strokeColor = .clear
-                eye.position = ep; eye.zPosition = 3.5
-                container.addChild(eye)
-                if let ic = irisColor {
+                if mutableFigure.eyesEnabled {
+                    let eye = SKShapeNode(circleOfRadius: eyeSceneR)
+                    eye.fillColor = SKColor(mutableFigure.eyeColor); eye.strokeColor = .clear
+                    eye.position = ep; eye.zPosition = 3.5
+                    container.addChild(eye)
+                }
+                if mutableFigure.irisEnabled {
                     let iris = SKShapeNode(circleOfRadius: irisSceneR)
-                    iris.fillColor = ic; iris.strokeColor = .clear
+                    iris.fillColor = SKColor(mutableFigure.irisColor); iris.strokeColor = .clear
                     iris.position = ep; iris.zPosition = 3.6
                     container.addChild(iris)
                 }
@@ -741,7 +757,23 @@ class GameScene: SKScene {
         container.xScale = flipped ? -1 : 1
         
         // Apply custom appearance colors from UserDefaults
+        // Preserve per-frame fields before applyToStickFigure overwrites them
+        let savedShowChest   = mutableFigure.showChest
+        let savedShowAbs     = mutableFigure.showAbs
+        let savedEyesEnabled = mutableFigure.eyesEnabled
+        let savedEyeColor    = mutableFigure.eyeColor
+        let savedIrisEnabled = mutableFigure.irisEnabled
+        let savedIrisColor   = mutableFigure.irisColor
+        let savedHeadMult    = mutableFigure.headRadiusMultiplier
         StickFigureAppearance.shared.applyToStickFigure(&mutableFigure)
+        // Restore per-frame fields that should not be overridden by global appearance
+        mutableFigure.showChest            = savedShowChest
+        mutableFigure.showAbs              = savedShowAbs
+        mutableFigure.eyesEnabled          = savedEyesEnabled
+        mutableFigure.eyeColor             = savedEyeColor
+        mutableFigure.irisEnabled          = savedIrisEnabled
+        mutableFigure.irisColor            = savedIrisColor
+        mutableFigure.headRadiusMultiplier = savedHeadMult
         
         // Base canvas dimensions (matching StickFigure2D)
         let baseCanvasSize = CGSize(width: 600, height: 720)
@@ -1582,27 +1614,31 @@ class GameScene: SKScene {
         // Draw torso - SPLIT INTO TWO SEGMENTS: upper and lower
         // IMPORTANT: Draw upper torso FIRST, then lower torso, so lower torso appears on top
         
-        // Upper torso: draw straight from neck to midTorso
-        drawTaperedSegment(from: neckPos, to: midTorsoPos, color: toSKColor(mutableFigure.torsoColor), strokeThickness: mutableFigure.strokeThicknessUpperTorso, fusiform: mutableFigure.fusiformUpperTorso, inverted: true, peakPosition: mutableFigure.peakPositionUpperTorso)
+        // Upper torso: draw straight from neck to midTorso — skipped if showChest is false
+        if mutableFigure.showChest {
+            drawTaperedSegment(from: neckPos, to: midTorsoPos, color: toSKColor(mutableFigure.torsoColor), strokeThickness: mutableFigure.strokeThicknessUpperTorso, fusiform: mutableFigure.fusiformUpperTorso, inverted: true, peakPosition: mutableFigure.peakPositionUpperTorso)
+        }
 
-        // Lower torso from mid-torso
+        // Lower torso from mid-torso (abs area) — skipped if showAbs is false
         // This keeps the lower torso connected to the visual mid-torso dot
         
-        if mutableFigure.waistThicknessMultiplier > 0.0 {
-            // Draw triangle-shaped lower torso with rounded bottom corners
-            // waistThicknessMultiplier controls point position: 0.0 = at waist, 1.0 = at mid-torso
-            // fusiformLowerTorso controls the hip width expansion
-            drawWaistTriangle(from: midTorsoPos, to: waistPos, color: toSKColor(mutableFigure.torsoColor), strokeThickness: mutableFigure.strokeThicknessLowerTorso, fusiform: mutableFigure.fusiformLowerTorso, pointPosition: mutableFigure.waistThicknessMultiplier, leftHipPos: leftHipPos, rightHipPos: rightHipPos)
-        } else {
-            // No triangle at 0.0 - standard tapered segment
-            drawTaperedSegment(from: midTorsoPos, to: waistPos, color: toSKColor(mutableFigure.torsoColor), strokeThickness: mutableFigure.strokeThicknessLowerTorso, fusiform: mutableFigure.fusiformLowerTorso, inverted: true, peakPosition: mutableFigure.peakPositionLowerTorso)
+        if mutableFigure.showAbs {
+            if mutableFigure.waistThicknessMultiplier > 0.0 {
+                // Draw triangle-shaped lower torso with rounded bottom corners
+                // waistThicknessMultiplier controls point position: 0.0 = at waist, 1.0 = at mid-torso
+                // fusiformLowerTorso controls the hip width expansion
+                drawWaistTriangle(from: midTorsoPos, to: waistPos, color: toSKColor(mutableFigure.torsoColor), strokeThickness: mutableFigure.strokeThicknessLowerTorso, fusiform: mutableFigure.fusiformLowerTorso, pointPosition: mutableFigure.waistThicknessMultiplier, leftHipPos: leftHipPos, rightHipPos: rightHipPos)
+            } else {
+                // No triangle at 0.0 - standard tapered segment
+                drawTaperedSegment(from: midTorsoPos, to: waistPos, color: toSKColor(mutableFigure.torsoColor), strokeThickness: mutableFigure.strokeThicknessLowerTorso, fusiform: mutableFigure.fusiformLowerTorso, inverted: true, peakPosition: mutableFigure.peakPositionLowerTorso)
+            }
         }
         drawLine(from: neckPos, to: headPos, color: toSKColor(mutableFigure.torsoColor), width: mutableFigure.strokeThickness * mutableFigure.neckWidth)
         
         // Draw trapezius (traps) as triangular shape from neck to both shoulder joints
-        // Skip if both stroke thickness and fusiform are 0
+        // Skip if both stroke thickness and fusiform are 0, or if showChest is false
         //print("🔍 TRAPEZIUS CHECK: strokeThicknessUpperTorso=\(mutableFigure.strokeThicknessUpperTorso), fusiformShoulders=\(mutableFigure.fusiformShoulders)")
-        if mutableFigure.strokeThicknessUpperTorso > 0 || mutableFigure.fusiformShoulders > 0 {
+        if mutableFigure.showChest && (mutableFigure.strokeThicknessUpperTorso > 0 || mutableFigure.fusiformShoulders > 0) {
             //print("🔍 TRAPEZIUS: DRAWING with fusiformShoulders=\(mutableFigure.fusiformShoulders)")
             drawTrapezius(neckPos: neckPos, leftShoulderPos: leftShoulderPos, rightShoulderPos: rightShoulderPos, color: toSKColor(mutableFigure.torsoColor), strokeThickness: mutableFigure.strokeThicknessTrapezius, fusiform: mutableFigure.fusiformShoulders, peakPosition: mutableFigure.peakPositionUpperTorso, baseCenter: baseCenter, scale: scale, container: container)
         } else {
@@ -1661,59 +1697,32 @@ class GameScene: SKScene {
         drawHandOrFoot(at: rightFootEnd, from: rightUpperLegEnd, color: footColor, isHand: false, sizeMultiplier: mutableFigure.footSize)
         
         // Draw head
-        let headRadius = mutableFigure.headRadius * 1.2  // Reduced from 3.5 to 1.2 - much smaller
-        //print("🎮 Drawing head at \(headPos) with radius \(headRadius)")
+        let headRadius = mutableFigure.headRadius * 1.2 * CGFloat(mutableFigure.headRadiusMultiplier)
         drawCircle(at: headPos, radius: headRadius, color: SKColor(mutableFigure.headColor))
         
-        // Draw eyes if enabled
-        //print("👁️ EYE DEBUG: eyesEnabled=\(mutableFigure.eyesEnabled), eyeColor=\(mutableFigure.eyeColor), headRadius=\(headRadius), headPos=\(headPos)")
-        if mutableFigure.eyesEnabled {
-            let eyeRadius = headRadius * 0.3  // 20% of head radius
-            let eyeVerticalOffset = headRadius * -0.1  // Slight vertical offset from center
-            let irisRadius = eyeRadius * 0.5  // 1/2 of eye radius
-            
-            //print("👁️ EYE RENDER: eyeRadius=\(eyeRadius), eyeVerticalOffset=\(eyeVerticalOffset), irisRadius=\(irisRadius), irisEnabled=\(mutableFigure.irisEnabled), isSideView=\(mutableFigure.isSideView)")
-            
-            if mutableFigure.isSideView {
-                // Side view: show ONLY the visible eye on the right side of the head (closer to edge)
-                let visibleEyePos = CGPoint(x: headPos.x + headRadius * 0.45, y: headPos.y - eyeVerticalOffset)
-                //print("👁️ SIDE VIEW EYE: pos=\(visibleEyePos), radius=\(eyeRadius), color=\(mutableFigure.eyeColor)")
-                drawCircle(at: visibleEyePos, radius: eyeRadius, color: SKColor(mutableFigure.eyeColor))
-                
-                // Draw iris if enabled
-                if mutableFigure.irisEnabled {
-                    //print("👁️ SIDE VIEW IRIS: pos=\(visibleEyePos), radius=\(irisRadius), color=\(mutableFigure.irisColor)")
-                    drawCircle(at: visibleEyePos, radius: irisRadius, color: SKColor(mutableFigure.irisColor))
+        // Draw eyes / irises — each enabled independently
+        if mutableFigure.eyesEnabled || mutableFigure.irisEnabled {
+            let eyeRadius = headRadius * 0.3
+            let eyeVerticalOffset = headRadius * -0.1
+            let irisRadius = eyeRadius * 0.5
+
+            func drawEyeAt(_ pos: CGPoint) {
+                if mutableFigure.eyesEnabled {
+                    drawCircle(at: pos, radius: eyeRadius, color: SKColor(mutableFigure.eyeColor))
                 }
-            } else {
-                // Front view: show both eyes (current behavior)
-                let eyeSpacing = headRadius * 0.6  // Space between eyes
-                
-                // Left eye
-                let leftEyePos = CGPoint(x: headPos.x - eyeSpacing / 2, y: headPos.y - eyeVerticalOffset)
-                //print("👁️ LEFT EYE: pos=\(leftEyePos), radius=\(eyeRadius), color=\(mutableFigure.eyeColor)")
-                drawCircle(at: leftEyePos, radius: eyeRadius, color: SKColor(mutableFigure.eyeColor))
-                
-                // Draw left iris if enabled
                 if mutableFigure.irisEnabled {
-                    //print("👁️ LEFT IRIS: pos=\(leftEyePos), radius=\(irisRadius), color=\(mutableFigure.irisColor)")
-                    drawCircle(at: leftEyePos, radius: irisRadius, color: SKColor(mutableFigure.irisColor))
-                }
-                
-                // Right eye
-                let rightEyePos = CGPoint(x: headPos.x + eyeSpacing / 2, y: headPos.y - eyeVerticalOffset)
-                //print("👁️ RIGHT EYE: pos=\(rightEyePos), radius=\(eyeRadius), color=\(mutableFigure.eyeColor)")
-                drawCircle(at: rightEyePos, radius: eyeRadius, color: SKColor(mutableFigure.eyeColor))
-                
-                // Draw right iris if enabled
-                if mutableFigure.irisEnabled {
-                    //print("👁️ RIGHT IRIS: pos=\(rightEyePos), radius=\(irisRadius), color=\(mutableFigure.irisColor)")
-                    drawCircle(at: rightEyePos, radius: irisRadius, color: SKColor(mutableFigure.irisColor))
+                    drawCircle(at: pos, radius: irisRadius, color: SKColor(mutableFigure.irisColor))
                 }
             }
-            //print("👁️ EYES DRAWN SUCCESSFULLY")
-        } else {
-            //print("👁️ EYES DISABLED: eyesEnabled=false")
+
+            if mutableFigure.isSideView {
+                let visibleEyePos = CGPoint(x: headPos.x + headRadius * 0.45, y: headPos.y - eyeVerticalOffset)
+                drawEyeAt(visibleEyePos)
+            } else {
+                let eyeSpacing = headRadius * 0.6
+                drawEyeAt(CGPoint(x: headPos.x - eyeSpacing / 2, y: headPos.y - eyeVerticalOffset))
+                drawEyeAt(CGPoint(x: headPos.x + eyeSpacing / 2, y: headPos.y - eyeVerticalOffset))
+            }
         }
         
         // NOW DRAW THE SKELETON CONNECTORS LAST (on top of everything else)

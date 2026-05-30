@@ -1,4 +1,6 @@
 import Foundation
+import UIKit
+import SwiftUI
 
 private let defaults = UserDefaults(suiteName: "group.com.cavanmannenbach.extend") ?? .standard
 
@@ -152,6 +154,19 @@ struct SavedEditFrame: Codable, Identifiable {
     let leftFootAngle: CGFloat
     let rightFootAngle: CGFloat
     
+    // Eyes display properties (optional, backward compatible)
+    var eyesEnabled: Bool
+    var eyeColorHex: String
+    var irisEnabled: Bool
+    var irisColorHex: String
+    
+    // Chest / abs visibility (optional, backward compatible)
+    var showChest: Bool
+    var showAbs: Bool
+    
+    // Head size multiplier (optional, backward compatible)
+    var headRadiusMultiplier: CGFloat
+    
     // Objects in the frame
     var objects: [EditorObject] = []
     
@@ -300,6 +315,15 @@ struct SavedEditFrame: Codable, Identifiable {
             self.strokeThicknessTrapezius = values.strokeThicknessTrapezius ?? 4.0
         }
         
+        // Eyes properties (not part of pose or EditModeValues yet — use defaults)
+        self.eyesEnabled = false
+        self.eyeColorHex = "#000000"
+        self.irisEnabled = false
+        self.irisColorHex = "#000000"
+        self.showChest = true
+        self.showAbs = true
+        self.headRadiusMultiplier = 1.0
+        
         // Store objects
         self.objects = objects
     }
@@ -330,6 +354,8 @@ struct SavedEditFrame: Codable, Identifiable {
         case leftLegColor, rightLegColor, leftUpperArmColor, leftLowerArmColor
         case rightUpperArmColor, rightLowerArmColor, leftUpperLegColor, leftLowerLegColor
         case rightUpperLegColor, rightLowerLegColor, jointColor, scale
+        case eyesEnabled, eyeColorHex, irisEnabled, irisColorHex
+        case showChest, showAbs
     }
     
     init(from decoder: Decoder) throws {
@@ -423,6 +449,19 @@ struct SavedEditFrame: Codable, Identifiable {
         
         // Decode objects - optional for backward compatibility with old saved frames
         objects = try container.decodeIfPresent([EditorObject].self, forKey: .objects) ?? []
+        
+        // Decode eyes properties - optional for backward compatibility
+        eyesEnabled = try poseContainer.decodeIfPresent(Bool.self, forKey: .eyesEnabled) ?? false
+        eyeColorHex = try poseContainer.decodeIfPresent(String.self, forKey: .eyeColorHex) ?? "#000000"
+        irisEnabled = try poseContainer.decodeIfPresent(Bool.self, forKey: .irisEnabled) ?? false
+        irisColorHex = try poseContainer.decodeIfPresent(String.self, forKey: .irisColorHex) ?? "#000000"
+        
+        // Decode chest/abs visibility - optional for backward compatibility
+        showChest = try poseContainer.decodeIfPresent(Bool.self, forKey: .showChest) ?? true
+        showAbs = try poseContainer.decodeIfPresent(Bool.self, forKey: .showAbs) ?? true
+        
+        // Decode head radius multiplier - optional for backward compatibility
+        headRadiusMultiplier = try poseContainer.decodeIfPresent(CGFloat.self, forKey: .headRadiusMultiplier) ?? 1.0
     }
     
     func encode(to encoder: Encoder) throws {
@@ -503,6 +542,97 @@ struct SavedEditFrame: Codable, Identifiable {
         try poseContainer.encode(strokeThicknessFullTorso, forKey: .strokeThicknessFullTorso)
         try poseContainer.encode(strokeThicknessDeltoids, forKey: .strokeThicknessDeltoids)
         try poseContainer.encode(strokeThicknessTrapezius, forKey: .strokeThicknessTrapezius)
+        try poseContainer.encode(eyesEnabled, forKey: .eyesEnabled)
+        try poseContainer.encode(eyeColorHex, forKey: .eyeColorHex)
+        try poseContainer.encode(irisEnabled, forKey: .irisEnabled)
+        try poseContainer.encode(irisColorHex, forKey: .irisColorHex)
+        try poseContainer.encode(showChest, forKey: .showChest)
+        try poseContainer.encode(showAbs, forKey: .showAbs)
+        try poseContainer.encode(headRadiusMultiplier, forKey: .headRadiusMultiplier)
+    }
+    
+    /// Convert this saved frame into a `StickFigure2D` for rendering.
+    /// Colors are left at their SwiftUI defaults — call `StickFigureAppearance.shared.applyToStickFigure`
+    /// after this if you want the shared color settings applied, or set colors explicitly.
+    func toStickFigure2D() -> StickFigure2D {
+        var fig = StickFigure2D()
+        // Angles
+        fig.headAngle = headAngle
+        fig.torsoRotationAngle = torsoRotationAngle
+        fig.midTorsoAngle = midTorsoAngle
+        fig.waistTorsoAngle = waistTorsoAngle
+        fig.leftShoulderAngle = leftShoulderAngle
+        fig.rightShoulderAngle = rightShoulderAngle
+        fig.leftElbowAngle = leftElbowAngle
+        fig.rightElbowAngle = rightElbowAngle
+        fig.leftHipAngle = leftHipAngle
+        fig.rightHipAngle = rightHipAngle
+        fig.leftKneeAngle = leftKneeAngle
+        fig.rightKneeAngle = rightKneeAngle
+        fig.leftFootAngle = leftFootAngle
+        fig.rightFootAngle = rightFootAngle
+        // Shape
+        fig.shoulderWidthMultiplier = shoulderWidthMultiplier
+        fig.waistWidthMultiplier = waistWidthMultiplier
+        fig.waistThicknessMultiplier = waistThicknessMultiplier
+        fig.skeletonSizeTorso = skeletonSizeTorso
+        fig.skeletonSizeArm = skeletonSizeArm
+        fig.skeletonSizeLeg = skeletonSizeLeg
+        fig.neckLength = neckLength
+        fig.neckWidth = neckWidth
+        fig.handSize = handSize
+        fig.footSize = footSize
+        fig.scale = figureScale
+        fig.headRadiusMultiplier = headRadiusMultiplier
+        // Thickness
+        fig.strokeThickness = strokeThickness
+        fig.strokeThicknessJoints = strokeThicknessJoints
+        fig.strokeThicknessUpperTorso = strokeThicknessUpperTorso
+        fig.strokeThicknessLowerTorso = strokeThicknessLowerTorso
+        fig.strokeThicknessBicep = strokeThicknessBicep
+        fig.strokeThicknessTricep = strokeThicknessTricep
+        fig.strokeThicknessLowerArms = strokeThicknessLowerArms
+        fig.strokeThicknessUpperLegs = strokeThicknessUpperLegs
+        fig.strokeThicknessLowerLegs = strokeThicknessLowerLegs
+        fig.strokeThicknessFullTorso = strokeThicknessFullTorso
+        fig.strokeThicknessDeltoids = strokeThicknessDeltoids
+        fig.strokeThicknessTrapezius = strokeThicknessTrapezius
+        // Fusiform
+        fig.fusiformUpperTorso = fusiformUpperTorso
+        fig.fusiformLowerTorso = fusiformLowerTorso
+        fig.fusiformBicep = fusiformBicep
+        fig.fusiformTricep = fusiformTricep
+        fig.fusiformLowerArms = fusiformLowerArms
+        fig.fusiformUpperLegs = fusiformUpperLegs
+        fig.fusiformLowerLegs = fusiformLowerLegs
+        fig.fusiformShoulders = fusiformShoulders
+        fig.fusiformDeltoids = fusiformDeltoids
+        fig.fusiformFullTorso = fusiformFullTorso
+        // Peak positions
+        fig.peakPositionBicep = peakPositionBicep
+        fig.peakPositionTricep = peakPositionTricep
+        fig.peakPositionLowerArms = peakPositionLowerArms
+        fig.peakPositionUpperLegs = peakPositionUpperLegs
+        fig.peakPositionLowerLegs = peakPositionLowerLegs
+        fig.peakPositionUpperTorso = peakPositionUpperTorso
+        fig.peakPositionLowerTorso = peakPositionLowerTorso
+        fig.peakPositionDeltoids = peakPositionDeltoids
+        fig.peakPositionFullTorsoTop = peakPositionFullTorsoTop
+        fig.peakPositionFullTorsoMiddle = peakPositionFullTorsoMiddle
+        fig.peakPositionFullTorsoBottom = peakPositionFullTorsoBottom
+        fig.armMuscleSide = armMuscleSide
+        // Visibility
+        fig.showChest = showChest
+        fig.showAbs = showAbs
+        // Eyes
+        fig.eyesEnabled = eyesEnabled
+        fig.irisEnabled = irisEnabled
+        if let c = UIColor(hex: eyeColorHex) { fig.eyeColor = Color(c) }
+        if let c = UIColor(hex: irisColorHex) { fig.irisColor = Color(c) }
+        // Position offset
+        fig.figureOffsetX = positionX
+        fig.figureOffsetY = positionY
+        return fig
     }
 }
 
@@ -519,13 +649,16 @@ class SavedFramesManager {
         //print("✅ Frame saved: \(frame.name)")
     }
     
-    /// Get all saved frames
+    /// Get all saved frames — always syncs from animations.json (bundle is source of truth)
     func getAllFrames() -> [SavedEditFrame] {
-        guard let data = defaults.data(forKey: userDefaultsKey),
-              let frames = try? JSONDecoder().decode([SavedEditFrame].self, from: data) else {
-            return []
+        let result = syncFromBundle()
+        if result.success {
+            if let data = defaults.data(forKey: userDefaultsKey),
+               let frames = try? JSONDecoder().decode([SavedEditFrame].self, from: data) {
+                return frames.sorted { $0.timestamp > $1.timestamp }
+            }
         }
-        return frames.sorted { $0.timestamp > $1.timestamp }
+        return []
     }
     
     /// Get a specific frame by ID
@@ -764,8 +897,8 @@ class SavedFramesManager {
                 armMuscleSide: pose.armMuscleSide,
                 showGrid: true,
                 showJoints: true,
-                positionX: 0,
-                positionY: 0,
+                positionX: pose.figureOffsetX,
+                positionY: pose.figureOffsetY,
                 bodyPartColors: nil,
                 showInteractiveJoints: nil
             )

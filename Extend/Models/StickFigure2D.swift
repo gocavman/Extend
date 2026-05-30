@@ -728,6 +728,10 @@ struct StickFigure2D {
     var irisEnabled: Bool = false
     var isSideView: Bool = false  // When true, show only one eye (side view mode)
     
+    // Chest / abs visibility toggles
+    var showChest: Bool = true   // When false, skip trapezius/chest drawing
+    var showAbs: Bool = true     // When false, skip lower torso drawing
+    
     // Stroke thickness (overall - kept for backward compatibility)
     var strokeThickness: CGFloat = 4.0
     

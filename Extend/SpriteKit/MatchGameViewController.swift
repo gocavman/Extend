@@ -213,6 +213,7 @@ class MatchGameViewController: UIViewController {
         levelNameLabel.textColor = .white
         levelNameLabel.text = "Level 1 - Fruit Challenge"
         levelNameLabel.textAlignment = .center
+        levelNameLabel.isUserInteractionEnabled = true
         headerView.addSubview(levelNameLabel)
         levelNameLabel.translatesAutoresizingMaskIntoConstraints = false
         NSLayoutConstraint.activate([
@@ -221,6 +222,12 @@ class MatchGameViewController: UIViewController {
             levelNameLabel.leadingAnchor.constraint(greaterThanOrEqualTo: headerView.leadingAnchor, constant: 60),
             levelNameLabel.trailingAnchor.constraint(lessThanOrEqualTo: headerView.trailingAnchor, constant: -60)
         ])
+
+        // Hidden dev shortcut: 5-tap on the level name label opens a level jump dialog.
+        // Not documented anywhere — invisible to regular users.
+        let devTap = UITapGestureRecognizer(target: self, action: #selector(devLevelJump))
+        devTap.numberOfTapsRequired = 5
+        levelNameLabel.addGestureRecognizer(devTap)
         
         // Level Selector Button (dropdown)
         levelSelectorButton.setTitle("Level 1 ▼", for: .normal)
@@ -625,9 +632,9 @@ class MatchGameViewController: UIViewController {
     }
     
     private func showGameCompleteAnimation(completion: @escaping () -> Void) {
-        // Create overlay with "Game Complete!" text
+        // Full-screen congratulations overlay
         let overlay = UIView()
-        overlay.backgroundColor = UIColor.black.withAlphaComponent(0.7)
+        overlay.backgroundColor = UIColor(red: 0.05, green: 0.08, blue: 0.15, alpha: 0.97)
         view.addSubview(overlay)
         overlay.translatesAutoresizingMaskIntoConstraints = false
         NSLayoutConstraint.activate([
@@ -636,32 +643,142 @@ class MatchGameViewController: UIViewController {
             overlay.trailingAnchor.constraint(equalTo: view.trailingAnchor),
             overlay.bottomAnchor.constraint(equalTo: view.bottomAnchor)
         ])
-        
-        let label = UILabel()
-        label.text = "GAME COMPLETE!"
-        label.font = UIFont.systemFont(ofSize: 48, weight: .bold)
-        label.textColor = .green
-        label.textAlignment = .center
-        overlay.addSubview(label)
-        label.translatesAutoresizingMaskIntoConstraints = false
+
+        // Trophy emoji
+        let trophyLabel = UILabel()
+        trophyLabel.text = "🏆"
+        trophyLabel.font = UIFont.systemFont(ofSize: 80)
+        trophyLabel.textAlignment = .center
+        overlay.addSubview(trophyLabel)
+        trophyLabel.translatesAutoresizingMaskIntoConstraints = false
+
+        // Congratulations title
+        let titleLabel = UILabel()
+        titleLabel.text = "Congratulations!"
+        titleLabel.font = UIFont.systemFont(ofSize: 38, weight: .heavy)
+        titleLabel.textColor = UIColor(red: 1.0, green: 0.85, blue: 0.2, alpha: 1)
+        titleLabel.textAlignment = .center
+        titleLabel.adjustsFontSizeToFitWidth = true
+        overlay.addSubview(titleLabel)
+        titleLabel.translatesAutoresizingMaskIntoConstraints = false
+
+        // Subtitle
+        let subtitleLabel = UILabel()
+        subtitleLabel.text = "You've beaten all 1000 levels!"
+        subtitleLabel.font = UIFont.systemFont(ofSize: 20, weight: .semibold)
+        subtitleLabel.textColor = UIColor.white.withAlphaComponent(0.9)
+        subtitleLabel.textAlignment = .center
+        subtitleLabel.adjustsFontSizeToFitWidth = true
+        overlay.addSubview(subtitleLabel)
+        subtitleLabel.translatesAutoresizingMaskIntoConstraints = false
+
+        // Flavor text
+        let flavorLabel = UILabel()
+        flavorLabel.text = "Amazing dedication, but now it's time for a workout. Get at it!!!"
+        flavorLabel.font = UIFont.systemFont(ofSize: 16, weight: .regular)
+        flavorLabel.textColor = UIColor.white.withAlphaComponent(0.65)
+        flavorLabel.textAlignment = .center
+        flavorLabel.numberOfLines = 2
+        overlay.addSubview(flavorLabel)
+        flavorLabel.translatesAutoresizingMaskIntoConstraints = false
+
+        // Dismiss button
+        let dismissButton = UIButton(type: .system)
+        dismissButton.setTitle("Return to Menu", for: .normal)
+        dismissButton.titleLabel?.font = UIFont.systemFont(ofSize: 18, weight: .bold)
+        dismissButton.setTitleColor(UIColor(red: 0.05, green: 0.08, blue: 0.15, alpha: 1), for: .normal)
+        dismissButton.backgroundColor = UIColor(red: 1.0, green: 0.85, blue: 0.2, alpha: 1)
+        dismissButton.layer.cornerRadius = 14
+        overlay.addSubview(dismissButton)
+        dismissButton.translatesAutoresizingMaskIntoConstraints = false
+
+        // Stack layout centred in overlay
         NSLayoutConstraint.activate([
-            label.centerXAnchor.constraint(equalTo: overlay.centerXAnchor),
-            label.centerYAnchor.constraint(equalTo: overlay.centerYAnchor)
+            trophyLabel.centerXAnchor.constraint(equalTo: overlay.centerXAnchor),
+            trophyLabel.centerYAnchor.constraint(equalTo: overlay.centerYAnchor, constant: -140),
+
+            titleLabel.topAnchor.constraint(equalTo: trophyLabel.bottomAnchor, constant: 16),
+            titleLabel.leadingAnchor.constraint(equalTo: overlay.leadingAnchor, constant: 24),
+            titleLabel.trailingAnchor.constraint(equalTo: overlay.trailingAnchor, constant: -24),
+
+            subtitleLabel.topAnchor.constraint(equalTo: titleLabel.bottomAnchor, constant: 12),
+            subtitleLabel.leadingAnchor.constraint(equalTo: overlay.leadingAnchor, constant: 24),
+            subtitleLabel.trailingAnchor.constraint(equalTo: overlay.trailingAnchor, constant: -24),
+
+            flavorLabel.topAnchor.constraint(equalTo: subtitleLabel.bottomAnchor, constant: 20),
+            flavorLabel.leadingAnchor.constraint(equalTo: overlay.leadingAnchor, constant: 32),
+            flavorLabel.trailingAnchor.constraint(equalTo: overlay.trailingAnchor, constant: -32),
+
+            dismissButton.topAnchor.constraint(equalTo: flavorLabel.bottomAnchor, constant: 40),
+            dismissButton.centerXAnchor.constraint(equalTo: overlay.centerXAnchor),
+            dismissButton.heightAnchor.constraint(equalToConstant: 52)
         ])
-        
-        // Animate scale
-        label.transform = CGAffineTransform(scaleX: 0.1, y: 0.1)
-        
-        UIView.animate(withDuration: 0.5, delay: 0, options: .curveEaseOut, animations: {
-            label.transform = CGAffineTransform(scaleX: 1.2, y: 1.2)
-        }, completion: { _ in
-            UIView.animate(withDuration: 0.3, delay: 1.0, options: .curveEaseInOut, animations: {
-                overlay.alpha = 0
+
+        // Burst of confetti-style particles
+        let confettiColors: [UIColor] = [
+            UIColor(red: 1.0, green: 0.85, blue: 0.2, alpha: 1),
+            UIColor(red: 0.2, green: 0.8, blue: 0.4, alpha: 1),
+            UIColor(red: 0.3, green: 0.6, blue: 1.0, alpha: 1),
+            UIColor(red: 1.0, green: 0.4, blue: 0.4, alpha: 1),
+            UIColor(red: 0.9, green: 0.4, blue: 1.0, alpha: 1)
+        ]
+        for i in 0..<60 {
+            let particle = UIView()
+            let sz = CGFloat.random(in: 6...12)
+            particle.frame = CGRect(x: CGFloat.random(in: 0...view.bounds.width),
+                                    y: -20,
+                                    width: sz, height: sz)
+            particle.layer.cornerRadius = sz / 2
+            particle.backgroundColor = confettiColors[i % confettiColors.count]
+            particle.alpha = 0
+            overlay.addSubview(particle)
+            let delay = Double.random(in: 0...1.2)
+            let duration = Double.random(in: 1.5...3.0)
+            UIView.animate(withDuration: duration, delay: delay, options: [.curveEaseIn], animations: {
+                particle.alpha = 1
+                particle.frame.origin.y = CGFloat.random(in: overlay.bounds.height * 0.3...overlay.bounds.height)
+                particle.transform = CGAffineTransform(rotationAngle: CGFloat.random(in: -.pi...CGFloat.pi))
             }, completion: { _ in
-                overlay.removeFromSuperview()
+                UIView.animate(withDuration: 0.4) { particle.alpha = 0 }
+            })
+        }
+
+        // Animate the overlay content in
+        overlay.alpha = 0
+        trophyLabel.transform = CGAffineTransform(scaleX: 0.3, y: 0.3)
+        titleLabel.alpha = 0
+        subtitleLabel.alpha = 0
+        flavorLabel.alpha = 0
+        dismissButton.alpha = 0
+
+        UIView.animate(withDuration: 0.4, animations: {
+            overlay.alpha = 1
+        })
+        UIView.animate(withDuration: 0.6, delay: 0.1, usingSpringWithDamping: 0.6, initialSpringVelocity: 0.5, options: [], animations: {
+            trophyLabel.transform = .identity
+        })
+        UIView.animate(withDuration: 0.5, delay: 0.4, options: [], animations: {
+            titleLabel.alpha = 1
+        })
+        UIView.animate(withDuration: 0.5, delay: 0.6, options: [], animations: {
+            subtitleLabel.alpha = 1
+        })
+        UIView.animate(withDuration: 0.5, delay: 0.8, options: [], animations: {
+            flavorLabel.alpha = 1
+        })
+        UIView.animate(withDuration: 0.5, delay: 1.0, options: [], animations: {
+            dismissButton.alpha = 1
+        })
+
+        // Wire dismiss button — does NOT auto-dismiss; player must tap
+        dismissButton.addAction(UIAction { [weak overlay] _ in
+            UIView.animate(withDuration: 0.35, animations: {
+                overlay?.alpha = 0
+            }, completion: { _ in
+                overlay?.removeFromSuperview()
                 completion()
             })
-        })
+        }, for: .touchUpInside)
     }
     
     private func renderGrid() {
@@ -6160,6 +6277,45 @@ class MatchGameViewController: UIViewController {
         }
     }
     
+    // MARK: - Dev Level Jump (hidden: 5-tap on level name label)
+
+    @objc private func devLevelJump() {
+        guard let config = gameConfig else { return }
+        let maxId = config.levels.map { $0.id }.max() ?? 1
+
+        let alert = UIAlertController(
+            title: "🛠 Dev: Jump to Level",
+            message: "Enter a level number (1–\(maxId)), or use the buttons below.",
+            preferredStyle: .alert
+        )
+        alert.addTextField { tf in
+            tf.placeholder = "Level number"
+            tf.keyboardType = .numberPad
+        }
+        alert.addAction(UIAlertAction(title: "Go", style: .default) { [weak self, weak alert] _ in
+            guard let self, let text = alert?.textFields?.first?.text,
+                  let id = Int(text),
+                  config.levels.contains(where: { $0.id == id }) else { return }
+            // Unlock the target level so startLevel doesn't gate it
+            if !self.unlockedLevels.contains(id) {
+                self.unlockedLevels.append(id)
+                self.unlockedLevels.sort()
+            }
+            self.currentLevelId = id
+            self.levelSelectorButton.setTitle("Level \(id) ▼", for: .normal)
+            self.score = 0
+            self.saveGameState()
+            self.startLevel(id)
+        })
+        alert.addAction(UIAlertAction(title: "Final Screen", style: .default) { [weak self] _ in
+            guard let self else { return }
+            self.resetAllButtonTransforms()
+            self.showGameCompleteAnimation { self.exitGame() }
+        })
+        alert.addAction(UIAlertAction(title: "Cancel", style: .cancel))
+        present(alert, animated: true)
+    }
+
     @objc private func exitGame() {
         pauseSessionTimer()   // flush session seconds into totalElapsed
         saveGameState()       // persists mid-level grid + totalElapsed

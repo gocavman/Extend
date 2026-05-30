@@ -21,6 +21,7 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
     private var skeletonSizeArm: CGFloat = 1.0     // Arm connector thickness multiplier
     private var skeletonSizeLeg: CGFloat = 1.0     // Leg connector thickness multiplier
     private var jointShapeSize: CGFloat = 1.0  // Joint circle size multiplier
+    private var headSizeMultiplier: CGFloat = 1.0  // Head radius multiplier
     private var shoulderWidthMultiplier: CGFloat = 1.0  // Controls distance between shoulders (1.0 = normal)
     private var waistWidthMultiplier: CGFloat = 1.0  // Controls distance between hips (1.0 = normal)
     private var waistThicknessMultiplier: CGFloat = 0.5  // Controls triangle point position (0.0 = top of mid-torso, 1.0 = bottom/waist)
@@ -88,6 +89,20 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
     // Color picker properties
     private var pendingColorKey: String?
     private var pendingColorButton: UIButton?
+    
+    // Eye picker target: "eye" or "iris" (nil = body part color)
+    private var pendingEyeColorTarget: String?
+    private var pendingEyeColorButton: UIButton?
+    
+    // Eyes section properties
+    private var eyesEnabled: Bool = false
+    private var eyeColor: UIColor = .black
+    private var irisEnabled: Bool = false
+    private var irisColor: UIColor = .black
+    
+    // Chest / abs visibility
+    private var showChest: Bool = true
+    private var showAbs: Bool = true
     
     // Coordinate label reference for updating
     weak var coordinateLabel: UILabel?
@@ -208,6 +223,15 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
         saveButton.addTarget(self, action: #selector(savePressed), for: .touchUpInside)
         headerView.addSubview(saveButton)
         
+        // Animation Studio button
+        let animationStudioButton = UIButton(type: .system)
+        animationStudioButton.setTitle("🎬", for: .normal)
+        animationStudioButton.titleLabel?.font = UIFont.systemFont(ofSize: 16)
+        animationStudioButton.tintColor = .white
+        animationStudioButton.translatesAutoresizingMaskIntoConstraints = false
+        animationStudioButton.addTarget(self, action: #selector(openAnimationStudio), for: .touchUpInside)
+        headerView.addSubview(animationStudioButton)
+        
         // Load Frame button
         let loadButton = UIButton(type: .system)
         loadButton.setTitle("📂", for: .normal)
@@ -260,9 +284,13 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
             titleLabel.leadingAnchor.constraint(equalTo: headerView.leadingAnchor, constant: 16),
             titleLabel.centerYAnchor.constraint(equalTo: headerView.centerYAnchor),
             
-            // Save button (first of the new buttons, before refresh)
-            saveButton.trailingAnchor.constraint(equalTo: loadButton.leadingAnchor, constant: -8),
+            // Save button
+            saveButton.trailingAnchor.constraint(equalTo: animationStudioButton.leadingAnchor, constant: -8),
             saveButton.centerYAnchor.constraint(equalTo: headerView.centerYAnchor),
+            
+            // Animation Studio button
+            animationStudioButton.trailingAnchor.constraint(equalTo: loadButton.leadingAnchor, constant: -8),
+            animationStudioButton.centerYAnchor.constraint(equalTo: headerView.centerYAnchor),
             
             // Load button
             loadButton.trailingAnchor.constraint(equalTo: addObjectButton.leadingAnchor, constant: -8),
@@ -313,7 +341,7 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
     
     // MARK: - UITableViewDataSource & UITableViewDelegate
     func numberOfSections(in tableView: UITableView) -> Int {
-        return 4  // 0=Controls, 1=Figure, 2=Joint Angles, 3=Colors
+        return 5  // 0=Controls, 1=Figure, 2=Joint Angles, 3=Colors, 4=Eyes
     }
     
     func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
@@ -321,9 +349,10 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
         
         switch section {
         case 0: return 2    // Position, Zoom
-        case 1: return isExpanded ? 12 : 0  // Figure Scale, Shoulder Width, Waist Width, Neck Length, Neck Width, Hand Size, Foot Size, Torso Width, Arm Width, Leg Width, Upper Arm Fusiform, Upper Leg Fusiform
+        case 1: return isExpanded ? 15 : 0  // 12 sliders + Head Size + Show Chest toggle + Show Abs toggle
         case 2: return isExpanded ? 11 : 0  // Joint Angles
         case 3: return isExpanded ? 8  : 0  // Colors
+        case 4: return isExpanded ? 5  : 0  // Eyes: eye color, eyes toggle, iris color, iris toggle, reset
         default: return 0
         }
     }
@@ -334,12 +363,13 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
         case 1: return "FIGURE"
         case 2: return "JOINT ANGLES"
         case 3: return "COLORS"
+        case 4: return "EYES"
         default: return nil
         }
     }
     
     func tableView(_ tableView: UITableView, viewForHeaderInSection section: Int) -> UIView? {
-        guard section == 1 || section == 2 || section == 3 else { return nil }
+        guard section == 1 || section == 2 || section == 3 || section == 4 else { return nil }
         
         let headerView = UIView()
         headerView.backgroundColor = UIColor(red: 0.95, green: 0.95, blue: 0.98, alpha: 1.0)
@@ -541,21 +571,21 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
             
         case (1, 0):
             // Figure Scale slider
-            addSliderCell(cell, label: "Figure Scale", value: figureScale, min: 0.5, max: 2.0, increment: 0.1, onChange: { [weak self] val in
+            addSliderCell(cell, label: "Figure Scale", value: figureScale, min: 0.1, max: 4.0, increment: 0.1, onChange: { [weak self] val in
                 self?.figureScale = val
                 self?.updateFigure()
             })
             
         case (1, 1):
             // Shoulder Width
-            addSliderCell(cell, label: "Shoulder Width", value: shoulderWidthMultiplier, min: 0.0, max: 2.0, increment: 0.1, onChange: { [weak self] val in
+            addSliderCell(cell, label: "Shoulder Width", value: shoulderWidthMultiplier, min: 0.0, max: 3.0, increment: 0.1, onChange: { [weak self] val in
                 self?.shoulderWidthMultiplier = val
                 self?.updateFigure()
             })
             
         case (1, 2):
             // Waist Width
-            addSliderCell(cell, label: "Waist Width", value: waistWidthMultiplier, min: 0.0, max: 2.0, increment: 0.1, onChange: { [weak self] val in
+            addSliderCell(cell, label: "Waist Width", value: waistWidthMultiplier, min: 0.0, max: 3.0, increment: 0.1, onChange: { [weak self] val in
                 self?.waistWidthMultiplier = val
                 self?.updateFigure()
             })
@@ -611,17 +641,38 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
 
         case (1, 10):
             // Upper Arm Fusiform
-            addSliderCell(cell, label: "Upper Arm Fusiform", value: fusiformBicep, min: 0, max: 10, increment: 0.1, onChange: { [weak self] val in
+            addSliderCell(cell, label: "Upper Arm Fusiform", value: fusiformBicep, min: 0, max: 20, increment: 0.1, onChange: { [weak self] val in
                 self?.fusiformBicep = val
                 self?.updateFigure()
             })
 
         case (1, 11):
             // Upper Leg Fusiform
-            addSliderCell(cell, label: "Upper Leg Fusiform", value: fusiformUpperLegs, min: 0, max: 10, increment: 0.1, onChange: { [weak self] val in
+            addSliderCell(cell, label: "Upper Leg Fusiform", value: fusiformUpperLegs, min: 0, max: 20, increment: 0.1, onChange: { [weak self] val in
                 self?.fusiformUpperLegs = val
                 self?.updateFigure()
             })
+        
+        case (1, 12):
+            // Head Size slider
+            addSliderCell(cell, label: "Head Size", value: headSizeMultiplier, min: 0.2, max: 4.0, increment: 0.1, onChange: { [weak self] val in
+                self?.headSizeMultiplier = val
+                self?.updateFigure()
+            })
+        
+        case (1, 13):
+            // Show Chest toggle
+            addToggleCell(cell, label: "Show Chest", isOn: showChest) { [weak self] isOn in
+                self?.showChest = isOn
+                self?.updateFigure()
+            }
+        
+        case (1, 14):
+            // Show Abs toggle
+            addToggleCell(cell, label: "Show Abs", isOn: showAbs) { [weak self] isOn in
+                self?.showAbs = isOn
+                self?.updateFigure()
+            }
 
         // Joint Angles - SECTION 2
         case (2, 0): addSliderCell(cell, label: "Head", value: neckRotation, min: -180, max: 180, increment: 1, onChange: { [weak self] val in self?.neckRotation = val; self?.updateFigure() })
@@ -653,12 +704,112 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
             addColorButton(cell, label: "L Lower Arm", colorKey: "leftLowerArm")
         case (3, 7):
             addColorButton(cell, label: "R Lower Arm", colorKey: "rightLowerArm")
-            
+        
+        // MARK: Eyes Section (section 4)
+        case (4, 0):
+            // Eye color swatch
+            addEyeColorCell(cell, label: "Eye Color", target: "eye", currentColor: eyeColor)
+        case (4, 1):
+            // Eyes enabled toggle
+            addToggleCell(cell, label: "Show Eyes", isOn: eyesEnabled) { [weak self] isOn in
+                self?.eyesEnabled = isOn
+                self?.updateFigure()
+            }
+        case (4, 2):
+            // Iris color swatch
+            addEyeColorCell(cell, label: "Iris Color", target: "iris", currentColor: irisColor)
+        case (4, 3):
+            // Iris enabled toggle
+            addToggleCell(cell, label: "Show Iris", isOn: irisEnabled) { [weak self] isOn in
+                self?.irisEnabled = isOn
+                self?.updateFigure()
+            }
+        case (4, 4):
+            // Reset eyes button
+            cell.contentView.subviews.forEach { $0.removeFromSuperview() }
+            let resetBtn = UIButton(type: .system)
+            resetBtn.setTitle("Reset Eyes", for: .normal)
+            resetBtn.titleLabel?.font = UIFont.systemFont(ofSize: 14)
+            resetBtn.translatesAutoresizingMaskIntoConstraints = false
+            resetBtn.addAction(UIAction { [weak self] _ in
+                self?.eyesEnabled = false
+                self?.eyeColor = .black
+                self?.irisEnabled = false
+                self?.irisColor = .black
+                self?.updateFigure()
+                self?.controlsTableView.reloadSections(IndexSet(integer: 4), with: .none)
+            }, for: .touchUpInside)
+            cell.contentView.addSubview(resetBtn)
+            NSLayoutConstraint.activate([
+                resetBtn.centerXAnchor.constraint(equalTo: cell.contentView.centerXAnchor),
+                resetBtn.centerYAnchor.constraint(equalTo: cell.contentView.centerYAnchor),
+                cell.contentView.heightAnchor.constraint(greaterThanOrEqualToConstant: 44)
+            ])
+
         default:
             break
         }
         
         return cell
+    }
+    
+    private func addEyeColorCell(_ cell: UITableViewCell, label: String, target: String, currentColor: UIColor) {
+        cell.contentView.subviews.forEach { $0.removeFromSuperview() }
+        let container = UIStackView()
+        container.axis = .horizontal
+        container.spacing = 12
+        container.translatesAutoresizingMaskIntoConstraints = false
+        
+        let labelView = UILabel()
+        labelView.text = label
+        labelView.font = UIFont.systemFont(ofSize: 14)
+        
+        let colorBtn = UIButton(type: .system)
+        colorBtn.backgroundColor = currentColor
+        colorBtn.layer.cornerRadius = 6
+        colorBtn.layer.borderColor = UIColor.black.cgColor
+        colorBtn.layer.borderWidth = 1
+        colorBtn.translatesAutoresizingMaskIntoConstraints = false
+        colorBtn.accessibilityIdentifier = target  // "eye" or "iris"
+        colorBtn.addTarget(self, action: #selector(eyeColorButtonPressed(_:)), for: .touchUpInside)
+        
+        container.addArrangedSubview(labelView)
+        container.addArrangedSubview(UIView())  // Spacer
+        container.addArrangedSubview(colorBtn)
+        
+        cell.contentView.addSubview(container)
+        NSLayoutConstraint.activate([
+            container.topAnchor.constraint(equalTo: cell.contentView.topAnchor, constant: 8),
+            container.leadingAnchor.constraint(equalTo: cell.contentView.leadingAnchor, constant: 16),
+            container.trailingAnchor.constraint(equalTo: cell.contentView.trailingAnchor, constant: -16),
+            container.bottomAnchor.constraint(equalTo: cell.contentView.bottomAnchor, constant: -8),
+            colorBtn.widthAnchor.constraint(equalToConstant: 44),
+            colorBtn.heightAnchor.constraint(equalToConstant: 44),
+            cell.contentView.heightAnchor.constraint(greaterThanOrEqualToConstant: 50)
+        ])
+    }
+    
+    private func addToggleCell(_ cell: UITableViewCell, label: String, isOn: Bool, onChange: @escaping (Bool) -> Void) {
+        cell.contentView.subviews.forEach { $0.removeFromSuperview() }
+        let lbl = UILabel()
+        lbl.text = label
+        lbl.font = UIFont.systemFont(ofSize: 14)
+        lbl.translatesAutoresizingMaskIntoConstraints = false
+        
+        let toggle = UISwitch()
+        toggle.isOn = isOn
+        toggle.translatesAutoresizingMaskIntoConstraints = false
+        toggle.addAction(UIAction { _ in onChange(toggle.isOn) }, for: .valueChanged)
+        
+        cell.contentView.addSubview(lbl)
+        cell.contentView.addSubview(toggle)
+        NSLayoutConstraint.activate([
+            lbl.leadingAnchor.constraint(equalTo: cell.contentView.leadingAnchor, constant: 16),
+            lbl.centerYAnchor.constraint(equalTo: cell.contentView.centerYAnchor),
+            toggle.trailingAnchor.constraint(equalTo: cell.contentView.trailingAnchor, constant: -16),
+            toggle.centerYAnchor.constraint(equalTo: cell.contentView.centerYAnchor),
+            cell.contentView.heightAnchor.constraint(greaterThanOrEqualToConstant: 50)
+        ])
     }
     
     func tableView(_ tableView: UITableView, heightForRowAt indexPath: IndexPath) -> CGFloat {
@@ -1016,9 +1167,14 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
     }
     
     private func loadStandFrameValues() {
-        // Ensure gameState is initialized with a standFrame
+        // When there's no gameState (standalone animator), load Stand frame 0 from saved frames
         guard let gameState = gameState else {
-            print("🎮 ERROR: No gameState provided to editor")
+            let allFrames = SavedFramesManager.shared.getAllFrames()
+            if let standFrame = allFrames.first(where: { $0.name.lowercased() == "stand" && $0.frameNumber == 0 })
+                               ?? allFrames.first(where: { $0.name.lowercased() == "stand" })
+                               ?? allFrames.first {
+                applyFrame(standFrame)
+            }
             return
         }
         
@@ -1132,6 +1288,13 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
     func updateFigure() {
         //print("🎮 DEBUG updateFigure: fusiformShoulders=\(fusiformShoulders), skeletonSizeTorso=\(skeletonSizeTorso) skeletonSizeArm=\(skeletonSizeArm) skeletonSizeLeg=\(skeletonSizeLeg) jointShapeSize=\(jointShapeSize)")
         
+        // Sync eye settings into StickFigureAppearance.shared so renderStickFigureV2 picks them up
+        // (renderStickFigureV2 calls applyToStickFigure which reads from UserDefaults-backed shared)
+        StickFigureAppearance.shared.eyesEnabled = eyesEnabled
+        StickFigureAppearance.shared.eyeColor = Color(eyeColor)
+        StickFigureAppearance.shared.irisEnabled = irisEnabled
+        StickFigureAppearance.shared.irisColor = Color(irisColor)
+
         // Update coordinate label if it exists
         coordinateLabel?.text = String(format: "X: %.0f\nY: %.0f", figureOffsetX, figureOffsetY)
         
@@ -1200,7 +1363,14 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
             strokeThicknessDeltoids: strokeThicknessDeltoids,
             strokeThicknessTrapezius: strokeThicknessTrapezius,
             bodyPartColors: bodyPartColors,
-            showInteractiveJoints: showInteractiveJoints
+            showInteractiveJoints: showInteractiveJoints,
+            eyesEnabled: eyesEnabled,
+            eyeColor: eyeColor,
+            irisEnabled: irisEnabled,
+            irisColor: irisColor,
+            showChest: showChest,
+            showAbs: showAbs,
+            headSizeMultiplier: headSizeMultiplier
         )
     }
     
@@ -1368,6 +1538,19 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
                         frameObjects.append(editorObject)
                         print("🎮 Saving box object: \(color) \(Int(width))x\(Int(height)) at \(shapeNode.position)")
                     }
+                    // Handle emoji objects (SKLabelNode)
+                    else if let labelNode = node as? SKLabelNode, labelNode.name?.hasPrefix("object_emoji_") == true {
+                        let assetName = (labelNode.userData?["assetName"] as? String) ?? "EMOJI_\(labelNode.text ?? "?")"
+                        let editorObject = EditorObject(
+                            assetName: assetName,
+                            position: labelNode.position,
+                            rotation: labelNode.zRotation,
+                            scaleX: labelNode.xScale,
+                            scaleY: labelNode.yScale
+                        )
+                        frameObjects.append(editorObject)
+                        print("🎮 Saving emoji object: \(assetName) at \(labelNode.position)")
+                    }
                 }
                 
                 // Also check characterNode children
@@ -1423,11 +1606,36 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
                             frameObjects.append(editorObject)
                             print("🎮 Saving box object (from char node): \(color) \(Int(width))x\(Int(height)) at \(absolutePosition) (relative: \(shapeNode.position))")
                         }
+                        // Handle emoji objects (SKLabelNode) from characterNode
+                        else if let labelNode = node as? SKLabelNode, labelNode.name?.hasPrefix("object_emoji_") == true {
+                            let assetName = (labelNode.userData?["assetName"] as? String) ?? "EMOJI_\(labelNode.text ?? "?")"
+                            let absolutePosition = CGPoint(
+                                x: labelNode.position.x + charNode.position.x,
+                                y: labelNode.position.y + charNode.position.y
+                            )
+                            let editorObject = EditorObject(
+                                assetName: assetName,
+                                position: absolutePosition,
+                                rotation: labelNode.zRotation,
+                                scaleX: labelNode.xScale,
+                                scaleY: labelNode.yScale
+                            )
+                            frameObjects.append(editorObject)
+                            print("🎮 Saving emoji object (from char node): \(assetName) at \(absolutePosition)")
+                        }
                     }
                 }
             }
             
-            let frame = SavedEditFrame(name: name, frameNumber: frameNumber, from: editValues, pose: tempPose, objects: frameObjects)
+            var frame = SavedEditFrame(name: name, frameNumber: frameNumber, from: editValues, pose: tempPose, objects: frameObjects)
+            // Persist eyes settings
+            frame.eyesEnabled = self.eyesEnabled
+            frame.eyeColorHex = self.eyeColor.toHexString()
+            frame.irisEnabled = self.irisEnabled
+            frame.irisColorHex = self.irisColor.toHexString()
+            frame.showChest = self.showChest
+            frame.showAbs = self.showAbs
+            frame.headRadiusMultiplier = self.headSizeMultiplier
             SavedFramesManager.shared.saveFrame(frame)
             
             let successAlert = UIAlertController(title: "Saved!", message: "Frame '\(name)' (Frame #\(frameNumber)) has been saved with \(frameObjects.count) objects", preferredStyle: .alert)
@@ -1453,8 +1661,13 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
         print("🎮 Add object button pressed")
         let alert = UIAlertController(title: "Add Object", message: "Select object type", preferredStyle: .actionSheet)
         
-        // Image assets
-        let assets = ["Apple", "Dumbbell", "Kettlebell", "Shaker"]
+        // Emoji option (first, at top)
+        alert.addAction(UIAlertAction(title: "Emoji", style: .default) { [weak self] _ in
+            self?.addEmojiObject()
+        })
+        
+        // Image assets (Apple removed)
+        let assets = ["Dumbbell", "Kettlebell", "Shaker"]
         
         for asset in assets {
             alert.addAction(UIAlertAction(title: asset, style: .default) { [weak self] _ in
@@ -1469,6 +1682,82 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
         
         alert.addAction(UIAlertAction(title: "Cancel", style: .cancel))
         present(alert, animated: true)
+    }
+    
+    private func addEmojiObject() {
+        let alert = UIAlertController(title: "Add Emoji", message: "Type or paste an emoji character", preferredStyle: .alert)
+        alert.addTextField { textField in
+            textField.placeholder = "😀"
+            textField.font = UIFont.systemFont(ofSize: 32)
+        }
+        alert.addAction(UIAlertAction(title: "Add", style: .default) { [weak self] _ in
+            guard let text = alert.textFields?.first?.text,
+                  let emoji = text.unicodeScalars.first.map({ Character($0) }) ?? text.first else { return }
+            let emojiStr = String(emoji)
+            self?.placeEmojiNode(emojiStr)
+        })
+        alert.addAction(UIAlertAction(title: "Cancel", style: .cancel))
+        present(alert, animated: true)
+    }
+    
+    private func placeEmojiNode(_ emoji: String) {
+        guard let editorScene = editorScene else { return }
+        
+        let assetName = "EMOJI_\(emoji)"
+        let labelNode = SKLabelNode(text: emoji)
+        labelNode.fontSize = 60
+        labelNode.verticalAlignmentMode = .center
+        labelNode.horizontalAlignmentMode = .center
+        labelNode.position = CGPoint(x: editorScene.size.width / 2, y: editorScene.size.height / 2 - 100)
+        labelNode.zPosition = 5
+        labelNode.name = "object_emoji_\(UUID())"
+        
+        labelNode.userData = NSMutableDictionary()
+        labelNode.userData?["assetName"] = assetName
+        labelNode.userData?["rotation"] = 0.0
+        labelNode.userData?["scale"] = 1.0
+        
+        if showObjectControls {
+            let halfSize: CGFloat = 30
+            
+            let moveDot = SKShapeNode(circleOfRadius: 3)
+            moveDot.fillColor = .white
+            moveDot.strokeColor = .darkGray
+            moveDot.lineWidth = 1
+            moveDot.position = .zero
+            moveDot.name = "object_move_emoji"
+            moveDot.zPosition = 12
+            labelNode.addChild(moveDot)
+            
+            let rotateDot = SKShapeNode(circleOfRadius: 3)
+            rotateDot.fillColor = .yellow
+            rotateDot.strokeColor = .darkGray
+            rotateDot.lineWidth = 1
+            rotateDot.position = CGPoint(x: halfSize, y: halfSize)
+            rotateDot.name = "object_rotate_emoji"
+            rotateDot.zPosition = 12
+            labelNode.addChild(rotateDot)
+            
+            let resizeDot = SKShapeNode(circleOfRadius: 3)
+            resizeDot.fillColor = .green
+            resizeDot.strokeColor = .darkGray
+            resizeDot.lineWidth = 1
+            resizeDot.position = CGPoint(x: halfSize, y: -halfSize)
+            resizeDot.name = "object_resize_emoji"
+            resizeDot.zPosition = 12
+            labelNode.addChild(resizeDot)
+            
+            let deleteDot = SKShapeNode(circleOfRadius: 5)
+            deleteDot.fillColor = .red
+            deleteDot.strokeColor = .darkGray
+            deleteDot.lineWidth = 1
+            deleteDot.position = CGPoint(x: -halfSize, y: halfSize)
+            deleteDot.name = "object_delete_emoji"
+            deleteDot.zPosition = 12
+            labelNode.addChild(deleteDot)
+        }
+        
+        editorScene.addChild(labelNode)
     }
     
     private func addImageObject(asset: String) {
@@ -1607,11 +1896,10 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
         // Load the asset image
         let imageName: String
         switch asset {
-        case "Apple": imageName = "Apple"
         case "Dumbbell": imageName = "Dumbbell"
         case "Kettlebell": imageName = "Kettlebell"
         case "Shaker": imageName = "Shaker"
-        default: imageName = "Apple"
+        default: imageName = "Dumbbell"
         }
         
         // Create a sprite node for the object
@@ -1790,6 +2078,19 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
         print("🔍 applyFrame: Applied hourglass properties - fusiformFullTorso=\(fusiformFullTorso)")
         armMuscleSide = frame.armMuscleSide
         
+        // Restore eyes settings
+        eyesEnabled = frame.eyesEnabled
+        eyeColor = UIColor(hex: frame.eyeColorHex) ?? .black
+        irisEnabled = frame.irisEnabled
+        irisColor = UIColor(hex: frame.irisColorHex) ?? .black
+        
+        // Restore chest/abs visibility
+        showChest = frame.showChest
+        showAbs = frame.showAbs
+        
+        // Restore head size
+        headSizeMultiplier = frame.headRadiusMultiplier
+        
         // Clear existing objects from both scene and characterNode
         if let editorScene = editorScene {
             editorScene.children.forEach { node in
@@ -1848,6 +2149,18 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
                     editorScene?.addChild(boxNode)
                     print("🎮 Loaded box: \(color) \(Int(width))x\(Int(height)) at \(boxNode.position)")
                 }
+            } else if editorObject.assetName.hasPrefix("EMOJI_") {
+                // Load as emoji (SKLabelNode)
+                let emojiChar = String(editorObject.assetName.dropFirst("EMOJI_".count))
+                placeEmojiNode(emojiChar)
+                // Update position/rotation/scale on the just-placed emoji node
+                if let lastEmoji = editorScene?.children.last(where: { $0.name?.hasPrefix("object_emoji_") == true }) as? SKLabelNode {
+                    lastEmoji.position = editorObject.position
+                    lastEmoji.zRotation = editorObject.rotation
+                    lastEmoji.xScale = editorObject.scaleX
+                    lastEmoji.yScale = editorObject.scaleY
+                    print("🎮 Loaded emoji object: \(emojiChar) at \(lastEmoji.position)")
+                }
             } else {
                 // Load as image object - pass actual dimensions from saved frame if available
                 addObject(asset: editorObject.assetName, width: editorObject.baseWidth, height: editorObject.baseHeight)
@@ -1869,9 +2182,13 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
     }
     
     @objc private func closePressed() {
-        dismiss(animated: true) { [weak self] in
-            self?.onDismiss?()
-        }
+        onDismiss?()
+    }
+    
+    @objc private func openAnimationStudio() {
+        let studioVC = AnimationStudioViewController()
+        studioVC.modalPresentationStyle = .fullScreen
+        present(studioVC, animated: true)
     }
     func colorPickerViewControllerDidSelectColor(_ viewController: UIColorPickerViewController) {
         // Check if this is for a box color (colorPickerEditorScene will be set)
@@ -1926,6 +2243,17 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
             updateFigure()
             viewController.dismiss(animated: true)  // Dismiss the color picker, not the entire editor
         }
+        // Eye/iris color
+        else if let eyeTarget = pendingEyeColorTarget {
+            if eyeTarget == "iris" {
+                irisColor = viewController.selectedColor
+            } else {
+                eyeColor = viewController.selectedColor
+            }
+            pendingEyeColorButton?.backgroundColor = viewController.selectedColor
+            updateFigure()
+            viewController.dismiss(animated: true)
+        }
     }
     
     // MARK: - UIImagePickerControllerDelegate
@@ -1957,6 +2285,18 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
         }
         
         pendingColorButton = sender
+        pendingEyeColorTarget = nil  // Not an eye color
+        present(colorPickerVC, animated: true)
+    }
+    
+    @objc private func eyeColorButtonPressed(_ sender: UIButton) {
+        let colorPickerVC = UIColorPickerViewController()
+        colorPickerVC.delegate = self
+        let target = sender.accessibilityIdentifier ?? "eye"
+        pendingEyeColorTarget = target
+        pendingEyeColorButton = sender
+        pendingColorKey = nil  // Not a body part color
+        colorPickerVC.selectedColor = (target == "iris") ? irisColor : eyeColor
         present(colorPickerVC, animated: true)
     }
 }
@@ -2312,24 +2652,25 @@ class StickFigureEditorScene: SKScene {
     }
     
     private func renderStickFigure() {
-        guard let gameState = gameState, let standFrame = gameState.standFrame else {
-            print("🎮 ERROR: No game state or stand frame")
-            return
-        }
-        
         // Remove existing character
         characterNode?.removeFromParent()
+        
+        // Use standFrame from gameState if available, otherwise use a fresh StickFigure2D
+        let frame: StickFigure2D
+        if let gs = gameState, let sf = gs.standFrame {
+            frame = sf
+        } else {
+            frame = StickFigure2D()
+        }
         
         // Create character node at center
         let container = SKNode()
         container.position = CGPoint(x: size.width / 2, y: size.height / 2)
         container.zPosition = 10
         
-        // Render the actual stick figure using GameScene's renderStickFigure method
-        // We need to create a temporary GameScene with gameState to access the rendering method
         let tempScene = GameScene(size: size)
-        tempScene.gameState = gameState  // PASS the gameState so rendering works correctly
-        let stickFigureNode = tempScene.renderStickFigure(standFrame, at: CGPoint.zero, scale: 1.2, jointShapeSize: 1.0)
+        tempScene.gameState = gameState
+        let stickFigureNode = tempScene.renderStickFigure(frame, at: CGPoint.zero, scale: 1.2, jointShapeSize: 1.0)
         container.addChild(stickFigureNode)
         
         addChild(container)
@@ -2401,20 +2742,30 @@ class StickFigureEditorScene: SKScene {
         strokeThicknessDeltoids: CGFloat = 4.0,
         strokeThicknessTrapezius: CGFloat = 4.0,
         bodyPartColors: [String: UIColor] = [:],
-        showInteractiveJoints: Bool = true
+        showInteractiveJoints: Bool = true,
+        eyesEnabled: Bool = false,
+        eyeColor: UIColor = .black,
+        irisEnabled: Bool = false,
+        irisColor: UIColor = .black,
+        showChest: Bool = true,
+        showAbs: Bool = true,
+        headSizeMultiplier: CGFloat = 1.0
     ) {
         // Update the stick figure with new values
         print("🎮 Updating editor scene with new values: fusiformShoulders=\(fusiformShoulders)")
         print("🎮 Angles - Neck:\(Int(neckRotation))° Torso:\(Int(torsoRotation))° LShoulder:\(Int(leftShoulderAngle))° LElbow:\(Int(leftElbowAngle))°")
         
-        guard let gameState = gameState, let standFrame = gameState.standFrame else { return }
-        
         // Remove old character
         print("🎮 updateWithValues: Removing old character")
         characterNode?.removeFromParent()
         
-        // Create updated frame with angles
-        var updatedFrame = standFrame
+        // Use standFrame from gameState if available, otherwise use a fresh StickFigure2D
+        var updatedFrame: StickFigure2D
+        if let gs = gameState, let sf = gs.standFrame {
+            updatedFrame = sf
+        } else {
+            updatedFrame = StickFigure2D()
+        }
         updatedFrame.strokeThickness = strokeThickness
         updatedFrame.fusiformUpperTorso = fusiformUpperTorso
         updatedFrame.fusiformLowerTorso = fusiformLowerTorso
@@ -2500,8 +2851,21 @@ class StickFigureEditorScene: SKScene {
         appearance.leftLowerLegColor = bodyPartColors["leftLowerLeg"].map { Color($0) } ?? .black
         appearance.rightLowerLegColor = bodyPartColors["rightLowerLeg"].map { Color($0) } ?? .black
         
-        // Apply appearance to the frame
+        // Apply appearance (body part colors) to the frame
         appearance.applyToStickFigure(&updatedFrame)
+        
+        // Apply eyes settings directly to the frame (bypasses UserDefaults-backed appearance)
+        updatedFrame.eyesEnabled = eyesEnabled
+        updatedFrame.eyeColor = Color(eyeColor)
+        updatedFrame.irisEnabled = irisEnabled
+        updatedFrame.irisColor = Color(irisColor)
+        
+        // Apply chest/abs visibility
+        updatedFrame.showChest = showChest
+        updatedFrame.showAbs = showAbs
+        
+        // Apply head size
+        updatedFrame.headRadiusMultiplier = Double(headSizeMultiplier)
         
         // Render the actual stick figure with consistent scale
         let tempScene = GameScene(size: size)
@@ -2867,10 +3231,7 @@ class FrameListViewController: UIViewController, UITableViewDataSource, UITableV
         // Setup navigation
         navigationItem.leftBarButtonItem = UIBarButtonItem(barButtonSystemItem: .close, target: self, action: #selector(closePressed))
         
-        // Create two right bar button items: Regenerate and Sync
-        let regenerateBtn = UIBarButtonItem(title: "Regenerate", style: .plain, target: self, action: #selector(regenerateInterpolationPressed))
-        let syncBtn = UIBarButtonItem(title: "Sync", style: .plain, target: self, action: #selector(syncFromBundlePressed))
-        navigationItem.rightBarButtonItems = [syncBtn, regenerateBtn]
+        // Regenerate and Sync buttons removed (dev-only tools)
         
         // Setup search bar
         searchBar.placeholder = "Search frames..."
