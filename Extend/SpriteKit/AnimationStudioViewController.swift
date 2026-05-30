@@ -16,6 +16,11 @@ class AnimationStudioViewController: UIViewController, UITableViewDelegate, UITa
     private var headerTopView: UIView?
     private var controlBarView: UIView?
 
+    // Collapse / expand panel
+    private var tableCollapsed = false
+    private var previewHeightConstraint: NSLayoutConstraint?
+    private weak var collapseChevron: UIButton?
+
     // Weak refs for live control bar updates
     private weak var delayValueLabel: UILabel?
     private weak var playStopButton: UIButton?
@@ -298,11 +303,37 @@ class AnimationStudioViewController: UIViewController, UITableViewDelegate, UITa
 
         guard let bar = controlBarView else { return }
 
+        // Chevron strip sits at bottom of previewView
+        let chevronStrip = UIView()
+        chevronStrip.backgroundColor = UIColor.black.withAlphaComponent(0.18)
+        chevronStrip.translatesAutoresizingMaskIntoConstraints = false
+        previewView.addSubview(chevronStrip)
+
+        let chevronBtn = UIButton(type: .system)
+        chevronBtn.setImage(UIImage(systemName: "chevron.down"), for: .normal)
+        chevronBtn.tintColor = .white
+        chevronBtn.translatesAutoresizingMaskIntoConstraints = false
+        chevronBtn.addTarget(self, action: #selector(toggleTableCollapse), for: .touchUpInside)
+        chevronStrip.addSubview(chevronBtn)
+        collapseChevron = chevronBtn
+
+        NSLayoutConstraint.activate([
+            chevronStrip.leadingAnchor.constraint(equalTo: previewView.leadingAnchor),
+            chevronStrip.trailingAnchor.constraint(equalTo: previewView.trailingAnchor),
+            chevronStrip.bottomAnchor.constraint(equalTo: previewView.bottomAnchor),
+            chevronStrip.heightAnchor.constraint(equalToConstant: 22),
+            chevronBtn.centerXAnchor.constraint(equalTo: chevronStrip.centerXAnchor),
+            chevronBtn.centerYAnchor.constraint(equalTo: chevronStrip.centerYAnchor)
+        ])
+
+        let heightConstraint = previewView.heightAnchor.constraint(equalTo: view.heightAnchor, multiplier: 0.33)
+        previewHeightConstraint = heightConstraint
+
         NSLayoutConstraint.activate([
             previewView.topAnchor.constraint(equalTo: bar.bottomAnchor),
             previewView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             previewView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
-            previewView.heightAnchor.constraint(equalTo: view.heightAnchor, multiplier: 0.33),
+            heightConstraint,
 
             tableView.topAnchor.constraint(equalTo: previewView.bottomAnchor),
             tableView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
@@ -311,14 +342,61 @@ class AnimationStudioViewController: UIViewController, UITableViewDelegate, UITa
         ])
     }
 
+    @objc private func toggleTableCollapse() {
+        tableCollapsed.toggle()
+        let chevron = collapseChevron
+
+        if tableCollapsed {
+            // Collapse: stretch preview to safe-area bottom, hide tableView
+            previewHeightConstraint?.isActive = false
+            previewHeightConstraint = previewView.bottomAnchor.constraint(
+                equalTo: view.safeAreaLayoutGuide.bottomAnchor)
+            previewHeightConstraint?.isActive = true
+
+            UIView.animate(withDuration: 0.3, delay: 0, options: .curveEaseInOut) {
+                chevron?.transform = CGAffineTransform(rotationAngle: .pi)
+                self.tableView.alpha = 0
+                self.view.layoutIfNeeded()
+            } completion: { _ in
+                self.tableView.isHidden = true
+            }
+        } else {
+            // Expand: show tableView, restore 33% height split
+            tableView.isHidden = false
+            tableView.alpha = 0
+
+            previewHeightConstraint?.isActive = false
+            previewHeightConstraint = previewView.heightAnchor.constraint(
+                equalTo: view.heightAnchor, multiplier: 0.33)
+            previewHeightConstraint?.isActive = true
+
+            UIView.animate(withDuration: 0.3, delay: 0, options: .curveEaseInOut) {
+                chevron?.transform = .identity
+                self.tableView.alpha = 1
+                self.view.layoutIfNeeded()
+            }
+        }
+    }
+
     private func setupScene() {
-        let size = CGSize(width: previewView.bounds.width, height: previewView.bounds.height)
-        guard size.width > 0, size.height > 0 else { return }
+        let w = previewView.bounds.width
+        guard w > 0 else { return }
+        // Use a fixed square scene so figure scale never changes when the view resizes
+        let size = CGSize(width: w, height: w)
         let scene = AnimationStageScene(size: size)
-        scene.scaleMode = .resizeFill
+        scene.scaleMode = .aspectFill
         previewScene = scene
         previewView.presentScene(scene)
         previewView.ignoresSiblingOrder = true
+
+        // Pinch to zoom
+        let pinch = UIPinchGestureRecognizer(target: self, action: #selector(handlePreviewPinch(_:)))
+        previewView.addGestureRecognizer(pinch)
+
+        // Pan to move camera when zoomed in
+        let pan = UIPanGestureRecognizer(target: self, action: #selector(handlePreviewPan(_:)))
+        pan.minimumNumberOfTouches = 2
+        previewView.addGestureRecognizer(pan)
 
         if let standFrame = allFrames.first(where: { $0.name.lowercased() == "stand" && $0.frameNumber == 0 })
                          ?? allFrames.first(where: { $0.name.lowercased() == "stand" })
@@ -327,6 +405,24 @@ class AnimationStudioViewController: UIViewController, UITableViewDelegate, UITa
         } else {
             previewScene?.showStillFigure(StickFigure2D())
         }
+    }
+
+    // MARK: - Preview gestures
+
+    private var pinchStartZoom: CGFloat = 1.0
+
+    @objc private func handlePreviewPinch(_ gr: UIPinchGestureRecognizer) {
+        if gr.state == .began { pinchStartZoom = previewScene?.currentZoom ?? 1.0 }
+        previewScene?.setZoom(pinchStartZoom * gr.scale)
+    }
+
+    @objc private func handlePreviewPan(_ gr: UIPanGestureRecognizer) {
+        guard let scene = previewScene, scene.currentZoom > 1.01 else { return }
+        let t = gr.translation(in: previewView)
+        // Convert UIKit points to scene points (scene may have different size)
+        let sceneScale = scene.size.width / previewView.bounds.width
+        scene.panCamera(by: CGPoint(x: -t.x * sceneScale, y: t.y * sceneScale))
+        gr.setTranslation(.zero, in: previewView)
     }
 
     // MARK: - UITableViewDataSource
@@ -636,8 +732,92 @@ class AnimationStudioViewController: UIViewController, UITableViewDelegate, UITa
         return "animation"
     }
 
+    /// Compute the tightest bounding rect (in canvas-space pixels) that contains all
+    /// figure + object content across every frame, then add padding.
+    /// Canvas is `canvasSize` with the figure centred at (canvasW/2 + offsetX, canvasH/2 + offsetY).
+    private func contentBoundingRect(frames: [SavedEditFrame], canvasSize: CGSize, padding: CGFloat = 24) -> CGRect {
+        // Approx figure half-size in canvas pixels at the standard render scale
+        let renderScale = min(canvasSize.width, canvasSize.height) / 520.0
+        let scaleFactor = renderScale / 1.2
+        let figureHalf: CGFloat = 200 * renderScale   // generous estimate covering head-to-toe
+
+        var minX = CGFloat.infinity, minY = CGFloat.infinity
+        var maxX = -CGFloat.infinity, maxY = -CGFloat.infinity
+
+        for frame in frames {
+            let cx = canvasSize.width / 2 + CGFloat(frame.positionX) * scaleFactor
+            let cy = canvasSize.height / 2 + CGFloat(frame.positionY) * scaleFactor
+
+            // Figure bounding box (centred on cx, cy)
+            minX = min(minX, cx - figureHalf)
+            minY = min(minY, cy - figureHalf)
+            maxX = max(maxX, cx + figureHalf)
+            maxY = max(maxY, cy + figureHalf)
+
+            // Objects
+            for obj in frame.objects {
+                let editorCenter = obj.editorSceneWidth / 2
+                let dx = (obj.position.x - editorCenter) * scaleFactor
+                let dy = (obj.position.y - editorCenter) * scaleFactor
+                let objCx = canvasSize.width / 2 + dx
+                let objCy = canvasSize.height / 2 + dy
+
+                let halfW: CGFloat
+                let halfH: CGFloat
+                if obj.assetName.hasPrefix("BOX_") {
+                    let stripped = String(obj.assetName.dropFirst(4))
+                    let parts = stripped.components(separatedBy: "_")
+                    let w = CGFloat(parts.dropFirst().first.flatMap { Double($0) } ?? 40)
+                    let h = CGFloat(parts.dropFirst(2).first.flatMap { Double($0) } ?? 40)
+                    halfW = w * obj.scaleX * scaleFactor / 2
+                    halfH = h * obj.scaleY * scaleFactor / 2
+                } else if obj.assetName.hasPrefix("EMOJI_") {
+                    let r = 40 * obj.scaleX * scaleFactor / 2
+                    halfW = r; halfH = r
+                } else {
+                    halfW = (obj.baseWidth ?? 40) * obj.scaleX * scaleFactor / 2
+                    halfH = (obj.baseHeight ?? 40) * obj.scaleY * scaleFactor / 2
+                }
+                // Use the diagonal as a conservative half-size to handle rotation
+                let diag = sqrt(halfW * halfW + halfH * halfH)
+                minX = min(minX, objCx - diag)
+                minY = min(minY, objCy - diag)
+                maxX = max(maxX, objCx + diag)
+                maxY = max(maxY, objCy + diag)
+            }
+        }
+
+        // If nothing found, fall back to full canvas
+        guard minX < maxX, minY < maxY else {
+            return CGRect(origin: .zero, size: canvasSize)
+        }
+
+        // Clamp to canvas with padding
+        let x = max(0, minX - padding)
+        let y = max(0, minY - padding)
+        let w = min(canvasSize.width, maxX + padding) - x
+        let h = min(canvasSize.height, maxY + padding) - y
+        return CGRect(x: x, y: y, width: max(1, w), height: max(1, h))
+    }
+
     private func exportGIF(frames: [SavedEditFrame]) {
+        // Use a large internal canvas so the bounding-box crop has enough resolution
         let canvasSize = CGSize(width: 512, height: 512)
+        let padding: CGFloat = 24
+
+        // Compute smart crop rect across all frames
+        let cropRect = contentBoundingRect(frames: frames, canvasSize: canvasSize, padding: padding)
+
+        // Output GIF at the cropped size (max 512 on longest side to keep file small)
+        let cropAspect = cropRect.width / cropRect.height
+        let gifSize: CGSize
+        if cropAspect >= 1 {
+            let w = min(512, cropRect.width)
+            gifSize = CGSize(width: w, height: w / cropAspect)
+        } else {
+            let h = min(512, cropRect.height)
+            gifSize = CGSize(width: h * cropAspect, height: h)
+        }
 
         let formatter = DateFormatter()
         formatter.dateFormat = "yyyy-MM-dd_HHmmss"
@@ -675,7 +855,8 @@ class AnimationStudioViewController: UIViewController, UITableViewDelegate, UITa
             kCGImagePropertyGIFDictionary as String: [kCGImagePropertyGIFDelayTime as String: frameDelay]
         ]
         for savedFrame in frames {
-            if let cgImg = renderFrameToCGImage(savedFrame, size: canvasSize, renderView: renderView, scene: renderScene) {
+            if let cgImg = renderFrameToCGImage(savedFrame, size: canvasSize, cropRect: cropRect,
+                                                outputSize: gifSize, renderView: renderView, scene: renderScene) {
                 CGImageDestinationAddImage(dest, cgImg, frameProps as CFDictionary)
             }
         }
@@ -751,25 +932,41 @@ class AnimationStudioViewController: UIViewController, UITableViewDelegate, UITa
         return container
     }
 
-    /// Render a SavedEditFrame (figure + objects) to a CGImage at the given canvas size.
+    /// Render a SavedEditFrame (figure + objects) to a CGImage.
+    /// The frame is rendered onto `size` canvas, then cropped to `cropRect` and scaled to `outputSize`.
     /// Uses SKView.texture(from:crop:) which works reliably for offscreen rendering.
-    private func renderFrameToCGImage(_ frame: SavedEditFrame, size: CGSize, renderView: SKView, scene: GameScene) -> CGImage? {
+    private func renderFrameToCGImage(_ frame: SavedEditFrame, size: CGSize,
+                                      cropRect: CGRect, outputSize: CGSize,
+                                      renderView: SKView, scene: GameScene) -> CGImage? {
         let node = buildExportNode(for: frame, canvasSize: size, scene: scene)
         scene.addChild(node)
         defer { node.removeFromParent() }
 
-        let cropRect = CGRect(origin: .zero, size: size)
-        guard let texture = renderView.texture(from: scene, crop: cropRect) else { return nil }
+        // Render full canvas
+        let fullCrop = CGRect(origin: .zero, size: size)
+        guard let texture = renderView.texture(from: scene, crop: fullCrop) else { return nil }
 
-        // SKTexture is in SpriteKit's flipped Y coordinate space; draw it right-side up
-        // with a white background into a standard UIKit image.
-        let renderer = UIGraphicsImageRenderer(size: size)
+        // SKTexture Y is flipped; draw into outputSize, cropping to cropRect
+        let renderer = UIGraphicsImageRenderer(size: outputSize)
         let img = renderer.image { ctx in
             UIColor.white.setFill()
-            ctx.fill(CGRect(origin: .zero, size: size))
-            ctx.cgContext.translateBy(x: 0, y: size.height)
-            ctx.cgContext.scaleBy(x: 1, y: -1)
-            ctx.cgContext.draw(texture.cgImage(), in: CGRect(origin: .zero, size: size))
+            ctx.fill(CGRect(origin: .zero, size: outputSize))
+
+            // The texture covers the full `size` canvas. We want to show only `cropRect`
+            // scaled up to `outputSize`. Compute the source-to-dest mapping.
+            let scaleX = outputSize.width / cropRect.width
+            let scaleY = outputSize.height / cropRect.height
+
+            // In SpriteKit texture space Y is flipped: texY = size.height - (sceneY + sceneH)
+            let flippedCropY = size.height - cropRect.maxY
+
+            // Draw the full texture, offset and scaled so that cropRect fills outputSize
+            let drawX = -cropRect.minX * scaleX
+            let drawY = -flippedCropY * scaleY
+            let drawW = size.width * scaleX
+            let drawH = size.height * scaleY
+
+            ctx.cgContext.draw(texture.cgImage(), in: CGRect(x: drawX, y: drawY, width: drawW, height: drawH))
         }
         return img.cgImage
     }
@@ -784,6 +981,7 @@ class AnimationStudioViewController: UIViewController, UITableViewDelegate, UITa
 // MARK: - AnimationStageScene
 
 /// SpriteKit preview scene. Figure is centered at scene middle.
+/// Pinch to zoom, drag (when not moving figure) to pan.
 /// Tap/hold the left half of the scene to move the figure left;
 /// tap/hold the right half to move right (like gameplay movement).
 class AnimationStageScene: SKScene {
@@ -800,8 +998,9 @@ class AnimationStageScene: SKScene {
     private let moveSpeed: CGFloat = 220     // pixels/sec — fast like gameplay
     private var figureX: CGFloat = 0
 
-    // Zoom
-    private var zoomScale: CGFloat = 1.0
+    // Zoom + pan via SKCameraNode — camera scale is inverse of zoom (scale=0.5 means 2× zoom)
+    private var cameraNode = SKCameraNode()
+    private var zoomScale: CGFloat = 1.0     // logical zoom: 1.0 = normal, 2.0 = 2× magnified
     private let zoomMin: CGFloat = 0.4
     private let zoomMax: CGFloat = 3.0
 
@@ -835,8 +1034,16 @@ class AnimationStageScene: SKScene {
     override func didMove(to view: SKView) {
         backgroundColor = UIColor(red: 0.85, green: 0.92, blue: 0.85, alpha: 1.0)
         figureX = size.width / 2
+
+        // Set up camera — starts at scene centre, natural 1:1 zoom
+        cameraNode.position = CGPoint(x: size.width / 2, y: size.height / 2)
+        addChild(cameraNode)
+        camera = cameraNode
+
         loadMoveFrames()
     }
+
+
 
     /// Load "Move" frames from saved frames (frames named "Move", numbers 1–8).
     private func loadMoveFrames() {
@@ -859,7 +1066,6 @@ class AnimationStageScene: SKScene {
         figureX = size.width / 2 + currentFrameOffsetX
         let node = buildFigureNode(figure)
         node.position = CGPoint(x: figureX, y: currentFigureY)
-        node.setScale(zoomScale)
         addChild(node)
         figureNode = node
     }
@@ -874,7 +1080,6 @@ class AnimationStageScene: SKScene {
         figureX = size.width / 2 + currentFrameOffsetX
         let node = buildFrameNode(frame)
         node.position = CGPoint(x: figureX, y: currentFigureY)
-        node.setScale(zoomScale)
         addChild(node)
         figureNode = node
     }
@@ -905,9 +1110,28 @@ class AnimationStageScene: SKScene {
 
     func setLooping(_ loop: Bool) { self.looping = loop }
 
+    var currentZoom: CGFloat { zoomScale }
+
     func adjustZoom(by delta: CGFloat) {
-        zoomScale = max(zoomMin, min(zoomMax, zoomScale + delta))
-        figureNode?.setScale(zoomScale)
+        setZoom(zoomScale + delta)
+    }
+
+    func setZoom(_ newZoom: CGFloat) {
+        zoomScale = max(zoomMin, min(zoomMax, newZoom))
+        // Camera scale is the inverse: zoom 2× means camera renders half the scene
+        let camScale = 1.0 / zoomScale
+        cameraNode.xScale = camScale
+        cameraNode.yScale = camScale
+    }
+
+    func panCamera(by delta: CGPoint) {
+        cameraNode.position = CGPoint(x: cameraNode.position.x + delta.x,
+                                      y: cameraNode.position.y + delta.y)
+    }
+
+    func resetCamera() {
+        cameraNode.position = CGPoint(x: size.width / 2, y: size.height / 2)
+        setZoom(1.0)
     }
 
     // MARK: - Touch handling (hold left half = move left, right half = move right)
@@ -968,8 +1192,7 @@ class AnimationStageScene: SKScene {
         figureNode?.removeFromParent()
         let node = buildFrameNode(frame)
         node.position = CGPoint(x: figureX, y: currentFigureY)
-        node.setScale(zoomScale)
-        if moveDirection < 0 { node.xScale = -zoomScale }
+        if moveDirection < 0 { node.xScale = -1 }
         addChild(node)
         figureNode = node
     }
@@ -977,18 +1200,15 @@ class AnimationStageScene: SKScene {
     private func restoreIdleFrame() {
         figureNode?.removeFromParent()
         if let frame = idleFrame {
-            // Keep figureX where movement stopped; only update Y from frame offset
             currentFrameOffsetY = CGFloat(frame.positionY) * figurePositionScaleFactor
             let node = buildFrameNode(frame)
             node.position = CGPoint(x: figureX, y: currentFigureY)
-            node.setScale(zoomScale)
             addChild(node)
             figureNode = node
         } else if let figure = idleFigure {
             currentFrameOffsetY = CGFloat(figure.figureOffsetY) * figurePositionScaleFactor
             let node = buildFigureNode(figure)
             node.position = CGPoint(x: figureX, y: currentFigureY)
-            node.setScale(zoomScale)
             addChild(node)
             figureNode = node
         }
@@ -1017,7 +1237,6 @@ class AnimationStageScene: SKScene {
         figureNode?.removeFromParent()
         let node = buildFrameNode(frame)
         node.position = CGPoint(x: figureX, y: currentFigureY)
-        node.setScale(zoomScale)
         addChild(node)
         figureNode = node
 

@@ -127,7 +127,14 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
     var showInteractiveJoints: Bool = true
     var showObjectControls: Bool = true  // Show/hide object control dots (move, rotate, resize, delete)
     var sceneZoom: CGFloat = 1.0  // Zoom level for editor view (1.0 = normal, 2.0 = 2x zoom)
-    
+
+    // Collapse / expand bottom panel
+    private var bottomPanelCollapsed = false
+    private var skViewHeightConstraint: NSLayoutConstraint?
+    private var chevronStripTopConstraint: NSLayoutConstraint?
+    private weak var editorChevronStrip: UIView?
+    private weak var editorCollapseChevron: UIButton?
+
     // Section expansion state
     private var expandedSections: Set<Int> = [7]  // Expanded by default (section 7 Frames visible; others collapsed including colors)
     
@@ -165,27 +172,53 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
         controlsTableView.dataSource = self
         bottomContainer.addSubview(controlsTableView)
         
+        // Chevron strip between top and bottom containers
+        let chevronStrip = UIView()
+        chevronStrip.backgroundColor = UIColor(red: 0.2, green: 0.4, blue: 0.2, alpha: 1.0)
+        chevronStrip.translatesAutoresizingMaskIntoConstraints = false
+        view.addSubview(chevronStrip)
+
+        let chevronBtn = UIButton(type: .system)
+        chevronBtn.setImage(UIImage(systemName: "chevron.down"), for: .normal)
+        chevronBtn.tintColor = .white
+        chevronBtn.translatesAutoresizingMaskIntoConstraints = false
+        chevronBtn.addTarget(self, action: #selector(toggleBottomPanel), for: .touchUpInside)
+        chevronStrip.addSubview(chevronBtn)
+        editorCollapseChevron = chevronBtn
+        editorChevronStrip = chevronStrip
+
+        let chevronTopConstraint = chevronStrip.topAnchor.constraint(equalTo: topContainer.bottomAnchor)
+        chevronStripTopConstraint = chevronTopConstraint
+
         // Layout constraints
         NSLayoutConstraint.activate([
-            // Top container
+            // Top container (always square, fixed — skView inside it expands on collapse)
             topContainer.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 30),
             topContainer.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             topContainer.trailingAnchor.constraint(equalTo: view.trailingAnchor),
             topContainer.heightAnchor.constraint(equalTo: topContainer.widthAnchor),
-            
+
+            // Chevron strip between top and bottom
+            chevronTopConstraint,
+            chevronStrip.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            chevronStrip.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            chevronStrip.heightAnchor.constraint(equalToConstant: 22),
+            chevronBtn.centerXAnchor.constraint(equalTo: chevronStrip.centerXAnchor),
+            chevronBtn.centerYAnchor.constraint(equalTo: chevronStrip.centerYAnchor),
+
             // Bottom container
-            bottomContainer.topAnchor.constraint(equalTo: topContainer.bottomAnchor),
+            bottomContainer.topAnchor.constraint(equalTo: chevronStrip.bottomAnchor),
             bottomContainer.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             bottomContainer.trailingAnchor.constraint(equalTo: view.trailingAnchor),
             bottomContainer.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor),
-            
+
             // Table view
             controlsTableView.topAnchor.constraint(equalTo: bottomContainer.topAnchor),
             controlsTableView.leadingAnchor.constraint(equalTo: bottomContainer.leadingAnchor),
             controlsTableView.trailingAnchor.constraint(equalTo: bottomContainer.trailingAnchor),
             controlsTableView.bottomAnchor.constraint(equalTo: bottomContainer.bottomAnchor)
         ])
-        
+
         // Add header
         addHeader()
     }
@@ -316,24 +349,69 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
     
     private func setupEditor() {
         let sceneWidth = view.bounds.width
-        let sceneSize = CGSize(width: sceneWidth, height: sceneWidth)  // Perfect square!
+        let sceneSize = CGSize(width: sceneWidth, height: sceneWidth)
         editorScene = StickFigureEditorScene(size: sceneSize)
         editorScene?.viewController = self
-        
-        skView = SKView(frame: topContainer.bounds)
-        skView?.presentScene(editorScene)
-        skView?.ignoresSiblingOrder = true
-        
-        if let skView = skView {
-            topContainer.addSubview(skView)
-            skView.translatesAutoresizingMaskIntoConstraints = false
-            NSLayoutConstraint.activate([
-                skView.topAnchor.constraint(equalTo: topContainer.topAnchor, constant: 2),
-                skView.leadingAnchor.constraint(equalTo: topContainer.leadingAnchor),
-                skView.trailingAnchor.constraint(equalTo: topContainer.trailingAnchor),
-                skView.heightAnchor.constraint(equalTo: skView.widthAnchor)  // Keep it square!
-            ])
+
+        let sv = SKView()
+        sv.backgroundColor = UIColor(red: 0.95, green: 0.95, blue: 0.98, alpha: 1.0)
+        editorScene?.scaleMode = .resizeFill
+        sv.presentScene(editorScene)
+        sv.ignoresSiblingOrder = true
+        sv.translatesAutoresizingMaskIntoConstraints = false
+
+        // Insert skView directly into view (not topContainer) so touches are never clipped
+        // by topContainer's bounds. Insert it just above topContainer so UIKit views
+        // added before it (header, chevronStrip, bottomContainer) stay on top.
+        view.insertSubview(sv, aboveSubview: topContainer)
+        skView = sv
+
+        let skHeightConstraint = sv.heightAnchor.constraint(equalTo: sv.widthAnchor)
+        skViewHeightConstraint = skHeightConstraint
+        NSLayoutConstraint.activate([
+            sv.topAnchor.constraint(equalTo: topContainer.topAnchor),
+            sv.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            sv.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            skHeightConstraint
+        ])
+
+        // Bring overlapping UIKit views in front of skView
+        if let chevronStrip = editorChevronStrip { view.bringSubviewToFront(chevronStrip) }
+        view.bringSubviewToFront(bottomContainer)
+
+        // Pinch to zoom
+        let pinch = UIPinchGestureRecognizer(target: self, action: #selector(handleEditorPinch(_:)))
+        sv.addGestureRecognizer(pinch)
+
+        // Two-finger pan
+        let pan = UIPanGestureRecognizer(target: self, action: #selector(handleEditorPan(_:)))
+        pan.minimumNumberOfTouches = 2
+        pan.delegate = self
+        sv.addGestureRecognizer(pan)
+    }
+
+    // MARK: - Editor gestures
+
+    private var editorPinchStartZoom: CGFloat = 1.0
+
+    @objc private func handleEditorPinch(_ gr: UIPinchGestureRecognizer) {
+        if gr.state == .began { editorPinchStartZoom = sceneZoom }
+        let newZoom = max(0.5, min(3.0, editorPinchStartZoom * gr.scale))
+        sceneZoom = newZoom
+        editorScene?.updateZoom(newZoom)
+        // Keep the slider in sync if it's visible — just update the backing value
+        // (rebuilding the cell would cause flicker, so we only sync on gesture end)
+        if gr.state == .ended || gr.state == .cancelled {
+            controlsTableView.reloadRows(at: [IndexPath(row: 1, section: 0)], with: .none)
         }
+    }
+
+    @objc private func handleEditorPan(_ gr: UIPanGestureRecognizer) {
+        guard sceneZoom > 1.01 else { return }
+        let t = gr.translation(in: skView)
+        // SKView coords: Y is flipped relative to scene
+        editorScene?.panScene(by: CGPoint(x: t.x, y: -t.y))
+        gr.setTranslation(.zero, in: skView)
     }
     
     // MARK: - UITableViewDataSource & UITableViewDelegate
@@ -991,6 +1069,55 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
         updateFigure()
     }
     
+    @objc private func toggleBottomPanel() {
+        bottomPanelCollapsed.toggle()
+        let chevron = editorCollapseChevron
+        guard let skView = skView else { return }
+
+        if bottomPanelCollapsed {
+            // Stretch skView to safe-area bottom minus chevron strip height
+            let topOffset: CGFloat = view.safeAreaInsets.top + 30 + 2
+            let targetHeight = view.bounds.height - view.safeAreaInsets.bottom - topOffset - 22
+            skViewHeightConstraint?.isActive = false
+            skViewHeightConstraint = skView.heightAnchor.constraint(equalToConstant: targetHeight)
+            skViewHeightConstraint?.isActive = true
+
+            // Move chevron strip to follow bottom of skView
+            chevronStripTopConstraint?.isActive = false
+            chevronStripTopConstraint = editorChevronStrip?.topAnchor.constraint(
+                equalTo: skView.bottomAnchor)
+            chevronStripTopConstraint?.isActive = true
+
+            UIView.animate(withDuration: 0.3, delay: 0, options: .curveEaseInOut) {
+                chevron?.transform = CGAffineTransform(rotationAngle: .pi)
+                self.bottomContainer.alpha = 0
+                self.view.layoutIfNeeded()
+            } completion: { _ in
+                self.bottomContainer.isHidden = true
+            }
+        } else {
+            // Restore square skView
+            bottomContainer.isHidden = false
+            bottomContainer.alpha = 0
+
+            skViewHeightConstraint?.isActive = false
+            skViewHeightConstraint = skView.heightAnchor.constraint(equalTo: skView.widthAnchor)
+            skViewHeightConstraint?.isActive = true
+
+            // Move chevron strip back to topContainer bottom
+            chevronStripTopConstraint?.isActive = false
+            chevronStripTopConstraint = editorChevronStrip?.topAnchor.constraint(
+                equalTo: topContainer.bottomAnchor)
+            chevronStripTopConstraint?.isActive = true
+
+            UIView.animate(withDuration: 0.3, delay: 0, options: .curveEaseInOut) {
+                chevron?.transform = .identity
+                self.bottomContainer.alpha = 1
+                self.view.layoutIfNeeded()
+            }
+        }
+    }
+
     @objc private func toggleJointsFromHeader(_ sender: UIButton) {
         showInteractiveJoints = !showInteractiveJoints
         sender.tintColor = showInteractiveJoints ? .white : UIColor.white.withAlphaComponent(0.5)
@@ -2199,17 +2326,24 @@ class StickFigureEditorScene: SKScene {
     private var lastDragPosition: CGPoint = .zero
     private var gridNode: SKNode?
     var currentZoom: CGFloat = 1.0
+    private var cameraNode = SKCameraNode()
     weak var viewController: StickFigureGameplayEditorViewController?
     
     override func didMove(to view: SKView) {
         backgroundColor = UIColor(red: 0.95, green: 0.95, blue: 0.98, alpha: 1.0)
-        
-        // Draw grid
+
+        // anchorPoint = (0.5, 0.5) means scene origin (0,0) is always at the
+        // visual centre of the SKView, regardless of the scene's size.
+        // Camera, grid, and figure all sit at (0,0) and never need to move.
+        anchorPoint = CGPoint(x: 0.5, y: 0.5)
+        cameraNode.position = .zero
+        addChild(cameraNode)
+        camera = cameraNode
+
         drawGrid()
-        
-        // Display stick figure
         renderStickFigure()
     }
+    // No didChangeSize needed — anchorPoint keeps (0,0) at the visual centre.
     
     override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
         guard let touch = touches.first else { return }
@@ -2490,51 +2624,57 @@ class StickFigureEditorScene: SKScene {
     private func drawGrid() {
         let gridSpacing: CGFloat = 20
         let gridColor = SKColor.gray.withAlphaComponent(0.3)
-        
-        // Vertical lines
+
+        // Use a fixed large extent so the grid is always visible regardless of when
+        // drawGrid is called relative to layout (size may be 0 during didMove).
+        let extent: CGFloat = 5000
+        let path = UIBezierPath()
+
+        // Vertical lines — span from -extent to +extent, covering well beyond max zoom/pan
         var x: CGFloat = 0
-        while x < size.width {
-            let line = SKShapeNode()
-            let path = UIBezierPath()
-            path.move(to: CGPoint(x: 0, y: -size.height))
-            path.addLine(to: CGPoint(x: 0, y: size.height))
-            line.path = path.cgPath
-            line.strokeColor = gridColor
-            line.lineWidth = 0.5
-            line.position = CGPoint(x: x, y: 0)
-            line.zPosition = 2
-            addChild(line)
+        while x <= extent {
+            path.move(to: CGPoint(x: x, y: -extent))
+            path.addLine(to: CGPoint(x: x, y: extent))
+            if x > 0 {
+                path.move(to: CGPoint(x: -x, y: -extent))
+                path.addLine(to: CGPoint(x: -x, y: extent))
+            }
             x += gridSpacing
         }
-        
+
         // Horizontal lines
         var y: CGFloat = 0
-        while y < size.height {
-            let line = SKShapeNode()
-            let path = UIBezierPath()
-            path.move(to: CGPoint(x: -size.width, y: 0))
-            path.addLine(to: CGPoint(x: size.width, y: 0))
-            line.path = path.cgPath
-            line.strokeColor = gridColor
-            line.lineWidth = 0.5
-            line.position = CGPoint(x: 0, y: y)
-            line.zPosition = 2
-            addChild(line)
+        while y <= extent {
+            path.move(to: CGPoint(x: -extent, y: y))
+            path.addLine(to: CGPoint(x: extent, y: y))
+            if y > 0 {
+                path.move(to: CGPoint(x: -extent, y: -y))
+                path.addLine(to: CGPoint(x: extent, y: -y))
+            }
             y += gridSpacing
         }
-        
-        // Draw crosshairs at center
-        let crosshair = SKShapeNode()
+
+        let gridNode = SKShapeNode(path: path.cgPath)
+        gridNode.strokeColor = gridColor
+        gridNode.fillColor = .clear
+        gridNode.lineWidth = 0.5
+        gridNode.zPosition = 2
+        gridNode.position = .zero
+        addChild(gridNode)
+        self.gridNode = gridNode
+
+        // Crosshairs at scene centre (origin)
         let crossPath = UIBezierPath()
-        crossPath.move(to: CGPoint(x: -size.width, y: 0))
-        crossPath.addLine(to: CGPoint(x: size.width, y: 0))
-        crossPath.move(to: CGPoint(x: 0, y: -size.height))
-        crossPath.addLine(to: CGPoint(x: 0, y: size.height))
-        crosshair.path = crossPath.cgPath
+        crossPath.move(to: CGPoint(x: -extent, y: 0))
+        crossPath.addLine(to: CGPoint(x: extent, y: 0))
+        crossPath.move(to: CGPoint(x: 0, y: -extent))
+        crossPath.addLine(to: CGPoint(x: 0, y: extent))
+        let crosshair = SKShapeNode(path: crossPath.cgPath)
         crosshair.strokeColor = SKColor.red.withAlphaComponent(0.6)
+        crosshair.fillColor = .clear
         crosshair.lineWidth = 1
-        crosshair.position = CGPoint(x: size.width / 2, y: size.height / 2)
         crosshair.zPosition = 3
+        crosshair.position = .zero
         addChild(crosshair)
     }
     
@@ -2544,15 +2684,15 @@ class StickFigureEditorScene: SKScene {
         
         let frame = StickFigure2D()
         
-        // Create character node at center
+        // Create character node at scene centre (origin with anchorPoint=0.5,0.5)
         let container = SKNode()
-        container.position = CGPoint(x: size.width / 2, y: size.height / 2)
+        container.position = .zero
         container.zPosition = 10
-        
+
         let tempScene = GameScene(size: size)
         let stickFigureNode = tempScene.renderStickFigure(frame, at: CGPoint.zero, scale: 1.2, jointShapeSize: 1.0)
         container.addChild(stickFigureNode)
-        
+
         addChild(container)
         characterNode = container
     }
@@ -2706,9 +2846,9 @@ class StickFigureEditorScene: SKScene {
         // Note: Colors are stored in bodyPartColors but rendering happens in GameScene
         // The colors will be applied through the rendering pipeline
         
-        // Create character node centered vertically with offset
+        // Create character node at scene centre (origin) plus user offset
         let container = SKNode()
-        container.position = CGPoint(x: size.width / 2 + figureOffsetX, y: size.height / 2 + figureOffsetY)
+        container.position = CGPoint(x: figureOffsetX, y: figureOffsetY)
         container.zPosition = 10
         
         // Apply colors from bodyPartColors to the frame before rendering
@@ -2796,9 +2936,6 @@ class StickFigureEditorScene: SKScene {
             print("🎮 Moved object \(objectNode.name ?? "unnamed") to relative pos: \(objectNode.position) (was absolute: \(absolutePos), container at: \(containerPos))")
         }
         
-        // Preserve the current zoom level when updating the figure
-        container.setScale(currentZoom)
-        
         characterNode = container
     }
     
@@ -2861,47 +2998,21 @@ class StickFigureEditorScene: SKScene {
     }
     
     func updateZoom(_ zoom: CGFloat) {
-        let sceneCenter = CGPoint(x: size.width / 2, y: size.height / 2)
-        
-        // Apply zoom to character node (stick figure and its child objects)
-        // Since objects are now children of characterNode, they scale together
-        if let characterNode = characterNode {
-            // Calculate the vector from scene center to character node position
-            let dx = characterNode.position.x - sceneCenter.x
-            let dy = characterNode.position.y - sceneCenter.y
-            
-            // Update character node position to zoom from scene center
-            characterNode.position = CGPoint(
-                x: sceneCenter.x + dx * zoom / currentZoom,
-                y: sceneCenter.y + dy * zoom / currentZoom
-            )
-            
-            // Scale the character node (this also scales all child objects)
-            characterNode.setScale(zoom)
-        }
-        
-        // Handle any objects that are direct children of the scene (for backwards compatibility)
-        children.forEach { node in
-            if node.name?.hasPrefix("object_") == true {
-                // Calculate the vector from scene center to object center
-                let dx = node.position.x - sceneCenter.x
-                let dy = node.position.y - sceneCenter.y
-                
-                // Update object position: move it proportionally from the previous zoom to new zoom
-                // Scale the distance from center by the zoom change ratio
-                node.position = CGPoint(
-                    x: sceneCenter.x + dx * zoom / currentZoom,
-                    y: sceneCenter.y + dy * zoom / currentZoom
-                )
-                
-                // Scale the object itself
-                node.setScale(zoom)
-            }
-        }
-        
-        // Update current zoom after positioning
         currentZoom = zoom
-        print("🎮 Zoom updated to \(zoom)x")
+        // Use camera scale (inverse of zoom) so all scene content zooms uniformly
+        let camScale = 1.0 / zoom
+        cameraNode.xScale = camScale
+        cameraNode.yScale = camScale
+        // Reset pan when returning to default zoom
+        if zoom <= 1.0 {
+            cameraNode.position = .zero
+        }
+    }
+
+    /// Pan the camera by the given scene-space delta.
+    func panScene(by delta: CGPoint) {
+        cameraNode.position = CGPoint(x: cameraNode.position.x - delta.x,
+                                      y: cameraNode.position.y - delta.y)
     }
     
     /// Add an object to the character node (ensuring proper scaling)
