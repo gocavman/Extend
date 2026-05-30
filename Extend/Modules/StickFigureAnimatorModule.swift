@@ -1,62 +1,41 @@
-////
-////  StickFigureAnimatorModule.swift
-////  Extend
-////
-////  Created by AI Assistant on 2/20/26.
-////
-
 import SwiftUI
+import UIKit
 
-/// Stick Figure Animator module for creating custom animations
+/// Stick Figure Animator module — opens the editor directly on launch.
 public struct StickFigureAnimatorModule: AppModule {
     public let id: UUID = ModuleIDs.stickFigureAnimator
     public let displayName: String = "Animator"
     public let iconName: String = "figure.stand"
     public let description: String = "Create custom stick figure animations"
-    
+
     public var order: Int = 100
     public var isVisible: Bool = true
-    
+
     public var moduleView: AnyView {
         AnyView(StickFigureAnimatorModuleView())
     }
 }
 
-// MARK: - Stick Figure Animator View
+// MARK: - Module View
 
 private struct StickFigureAnimatorModuleView: View {
     var body: some View {
-        NavigationStack {
-            VStack(spacing: 16) {
-                Text("Animation Creator")
-                    .font(.title2)
-                    .fontWeight(.bold)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.horizontal, 16)
-                
-                List {
-                    Button(action: {}) {
-                        HStack {
-                            Image(systemName: "pencil.and.scribble")
-                                .foregroundColor(.blue)
-                            VStack(alignment: .leading) {
-                                Text("Create New Animation")
-                                    .font(.headline)
-                                Text("Design custom stick figure poses")
-                                    .font(.caption)
-                                    .foregroundColor(.gray)
-                            }
-                        }
-                    }
-                }
-                .listStyle(.plain)
-                
-                Spacer()
-            }
-            .navigationTitle("Stick Figure Animator")
-            .navigationBarTitleDisplayMode(.inline)
-        }
+        StickFigureEditorWrapper()
+            .ignoresSafeArea()
+            .navigationBarHidden(true)
     }
+}
+
+// MARK: - UIViewControllerRepresentable wrapper
+
+private struct StickFigureEditorWrapper: UIViewControllerRepresentable {
+    func makeUIViewController(context: Context) -> StickFigureGameplayEditorViewController {
+        let vc = StickFigureGameplayEditorViewController()
+        vc.gameState = nil  // standalone animator — no gameplay state
+        return vc
+    }
+
+    func updateUIViewController(_ uiViewController: StickFigureGameplayEditorViewController, context: Context) {}
 }
 
 #Preview {
