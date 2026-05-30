@@ -122,13 +122,16 @@ class AnimationStudioViewController: UIViewController, UITableViewDelegate, UITa
         titleLabel.translatesAutoresizingMaskIntoConstraints = false
         headerView.addSubview(titleLabel)
 
-        let gifButton = UIButton(type: .system)
-        gifButton.setTitle("GIF", for: .normal)
-        gifButton.titleLabel?.font = UIFont.systemFont(ofSize: 12, weight: .bold)
-        gifButton.tintColor = .white
-        gifButton.backgroundColor = UIColor.systemBlue.withAlphaComponent(0.35)
+        var gifConfig = UIButton.Configuration.filled()
+        gifConfig.title = "GIF"
+        gifConfig.baseForegroundColor = .white
+        gifConfig.baseBackgroundColor = UIColor.systemBlue.withAlphaComponent(0.35)
+        gifConfig.contentInsets = NSDirectionalEdgeInsets(top: 3, leading: 8, bottom: 3, trailing: 8)
+        gifConfig.titleTextAttributesTransformer = UIConfigurationTextAttributesTransformer { attrs in
+            var a = attrs; a.font = UIFont.systemFont(ofSize: 12, weight: .bold); return a
+        }
+        let gifButton = UIButton(configuration: gifConfig)
         gifButton.layer.cornerRadius = 6
-        gifButton.contentEdgeInsets = UIEdgeInsets(top: 3, left: 8, bottom: 3, right: 8)
         gifButton.translatesAutoresizingMaskIntoConstraints = false
         gifButton.addTarget(self, action: #selector(exportGIFTapped), for: .touchUpInside)
         headerView.addSubview(gifButton)
@@ -722,13 +725,13 @@ class AnimationStageScene: SKScene {
 
     private var currentFigureY: CGFloat { baseFigureY + currentFrameOffsetY }
 
-    /// Scale factor for X: the editor and preview share the same width, so X is 1:1.
-    private var positionScaleFactorX: CGFloat { 1.0 }
-    /// Scale factor for Y: the editor scene is square (W×W), the preview is W×(W*0.33).
-    /// Scale Y offsets so they appear proportional to the preview's smaller height.
-    private var positionScaleFactorY: CGFloat {
-        guard size.width > 0 else { return 1.0 }
-        return size.height / size.width
+    /// Converts editor-scene pixel offsets (figureOffsetX/Y) to preview scene pixels.
+    /// The editor renders figures at scale 1.2; the preview uses renderScale = min(w,h)/520.
+    /// scaleFactor = renderScale / 1.2 is the correct ratio for both X and Y.
+    private var figurePositionScaleFactor: CGFloat {
+        guard size.width > 0, size.height > 0 else { return 1.0 }
+        let renderScale = min(size.width, size.height) / 520.0
+        return renderScale / 1.2
     }
 
     override func didMove(to view: SKView) {
@@ -758,8 +761,8 @@ class AnimationStageScene: SKScene {
         idleFigure = figure
         idleFrame = nil
         figureNode?.removeFromParent()
-        currentFrameOffsetX = CGFloat(figure.figureOffsetX) * positionScaleFactorX
-        currentFrameOffsetY = CGFloat(figure.figureOffsetY) * positionScaleFactorY
+        currentFrameOffsetX = CGFloat(figure.figureOffsetX) * figurePositionScaleFactor
+        currentFrameOffsetY = CGFloat(figure.figureOffsetY) * figurePositionScaleFactor
         figureX = size.width / 2 + currentFrameOffsetX
         let node = buildFigureNode(figure)
         node.position = CGPoint(x: figureX, y: currentFigureY)
@@ -773,8 +776,8 @@ class AnimationStageScene: SKScene {
         idleFrame = frame
         idleFigure = nil
         figureNode?.removeFromParent()
-        currentFrameOffsetX = CGFloat(frame.positionX) * positionScaleFactorX
-        currentFrameOffsetY = CGFloat(frame.positionY) * positionScaleFactorY
+        currentFrameOffsetX = CGFloat(frame.positionX) * figurePositionScaleFactor
+        currentFrameOffsetY = CGFloat(frame.positionY) * figurePositionScaleFactor
         figureX = size.width / 2 + currentFrameOffsetX
         let node = buildFrameNode(frame)
         node.position = CGPoint(x: figureX, y: currentFigureY)
@@ -882,14 +885,14 @@ class AnimationStageScene: SKScene {
         figureNode?.removeFromParent()
         if let frame = idleFrame {
             // Keep figureX where movement stopped; only update Y from frame offset
-            currentFrameOffsetY = CGFloat(frame.positionY) * positionScaleFactorY
+            currentFrameOffsetY = CGFloat(frame.positionY) * figurePositionScaleFactor
             let node = buildFrameNode(frame)
             node.position = CGPoint(x: figureX, y: currentFigureY)
             node.setScale(zoomScale)
             addChild(node)
             figureNode = node
         } else if let figure = idleFigure {
-            currentFrameOffsetY = CGFloat(figure.figureOffsetY) * positionScaleFactorY
+            currentFrameOffsetY = CGFloat(figure.figureOffsetY) * figurePositionScaleFactor
             let node = buildFigureNode(figure)
             node.position = CGPoint(x: figureX, y: currentFigureY)
             node.setScale(zoomScale)
@@ -915,8 +918,8 @@ class AnimationStageScene: SKScene {
     private func showNextFrame() {
         guard isAnimating, !frames.isEmpty else { return }
         let frame = frames[frameIndex]
-        currentFrameOffsetX = CGFloat(frame.positionX) * positionScaleFactorX
-        currentFrameOffsetY = CGFloat(frame.positionY) * positionScaleFactorY
+        currentFrameOffsetX = CGFloat(frame.positionX) * figurePositionScaleFactor
+        currentFrameOffsetY = CGFloat(frame.positionY) * figurePositionScaleFactor
         figureX = size.width / 2 + currentFrameOffsetX
         figureNode?.removeFromParent()
         let node = buildFrameNode(frame)
@@ -948,8 +951,18 @@ class AnimationStageScene: SKScene {
         let figNode = tempScene.renderStickFigure(figure, at: .zero, scale: renderScale)
         container.addChild(figNode)
 
+        // Objects are stored in absolute editor-scene coordinates. objectPosition() converts
+        // them to preview pixels relative to editor center, which already includes figureOffset.
+        // The container is placed at (previewCenter + figureOffset * figurePositionScaleFactor), so
+        // we subtract the figure offset (in preview-pixel units, i.e. scaled by scaleFactor)
+        // to get coordinates relative to the container origin (the figure's position).
+        let offsetX = CGFloat(frame.positionX) * scaleFactor
+        let offsetY = CGFloat(frame.positionY) * scaleFactor
+
         for obj in frame.objects {
-            let pos = objectPosition(for: obj, scaleFactor: scaleFactor)
+            var pos = objectPosition(for: obj, scaleFactor: scaleFactor)
+            // Remove the embedded figure offset so objects are relative to the container
+            pos = CGPoint(x: pos.x - offsetX, y: pos.y - offsetY)
             if obj.assetName.hasPrefix("BOX_") {
                 // Format: BOX_#RRGGBB_width_height
                 let stripped = String(obj.assetName.dropFirst(4))  // "#000000_66_50"

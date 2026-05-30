@@ -649,14 +649,21 @@ class SavedFramesManager {
         //print("✅ Frame saved: \(frame.name)")
     }
     
-    /// Get all saved frames — always syncs from animations.json (bundle is source of truth)
+    /// Get all saved frames.
+    /// On first run (UserDefaults empty) seeds from animations.json bundle defaults.
+    /// User-created frames accumulate on top and are never overwritten by the bundle.
     func getAllFrames() -> [SavedEditFrame] {
+        if let data = defaults.data(forKey: userDefaultsKey),
+           let frames = try? JSONDecoder().decode([SavedEditFrame].self, from: data),
+           !frames.isEmpty {
+            return frames.sorted { $0.timestamp > $1.timestamp }
+        }
+        // First run — seed from bundle defaults
         let result = syncFromBundle()
-        if result.success {
-            if let data = defaults.data(forKey: userDefaultsKey),
-               let frames = try? JSONDecoder().decode([SavedEditFrame].self, from: data) {
-                return frames.sorted { $0.timestamp > $1.timestamp }
-            }
+        if result.success,
+           let data = defaults.data(forKey: userDefaultsKey),
+           let frames = try? JSONDecoder().decode([SavedEditFrame].self, from: data) {
+            return frames.sorted { $0.timestamp > $1.timestamp }
         }
         return []
     }
