@@ -384,18 +384,18 @@ private struct DashboardModuleView: View {
     // MARK: - Helper Methods
     
     private func findModuleID(for tile: DashboardTile) -> UUID? {
+        // Old game1 UUID — redirect any saved tiles to the stick figure animator
+        let oldGame1ID = UUID(uuidString: "0000000C-0000-0000-0000-000000000000")!
+
         // Prefer an explicit target when available
         if let targetID = tile.targetModuleID {
-            // Workout Buddy tiles may have been saved pointing at game1 — redirect to the animator
-            if targetID == ModuleIDs.game1 { return ModuleIDs.stickFigureAnimator }
+            if targetID == oldGame1ID { return ModuleIDs.stickFigureAnimator }
             return targetID
         }
 
         // Try to find a module matching the tile's title
         let modules = registry.registeredModules
         if let module = modules.first(where: { $0.displayName.lowercased() == tile.title.lowercased() }) {
-            // Same redirect: "Workout Buddy" display-name match should go to the animator
-            if module.id == ModuleIDs.game1 { return ModuleIDs.stickFigureAnimator }
             return module.id
         }
 

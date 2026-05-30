@@ -38,7 +38,6 @@ private struct StickFigureEditorWrapper: UIViewControllerRepresentable {
 
     func makeUIViewController(context: Context) -> StickFigureGameplayEditorViewController {
         let vc = StickFigureGameplayEditorViewController()
-        vc.gameState = nil  // standalone animator — no gameplay state
         vc.onDismiss = onClose
         return vc
     }

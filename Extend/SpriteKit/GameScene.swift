@@ -4,9 +4,6 @@ import SwiftUI
 
 /// Base scene class for all game scenes with touch handling
 class GameScene: SKScene {
-    var gameState: StickFigureGameState?
-    var gameViewController: GameViewController?
-    
     override func didMove(to view: SKView) {
         super.didMove(to: view)
         

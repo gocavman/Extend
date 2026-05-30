@@ -621,10 +621,33 @@ class AnimationStudioViewController: UIViewController, UITableViewDelegate, UITa
 
     // MARK: - GIF Export
 
+    /// Derive a display name for the current animation sequence (used in the exported filename).
+    private func animationExportName() -> String {
+        // Use the most common frame name in the sequence, falling back to "animation"
+        let names = sequenceItems.compactMap { item -> String? in
+            let f = allFrames[item.frameIndex]
+            return f.name.isEmpty ? nil : f.name
+        }
+        if let first = names.first {
+            // If all names are the same, use that; otherwise join unique names
+            let unique = NSOrderedSet(array: names).array as! [String]
+            return unique.count == 1 ? first : unique.joined(separator: "_")
+        }
+        return "animation"
+    }
+
     private func exportGIF(frames: [SavedEditFrame]) {
         let canvasSize = CGSize(width: 512, height: 512)
+
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy-MM-dd_HHmmss"
+        let timestamp = formatter.string(from: Date())
+        let baseName = animationExportName()
+            .components(separatedBy: .whitespacesAndNewlines).joined(separator: "_")
+        let filename = "\(baseName)_\(timestamp).gif"
+
         let fileURL = FileManager.default.temporaryDirectory
-            .appendingPathComponent("animation_\(Int(Date().timeIntervalSince1970)).gif")
+            .appendingPathComponent(filename)
 
         guard let dest = CGImageDestinationCreateWithURL(fileURL as CFURL, UTType.gif.identifier as CFString, frames.count, nil) else {
             showAlert(title: "Export Failed", message: "Could not create GIF destination.")
@@ -636,11 +659,23 @@ class AnimationStudioViewController: UIViewController, UITableViewDelegate, UITa
             kCGImagePropertyGIFDictionary as String: [kCGImagePropertyGIFLoopCount as String: loopCount]
         ] as CFDictionary)
 
+        // Create a single SKView + scene for all frames. Adding the view to the window
+        // ensures SKView.texture(from:crop:) renders reliably for every frame.
+        let renderView = SKView(frame: CGRect(origin: .zero, size: canvasSize))
+        renderView.isHidden = true
+        view.addSubview(renderView)
+        defer { renderView.removeFromSuperview() }
+
+        let renderScene = GameScene(size: canvasSize)
+        renderScene.backgroundColor = .white
+        renderScene.scaleMode = .fill
+        renderView.presentScene(renderScene)
+
         let frameProps: [String: Any] = [
             kCGImagePropertyGIFDictionary as String: [kCGImagePropertyGIFDelayTime as String: frameDelay]
         ]
         for savedFrame in frames {
-            if let cgImg = renderFrameToCGImage(savedFrame.toStickFigure2D(), size: canvasSize) {
+            if let cgImg = renderFrameToCGImage(savedFrame, size: canvasSize, renderView: renderView, scene: renderScene) {
                 CGImageDestinationAddImage(dest, cgImg, frameProps as CFDictionary)
             }
         }
@@ -658,20 +693,83 @@ class AnimationStudioViewController: UIViewController, UITableViewDelegate, UITa
         present(activityVC, animated: true)
     }
 
-    private func renderFrameToCGImage(_ figure: StickFigure2D, size: CGSize) -> CGImage? {
-        let offscreenView = SKView(frame: CGRect(origin: .zero, size: size))
-        let scene = GameScene(size: size)
-        scene.backgroundColor = .white
-        scene.scaleMode = .aspectFit
-        offscreenView.presentScene(scene)
-        let scale = min(size.width, size.height) / 600.0
-        let node = scene.renderStickFigure(figure, at: .zero, scale: scale)
-        node.position = CGPoint(x: size.width / 2, y: size.height / 2)
+    /// Build the SK node tree for a frame (figure + objects) using a shared GameScene.
+    /// The returned node is positioned at (0,0) and sized to `canvasSize`.
+    private func buildExportNode(for frame: SavedEditFrame, canvasSize: CGSize, scene: GameScene) -> SKNode {
+        let figure = frame.toStickFigure2D()
+        let renderScale = min(canvasSize.width, canvasSize.height) / 520.0
+        let scaleFactor = renderScale / 1.2
+
+        let container = SKNode()
+        let offsetX = CGFloat(frame.positionX) * scaleFactor
+        let offsetY = CGFloat(frame.positionY) * scaleFactor
+        // Position relative to canvas centre
+        container.position = CGPoint(x: canvasSize.width / 2 + offsetX, y: canvasSize.height / 2 + offsetY)
+
+        let figNode = scene.renderStickFigure(figure, at: .zero, scale: renderScale)
+        container.addChild(figNode)
+
+        for obj in frame.objects {
+            let editorCenter = obj.editorSceneWidth / 2
+            let dx = (obj.position.x - editorCenter) * scaleFactor - offsetX
+            let dy = (obj.position.y - editorCenter) * scaleFactor - offsetY
+            let pos = CGPoint(x: dx, y: dy)
+
+            if obj.assetName.hasPrefix("BOX_") {
+                let stripped = String(obj.assetName.dropFirst(4))
+                let parts = stripped.components(separatedBy: "_")
+                let hexColor = parts.first ?? "#000000"
+                let w = CGFloat(parts.dropFirst().first.flatMap { Double($0) } ?? 40)
+                let h = CGFloat(parts.dropFirst(2).first.flatMap { Double($0) } ?? 40)
+                let box = SKShapeNode(rectOf: CGSize(width: w * obj.scaleX * scaleFactor,
+                                                      height: h * obj.scaleY * scaleFactor))
+                box.fillColor = UIColor(hex: hexColor) ?? .darkGray
+                box.strokeColor = .black
+                box.lineWidth = 1
+                box.position = pos
+                box.zRotation = obj.rotation
+                container.addChild(box)
+            } else if obj.assetName.hasPrefix("EMOJI_") {
+                let emoji = String(obj.assetName.dropFirst(6))
+                let label = SKLabelNode(text: emoji)
+                label.fontSize = 40 * obj.scaleX * scaleFactor
+                label.verticalAlignmentMode = .center
+                label.position = pos
+                label.zRotation = obj.rotation
+                container.addChild(label)
+            } else {
+                let sprite = SKSpriteNode(imageNamed: obj.assetName)
+                sprite.size = CGSize(
+                    width: (obj.baseWidth ?? 40) * obj.scaleX * scaleFactor,
+                    height: (obj.baseHeight ?? 40) * obj.scaleY * scaleFactor
+                )
+                sprite.position = pos
+                sprite.zRotation = obj.rotation
+                container.addChild(sprite)
+            }
+        }
+        return container
+    }
+
+    /// Render a SavedEditFrame (figure + objects) to a CGImage at the given canvas size.
+    /// Uses SKView.texture(from:crop:) which works reliably for offscreen rendering.
+    private func renderFrameToCGImage(_ frame: SavedEditFrame, size: CGSize, renderView: SKView, scene: GameScene) -> CGImage? {
+        let node = buildExportNode(for: frame, canvasSize: size, scene: scene)
         scene.addChild(node)
-        offscreenView.layoutIfNeeded()
+        defer { node.removeFromParent() }
+
+        let cropRect = CGRect(origin: .zero, size: size)
+        guard let texture = renderView.texture(from: scene, crop: cropRect) else { return nil }
+
+        // SKTexture is in SpriteKit's flipped Y coordinate space; draw it right-side up
+        // with a white background into a standard UIKit image.
         let renderer = UIGraphicsImageRenderer(size: size)
-        let img = renderer.image { _ in
-            offscreenView.drawHierarchy(in: CGRect(origin: .zero, size: size), afterScreenUpdates: true)
+        let img = renderer.image { ctx in
+            UIColor.white.setFill()
+            ctx.fill(CGRect(origin: .zero, size: size))
+            ctx.cgContext.translateBy(x: 0, y: size.height)
+            ctx.cgContext.scaleBy(x: 1, y: -1)
+            ctx.cgContext.draw(texture.cgImage(), in: CGRect(origin: .zero, size: size))
         }
         return img.cgImage
     }
@@ -740,15 +838,10 @@ class AnimationStageScene: SKScene {
         loadMoveFrames()
     }
 
-    /// Load "Move" frames from saved frames using the frame numbers in the "run" action config.
+    /// Load "Move" frames from saved frames (frames named "Move", numbers 1–8).
     private func loadMoveFrames() {
         let allFrames = SavedFramesManager.shared.getAllFrames()
-        var frameNumbers = [1, 2, 3, 4, 5, 6, 7, 8]
-        if let runConfig = ACTION_CONFIGS.first(where: { $0.id == "run" }),
-           let anim = runConfig.stickFigureAnimation {
-            frameNumbers = anim.frameNumbers
-            moveFrameInterval = anim.baseFrameInterval
-        }
+        let frameNumbers = [1, 2, 3, 4, 5, 6, 7, 8]
         moveFrames = frameNumbers.compactMap { num in
             allFrames.first(where: { $0.name == "Move" && $0.frameNumber == num })
         }

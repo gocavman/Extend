@@ -55,7 +55,6 @@ struct ExtendApp: App {
         registry.registerModule(GenerateModule())
         registry.registerModule(SettingsModule())
         registry.registerModule(VoiceTrainerModule())
-        registry.registerModule(Game1Module())
         registry.registerModule(StickFigureAnimatorModule())
         registry.registerModule(MatchGameModule())
 

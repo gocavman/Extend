@@ -4,6 +4,61 @@ import SwiftUI
 
 private let defaults = UserDefaults(suiteName: "group.com.cavanmannenbach.extend") ?? .standard
 
+/// Data-transfer object that carries all editor slider/control values when saving a frame.
+struct EditModeValues {
+    var figureScale: CGFloat = 1.0
+    var fusiformUpperTorso: CGFloat = 0
+    var fusiformLowerTorso: CGFloat = 0
+    var fusiformBicep: CGFloat = 0
+    var fusiformTricep: CGFloat = 0
+    var fusiformLowerArms: CGFloat = 0
+    var fusiformUpperLegs: CGFloat = 0
+    var fusiformLowerLegs: CGFloat = 0
+    var fusiformShoulders: CGFloat = 0
+    var fusiformDeltoids: CGFloat = 0
+    var peakPositionBicep: CGFloat = 0.5
+    var peakPositionTricep: CGFloat = 0.5
+    var peakPositionLowerArms: CGFloat = 0.5
+    var peakPositionUpperLegs: CGFloat = 0.5
+    var peakPositionLowerLegs: CGFloat = 0.5
+    var peakPositionUpperTorso: CGFloat = 0.5
+    var peakPositionLowerTorso: CGFloat = 0.5
+    var peakPositionDeltoids: CGFloat = 0.5
+    var fusiformFullTorso: CGFloat = 0
+    var peakPositionFullTorsoTop: CGFloat = 0.5
+    var peakPositionFullTorsoMiddle: CGFloat = 0.5
+    var peakPositionFullTorsoBottom: CGFloat = 0.5
+    var skeletonSizeTorso: CGFloat = 1.0
+    var skeletonSizeArm: CGFloat = 1.0
+    var skeletonSizeLeg: CGFloat = 1.0
+    var jointShapeSize: CGFloat = 1.0
+    var shoulderWidthMultiplier: CGFloat = 1.0
+    var waistWidthMultiplier: CGFloat = 1.0
+    var waistThicknessMultiplier: CGFloat = 0.5
+    var neckLength: CGFloat = 1.0
+    var neckWidth: CGFloat = 1.0
+    var handSize: CGFloat = 1.0
+    var footSize: CGFloat = 1.0
+    var strokeThicknessJoints: CGFloat? = nil
+    var strokeThicknessUpperTorso: CGFloat? = nil
+    var strokeThicknessLowerTorso: CGFloat? = nil
+    var strokeThicknessBicep: CGFloat? = nil
+    var strokeThicknessTricep: CGFloat? = nil
+    var strokeThicknessLowerArms: CGFloat? = nil
+    var strokeThicknessUpperLegs: CGFloat? = nil
+    var strokeThicknessLowerLegs: CGFloat? = nil
+    var strokeThicknessFullTorso: CGFloat? = nil
+    var strokeThicknessDeltoids: CGFloat? = nil
+    var strokeThicknessTrapezius: CGFloat? = nil
+    var armMuscleSide: String = "both"
+    var showGrid: Bool = false
+    var showJoints: Bool = true
+    var positionX: CGFloat = 0
+    var positionY: CGFloat = 0
+    var bodyPartColors: [String: UIColor] = [:]
+    var showInteractiveJoints: Bool = true
+}
+
 /// Represents an object placed in the editor
 struct EditorObject: Codable, Identifiable {
     let id: UUID
@@ -236,19 +291,19 @@ struct SavedEditFrame: Codable, Identifiable {
             // Default peak positions
             self.fusiformShoulders = 0.0
             self.fusiformDeltoids = 0.5
-            self.peakPositionBicep = values.peakPositionBicep ?? 0.5
-            self.peakPositionTricep = values.peakPositionTricep ?? 0.5
-            self.peakPositionLowerArms = values.peakPositionLowerArms ?? 0.35
-            self.peakPositionUpperLegs = values.peakPositionUpperLegs ?? 0.2
-            self.peakPositionLowerLegs = values.peakPositionLowerLegs ?? 0.2
-            self.peakPositionUpperTorso = values.peakPositionUpperTorso ?? 0.5
-            self.peakPositionLowerTorso = values.peakPositionLowerTorso ?? 0.5
-            self.peakPositionDeltoids = values.peakPositionDeltoids ?? 0.3
+            self.peakPositionBicep = values.peakPositionBicep
+            self.peakPositionTricep = values.peakPositionTricep
+            self.peakPositionLowerArms = values.peakPositionLowerArms
+            self.peakPositionUpperLegs = values.peakPositionUpperLegs
+            self.peakPositionLowerLegs = values.peakPositionLowerLegs
+            self.peakPositionUpperTorso = values.peakPositionUpperTorso
+            self.peakPositionLowerTorso = values.peakPositionLowerTorso
+            self.peakPositionDeltoids = values.peakPositionDeltoids
             self.fusiformFullTorso = 0.0
             self.peakPositionFullTorsoTop = 0.15
             self.peakPositionFullTorsoMiddle = 0.5
             self.peakPositionFullTorsoBottom = 0.85
-            self.armMuscleSide = values.armMuscleSide ?? "normal"
+            self.armMuscleSide = values.armMuscleSide
         }
         
         // Store pose angles if provided, otherwise use defaults
@@ -882,7 +937,7 @@ class SavedFramesManager {
                 skeletonSizeTorso: pose.skeletonSizeTorso,
                 skeletonSizeArm: pose.skeletonSizeArm,
                 skeletonSizeLeg: pose.skeletonSizeLeg,
-                jointShapeSize: nil,
+                jointShapeSize: 1.0,
                 shoulderWidthMultiplier: pose.shoulderWidthMultiplier,
                 waistWidthMultiplier: pose.waistWidthMultiplier,
                 waistThicknessMultiplier: pose.waistThicknessMultiplier,
@@ -906,8 +961,8 @@ class SavedFramesManager {
                 showJoints: true,
                 positionX: pose.figureOffsetX,
                 positionY: pose.figureOffsetY,
-                bodyPartColors: nil,
-                showInteractiveJoints: nil
+                bodyPartColors: [:],
+                showInteractiveJoints: true
             )
             
             let editorObjects = animFrame.objects.map { animObj in

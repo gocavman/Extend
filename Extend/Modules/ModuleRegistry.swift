@@ -44,9 +44,6 @@ public struct ModuleIDs {
     /// Voice Trainer module - speak text with customizable timing
     public static let voiceTrainer = UUID(uuidString: "0000000B-0000-0000-0000-000000000000")!
     
-    /// Game 1 module - dog catching hearts game
-    public static let game1 = UUID(uuidString: "0000000C-0000-0000-0000-000000000000")!
-    
     /// Stick Figure Animator module - create custom animations
     public static let stickFigureAnimator = UUID(uuidString: "0000000D-0000-0000-0000-000000000000")!
     

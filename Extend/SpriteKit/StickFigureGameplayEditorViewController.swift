@@ -131,8 +131,6 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
     // Section expansion state
     private var expandedSections: Set<Int> = [7]  // Expanded by default (section 7 Frames visible; others collapsed including colors)
     
-    var gameState: StickFigureGameState?
-    
     // MARK: - Lifecycle
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -320,7 +318,6 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
         let sceneWidth = view.bounds.width
         let sceneSize = CGSize(width: sceneWidth, height: sceneWidth)  // Perfect square!
         editorScene = StickFigureEditorScene(size: sceneSize)
-        editorScene?.gameState = gameState
         editorScene?.viewController = self
         
         skView = SKView(frame: topContainer.bounds)
@@ -1167,120 +1164,11 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
     }
     
     private func loadStandFrameValues() {
-        // When there's no gameState (standalone animator), load Stand frame 0 from saved frames
-        guard let gameState = gameState else {
-            let allFrames = SavedFramesManager.shared.getAllFrames()
-            if let standFrame = allFrames.first(where: { $0.name.lowercased() == "stand" && $0.frameNumber == 0 })
-                               ?? allFrames.first(where: { $0.name.lowercased() == "stand" })
-                               ?? allFrames.first {
-                applyFrame(standFrame)
-            }
-            return
-        }
-        
-        // If standFrame isn't loaded yet, initialize it
-        if gameState.standFrame == nil {
-            print("🎮 Initializing standFrame in gameState...")
-            gameState.initializeRoom("level_1")  // Load default Stand frame
-            print("🎮 After initializeRoom: standFrame = \(gameState.standFrame != nil ? "SET" : "STILL NIL")")
-        }
-        
-        // Load the default Stand frame from animations.json
-        if let standFrame = gameState.standFrame {
-            print("🔍 StickFigureEditor: loadStandFrameValues - standFrame.fusiformFullTorso=\(standFrame.fusiformFullTorso)")
-            
-            // Load ALL scale and thickness values from standFrame
-            figureScale = standFrame.scale
-            // Load individual stroke thickness values from standFrame
-            strokeThicknessJoints = standFrame.strokeThicknessJoints
-            strokeThicknessUpperTorso = standFrame.strokeThicknessUpperTorso
-            strokeThicknessLowerTorso = standFrame.strokeThicknessLowerTorso
-            strokeThicknessBicep = standFrame.strokeThicknessBicep
-            strokeThicknessTricep = standFrame.strokeThicknessTricep
-            strokeThicknessLowerArms = standFrame.strokeThicknessLowerArms
-            strokeThicknessUpperLegs = standFrame.strokeThicknessUpperLegs
-            strokeThicknessLowerLegs = standFrame.strokeThicknessLowerLegs
-            strokeThicknessFullTorso = standFrame.strokeThicknessFullTorso
-            strokeThicknessDeltoids = standFrame.strokeThicknessDeltoids
-            strokeThicknessTrapezius = standFrame.strokeThicknessTrapezius
-            // Note: jointShapeSize is editor-only property, not in StickFigure2D
-            jointShapeSize = 1.0  // Reset to default
-            skeletonSizeTorso = standFrame.skeletonSizeTorso
-            skeletonSizeArm = standFrame.skeletonSizeArm
-            skeletonSizeLeg = standFrame.skeletonSizeLeg
-            shoulderWidthMultiplier = standFrame.shoulderWidthMultiplier
-            waistWidthMultiplier = standFrame.waistWidthMultiplier
-            waistThicknessMultiplier = standFrame.waistThicknessMultiplier
-            neckLength = standFrame.neckLength
-            neckWidth = standFrame.neckWidth
-            handSize = standFrame.handSize
-            footSize = standFrame.footSize
-            strokeThickness = standFrame.strokeThickness
-            
-            // Fusiforms - load from standFrame
-            fusiformUpperTorso = standFrame.fusiformUpperTorso
-            fusiformLowerTorso = standFrame.fusiformLowerTorso
-            fusiformBicep = standFrame.fusiformBicep
-            fusiformTricep = standFrame.fusiformTricep
-            fusiformLowerArms = standFrame.fusiformLowerArms
-            fusiformUpperLegs = standFrame.fusiformUpperLegs
-            fusiformLowerLegs = standFrame.fusiformLowerLegs
-            fusiformShoulders = standFrame.fusiformShoulders
-            fusiformDeltoids = standFrame.fusiformDeltoids
-            
-            // Peak positions - load from standFrame
-            peakPositionBicep = standFrame.peakPositionBicep
-            peakPositionTricep = standFrame.peakPositionTricep
-            peakPositionLowerArms = standFrame.peakPositionLowerArms
-            peakPositionUpperLegs = standFrame.peakPositionUpperLegs
-            peakPositionLowerLegs = standFrame.peakPositionLowerLegs
-            peakPositionUpperTorso = standFrame.peakPositionUpperTorso
-            peakPositionLowerTorso = standFrame.peakPositionLowerTorso
-            peakPositionDeltoids = standFrame.peakPositionDeltoids
-            fusiformFullTorso = standFrame.fusiformFullTorso
-            peakPositionFullTorsoTop = standFrame.peakPositionFullTorsoTop
-            peakPositionFullTorsoMiddle = standFrame.peakPositionFullTorsoMiddle
-            peakPositionFullTorsoBottom = standFrame.peakPositionFullTorsoBottom
-            print("🔍 StickFigureEditor: Assigned sliders - fusiformFullTorso=\(fusiformFullTorso)")
-            print("🔍 StickFigureEditor: Assigned sliders - fusiformFullTorso=\(fusiformFullTorso)")
-            armMuscleSide = standFrame.armMuscleSide
-            
-            // Load ALL angles from standFrame
-            neckRotation = CGFloat(standFrame.headAngle)
-            upperTorsoRotation = CGFloat(standFrame.torsoRotationAngle)
-            lowerTorsoRotation = CGFloat(standFrame.midTorsoAngle)
-            waistTorsoAngle = CGFloat(standFrame.waistTorsoAngle)  // Load waist rotation
-            torsoRotation = CGFloat(standFrame.waistTorsoAngle)  // Also update torsoRotation for compatibility
-            leftShoulderAngle = CGFloat(standFrame.leftShoulderAngle)
-            leftElbowAngle = CGFloat(standFrame.leftElbowAngle)
-            rightShoulderAngle = CGFloat(standFrame.rightShoulderAngle)
-            rightElbowAngle = CGFloat(standFrame.rightElbowAngle)
-            leftHipAngle = CGFloat(standFrame.leftHipAngle)
-            rightHipAngle = CGFloat(standFrame.rightHipAngle)
-            leftKneeAngle = CGFloat(standFrame.leftKneeAngle)
-            rightKneeAngle = CGFloat(standFrame.rightKneeAngle)
-            leftFootAngle = CGFloat(standFrame.leftFootAngle)
-            rightFootAngle = CGFloat(standFrame.rightFootAngle)
-            
-            // Reset position to Stand frame's waist position (centered)
-            figureOffsetX = 0
-            figureOffsetY = 0
-            
-            // Reset colors to black (Stand frame default - avoid SwiftUI Color conversion in UIKit)
-            bodyPartColors = [
-                "head": .black,
-                "torso": .black,
-                "leftUpperArm": .black,
-                "rightUpperArm": .black,
-                "leftLowerArm": .black,
-                "rightLowerArm": .black,
-                "leftUpperLeg": .black,
-                "rightUpperLeg": .black,
-                "leftLowerLeg": .black,
-                "rightLowerLeg": .black
-            ]
-            
-            //print("🎮 ✓ Loaded Stand frame - scale:\(standFrame.scale), fusiform: bicep=\(standFrame.fusiformBicep), tricep=\(standFrame.fusiformTricep), angles: shoulder:\(standFrame.leftShoulderAngle)°, elbow:\(standFrame.leftElbowAngle)°, knee:\(standFrame.leftKneeAngle)°")
+        let allFrames = SavedFramesManager.shared.getAllFrames()
+        if let standFrame = allFrames.first(where: { $0.name.lowercased() == "stand" && $0.frameNumber == 0 })
+                           ?? allFrames.first(where: { $0.name.lowercased() == "stand" })
+                           ?? allFrames.first {
+            applyFrame(standFrame)
         }
     }
     
@@ -1394,7 +1282,7 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
             let frameNumber = Int(frameNumberStr) ?? 0
             
             // Create a temporary StickFigure2D with current angles to use with SavedEditFrame initializer
-            var tempPose = self.gameState?.standFrame ?? StickFigure2D()
+            var tempPose = StickFigure2D()
             tempPose.headAngle = self.neckRotation
             tempPose.torsoRotationAngle = self.upperTorsoRotation  // Upper torso rotation around neck (purple dot - minute hand)
             tempPose.midTorsoAngle = self.lowerTorsoRotation       // Upper torso rotation around midTorso
@@ -2303,7 +2191,6 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
 
 // MARK: - Editor Scene
 class StickFigureEditorScene: SKScene {
-    var gameState: StickFigureGameState?
     var characterNode: SKNode?
     private var draggedJoint: SKNode?
     private var draggedObject: SKNode?
@@ -2655,13 +2542,7 @@ class StickFigureEditorScene: SKScene {
         // Remove existing character
         characterNode?.removeFromParent()
         
-        // Use standFrame from gameState if available, otherwise use a fresh StickFigure2D
-        let frame: StickFigure2D
-        if let gs = gameState, let sf = gs.standFrame {
-            frame = sf
-        } else {
-            frame = StickFigure2D()
-        }
+        let frame = StickFigure2D()
         
         // Create character node at center
         let container = SKNode()
@@ -2669,7 +2550,6 @@ class StickFigureEditorScene: SKScene {
         container.zPosition = 10
         
         let tempScene = GameScene(size: size)
-        tempScene.gameState = gameState
         let stickFigureNode = tempScene.renderStickFigure(frame, at: CGPoint.zero, scale: 1.2, jointShapeSize: 1.0)
         container.addChild(stickFigureNode)
         
@@ -2759,13 +2639,7 @@ class StickFigureEditorScene: SKScene {
         print("🎮 updateWithValues: Removing old character")
         characterNode?.removeFromParent()
         
-        // Use standFrame from gameState if available, otherwise use a fresh StickFigure2D
-        var updatedFrame: StickFigure2D
-        if let gs = gameState, let sf = gs.standFrame {
-            updatedFrame = sf
-        } else {
-            updatedFrame = StickFigure2D()
-        }
+        var updatedFrame = StickFigure2D()
         updatedFrame.strokeThickness = strokeThickness
         updatedFrame.fusiformUpperTorso = fusiformUpperTorso
         updatedFrame.fusiformLowerTorso = fusiformLowerTorso
@@ -2869,7 +2743,6 @@ class StickFigureEditorScene: SKScene {
         
         // Render the actual stick figure with consistent scale
         let tempScene = GameScene(size: size)
-        tempScene.gameState = gameState  // PASS the gameState so rendering works correctly
         // Base scale 1.2 provides good visibility, multiplied by figureScale slider for adjustment
         let renderScale = 1.2 * figureScale
         let stickFigureNode = tempScene.renderStickFigure(updatedFrame, at: CGPoint.zero, scale: renderScale, jointShapeSize: jointShapeSize)
@@ -3165,7 +3038,7 @@ class FrameListViewController: UIViewController, UITableViewDataSource, UITableV
                     skeletonSizeTorso: pose.skeletonSizeTorso,
                     skeletonSizeArm: pose.skeletonSizeArm,
                     skeletonSizeLeg: pose.skeletonSizeLeg,
-                    jointShapeSize: nil,
+                    jointShapeSize: 1.0,
                     shoulderWidthMultiplier: pose.shoulderWidthMultiplier,
                     waistWidthMultiplier: pose.waistWidthMultiplier,
                     waistThicknessMultiplier: pose.waistThicknessMultiplier,
@@ -3189,8 +3062,8 @@ class FrameListViewController: UIViewController, UITableViewDataSource, UITableV
                     showJoints: true,
                     positionX: pose.figureOffsetX,
                     positionY: pose.figureOffsetY,
-                    bodyPartColors: nil,
-                    showInteractiveJoints: nil
+                    bodyPartColors: [:],
+                    showInteractiveJoints: true
                 )
                 //print("🎮 DEBUG: Bundle frame loaded - name=\(bundleFrame.name), figureOffsetX=\(pose.figureOffsetX), figureOffsetY=\(pose.figureOffsetY)")
                 // Convert AnimationObjects to EditorObjects
@@ -3586,6 +3459,16 @@ extension UIColor {
         let hexString = String(format: "#%02X%02X%02X", redInt, greenInt, blueInt)
         
         return hexString
+    }
+    
+    convenience init?(hex: String) {
+        var hexStr = hex.trimmingCharacters(in: .whitespacesAndNewlines)
+        if hexStr.hasPrefix("#") { hexStr.removeFirst() }
+        guard hexStr.count == 6, let value = UInt64(hexStr, radix: 16) else { return nil }
+        let r = CGFloat((value >> 16) & 0xFF) / 255
+        let g = CGFloat((value >> 8) & 0xFF) / 255
+        let b = CGFloat(value & 0xFF) / 255
+        self.init(red: r, green: g, blue: b, alpha: 1)
     }
 }
 
