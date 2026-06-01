@@ -2841,6 +2841,16 @@ public struct StartWorkoutView: View {
                     }
                 }
 
+                // Exercise-specific image (static or animated GIF)
+                if let fn = exercise.imageFilename,
+                   let data = try? Data(contentsOf: Exercise.imageStorageDirectory.appendingPathComponent(fn)) {
+                    GIFImageView(data: data)
+                        .aspectRatio(contentMode: .fit)
+                        .frame(maxWidth: .infinity)
+                        .clipShape(RoundedRectangle(cornerRadius: 10))
+                        .padding(.top, 4)
+                }
+
                 let equipmentNames = exercise.equipmentIDs.compactMap { id in
                     equipmentState.sortedItems.first { $0.id == id }?.name
                 }.joined(separator: ", ")

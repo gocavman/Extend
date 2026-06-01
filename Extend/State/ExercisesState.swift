@@ -50,6 +50,12 @@ public final class ExercisesState {
     }
     
     public func removeExercise(id: UUID) {
+        // Delete exercise image from disk if one exists
+        if let exercise = exercises.first(where: { $0.id == id }),
+           let filename = exercise.imageFilename {
+            let fileURL = Exercise.imageStorageDirectory.appendingPathComponent(filename)
+            try? FileManager.default.removeItem(at: fileURL)
+        }
         exercises.removeAll { $0.id == id }
         saveExercises()
     }

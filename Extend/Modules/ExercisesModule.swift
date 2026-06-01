@@ -7,6 +7,8 @@
 
 import SwiftUI
 import UIKit
+import ImageIO
+import UniformTypeIdentifiers
 
 /// Module for managing exercises
 public struct ExercisesModule: AppModule {
@@ -324,19 +326,27 @@ private struct ExerciseEditor: View {
     @State private var showSecondaryMuscles: Bool = false
     @State private var showDeleteConfirm = false
     @State private var healthKitActivityType: UInt? = nil
-    
+    // Image upload state
+    @State private var imageFilename: String? = nil
+    @State private var pendingImageData: Data? = nil   // non-nil when user picked a new image
+    @State private var removedImage: Bool = false      // true when user explicitly removed the image
+    @State private var showImageSourceMenu = false
+    @State private var showPhotoPicker = false
+    @State private var showFilePicker = false
+
     init(title: String, initialExercise: Exercise? = nil, onSave: @escaping (Exercise) -> Void, onDelete: (() -> Void)? = nil) {
         self.title = title
         self.initialExercise = initialExercise
         self.onSave = onSave
         self.onDelete = onDelete
-        
+
         if let exercise = initialExercise {
             _name = State(initialValue: exercise.name)
             _notes = State(initialValue: exercise.notes)
             _selectedEquipmentIDs = State(initialValue: Set(exercise.equipmentIDs))
             _defaultEquipmentIDs = State(initialValue: Set(exercise.defaultEquipmentIDs))
             _healthKitActivityType = State(initialValue: exercise.healthKitActivityType)
+            _imageFilename = State(initialValue: exercise.imageFilename)
         }
     }
     
@@ -347,6 +357,47 @@ private struct ExerciseEditor: View {
                     TextField("Exercise Name", text: $name)
                     TextField("Notes (optional)", text: $notes, axis: .vertical)
                         .lineLimit(1...6)
+                }
+
+                Section {
+                    // Determine which image data to show: pending pick > existing file > nothing
+                    let displayData: Data? = {
+                        if let d = pendingImageData { return d }
+                        if !removedImage, let fn = imageFilename,
+                           let d = try? Data(contentsOf: Exercise.imageStorageDirectory.appendingPathComponent(fn)) {
+                            return d
+                        }
+                        return nil
+                    }()
+
+                    if let data = displayData {
+                        GIFImageView(data: data)
+                            .aspectRatio(contentMode: .fit)
+                            .frame(maxWidth: .infinity)
+                            .clipShape(RoundedRectangle(cornerRadius: 10))
+                            .listRowInsets(EdgeInsets(top: 8, leading: 8, bottom: 4, trailing: 8))
+
+                        Button(role: .destructive) {
+                            pendingImageData = nil
+                            removedImage = true
+                        } label: {
+                            Label("Remove Image", systemImage: "trash")
+                        }
+                    } else {
+                        Button {
+                            showImageSourceMenu = true
+                        } label: {
+                            Label("Upload Image", systemImage: "photo.badge.plus")
+                        }
+                        .confirmationDialog("Choose Image Source", isPresented: $showImageSourceMenu) {
+                            Button("Photo Library") { showPhotoPicker = true }
+                            Button("Files (for GIF)") { showFilePicker = true }
+                            Button("Cancel", role: .cancel) { }
+                        }
+                    }
+                } header: {
+                    Text("Exercise Image")
+                        .padding(.leading, -16)
                 }
                 
                 Section("Primary Muscle Groups") {
@@ -461,8 +512,27 @@ private struct ExerciseEditor: View {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Save") {
                         UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                        let exerciseID = initialExercise?.id ?? UUID()
+
+                        // Persist image to disk if a new one was picked
+                        var finalImageFilename: String? = removedImage ? nil : imageFilename
+                        if let data = pendingImageData {
+                            let dir = Exercise.imageStorageDirectory
+                            try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+                            let filename = "\(exerciseID).gif"
+                            let url = dir.appendingPathComponent(filename)
+                            if (try? data.write(to: url)) != nil {
+                                finalImageFilename = filename
+                            }
+                        } else if removedImage, let fn = imageFilename {
+                            // User removed the image: delete the file
+                            let url = Exercise.imageStorageDirectory.appendingPathComponent(fn)
+                            try? FileManager.default.removeItem(at: url)
+                            finalImageFilename = nil
+                        }
+
                         let exercise = Exercise(
-                            id: initialExercise?.id ?? UUID(),
+                            id: exerciseID,
                             name: name,
                             notes: notes,
                             primaryMuscleGroupIDs: Array(primaryMuscleGroupIDs),
@@ -470,7 +540,8 @@ private struct ExerciseEditor: View {
                             equipmentIDs: Array(selectedEquipmentIDs),
                             defaultEquipmentIDs: Array(defaultEquipmentIDs),
                             isFavorite: initialExercise?.isFavorite ?? false,
-                            healthKitActivityType: healthKitActivityType
+                            healthKitActivityType: healthKitActivityType,
+                            imageFilename: finalImageFilename
                         )
                         onSave(exercise)
                         dismiss()
@@ -489,17 +560,189 @@ private struct ExerciseEditor: View {
             }
             .onAppear {
                 if !hasInitialized {
-                    // Ensure selections are properly initialized
                     if let exercise = initialExercise {
                         primaryMuscleGroupIDs = Set(exercise.primaryMuscleGroupIDs)
                         secondaryMuscleGroupIDs = Set(exercise.secondaryMuscleGroupIDs)
                         selectedEquipmentIDs = Set(exercise.equipmentIDs)
                         defaultEquipmentIDs = Set(exercise.defaultEquipmentIDs)
+                        imageFilename = exercise.imageFilename
                     }
                     hasInitialized = true
                 }
             }
+            .sheet(isPresented: $showPhotoPicker) {
+                ExerciseImagePickerController { data in
+                    pendingImageData = data
+                    removedImage = false
+                }
+            }
+            .sheet(isPresented: $showFilePicker) {
+                ExerciseFilePickerController { data in
+                    pendingImageData = data
+                    removedImage = false
+                }
+            }
         }
+    }
+}
+
+// MARK: - UIImagePickerController wrapper (preserves GIF data from photo library)
+
+private struct ExerciseImagePickerController: UIViewControllerRepresentable {
+    let onPick: (Data) -> Void
+
+    func makeCoordinator() -> Coordinator { Coordinator(onPick: onPick) }
+
+    func makeUIViewController(context: Context) -> UIImagePickerController {
+        let picker = UIImagePickerController()
+        picker.sourceType = .photoLibrary
+        picker.delegate = context.coordinator
+        return picker
+    }
+
+    func updateUIViewController(_ uiViewController: UIImagePickerController, context: Context) {}
+
+    class Coordinator: NSObject, UIImagePickerControllerDelegate, UINavigationControllerDelegate {
+        let onPick: (Data) -> Void
+        init(onPick: @escaping (Data) -> Void) { self.onPick = onPick }
+
+        func imagePickerController(_ picker: UIImagePickerController,
+                                   didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey: Any]) {
+            picker.dismiss(animated: true)
+            // Prefer the original image URL (preserves GIF)
+            if let url = info[.imageURL] as? URL, let data = try? Data(contentsOf: url) {
+                onPick(data)
+            } else if let image = info[.originalImage] as? UIImage,
+                      let data = image.jpegData(compressionQuality: 0.85) {
+                onPick(data)
+            }
+        }
+
+        func imagePickerControllerDidCancel(_ picker: UIImagePickerController) {
+            picker.dismiss(animated: true)
+        }
+    }
+}
+
+// MARK: - UIDocumentPickerViewController wrapper (for picking GIFs from Files)
+
+private struct ExerciseFilePickerController: UIViewControllerRepresentable {
+    let onPick: (Data) -> Void
+
+    func makeCoordinator() -> Coordinator { Coordinator(onPick: onPick) }
+
+    func makeUIViewController(context: Context) -> UIDocumentPickerViewController {
+        let types: [UTType] = [.gif, .image]
+        let picker = UIDocumentPickerViewController(forOpeningContentTypes: types, asCopy: true)
+        picker.delegate = context.coordinator
+        picker.allowsMultipleSelection = false
+        return picker
+    }
+
+    func updateUIViewController(_ uiViewController: UIDocumentPickerViewController, context: Context) {}
+
+    class Coordinator: NSObject, UIDocumentPickerDelegate {
+        let onPick: (Data) -> Void
+        init(onPick: @escaping (Data) -> Void) { self.onPick = onPick }
+
+        func documentPicker(_ controller: UIDocumentPickerViewController, didPickDocumentsAt urls: [URL]) {
+            guard let url = urls.first, let data = try? Data(contentsOf: url) else { return }
+            onPick(data)
+        }
+    }
+}
+
+// MARK: - GIFImageView: animated GIF / static image display
+
+struct GIFImageView: UIViewRepresentable {
+    let data: Data
+
+    func makeUIView(context: Context) -> GIFContainerView {
+        let v = GIFContainerView()
+        v.setContent(from: data)
+        return v
+    }
+
+    func updateUIView(_ uiView: GIFContainerView, context: Context) {
+        uiView.setContent(from: data)
+    }
+}
+
+/// A UIView subclass that wraps a UIImageView and reports the image's natural aspect ratio
+/// as its intrinsicContentSize, so SwiftUI layout (.aspectRatio / .fit) works correctly.
+class GIFContainerView: UIView {
+    private let imageView = UIImageView()
+
+    override init(frame: CGRect) {
+        super.init(frame: frame)
+        imageView.contentMode = .scaleAspectFit
+        imageView.clipsToBounds = true
+        imageView.translatesAutoresizingMaskIntoConstraints = false
+        addSubview(imageView)
+        NSLayoutConstraint.activate([
+            imageView.topAnchor.constraint(equalTo: topAnchor),
+            imageView.bottomAnchor.constraint(equalTo: bottomAnchor),
+            imageView.leadingAnchor.constraint(equalTo: leadingAnchor),
+            imageView.trailingAnchor.constraint(equalTo: trailingAnchor),
+        ])
+        // Don't resist compression — let SwiftUI control sizing
+        setContentHuggingPriority(.defaultLow, for: .horizontal)
+        setContentHuggingPriority(.defaultLow, for: .vertical)
+    }
+
+    required init?(coder: NSCoder) { fatalError() }
+
+    func setContent(from data: Data) {
+        imageView.setGIFContent(from: data)
+        invalidateIntrinsicContentSize()
+    }
+
+    override var intrinsicContentSize: CGSize {
+        // Return a normalized size that preserves the image's aspect ratio.
+        // Using a fixed width of 100 keeps the value small so SwiftUI doesn't try
+        // to size the view at raw pixel dimensions (e.g. 640×480 points).
+        let size = imageView.image?.size
+                ?? imageView.animationImages?.first?.size
+        guard let s = size, s.width > 0, s.height > 0 else {
+            return CGSize(width: UIView.noIntrinsicMetric, height: UIView.noIntrinsicMetric)
+        }
+        let normalizedWidth: CGFloat = 100
+        return CGSize(width: normalizedWidth, height: normalizedWidth * s.height / s.width)
+    }
+}
+
+private extension UIImageView {
+    /// Decode `data` as an animated GIF (using ImageIO) or fall back to a static UIImage.
+    func setGIFContent(from data: Data) {
+        // Stop any existing animation first
+        stopAnimating()
+        animationImages = nil
+        image = nil
+
+        guard let source = CGImageSourceCreateWithData(data as CFData, nil) else {
+            image = UIImage(data: data)
+            return
+        }
+        let count = CGImageSourceGetCount(source)
+        guard count > 1 else {
+            image = UIImage(data: data)
+            return
+        }
+        var frames: [UIImage] = []
+        var totalDuration: Double = 0
+        for i in 0..<count {
+            guard let cgImg = CGImageSourceCreateImageAtIndex(source, i, nil) else { continue }
+            let props = CGImageSourceCopyPropertiesAtIndex(source, i, nil) as? [String: Any]
+            let gifProps = props?[kCGImagePropertyGIFDictionary as String] as? [String: Any]
+            let delay = (gifProps?[kCGImagePropertyGIFUnclampedDelayTime as String] as? Double)
+                     ?? (gifProps?[kCGImagePropertyGIFDelayTime as String] as? Double)
+                     ?? 0.1
+            frames.append(UIImage(cgImage: cgImg))
+            totalDuration += delay
+        }
+        animationImages = frames
+        animationDuration = totalDuration
+        startAnimating()
     }
 }
 
