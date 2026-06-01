@@ -232,7 +232,7 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
         let titleLabel = UILabel()
         titleLabel.text = "STICK FIGURE EDITOR"
         titleLabel.textColor = .white
-        titleLabel.font = UIFont.systemFont(ofSize: 13, weight: .bold)
+        titleLabel.font = UIFont.systemFont(ofSize: 9, weight: .bold)
         titleLabel.translatesAutoresizingMaskIntoConstraints = false
         headerView.addSubview(titleLabel)
         
@@ -316,11 +316,11 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
             titleLabel.centerYAnchor.constraint(equalTo: headerView.centerYAnchor),
             
             // Save button
-            saveButton.trailingAnchor.constraint(equalTo: animationStudioButton.leadingAnchor, constant: -8),
+            saveButton.trailingAnchor.constraint(equalTo: loadButton.leadingAnchor, constant: -8),
             saveButton.centerYAnchor.constraint(equalTo: headerView.centerYAnchor),
-            
+
             // Animation Studio button
-            animationStudioButton.trailingAnchor.constraint(equalTo: loadButton.leadingAnchor, constant: -8),
+            animationStudioButton.trailingAnchor.constraint(equalTo: saveButton.leadingAnchor, constant: -8),
             animationStudioButton.centerYAnchor.constraint(equalTo: headerView.centerYAnchor),
             
             // Load button

@@ -877,34 +877,38 @@ class AnimationStudioViewController: UIViewController, UITableViewDelegate, UITa
         return "animation"
     }
 
-    /// Compute the tightest bounding rect (in canvas-space pixels) that contains all
-    /// figure + object content across every frame, then add padding.
-    /// Canvas is `canvasSize` with the figure centred at (canvasW/2 + offsetX, canvasH/2 + offsetY).
+    /// Compute the tightest bounding rect (in UIKit/pixel coords, top-left origin) that contains
+    /// all figure + object content across every frame, then add padding.
+    ///
+    /// SpriteKit positions use a bottom-left origin (Y increases upward).
+    /// CGImage.cropping uses a top-left origin (Y increases downward).
+    /// We compute bounds in SK space, then flip Y before returning so the rect is
+    /// ready to pass directly to CGImage.cropping(to:).
     private func contentBoundingRect(frames: [SavedEditFrame], canvasSize: CGSize, padding: CGFloat = 24) -> CGRect {
-        // Approx figure half-size in canvas pixels at the standard render scale
         let renderScale = min(canvasSize.width, canvasSize.height) / 520.0
         let scaleFactor = renderScale / 1.2
-        let figureHalf: CGFloat = 200 * renderScale   // generous estimate covering head-to-toe
+        // Head-to-toe half-size in canvas pixels. The figure is centred in SK space.
+        let figureHalf: CGFloat = 160 * renderScale
 
-        var minX = CGFloat.infinity, minY = CGFloat.infinity
-        var maxX = -CGFloat.infinity, maxY = -CGFloat.infinity
+        // Collect bounds in SpriteKit coordinates (origin bottom-left, Y up).
+        var skMinX = CGFloat.infinity, skMinY = CGFloat.infinity
+        var skMaxX = -CGFloat.infinity, skMaxY = -CGFloat.infinity
 
         for frame in frames {
-            let cx = canvasSize.width / 2 + CGFloat(frame.positionX) * scaleFactor
+            // SK scene centre is (canvasW/2, canvasH/2); positionY > 0 means higher on screen.
+            let cx = canvasSize.width  / 2 + CGFloat(frame.positionX) * scaleFactor
             let cy = canvasSize.height / 2 + CGFloat(frame.positionY) * scaleFactor
 
-            // Figure bounding box (centred on cx, cy)
-            minX = min(minX, cx - figureHalf)
-            minY = min(minY, cy - figureHalf)
-            maxX = max(maxX, cx + figureHalf)
-            maxY = max(maxY, cy + figureHalf)
+            skMinX = min(skMinX, cx - figureHalf)
+            skMinY = min(skMinY, cy - figureHalf)
+            skMaxX = max(skMaxX, cx + figureHalf)
+            skMaxY = max(skMaxY, cy + figureHalf)
 
-            // Objects
             for obj in frame.objects {
                 let editorCenter = obj.editorSceneWidth / 2
                 let dx = (obj.position.x - editorCenter) * scaleFactor
                 let dy = (obj.position.y - editorCenter) * scaleFactor
-                let objCx = canvasSize.width / 2 + dx
+                let objCx = canvasSize.width  / 2 + dx
                 let objCy = canvasSize.height / 2 + dy
 
                 let halfW: CGFloat
@@ -923,26 +927,29 @@ class AnimationStudioViewController: UIViewController, UITableViewDelegate, UITa
                     halfW = (obj.baseWidth ?? 40) * obj.scaleX * scaleFactor / 2
                     halfH = (obj.baseHeight ?? 40) * obj.scaleY * scaleFactor / 2
                 }
-                // Use the diagonal as a conservative half-size to handle rotation
                 let diag = sqrt(halfW * halfW + halfH * halfH)
-                minX = min(minX, objCx - diag)
-                minY = min(minY, objCy - diag)
-                maxX = max(maxX, objCx + diag)
-                maxY = max(maxY, objCy + diag)
+                skMinX = min(skMinX, objCx - diag)
+                skMinY = min(skMinY, objCy - diag)
+                skMaxX = max(skMaxX, objCx + diag)
+                skMaxY = max(skMaxY, objCy + diag)
             }
         }
 
-        // If nothing found, fall back to full canvas
-        guard minX < maxX, minY < maxY else {
+        guard skMinX < skMaxX, skMinY < skMaxY else {
             return CGRect(origin: .zero, size: canvasSize)
         }
 
-        // Clamp to canvas with padding
-        let x = max(0, minX - padding)
-        let y = max(0, minY - padding)
-        let w = min(canvasSize.width, maxX + padding) - x
-        let h = min(canvasSize.height, maxY + padding) - y
-        return CGRect(x: x, y: y, width: max(1, w), height: max(1, h))
+        // Apply padding, clamped to canvas bounds (still in SK coords).
+        let skX0 = max(0, skMinX - padding)
+        let skY0 = max(0, skMinY - padding)
+        let skX1 = min(canvasSize.width,  skMaxX + padding)
+        let skY1 = min(canvasSize.height, skMaxY + padding)
+
+        // Convert from SK coords (Y-up) to UIKit pixel coords (Y-down) for CGImage.cropping.
+        // UIKit y = canvasHeight - SK y (for the top edge, which is SK's maxY).
+        let uiY = canvasSize.height - skY1
+        let uiH = skY1 - skY0
+        return CGRect(x: skX0, y: uiY, width: skX1 - skX0, height: uiH)
     }
 
     private func exportGIF(frames: [SavedEditFrame]) {
@@ -1077,9 +1084,9 @@ class AnimationStudioViewController: UIViewController, UITableViewDelegate, UITa
         return container
     }
 
-    /// Render a SavedEditFrame (figure + objects) to a CGImage.
-    /// The frame is rendered onto `size` canvas, then cropped to `cropRect` and scaled to `outputSize`.
-    /// Uses SKView.texture(from:crop:) which works reliably for offscreen rendering.
+    /// Render a SavedEditFrame (figure + objects) to a CGImage cropped to cropRect
+    /// and scaled to outputSize. All rendering is done at scale 1 (not screen scale)
+    /// to keep GIF frame pixel dimensions predictable and file size small.
     private func renderFrameToCGImage(_ frame: SavedEditFrame, size: CGSize,
                                       cropRect: CGRect, outputSize: CGSize,
                                       renderView: SKView, scene: GameScene) -> CGImage? {
@@ -1087,33 +1094,30 @@ class AnimationStudioViewController: UIViewController, UITableViewDelegate, UITa
         scene.addChild(node)
         defer { node.removeFromParent() }
 
-        // Render full canvas
-        let fullCrop = CGRect(origin: .zero, size: size)
-        guard let texture = renderView.texture(from: scene, crop: fullCrop) else { return nil }
+        // 1. Capture the full canvas. crop rect is in scene (SK) coords (bottom-left origin).
+        let fullCropSK = CGRect(origin: .zero, size: size)
+        guard let texture = renderView.texture(from: scene, crop: fullCropSK) else { return nil }
 
-        // SKTexture Y is flipped; draw into outputSize, cropping to cropRect
-        let renderer = UIGraphicsImageRenderer(size: outputSize)
-        let img = renderer.image { ctx in
+        // Force scale=1 so the CGImage is exactly `size` pixels, not 2x/3x screen scale.
+        let fmt = UIGraphicsImageRendererFormat()
+        fmt.scale = 1
+
+        // texture.cgImage() is Y-flipped (SK convention). Drawing via UIImage corrects the flip.
+        let fullCG = UIGraphicsImageRenderer(size: size, format: fmt).image { _ in
             UIColor.white.setFill()
-            ctx.fill(CGRect(origin: .zero, size: outputSize))
+            UIRectFill(CGRect(origin: .zero, size: size))
+            UIImage(cgImage: texture.cgImage()).draw(in: CGRect(origin: .zero, size: size))
+        }.cgImage
 
-            // The texture covers the full `size` canvas. We want to show only `cropRect`
-            // scaled up to `outputSize`. Compute the source-to-dest mapping.
-            let scaleX = outputSize.width / cropRect.width
-            let scaleY = outputSize.height / cropRect.height
+        // 2. Crop in pixel space. cropRect is already in UIKit coords (top-left origin, scale 1).
+        guard let full = fullCG, let cropped = full.cropping(to: cropRect) else { return nil }
 
-            // In SpriteKit texture space Y is flipped: texY = size.height - (sceneY + sceneH)
-            let flippedCropY = size.height - cropRect.maxY
-
-            // Draw the full texture, offset and scaled so that cropRect fills outputSize
-            let drawX = -cropRect.minX * scaleX
-            let drawY = -flippedCropY * scaleY
-            let drawW = size.width * scaleX
-            let drawH = size.height * scaleY
-
-            ctx.cgContext.draw(texture.cgImage(), in: CGRect(x: drawX, y: drawY, width: drawW, height: drawH))
-        }
-        return img.cgImage
+        // 3. Scale to outputSize at scale 1.
+        return UIGraphicsImageRenderer(size: outputSize, format: fmt).image { _ in
+            UIColor.white.setFill()
+            UIRectFill(CGRect(origin: .zero, size: outputSize))
+            UIImage(cgImage: cropped).draw(in: CGRect(origin: .zero, size: outputSize))
+        }.cgImage
     }
 
     private func showAlert(title: String, message: String) {
