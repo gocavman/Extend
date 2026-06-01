@@ -25,7 +25,7 @@ class AnimationStudioViewController: UIViewController, UITableViewDelegate, UITa
     private weak var delayValueLabel: UILabel?
     private weak var playStopButton: UIButton?
     private weak var loopToggle: UISwitch?
-    private weak var sequenceLabel: UILabel?
+
 
     // MARK: - Data model
 
@@ -54,6 +54,10 @@ class AnimationStudioViewController: UIViewController, UITableViewDelegate, UITa
     // Section 1        — SEARCH BAR (1 row)
     // Sections 2…G+1   — one section per filtered FrameGroup
     private var numGroups: Int { filteredGroups.count }
+
+    // Chip scroll view — kept alive so it doesn't flicker on reload
+    private let chipScrollView = UIScrollView()
+    private let chipStackView = UIStackView()
 
     // MARK: - Lifecycle
 
@@ -440,11 +444,66 @@ class AnimationStudioViewController: UIViewController, UITableViewDelegate, UITa
     }
 
     func tableView(_ tableView: UITableView, titleForHeaderInSection section: Int) -> String? {
-        if section == 0 { return "ANIMATION SEQUENCE" }
+        if section == 0 { return nil }  // custom header view used instead
         if section == 1 { return nil }  // search bar — no header
         let g = section - 2
         guard g >= 0, g < filteredGroups.count else { return nil }
         return filteredGroups[g].name.uppercased()
+    }
+
+    func tableView(_ tableView: UITableView, viewForHeaderInSection section: Int) -> UIView? {
+        guard section == 0 else { return nil }
+        let header = UIView()
+        header.backgroundColor = .clear
+
+        let title = UILabel()
+        title.text = "ANIMATION SEQUENCE"
+        title.font = UIFont.systemFont(ofSize: 12, weight: .semibold)
+        title.textColor = .secondaryLabel
+        title.translatesAutoresizingMaskIntoConstraints = false
+
+        let saveBtn = makeHeaderButton(title: "Save", color: .systemGreen)
+        saveBtn.addTarget(self, action: #selector(saveSequenceTapped), for: .touchUpInside)
+
+        let loadBtn = makeHeaderButton(title: "Load", color: .systemBlue)
+        loadBtn.addTarget(self, action: #selector(loadSequenceTapped), for: .touchUpInside)
+
+        let clearBtn = makeHeaderButton(title: "Clear", color: .systemRed)
+        clearBtn.addTarget(self, action: #selector(clearSequenceTapped), for: .touchUpInside)
+
+        let btnStack = UIStackView(arrangedSubviews: [saveBtn, loadBtn, clearBtn])
+        btnStack.axis = .horizontal
+        btnStack.spacing = 6
+        btnStack.translatesAutoresizingMaskIntoConstraints = false
+
+        header.addSubview(title)
+        header.addSubview(btnStack)
+        NSLayoutConstraint.activate([
+            title.leadingAnchor.constraint(equalTo: header.leadingAnchor, constant: 16),
+            title.centerYAnchor.constraint(equalTo: header.centerYAnchor),
+            btnStack.trailingAnchor.constraint(equalTo: header.trailingAnchor, constant: -12),
+            btnStack.centerYAnchor.constraint(equalTo: header.centerYAnchor),
+            header.heightAnchor.constraint(equalToConstant: 32)
+        ])
+        return header
+    }
+
+    func tableView(_ tableView: UITableView, heightForHeaderInSection section: Int) -> CGFloat {
+        return section == 0 ? 32 : UITableView.automaticDimension
+    }
+
+    private func makeHeaderButton(title: String, color: UIColor) -> UIButton {
+        var config = UIButton.Configuration.filled()
+        config.title = title
+        config.baseForegroundColor = color
+        config.baseBackgroundColor = color.withAlphaComponent(0.12)
+        config.contentInsets = NSDirectionalEdgeInsets(top: 3, leading: 8, bottom: 3, trailing: 8)
+        config.titleTextAttributesTransformer = UIConfigurationTextAttributesTransformer { attrs in
+            var a = attrs; a.font = UIFont.systemFont(ofSize: 11, weight: .semibold); return a
+        }
+        let btn = UIButton(configuration: config)
+        btn.layer.cornerRadius = 6
+        return btn
     }
 
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
@@ -490,7 +549,6 @@ class AnimationStudioViewController: UIViewController, UITableViewDelegate, UITa
             ? "Frame \(frame.frameNumber)"
             : "\(frame.name) #\(frame.frameNumber)"
         sequenceItems.append((frameIndex: frameIndex, label: label))
-        updateSequenceLabel()
         // Reload sequence cell and frame cell for badge update
         tableView.reloadRows(at: [IndexPath(row: 0, section: 0), indexPath], with: .none)
         if !isPlaying {
@@ -542,51 +600,98 @@ class AnimationStudioViewController: UIViewController, UITableViewDelegate, UITa
     }
 
     private func buildSequenceCell(_ cell: UITableViewCell) {
-        let label = UILabel()
-        label.font = UIFont.systemFont(ofSize: 11.5)
-        label.textColor = .secondaryLabel
-        label.numberOfLines = 0          // unlimited — cell grows with content
-        label.translatesAutoresizingMaskIntoConstraints = false
-        label.text = sequenceItems.isEmpty
-            ? "Tap frames below to build the sequence"
-            : sequenceItems.map { $0.label }.joined(separator: " → ")
-        sequenceLabel = label
+        // Reuse the persistent chip scroll view — just re-parent it into the cell
+        let sv = chipScrollView
+        sv.removeFromSuperview()
+        sv.showsHorizontalScrollIndicator = false
+        sv.alwaysBounceHorizontal = true
+        sv.translatesAutoresizingMaskIntoConstraints = false
 
-        let backspaceBtn = UIButton(type: .system)
-        backspaceBtn.setTitle("⌫", for: .normal)
-        backspaceBtn.titleLabel?.font = UIFont.systemFont(ofSize: 16)
-        backspaceBtn.tintColor = .systemRed
-        backspaceBtn.translatesAutoresizingMaskIntoConstraints = false
-        backspaceBtn.setContentHuggingPriority(.required, for: .horizontal)
-        backspaceBtn.setContentCompressionResistancePriority(.required, for: .horizontal)
-        backspaceBtn.addTarget(self, action: #selector(backspaceTapped), for: .touchUpInside)
+        let stack = chipStackView
+        stack.axis = .horizontal
+        stack.spacing = 6
+        stack.alignment = .center
+        stack.translatesAutoresizingMaskIntoConstraints = false
 
-        let clearBtn = UIButton(type: .system)
-        clearBtn.setTitle("Clear", for: .normal)
-        clearBtn.titleLabel?.font = UIFont.systemFont(ofSize: 11, weight: .semibold)
-        clearBtn.translatesAutoresizingMaskIntoConstraints = false
-        clearBtn.setContentHuggingPriority(.required, for: .horizontal)
-        clearBtn.setContentCompressionResistancePriority(.required, for: .horizontal)
-        clearBtn.addTarget(self, action: #selector(clearSequenceTapped), for: .touchUpInside)
+        // Remove stale chips and rebuild
+        stack.arrangedSubviews.forEach { $0.removeFromSuperview() }
 
-        // Buttons sit in a vertical stack pinned to top-right so label can freely grow below
-        let btnStack = UIStackView(arrangedSubviews: [clearBtn, backspaceBtn])
-        btnStack.axis = .horizontal
-        btnStack.spacing = 4
-        btnStack.translatesAutoresizingMaskIntoConstraints = false
+        if sequenceItems.isEmpty {
+            let placeholder = UILabel()
+            placeholder.text = "Tap frames below to build a sequence"
+            placeholder.font = UIFont.systemFont(ofSize: 12)
+            placeholder.textColor = .tertiaryLabel
+            placeholder.translatesAutoresizingMaskIntoConstraints = false
+            stack.addArrangedSubview(placeholder)
+        } else {
+            for (idx, item) in sequenceItems.enumerated() {
+                let chip = makeSequenceChip(label: item.label, index: idx)
+                stack.addArrangedSubview(chip)
+            }
+        }
 
-        cell.contentView.addSubview(label)
-        cell.contentView.addSubview(btnStack)
+        if !sv.subviews.contains(stack) {
+            sv.addSubview(stack)
+            NSLayoutConstraint.activate([
+                stack.leadingAnchor.constraint(equalTo: sv.contentLayoutGuide.leadingAnchor, constant: 8),
+                stack.trailingAnchor.constraint(equalTo: sv.contentLayoutGuide.trailingAnchor, constant: -8),
+                stack.topAnchor.constraint(equalTo: sv.contentLayoutGuide.topAnchor, constant: 6),
+                stack.bottomAnchor.constraint(equalTo: sv.contentLayoutGuide.bottomAnchor, constant: -6),
+                stack.heightAnchor.constraint(equalTo: sv.frameLayoutGuide.heightAnchor, constant: -12)
+            ])
+        }
+
+        cell.contentView.addSubview(sv)
         NSLayoutConstraint.activate([
-            // Buttons pinned to trailing edge, centered vertically with the first line of the label
-            btnStack.trailingAnchor.constraint(equalTo: cell.contentView.trailingAnchor, constant: -8),
-            btnStack.centerYAnchor.constraint(equalTo: cell.contentView.topAnchor, constant: 8 + 10), // ~first line center
-
-            label.leadingAnchor.constraint(equalTo: cell.contentView.leadingAnchor, constant: 16),
-            label.topAnchor.constraint(equalTo: cell.contentView.topAnchor, constant: 8),
-            label.trailingAnchor.constraint(lessThanOrEqualTo: btnStack.leadingAnchor, constant: -4),
-            label.bottomAnchor.constraint(equalTo: cell.contentView.bottomAnchor, constant: -8)
+            sv.leadingAnchor.constraint(equalTo: cell.contentView.leadingAnchor),
+            sv.trailingAnchor.constraint(equalTo: cell.contentView.trailingAnchor),
+            sv.topAnchor.constraint(equalTo: cell.contentView.topAnchor),
+            sv.bottomAnchor.constraint(equalTo: cell.contentView.bottomAnchor),
+            sv.heightAnchor.constraint(equalToConstant: 44)
         ])
+
+        // Scroll to end so latest chip is visible
+        if !sequenceItems.isEmpty {
+            DispatchQueue.main.async {
+                let rightEdge = CGPoint(x: max(0, sv.contentSize.width - sv.bounds.width), y: 0)
+                sv.setContentOffset(rightEdge, animated: false)
+            }
+        }
+    }
+
+    private func makeSequenceChip(label: String, index: Int) -> UIView {
+        let container = UIView()
+        container.backgroundColor = UIColor.systemBlue.withAlphaComponent(0.15)
+        container.layer.cornerRadius = 10
+        container.layer.borderWidth = 0.5
+        container.layer.borderColor = UIColor.systemBlue.withAlphaComponent(0.3).cgColor
+        container.translatesAutoresizingMaskIntoConstraints = false
+
+        let lbl = UILabel()
+        lbl.text = label
+        lbl.font = UIFont.systemFont(ofSize: 11, weight: .medium)
+        lbl.textColor = .label
+        lbl.translatesAutoresizingMaskIntoConstraints = false
+
+        let xBtn = UIButton(type: .system)
+        xBtn.setImage(UIImage(systemName: "xmark", withConfiguration: UIImage.SymbolConfiguration(pointSize: 8, weight: .bold)), for: .normal)
+        xBtn.tintColor = .secondaryLabel
+        xBtn.translatesAutoresizingMaskIntoConstraints = false
+        xBtn.tag = index
+        xBtn.addTarget(self, action: #selector(removeChipTapped(_:)), for: .touchUpInside)
+
+        container.addSubview(lbl)
+        container.addSubview(xBtn)
+        NSLayoutConstraint.activate([
+            lbl.leadingAnchor.constraint(equalTo: container.leadingAnchor, constant: 7),
+            lbl.centerYAnchor.constraint(equalTo: container.centerYAnchor),
+            xBtn.leadingAnchor.constraint(equalTo: lbl.trailingAnchor, constant: 3),
+            xBtn.trailingAnchor.constraint(equalTo: container.trailingAnchor, constant: -5),
+            xBtn.centerYAnchor.constraint(equalTo: container.centerYAnchor),
+            xBtn.widthAnchor.constraint(equalToConstant: 16),
+            container.heightAnchor.constraint(equalToConstant: 28)
+        ])
+        return container
     }
 
     // MARK: - Actions
@@ -622,11 +727,11 @@ class AnimationStudioViewController: UIViewController, UITableViewDelegate, UITa
         searchBar.resignFirstResponder()
     }
 
-    @objc private func backspaceTapped() {
-        guard !sequenceItems.isEmpty else { return }
-        sequenceItems.removeLast()
-        updateSequenceLabel()
-        tableView.reloadData()
+    @objc private func removeChipTapped(_ sender: UIButton) {
+        let idx = sender.tag
+        guard idx >= 0, idx < sequenceItems.count else { return }
+        sequenceItems.remove(at: idx)
+        tableView.reloadRows(at: [IndexPath(row: 0, section: 0)], with: .none)
         if !isPlaying {
             if let last = sequenceItems.last {
                 previewScene?.showStillFrame(allFrames[last.frameIndex])
@@ -639,8 +744,59 @@ class AnimationStudioViewController: UIViewController, UITableViewDelegate, UITa
     @objc private func clearSequenceTapped() {
         sequenceItems = []
         stopPlayback()
-        tableView.reloadData()
+        tableView.reloadRows(at: [IndexPath(row: 0, section: 0)], with: .none)
         showDefaultStill()
+    }
+
+    @objc private func saveSequenceTapped() {
+        guard !sequenceItems.isEmpty else {
+            showAlert(title: "Empty Sequence", message: "Add frames to the sequence before saving.")
+            return
+        }
+        let alert = UIAlertController(title: "Save Animation", message: "Enter a name for this animation.", preferredStyle: .alert)
+        alert.addTextField { tf in
+            tf.placeholder = "e.g. Walk Cycle"
+            tf.autocapitalizationType = .words
+        }
+        alert.addAction(UIAlertAction(title: "Cancel", style: .cancel))
+        alert.addAction(UIAlertAction(title: "Save", style: .default) { [weak self] _ in
+            guard let self else { return }
+            let name = alert.textFields?.first?.text?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+            let finalName = name.isEmpty ? "Untitled" : name
+            let frameIDs = self.sequenceItems.compactMap { item -> UUID? in
+                guard item.frameIndex < self.allFrames.count else { return nil }
+                return self.allFrames[item.frameIndex].id
+            }
+            let animation = SavedAnimation(name: finalName, frameIDs: frameIDs)
+            SavedAnimationsManager.shared.save(animation)
+            self.showAlert(title: "Saved", message: "\"\(finalName)\" saved with \(frameIDs.count) frame(s).")
+        })
+        present(alert, animated: true)
+    }
+
+    @objc private func loadSequenceTapped() {
+        let browser = SavedAnimationsBrowserViewController { [weak self] animation in
+            guard let self else { return }
+            // Resolve frame IDs back to indices
+            let idToIndex: [UUID: Int] = Dictionary(
+                uniqueKeysWithValues: self.allFrames.enumerated().map { ($1.id, $0) }
+            )
+            let items: [(frameIndex: Int, label: String)] = animation.frameIDs.compactMap { id in
+                guard let idx = idToIndex[id] else { return nil }
+                let frame = self.allFrames[idx]
+                let label = frame.name.isEmpty ? "Frame \(frame.frameNumber)" : "\(frame.name) #\(frame.frameNumber)"
+                return (frameIndex: idx, label: label)
+            }
+            self.sequenceItems = items
+            self.stopPlayback()
+            self.tableView.reloadData()
+            if let last = items.last {
+                self.previewScene?.showStillFrame(self.allFrames[last.frameIndex])
+            }
+        }
+        let nav = UINavigationController(rootViewController: browser)
+        nav.modalPresentationStyle = .fullScreen
+        present(nav, animated: true)
     }
 
     @objc private func playStopTapped() {
@@ -665,17 +821,6 @@ class AnimationStudioViewController: UIViewController, UITableViewDelegate, UITa
     }
 
     // MARK: - Sequence helpers
-
-    private func updateSequenceLabel() {
-        if sequenceItems.isEmpty {
-            sequenceLabel?.text = "Tap frames below to build the sequence"
-        } else {
-            sequenceLabel?.text = sequenceItems.map { $0.label }.joined(separator: " → ")
-        }
-        // Invalidate row height so the cell resizes
-        tableView.beginUpdates()
-        tableView.endUpdates()
-    }
 
     private func resolvedFrames() -> [SavedEditFrame] {
         sequenceItems.compactMap { item in
@@ -976,6 +1121,176 @@ class AnimationStudioViewController: UIViewController, UITableViewDelegate, UITa
         alert.addAction(UIAlertAction(title: "OK", style: .default))
         present(alert, animated: true)
     }
+}
+
+// MARK: - SavedAnimationsBrowserViewController
+
+class SavedAnimationsBrowserViewController: UIViewController, UITableViewDelegate, UITableViewDataSource, UISearchBarDelegate {
+
+    private let onLoad: (SavedAnimation) -> Void
+    private var allAnimations: [SavedAnimation] = []
+    private var filtered: [SavedAnimation] = []
+    private let tableView = UITableView(frame: .zero, style: .insetGrouped)
+    private let searchBar = UISearchBar()
+
+    init(onLoad: @escaping (SavedAnimation) -> Void) {
+        self.onLoad = onLoad
+        super.init(nibName: nil, bundle: nil)
+    }
+    required init?(coder: NSCoder) { fatalError() }
+
+    override func viewDidLoad() {
+        super.viewDidLoad()
+        title = "Saved Animations"
+        view.backgroundColor = .systemGroupedBackground
+
+        navigationItem.leftBarButtonItem = UIBarButtonItem(barButtonSystemItem: .close, target: self, action: #selector(closeTapped))
+
+        searchBar.placeholder = "Search animations..."
+        searchBar.searchBarStyle = .minimal
+        searchBar.delegate = self
+        searchBar.translatesAutoresizingMaskIntoConstraints = false
+
+        tableView.delegate = self
+        tableView.dataSource = self
+        tableView.register(UITableViewCell.self, forCellReuseIdentifier: "AnimCell")
+        tableView.translatesAutoresizingMaskIntoConstraints = false
+
+        view.addSubview(searchBar)
+        view.addSubview(tableView)
+        NSLayoutConstraint.activate([
+            searchBar.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor),
+            searchBar.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            searchBar.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+
+            tableView.topAnchor.constraint(equalTo: searchBar.bottomAnchor),
+            tableView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            tableView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            tableView.bottomAnchor.constraint(equalTo: view.bottomAnchor)
+        ])
+
+        reload()
+    }
+
+    private func reload() {
+        allAnimations = SavedAnimationsManager.shared.getAll()
+        applyFilter()
+    }
+
+    private func applyFilter() {
+        let q = searchBar.text?.trimmingCharacters(in: .whitespaces).lowercased() ?? ""
+        filtered = q.isEmpty ? allAnimations : allAnimations.filter { $0.name.lowercased().contains(q) }
+        tableView.reloadData()
+    }
+
+    @objc private func closeTapped() { dismiss(animated: true) }
+
+    // MARK: - TableView
+
+    func numberOfSections(in tableView: UITableView) -> Int { 1 }
+
+    func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
+        return filtered.isEmpty ? 1 : filtered.count
+    }
+
+    func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
+        let cell = tableView.dequeueReusableCell(withIdentifier: "AnimCell", for: indexPath)
+        cell.contentView.subviews.forEach { $0.removeFromSuperview() }
+
+        if filtered.isEmpty {
+            var config = cell.defaultContentConfiguration()
+            config.text = "No saved animations"
+            config.secondaryText = "Build a sequence and tap Save."
+            config.textProperties.color = .secondaryLabel
+            cell.contentConfiguration = config
+            cell.selectionStyle = .none
+            return cell
+        }
+
+        let anim = filtered[indexPath.row]
+        let formatter = DateFormatter()
+        formatter.dateStyle = .medium
+        formatter.timeStyle = .short
+
+        // Name label
+        let nameLabel = UILabel()
+        nameLabel.text = anim.name
+        nameLabel.font = UIFont.systemFont(ofSize: 15, weight: .semibold)
+        nameLabel.translatesAutoresizingMaskIntoConstraints = false
+
+        // Sub info
+        let countLabel = UILabel()
+        countLabel.text = "\(anim.frameCount) frame\(anim.frameCount == 1 ? "" : "s")  •  \(formatter.string(from: anim.updatedAt))"
+        countLabel.font = UIFont.systemFont(ofSize: 11)
+        countLabel.textColor = .secondaryLabel
+        countLabel.translatesAutoresizingMaskIntoConstraints = false
+
+        let textStack = UIStackView(arrangedSubviews: [nameLabel, countLabel])
+        textStack.axis = .vertical
+        textStack.spacing = 2
+        textStack.translatesAutoresizingMaskIntoConstraints = false
+
+        cell.contentView.addSubview(textStack)
+        NSLayoutConstraint.activate([
+            textStack.leadingAnchor.constraint(equalTo: cell.contentView.leadingAnchor, constant: 16),
+            textStack.trailingAnchor.constraint(equalTo: cell.contentView.trailingAnchor, constant: -16),
+            textStack.topAnchor.constraint(equalTo: cell.contentView.topAnchor, constant: 10),
+            textStack.bottomAnchor.constraint(equalTo: cell.contentView.bottomAnchor, constant: -10)
+        ])
+        cell.selectionStyle = .default
+        return cell
+    }
+
+    func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
+        tableView.deselectRow(at: indexPath, animated: true)
+        guard !filtered.isEmpty else { return }
+        let anim = filtered[indexPath.row]
+        dismiss(animated: true) { [weak self] in
+            self?.onLoad(anim)
+        }
+    }
+
+    func tableView(_ tableView: UITableView, trailingSwipeActionsConfigurationForRowAt indexPath: IndexPath) -> UISwipeActionsConfiguration? {
+        guard !filtered.isEmpty else { return nil }
+        let anim = filtered[indexPath.row]
+
+        let delete = UIContextualAction(style: .destructive, title: "Delete") { [weak self] _, _, done in
+            SavedAnimationsManager.shared.delete(id: anim.id)
+            self?.reload()
+            done(true)
+        }
+
+        let clone = UIContextualAction(style: .normal, title: "Clone") { [weak self] _, _, done in
+            _ = SavedAnimationsManager.shared.clone(anim)
+            self?.reload()
+            done(true)
+        }
+        clone.backgroundColor = .systemOrange
+
+        let rename = UIContextualAction(style: .normal, title: "Rename") { [weak self] _, _, done in
+            guard let self else { done(false); return }
+            let alert = UIAlertController(title: "Rename", message: nil, preferredStyle: .alert)
+            alert.addTextField { tf in tf.text = anim.name }
+            alert.addAction(UIAlertAction(title: "Cancel", style: .cancel) { _ in done(false) })
+            alert.addAction(UIAlertAction(title: "Save", style: .default) { [weak self] _ in
+                let name = alert.textFields?.first?.text?.trimmingCharacters(in: .whitespaces) ?? ""
+                if !name.isEmpty {
+                    SavedAnimationsManager.shared.rename(id: anim.id, newName: name)
+                    self?.reload()
+                }
+                done(true)
+            })
+            self.present(alert, animated: true)
+        }
+        rename.backgroundColor = .systemBlue
+
+        return UISwipeActionsConfiguration(actions: [delete, clone, rename])
+    }
+
+    // MARK: - Search
+
+    func searchBar(_ searchBar: UISearchBar, textDidChange searchText: String) { applyFilter() }
+    func searchBarSearchButtonClicked(_ searchBar: UISearchBar) { searchBar.resignFirstResponder() }
 }
 
 // MARK: - AnimationStageScene

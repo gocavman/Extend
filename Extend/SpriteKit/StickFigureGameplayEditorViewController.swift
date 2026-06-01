@@ -1669,6 +1669,7 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
             self?.applyFrame(frame)
         }
         let navController = UINavigationController(rootViewController: frameList)
+        navController.modalPresentationStyle = .fullScreen
         present(navController, animated: true)
     }
     

@@ -2,6 +2,81 @@ import Foundation
 
 private let defaults = UserDefaults(suiteName: "group.com.cavanmannenbach.extend") ?? .standard
 
+// MARK: - SavedAnimation
+
+/// A named animation sequence saved by the user in Animation Studio.
+struct SavedAnimation: Codable, Identifiable {
+    var id: UUID
+    var name: String
+    /// Ordered list of frame IDs (references into SavedFramesManager)
+    var frameIDs: [UUID]
+    var createdAt: Date
+    var updatedAt: Date
+
+    var frameCount: Int { frameIDs.count }
+
+    init(name: String, frameIDs: [UUID]) {
+        self.id = UUID()
+        self.name = name
+        self.frameIDs = frameIDs
+        self.createdAt = Date()
+        self.updatedAt = Date()
+    }
+}
+
+// MARK: - SavedAnimationsManager
+
+class SavedAnimationsManager {
+    static let shared = SavedAnimationsManager()
+    private let key = "savedAnimations_v1"
+
+    func getAll() -> [SavedAnimation] {
+        guard let data = defaults.data(forKey: key),
+              let animations = try? JSONDecoder().decode([SavedAnimation].self, from: data) else { return [] }
+        return animations.sorted { $0.updatedAt > $1.updatedAt }
+    }
+
+    func save(_ animation: SavedAnimation) {
+        var all = getAll()
+        if let idx = all.firstIndex(where: { $0.id == animation.id }) {
+            all[idx] = animation
+        } else {
+            all.append(animation)
+        }
+        saveAll(all)
+    }
+
+    func delete(id: UUID) {
+        let remaining = getAll().filter { $0.id != id }
+        saveAll(remaining)
+    }
+
+    func clone(_ animation: SavedAnimation) -> SavedAnimation {
+        var copy = animation
+        copy.id = UUID()
+        copy.name = animation.name + " Copy"
+        copy.createdAt = Date()
+        copy.updatedAt = Date()
+        save(copy)
+        return copy
+    }
+
+    func rename(id: UUID, newName: String) {
+        var all = getAll()
+        if let idx = all.firstIndex(where: { $0.id == id }) {
+            all[idx].name = newName
+            all[idx].updatedAt = Date()
+            saveAll(all)
+        }
+    }
+
+    private func saveAll(_ animations: [SavedAnimation]) {
+        if let data = try? JSONEncoder().encode(animations) {
+            defaults.set(data, forKey: key)
+        }
+    }
+}
+
 /// Shared utility for managing animation persistence
 /// Loads frames from animations.json and tracks which frames are marked for export
 /// Does NOT write to animations.json - developer manually copies JSON to clipboard
