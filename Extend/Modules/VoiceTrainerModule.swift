@@ -1392,7 +1392,13 @@ private struct PlaybackScreen: View {
     
     @State private var timerStarted = false
     @State private var pulseAnimation = false
-    
+    @State private var showStopConfirm = false
+    @State private var showCompleteConfirm = false
+
+    private var sessionInProgress: Bool {
+        state.isPlaying || state.isPaused
+    }
+
     var body: some View {
         ZStack {
             Color.black
@@ -1403,7 +1409,11 @@ private struct PlaybackScreen: View {
                 HStack {
                     Button(action: {
                         UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-                        onStop()
+                        if sessionInProgress {
+                            showStopConfirm = true
+                        } else {
+                            onStop()
+                        }
                     }) {
                         Image(systemName: "xmark")
                             .font(.system(size: 20, weight: .semibold))
@@ -1620,7 +1630,11 @@ private struct PlaybackScreen: View {
 
                 Button(action: {
                     UIImpactFeedbackGenerator(style: .heavy).impactOccurred()
-                    onComplete()
+                    if sessionInProgress {
+                        showCompleteConfirm = true
+                    } else {
+                        onComplete()
+                    }
                 }) {
                     Text("Complete Session")
                         .font(.headline)
@@ -1652,6 +1666,18 @@ private struct PlaybackScreen: View {
         }
         .onDisappear {
             UIApplication.shared.isIdleTimerDisabled = false
+        }
+        .alert("End Session?", isPresented: $showStopConfirm) {
+            Button("Cancel", role: .cancel) { }
+            Button("End Session", role: .destructive) { onStop() }
+        } message: {
+            Text("The session is still in progress. Your progress will not be saved.")
+        }
+        .alert("Complete Session Early?", isPresented: $showCompleteConfirm) {
+            Button("Cancel", role: .cancel) { }
+            Button("Complete", role: .destructive) { onComplete() }
+        } message: {
+            Text("The session is still in progress. Complete it now and save your progress so far?")
         }
     }
 }

@@ -1901,23 +1901,23 @@ private struct DayOfWeekBarChartView: View {
                 let fraction = maxCount > 0 ? CGFloat(day.count) / CGFloat(maxCount) : 0
                 HStack(spacing: 6) {
                     Text(String(day.label.prefix(3)))
-                        .font(.system(size: 9, weight: .semibold))
-                        .foregroundColor(idx == 0 ? .black : .gray)
+                        .font(.system(size: 9, weight: idx == 0 ? .bold : .semibold))
+                        .foregroundColor(idx == 0 ? .primary : .gray)
                         .frame(width: 26, alignment: .leading)
                     GeometryReader { barGeo in
                         ZStack(alignment: .leading) {
                             RoundedRectangle(cornerRadius: 2)
-                                .fill(Color.black.opacity(0.08))
+                                .fill(Color.primary.opacity(0.08))
                                 .frame(height: 10)
                             RoundedRectangle(cornerRadius: 2)
-                                .fill(idx == 0 ? Color.black : Color.black.opacity(0.3))
+                                .fill(idx == 0 ? Color.primary : Color.primary.opacity(0.3))
                                 .frame(width: barGeo.size.width * fraction, height: 10)
                         }
                     }
                     .frame(height: 10)
                     Text("\(day.count)")
                         .font(.system(size: 9, weight: .bold))
-                        .foregroundColor(idx == 0 ? .black : .gray)
+                        .foregroundColor(idx == 0 ? .primary : .gray)
                         .frame(width: 18, alignment: .trailing)
                 }
                 .frame(height: 14)

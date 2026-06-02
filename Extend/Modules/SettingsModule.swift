@@ -236,6 +236,18 @@ private struct SettingsModuleView: View {
                         }
                     }
 
+                    // MARK: - Help Section
+                    Section("Help") {
+                        NavigationLink(destination: HelpView()) {
+                            HStack {
+                                Image(systemName: "questionmark.circle.fill")
+                                    .foregroundColor(.blue)
+                                Text("Help & User Guide")
+                                    .foregroundColor(.primary)
+                            }
+                        }
+                    }
+
                     // MARK: - Workouts Section
                     Section("Workouts") {
                         Button {
