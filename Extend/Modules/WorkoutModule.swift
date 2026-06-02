@@ -145,10 +145,10 @@ private struct WorkoutInfoChip: View {
             Text(label)
                 .font(.system(size: 11, weight: .medium))
         }
-        .foregroundColor(Color(red: 0.35, green: 0.35, blue: 0.40))
+        .foregroundColor(.secondary)
         .padding(.horizontal, 7)
         .padding(.vertical, 3)
-        .background(Color(red: 0.92, green: 0.92, blue: 0.94))
+        .background(Color(UIColor.secondarySystemBackground))
         .cornerRadius(5)
     }
 }
@@ -187,7 +187,7 @@ private struct WorkoutsModuleView: View {
                     showingAdd = true
                 }) {
                     Image(systemName: "plus")
-                        .foregroundColor(.black)
+                        .foregroundColor(.primary)
                 }
             }
             .padding(.horizontal, 16)
@@ -206,16 +206,16 @@ private struct WorkoutsModuleView: View {
                                     VStack(spacing: 6) {
                                         Image(systemName: "dumbbell.fill")
                                             .font(.system(size: 20))
-                                            .foregroundColor(.black)
+                                            .foregroundColor(.primary)
                                         Text(workout.name)
                                             .font(.caption)
                                             .fontWeight(.semibold)
-                                            .foregroundColor(.black)
+                                            .foregroundColor(.primary)
                                             .lineLimit(2)
                                             .multilineTextAlignment(.center)
                                     }
                                     .frame(width: 70, height: 80)
-                                    .background(Color(red: 0.92, green: 0.92, blue: 0.94))
+                                    .background(Color(UIColor.secondarySystemBackground))
                                     .cornerRadius(10)
                                 }
                                 .buttonStyle(.plain)
@@ -240,7 +240,7 @@ private struct WorkoutsModuleView: View {
                             // Top row: play icon, name, action buttons
                             HStack(spacing: 12) {
                                 Image(systemName: "play.circle.fill")
-                                    .foregroundColor(.black)
+                                    .foregroundColor(.primary)
                                     .font(.system(size: 20))
 
                                 Text(workout.name)
@@ -265,7 +265,7 @@ private struct WorkoutsModuleView: View {
                                     historyWorkout = workout
                                 }) {
                                     Image(systemName: "clock.arrow.circlepath")
-                                        .foregroundColor(.black)
+                                        .foregroundColor(.primary)
                                 }
                                 .buttonStyle(.plain)
 
@@ -275,7 +275,7 @@ private struct WorkoutsModuleView: View {
                                     statsWorkout = workout
                                 }) {
                                     Image(systemName: "chart.bar")
-                                        .foregroundColor(.black)
+                                        .foregroundColor(.primary)
                                 }
                                 .buttonStyle(.plain)
 
@@ -285,7 +285,7 @@ private struct WorkoutsModuleView: View {
                                     state.cloneWorkout(workout)
                                 }) {
                                     Image(systemName: "doc.on.doc")
-                                        .foregroundColor(.black)
+                                        .foregroundColor(.primary)
                                 }
                                 .buttonStyle(.plain)
 
@@ -295,7 +295,7 @@ private struct WorkoutsModuleView: View {
                                     editingWorkout = workout
                                 }) {
                                     Image(systemName: "pencil")
-                                        .foregroundColor(.black)
+                                        .foregroundColor(.primary)
                                 }
                                 .buttonStyle(.plain)
                             }
@@ -380,7 +380,7 @@ private struct WorkoutsModuleView: View {
                             } label: {
                                 Label("Edit", systemImage: "pencil")
                             }
-                            .tint(.blue)
+                            .tint(.primary)
                         }
                         .swipeActions {
                             Button(role: .destructive) {
@@ -799,9 +799,10 @@ private struct WorkoutEditor: View {
             }
             .environment(\.editMode, $editMode)
             .scrollContentBackground(.hidden)
-            .background(Color.white)
+            .background(Color(UIColor.systemBackground))
             .navigationTitle(title)
             .navigationBarTitleDisplayMode(.inline)
+            .tint(.primary)
             .toolbar {
                 ToolbarItemGroup(placement: .topBarLeading) {
                     Button("Cancel") { dismiss() }
@@ -1049,7 +1050,7 @@ private struct EditorExerciseRow: View {
                         }
                     }) {
                         Image(systemName: "info.circle")
-                            .foregroundColor(isInfoExpanded ? .blue : .secondary)
+                            .foregroundColor(isInfoExpanded ? .primary : .secondary)
                             .font(.system(size: 14))
                     }
                     .buttonStyle(.plain)
@@ -1086,7 +1087,7 @@ private struct EditorExerciseRow: View {
                             onEditSets(exercise.id)
                         }) {
                             Image(systemName: "pencil")
-                                .foregroundColor(.blue)
+                                .foregroundColor(.primary)
                                 .font(.system(size: 16))
                         }
                         .buttonStyle(.plain)
@@ -1103,7 +1104,7 @@ private struct EditorExerciseRow: View {
                             workoutItems.insert(.exercise(cloned), at: index + 1)
                         }) {
                             Image(systemName: "doc.on.doc")
-                                .foregroundColor(.black)
+                                .foregroundColor(.primary)
                         }
                         .buttonStyle(.plain)
 
@@ -1305,7 +1306,7 @@ private struct SetsEditorSheet: View {
             // Custom header
             HStack {
                 Button("Cancel") { dismiss() }
-                    .foregroundColor(.blue)
+                    .foregroundColor(.primary)
                 Spacer()
                 Text(resolvedExercise?.name ?? "Exercise")
                     .font(.headline)
@@ -1321,7 +1322,7 @@ private struct SetsEditorSheet: View {
                             }
                             UIImpactFeedbackGenerator(style: .light).impactOccurred()
                         }
-                        .foregroundColor(.blue)
+                        .foregroundColor(.primary)
                     }
                     Button {
                         sets.append(PredefinedSet(target: defaultTarget(after: sets), weight: sets.last?.weight ?? 0))
@@ -1341,7 +1342,7 @@ private struct SetsEditorSheet: View {
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 12)
-            .background(Color.white)
+            .background(Color(UIColor.systemBackground))
             .overlay(alignment: .bottom) { Divider() }
 
             List {
@@ -1360,15 +1361,15 @@ private struct SetsEditorSheet: View {
                                     HStack(spacing: 4) {
                                         Image(systemName: selected ? "checkmark.circle.fill" : "circle")
                                             .font(.system(size: 11))
-                                            .foregroundColor(selected ? .white : .secondary)
+                                            .foregroundColor(selected ? Color(UIColor.systemBackground) : .secondary)
                                         Text(item.name)
                                             .font(.caption)
-                                            .foregroundColor(selected ? .white : .secondary)
+                                            .foregroundColor(selected ? Color(UIColor.systemBackground) : .secondary)
                                             .fixedSize()
                                     }
                                     .padding(.horizontal, 10)
                                     .padding(.vertical, 5)
-                                    .background(selected ? Color.black : Color(uiColor: .systemGray5))
+                                    .background(selected ? Color.primary : Color(uiColor: .systemGray5))
                                     .cornerRadius(12)
                                 }
                                 .buttonStyle(.plain)
@@ -1398,7 +1399,7 @@ private struct SetsEditorSheet: View {
             }
             .listStyle(.insetGrouped)
             .scrollContentBackground(.hidden)
-            .background(Color.white)
+            .background(Color(UIColor.systemBackground))
             .environment(\.editMode, .constant(.active))
 
             // Footer row with Clear All sets
@@ -1414,10 +1415,10 @@ private struct SetsEditorSheet: View {
                 Spacer()
             }
             .padding(.vertical, 10)
-            .background(Color.white)
+            .background(Color(UIColor.systemBackground))
             .overlay(alignment: .top) { Divider() }
         }
-        .background(Color.white)
+        .background(Color(UIColor.systemBackground))
         .onAppear {
             sets = exercise.predefinedSets
             // Seed equipment: workout-level override first, then exercise defaults
@@ -1745,6 +1746,7 @@ private struct ExerciseGroupingSheet: View {
             .listStyle(.insetGrouped)
             .navigationTitle("Grouping")
             .navigationBarTitleDisplayMode(.inline)
+            .tint(.primary)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Done") { dismiss() }
@@ -1870,6 +1872,7 @@ private struct RestLoopGroupingSheet: View {
             .listStyle(.insetGrouped)
             .navigationTitle("Loop Grouping")
             .navigationBarTitleDisplayMode(.inline)
+            .tint(.primary)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Done") { dismiss() }
@@ -2010,7 +2013,7 @@ private struct EditorRestRow: View {
                     showingEditor = true
                 }) {
                     Image(systemName: "pencil")
-                        .foregroundColor(.black)
+                        .foregroundColor(.primary)
                 }
                 .buttonStyle(.plain)
 
@@ -2020,7 +2023,7 @@ private struct EditorRestRow: View {
                     workoutItems.insert(.rest(RestItem(duration: rest.duration)), at: index + 1)
                 }) {
                     Image(systemName: "doc.on.doc")
-                        .foregroundColor(.black)
+                        .foregroundColor(.primary)
                 }
                 .buttonStyle(.plain)
 
@@ -2089,9 +2092,10 @@ private struct RestEditorSheet: View {
                 }
             }
             .scrollContentBackground(.hidden)
-            .background(Color.white)
+            .background(Color(UIColor.systemBackground))
             .navigationTitle("Edit Rest")
             .navigationBarTitleDisplayMode(.inline)
+            .tint(.primary)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
                     Button("Cancel") { dismiss() }
@@ -2164,7 +2168,7 @@ private struct ExercisePickerView: View {
                                     .fontWeight(.semibold)
                                 Spacer()
                                 Image(systemName: "plus.circle.fill")
-                                    .foregroundColor(.black)
+                                    .foregroundColor(.primary)
                             }
 
                             let primaryMuscles = exercise.primaryMuscleGroupIDs.compactMap { id in
@@ -2197,8 +2201,9 @@ private struct ExercisePickerView: View {
                 }
             }
             .scrollContentBackground(.hidden)
-            .background(Color.white)
+            .background(Color(UIColor.systemBackground))
             .navigationTitle("Add Exercise")
+            .tint(.primary)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Done") {
@@ -2231,6 +2236,7 @@ private struct ExercisePickerView: View {
 
 public struct StartWorkoutView: View {
     @Environment(\.dismiss) var dismiss
+    @Environment(\.scenePhase) var scenePhase
     @Environment(ModuleState.self) var moduleState
     @Environment(ExercisesState.self) var exercisesState
     @Environment(MuscleGroupsState.self) var muscleGroupsState
@@ -2253,6 +2259,8 @@ public struct StartWorkoutView: View {
     @State private var exerciseData: [UUID: (sets: [WorkoutSet], notes: String, timerSeconds: Int, usedEquipmentIDs: Set<UUID>, phaseIndex: Int, phaseElapsed: Int, phaseTimerDone: Bool)] = [:]
     /// Wall-clock time when the workout session actually started (after warmup)
     @State private var sessionStartDate: Date? = nil
+    /// Records when the app went to background so elapsed time can be recovered on foreground
+    @State private var backgroundedAt: Date? = nil
     @State private var showingHistory: Bool = false
     /// Active countdown tasks keyed by WorkoutSet.id — for per-set timed countdowns.
     @State private var setTimerTasks: [UUID: Task<Void, Never>] = [:]
@@ -2449,12 +2457,12 @@ public struct StartWorkoutView: View {
                     if isInComplex && isAtComplexEntry && complexRound > 0 {
                         Button(action: { previousComplexRound() }) {
                             Image(systemName: "chevron.left")
-                                .foregroundColor(.black)
+                                .foregroundColor(.primary)
                         }
                     } else if multipleItems && !atStart && !showingWarmup && !showingCooldown {
                         Button(action: { previousItem() }) {
                             Image(systemName: "chevron.left")
-                                .foregroundColor(.black)
+                                .foregroundColor(.primary)
                         }
                     } else {
                         // Invisible placeholder keeps the label centred
@@ -2478,7 +2486,7 @@ public struct StartWorkoutView: View {
                             startExerciseTimerAfterWarmup()
                         }) {
                             Image(systemName: "chevron.right")
-                                .foregroundColor(.black)
+                                .foregroundColor(.primary)
                         }
                     } else if showingCooldown || (isAtLastItem && workout.cooldownSeconds == 0) {
                         Image(systemName: "chevron.right").opacity(0)
@@ -2486,12 +2494,12 @@ public struct StartWorkoutView: View {
                         // Forward arrow triggers the same logic as the "Next Round" button
                         Button(action: { complexAdvanceRound = true }) {
                             Image(systemName: "chevron.right")
-                                .foregroundColor(.black)
+                                .foregroundColor(.primary)
                         }
                     } else if totalItems > 0 {
                         Button(action: { nextItem() }) {
                             Image(systemName: "chevron.right")
-                                .foregroundColor(.black)
+                                .foregroundColor(.primary)
                         }
                     } else {
                         Image(systemName: "chevron.right").opacity(0)
@@ -2499,7 +2507,7 @@ public struct StartWorkoutView: View {
                 }
                 .padding(.horizontal, 16)
                 .padding(.vertical, 12)
-                .background(Color(red: 0.98, green: 0.98, blue: 1.0))
+                .background(Color(UIColor.secondarySystemBackground))
 
                 if workout.showNotes && !workout.notes.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                     HStack(alignment: .top, spacing: 6) {
@@ -2624,7 +2632,7 @@ public struct StartWorkoutView: View {
                 }
 
             }
-            .background(Color.white)
+            .background(Color(UIColor.systemBackground))
             .navigationBarTitleDisplayMode(.inline)
             .navigationTitle(workout.name)
             .toolbar {
@@ -2642,7 +2650,7 @@ public struct StartWorkoutView: View {
                         }
                     }
                     .fontWeight(.semibold)
-                    .foregroundColor(.black)
+                    .foregroundColor(.primary)
                 }
             }
             .alert("Cancel Workout?", isPresented: $showingCancelConfirm) {
@@ -2694,6 +2702,20 @@ public struct StartWorkoutView: View {
                 timerSeconds += 1
             }
         }
+        // Recover elapsed time lost while screen was off / app backgrounded
+        .onChange(of: scenePhase) { _, newPhase in
+            if newPhase == .background {
+                // Record when we left foreground
+                if isTimerRunning { backgroundedAt = Date() }
+            } else if newPhase == .active {
+                // Add the time we were away to the running counter
+                if isTimerRunning, let bg = backgroundedAt {
+                    let elapsed = Int(Date().timeIntervalSince(bg))
+                    if elapsed > 0 { timerSeconds += elapsed }
+                }
+                backgroundedAt = nil
+            }
+        }
     }
 
     // MARK: Exercise content builder
@@ -2713,7 +2735,7 @@ public struct StartWorkoutView: View {
                 Button(action: { expandedInfo.toggle() }) {
                     Image(systemName: "info.circle")
                         .font(.system(size: 20))
-                        .foregroundColor(.black)
+                        .foregroundColor(.primary)
                 }
                 .buttonStyle(.plain)
             }
@@ -2750,6 +2772,10 @@ public struct StartWorkoutView: View {
             (g.primaryImageAssetName ?? "").isEmpty && (g.secondaryImageAssetName ?? "").isEmpty &&
             (g.customPrimaryImageFilename != nil || g.customSecondaryImageFilename != nil)
         }
+        // Adaptive background for muscle images: white in light mode, gray in dark mode
+        let muscleImageBg = Color(UIColor { trait in
+            trait.userInterfaceStyle == .dark ? .systemGray5 : .white
+        })
 
         // Expandable info section
         if expandedInfo {
@@ -2767,38 +2793,48 @@ public struct StartWorkoutView: View {
                     HStack(spacing: 12) {
                         VStack(spacing: 4) {
                             ZStack {
-                                if exIsFullBody {
-                                    Color.red
-                                        .mask(Image(exFrontBase).resizable().scaledToFit())
-                                        .blur(radius: 10)
-                                        .opacity(0.7)
+                                Color(UIColor.secondarySystemBackground)
+                                ZStack {
+                                    muscleImageBg
+                                    if exIsFullBody {
+                                        Color.red
+                                            .mask(Image(exFrontBase).resizable().scaledToFit())
+                                            .blur(radius: 10)
+                                            .opacity(0.7)
+                                    }
+                                    Image(exFrontBase).resizable().scaledToFit()
+                                    ForEach(exFrontMasksPrimary, id: \.self) { mask in
+                                        Image(mask).resizable().scaledToFit().blendMode(.screen)
+                                    }
+                                    ForEach(exFrontMasksSecondary, id: \.self) { mask in
+                                        Image(mask).resizable().scaledToFit().opacity(0.8).blendMode(.screen)
+                                    }
                                 }
-                                Image(exFrontBase).resizable().scaledToFit()
-                                ForEach(exFrontMasksPrimary, id: \.self) { mask in
-                                    Image(mask).resizable().scaledToFit().blendMode(.screen)
-                                }
-                                ForEach(exFrontMasksSecondary, id: \.self) { mask in
-                                    Image(mask).resizable().scaledToFit().opacity(0.8).blendMode(.screen)
-                                }
+                                .padding(4)
                             }
                             .frame(width: panelWidth)
                             Text("Front").font(.system(size: 11)).foregroundColor(.secondary)
                         }
                         VStack(spacing: 4) {
                             ZStack {
-                                if exIsFullBody {
-                                    Color.red
-                                        .mask(Image(exBackBase).resizable().scaledToFit())
-                                        .blur(radius: 10)
-                                        .opacity(0.7)
+                                Color(UIColor.secondarySystemBackground)
+                                ZStack {
+                                    muscleImageBg
+                                    if exIsFullBody {
+                                        Color.red
+                                            .mask(Image(exBackBase).resizable().scaledToFit())
+                                            .blur(radius: 10)
+                                            .opacity(0.7)
+                                    }
+                                    Image(exBackBase).resizable().scaledToFit()
+                                    ForEach(exBackMasksPrimary, id: \.self) { mask in
+                                        Image(mask).resizable().scaledToFit().blendMode(.screen)
+                                    }
+                                    ForEach(exBackMasksSecondary, id: \.self) { mask in
+                                        Image(mask).resizable().scaledToFit().opacity(0.8).blendMode(.screen)
+                                    }
                                 }
-                                Image(exBackBase).resizable().scaledToFit()
-                                ForEach(exBackMasksPrimary, id: \.self) { mask in
-                                    Image(mask).resizable().scaledToFit().blendMode(.screen)
-                                }
-                                ForEach(exBackMasksSecondary, id: \.self) { mask in
-                                    Image(mask).resizable().scaledToFit().opacity(0.8).blendMode(.screen)
-                                }
+                                .padding(4)
                             }
                             .frame(width: panelWidth)
                             Text("Back").font(.system(size: 11)).foregroundColor(.secondary)
@@ -2819,16 +2855,22 @@ public struct StartWorkoutView: View {
                                         if let fn = g.customPrimaryImageFilename,
                                            let data = try? Data(contentsOf: MuscleGroup.imageStorageDirectory.appendingPathComponent(fn)),
                                            let ui = UIImage(data: data) {
-                                            Image(uiImage: ui).resizable().scaledToFit()
-                                                .frame(width: 90, height: 110)
-                                                .clipShape(RoundedRectangle(cornerRadius: 8))
+                                            ZStack {
+                                                muscleImageBg
+                                                Image(uiImage: ui).resizable().scaledToFit()
+                                            }
+                                            .frame(width: 90, height: 110)
+                                            .clipShape(RoundedRectangle(cornerRadius: 8))
                                         }
                                         if let fn = g.customSecondaryImageFilename,
                                            let data = try? Data(contentsOf: MuscleGroup.imageStorageDirectory.appendingPathComponent(fn)),
                                            let ui = UIImage(data: data) {
-                                            Image(uiImage: ui).resizable().scaledToFit()
-                                                .frame(width: 90, height: 110)
-                                                .clipShape(RoundedRectangle(cornerRadius: 8))
+                                            ZStack {
+                                                muscleImageBg
+                                                Image(uiImage: ui).resizable().scaledToFit()
+                                            }
+                                            .frame(width: 90, height: 110)
+                                            .clipShape(RoundedRectangle(cornerRadius: 8))
                                         }
                                     }
                                     Text(g.name)
@@ -2846,6 +2888,7 @@ public struct StartWorkoutView: View {
                    let data = try? Data(contentsOf: Exercise.imageStorageDirectory.appendingPathComponent(fn)) {
                     GIFImageView(data: data)
                         .aspectRatio(contentMode: .fit)
+                        .frame(maxHeight: 160)
                         .frame(maxWidth: .infinity)
                         .clipShape(RoundedRectangle(cornerRadius: 10))
                         .padding(.top, 4)
@@ -2872,21 +2915,27 @@ public struct StartWorkoutView: View {
             HStack(spacing: 8) {
                 if !expandedInfo && showMuscleImages {
                     ZStack {
-                        if exIsFullBody {
-                            Color.red
-                                .mask(Image(exFrontBase).resizable().scaledToFit())
-                                .blur(radius: 6)
-                                .opacity(0.7)
+                        Color(UIColor.secondarySystemBackground)
+                        ZStack {
+                            muscleImageBg
+                            if exIsFullBody {
+                                Color.red
+                                    .mask(Image(exFrontBase).resizable().scaledToFit())
+                                    .blur(radius: 6)
+                                    .opacity(0.7)
+                            }
+                            Image(exFrontBase).resizable().scaledToFit()
+                            ForEach(exFrontMasksPrimary, id: \.self) { mask in
+                                Image(mask).resizable().scaledToFit().blendMode(.screen)
+                            }
+                            ForEach(exFrontMasksSecondary, id: \.self) { mask in
+                                Image(mask).resizable().scaledToFit().opacity(0.8).blendMode(.screen)
+                            }
                         }
-                        Image(exFrontBase).resizable().scaledToFit()
-                        ForEach(exFrontMasksPrimary, id: \.self) { mask in
-                            Image(mask).resizable().scaledToFit().blendMode(.screen)
-                        }
-                        ForEach(exFrontMasksSecondary, id: \.self) { mask in
-                            Image(mask).resizable().scaledToFit().opacity(0.8).blendMode(.screen)
-                        }
+                        .padding(3)
                     }
                     .frame(width: 56, height: 80)
+                    .clipShape(RoundedRectangle(cornerRadius: 4))
                 }
 
                 VStack(spacing: 12) {
@@ -2894,7 +2943,7 @@ public struct StartWorkoutView: View {
                         Button(action: { toggleTimer() }) {
                             Image(systemName: isTimerRunning ? "stop.circle.fill" : "play.circle.fill")
                                 .font(.system(size: 24))
-                                .foregroundColor(.black)
+                                .foregroundColor(.primary)
                         }
                         .buttonStyle(.plain)
 
@@ -2905,33 +2954,39 @@ public struct StartWorkoutView: View {
 
                         Button(action: { resetTimer() }) {
                             Image(systemName: "arrow.counterclockwise")
-                                .foregroundColor(.black)
+                                .foregroundColor(.primary)
                         }
                         .buttonStyle(.plain)
                     }
                 }
                 .padding(12)
                 .frame(maxWidth: .infinity)
-                .background(Color(red: 0.96, green: 0.96, blue: 0.97))
+                .background(Color(UIColor.secondarySystemBackground))
                 .cornerRadius(8)
 
                 if !expandedInfo && showMuscleImages {
                     ZStack {
-                        if exIsFullBody {
-                            Color.red
-                                .mask(Image(exBackBase).resizable().scaledToFit())
-                                .blur(radius: 6)
-                                .opacity(0.7)
+                        Color(UIColor.secondarySystemBackground)
+                        ZStack {
+                            muscleImageBg
+                            if exIsFullBody {
+                                Color.red
+                                    .mask(Image(exBackBase).resizable().scaledToFit())
+                                    .blur(radius: 6)
+                                    .opacity(0.7)
+                            }
+                            Image(exBackBase).resizable().scaledToFit()
+                            ForEach(exBackMasksPrimary, id: \.self) { mask in
+                                Image(mask).resizable().scaledToFit().blendMode(.screen)
+                            }
+                            ForEach(exBackMasksSecondary, id: \.self) { mask in
+                                Image(mask).resizable().scaledToFit().opacity(0.8).blendMode(.screen)
+                            }
                         }
-                        Image(exBackBase).resizable().scaledToFit()
-                        ForEach(exBackMasksPrimary, id: \.self) { mask in
-                            Image(mask).resizable().scaledToFit().blendMode(.screen)
-                        }
-                        ForEach(exBackMasksSecondary, id: \.self) { mask in
-                            Image(mask).resizable().scaledToFit().opacity(0.8).blendMode(.screen)
-                        }
+                        .padding(3)
                     }
                     .frame(width: 56, height: 80)
+                    .clipShape(RoundedRectangle(cornerRadius: 4))
                 }
             }
             .padding(.horizontal, 16)
@@ -2958,15 +3013,15 @@ public struct StartWorkoutView: View {
                             HStack(spacing: 4) {
                                 Image(systemName: selected ? "checkmark.circle.fill" : "circle")
                                     .font(.system(size: 11))
-                                    .foregroundColor(selected ? .white : .secondary)
+                                    .foregroundColor(selected ? Color(UIColor.systemBackground) : .secondary)
                                 Text(item.name)
                                     .font(.caption)
-                                    .foregroundColor(selected ? .white : .secondary)
+                                    .foregroundColor(selected ? Color(UIColor.systemBackground) : .secondary)
                                     .fixedSize()
                             }
                             .padding(.horizontal, 8)
                             .padding(.vertical, 4)
-                            .background(selected ? Color.black : Color(red: 0.93, green: 0.93, blue: 0.95))
+                            .background(selected ? Color.primary : Color(UIColor.tertiarySystemBackground))
                             .cornerRadius(12)
                         }
                         .buttonStyle(.plain)
@@ -2986,7 +3041,7 @@ public struct StartWorkoutView: View {
                 .lineLimit(1...6)
                 .font(.caption)
                 .padding(8)
-                .background(Color(red: 0.96, green: 0.96, blue: 0.97))
+                .background(Color(UIColor.secondarySystemBackground))
                 .cornerRadius(6)
         }
         .padding(.horizontal, 16)
@@ -3002,7 +3057,7 @@ public struct StartWorkoutView: View {
         let remaining = max(0, phaseDuration - phaseElapsed)
         let progress: Double = phaseDuration > 0 ? Double(phaseElapsed) / Double(phaseDuration) : 1.0
         let isWork = currentPhase?.isWork ?? true
-        let ringColor: Color = phaseTimerDone ? .green : (isWork ? .black : .blue)
+        let ringColor: Color = phaseTimerDone ? .green : (isWork ? .primary : .blue)
 
         VStack(spacing: 16) {
             // Phase label
@@ -3045,10 +3100,10 @@ public struct StartWorkoutView: View {
                     Button(action: { nextItem() }) {
                         Text("Next Exercise")
                             .font(.headline)
-                            .foregroundColor(.white)
+                            .foregroundColor(Color(UIColor.systemBackground))
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 12)
-                            .background(Color.black)
+                            .background(Color.primary)
                             .cornerRadius(10)
                     }
                     .buttonStyle(.plain)
@@ -3056,10 +3111,10 @@ public struct StartWorkoutView: View {
                     Button(action: { triggerCooldownOrComplete() }) {
                         Text("Continue to Cooldown")
                             .font(.headline)
-                            .foregroundColor(.white)
+                            .foregroundColor(Color(UIColor.systemBackground))
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 12)
-                            .background(Color.black)
+                            .background(Color.primary)
                             .cornerRadius(10)
                     }
                     .buttonStyle(.plain)
@@ -3071,7 +3126,7 @@ public struct StartWorkoutView: View {
                     Button(action: { resetPhaseTimer(); startPhaseTick() }) {
                         Image(systemName: "arrow.counterclockwise.circle")
                             .font(.system(size: 32))
-                            .foregroundColor(.black)
+                            .foregroundColor(.primary)
                     }
                     .buttonStyle(.plain)
 
@@ -3081,7 +3136,7 @@ public struct StartWorkoutView: View {
                     }) {
                         Image(systemName: phaseTimerRunning ? "pause.circle.fill" : "play.circle.fill")
                             .font(.system(size: 48))
-                            .foregroundColor(.black)
+                            .foregroundColor(.primary)
                     }
                     .buttonStyle(.plain)
 
@@ -3089,7 +3144,7 @@ public struct StartWorkoutView: View {
                     Button(action: { skipPhase() }) {
                         Image(systemName: "forward.end.circle")
                             .font(.system(size: 32))
-                            .foregroundColor(.black)
+                            .foregroundColor(.primary)
                     }
                     .buttonStyle(.plain)
                 }
@@ -3097,7 +3152,7 @@ public struct StartWorkoutView: View {
         }
         .frame(maxWidth: .infinity)
         .padding(16)
-        .background(Color(red: 0.96, green: 0.96, blue: 0.97))
+        .background(Color(UIColor.secondarySystemBackground))
         .cornerRadius(12)
     }
 
@@ -3139,7 +3194,7 @@ public struct StartWorkoutView: View {
                 if lastLoggedSets(for: exercise.id) != nil {
                     Button(action: { showingHistory = true }) {
                         Image(systemName: "clock.arrow.circlepath")
-                            .foregroundColor(.black)
+                            .foregroundColor(.primary)
                     }
                     .buttonStyle(.plain)
                 }
@@ -3147,7 +3202,7 @@ public struct StartWorkoutView: View {
                 if sets.isEmpty {
                     Button(action: { addSet() }) {
                         Image(systemName: "plus.circle.fill")
-                            .foregroundColor(.black)
+                            .foregroundColor(.primary)
                     }
                     .buttonStyle(.plain)
                 }
@@ -3168,14 +3223,14 @@ public struct StartWorkoutView: View {
                     Spacer()
                     Button(action: { addSet() }) {
                         Image(systemName: "plus.circle.fill")
-                            .foregroundColor(.black)
+                            .foregroundColor(.primary)
                     }
                     .buttonStyle(.plain)
                 }
             }
         }
         .padding(12)
-        .background(Color(red: 0.96, green: 0.96, blue: 0.97))
+        .background(Color(UIColor.secondarySystemBackground))
         .cornerRadius(8)
         .padding(.horizontal, 16)
     }
@@ -3212,7 +3267,7 @@ public struct StartWorkoutView: View {
                         .fontWeight(.semibold)
                         .frame(maxWidth: .infinity, minHeight: 28, alignment: .center)
                         .padding(.horizontal, 6)
-                        .background(Color(red: 0.98, green: 0.98, blue: 1.0))
+                        .background(Color(UIColor.tertiarySystemBackground))
                         .cornerRadius(4)
                 }
 
@@ -3231,7 +3286,7 @@ public struct StartWorkoutView: View {
                     .font(.caption)
                     .frame(minHeight: 28)
                     .padding(.horizontal, 6)
-                    .background(Color(red: 0.98, green: 0.98, blue: 1.0))
+                    .background(Color(UIColor.tertiarySystemBackground))
                     .cornerRadius(4)
                 }
 
@@ -3247,7 +3302,7 @@ public struct StartWorkoutView: View {
                     .font(.caption)
                     .frame(minHeight: 28)
                     .padding(.horizontal, 6)
-                    .background(Color(red: 0.98, green: 0.98, blue: 1.0))
+                    .background(Color(UIColor.tertiarySystemBackground))
                     .cornerRadius(4)
                     .onSubmit {
                         let parsed = Double(sets[index].weightText.replacingOccurrences(of: ",", with: ".")) ?? 0
@@ -3293,7 +3348,7 @@ public struct StartWorkoutView: View {
                         .monospacedDigit()
                         .padding(.horizontal, 10)
                         .padding(.vertical, 5)
-                        .background(rem == 0 ? Color.green.opacity(0.15) : Color(red: 0.98, green: 0.98, blue: 1.0))
+                        .background(rem == 0 ? Color.green.opacity(0.15) : Color(UIColor.secondarySystemBackground))
                         .cornerRadius(6)
 
                     Button(action: { resetSetTimer(setIndex: index, predefinedSets: we.predefinedSets) }) {
@@ -3308,11 +3363,11 @@ public struct StartWorkoutView: View {
             }
         }
         .padding(isActiveRound ? 6 : 0)
-        .background(isActiveRound ? Color.black.opacity(0.07) : Color.clear)
+        .background(isActiveRound ? Color.primary.opacity(0.07) : Color.clear)
         .cornerRadius(isActiveRound ? 6 : 0)
         .overlay(
             isActiveRound
-                ? RoundedRectangle(cornerRadius: 6).stroke(Color.black.opacity(0.55), lineWidth: 1.5)
+                ? RoundedRectangle(cornerRadius: 6).stroke(Color.primary.opacity(0.55), lineWidth: 1.5)
                 : nil
         )
     }
@@ -4060,7 +4115,7 @@ private struct RestScreen: View {
     }
 
     private var ringColor: Color {
-        secondsRemaining <= 10 ? .red : Color.black.opacity(0.85)
+        secondsRemaining <= 10 ? .red : Color.primary
     }
 
     var body: some View {
@@ -4071,7 +4126,7 @@ private struct RestScreen: View {
             ZStack {
                 // Track ring
                 Circle()
-                    .stroke(Color(red: 0.93, green: 0.93, blue: 0.95), lineWidth: 10)
+                    .stroke(Color(UIColor.tertiarySystemBackground), lineWidth: 10)
 
                 // Progress ring — drains as rest time decreases
                 Circle()
@@ -4107,7 +4162,7 @@ private struct RestScreen: View {
                 Button(action: { isRunning.toggle() }) {
                     Image(systemName: isRunning ? "pause.circle.fill" : "play.circle.fill")
                         .font(.system(size: 48))
-                        .foregroundColor(.black)
+                        .foregroundColor(.primary)
                 }
                 .buttonStyle(.plain)
 
@@ -4173,7 +4228,7 @@ private struct WarmupCooldownScreen: View {
     }
 
     private var ringColor: Color {
-        secondsRemaining <= 10 ? .red : Color.black.opacity(0.85)
+        secondsRemaining <= 10 ? .red : Color.primary
     }
 
     private func formatTime(_ seconds: Int) -> String {
@@ -4206,7 +4261,7 @@ private struct WarmupCooldownScreen: View {
             // Circular countdown ring
             ZStack {
                 Circle()
-                    .stroke(Color(red: 0.93, green: 0.93, blue: 0.95), lineWidth: 10)
+                    .stroke(Color(UIColor.tertiarySystemBackground), lineWidth: 10)
                 Circle()
                     .trim(from: 0, to: ringProgress)
                     .stroke(ringColor, style: StrokeStyle(lineWidth: 10, lineCap: .round))
@@ -4236,7 +4291,7 @@ private struct WarmupCooldownScreen: View {
                 Button(action: { isRunning.toggle() }) {
                     Image(systemName: isRunning ? "pause.circle.fill" : "play.circle.fill")
                         .font(.system(size: 48))
-                        .foregroundColor(.black)
+                        .foregroundColor(.primary)
                 }
                 .buttonStyle(.plain)
 
@@ -4312,7 +4367,7 @@ private struct ComplexScreen: View {
     }
 
     private var ringColor: Color {
-        secondsRemaining <= 10 ? .red : Color.black.opacity(0.85)
+        secondsRemaining <= 10 ? .red : Color.primary
     }
 
     private func formatTime(_ seconds: Int) -> String {
@@ -4379,7 +4434,7 @@ private struct ComplexScreen: View {
                             Button(action: { isTimerRunning.toggle() }) {
                                 Image(systemName: isTimerRunning ? "pause.circle.fill" : "play.circle.fill")
                                     .font(.system(size: 32))
-                                    .foregroundColor(.black)
+                                    .foregroundColor(.primary)
                             }
                             .buttonStyle(.plain)
 
@@ -4413,7 +4468,7 @@ private struct ComplexScreen: View {
                         GeometryReader { geo in
                             ZStack(alignment: .leading) {
                                 RoundedRectangle(cornerRadius: 3)
-                                    .fill(Color(red: 0.93, green: 0.93, blue: 0.95))
+                                    .fill(Color(UIColor.tertiarySystemBackground))
                                     .frame(height: 6)
                                 RoundedRectangle(cornerRadius: 3)
                                     .fill(timerDone ? Color.green : ringColor)
@@ -4428,7 +4483,7 @@ private struct ComplexScreen: View {
                     // RING STYLE: compact ring with controls inside
                     ZStack {
                         Circle()
-                            .stroke(Color(red: 0.93, green: 0.93, blue: 0.95), lineWidth: 10)
+                            .stroke(Color(UIColor.tertiarySystemBackground), lineWidth: 10)
                         Circle()
                             .trim(from: 0, to: ringProgress)
                             .stroke(
@@ -4449,7 +4504,7 @@ private struct ComplexScreen: View {
                                 Button(action: { isTimerRunning.toggle() }) {
                                     Image(systemName: isTimerRunning ? "pause.circle.fill" : "play.circle.fill")
                                         .font(.system(size: 28))
-                                        .foregroundColor(.black)
+                                        .foregroundColor(.primary)
                                 }
                                 .buttonStyle(.plain)
                                 Button(action: {
@@ -4507,10 +4562,10 @@ private struct ComplexScreen: View {
                         }
                     }
                     .font(.headline)
-                    .foregroundColor(.white)
+                    .foregroundColor(isCountingDown || isLastRound ? .white : Color(UIColor.systemBackground))
                     .padding(.vertical, 14)
                     .frame(maxWidth: .infinity)
-                    .background(isCountingDown ? Color.orange : (isLastRound ? Color.green : Color.black))
+                    .background(isCountingDown ? Color.orange : (isLastRound ? Color.green : Color.primary))
                     .cornerRadius(12)
                 }
                 .buttonStyle(.plain)
@@ -4831,9 +4886,10 @@ private struct LoopEditorSheet: View {
                 }
             }
             .scrollContentBackground(.hidden)
-            .background(Color.white)
+            .background(Color(UIColor.systemBackground))
             .navigationTitle("Edit Loop")
             .navigationBarTitleDisplayMode(.inline)
+            .tint(.primary)
             .toolbar {
                 ToolbarItemGroup(placement: .topBarLeading) {
                     Button("Cancel") { dismiss() }
@@ -4956,9 +5012,10 @@ private struct ComplexEditorSheet: View {
                 }
             }
             .scrollContentBackground(.hidden)
-            .background(Color.white)
+            .background(Color(UIColor.systemBackground))
             .navigationTitle("Edit Complex")
             .navigationBarTitleDisplayMode(.inline)
+            .tint(.primary)
             .toolbar {
                 ToolbarItemGroup(placement: .topBarLeading) {
                     Button("Cancel") { dismiss() }
@@ -5146,6 +5203,7 @@ struct ExerciseHistorySheet: View {
             }
             .navigationTitle("History: \(exercise.name)")
             .navigationBarTitleDisplayMode(.inline)
+            .tint(.primary)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Done") { dismiss() }

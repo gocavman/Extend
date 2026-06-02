@@ -21,7 +21,7 @@ struct SearchField: View {
                 if !text.isEmpty {
                     Button(action: { text = "" }) {
                         Image(systemName: "xmark.circle.fill")
-                            .foregroundColor(.black)
+                            .foregroundColor(.secondary)
                     }
                     .buttonStyle(.plain)
                     .padding(.trailing, 8)

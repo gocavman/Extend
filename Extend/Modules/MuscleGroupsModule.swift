@@ -57,7 +57,7 @@ private struct MuscleGroupsModuleView: View {
                         showingAdd = true
                     }) {
                         Image(systemName: "plus")
-                            .foregroundColor(.black)
+                            .foregroundColor(.primary)
                     }
                 }
                 .padding(.horizontal, 16)
@@ -74,9 +74,9 @@ private struct MuscleGroupsModuleView: View {
                                 VStack(spacing: 4) {
                                     Image(systemName: "figure.strengthtraining.traditional")
                                         .font(.system(size: 20))
-                                        .foregroundColor(.black)
+                                        .foregroundColor(.primary)
                                     Text(group.name)
-                                        .font(.caption).fontWeight(.semibold).foregroundColor(.black)
+                                        .font(.caption).fontWeight(.semibold).foregroundColor(.primary)
                                         .lineLimit(2).multilineTextAlignment(.center)
                                 }
                                 .frame(width: 70, height: 80)
@@ -95,7 +95,14 @@ private struct MuscleGroupsModuleView: View {
 
                     ForEach(filteredGroups) { group in
                         HStack(spacing: 12) {
-                            MuscleGroupThumbnail(group: group, size: 40)
+                            ZStack {
+                                Color(UIColor { trait in
+                                    trait.userInterfaceStyle == .dark ? .systemGray5 : .white
+                                })
+                                .clipShape(RoundedRectangle(cornerRadius: 8))
+                                MuscleGroupThumbnail(group: group, size: 40)
+                            }
+                            .frame(width: 40, height: 40)
 
                             Text(group.name)
                                 .font(.subheadline)
@@ -123,7 +130,7 @@ private struct MuscleGroupsModuleView: View {
                                 historyGroup = group
                             }) {
                                 Image(systemName: "clock.arrow.circlepath")
-                                    .foregroundColor(.black)
+                                    .foregroundColor(.primary)
                             }
                             .buttonStyle(.plain)
                             .accessibilityLabel("History for \(group.name)")
@@ -134,7 +141,7 @@ private struct MuscleGroupsModuleView: View {
                                 statsGroup = group
                             }) {
                                 Image(systemName: "chart.bar")
-                                    .foregroundColor(.black)
+                                    .foregroundColor(.primary)
                             }
                             .buttonStyle(.plain)
                             .accessibilityLabel("Stats for \(group.name)")
@@ -145,7 +152,7 @@ private struct MuscleGroupsModuleView: View {
                                 editingGroup = group
                             }) {
                                 Image(systemName: "pencil")
-                                    .foregroundColor(.black)
+                                    .foregroundColor(.primary)
                             }
                             .buttonStyle(.plain)
                             .accessibilityLabel("Edit \(group.name)")
@@ -155,7 +162,7 @@ private struct MuscleGroupsModuleView: View {
                                 UIImpactFeedbackGenerator(style: .light).impactOccurred()
                                 editingGroup = group
                             } label: { Label("Edit", systemImage: "pencil") }
-                            .tint(.blue)
+                            .tint(.primary)
                         }
                         .swipeActions {
                             Button(role: .destructive) {
@@ -270,14 +277,19 @@ public struct MuscleGroupThumbnail: View {
 
     @ViewBuilder
     private func singleImage(filename: String?, assetName: String?) -> some View {
-        if let filename,
-           let data = try? Data(contentsOf: MuscleGroup.imageStorageDirectory.appendingPathComponent(filename)),
-           let ui = UIImage(data: data) {
-            Image(uiImage: ui).resizable().scaledToFit()
-        } else if let name = assetName, !name.isEmpty {
-            Image(name).resizable().scaledToFit()
-        } else {
-            Color.clear
+        // Adaptive background: white in light mode, gray in dark mode
+        let imageBg = Color(UIColor { trait in
+            trait.userInterfaceStyle == .dark ? .systemGray5 : .white
+        })
+        ZStack {
+            imageBg
+            if let filename,
+               let data = try? Data(contentsOf: MuscleGroup.imageStorageDirectory.appendingPathComponent(filename)),
+               let ui = UIImage(data: data) {
+                Image(uiImage: ui).resizable().scaledToFit()
+            } else if let name = assetName, !name.isEmpty {
+                Image(name).resizable().scaledToFit()
+            }
         }
     }
 
@@ -418,7 +430,7 @@ private struct MuscleGroupEditor: View {
                 }
             }
             .scrollContentBackground(.hidden)
-            .background(Color.white)
+            .background(Color(UIColor.systemBackground))
             .navigationTitle(title)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -495,7 +507,12 @@ private struct MuscleGroupEditor: View {
                 VStack(spacing: 6) {
                     Group {
                         if let ui = customImage {
-                            Image(uiImage: ui).resizable().scaledToFit()
+                            ZStack {
+                                Color(UIColor { trait in
+                                    trait.userInterfaceStyle == .dark ? .systemGray5 : .white
+                                })
+                                Image(uiImage: ui).resizable().scaledToFit()
+                            }
                         } else {
                             Image(systemName: "photo")
                                 .font(.system(size: 44))

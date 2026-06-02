@@ -62,7 +62,7 @@ private struct ExercisesModuleView: View {
                         showingAdd = true
                     }) {
                         Image(systemName: "plus")
-                            .foregroundColor(.black)
+                            .foregroundColor(.primary)
                     }
                 }
                 .padding(.horizontal, 16)
@@ -79,13 +79,13 @@ private struct ExercisesModuleView: View {
                                 VStack(spacing: 4) {
                                     Image(systemName: "flame.fill")
                                         .font(.system(size: 20))
-                                        .foregroundColor(.black)
+                                        .foregroundColor(.primary)
                                     Text(exercise.name)
-                                        .font(.caption).fontWeight(.semibold).foregroundColor(.black)
+                                        .font(.caption).fontWeight(.semibold).foregroundColor(.primary)
                                         .lineLimit(2).multilineTextAlignment(.center)
                                 }
                                 .frame(width: 70, height: 80)
-                                .background(Color(red: 0.92, green: 0.92, blue: 0.94))
+                                .background(Color(UIColor.secondarySystemBackground))
                                 .cornerRadius(10)
                             }
                             .buttonStyle(.plain)
@@ -132,7 +132,7 @@ private struct ExercisesModuleView: View {
                                         historyExercise = exercise
                                     }) {
                                         Image(systemName: "clock.arrow.circlepath")
-                                            .foregroundColor(.black)
+                                            .foregroundColor(.primary)
                                     }
                                     .buttonStyle(.plain)
 
@@ -142,7 +142,7 @@ private struct ExercisesModuleView: View {
                                         statsExercise = exercise
                                     }) {
                                         Image(systemName: "chart.bar")
-                                            .foregroundColor(.black)
+                                            .foregroundColor(.primary)
                                     }
                                     .buttonStyle(.plain)
 
@@ -152,7 +152,7 @@ private struct ExercisesModuleView: View {
                                         editingExercise = exercise
                                     }) {
                                         Image(systemName: "pencil")
-                                            .foregroundColor(.black)
+                                            .foregroundColor(.primary)
                                     }
                                     .buttonStyle(.plain)
                                 }
@@ -209,7 +209,7 @@ private struct ExercisesModuleView: View {
                                 } label: {
                                     Label("Edit", systemImage: "pencil")
                                 }
-                                .tint(.blue)
+                                .tint(.primary)
                             }
                             .swipeActions {
                                 Button(role: .destructive) {
@@ -373,6 +373,7 @@ private struct ExerciseEditor: View {
                     if let data = displayData {
                         GIFImageView(data: data)
                             .aspectRatio(contentMode: .fit)
+                            .frame(maxHeight: 160)
                             .frame(maxWidth: .infinity)
                             .clipShape(RoundedRectangle(cornerRadius: 10))
                             .listRowInsets(EdgeInsets(top: 8, leading: 8, bottom: 4, trailing: 8))
@@ -389,6 +390,7 @@ private struct ExerciseEditor: View {
                         } label: {
                             Label("Upload Image", systemImage: "photo.badge.plus")
                         }
+                        .tint(.primary)
                         .confirmationDialog("Choose Image Source", isPresented: $showImageSourceMenu) {
                             Button("Photo Library") { showPhotoPicker = true }
                             Button("Files (for GIF)") { showFilePicker = true }
@@ -495,9 +497,10 @@ private struct ExerciseEditor: View {
                 }
             }
             .scrollContentBackground(.hidden)
-            .background(Color.white)
+            .background(Color(UIColor.systemBackground))
             .navigationTitle(title)
             .navigationBarTitleDisplayMode(.inline)
+            .tint(.primary)
             .toolbar {
                 ToolbarItemGroup(placement: .topBarLeading) {
                     Button("Cancel") { dismiss() }

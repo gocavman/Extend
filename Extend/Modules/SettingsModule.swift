@@ -50,7 +50,12 @@ private struct SettingsModuleView: View {
     @Environment(ExercisesState.self) var exercisesState
 
     @AppStorage("weightUnit") private var weightUnit: String = "lbs"
+    @AppStorage("appColorScheme") private var appColorScheme: String = "light"
     @AppStorage("keepScreenOnDuringSession") private var keepScreenOnDuringSession: Bool = true
+
+    private var preferredScheme: ColorScheme? {
+        appColorScheme == "dark" ? .dark : .light
+    }
 
     @State private var showingResetAlert = false
     @State private var isSyncingHealthKit = false
@@ -171,6 +176,17 @@ private struct SettingsModuleView: View {
                             }())
                                 .font(.caption)
                                 .foregroundColor(.secondary)
+                        }
+
+                        HStack {
+                            Text("Theme")
+                            Spacer()
+                            Picker("", selection: $appColorScheme) {
+                                Text("Light").tag("light")
+                                Text("Dark").tag("dark")
+                            }
+                            .pickerStyle(.segmented)
+                            .frame(width: 120)
                         }
 
                         HStack {
@@ -321,6 +337,8 @@ private struct SettingsModuleView: View {
                 }
                 .scrollContentBackground(.hidden)
                 .background(Color(UIColor.systemBackground))
+                .toolbar(.hidden, for: .navigationBar)
+                .navigationBarTitleDisplayMode(.inline)
                 .alert("Reset App?", isPresented: $showingResetAlert) {
                     Button("Cancel", role: .cancel) {}
                     Button("Reset", role: .destructive) {
@@ -385,6 +403,7 @@ private struct SettingsModuleView: View {
                 }
             }
         }
+        .preferredColorScheme(preferredScheme)
     }
 
     private func resetApp() {
@@ -416,7 +435,6 @@ private struct SettingsModuleView: View {
         dashboardHeaderState.resetDefaults()
         muscleGroupsState.resetGroups()
         muscleGroupsState.applyBodyOption(.male)
-        MusclePointsManager.shared.resetAllPoints()
         equipmentState.resetItems()
         ExercisesState.shared.resetExercises()
         WorkoutsState.shared.resetWorkouts()
@@ -428,11 +446,6 @@ private struct SettingsModuleView: View {
         voiceTrainerState.resetConfigurations()
         HealthKitState.shared.resetAll()
 
-        // Reset Game Progress - Workout Buddy (Game 1)
-        // Remove the entire stats dictionary and let it reinitialize
-        defaults.removeObject(forKey: "game1_stats")
-        defaults.removeObject(forKey: "game1_muscle_state")
-        
         // Reset Game Progress - Workout Match (Match Game)
         defaults.removeObject(forKey: "matchGameCurrentLevel")
         defaults.set(1, forKey: "matchGameCurrentLevel")
@@ -446,11 +459,14 @@ private struct SettingsModuleView: View {
             }
         }
         
-        print("🔄 Game progress reset: Workout Buddy & Workout Match back to level 1")
+        print("🔄 Game progress reset: Workout Match back to level 1")
 
         // Reset Progress module calendar view state
         UserDefaults.standard.removeObject(forKey: "logViewMode")
         UserDefaults.standard.removeObject(forKey: "logShowRibbon")
+
+        // Reset theme to light
+        appColorScheme = "light"
 
         // Route back to Dashboard after reset
         moduleState.selectModule(ModuleIDs.dashboard)
@@ -536,7 +552,7 @@ private struct WorkoutExportSheet: View {
                 } label: {
                     HStack(spacing: 12) {
                         Image(systemName: selectedIDs.contains(workout.id) ? "checkmark.circle.fill" : "circle")
-                            .foregroundColor(selectedIDs.contains(workout.id) ? .black : .secondary)
+                            .foregroundColor(selectedIDs.contains(workout.id) ? .primary : .secondary)
                             .font(.system(size: 20))
                         VStack(alignment: .leading, spacing: 2) {
                             Text(workout.name)
@@ -556,7 +572,7 @@ private struct WorkoutExportSheet: View {
             }
             .listStyle(.plain)
             .scrollContentBackground(.hidden)
-            .background(Color.white)
+            .background(Color(UIColor.systemBackground))
 
             // Export button
             Button {
@@ -575,14 +591,14 @@ private struct WorkoutExportSheet: View {
             }
             .disabled(selectedIDs.isEmpty)
         }
-        .background(Color.white.ignoresSafeArea())
+        .background(Color(UIColor.systemBackground).ignoresSafeArea())
         .sheet(item: $shareItem) { item in
             ShareSheet(url: item.url) {
                 showingExportSuccess = true
             }
         }
         .alert("Export Successful", isPresented: $showingExportSuccess) {
-            Button("OK", role: .cancel) {}
+            Button("OK", role: .cancel) { dismiss() }
         } message: {
             Text("Your workout\(selectedIDs.count == 1 ? "" : "s") \(selectedIDs.count == 1 ? "was" : "were") exported successfully.")
         }
@@ -673,7 +689,7 @@ private struct NavBarCustomizationView: View {
                             HStack {
                                 HStack(spacing: 8) {
                                     Image(systemName: module.iconName)
-                                        .foregroundColor(.black)
+                                        .foregroundColor(.primary)
                                     Text(module.displayName)
                                         .font(.subheadline)
                                 }
@@ -702,12 +718,12 @@ private struct NavBarCustomizationView: View {
                     Button(action: { showingAddPicker = true }) {
                         HStack {
                             Image(systemName: "plus.circle.fill")
-                                .foregroundColor(.black)
+                                .foregroundColor(.primary)
                             Text("Add Item")
-                                .foregroundColor(.black)
+                                .foregroundColor(.primary)
                         }
                     }
-                    .sheet(isPresented: $showingAddPicker) {
+                    .fullScreenCover(isPresented: $showingAddPicker) {
                         ModulePickerView(
                             selectedModules: $allSelected,
                             maxCount: 10,
@@ -728,7 +744,7 @@ private struct NavBarCustomizationView: View {
             }
         }
         .scrollContentBackground(.hidden)
-        .background(Color.white)
+        .background(Color(UIColor.systemBackground))
         .navigationTitle("NavBar Items")
         .onAppear {
             if !hasInitialized {
@@ -808,9 +824,9 @@ private struct ModulePickerRow: View {
         HStack(spacing: 12) {
             Image(systemName: module.iconName)
                 .font(.system(size: 16, weight: .semibold))
-                .foregroundColor(.black)
+                .foregroundColor(.primary)
                 .frame(width: 32, height: 32)
-                .background(Color(red: 0.96, green: 0.96, blue: 0.97))
+                .background(Color(UIColor.tertiarySystemBackground))
                 .cornerRadius(6)
 
             VStack(alignment: .leading, spacing: 2) {
@@ -827,7 +843,7 @@ private struct ModulePickerRow: View {
 
             if isSelected {
                 Image(systemName: "checkmark.circle.fill")
-                    .foregroundColor(.black)
+                    .foregroundColor(.primary)
             }
         }
         .contentShape(Rectangle())
@@ -849,8 +865,9 @@ private struct ModulePickerView: View {
     
     var availableModules: [AnyAppModule] {
         // Show all modules that aren't already selected, excluding hidden-from-nav modules
-        let excluded = ["Animator"]
-        return registry.registeredModules.filter { !selectedModules.contains($0.id) && !excluded.contains($0.displayName) }
+        return registry.registeredModules
+            .filter { !selectedModules.contains($0.id) }
+            .sorted { $0.displayName.localizedCaseInsensitiveCompare($1.displayName) == .orderedAscending }
     }
     
     private var canAddMore: Bool {
@@ -875,6 +892,8 @@ private struct ModulePickerView: View {
                     .disabled(!canAddMore && !tempSelected.contains(module.id))
                 }
             }
+            .scrollContentBackground(.hidden)
+            .background(Color(UIColor.systemBackground))
             .navigationTitle("Add Items")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -926,9 +945,9 @@ private struct DashboardCustomizationView: View {
                         HStack(spacing: 12) {
                             Image(systemName: tile.icon)
                                 .font(.system(size: 16, weight: .semibold))
-                                .foregroundColor(.black)
+                                .foregroundColor(.primary)
                                 .frame(width: 32, height: 32)
-                                .background(Color(red: 0.96, green: 0.96, blue: 0.97))
+                                .background(Color(UIColor.tertiarySystemBackground))
                                 .cornerRadius(6)
                             
                             Text(tile.title)
@@ -942,7 +961,7 @@ private struct DashboardCustomizationView: View {
                                 editingTile = tile
                             }) {
                                 Image(systemName: "gear")
-                                    .foregroundColor(.black)
+                                    .foregroundColor(.primary)
                             }
                             .buttonStyle(.plain)
                             
@@ -973,15 +992,15 @@ private struct DashboardCustomizationView: View {
                 }) {
                     HStack {
                         Image(systemName: "plus.circle.fill")
-                            .foregroundColor(.black)
+                            .foregroundColor(.primary)
                         Text("Add Tile")
-                            .foregroundColor(.black)
+                            .foregroundColor(.primary)
                     }
                 }
             }
         }
         .scrollContentBackground(.hidden)
-        .background(Color.white)
+        .background(Color(UIColor.systemBackground))
         .navigationTitle("Dashboard Tiles")
         .environment(\.editMode, .constant(.active))
         .fullScreenCover(isPresented: $showingAddTile) {
@@ -1039,7 +1058,7 @@ private struct DashboardAddTileSheet: View {
 
     private var moduleQuickOptions: [AnyAppModule] {
         registry.registeredModules
-            .filter { !existingTileModuleIDs.contains($0.id) && $0.displayName != "Dashboard" && $0.displayName != "Workout Buddy" && $0.displayName != "Workout Match" && $0.displayName != "Animator" }
+            .filter { !existingTileModuleIDs.contains($0.id) && $0.id != ModuleIDs.dashboard && $0.id != ModuleIDs.matchGame && $0.id != ModuleIDs.stickFigureAnimator }
             .sorted { $0.displayName.localizedCaseInsensitiveCompare($1.displayName) == .orderedAscending }
     }
 
@@ -1109,7 +1128,9 @@ private struct DashboardAddTileSheet: View {
             Form {
                 Section {
                     SearchField(text: $searchText, placeholder: "Search tiles...")
+                        .listRowInsets(EdgeInsets(top: 4, leading: 16, bottom: 4, trailing: 16))
                 }
+                .listSectionSpacing(0)
 
                 Section("Modules") {
                     if filteredModuleOptions.isEmpty {
@@ -1160,7 +1181,7 @@ private struct DashboardAddTileSheet: View {
                                     Spacer()
                                     if selectedStatCards.contains(stat) {
                                         Image(systemName: "checkmark")
-                                            .foregroundColor(.black)
+                                            .foregroundColor(.primary)
                                     }
                                 }
                                 .contentShape(Rectangle())
@@ -1215,6 +1236,31 @@ private struct DashboardAddTileSheet: View {
                     }
                 }
 
+                // MARK: Animator
+                Section("Animator") {
+                    let animatorModule = registry.registeredModules.first(where: { $0.id == ModuleIDs.stickFigureAnimator })
+                    let animatorAdded = existingTileModuleIDs.contains(ModuleIDs.stickFigureAnimator)
+                    let animatorVisible = !animatorAdded && (!isSearching || "Stick Figure Animator".localizedCaseInsensitiveContains(searchText))
+
+                    if !animatorVisible {
+                        Text(isSearching ? "No animator tiles match your search" : "Animator tile already added")
+                            .font(.caption)
+                            .foregroundColor(.gray)
+                    } else if let animatorModule = animatorModule {
+                        Button(action: {
+                            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                            if selectedModuleIDs.contains(ModuleIDs.stickFigureAnimator) {
+                                selectedModuleIDs.remove(ModuleIDs.stickFigureAnimator)
+                            } else {
+                                selectedModuleIDs.insert(ModuleIDs.stickFigureAnimator)
+                            }
+                        }) {
+                            ModulePickerRow(module: animatorModule, isSelected: selectedModuleIDs.contains(ModuleIDs.stickFigureAnimator))
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+
                 // MARK: Shortcuts
                 Section("Shortcuts") {
                     let existingShortcutKeys = Set(dashboardState.tiles.compactMap { t -> String? in
@@ -1257,7 +1303,7 @@ private struct DashboardAddTileSheet: View {
                                         Text(workout.name).foregroundColor(.primary)
                                         Spacer()
                                         if selectedShortcuts.contains(key) {
-                                            Image(systemName: "checkmark").foregroundColor(.black)
+                                            Image(systemName: "checkmark").foregroundColor(.primary)
                                         }
                                     }
                                     .contentShape(Rectangle())
@@ -1286,7 +1332,7 @@ private struct DashboardAddTileSheet: View {
                                         }
                                         Spacer()
                                         if selectedShortcuts.contains(key) {
-                                            Image(systemName: "checkmark").foregroundColor(.black)
+                                            Image(systemName: "checkmark").foregroundColor(.primary)
                                         }
                                     }
                                     .contentShape(Rectangle())
@@ -1317,7 +1363,7 @@ private struct DashboardAddTileSheet: View {
                                         }
                                         Spacer()
                                         if selectedShortcuts.contains(key) {
-                                            Image(systemName: "checkmark").foregroundColor(.black)
+                                            Image(systemName: "checkmark").foregroundColor(.primary)
                                         }
                                     }
                                     .contentShape(Rectangle())
@@ -1341,7 +1387,7 @@ private struct DashboardAddTileSheet: View {
                                         Text(exercise.name).foregroundColor(.primary)
                                         Spacer()
                                         if selectedShortcuts.contains(key) {
-                                            Image(systemName: "checkmark").foregroundColor(.black)
+                                            Image(systemName: "checkmark").foregroundColor(.primary)
                                         }
                                     }
                                     .contentShape(Rectangle())
@@ -1364,7 +1410,7 @@ private struct DashboardAddTileSheet: View {
                             Spacer()
                             if selectedBlankIcon != nil {
                                 Image(systemName: "checkmark")
-                                    .foregroundColor(.black)
+                                    .foregroundColor(.primary)
                             }
                         }
                         .contentShape(Rectangle())
@@ -1381,9 +1427,9 @@ private struct DashboardAddTileSheet: View {
                                     Image(systemName: icon)
                                         .font(.system(size: 18))
                                         .frame(maxWidth: .infinity, maxHeight: 44)
-                                        .background(selectedBlankIcon == icon ? Color.black.opacity(0.15) : Color(red: 0.96, green: 0.96, blue: 0.97))
+                                        .background(selectedBlankIcon == icon ? Color.primary.opacity(0.15) : Color(UIColor.tertiarySystemBackground))
                                         .cornerRadius(8)
-                                        .foregroundColor(.black)
+                                        .foregroundColor(.primary)
                                 }
                                 .buttonStyle(.plain)
                             }
@@ -1393,7 +1439,7 @@ private struct DashboardAddTileSheet: View {
                 } // end Blank Tile visibility
             }
             .scrollContentBackground(.hidden)
-            .background(Color.white)
+            .background(Color(UIColor.systemBackground))
             .navigationTitle("Add Tile")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -1424,18 +1470,7 @@ private struct DashboardAddTileSheet: View {
                         }
 
                         for moduleID in selectedModuleIDs {
-                            // Check if this is Workout Buddy or Workout Match (mini games)
-                            if let miniGameModule = registry.registeredModules.first(where: { ($0.displayName == "Workout Buddy" || $0.displayName == "Workout Match") && $0.id == moduleID }) {
-                                let tile = DashboardTile(
-                                    title: miniGameModule.displayName,
-                                    icon: miniGameModule.iconName,
-                                    order: dashboardState.tiles.count,
-                                    targetModuleID: miniGameModule.id,
-                                    tileType: .moduleShortcut,
-                                    size: .small
-                                )
-                                onAdd(tile)
-                            } else if let module = moduleQuickOptions.first(where: { $0.id == moduleID }) {
+                            if let module = registry.registeredModules.first(where: { $0.id == moduleID }) {
                                 let tile = DashboardTile(
                                     title: module.displayName,
                                     icon: module.iconName,
@@ -1722,7 +1757,7 @@ private struct DashboardEditTileSheet: View {
                                     Text("All Workouts")
                                     Spacer()
                                     if volumeWorkoutName == nil {
-                                        Image(systemName: "checkmark").foregroundColor(.black)
+                                        Image(systemName: "checkmark").foregroundColor(.primary)
                                     }
                                 }
                                 .contentShape(Rectangle())
@@ -1737,7 +1772,7 @@ private struct DashboardEditTileSheet: View {
                                         Text(name)
                                         Spacer()
                                         if volumeWorkoutName == name {
-                                            Image(systemName: "checkmark").foregroundColor(.black)
+                                            Image(systemName: "checkmark").foregroundColor(.primary)
                                         }
                                     }
                                     .contentShape(Rectangle())
@@ -1769,7 +1804,7 @@ private struct DashboardEditTileSheet: View {
                                     Text("All Exercises")
                                     Spacer()
                                     if volumeExerciseID == nil {
-                                        Image(systemName: "checkmark").foregroundColor(.black)
+                                        Image(systemName: "checkmark").foregroundColor(.primary)
                                     }
                                 }
                                 .contentShape(Rectangle())
@@ -1783,7 +1818,7 @@ private struct DashboardEditTileSheet: View {
                                         Text(exercise.name)
                                         Spacer()
                                         if volumeExerciseID == exercise.id {
-                                            Image(systemName: "checkmark").foregroundColor(.black)
+                                            Image(systemName: "checkmark").foregroundColor(.primary)
                                         }
                                     }
                                     .contentShape(Rectangle())
@@ -1827,9 +1862,9 @@ private struct DashboardEditTileSheet: View {
                                 Image(systemName: icon)
                                     .font(.system(size: 20))
                                     .frame(maxWidth: .infinity, maxHeight: 50)
-                                    .background(selectedIcon == icon ? Color.black.opacity(0.15) : Color(red: 0.96, green: 0.96, blue: 0.97))
+                                    .background(selectedIcon == icon ? Color.primary.opacity(0.15) : Color(UIColor.tertiarySystemBackground))
                                     .cornerRadius(8)
-                                    .foregroundColor(.black)
+                                    .foregroundColor(.primary)
                             }
                             .buttonStyle(.plain)
                         }
@@ -1837,7 +1872,7 @@ private struct DashboardEditTileSheet: View {
                 }
             }
             .scrollContentBackground(.hidden)
-            .background(Color.white)
+            .background(Color(UIColor.systemBackground))
             .navigationTitle("Edit Tile")
             .navigationBarTitleDisplayMode(.inline)
             .onAppear {
@@ -1941,13 +1976,13 @@ private struct DashboardHeaderSettingsView: View {
                             showingClearHeaderImageAlert = true
                         }) {
                             Image(systemName: "xmark.circle.fill")
-                                .foregroundColor(.black)
+                                .foregroundColor(.primary)
                         }
                         .buttonStyle(.plain)
                     }
                 }
             }
-            
+
             Section("Background") {
                 ColorPicker("Background Color", selection: Binding(
                     get: { dashboardHeaderState.backgroundColor },
@@ -1975,7 +2010,7 @@ private struct DashboardHeaderSettingsView: View {
             }
         }
         .scrollContentBackground(.hidden)
-        .background(Color.white)
+        .background(Color(UIColor.systemBackground))
         .navigationTitle("Header")
         .navigationBarTitleDisplayMode(.inline)
         .alert("Remove dashboard image?", isPresented: $showingClearHeaderImageAlert) {
@@ -2015,7 +2050,7 @@ private struct ImportActivitiesView: View {
             }
         }
         .scrollContentBackground(.hidden)
-        .background(Color.white)
+        .background(Color(UIColor.systemBackground))
         .navigationTitle("Import Activities")
         .navigationBarTitleDisplayMode(.inline)
     }

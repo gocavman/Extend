@@ -169,7 +169,6 @@ public enum BlankTileAction: String, Codable, CaseIterable {
     case animation1 = "Animation 1"
     case animation2 = "Animation 2"
     case animation3 = "Animation 3"
-    case game1 = "Game 1"
     case game2 = "Game 2"
 }
 

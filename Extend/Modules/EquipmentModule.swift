@@ -55,7 +55,7 @@ private struct EquipmentModuleView: View {
                         showingAdd = true
                     }) {
                         Image(systemName: "plus")
-                            .foregroundColor(.black)
+                            .foregroundColor(.primary)
                     }
                 }
                 .padding(.horizontal, 16)
@@ -72,13 +72,13 @@ private struct EquipmentModuleView: View {
                                 VStack(spacing: 4) {
                                     Image(systemName: "figure.walk.treadmill")
                                         .font(.system(size: 20))
-                                        .foregroundColor(.black)
+                                        .foregroundColor(.primary)
                                     Text(item.name)
-                                        .font(.caption).fontWeight(.semibold).foregroundColor(.black)
+                                        .font(.caption).fontWeight(.semibold).foregroundColor(.primary)
                                         .lineLimit(2).multilineTextAlignment(.center)
                                 }
                                 .frame(width: 70, height: 80)
-                                .background(Color(red: 0.92, green: 0.92, blue: 0.94))
+                                .background(Color(UIColor.secondarySystemBackground))
                                 .cornerRadius(10)
                             }
                             .buttonStyle(.plain)
@@ -126,7 +126,7 @@ private struct EquipmentModuleView: View {
                                 historyItem = item
                             }) {
                                 Image(systemName: "clock.arrow.circlepath")
-                                    .foregroundColor(.black)
+                                    .foregroundColor(.primary)
                             }
                             .buttonStyle(.plain)
 
@@ -136,7 +136,7 @@ private struct EquipmentModuleView: View {
                                 statsItem = item
                             }) {
                                 Image(systemName: "chart.bar")
-                                    .foregroundColor(.black)
+                                    .foregroundColor(.primary)
                             }
                             .buttonStyle(.plain)
 
@@ -146,7 +146,7 @@ private struct EquipmentModuleView: View {
                                 editingItem = item
                             }) {
                                 Image(systemName: "pencil")
-                                    .foregroundColor(.black)
+                                    .foregroundColor(.primary)
                             }
                             .buttonStyle(.plain)
                         }
@@ -158,7 +158,7 @@ private struct EquipmentModuleView: View {
                             } label: {
                                 Label("Edit", systemImage: "pencil")
                             }
-                            .tint(.blue)
+                            .tint(.primary)
                         }
                         .swipeActions {
                             Button(role: .destructive) {
@@ -235,7 +235,7 @@ private struct EquipmentEditor: View {
                 }
             }
             .scrollContentBackground(.hidden)
-            .background(Color.white)
+            .background(Color(UIColor.systemBackground))
             .navigationTitle(title)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {

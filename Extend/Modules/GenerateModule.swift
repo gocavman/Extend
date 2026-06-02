@@ -63,7 +63,7 @@ private struct GenerateModuleView: View {
                             }) {
                                 Image(systemName: "slider.horizontal.3")
                                     .font(.system(size: 18))
-                                    .foregroundColor(.black)
+                                    .foregroundColor(.primary)
                             }
                         }
                         
@@ -73,7 +73,7 @@ private struct GenerateModuleView: View {
                         }) {
                             Image(systemName: "star")
                                 .font(.system(size: 18))
-                                .foregroundColor(.black)
+                                .foregroundColor(.primary)
                         }
                         .disabled(!canSavePreset)
                     }
@@ -92,14 +92,14 @@ private struct GenerateModuleView: View {
                                     Text(preset.name)
                                         .font(.caption)
                                         .fontWeight(.semibold)
-                                        .foregroundColor(selectedPresetId == preset.id ? .white : .black)
+                                        .foregroundColor(selectedPresetId == preset.id ? Color(UIColor.systemBackground) : .primary)
                                         .padding(.horizontal, 10)
                                         .padding(.vertical, 6)
-                                        .background(selectedPresetId == preset.id ? Color.black : Color.clear)
+                                        .background(selectedPresetId == preset.id ? Color.primary : Color.clear)
                                         .clipShape(Capsule())
                                 }
                                 .buttonStyle(.plain)
-                                .overlay(Capsule().stroke(Color.black, lineWidth: 1))
+                                .overlay(Capsule().stroke(Color.primary, lineWidth: 1))
                             }
                         }
                     }
@@ -216,10 +216,10 @@ private struct GenerateModuleView: View {
                         }
                         .font(.subheadline)
                         .fontWeight(.semibold)
-                        .foregroundColor(.white)
+                        .foregroundColor(Color(UIColor.systemBackground))
                         .frame(maxWidth: .infinity)
                         .padding()
-                        .background(Color.black)
+                        .background(Color(UIColor.label).opacity(0.85))
                         .cornerRadius(8)
                     }
                     .listRowInsets(EdgeInsets())
@@ -247,7 +247,7 @@ private struct GenerateModuleView: View {
                     .environment(EquipmentState.shared)
                     .environment(WorkoutLogState.shared)
             }
-            .sheet(isPresented: $showManagePresets) {
+            .fullScreenCover(isPresented: $showManagePresets) {
                 ManageFilterPresetsView()
                     .environment(generateState)
             }
@@ -269,7 +269,7 @@ private struct GenerateModuleView: View {
             } message: {
                 Text("Enter a name for this generated workout")
             }
-            .sheet(isPresented: $showSavePresetDialog) {
+            .fullScreenCover(isPresented: $showSavePresetDialog) {
                 SaveFilterPresetSheet(
                     name: $presetName,
                     onSave: {
@@ -320,7 +320,7 @@ private struct EquipmentFilterView: View {
                         Spacer()
                         if generateState.selectedEquipmentIDs.contains(equipment.id) {
                             Image(systemName: "checkmark")
-                                .foregroundColor(.black)
+                                .foregroundColor(.primary)
                         }
                     }
                     .contentShape(Rectangle())
@@ -360,7 +360,7 @@ private struct MuscleGroupFilterView: View {
                         Spacer()
                         if generateState.selectedMuscleGroupIDs.contains(group.id) {
                             Image(systemName: "checkmark")
-                                .foregroundColor(.black)
+                                .foregroundColor(.primary)
                         }
                     }
                     .contentShape(Rectangle())
@@ -499,7 +499,7 @@ private struct FilterPresetRow: View {
                 Text(preset.name)
                     .font(.subheadline)
                     .fontWeight(.semibold)
-                    .foregroundColor(.black)
+                    .foregroundColor(.primary)
                 
                 // Filter details
                 VStack(alignment: .leading, spacing: 2) {
@@ -533,7 +533,7 @@ private struct FilterPresetRow: View {
                     onRename()
                 }) {
                     Image(systemName: "pencil")
-                        .foregroundColor(.black)
+                        .foregroundColor(.primary)
                 }
                 .buttonStyle(.plain)
 
@@ -600,7 +600,7 @@ private struct GeneratedExercisesSection: View {
                             generateState.cloneGeneratedExercise(at: index)
                         }) {
                             Image(systemName: "doc.on.doc")
-                                .foregroundColor(.black)
+                                .foregroundColor(.primary)
                         }
                         .buttonStyle(.plain)
 
@@ -634,7 +634,7 @@ private struct GeneratedExercisesSection: View {
                     Text("Start Workout")
                 }
                 .frame(maxWidth: .infinity)
-                .foregroundColor(.black)
+                .foregroundColor(.primary)
             }
 
             // Save as Workout Button
@@ -647,7 +647,7 @@ private struct GeneratedExercisesSection: View {
                     Text("Save as Workout")
                 }
                 .frame(maxWidth: .infinity)
-                .foregroundColor(.black)
+                .foregroundColor(.primary)
             }
         }
     }

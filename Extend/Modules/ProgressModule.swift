@@ -139,7 +139,7 @@ private struct ProgressModuleView: View {
                     showSearch = true
                 }) {
                     Image(systemName: "magnifyingglass")
-                        .foregroundColor(.black)
+                        .foregroundColor(.primary)
                 }
 
                 // New journal entry
@@ -150,7 +150,7 @@ private struct ProgressModuleView: View {
                     showJournalEditor = true
                 }) {
                     Image(systemName: "square.and.pencil")
-                        .foregroundColor(.black)
+                        .foregroundColor(.primary)
                 }
 
                 // Activity ribbon toggle
@@ -159,7 +159,7 @@ private struct ProgressModuleView: View {
                     showRibbon.toggle()
                 }) {
                     Image(systemName: showRibbon ? "chart.bar.fill" : "chart.bar")
-                        .foregroundColor(showRibbon ? .blue : .black)
+                        .foregroundColor(showRibbon ? .blue : .primary)
                 }
 
                 // View mode toggle
@@ -174,7 +174,7 @@ private struct ProgressModuleView: View {
                     }
                 }) {
                     Image(systemName: logViewMode == "calendar" ? "list.bullet.below.rectangle" : "calendar")
-                        .foregroundColor(.black)
+                        .foregroundColor(.primary)
                 }
 
                 // Export
@@ -193,7 +193,7 @@ private struct ProgressModuleView: View {
                     }
                 }) {
                     Image(systemName: "square.and.arrow.up")
-                        .foregroundColor(.black)
+                        .foregroundColor(.primary)
                 }
             }
             .padding(.horizontal, 16)
@@ -207,7 +207,7 @@ private struct ProgressModuleView: View {
                     previousMonth()
                 }) {
                     Image(systemName: "chevron.left")
-                        .foregroundColor(.black)
+                        .foregroundColor(.primary)
                         .frame(width: 28, height: 28)
                 }
 
@@ -231,7 +231,7 @@ private struct ProgressModuleView: View {
                     nextMonth()
                 }) {
                     Image(systemName: "chevron.right")
-                        .foregroundColor(.black)
+                        .foregroundColor(.primary)
                         .frame(width: 28, height: 28)
                 }
             }
@@ -287,7 +287,7 @@ private struct ProgressModuleView: View {
                                         .foregroundColor(.secondary)
                                         .padding(.horizontal, 20)
                                         .padding(.vertical, 4)
-                                        .background(Color(red: 0.92, green: 0.92, blue: 0.94))
+                                        .background(Color(UIColor.secondarySystemBackground))
                                         .clipShape(Capsule())
                                 }
                                 .buttonStyle(.plain)
@@ -479,10 +479,10 @@ private struct CalendarView: View {
             }
         }
         .padding(2)
-        .background(Color(red: 0.96, green: 0.96, blue: 0.97))
+        .background(Color(UIColor.secondarySystemBackground))
         .cornerRadius(12)
     }
-    
+
 }
 
 // MARK: - Day Cell
@@ -507,13 +507,18 @@ private struct DayCell: View {
             // Fade out color for non-current month
             return isCurrentMonth ? greenColor : greenColor.opacity(0.3)
         } else {
-            return isCurrentMonth ? Color(red: 0.98, green: 0.98, blue: 1.0) : Color(red: 0.98, green: 0.98, blue: 1.0).opacity(0.5)
+            return isCurrentMonth ? Color(UIColor.secondarySystemBackground) : Color(UIColor.secondarySystemBackground).opacity(0.5)
         }
     }
     
+    private var hasWorkout: Bool { workoutCount > 0 }
+
     private var textColor: Color {
-        if isCurrentMonth {
-            return .black
+        if hasWorkout {
+            // Always use dark text on green backgrounds for readability
+            return Color(UIColor.darkText)
+        } else if isCurrentMonth {
+            return .primary
         } else {
             return .gray
         }
@@ -528,7 +533,7 @@ private struct DayCell: View {
                 ZStack {
                     if isSelected {
                         Circle()
-                            .stroke(Color.black, lineWidth: 2)
+                            .stroke(hasWorkout ? Color(UIColor.darkText) : Color.primary, lineWidth: 2)
                             .frame(width: 32, height: 32)
                     }
                     
@@ -593,7 +598,7 @@ private struct DayCell: View {
             .cornerRadius(4)
             .overlay(
                 RoundedRectangle(cornerRadius: 4)
-                    .stroke(isToday ? Color.black : Color.clear, lineWidth: 2)
+                    .stroke(isToday ? (hasWorkout ? Color(UIColor.darkText) : Color.primary) : Color.clear, lineWidth: 2)
             )
         }
         .buttonStyle(.plain)
@@ -646,16 +651,16 @@ private struct WeekStripView: View {
                                 // Selection ring
                                 if isSelected {
                                     Circle()
-                                        .fill(Color.black)
+                                        .fill(Color.primary)
                                         .frame(width: 34, height: 34)
                                 } else if isToday {
                                     Circle()
-                                        .stroke(Color.black, lineWidth: 1.5)
+                                        .stroke(Color.primary, lineWidth: 1.5)
                                         .frame(width: 34, height: 34)
                                 }
                                 Text("\(dayNum)")
                                     .font(.system(size: 16, weight: isToday ? .bold : .regular))
-                                    .foregroundColor(isSelected ? .white : .primary)
+                                    .foregroundColor(isSelected ? Color(UIColor.systemBackground) : .primary)
                             }
                             .frame(width: 34, height: 34)
 
@@ -676,7 +681,7 @@ private struct WeekStripView: View {
         }
         .padding(.vertical, 8)
         .padding(.horizontal, 4)
-        .background(Color(red: 0.96, green: 0.96, blue: 0.97))
+        .background(Color(UIColor.secondarySystemBackground))
         .cornerRadius(12)
     }
 }
@@ -789,7 +794,7 @@ private struct TimelineLogView: View {
                                     Spacer().frame(height: 12)
                                 }
                                 Circle()
-                                    .fill(Color.black)
+                                    .fill(Color.primary)
                                     .frame(width: 10, height: 10)
                                 Rectangle()
                                     .fill(Color(red: 0.82, green: 0.82, blue: 0.84))
@@ -913,7 +918,7 @@ private struct ActivityRibbonView: View {
             }
         }
         .padding(10)
-        .background(Color(red: 0.96, green: 0.96, blue: 0.97))
+        .background(Color(UIColor.secondarySystemBackground))
         .cornerRadius(8)
     }
 
@@ -961,7 +966,7 @@ private struct JournalEntryCard: View {
                         Text(entry.title.isEmpty ? "Untitled" : entry.title)
                             .font(.subheadline)
                             .fontWeight(.semibold)
-                            .foregroundColor(.black)
+                            .foregroundColor(.primary)
                     }
                     Spacer()
                     Text(timeString)
@@ -976,7 +981,7 @@ private struct JournalEntryCard: View {
                 }
             }
             .padding(12)
-            .background(Color(red: 0.95, green: 0.94, blue: 0.99))
+            .background(Color(UIColor.secondarySystemBackground))
             .cornerRadius(8)
         }
         .buttonStyle(.plain)
@@ -1061,7 +1066,7 @@ private struct JournalEntryEditorSheet: View {
                     }
                 }
             }
-            .background(Color.white)
+            .background(Color(UIColor.systemBackground))
             .navigationTitle(existingEntry == nil ? "New Entry" : "Edit Entry")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -1084,7 +1089,7 @@ private struct JournalEntryEditorSheet: View {
                     .disabled(entryTitle.isEmpty && entryBody.isEmpty)
                 }
             }
-            .toolbarBackground(Color.white, for: .navigationBar)
+            .toolbarBackground(Color(UIColor.systemBackground), for: .navigationBar)
             .toolbarBackground(.visible, for: .navigationBar)
             .confirmationDialog("Delete this journal entry?", isPresented: $showDeleteConfirm, titleVisibility: .visible) {
                 Button("Delete", role: .destructive) {
@@ -1165,7 +1170,7 @@ private struct WorkoutLogCard: View {
                     Text(log.workoutName)
                         .font(.subheadline)
                         .fontWeight(.semibold)
-                        .foregroundColor(.black)
+                        .foregroundColor(.primary)
                     
                     Spacer()
                     
@@ -1194,7 +1199,7 @@ private struct WorkoutLogCard: View {
                 }
             }
             .padding(12)
-            .background(Color(red: 0.96, green: 0.96, blue: 0.97))
+            .background(Color(UIColor.secondarySystemBackground))
             .cornerRadius(8)
         }
         .buttonStyle(.plain)
@@ -1403,7 +1408,7 @@ private struct WorkoutLogDetailView: View {
                                 .font(.subheadline)
                                 .textFieldStyle(.roundedBorder)
                                 .padding(8)
-                                .background(Color(red: 0.96, green: 0.96, blue: 0.97))
+                                .background(Color(UIColor.secondarySystemBackground))
                                 .cornerRadius(6)
                         } else {
                             Text(log.workoutName)
@@ -1498,7 +1503,7 @@ private struct WorkoutLogDetailView: View {
                                     .font(.caption)
                                     .frame(minHeight: 100)
                                     .padding(8)
-                                    .background(Color(red: 0.96, green: 0.96, blue: 0.97))
+                                    .background(Color(UIColor.secondarySystemBackground))
                                     .cornerRadius(6)
                             } else {
                                 Text(log.notes)
@@ -1506,7 +1511,7 @@ private struct WorkoutLogDetailView: View {
                                     .foregroundColor(.gray)
                                     .padding(8)
                                     .frame(maxWidth: .infinity, alignment: .leading)
-                                    .background(Color(red: 0.96, green: 0.96, blue: 0.97))
+                                    .background(Color(UIColor.secondarySystemBackground))
                                     .cornerRadius(6)
                             }
                         }
@@ -1570,7 +1575,7 @@ private struct WorkoutLogDetailView: View {
                             }) {
                                 Label("Add Rest", systemImage: "plus.circle.fill")
                                     .font(.caption)
-                                    .foregroundColor(.black)
+                                    .foregroundColor(.primary)
                             }
                             .buttonStyle(.plain)
                             Spacer()
@@ -1614,7 +1619,7 @@ private struct WorkoutLogDetailView: View {
                         }
                     }) {
                         Image(systemName: isEditing ? "checkmark" : "pencil")
-                            .foregroundColor(.black)
+                            .foregroundColor(.primary)
                     }
 
                     Button(role: .destructive, action: {
@@ -1679,7 +1684,7 @@ private struct WorkoutLogDetailView: View {
                         UIImpactFeedbackGenerator(style: .light).impactOccurred()
                         log.exercises[exIdx].sets.append(LoggedSet(reps: 0, weight: 0))
                     }) {
-                        Image(systemName: "plus.circle.fill").foregroundColor(.black)
+                        Image(systemName: "plus.circle.fill").foregroundColor(.primary)
                     }
                     .buttonStyle(.plain)
                 }
@@ -1785,11 +1790,11 @@ private struct WorkoutLogDetailView: View {
                                     HStack(spacing: 4) {
                                         Image(systemName: selected ? "checkmark.circle.fill" : "circle")
                                             .font(.system(size: 11))
-                                            .foregroundColor(selected ? .white : .secondary)
-                                        Text(item.name).font(.caption).foregroundColor(selected ? .white : .secondary)
+                                            .foregroundColor(selected ? Color(UIColor.systemBackground) : .secondary)
+                                        Text(item.name).font(.caption).foregroundColor(selected ? Color(UIColor.systemBackground) : .secondary)
                                     }
                                     .padding(.horizontal, 8).padding(.vertical, 4)
-                                    .background(selected ? Color.black : Color(red: 0.88, green: 0.88, blue: 0.90))
+                                    .background(selected ? Color.primary : Color(red: 0.88, green: 0.88, blue: 0.90))
                                     .cornerRadius(12)
                                 }
                                 .buttonStyle(.plain)
@@ -1809,7 +1814,7 @@ private struct WorkoutLogDetailView: View {
             }
         }
         .padding(12)
-        .background(Color(red: 0.96, green: 0.96, blue: 0.97))
+        .background(Color(UIColor.secondarySystemBackground))
         .cornerRadius(8)
         .padding(.horizontal, 16)
     }
@@ -1883,7 +1888,7 @@ private struct WorkoutLogDetailView: View {
             }
         }
         .padding(12)
-        .background(Color(red: 0.96, green: 0.96, blue: 0.97))
+        .background(Color(UIColor.secondarySystemBackground))
         .cornerRadius(8)
         .padding(.horizontal, 16)
     }

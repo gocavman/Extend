@@ -133,8 +133,8 @@ private struct ModuleSettingRow: View {
                     .font(.caption)
                     .frame(maxWidth: .infinity)
                     .padding(8)
-                    .background(Color(red: 0.96, green: 0.96, blue: 0.97))
-                    .foregroundColor(.black)
+                    .background(Color(UIColor.secondarySystemBackground))
+                    .foregroundColor(.primary)
                     .cornerRadius(6)
                 }
                 
@@ -146,8 +146,8 @@ private struct ModuleSettingRow: View {
                     .font(.caption)
                     .frame(maxWidth: .infinity)
                     .padding(8)
-                    .background(Color(red: 0.96, green: 0.96, blue: 0.97))
-                    .foregroundColor(.black)
+                    .background(Color(UIColor.secondarySystemBackground))
+                    .foregroundColor(.primary)
                     .cornerRadius(6)
                 }
             }

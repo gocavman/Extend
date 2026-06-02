@@ -63,7 +63,7 @@ private struct TimerModuleView: View {
                         showingAdd = true
                     }) {
                         Image(systemName: "plus")
-                            .foregroundColor(.black)
+                            .foregroundColor(.primary)
                     }
                 }
                 .padding(.horizontal, 16)
@@ -82,11 +82,11 @@ private struct TimerModuleView: View {
                                         VStack(spacing: 4) {
                                             Image(systemName: config.type.iconName)
                                                 .font(.system(size: 20))
-                                                .foregroundColor(.black)
+                                                .foregroundColor(.primary)
                                             Text(config.name)
                                                 .font(.caption)
                                                 .fontWeight(.semibold)
-                                                .foregroundColor(.black)
+                                                .foregroundColor(.primary)
                                                 .lineLimit(2)
                                                 .multilineTextAlignment(.center)
                                             Text(config.type.rawValue)
@@ -94,7 +94,7 @@ private struct TimerModuleView: View {
                                                 .foregroundColor(.gray)
                                         }
                                         .frame(width: 70, height: 80)
-                                        .background(Color(red: 0.92, green: 0.92, blue: 0.94))
+                                        .background(Color(UIColor.secondarySystemBackground))
                                         .cornerRadius(10)
                                     }
                                     .buttonStyle(.plain)
@@ -142,7 +142,7 @@ private struct TimerModuleView: View {
                                 } label: {
                                     Label("Edit", systemImage: "pencil")
                                 }
-                                .tint(.blue)
+                                .tint(.primary)
                             }
                             .swipeActions {
                                 Button(role: .destructive) {
@@ -224,7 +224,7 @@ private struct TimerRowView: View {
             // Top row: play icon, name, action buttons
             HStack(spacing: 12) {
                 Image(systemName: "play.circle.fill")
-                    .foregroundColor(.black)
+                    .foregroundColor(.primary)
                     .font(.system(size: 20))
 
                 HStack(spacing: 6) {
@@ -235,10 +235,10 @@ private struct TimerRowView: View {
                     Text(config.type.rawValue)
                         .font(.caption2)
                         .fontWeight(.semibold)
-                        .foregroundColor(.white)
+                        .foregroundColor(Color(UIColor.systemBackground))
                         .padding(.horizontal, 5)
                         .padding(.vertical, 2)
-                        .background(Color.black)
+                        .background(Color.primary)
                         .cornerRadius(4)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -246,7 +246,7 @@ private struct TimerRowView: View {
                 // Star / favorite
                 Button(action: onToggleFavorite) {
                     Image(systemName: config.isFavorite ? "star.fill" : "star")
-                        .foregroundColor(config.isFavorite ? .black : .gray)
+                        .foregroundColor(config.isFavorite ? .primary : .gray)
                 }
                 .buttonStyle(.plain)
 
@@ -256,7 +256,7 @@ private struct TimerRowView: View {
                     onHistory()
                 }) {
                     Image(systemName: "clock.arrow.circlepath")
-                        .foregroundColor(.black)
+                        .foregroundColor(.primary)
                 }
                 .buttonStyle(.plain)
 
@@ -266,14 +266,14 @@ private struct TimerRowView: View {
                     onStats()
                 }) {
                     Image(systemName: "chart.bar")
-                        .foregroundColor(.black)
+                        .foregroundColor(.primary)
                 }
                 .buttonStyle(.plain)
 
                 // Clone
                 Button(action: onClone) {
                     Image(systemName: "doc.on.doc")
-                        .foregroundColor(.black)
+                        .foregroundColor(.primary)
                 }
                 .buttonStyle(.plain)
 
@@ -283,7 +283,7 @@ private struct TimerRowView: View {
                     onEdit()
                 }) {
                     Image(systemName: "pencil")
-                        .foregroundColor(.black)
+                        .foregroundColor(.primary)
                 }
                 .buttonStyle(.plain)
             }
@@ -345,6 +345,7 @@ private struct TimerEditorView: View {
                         }
                     }
                     .pickerStyle(.menu)
+                    .tint(.primary)
                     .onChange(of: config.type) { _, newType in
                         config = config.applying(type: newType)
                     }
@@ -494,7 +495,7 @@ private struct TimerEditorView: View {
                 }
             }
             .scrollContentBackground(.hidden)
-            .background(Color.white)
+            .background(Color(UIColor.systemBackground))
             .navigationTitle(title)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -593,7 +594,7 @@ private struct IntStepper: View {
                 if value > range.lowerBound { value -= 1 }
             }) {
                 Image(systemName: "minus.circle.fill")
-                    .foregroundColor(.black)
+                    .foregroundColor(.primary)
                     .font(.system(size: 22))
             }
             .buttonStyle(.plain)
@@ -602,7 +603,7 @@ private struct IntStepper: View {
                 .font(.subheadline.monospacedDigit())
                 .frame(width: 44, alignment: .center)
                 .padding(6)
-                .background(Color(red: 0.96, green: 0.96, blue: 0.97))
+                .background(Color(UIColor.secondarySystemBackground))
                 .cornerRadius(6)
 
             Button(action: {
@@ -610,7 +611,7 @@ private struct IntStepper: View {
                 if value < range.upperBound { value += 1 }
             }) {
                 Image(systemName: "plus.circle.fill")
-                    .foregroundColor(.black)
+                    .foregroundColor(.primary)
                     .font(.system(size: 22))
             }
             .buttonStyle(.plain)
@@ -682,7 +683,7 @@ private struct ActiveTimerView: View {
             // Progress bar
             GeometryReader { geo in
                 ZStack(alignment: .leading) {
-                    Color(red: 0.93, green: 0.93, blue: 0.95)
+                    Color(UIColor.secondarySystemBackground)
                     Color.black.opacity(0.85)
                         .frame(width: geo.size.width * sessionProgress)
                 }
@@ -702,7 +703,7 @@ private struct ActiveTimerView: View {
                     ZStack {
                         // Track ring
                         Circle()
-                            .stroke(Color(red: 0.93, green: 0.93, blue: 0.95), lineWidth: 10)
+                            .stroke(Color(UIColor.secondarySystemBackground), lineWidth: 10)
 
                         // Progress ring
                         Circle()
@@ -724,7 +725,7 @@ private struct ActiveTimerView: View {
                         Button(action: previousPhase) {
                             Image(systemName: "chevron.left.circle.fill")
                                 .font(.system(size: 36))
-                                .foregroundColor(phaseIndex > 0 ? .black : .gray)
+                                .foregroundColor(phaseIndex > 0 ? .primary : .gray)
                         }
                         .buttonStyle(.plain)
                         .disabled(phaseIndex == 0)
@@ -733,14 +734,14 @@ private struct ActiveTimerView: View {
                         Button(action: toggleTimer) {
                             Image(systemName: isRunning ? "pause.circle.fill" : "play.circle.fill")
                                 .font(.system(size: 56))
-                                .foregroundColor(.black)
+                                .foregroundColor(.primary)
                         }
                         .buttonStyle(.plain)
 
                         Button(action: nextPhase) {
                             Image(systemName: "chevron.right.circle.fill")
                                 .font(.system(size: 36))
-                                .foregroundColor(phaseIndex < phases.count - 1 ? .black : .gray)
+                                .foregroundColor(phaseIndex < phases.count - 1 ? .primary : .gray)
                         }
                         .buttonStyle(.plain)
                         .disabled(phaseIndex >= phases.count - 1)
@@ -753,10 +754,10 @@ private struct ActiveTimerView: View {
                             Text("Restart")
                         }
                         .font(.subheadline)
-                        .foregroundColor(.black)
+                        .foregroundColor(.primary)
                         .padding(.horizontal, 16)
                         .padding(.vertical, 8)
-                        .background(Color(red: 0.96, green: 0.96, blue: 0.97))
+                        .background(Color(UIColor.secondarySystemBackground))
                         .cornerRadius(8)
                     }
                     .buttonStyle(.plain)
@@ -774,7 +775,7 @@ private struct ActiveTimerView: View {
                                 }) {
                                     Image(systemName: "minus.circle.fill")
                                         .font(.system(size: 32))
-                                        .foregroundColor(.black)
+                                        .foregroundColor(.primary)
                                 }
                                 .buttonStyle(.plain)
 
@@ -787,13 +788,13 @@ private struct ActiveTimerView: View {
                                 }) {
                                     Image(systemName: "plus.circle.fill")
                                         .font(.system(size: 32))
-                                        .foregroundColor(.black)
+                                        .foregroundColor(.primary)
                                 }
                                 .buttonStyle(.plain)
                             }
                         }
                         .padding(16)
-                        .background(Color(red: 0.96, green: 0.96, blue: 0.97))
+                        .background(Color(UIColor.secondarySystemBackground))
                         .cornerRadius(12)
                         .padding(.horizontal, 32)
                     }
@@ -810,7 +811,7 @@ private struct ActiveTimerView: View {
                             .frame(maxWidth: .infinity, alignment: .leading)
                     }
                     .padding(12)
-                    .background(Color(red: 0.96, green: 0.96, blue: 0.97))
+                    .background(Color(UIColor.secondarySystemBackground))
                     .cornerRadius(8)
                     .padding(.horizontal, 16)
 

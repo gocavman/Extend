@@ -13,7 +13,8 @@ import UIKit
 public struct ModuleNavBar: View {
     @Environment(ModuleRegistry.self) var registry
     @Environment(ModuleState.self) var state
-    
+    @Environment(\.colorScheme) var colorScheme
+
     let position: NavBarPosition
     
     public init(position: NavBarPosition = .bottom) {
@@ -37,7 +38,7 @@ public struct ModuleNavBar: View {
                             ModuleNavButton(
                                 module: module,
                                 isSelected: state.selectedModuleID == module.id,
-                                textColor: state.navBarTextColor
+                                textColor: effectiveNavBarTextColor
                             ) {
                                 state.selectModule(module.id)
                             }
@@ -54,16 +55,49 @@ public struct ModuleNavBar: View {
         }
     }
 
+    /// True when the user has not saved a custom navbar background color (stored color matches default near-white).
+    private var isDefaultNavBarColor: Bool {
+        let c = UIColor(state.navBarBackgroundColor)
+        var r: CGFloat = 0, g: CGFloat = 0, b: CGFloat = 0, a: CGFloat = 0
+        c.getRed(&r, green: &g, blue: &b, alpha: &a)
+        return abs(Double(r) - 0.98) < 0.01 && abs(Double(g) - 0.98) < 0.01 && abs(Double(b) - 1.0) < 0.01
+    }
+
+    /// The effective background color: uses a semantic system color for the default so it adapts to dark mode.
+    private var effectiveNavBarBgColor: Color {
+        isDefaultNavBarColor ? Color(UIColor.systemBackground) : state.navBarBackgroundColor
+    }
+
+    /// True when the user has not saved a custom navbar text color (stored color matches default black).
+    private var isDefaultNavBarTextColor: Bool {
+        let c = UIColor(state.navBarTextColor)
+        var r: CGFloat = 0, g: CGFloat = 0, b: CGFloat = 0, a: CGFloat = 0
+        c.getRed(&r, green: &g, blue: &b, alpha: &a)
+        return abs(Double(r)) < 0.01 && abs(Double(g)) < 0.01 && abs(Double(b)) < 0.01
+    }
+
+    /// The effective text/icon color: uses `.primary` for the default so it adapts (white in dark mode).
+    private var effectiveNavBarTextColor: Color {
+        isDefaultNavBarTextColor ? Color.primary : state.navBarTextColor
+    }
+
     private var navBarBackground: some View {
         Group {
             if state.navBarUseGradient {
+                let effectiveSecondary: Color = {
+                    let c = UIColor(state.navBarGradientSecondaryColor)
+                    var r: CGFloat = 0, g: CGFloat = 0, b: CGFloat = 0, a: CGFloat = 0
+                    c.getRed(&r, green: &g, blue: &b, alpha: &a)
+                    let isDefaultSecondary = abs(Double(r) - 0.96) < 0.01 && abs(Double(g) - 0.96) < 0.01 && abs(Double(b) - 0.97) < 0.01
+                    return isDefaultSecondary ? Color(UIColor.secondarySystemBackground) : state.navBarGradientSecondaryColor
+                }()
                 LinearGradient(
-                    colors: [state.navBarBackgroundColor, state.navBarGradientSecondaryColor],
+                    colors: [effectiveNavBarBgColor, effectiveSecondary],
                     startPoint: .leading,
                     endPoint: .trailing
                 )
             } else {
-                state.navBarBackgroundColor
+                effectiveNavBarBgColor
             }
         }
     }
@@ -97,10 +131,10 @@ private struct ModuleNavButton: View {
             Group {
                 if isSelected {
                     RoundedRectangle(cornerRadius: 8)
-                        .stroke(Color.black, lineWidth: 2)
+                        .stroke(textColor, lineWidth: 2)
                         .background(
                             RoundedRectangle(cornerRadius: 8)
-                                .fill(Color.black.opacity(0.08))
+                                .fill(textColor.opacity(0.08))
                         )
                         .transition(.scale.combined(with: .opacity))
                 }

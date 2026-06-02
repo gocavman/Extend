@@ -106,7 +106,7 @@ final class DashboardHeaderState {
         backgroundGradientComponents = RGBAColor.load(from: backgroundGradientSecondaryKey)
             ?? RGBAColor(red: 0.96, green: 0.96, blue: 0.97, alpha: 1.0)
         backgroundUseGradient = defaults.bool(forKey: backgroundUseGradientKey)
-        isVisible = defaults.object(forKey: isVisibleKey) as? Bool ?? true
+        isVisible = defaults.object(forKey: isVisibleKey) as? Bool ?? false
     }
 
     func updateTitle(_ newTitle: String) {
@@ -163,7 +163,7 @@ final class DashboardHeaderState {
         textComponents = RGBAColor(red: 0.0, green: 0.0, blue: 0.0, alpha: 1.0)
         backgroundGradientComponents = RGBAColor(red: 0.96, green: 0.96, blue: 0.97, alpha: 1.0)
         backgroundUseGradient = false
-        isVisible = true
+        isVisible = false
 
         defaults.set(title, forKey: titleKey)
         try? FileManager.default.removeItem(at: DashboardHeaderState.imageStorageURL)
@@ -173,7 +173,7 @@ final class DashboardHeaderState {
         textComponents.save(to: textColorKey)
         backgroundGradientComponents.save(to: backgroundGradientSecondaryKey)
         defaults.set(backgroundUseGradient, forKey: backgroundUseGradientKey)
-        defaults.set(true, forKey: isVisibleKey)
+        defaults.set(false, forKey: isVisibleKey)
     }
 }
 

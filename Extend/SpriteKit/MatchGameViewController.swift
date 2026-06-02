@@ -150,6 +150,7 @@ class MatchGameViewController: UIViewController {
     
     override func viewDidLoad() {
         super.viewDidLoad()
+        overrideUserInterfaceStyle = .light
         setupUI()
         loadGameConfig()
         loadSavedState()      // loads currentLevelId, score, unlockedLevels, AND totalElapsed

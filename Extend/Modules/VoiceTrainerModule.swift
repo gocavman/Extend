@@ -70,7 +70,7 @@ private struct VoiceTrainerModuleView: View {
                     showingAdd = true
                 }) {
                     Image(systemName: "plus")
-                        .foregroundColor(.black)
+                        .foregroundColor(.primary)
                 }
             }
             .padding(.horizontal, 16)
@@ -89,16 +89,16 @@ private struct VoiceTrainerModuleView: View {
                                     VStack(spacing: 6) {
                                         Image(systemName: "speaker.wave.2.fill")
                                             .font(.system(size: 20))
-                                            .foregroundColor(.black)
+                                            .foregroundColor(.primary)
                                         Text(config.name)
                                             .font(.caption)
                                             .fontWeight(.semibold)
-                                            .foregroundColor(.black)
+                                            .foregroundColor(.primary)
                                             .lineLimit(2)
                                             .multilineTextAlignment(.center)
                                     }
                                     .frame(width: 70, height: 80)
-                                    .background(Color(red: 0.92, green: 0.92, blue: 0.94))
+                                    .background(Color(UIColor.secondarySystemBackground))
                                     .cornerRadius(10)
                                 }
                                 .buttonStyle(.plain)
@@ -147,7 +147,7 @@ private struct VoiceTrainerModuleView: View {
                             } label: {
                                 Label("Edit", systemImage: "pencil")
                             }
-                            .tint(.blue)
+                            .tint(.primary)
                         }
                         .swipeActions {
                             Button(role: .destructive) {
@@ -386,7 +386,7 @@ private struct VoiceTrainerListRow: View {
             // Top row: play icon, name, action buttons
             HStack(spacing: 12) {
                 Image(systemName: "play.circle.fill")
-                    .foregroundColor(.black)
+                    .foregroundColor(.primary)
                     .font(.system(size: 20))
 
                 Text(config.name)
@@ -406,7 +406,7 @@ private struct VoiceTrainerListRow: View {
                     onHistory()
                 }) {
                     Image(systemName: "clock.arrow.circlepath")
-                        .foregroundColor(.black)
+                        .foregroundColor(.primary)
                 }
                 .buttonStyle(.plain)
 
@@ -415,19 +415,19 @@ private struct VoiceTrainerListRow: View {
                     onStats()
                 }) {
                     Image(systemName: "chart.bar")
-                        .foregroundColor(.black)
+                        .foregroundColor(.primary)
                 }
                 .buttonStyle(.plain)
 
                 Button(action: onClone) {
                     Image(systemName: "doc.on.doc")
-                        .foregroundColor(.black)
+                        .foregroundColor(.primary)
                 }
                 .buttonStyle(.plain)
 
                 Button(action: onEdit) {
                     Image(systemName: "pencil")
-                        .foregroundColor(.black)
+                        .foregroundColor(.primary)
                 }
                 .buttonStyle(.plain)
             }
@@ -661,7 +661,7 @@ private struct VoiceTrainerEditorView: View {
                 }
             }
             .scrollContentBackground(.hidden)
-            .background(Color.white)
+            .background(Color(UIColor.systemBackground))
             .navigationTitle(title)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -1296,10 +1296,12 @@ private class VoiceManager: NSObject, AVSpeechSynthesizerDelegate {
         print("📊 currentConfig exists: \(currentConfig != nil)")
 
         if !countdownQueue.isEmpty {
-            print("⏰ Continuing countdown, waiting 1 second (pause-aware via tick)")
-            // Use pendingDelay so the 1-second gap between countdown numbers respects pause
-            pendingDelay = 1
-            pendingAction = { [weak self] in self?.speakNextCountdown() }
+            print("⏰ Continuing countdown, waiting 1 second")
+            // Use asyncAfter for accurate 1-second gap between countdown numbers
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { [weak self] in
+                guard let self, !self.stopRequested, !self.pauseRequested else { return }
+                self.speakNextCountdown()
+            }
         } else if let config = currentConfig, linesQueue.isEmpty, currentRoundNumber > 0 {
             // Last line of the queue just finished (we're in a round, not just finishing countdown)
             if isCompletingRound || isResting {
@@ -1332,9 +1334,8 @@ private class VoiceManager: NSObject, AVSpeechSynthesizerDelegate {
         } else if countdownQueue.isEmpty && linesQueue.isEmpty && currentRoundNumber == 0 {
             // Just finished countdown (both queues empty and no rounds started yet)
             print("🎯 Delegate detected countdown finished, waiting 1 second before starting lines")
-            pendingDelay = 1
-            pendingAction = { [weak self] in
-                guard let self = self, !self.stopRequested else { return }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { [weak self] in
+                guard let self, !self.stopRequested else { return }
                 self.startRound(roundNumber: 1)
             }
         } else if let config = currentConfig, !linesQueue.isEmpty {
@@ -1624,11 +1625,15 @@ private struct PlaybackScreen: View {
                     Text("Complete Session")
                         .font(.headline)
                         .fontWeight(.semibold)
-                        .foregroundColor(.black)
+                        .foregroundColor(.primary)
                         .frame(maxWidth: .infinity)
                         .frame(height: 56)
-                        .background(Color.white)
+                        .background(Color(UIColor.systemBackground))
                         .cornerRadius(12)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 12)
+                                .stroke(Color.primary.opacity(0.25), lineWidth: 1.5)
+                        )
                 }
                 .padding(.horizontal, 20)
                 .padding(.bottom, 20)

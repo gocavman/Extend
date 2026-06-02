@@ -63,6 +63,7 @@ class AnimationStudioViewController: UIViewController, UITableViewDelegate, UITa
 
     override func viewDidLoad() {
         super.viewDidLoad()
+        overrideUserInterfaceStyle = .light
         view.backgroundColor = .systemBackground
 
         allFrames = SavedFramesManager.shared.getAllFrames()
@@ -292,7 +293,7 @@ class AnimationStudioViewController: UIViewController, UITableViewDelegate, UITa
 
     private func setupLayout() {
         previewView.translatesAutoresizingMaskIntoConstraints = false
-        previewView.backgroundColor = UIColor(red: 0.85, green: 0.92, blue: 0.85, alpha: 1.0)
+        previewView.backgroundColor = .white
         view.addSubview(previewView)
 
         tableView.translatesAutoresizingMaskIntoConstraints = false
@@ -880,76 +881,43 @@ class AnimationStudioViewController: UIViewController, UITableViewDelegate, UITa
     /// Compute the tightest bounding rect (in UIKit/pixel coords, top-left origin) that contains
     /// all figure + object content across every frame, then add padding.
     ///
-    /// SpriteKit positions use a bottom-left origin (Y increases upward).
-    /// CGImage.cropping uses a top-left origin (Y increases downward).
-    /// We compute bounds in SK space, then flip Y before returning so the rect is
-    /// ready to pass directly to CGImage.cropping(to:).
-    private func contentBoundingRect(frames: [SavedEditFrame], canvasSize: CGSize, padding: CGFloat = 24) -> CGRect {
-        let renderScale = min(canvasSize.width, canvasSize.height) / 520.0
-        let scaleFactor = renderScale / 1.2
-        // Head-to-toe half-size in canvas pixels. The figure is centred in SK space.
-        let figureHalf: CGFloat = 160 * renderScale
-
-        // Collect bounds in SpriteKit coordinates (origin bottom-left, Y up).
-        var skMinX = CGFloat.infinity, skMinY = CGFloat.infinity
-        var skMaxX = -CGFloat.infinity, skMaxY = -CGFloat.infinity
+    /// Uses SKNode.calculateAccumulatedFrame() which returns the exact bounds of the node tree
+    /// in the parent's coordinate space (SK convention: Y-up, origin at bottom-left).
+    /// We convert those SK coords to UIKit pixel coords (Y-down) for CGImage.cropping.
+    private func contentBoundingRect(frames: [SavedEditFrame], canvasSize: CGSize,
+                                     padding: CGFloat = 24,
+                                     scene: GameScene) -> CGRect {
+        var skUnion: CGRect? = nil
 
         for frame in frames {
-            // SK scene centre is (canvasW/2, canvasH/2); positionY > 0 means higher on screen.
-            let cx = canvasSize.width  / 2 + CGFloat(frame.positionX) * scaleFactor
-            let cy = canvasSize.height / 2 + CGFloat(frame.positionY) * scaleFactor
+            let node = buildExportNode(for: frame, canvasSize: canvasSize, scene: scene)
+            // calculateAccumulatedFrame needs the node in a scene to resolve coordinates,
+            // but we only need the geometry — add temporarily without display.
+            scene.addChild(node)
+            // accumulated frame is in scene coords (SK space: Y-up, origin bottom-left)
+            let skFrame = node.calculateAccumulatedFrame()
+            node.removeFromParent()
 
-            skMinX = min(skMinX, cx - figureHalf)
-            skMinY = min(skMinY, cy - figureHalf)
-            skMaxX = max(skMaxX, cx + figureHalf)
-            skMaxY = max(skMaxY, cy + figureHalf)
-
-            for obj in frame.objects {
-                let editorCenter = obj.editorSceneWidth / 2
-                let dx = (obj.position.x - editorCenter) * scaleFactor
-                let dy = (obj.position.y - editorCenter) * scaleFactor
-                let objCx = canvasSize.width  / 2 + dx
-                let objCy = canvasSize.height / 2 + dy
-
-                let halfW: CGFloat
-                let halfH: CGFloat
-                if obj.assetName.hasPrefix("BOX_") {
-                    let stripped = String(obj.assetName.dropFirst(4))
-                    let parts = stripped.components(separatedBy: "_")
-                    let w = CGFloat(parts.dropFirst().first.flatMap { Double($0) } ?? 40)
-                    let h = CGFloat(parts.dropFirst(2).first.flatMap { Double($0) } ?? 40)
-                    halfW = w * obj.scaleX * scaleFactor / 2
-                    halfH = h * obj.scaleY * scaleFactor / 2
-                } else if obj.assetName.hasPrefix("EMOJI_") {
-                    let r = 40 * obj.scaleX * scaleFactor / 2
-                    halfW = r; halfH = r
-                } else {
-                    halfW = (obj.baseWidth ?? 40) * obj.scaleX * scaleFactor / 2
-                    halfH = (obj.baseHeight ?? 40) * obj.scaleY * scaleFactor / 2
-                }
-                let diag = sqrt(halfW * halfW + halfH * halfH)
-                skMinX = min(skMinX, objCx - diag)
-                skMinY = min(skMinY, objCy - diag)
-                skMaxX = max(skMaxX, objCx + diag)
-                skMaxY = max(skMaxY, objCy + diag)
-            }
+            guard skFrame.width > 0, skFrame.height > 0 else { continue }
+            skUnion = skUnion.map { $0.union(skFrame) } ?? skFrame
         }
 
-        guard skMinX < skMaxX, skMinY < skMaxY else {
+        guard let skRect = skUnion else {
             return CGRect(origin: .zero, size: canvasSize)
         }
 
-        // Apply padding, clamped to canvas bounds (still in SK coords).
-        let skX0 = max(0, skMinX - padding)
-        let skY0 = max(0, skMinY - padding)
-        let skX1 = min(canvasSize.width,  skMaxX + padding)
-        let skY1 = min(canvasSize.height, skMaxY + padding)
+        // Expand by padding in SK space, clamped to the canvas.
+        let skX0 = max(0, skRect.minX - padding)
+        let skY0 = max(0, skRect.minY - padding)
+        let skX1 = min(canvasSize.width,  skRect.maxX + padding)
+        let skY1 = min(canvasSize.height, skRect.maxY + padding)
 
-        // Convert from SK coords (Y-up) to UIKit pixel coords (Y-down) for CGImage.cropping.
-        // UIKit y = canvasHeight - SK y (for the top edge, which is SK's maxY).
+        // Convert from SK coords (Y-up, origin bottom-left) to UIKit pixel coords (Y-down).
+        // The top edge in UIKit = canvasHeight - skY1 (the SK maximum Y).
         let uiY = canvasSize.height - skY1
+        let uiW = skX1 - skX0
         let uiH = skY1 - skY0
-        return CGRect(x: skX0, y: uiY, width: skX1 - skX0, height: uiH)
+        return CGRect(x: skX0, y: uiY, width: uiW, height: uiH)
     }
 
     private func exportGIF(frames: [SavedEditFrame]) {
@@ -957,18 +925,34 @@ class AnimationStudioViewController: UIViewController, UITableViewDelegate, UITa
         let canvasSize = CGSize(width: 512, height: 512)
         let padding: CGFloat = 24
 
-        // Compute smart crop rect across all frames
-        let cropRect = contentBoundingRect(frames: frames, canvasSize: canvasSize, padding: padding)
+        // Create a single SKView + scene for all frames. Adding the view to the window
+        // ensures SKView.texture(from:crop:) renders reliably for every frame.
+        let renderView = SKView(frame: CGRect(origin: .zero, size: canvasSize))
+        renderView.isHidden = true
+        view.addSubview(renderView)
+        defer { renderView.removeFromSuperview() }
+
+        let renderScene = GameScene(size: canvasSize)
+        renderScene.scaleMode = .fill
+        renderView.presentScene(renderScene)
+        // Set white AFTER presentScene — GameScene.didMove(to:) overwrites backgroundColor,
+        // so we must override it again here.
+        renderScene.backgroundColor = .white
+
+        // Use SK node accumulated frames to find the true content bounding rect.
+        let cropRect = contentBoundingRect(frames: frames, canvasSize: canvasSize,
+                                           padding: padding,
+                                           scene: renderScene)
 
         // Output GIF at the cropped size (max 512 on longest side to keep file small)
-        let cropAspect = cropRect.width / cropRect.height
+        let cropAspect = cropRect.width / max(cropRect.height, 1)
         let gifSize: CGSize
         if cropAspect >= 1 {
             let w = min(512, cropRect.width)
-            gifSize = CGSize(width: w, height: w / cropAspect)
+            gifSize = CGSize(width: w, height: (w / cropAspect).rounded())
         } else {
             let h = min(512, cropRect.height)
-            gifSize = CGSize(width: h * cropAspect, height: h)
+            gifSize = CGSize(width: (h * cropAspect).rounded(), height: h)
         }
 
         let formatter = DateFormatter()
@@ -990,18 +974,6 @@ class AnimationStudioViewController: UIViewController, UITableViewDelegate, UITa
         CGImageDestinationSetProperties(dest, [
             kCGImagePropertyGIFDictionary as String: [kCGImagePropertyGIFLoopCount as String: loopCount]
         ] as CFDictionary)
-
-        // Create a single SKView + scene for all frames. Adding the view to the window
-        // ensures SKView.texture(from:crop:) renders reliably for every frame.
-        let renderView = SKView(frame: CGRect(origin: .zero, size: canvasSize))
-        renderView.isHidden = true
-        view.addSubview(renderView)
-        defer { renderView.removeFromSuperview() }
-
-        let renderScene = GameScene(size: canvasSize)
-        renderScene.backgroundColor = .white
-        renderScene.scaleMode = .fill
-        renderView.presentScene(renderScene)
 
         let frameProps: [String: Any] = [
             kCGImagePropertyGIFDictionary as String: [kCGImagePropertyGIFDelayTime as String: frameDelay]
@@ -1351,7 +1323,7 @@ class AnimationStageScene: SKScene {
     }
 
     override func didMove(to view: SKView) {
-        backgroundColor = UIColor(red: 0.85, green: 0.92, blue: 0.85, alpha: 1.0)
+        backgroundColor = .white
         figureX = size.width / 2
 
         // Set up camera — starts at scene centre, natural 1:1 zoom

@@ -60,7 +60,6 @@ private struct DashboardModuleView: View {
     @State private var showingSettings = false
     
     // Track game levels for reactive UI updates
-    @State private var game1Level: Int = 1
     @State private var matchGameLevel: Int = 1
     @State private var refreshTrigger: UUID = UUID()
 
@@ -105,26 +104,10 @@ private struct DashboardModuleView: View {
             SettingsModule().sheetView
         }
         .onAppear {
-            // Initialize game levels from UserDefaults
-            if let statsDict = defaults.dictionary(forKey: "game1_stats"),
-               let savedLevel = statsDict["currentLevel"] as? Int {
-                game1Level = savedLevel > 0 ? savedLevel : 1
-            } else {
-                game1Level = 1
-            }
-            
             matchGameLevel = defaults.integer(forKey: "matchGameCurrentLevel")
             if matchGameLevel <= 0 { matchGameLevel = 1 }
         }
         .onReceive(NotificationCenter.default.publisher(for: UIApplication.didBecomeActiveNotification)) { _ in
-            // Refresh game levels when app becomes active (returning from game)
-            if let statsDict = defaults.dictionary(forKey: "game1_stats"),
-               let savedLevel = statsDict["currentLevel"] as? Int {
-                game1Level = savedLevel > 0 ? savedLevel : 1
-            } else {
-                game1Level = 1
-            }
-            
             matchGameLevel = defaults.integer(forKey: "matchGameCurrentLevel")
             if matchGameLevel <= 0 { matchGameLevel = 1 }
         }
@@ -153,21 +136,21 @@ private struct DashboardModuleView: View {
             let columnWidth = (totalWidth - spacing * 2) / 3
 
             ScrollView {
-                VStack(spacing: 10) {
+                VStack(spacing: 20) {
                     let rows = tileRows()
                     ForEach(Array(rows.enumerated()), id: \.offset) { _, row in
                         tilesRowView(row: row, columnWidth: columnWidth, spacing: spacing)
                     }
                 }
                 .padding(.horizontal, 16)
-                .padding(.vertical, 10)
+                .padding(.vertical, 16)
             }
             .scrollIndicators(.hidden)
         }
     }
     
     private func tilesRowView(row: [DashboardTile], columnWidth: CGFloat, spacing: CGFloat) -> some View {
-        HStack(spacing: spacing) {
+        HStack(alignment: .top, spacing: spacing) {
             ForEach(row, id: \.id) { tile in
                 tileView(tile: tile, columnWidth: columnWidth, spacing: spacing)
             }
@@ -185,16 +168,15 @@ private struct DashboardModuleView: View {
         // Dynamic-height entries for PR and 1RM tiles
         let prEntries: [(name: String, value: Double)] = tile.statCardType == .personalRecord ? personalRecordEntries(for: tile) : []
         let rmEntries: [(name: String, value: Double)] = tile.statCardType == .oneRepMax ? oneRMEntries(for: tile) : []
-        // Height: header row (44pt) + padding (24pt) + per-entry row height (24pt each, capped at 10)
-        let dynamicEntryCount: Int = tile.statCardType == .personalRecord ? min(max(prEntries.count, 1), 10)
-            : tile.statCardType == .oneRepMax ? min(max(rmEntries.count, 1), 10)
+        // PR and 1RM tiles use content-driven height (nil) so layout flows naturally
+        let dynamicEntryCount: Int = tile.statCardType == .personalRecord ? 1
+            : tile.statCardType == .oneRepMax ? 1
             : 0
         // favoriteDay: header(44) + 7 rows × 19pt each + bottom padding(12) ≈ 189
         // volumeThisWeek: header(44) + bars(107) + trend(20) + padding(16) ≈ 187
         let tileHeight: CGFloat = isDoubleHeight ? columnWidth * 2 + spacing
             : tile.statCardType == .favoriteDay ? CGFloat(44 + 7 * 19 + 12)
             : tile.statCardType == .volumeThisWeek ? CGFloat(44 + 107 + 20 + 16)
-            : dynamicEntryCount > 0 ? CGFloat(44 + 24 + dynamicEntryCount * 26)
             : columnWidth
         
         return Group {
@@ -217,7 +199,7 @@ private struct DashboardModuleView: View {
                     volumeWeeks: statCard == .volumeThisWeek ? logState.volumeByWeek(weeks: 7, workoutName: tile.volumeWorkoutName, exerciseID: tile.volumeExerciseID) : [],
                     dayOfWeekCounts: statCard == .favoriteDay ? logState.workoutCountByDayOfWeek : []
                 )
-                .frame(width: tileWidth, height: tileHeight)
+                .frame(width: tileWidth, height: dynamicEntryCount > 0 ? nil : tileHeight)
                 .rotationEffect(.degrees(tileRotations[tile.id] ?? 0))
                 .offset(
                     x: tileOffsets[tile.id]?.x ?? 0,
@@ -235,7 +217,7 @@ private struct DashboardModuleView: View {
     }
     
     private func interactiveTileView(tile: DashboardTile, width: CGFloat, height: CGFloat) -> some View {
-        let bg: Color = tile.tileTintColor ?? Color(red: 0.96, green: 0.96, blue: 0.97)
+        let bg: Color = tile.tileTintColor ?? Color(UIColor.secondarySystemBackground)
         return Button(action: {
             UIImpactFeedbackGenerator(style: .light).impactOccurred()
             if isBlankTile(tile) {
@@ -269,7 +251,7 @@ private struct DashboardModuleView: View {
 
                     Image(systemName: tile.icon)
                         .font(.system(size: 28, weight: .semibold))
-                        .foregroundColor(.black)
+                        .foregroundColor(.primary)
                         .rotationEffect(.degrees(spinningTiles[tile.id] ?? 0))
                         .animation(.easeInOut(duration: 1.0), value: spinningTiles[tile.id])
 
@@ -337,6 +319,18 @@ private struct DashboardModuleView: View {
         .padding(.top, topNavBarHeight)
     }
 
+    /// True when the user has not customized the header text color (default black).
+    private var isDefaultHeaderTextColor: Bool {
+        let c = UIColor(headerState.textColor)
+        var r: CGFloat = 0, g: CGFloat = 0, b: CGFloat = 0, a: CGFloat = 0
+        c.getRed(&r, green: &g, blue: &b, alpha: &a)
+        return abs(Double(r)) < 0.01 && abs(Double(g)) < 0.01 && abs(Double(b)) < 0.01
+    }
+
+    private var effectiveHeaderTextColor: Color {
+        isDefaultHeaderTextColor ? Color.primary : headerState.textColor
+    }
+
     private var headerView: some View {
         ZStack {
             // Centered title + image
@@ -345,7 +339,7 @@ private struct DashboardModuleView: View {
                 Text(headerState.title)
                     .font(.headline)
                     .fontWeight(.semibold)
-                    .foregroundColor(headerState.textColor)
+                    .foregroundColor(effectiveHeaderTextColor)
             }
 
             // Settings gear pinned to far right
@@ -357,7 +351,7 @@ private struct DashboardModuleView: View {
                 }) {
                     Image(systemName: "gearshape")
                         .font(.system(size: 18))
-                        .foregroundColor(headerState.textColor.opacity(0.7))
+                        .foregroundColor(effectiveHeaderTextColor.opacity(0.7))
                 }
                 .buttonStyle(.plain)
             }
@@ -424,9 +418,6 @@ private struct DashboardModuleView: View {
         case .animation3:
             blankAlertMessage = "Animation 3 Coming Soon"
             showBlankAlert = true
-        case .game1:
-            // Navigate to Stick Figure Animator
-            state.selectModule(ModuleIDs.stickFigureAnimator)
         case .game2:
             blankAlertMessage = "Game 2 coming soon"
             showBlankAlert = true
@@ -714,14 +705,14 @@ private struct DashboardModuleView: View {
                 .resizable()
                 .scaledToFill()
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .background(Color(red: 0.96, green: 0.96, blue: 0.97))
+                .background(Color(UIColor.secondarySystemBackground))
             return applyHeaderImageStyle(to: image)
         }
         let placeholder = Image(systemName: "dumbbell")
             .font(.system(size: 20, weight: .semibold))
-            .foregroundColor(.black)
+            .foregroundColor(.primary)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .background(Color(red: 0.96, green: 0.96, blue: 0.97))
+            .background(Color(UIColor.secondarySystemBackground))
         return applyHeaderImageStyle(to: placeholder)
     }
 
@@ -737,16 +728,35 @@ private struct DashboardModuleView: View {
         }
     }
     
+    /// True when the user has not customized the header background (stored color matches default near-white).
+    private var isDefaultHeaderBgColor: Bool {
+        let c = UIColor(headerState.backgroundColor)
+        var r: CGFloat = 0, g: CGFloat = 0, b: CGFloat = 0, a: CGFloat = 0
+        c.getRed(&r, green: &g, blue: &b, alpha: &a)
+        return abs(Double(r) - 0.98) < 0.01 && abs(Double(g) - 0.98) < 0.01 && abs(Double(b) - 1.0) < 0.01
+    }
+
+    private var effectiveHeaderBgColor: Color {
+        isDefaultHeaderBgColor ? Color(UIColor.systemBackground) : headerState.backgroundColor
+    }
+
     private var headerBackgroundView: some View {
         Group {
             if headerState.backgroundUseGradient {
+                let effectiveSecondary: Color = {
+                    let c = UIColor(headerState.backgroundGradientSecondaryColor)
+                    var r: CGFloat = 0, g: CGFloat = 0, b: CGFloat = 0, a: CGFloat = 0
+                    c.getRed(&r, green: &g, blue: &b, alpha: &a)
+                    let isDefault = abs(Double(r) - 0.96) < 0.01 && abs(Double(g) - 0.96) < 0.01 && abs(Double(b) - 0.97) < 0.01
+                    return isDefault ? Color(UIColor.secondarySystemBackground) : headerState.backgroundGradientSecondaryColor
+                }()
                 LinearGradient(
-                    colors: [headerState.backgroundColor, headerState.backgroundGradientSecondaryColor],
+                    colors: [effectiveHeaderBgColor, effectiveSecondary],
                     startPoint: .leading,
                     endPoint: .trailing
                 )
             } else {
-                headerState.backgroundColor
+                effectiveHeaderBgColor
             }
         }
     }
@@ -786,7 +796,7 @@ private struct AddTileSheet: View {
     private var moduleQuickOptions: [AnyAppModule] {
         let existingTileModuleIDs = Set(dashboardState.tiles.compactMap { $0.targetModuleID })
         return registry.registeredModules
-            .filter { !existingTileModuleIDs.contains($0.id) && $0.displayName != "Dashboard" && $0.displayName != "Workout Buddy" && $0.displayName != "Workout Match" }
+            .filter { !existingTileModuleIDs.contains($0.id) && $0.displayName != "Dashboard" && $0.id != ModuleIDs.matchGame && $0.id != ModuleIDs.stickFigureAnimator }
             .sorted { $0.displayName.localizedCaseInsensitiveCompare($1.displayName) == .orderedAscending }
     }
 
@@ -801,7 +811,7 @@ private struct AddTileSheet: View {
     }
 
     private func isMiniGameSelected() -> Bool {
-        selectedBlankIcon != nil && (selectedBlankAction == .game1 || selectedBlankAction == .game2)
+        selectedBlankIcon != nil && selectedBlankAction == .game2
     }
 
     private func iconForStatCard(_ statCard: StatCardType) -> String {
@@ -860,7 +870,7 @@ private struct AddTileSheet: View {
                                 Spacer()
                                 if selectedModuleIDs.contains(module.id) {
                                     Image(systemName: "checkmark")
-                                        .foregroundColor(.black)
+                                        .foregroundColor(.primary)
                                 }
                             }
                             .contentShape(Rectangle())
@@ -890,7 +900,7 @@ private struct AddTileSheet: View {
                                     Spacer()
                                     if selectedStatCards.contains(stat) {
                                         Image(systemName: "checkmark")
-                                            .foregroundColor(.black)
+                                            .foregroundColor(.primary)
                                     }
                                 }
                                 .contentShape(Rectangle())
@@ -901,53 +911,59 @@ private struct AddTileSheet: View {
                 }
 
                 Section("Mini Games") {
-                    // Workout Buddy (formerly Game 1)
-                    if let workoutBuddyModule = registry.registeredModules.first(where: { $0.displayName == "Workout Buddy" }) {
-                        Button(action: {
-                            UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                            if selectedModuleIDs.contains(workoutBuddyModule.id) {
-                                selectedModuleIDs.remove(workoutBuddyModule.id)
-                            } else {
-                                selectedModuleIDs.insert(workoutBuddyModule.id)
-                            }
-                        }) {
-                            HStack {
-                                Text("Workout Buddy")
-                                    .foregroundColor(.primary)
-                                Spacer()
-                                if selectedModuleIDs.contains(workoutBuddyModule.id) {
-                                    Image(systemName: "checkmark")
-                                        .foregroundColor(.black)
-                                }
-                            }
-                            .contentShape(Rectangle())
+                    Button(action: {
+                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                        if selectedModuleIDs.contains(ModuleIDs.matchGame) {
+                            selectedModuleIDs.remove(ModuleIDs.matchGame)
+                        } else {
+                            selectedModuleIDs.insert(ModuleIDs.matchGame)
                         }
-                        .buttonStyle(.plain)
-                    }
-                    
-                    // Workout Match
-                    if let workoutMatchModule = registry.registeredModules.first(where: { $0.displayName == "Workout Match" }) {
-                        Button(action: {
-                            UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                            if selectedModuleIDs.contains(workoutMatchModule.id) {
-                                selectedModuleIDs.remove(workoutMatchModule.id)
-                            } else {
-                                selectedModuleIDs.insert(workoutMatchModule.id)
-                            }
-                        }) {
-                            HStack {
+                    }) {
+                        HStack {
+                            VStack(alignment: .leading, spacing: 2) {
                                 Text("Workout Match")
                                     .foregroundColor(.primary)
-                                Spacer()
-                                if selectedModuleIDs.contains(workoutMatchModule.id) {
-                                    Image(systemName: "checkmark")
-                                        .foregroundColor(.black)
-                                }
+                                Text("500 levels of match-3. Collect powerups and level up.")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
                             }
-                            .contentShape(Rectangle())
+                            Spacer()
+                            if selectedModuleIDs.contains(ModuleIDs.matchGame) {
+                                Image(systemName: "checkmark")
+                                    .foregroundColor(.primary)
+                            }
                         }
-                        .buttonStyle(.plain)
+                        .contentShape(Rectangle())
                     }
+                    .buttonStyle(.plain)
+                }
+
+                Section("Animator") {
+                    Button(action: {
+                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                        if selectedModuleIDs.contains(ModuleIDs.stickFigureAnimator) {
+                            selectedModuleIDs.remove(ModuleIDs.stickFigureAnimator)
+                        } else {
+                            selectedModuleIDs.insert(ModuleIDs.stickFigureAnimator)
+                        }
+                    }) {
+                        HStack {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("Stick Figure Animator")
+                                    .foregroundColor(.primary)
+                                Text("Build stick figure poses frame by frame and export animated GIFs for your exercises.")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            }
+                            Spacer()
+                            if selectedModuleIDs.contains(ModuleIDs.stickFigureAnimator) {
+                                Image(systemName: "checkmark")
+                                    .foregroundColor(.primary)
+                            }
+                        }
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
                 }
 
                 Section("Blank Tile") {
@@ -963,7 +979,7 @@ private struct AddTileSheet: View {
                                     Spacer()
                                     if selectedBlankAction == action && !isMiniGameSelected() {
                                         Image(systemName: "checkmark")
-                                            .foregroundColor(.black)
+                                            .foregroundColor(.primary)
                                     }
                                 }
                                 .contentShape(Rectangle())
@@ -988,9 +1004,9 @@ private struct AddTileSheet: View {
                                     Image(systemName: icon)
                                         .font(.system(size: 18))
                                         .frame(maxWidth: .infinity, maxHeight: 44)
-                                        .background(selectedBlankIcon == icon && !isMiniGameSelected() ? Color.black.opacity(0.15) : Color(red: 0.96, green: 0.96, blue: 0.97))
+                                        .background(selectedBlankIcon == icon && !isMiniGameSelected() ? Color.primary.opacity(0.15) : Color(UIColor.secondarySystemBackground))
                                         .cornerRadius(8)
-                                        .foregroundColor(.black)
+                                        .foregroundColor(.primary)
                                 }
                                 .buttonStyle(.plain)
                             }
@@ -1017,7 +1033,7 @@ private struct AddTileSheet: View {
                         }
 
                         for moduleID in selectedModuleIDs {
-                            if let module = moduleQuickOptions.first(where: { $0.id == moduleID }) {
+                            if let module = registry.registeredModules.first(where: { $0.id == moduleID }) {
                                 let tile = DashboardTile(
                                     title: module.displayName,
                                     icon: module.iconName,
@@ -1245,7 +1261,7 @@ private struct EditTileSheet: View {
                                     Text("All Workouts")
                                     Spacer()
                                     if volumeWorkoutName == nil {
-                                        Image(systemName: "checkmark").foregroundColor(.black)
+                                        Image(systemName: "checkmark").foregroundColor(.primary)
                                     }
                                 }
                                 .contentShape(Rectangle())
@@ -1260,7 +1276,7 @@ private struct EditTileSheet: View {
                                         Text(name)
                                         Spacer()
                                         if volumeWorkoutName == name {
-                                            Image(systemName: "checkmark").foregroundColor(.black)
+                                            Image(systemName: "checkmark").foregroundColor(.primary)
                                         }
                                     }
                                     .contentShape(Rectangle())
@@ -1293,7 +1309,7 @@ private struct EditTileSheet: View {
                                     Text("All Exercises")
                                     Spacer()
                                     if volumeExerciseID == nil {
-                                        Image(systemName: "checkmark").foregroundColor(.black)
+                                        Image(systemName: "checkmark").foregroundColor(.primary)
                                     }
                                 }
                                 .contentShape(Rectangle())
@@ -1307,7 +1323,7 @@ private struct EditTileSheet: View {
                                         Text(exercise.name)
                                         Spacer()
                                         if volumeExerciseID == exercise.id {
-                                            Image(systemName: "checkmark").foregroundColor(.black)
+                                            Image(systemName: "checkmark").foregroundColor(.primary)
                                         }
                                     }
                                     .contentShape(Rectangle())
@@ -1334,9 +1350,9 @@ private struct EditTileSheet: View {
                                     Image(systemName: icon)
                                         .font(.system(size: 20))
                                         .frame(maxWidth: .infinity, maxHeight: 50)
-                                        .background(selectedIcon == icon ? Color.black.opacity(0.15) : Color(red: 0.96, green: 0.96, blue: 0.97))
+                                        .background(selectedIcon == icon ? Color.primary.opacity(0.15) : Color(UIColor.secondarySystemBackground))
                                         .cornerRadius(8)
-                                        .foregroundColor(.black)
+                                        .foregroundColor(.primary)
                                 }
                                 .buttonStyle(.plain)
                             }
@@ -1404,19 +1420,19 @@ private struct StatCardTileView: View {
     var dayOfWeekCounts: [(label: String, count: Int)] = []
 
     var body: some View {
-        let bg = tileTint ?? Color(red: 0.96, green: 0.96, blue: 0.97)
+        let bg = tileTint ?? Color(UIColor.secondarySystemBackground)
         ZStack(alignment: .leading) {
             VStack(spacing: 6) {
                 // Header row: icon + title
                 HStack(spacing: 6) {
                     Image(systemName: icon)
                         .font(.system(size: 14, weight: .semibold))
-                        .foregroundColor(.black)
+                        .foregroundColor(.primary)
                         .fixedSize()
                     Text(title)
                         .font(.caption)
                         .fontWeight(.bold)
-                        .foregroundColor(.black)
+                        .foregroundColor(.primary)
                         .multilineTextAlignment(.leading)
                         .fixedSize(horizontal: false, vertical: true)
                         .frame(maxWidth: .infinity, alignment: .leading)
@@ -1460,7 +1476,7 @@ private struct StatCardTileView: View {
                                     Text(entry.name)
                                         .font(.caption2)
                                         .fontWeight(.semibold)
-                                        .foregroundColor(.black)
+                                        .foregroundColor(.primary)
                                         .lineLimit(1)
                                         .minimumScaleFactor(0.7)
                                         .frame(maxWidth: .infinity, alignment: .leading)
@@ -1468,23 +1484,23 @@ private struct StatCardTileView: View {
                                     Text(String(format: "%.0f", entry.value))
                                         .font(.caption2)
                                         .fontWeight(.bold)
-                                        .foregroundColor(.black)
+                                        .foregroundColor(.primary)
                                 }
                                 // Mini progress bar
                                 GeometryReader { geo in
                                     ZStack(alignment: .leading) {
                                         RoundedRectangle(cornerRadius: 2)
-                                            .fill(Color.black.opacity(0.08))
+                                            .fill(Color.primary.opacity(0.08))
                                             .frame(height: 3)
                                         RoundedRectangle(cornerRadius: 2)
-                                            .fill(index == 0 ? Color.yellow : Color.black.opacity(0.35))
+                                            .fill(index == 0 ? Color.yellow : Color.primary.opacity(0.35))
                                             .frame(width: geo.size.width * CGFloat(entry.value / best), height: 3)
                                     }
                                 }
                                 .frame(height: 3)
                             }
                         }
-                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                        .frame(maxWidth: .infinity, alignment: .leading)
                     }
                 } else if statType == .personalRecord {
                     if personalRecordEntries.isEmpty {
@@ -1512,29 +1528,29 @@ private struct StatCardTileView: View {
                                     Text(entry.name)
                                         .font(.caption2)
                                         .fontWeight(.semibold)
-                                        .foregroundColor(.black)
+                                        .foregroundColor(.primary)
                                         .lineLimit(1)
                                         .minimumScaleFactor(0.7)
                                         .frame(maxWidth: .infinity, alignment: .leading)
                                     Text(String(format: "%.0f", entry.value))
                                         .font(.caption2)
                                         .fontWeight(.bold)
-                                        .foregroundColor(.black)
+                                        .foregroundColor(.primary)
                                 }
                                 GeometryReader { geo in
                                     ZStack(alignment: .leading) {
                                         RoundedRectangle(cornerRadius: 2)
-                                            .fill(Color.black.opacity(0.08))
+                                            .fill(Color.primary.opacity(0.08))
                                             .frame(height: 3)
                                         RoundedRectangle(cornerRadius: 2)
-                                            .fill(index == 0 ? Color(red: 1, green: 0.8, blue: 0) : Color.black.opacity(0.35))
+                                            .fill(index == 0 ? Color(red: 1, green: 0.8, blue: 0) : Color.primary.opacity(0.35))
                                             .frame(width: geo.size.width * CGFloat(entry.value / best), height: 3)
                                     }
                                 }
                                 .frame(height: 3)
                             }
                         }
-                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                        .frame(maxWidth: .infinity, alignment: .leading)
                     }
                 } else if statType == .muscleGroupDistribution {
                     GeometryReader { geometry in
@@ -1552,7 +1568,7 @@ private struct StatCardTileView: View {
                                         Text("No workouts\nlogged")
                                             .font(.caption2)
                                             .fontWeight(.semibold)
-                                            .foregroundColor(.black)
+                                            .foregroundColor(.primary)
                                             .multilineTextAlignment(.center)
                                     }
                                     .frame(width: pieSize, height: pieSize)
@@ -1573,7 +1589,7 @@ private struct StatCardTileView: View {
                                                     .frame(width: 6, height: 6)
                                                 Text(segment.label)
                                                     .font(.caption2)
-                                                    .foregroundColor(.black)
+                                                    .foregroundColor(.primary)
                                                     .lineLimit(1)
                                                     .minimumScaleFactor(0.75)
                                             }
@@ -1624,7 +1640,7 @@ private struct StatCardTileView: View {
                         || statType == .longestStreak || statType == .restDays
                     Text(value)
                         .font(.system(size: isNumeric ? 28 : 16, weight: .bold, design: isNumeric ? .rounded : .default))
-                        .foregroundColor(.black)
+                        .foregroundColor(.primary)
                         .lineLimit(2)
                         .minimumScaleFactor(0.6)
                         .multilineTextAlignment(.center)
@@ -1648,8 +1664,8 @@ private struct StatCardTileView: View {
 
                 Spacer(minLength: 0)
             }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
             .padding(12)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
             .background(bg)
             .clipShape(RoundedRectangle(cornerRadius: 12))
 

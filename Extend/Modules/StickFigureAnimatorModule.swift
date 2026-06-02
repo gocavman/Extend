@@ -4,9 +4,9 @@ import UIKit
 /// Stick Figure Animator module — opens the editor directly on launch.
 public struct StickFigureAnimatorModule: AppModule {
     public let id: UUID = ModuleIDs.stickFigureAnimator
-    public let displayName: String = "Animator"
+    public let displayName: String = "Stick Figure Animator"
     public let iconName: String = "figure.stand"
-    public let description: String = "Create custom stick figure animations"
+    public let description: String = "Build stick figure poses frame by frame and export animated GIFs for your exercises."
 
     public var order: Int = 100
     public var isVisible: Bool = true

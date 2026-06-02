@@ -72,16 +72,16 @@ private struct QuickWorkoutModuleView: View {
                                     VStack(spacing: 6) {
                                         Image(systemName: "bolt.fill")
                                             .font(.system(size: 20))
-                                            .foregroundColor(.black)
+                                            .foregroundColor(.primary)
                                         Text(exercise.name)
                                             .font(.caption)
                                             .fontWeight(.semibold)
-                                            .foregroundColor(.black)
+                                            .foregroundColor(.primary)
                                             .lineLimit(2)
                                             .multilineTextAlignment(.center)
                                     }
                                     .frame(width: 70, height: 80)
-                                    .background(Color(red: 0.92, green: 0.92, blue: 0.94))
+                                    .background(Color(UIColor.secondarySystemBackground))
                                     .cornerRadius(10)
                                 }
                                 .buttonStyle(.plain)
@@ -102,7 +102,7 @@ private struct QuickWorkoutModuleView: View {
                     ForEach(filteredExercises) { exercise in
                         HStack(spacing: 12) {
                             Image(systemName: "play.circle.fill")
-                                .foregroundColor(.black)
+                                .foregroundColor(.primary)
                                 .font(.system(size: 20))
 
                             VStack(alignment: .leading, spacing: 2) {
@@ -114,7 +114,7 @@ private struct QuickWorkoutModuleView: View {
                             .frame(maxWidth: .infinity, alignment: .leading)
 
                             Image(systemName: quickWorkoutState.isFavorite(exercise.id) ? "star.fill" : "star")
-                                .foregroundColor(quickWorkoutState.isFavorite(exercise.id) ? .black : .gray)
+                                .foregroundColor(quickWorkoutState.isFavorite(exercise.id) ? .primary : .gray)
                                 .contentShape(Rectangle())
                                 .highPriorityGesture(
                                     TapGesture().onEnded {

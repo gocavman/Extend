@@ -141,6 +141,7 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
     // MARK: - Lifecycle
     override func viewDidLoad() {
         super.viewDidLoad()
+        overrideUserInterfaceStyle = .light
         
         setupUI()
         setupEditor()
@@ -170,6 +171,8 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
         controlsTableView.translatesAutoresizingMaskIntoConstraints = false
         controlsTableView.delegate = self
         controlsTableView.dataSource = self
+        controlsTableView.backgroundColor = .white
+        controlsTableView.separatorColor = UIColor(white: 0.85, alpha: 1.0)
         bottomContainer.addSubview(controlsTableView)
         
         // Chevron strip between top and bottom containers
@@ -487,6 +490,8 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         let cell = UITableViewCell(style: .default, reuseIdentifier: "controlCell")
         cell.selectionStyle = .none
+        cell.backgroundColor = .white
+        cell.contentView.backgroundColor = .white
         cell.contentView.subviews.forEach { $0.removeFromSuperview() }
         
         switch (indexPath.section, indexPath.row) {
@@ -1670,6 +1675,7 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
         }
         let navController = UINavigationController(rootViewController: frameList)
         navController.modalPresentationStyle = .fullScreen
+        navController.overrideUserInterfaceStyle = .light
         present(navController, animated: true)
     }
     
@@ -3228,6 +3234,7 @@ class FrameListViewController: UIViewController, UITableViewDataSource, UITableV
         tableView.translatesAutoresizingMaskIntoConstraints = false
         tableView.dataSource = self
         tableView.delegate = self
+        tableView.backgroundColor = UIColor.systemGroupedBackground
         view.addSubview(tableView)
         
         NSLayoutConstraint.activate([
@@ -3272,6 +3279,8 @@ class FrameListViewController: UIViewController, UITableViewDataSource, UITableV
         let frame = filteredFrames[indexPath.row]
         let cell = UITableViewCell(style: .subtitle, reuseIdentifier: "frameCell")
         cell.selectionStyle = .none
+        cell.backgroundColor = .white
+        cell.contentView.backgroundColor = .white
         
         // Show green checkmark if frame is in animations.json
         let checkmark = bundleFrameIds.contains(frame.id) ? "✓" : ""
@@ -3502,44 +3511,7 @@ class FrameListViewController: UIViewController, UITableViewDataSource, UITableV
     }
     
     private func performInterpolationRegeneration() {
-        // Load the Stand frames from animations.json
-        guard let standFrames = self.loadStandFramesFromBundle() else {
-            let errorAlert = UIAlertController(
-                title: "Error",
-                message: "Could not load Stand frames from animations.json",
-                preferredStyle: .alert
-            )
-            errorAlert.addAction(UIAlertAction(title: "OK", style: .default))
-            self.present(errorAlert, animated: true)
-            return
-        }
-        
-        // Regenerate interpolation values based on Stand frames
-        print("🎮 ========== REGENERATE BUTTON PRESSED ==========")
-        print("🎮 Loaded \(standFrames.count) stand frames")
-        if MuscleSystem.shared.regenerateInterpolationFromStandFrames(standFrames: standFrames) {
-            print("🎮 Regeneration succeeded, reloading config...")
-            // Reload the config to make sure the updated values are in memory
-            MuscleSystem.shared.reloadMuscleConfig()
-            print("🎮 Config reloaded")
-            
-            let successAlert = UIAlertController(
-                title: "Success",
-                message: "Interpolation values regenerated! JSON has been copied to your clipboard.\n\nPaste it into game_muscles.json in your Xcode project.",
-                preferredStyle: .alert
-            )
-            successAlert.addAction(UIAlertAction(title: "OK", style: .default))
-            self.present(successAlert, animated: true)
-        } else {
-            print("🎮 ❌ Regeneration failed")
-            let errorAlert = UIAlertController(
-                title: "Error",
-                message: "Failed to regenerate interpolation values",
-                preferredStyle: .alert
-            )
-            errorAlert.addAction(UIAlertAction(title: "OK", style: .default))
-            self.present(errorAlert, animated: true)
-        }
+        // Muscle system removed — regeneration no longer supported
     }
     
     private func loadStandFramesFromBundle() -> [AnimationFrame]? {
