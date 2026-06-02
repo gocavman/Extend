@@ -4,42 +4,78 @@
     "category": "General",
     "title": "Getting Started",
     "icon": "star.circle.fill",
-    "summary": "A quick overview of how the app is organized and where to begin.",
-    "keywords": ["intro", "start", "new", "setup", "begin", "first", "overview", "onboard", "welcome"],
+    "summary": "What Extend is and how to get going fast.",
+    "keywords": ["intro", "start", "new", "setup", "begin", "first", "overview", "onboard", "welcome", "about", "what is"],
     "sections": [
       {
-        "heading": "How the App Is Organized",
-        "body": "Extend is built around modules — each module is a focused tool like Workouts, Timer, or Progress. You switch between modules using the navigation bar at the bottom (or top) of the screen. The Dashboard is your home screen and shows an overview of your stats and quick-access shortcuts."
+        "heading": "What Extend Is",
+        "body": "Simple, personal workout tracking. Log exercises, weights, sets, and reps. No ads, no subscriptions, no bloat. Everything is stored on your device."
       },
       {
-        "heading": "Suggested First Steps",
-        "body": "1. Go to Exercises and add the exercises you do regularly.\n2. Go to Equipment and add any equipment you train with.\n3. Go to Muscles if you want to track which muscle groups you work.\n4. Go to Workouts and build your first routine by adding exercises.\n5. Start a workout, log your sets, and mark it complete — your first log will appear in Progress."
+        "heading": "What You Can Track",
+        "body": "Weights, kettlebells, barbells, bodyweight — any exercise you do. Build routines, log sessions, and watch your progress and personal records build over time."
       },
       {
-        "heading": "Customizing Your Experience",
-        "body": "Open Settings to change your theme (light or dark), weight unit (lbs or kg), and to customize the navigation bar and Dashboard layout. You can reorder, show, or hide modules from the NavBar Customization screen in Settings."
+        "heading": "Customization",
+        "body": "Make it yours. Rearrange the navigation bar, build a custom Dashboard with the stats you care about, choose light or dark theme, pick lbs or kg. The interface shows only what you choose."
+      },
+      {
+        "heading": "Getting Started Fast",
+        "body": "1. Add your exercises in the Exercises module.\n2. Build a workout routine in Workouts.\n3. Start the workout, log your sets, complete it.\n4. Check Progress to see your history."
       }
     ]
   },
   {
-    "id": "navigation",
+    "id": "settings",
     "category": "General",
-    "title": "Navigation",
-    "icon": "sidebar.squares.left",
-    "summary": "How to move between modules and configure the navigation bar.",
-    "keywords": ["nav", "navbar", "tabs", "modules", "switch", "bar", "bottom", "top", "reorder", "hide", "show", "icons"],
+    "title": "Settings",
+    "icon": "gear",
+    "summary": "Theme, units, navigation, dashboard, HealthKit, import/export, and reset.",
+    "keywords": ["settings", "theme", "dark", "light", "dark mode", "lbs", "kg", "weight unit", "screen on", "keep screen on", "health", "healthkit", "export", "import", "reset", "navbar", "nav bar", "navigation bar", "dashboard", "image set", "male", "female", "gradient", "color", "background", "tint", "accent", "icon", "reorder", "modules", "tile", "stat card", "header", "paypal", "venmo", "donate", "support", "backup", "restore", "sync", "customize"],
     "sections": [
       {
-        "heading": "The Navigation Bar",
-        "body": "The navigation bar appears at the bottom of the screen by default. Each button shows an icon and the module name. Tap any button to switch to that module. If you have more modules than fit on screen, you can scroll the bar horizontally."
+        "heading": "Theme",
+        "body": "Light or Dark. Applies instantly. The Stick Figure Editor, Animation Studio, and Match Game always stay light regardless of this setting."
       },
       {
-        "heading": "Reordering and Hiding Modules",
-        "body": "Go to Settings → Customize NavBar to change which modules appear, their order, and which navbar (top or bottom) they live on. Tap the arrows to reorder, or toggle visibility to hide a module entirely. Hidden modules are still accessible from Settings."
+        "heading": "Weight Unit",
+        "body": "lbs or kg. Affects all weight display and entry throughout the app — logs, stat cards, personal records."
       },
       {
-        "heading": "Customizing Colors",
-        "body": "In Settings → Customize NavBar, you can change the navbar background color, enable a gradient, and set the icon and text color. These changes apply instantly."
+        "heading": "Keep Screen On",
+        "body": "Prevents the screen from locking during active timers, workouts, and voice trainer sessions. Uses slightly more battery."
+      },
+      {
+        "heading": "Muscle Image Set",
+        "body": "Chooses the built-in anatomy images used in workout and muscle views — Option 1 (Male), Option 2 (Female), or None. Individual muscles can also have custom images overriding this."
+      },
+      {
+        "heading": "Customize NavBar",
+        "body": "Add, remove, and reorder modules across the top and bottom navigation bars. Each bar is configured independently. Tap arrows to reorder modules, toggle to hide or show them.\n\nColor options: background color, optional gradient with a secondary color, and icon/text color. Changes apply instantly."
+      },
+      {
+        "heading": "Customize Dashboard",
+        "body": "Add, remove, resize, and reorder tiles on your Dashboard.\n\nTile types:\n• Module Shortcut — opens a module.\n• Stat Card — shows a live stat.\n• Shortcut — launches a specific workout, timer, voice trainer, or exercise.\n• Blank — launches a mini game or animation.\n\nStat cards available: Total Workouts, Day Streaks, Longest Streak, Total Time, Favorite Exercise, Favorite Day, Workout Frequency (14 days), Muscle Group Distribution (7 days), Volume This Week, Rest Days (14 days), Personal Record, 1RM Leaderboard.\n\nEach tile supports: custom title, SF icon, size (small/medium/large), accent color and placement (none/left/top/right/bottom), and optional background tint."
+      },
+      {
+        "heading": "Dashboard Header",
+        "body": "Optional banner at the top of the Dashboard. Toggle on or off. Customizable background color, gradient, custom image (from your photo library), and text color."
+      },
+      {
+        "heading": "Export Workouts",
+        "body": "Exports your saved workout routines as a JSON file — useful as a backup or for transferring to another device. Exports routine definitions only, not logged session history."
+      },
+      {
+        "heading": "Import Workouts",
+        "body": "Imports workout routines from a previously exported JSON file. Opens the system file picker. Imported workouts are added alongside existing ones."
+      },
+      {
+        "heading": "Apple Health",
+        "body": "Export: sends completed workout sessions to Apple Health as Strength Training activities.\nImport: pulls workout activity data from Health into your Progress log.\nSync Now: manually trigger a sync. The app also syncs automatically on launch."
+      },
+      {
+        "heading": "Reset App",
+        "body": "Deletes everything — logs, routines, exercises, muscles, equipment, timers, voice trainer configs, and all customizations. Returns the app to default. Cannot be undone. Requires confirmation."
       }
     ]
   },
@@ -48,28 +84,20 @@
     "category": "Modules",
     "title": "Dashboard",
     "icon": "square.grid.2x2",
-    "summary": "Your home screen with stats, shortcuts, and customizable tiles.",
-    "keywords": ["tile", "stat", "shortcut", "customize", "grid", "card", "streak", "1rm", "personal record", "volume", "frequency", "pie", "chart", "favorite day", "leaderboard", "workout buddy", "mini game"],
+    "summary": "Home screen with customizable stat tiles and shortcuts.",
+    "keywords": ["tile", "stat", "shortcut", "customize", "grid", "card", "streak", "1rm", "personal record", "volume", "frequency", "pie", "chart", "favorite day", "leaderboard", "home"],
     "sections": [
       {
-        "heading": "Overview",
-        "body": "The Dashboard is your home screen. It displays a customizable grid of tiles that can show stats, launch modules, start workouts or timers, or jump to specific items you use often."
-      },
-      {
-        "heading": "Tile Types",
-        "body": "There are several tile types:\n\n• Module Shortcut — opens a module directly.\n• Stat Card — displays a live fitness stat.\n• Shortcut — jumps directly to a saved workout, timer, voice trainer config, or exercise.\n• Blank — launches a mini game or animation."
+        "heading": "Tiles",
+        "body": "The Dashboard is a grid of tiles you build yourself. Each tile can be a stat card, a module shortcut, a quick-start shortcut, or a blank action tile.\n\nSizes: small (1 column), medium (2 columns), large (full row).\n\nTo edit: tap the gear icon on the Dashboard."
       },
       {
         "heading": "Stat Cards",
-        "body": "The following stat cards are available:\n\n• Total Workouts — lifetime workout count.\n• Day Streaks — current consecutive days with a workout.\n• Longest Streak — best streak ever.\n• Total Time — total time logged across all workouts.\n• Favorite Exercise — your most-performed exercise.\n• Favorite Day — a bar chart showing which day of the week you train most.\n• Workout Frequency (14 days) — daily activity dots for the past two weeks.\n• Muscle Group Distribution — a pie chart of muscles worked in the past 7 days.\n• Volume This Week — weekly volume bar chart for the past 7 weeks.\n• Rest Days (14 days) — number of non-workout days in the past two weeks.\n• Personal Record — recent personal best lifts per exercise.\n• 1RM Leaderboard — your top estimated one-rep maxes."
-      },
-      {
-        "heading": "Adding and Editing Tiles",
-        "body": "Tap the gear icon on the Dashboard (or go to Settings → Customize Dashboard) to add, remove, resize, and reorder tiles. Tiles can be sized small (1 column), medium (2 columns), or large (full row). Each tile can have a custom title, icon, accent color, and background tint."
+        "body": "• Total Workouts — lifetime count.\n• Day Streaks — current consecutive days.\n• Longest Streak — best streak ever.\n• Total Time — total logged time.\n• Favorite Exercise — most performed.\n• Favorite Day — bar chart by day of week.\n• Workout Frequency (14 days) — daily activity dots.\n• Muscle Group Distribution — pie chart, last 7 days.\n• Volume This Week — bar chart, last 7 weeks.\n• Rest Days (14 days) — non-workout days in past two weeks.\n• Personal Record — recent PRs per exercise.\n• 1RM Leaderboard — top estimated one-rep maxes."
       },
       {
         "heading": "Shortcuts",
-        "body": "Add a Shortcut tile and select a saved workout, timer, voice trainer, or exercise. Tapping the tile will launch that item directly, skipping the list view."
+        "body": "A Shortcut tile launches a specific saved workout, timer, voice trainer config, or exercise directly — no navigating through a list."
       }
     ]
   },
@@ -78,32 +106,28 @@
     "category": "Modules",
     "title": "Workouts",
     "icon": "dumbbell",
-    "summary": "Create and manage your workout routines, then log them.",
-    "keywords": ["routine", "log", "exercise", "sets", "reps", "weight", "complex", "superset", "group", "start", "complete", "history", "lbs", "kg", "1rm", "personal record", "muscle", "anatomy", "timer", "rest"],
+    "summary": "Build routines and log training sessions.",
+    "keywords": ["routine", "log", "exercise", "sets", "reps", "weight", "complex", "group", "start", "complete", "history", "1rm", "personal record", "anatomy", "rest", "barbell", "kettlebell", "dumbbell"],
     "sections": [
       {
-        "heading": "Overview",
-        "body": "The Workouts module is where you build routines and log your training sessions. A workout is a named collection of exercises. When you start a workout, you can log sets, reps, and weight for each exercise."
-      },
-      {
         "heading": "Creating a Workout",
-        "body": "Tap the + button in the top right. Give the workout a name, then add exercises from your exercise library. You can organize exercises into groups — each group gets a color for visual clarity. Within a group, exercises are performed as a complex (back to back)."
+        "body": "Tap +. Name it, then add exercises from your library. Group exercises together to form complexes — each group gets a color. Grouped exercises are performed back to back."
       },
       {
-        "heading": "Starting a Workout",
-        "body": "Tap a workout from the list to expand it and see its exercises. Tap the play button to start an active session. During a session, log your sets by entering reps and weight. A built-in rest timer runs between sets. Tap 'Complete Workout' when you are done."
+        "heading": "Logging a Session",
+        "body": "Tap a workout to expand it, then tap the play button to start. Log each set by entering weight and reps, then tap the checkmark. Previous session values are shown as reference. Tap 'Complete Workout' when done."
       },
       {
-        "heading": "Logging Sets",
-        "body": "Each exercise shows a row for each set. Enter the weight and reps, then tap the checkmark to log a set. Previous session values are shown as a reference. The app tracks your personal records and estimated 1RM automatically."
+        "heading": "Personal Records and 1RM",
+        "body": "The app tracks PRs and estimated one-rep maxes automatically as you log sets. View them on the Dashboard (stat cards) or per-exercise in the Exercises module."
       },
       {
         "heading": "Anatomy View",
-        "body": "Tap the info (ⓘ) button next to an exercise during a workout to see a muscle anatomy diagram highlighting which muscles that exercise targets."
+        "body": "Tap the ⓘ button next to an exercise during a session to see which muscle groups it targets."
       },
       {
-        "heading": "Workout History",
-        "body": "Completed sessions appear in the Progress module. You can also view history for a specific workout by tapping the chart icon on a workout row."
+        "heading": "History",
+        "body": "Completed sessions appear in Progress. To see history for a specific workout, tap the chart icon on its row."
       }
     ]
   },
@@ -112,24 +136,20 @@
     "category": "Modules",
     "title": "Generate",
     "icon": "sparkles",
-    "summary": "Automatically build a workout based on your equipment and muscle filters.",
-    "keywords": ["random", "generate", "auto", "filter", "equipment", "muscle", "preset", "shuffle", "create", "custom"],
+    "summary": "Auto-generate a workout from your equipment and muscle filters.",
+    "keywords": ["random", "generate", "auto", "filter", "equipment", "muscle", "preset", "shuffle", "create"],
     "sections": [
       {
-        "heading": "Overview",
-        "body": "Generate creates a random workout for you based on filters you choose — which equipment you have available and which muscle groups you want to target."
+        "heading": "How It Works",
+        "body": "Choose which equipment and muscle groups to include, then tap Generate. The app picks a random set of matching exercises and builds a workout for you."
       },
       {
-        "heading": "Using Filters",
-        "body": "Tap the filter toggles to select which equipment and muscle groups to include. Only exercises that match your filters will be included in the generated workout. Tap 'Generate' to create a new random selection."
-      },
-      {
-        "heading": "Saving a Generated Workout",
-        "body": "When you like a generated workout, tap 'Save'. Enter a name and it will be added to your Workouts list, ready to use like any other routine."
+        "heading": "Saving",
+        "body": "Tap Save, give it a name, and it appears in your Workouts list."
       },
       {
         "heading": "Filter Presets",
-        "body": "Tap the sliders icon to save your current filter configuration as a preset. Presets let you quickly switch between common filter combinations — for example, 'Home (No Equipment)' vs. 'Gym (Full Equipment)'."
+        "body": "Tap the sliders icon to save your current filter as a named preset. Switch between presets (e.g. 'Home' vs. 'Gym') with one tap."
       }
     ]
   },
@@ -138,20 +158,16 @@
     "category": "Modules",
     "title": "Quick Workout",
     "icon": "bolt.fill",
-    "summary": "Start a one-exercise workout instantly from your favorites.",
-    "keywords": ["quick", "fast", "single", "exercise", "favorite", "star", "one tap", "shortcut"],
+    "summary": "Log a single exercise session without building a full routine.",
+    "keywords": ["quick", "fast", "single", "exercise", "favorite", "star", "one tap"],
     "sections": [
       {
-        "heading": "Overview",
-        "body": "Quick Workout lets you start a single-exercise session without building a full routine. It is ideal when you want to log a quick lift or test a movement."
+        "heading": "How It Works",
+        "body": "Tap any exercise to immediately start a session for that one movement. Log sets, reps, and weight, then complete it. No routine setup needed."
       },
       {
-        "heading": "Favorites Grid",
-        "body": "Exercises you have starred (favorited) appear as tiles at the top of the screen for instant one-tap access. Tap a tile to immediately start a session with that exercise."
-      },
-      {
-        "heading": "Searching and Starting",
-        "body": "Use the search bar to find any exercise by name. Tap an exercise in the list to start a quick workout session. The session works the same as a regular workout — log your sets, reps, and weight, then complete it."
+        "heading": "Favorites",
+        "body": "Star exercises to pin them as tiles at the top for instant one-tap access."
       }
     ]
   },
@@ -160,28 +176,20 @@
     "category": "Modules",
     "title": "Timer",
     "icon": "timer",
-    "summary": "Build and run interval timer configurations for any training style.",
-    "keywords": ["interval", "countdown", "rest", "round", "stopwatch", "tabata", "amrap", "emom", "work", "screen on", "vibrate", "alert", "sound"],
+    "summary": "Create and run interval timers for any training style.",
+    "keywords": ["interval", "countdown", "rest", "round", "tabata", "amrap", "emom", "work", "rounds", "warmup", "cooldown"],
     "sections": [
       {
-        "heading": "Overview",
-        "body": "The Timer module lets you create named timer configurations — each with custom work intervals, rest periods, and round counts. Save as many as you need for different workouts or training styles."
-      },
-      {
         "heading": "Creating a Timer",
-        "body": "Tap + to create a new timer. Set the name, work duration, rest duration, and number of rounds. You can also add an optional warmup and cooldown, and configure sound and vibration alerts."
+        "body": "Tap +. Set a name, work duration, rest duration, and round count. Optional: warmup, cooldown, sound and vibration alerts."
       },
       {
-        "heading": "Running a Timer",
-        "body": "Tap a timer in the list (or tap a favorite tile) to open its detail, then tap Start. The active timer screen shows the current phase (work/rest), time remaining, and round number. Tap Pause to pause, Resume to continue."
+        "heading": "Running",
+        "body": "Tap a timer in the list to open it, then tap Start. The screen shows current phase (work/rest), time remaining, and round. Tap Pause to pause, Resume to continue."
       },
       {
-        "heading": "Favorites",
-        "body": "Star a timer to add it to the Favorites grid at the top of the module for one-tap access."
-      },
-      {
-        "heading": "History and Stats",
-        "body": "Tap the clock icon on a timer row to view its usage history. Tap the chart icon to see stats like how often you use it and average session duration."
+        "heading": "Favorites and History",
+        "body": "Star a timer for the Favorites grid. Tap the clock icon for usage history. Tap the chart icon for stats."
       }
     ]
   },
@@ -190,28 +198,24 @@
     "category": "Modules",
     "title": "Progress",
     "icon": "chart.line.uptrend.xyaxis",
-    "summary": "View your workout history on a calendar or timeline, and write journal entries.",
-    "keywords": ["history", "log", "calendar", "timeline", "journal", "entry", "date", "week", "month", "streak", "activity", "ribbon", "search", "completed", "session"],
+    "summary": "Your full workout history — calendar and timeline views, plus journal.",
+    "keywords": ["history", "log", "calendar", "timeline", "journal", "entry", "date", "week", "month", "streak", "activity", "ribbon", "search", "session"],
     "sections": [
       {
-        "heading": "Overview",
-        "body": "Progress shows every completed workout session and journal entry. You can browse by calendar or as a scrolling timeline. Use it to review what you have done, spot patterns, and stay motivated."
-      },
-      {
         "heading": "Calendar View",
-        "body": "In Calendar mode, days with logged workouts are marked with a dot. Tap a date to see what was logged that day. Tap the month header to jump to a different month. Use the toggle at the top to switch between Calendar and Timeline views."
+        "body": "Days with logged workouts are marked. Tap a date to see what was logged. Tap the month header to change months."
       },
       {
         "heading": "Timeline View",
-        "body": "In Timeline mode, sessions appear as cards in reverse chronological order. You can filter by week or month using the scope toggle. Use the search bar to find sessions by workout name or notes."
+        "body": "Sessions as cards in reverse chronological order. Filter by week or month. Search by workout name or notes."
       },
       {
         "heading": "Activity Ribbon",
-        "body": "Enable the activity ribbon in the toggle at the top of the screen to see a 60-day heat map of your training frequency at a glance."
+        "body": "Toggle the ribbon on to see a 60-day heat map of training frequency at a glance."
       },
       {
-        "heading": "Journal Entries",
-        "body": "Tap the compose button to write a free-form journal entry. Entries appear in the timeline alongside workout logs and can be edited or deleted by tapping them."
+        "heading": "Journal",
+        "body": "Tap the compose button to write a free-form note. Journal entries appear in the timeline alongside workout logs."
       }
     ]
   },
@@ -220,28 +224,24 @@
     "category": "Modules",
     "title": "Exercises",
     "icon": "flame.fill",
-    "summary": "Create and manage your exercise library with muscle groups, equipment, and images.",
-    "keywords": ["exercise", "library", "add", "edit", "delete", "muscle", "equipment", "image", "photo", "favorite", "search", "sort", "stats", "history", "1rm"],
+    "summary": "Your exercise library — create, organize, and track stats per movement.",
+    "keywords": ["exercise", "library", "add", "edit", "delete", "muscle", "equipment", "image", "photo", "favorite", "search", "stats", "history", "1rm", "pr"],
     "sections": [
       {
-        "heading": "Overview",
-        "body": "The Exercises module is your personal exercise library. Every exercise you add here is available to use in Workouts, Generate, and Quick Workout."
-      },
-      {
         "heading": "Adding an Exercise",
-        "body": "Tap + to add a new exercise. Enter a name, then optionally assign muscle groups and equipment. You can also add a custom image to identify the exercise visually."
+        "body": "Tap +. Enter a name, assign muscle groups and equipment (optional), and add a custom image if you want."
       },
       {
         "heading": "Editing and Deleting",
-        "body": "Swipe left on an exercise and tap Edit to modify it, or tap Delete to remove it. You can also tap the pencil icon on the exercise row. Deleting an exercise removes it from all workouts that include it."
+        "body": "Swipe left to edit or delete. Deleting removes the exercise from any workouts that include it."
       },
       {
         "heading": "Favorites",
-        "body": "Star an exercise to pin it to the Favorites grid at the top for quick access. Favorites also appear in Quick Workout for one-tap sessions."
+        "body": "Star an exercise to pin it to the Favorites grid and make it available in Quick Workout."
       },
       {
         "heading": "Stats and History",
-        "body": "Tap the chart icon on an exercise to see stats like total sets logged, average weight, and personal records. Tap the clock icon to view your full history for that exercise across all sessions."
+        "body": "Tap the chart icon for stats (total sets, average weight, PRs). Tap the clock icon for full session history for that exercise."
       }
     ]
   },
@@ -250,24 +250,20 @@
     "category": "Modules",
     "title": "Muscles",
     "icon": "figure.strengthtraining.traditional",
-    "summary": "Manage muscle groups and track which muscles you train most.",
-    "keywords": ["muscle", "anatomy", "group", "image", "custom", "front", "back", "bicep", "tricep", "chest", "quad", "hamstring", "glute", "shoulder", "image set", "male", "female"],
+    "summary": "Define muscle groups used in exercise tracking and anatomy views.",
+    "keywords": ["muscle", "anatomy", "group", "image", "custom", "bicep", "tricep", "chest", "quad", "hamstring", "glute", "shoulder", "image set", "male", "female"],
     "sections": [
       {
-        "heading": "Overview",
-        "body": "The Muscles module lets you define and manage muscle groups. Muscles are linked to exercises, which allows the app to show anatomy diagrams during workouts and generate muscle distribution stats."
-      },
-      {
-        "heading": "Adding a Muscle Group",
-        "body": "Tap + to add a new muscle group. Give it a name and optionally assign a custom image for the anatomy view. The app comes with a built-in image set (male or female) that you can select in Settings."
+        "heading": "Adding Muscle Groups",
+        "body": "Tap +. Name the muscle group. It becomes available to assign to exercises, which powers anatomy diagrams and distribution stats."
       },
       {
         "heading": "Custom Images",
-        "body": "You can override the default image for any muscle group with your own photo. Tap the muscle group, then tap the image area to choose a custom image from your photo library."
+        "body": "Each muscle group can have a custom photo overriding the built-in image set. Tap the muscle, then tap the image to replace it."
       },
       {
-        "heading": "Muscle Stats",
-        "body": "Tap the chart icon on a muscle group to see how often you train it, which exercises target it, and your training frequency over time."
+        "heading": "Stats",
+        "body": "Tap the chart icon to see training frequency and which exercises target that muscle."
       }
     ]
   },
@@ -276,24 +272,20 @@
     "category": "Modules",
     "title": "Equipment",
     "icon": "figure.walk.treadmill",
-    "summary": "Manage the equipment in your exercise library and filter workouts by availability.",
-    "keywords": ["equipment", "barbell", "dumbbell", "machine", "band", "cable", "bodyweight", "filter", "gym", "home", "add", "delete", "edit"],
+    "summary": "Add equipment to categorize exercises and filter generated workouts.",
+    "keywords": ["equipment", "barbell", "dumbbell", "machine", "band", "cable", "bodyweight", "filter", "gym", "home"],
     "sections": [
       {
-        "heading": "Overview",
-        "body": "Equipment is used to categorize exercises and filter generated workouts. Add the equipment you have available, then assign it to exercises in the Exercise editor."
-      },
-      {
         "heading": "Adding Equipment",
-        "body": "Tap + to add a new piece of equipment. Give it a name. Common examples: Barbell, Dumbbell, Resistance Band, Cable Machine, Bodyweight."
+        "body": "Tap +. Name it (e.g. Barbell, Dumbbell, Resistance Band). Assign equipment to exercises in the Exercise editor."
       },
       {
-        "heading": "Filtering by Equipment",
-        "body": "In the Generate module, enable the Equipment filter to limit generated workouts to exercises that use the equipment you select. This is useful when you are training at home with limited gear."
+        "heading": "Filtering",
+        "body": "In Generate, enable the Equipment filter to only include exercises matching your available gear."
       },
       {
         "heading": "Stats",
-        "body": "Tap the chart icon on an equipment item to see which exercises use it and how often it appears in your logged workouts."
+        "body": "Tap the chart icon to see which exercises use a piece of equipment and how often it shows up in your logs."
       }
     ]
   },
@@ -302,32 +294,28 @@
     "category": "Modules",
     "title": "Trainer",
     "icon": "speaker.wave.2",
-    "summary": "Voice-guided workout sessions — your trainer calls out cues at timed intervals.",
-    "keywords": ["voice", "trainer", "audio", "speak", "cue", "round", "rest", "interval", "boxing", "heavy bag", "random", "delay", "cooldown", "warning", "lines", "text", "rounds", "session", "complete"],
+    "summary": "Voice-guided sessions — the app calls out your cues at timed intervals.",
+    "keywords": ["voice", "trainer", "audio", "speak", "cue", "round", "rest", "interval", "boxing", "heavy bag", "random", "delay", "cooldown", "warning", "lines", "text", "rounds", "session"],
     "sections": [
       {
-        "heading": "Overview",
-        "body": "The Trainer module reads lines of text aloud at timed intervals during your workout — like a boxing coach calling combinations. You write the cues, set the timing, and the app calls them out while you train."
+        "heading": "How It Works",
+        "body": "Write cues (one per line), set your timing, and the app reads them aloud during your session. Works great for boxing, martial arts, circuits, or any interval training."
       },
       {
-        "heading": "Creating a Configuration",
-        "body": "Tap + to create a new trainer config. Give it a name, then type your cues in the text area — one per line. Examples: 'Jab', 'Double Jab', '1-2 Combo', 'Rest'. Set the number of rounds, round length, and rest between rounds."
-      },
-      {
-        "heading": "Timing Options",
-        "body": "• Round Length — how long each work round lasts.\n• Rest Between Rounds — how long to rest between rounds.\n• Delay Between Lines — pause between each spoken cue.\n• Start Warning — countdown before the session begins.\n• Rest End Warning — countdown before rest ends and the next round starts.\n• Cooldown — optional cool-down period after all rounds complete."
+        "heading": "Creating a Config",
+        "body": "Tap +. Name it, enter cues (e.g. 'Jab', '1-2', 'Right Hook'), then set:\n• Rounds and round length\n• Rest between rounds\n• Delay between spoken cues\n• Start warning countdown\n• Rest end warning\n• Cooldown period"
       },
       {
         "heading": "Random Order",
-        "body": "Enable 'Random Order' to shuffle the cue lines each round. This keeps sessions unpredictable and is ideal for sports training like boxing or martial arts."
+        "body": "Shuffles cues each round so sessions stay unpredictable."
       },
       {
         "heading": "Running a Session",
-        "body": "Tap a config (or a favorite tile) to start. The playback screen shows the current cue, round, and elapsed time. Tap Pause to pause, or tap X to stop. If you stop or end early, you will be asked to confirm. Completing a session logs it to your Progress history."
+        "body": "Tap a config to start. The screen shows the current cue, round, and elapsed time. Tap Pause to pause. Tap X or 'Complete Session' early — both ask for confirmation. Completing saves the session to Progress."
       },
       {
         "heading": "Favorites",
-        "body": "Star a config to pin it to the Favorites grid at the top of the module for quick one-tap access."
+        "body": "Star a config to pin it to the Favorites grid for one-tap access."
       }
     ]
   },
@@ -336,28 +324,24 @@
     "category": "Modules",
     "title": "Stick Figure Animator",
     "icon": "figure.stand",
-    "summary": "Build stick figure poses frame by frame and export animated GIFs.",
-    "keywords": ["stick figure", "animator", "pose", "frame", "animation", "gif", "export", "draw", "skeleton", "canvas", "editor", "object", "emoji", "image", "studio"],
+    "summary": "Pose a stick figure frame by frame and export as an animated GIF.",
+    "keywords": ["stick figure", "animator", "pose", "frame", "animation", "gif", "export", "skeleton", "canvas", "editor", "object", "emoji", "studio"],
     "sections": [
       {
-        "heading": "Overview",
-        "body": "The Stick Figure Animator lets you create custom stick figure animations. Build poses frame by frame, then export them as animated GIFs you can share or use as exercise demos."
-      },
-      {
         "heading": "Frame Editor",
-        "body": "The editor opens with a canvas at the top and controls below. Drag the stick figure joints to pose the figure. Use the position (X/Y) controls to move the figure on the canvas. Adjust scale, limb thickness, and other body proportions using the sliders."
+        "body": "Drag joints to pose the figure. Use X/Y controls to position it on the canvas. Adjust scale, limb thickness, and body proportions with the sliders below."
       },
       {
         "heading": "Saving Frames",
-        "body": "Once you have a pose you like, tap 'Save Frame'. Give it a name. Saved frames appear in the frame list, which you can open to load, copy, rename, or delete frames."
+        "body": "Tap 'Save Frame', give it a name. Open the frame list to load, copy, rename, or delete frames."
       },
       {
         "heading": "Animation Studio",
-        "body": "From the editor, tap 'Open Studio' to enter the Animation Studio. Here you arrange saved frames into a sequence, set playback speed, and preview the animation. Tap Export to save the animation as a GIF."
+        "body": "Tap 'Open Studio' to arrange frames into a sequence, set speed, preview, and export as a GIF."
       },
       {
         "heading": "Adding Objects",
-        "body": "Tap 'Add Object' to place additional elements on the canvas — emojis, images, or colored boxes. Objects can be repositioned, scaled, and rotated independently."
+        "body": "Tap 'Add Object' to place emojis, images, or colored boxes on the canvas. Each object can be moved, scaled, and rotated independently."
       }
     ]
   },
@@ -366,78 +350,16 @@
     "category": "Modules",
     "title": "Workout Match",
     "icon": "gamecontroller.fill",
-    "summary": "A match-3 puzzle game built into the app. 500 levels of play.",
-    "keywords": ["game", "match", "puzzle", "level", "powerup", "fun", "break", "mini game", "500 levels"],
+    "summary": "A match-3 puzzle game. 500 levels.",
+    "keywords": ["game", "match", "puzzle", "level", "powerup", "mini game", "500 levels", "fun"],
     "sections": [
       {
-        "heading": "Overview",
-        "body": "Workout Match is a match-3 puzzle game included in the app. Swap tiles to match 3 or more in a row, collect powerups, and advance through 500 levels."
-      },
-      {
         "heading": "Playing",
-        "body": "Tap a tile then tap an adjacent tile to swap them. Match 3 or more tiles of the same type to clear them and earn points. Special powerups are awarded for larger matches."
+        "body": "Swap adjacent tiles to match 3 or more of the same type. Larger matches earn powerups. Work through 500 levels."
       },
       {
         "heading": "Progress",
-        "body": "Your current level is saved automatically and shown on the Dashboard if you have a Match tile added. Your progress persists between sessions."
-      }
-    ]
-  },
-  {
-    "id": "settings",
-    "category": "Settings",
-    "title": "Settings",
-    "icon": "gear",
-    "summary": "Configure theme, weight units, navigation, HealthKit, and more.",
-    "keywords": ["settings", "theme", "dark", "light", "dark mode", "lbs", "kg", "weight unit", "screen on", "keep screen on", "health", "healthkit", "export", "import", "reset", "navbar", "dashboard", "image set", "male", "female", "gradient", "color", "version", "build", "paypal", "venmo", "donate", "support", "backup", "restore", "sync"],
-    "sections": [
-      {
-        "heading": "Theme",
-        "body": "Switch between Light and Dark mode using the Theme picker. The setting applies instantly across the entire app. The Stick Figure Editor, Animation Studio, and Match Game always use light colors regardless of this setting."
-      },
-      {
-        "heading": "Weight Unit",
-        "body": "Choose between lbs (pounds) and kg (kilograms). This affects how weight is displayed and entered throughout the app — in workout logs, stat cards, and personal records."
-      },
-      {
-        "heading": "Keep Screen On",
-        "body": "When enabled, the screen will not lock while you are in an active timer, workout, or voice trainer session. This uses slightly more battery but prevents interruptions mid-session."
-      },
-      {
-        "heading": "Customize NavBar",
-        "body": "Open this to add, remove, and reorder modules in the top and bottom navigation bars. Drag modules to rearrange, toggle visibility, or assign them to a different bar. You can also change the navbar background color, add a gradient, and set the icon/text color."
-      },
-      {
-        "heading": "Customize Dashboard",
-        "body": "Add, remove, resize, and reorder Dashboard tiles here. Choose from stat cards, module shortcuts, quick-start shortcuts, and blank action tiles. Each tile supports custom titles, icons, accent colors, and background tints."
-      },
-      {
-        "heading": "Dashboard Header",
-        "body": "Optionally show a header at the top of the Dashboard with a custom background image, color, and text style. Toggle the header on or off and customize its appearance."
-      },
-      {
-        "heading": "Muscle Image Set",
-        "body": "Choose which built-in muscle anatomy image set to use — Option 1 (Male), Option 2 (Female), or None. Individual muscle groups can also have custom images set in the Muscles module."
-      },
-      {
-        "heading": "Export Workouts",
-        "body": "Export your saved workout routines as a JSON file. You can share this file as a backup or transfer it to another device. This exports routine definitions, not your logged session history."
-      },
-      {
-        "heading": "Import Workouts",
-        "body": "Import workout routines from a previously exported JSON file. Select the file using the system file picker. Imported workouts are added to your existing list — they do not overwrite existing entries."
-      },
-      {
-        "heading": "Apple Health",
-        "body": "Enable 'Export Workouts to Health' to automatically send completed workout sessions to the Apple Health app as Strength Training activities. Enable 'Import Activities' to pull workout data from Health into your Progress log. Tap 'Sync Now' to manually trigger a sync, or it will sync automatically when you open the app."
-      },
-      {
-        "heading": "Reset App",
-        "body": "This permanently deletes all your data — workout logs, routines, exercises, muscles, equipment, timers, voice trainer configs, and all customizations. The app will return to its default state. This action cannot be undone. A confirmation prompt appears before anything is deleted."
-      },
-      {
-        "heading": "Support the Developer",
-        "body": "If you find the app useful, you can support development with a donation via PayPal or Venmo. Links are available in the Support the Developer section of Settings."
+        "body": "Your level saves automatically. Add a Match tile to the Dashboard to see your current level at a glance."
       }
     ]
   }

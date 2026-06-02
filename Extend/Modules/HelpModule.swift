@@ -101,7 +101,7 @@ struct HelpView: View {
             }
         }
         .navigationTitle("Help")
-        .navigationBarTitleDisplayMode(.large)
+        .navigationBarTitleDisplayMode(.inline)
         .searchable(text: $store.searchText, prompt: "Search help topics...")
     }
 }
@@ -140,45 +140,26 @@ struct HelpDetailView: View {
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 0) {
-                // Header
-                VStack(spacing: 10) {
-                    Image(systemName: article.icon)
-                        .font(.system(size: 36, weight: .medium))
-                        .foregroundColor(.accentColor)
-                    Text(article.title)
-                        .font(.title2)
-                        .fontWeight(.bold)
-                        .multilineTextAlignment(.center)
-                    Text(article.summary)
-                        .font(.subheadline)
-                        .foregroundColor(.secondary)
-                        .multilineTextAlignment(.center)
-                }
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 24)
-                .padding(.horizontal, 20)
+            VStack(alignment: .leading, spacing: 24) {
+                Text(article.summary)
+                    .font(.subheadline)
+                    .foregroundColor(.secondary)
+                    .padding(.top, 4)
 
-                Divider()
-                    .padding(.horizontal, 20)
-
-                // Sections
-                VStack(alignment: .leading, spacing: 24) {
-                    ForEach(Array(article.sections.enumerated()), id: \.offset) { _, section in
-                        VStack(alignment: .leading, spacing: 8) {
-                            Text(section.heading)
-                                .font(.headline)
-                                .foregroundColor(.primary)
-                            Text(section.body)
-                                .font(.body)
-                                .foregroundColor(.secondary)
-                                .fixedSize(horizontal: false, vertical: true)
-                        }
+                ForEach(Array(article.sections.enumerated()), id: \.offset) { _, section in
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text(section.heading)
+                            .font(.headline)
+                            .foregroundColor(.primary)
+                        Text(section.body)
+                            .font(.body)
+                            .foregroundColor(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
                     }
                 }
-                .padding(.horizontal, 20)
-                .padding(.vertical, 24)
             }
+            .padding(.horizontal, 20)
+            .padding(.vertical, 16)
         }
         .navigationTitle(article.title)
         .navigationBarTitleDisplayMode(.inline)
