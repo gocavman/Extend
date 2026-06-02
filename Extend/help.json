@@ -4,24 +4,24 @@
     "category": "General",
     "title": "Getting Started",
     "icon": "star.circle.fill",
-    "summary": "What Extend is and how to get going fast.",
+    "summary": "Start here.",
     "keywords": ["intro", "start", "new", "setup", "begin", "first", "overview", "onboard", "welcome", "about", "what is"],
     "sections": [
       {
-        "heading": "What Extend Is",
-        "body": "Simple, personal workout tracking. Log exercises, weights, sets, and reps. No ads, no subscriptions, no bloat. Everything is stored on your device."
+        "heading": "The purpose of Extend",
+        "body": "Extend your fitness tracking and planning with this easy to use app. Log exercises, weights, sets, reps and durations. No subscriptions, no ads, no unneccesary bloat.\n\nPersonal records, volume trends, streaks, muscle distribution, and more. Important stats and charts you want to focus on, are readily available where you want them."
       },
       {
         "heading": "What You Can Track",
-        "body": "Weights, kettlebells, barbells, bodyweight — any exercise you do. Build routines, log sessions, and watch your progress and personal records build over time."
+        "body": "Olympic weights, kettlebells, dumbbells, cardio, bodyweight — any exercise you do. Build routines, log sessions, and watch your progress and personal records build over time."
       },
       {
         "heading": "Customization",
-        "body": "Make it yours. Rearrange the navigation bar, build a custom Dashboard with the stats you care about, choose light or dark theme, pick lbs or kg. The interface shows only what you choose."
+        "body": "Make it yours. Rearrange the navigation bar(s), build a custom Dashboard with the stats and shortcuts you care about, choose light or dark theme. Customize what you see and how you access it."
       },
       {
         "heading": "Getting Started Fast",
-        "body": "1. Add your exercises in the Exercises module.\n2. Build a workout routine in Workouts.\n3. Start the workout, log your sets, complete it.\n4. Check Progress to see your history."
+        "body": "1. Review muscles.\n2. Review equipment.\n3. Review exercises.\n4. Build workout routines. Standard exercise sets, complexes, supersets, circuits. Lots of options to choose from. Need a voice to speak while working out? Explore the Voice Trainer module. Just need a timer? Explore a variety in the Timer module.\n5. Do a workout! Want one selected randomly for you, explore the Generate Workout module. Complete a single exercise? Use the Quick Exercise module.\n6. Save what you've completed and review your progress in the log and/or in all related modules."
       }
     ]
   },
@@ -30,12 +30,12 @@
     "category": "General",
     "title": "Settings",
     "icon": "gear",
-    "summary": "Theme, units, navigation, dashboard, HealthKit, import/export, and reset.",
+    "summary": "Theme, units, navigation, dashboard, HealthKit, and workout import/export.",
     "keywords": ["settings", "theme", "dark", "light", "dark mode", "lbs", "kg", "weight unit", "screen on", "keep screen on", "health", "healthkit", "export", "import", "reset", "navbar", "nav bar", "navigation bar", "dashboard", "image set", "male", "female", "gradient", "color", "background", "tint", "accent", "icon", "reorder", "modules", "tile", "stat card", "header", "paypal", "venmo", "donate", "support", "backup", "restore", "sync", "customize"],
     "sections": [
       {
         "heading": "Theme",
-        "body": "Light or Dark. Applies instantly. The Stick Figure Editor, Animation Studio, and Match Game always stay light regardless of this setting."
+        "body": "Light or Dark. (The Stick Figure Editor, Animation Studio, and Match Game always stay light regardless of this setting.)"
       },
       {
         "heading": "Weight Unit",
@@ -47,15 +47,15 @@
       },
       {
         "heading": "Muscle Image Set",
-        "body": "Chooses the built-in anatomy images used in workout and muscle views — Option 1 (Male), Option 2 (Female), or None. Individual muscles can also have custom images overriding this."
+        "body": "Chooses the built-in anatomy images used in workout and muscle views — Option 1, Option 2, or None. Individual muscles can also have custom images overriding this."
       },
       {
         "heading": "Customize NavBar",
-        "body": "Add, remove, and reorder modules across the top and bottom navigation bars. Each bar is configured independently. Tap arrows to reorder modules, toggle to hide or show them.\n\nColor options: background color, optional gradient with a secondary color, and icon/text color. Changes apply instantly."
+        "body": "Add, remove, and reorder modules across the top and bottom navigation bars. Each bar is configured independently. Change color for more pizazz."
       },
       {
         "heading": "Customize Dashboard",
-        "body": "Add, remove, resize, and reorder tiles on your Dashboard.\n\nTile types:\n• Module Shortcut — opens a module.\n• Stat Card — shows a live stat.\n• Shortcut — launches a specific workout, timer, voice trainer, or exercise.\n• Blank — launches a mini game or animation.\n\nStat cards available: Total Workouts, Day Streaks, Longest Streak, Total Time, Favorite Exercise, Favorite Day, Workout Frequency (14 days), Muscle Group Distribution (7 days), Volume This Week, Rest Days (14 days), Personal Record, 1RM Leaderboard.\n\nEach tile supports: custom title, SF icon, size (small/medium/large), accent color and placement (none/left/top/right/bottom), and optional background tint."
+        "body": "Add, remove, resize, and reorder tiles on your Dashboard.\n\nTile types:\n• Module Shortcut — opens a module.\n• Stat Card — shows a live stat.\n• Shortcut — launches a specific workout, timer, voice trainer, or exercise.\n• Blank — fill in space with animated emoticon.\n\nStat cards available: Total Workouts, Day Streaks, Longest Streak, Total Time, Favorite Exercise, Favorite Day, Workout Frequency (14 days), Muscle Group Distribution (7 days), Volume This Week, Rest Days (14 days), Personal Record, 1RM Leaderboard.\n\nEach tile supports: custom title, icon, size (small/medium/large), accent color and placement (none/left/top/right/bottom), and optional background tint."
       },
       {
         "heading": "Dashboard Header",
@@ -71,7 +71,7 @@
       },
       {
         "heading": "Apple Health",
-        "body": "Export: sends completed workout sessions to Apple Health as Strength Training activities.\nImport: pulls workout activity data from Health into your Progress log.\nSync Now: manually trigger a sync. The app also syncs automatically on launch."
+        "body": "Export: sends completed workout sessions to Apple Health.\nImport: pulls workout activity data from Health into your Progress log.\nSync Now: manually trigger a sync. The app also syncs automatically on launch."
       },
       {
         "heading": "Reset App",
@@ -89,15 +89,15 @@
     "sections": [
       {
         "heading": "Tiles",
-        "body": "The Dashboard is a grid of tiles you build yourself. Each tile can be a stat card, a module shortcut, a quick-start shortcut, or a blank action tile.\n\nSizes: small (1 column), medium (2 columns), large (full row).\n\nTo edit: tap the gear icon on the Dashboard."
+        "body": "The Dashboard is a grid of tiles you build yourself. Choose which ones, and in which order they appear. Each tile can be a module, a stat card, or a shortcut to a specific workout or exercise.\n\nSizes: small (1 column), medium (2 columns), large (full row)."
       },
       {
         "heading": "Stat Cards",
-        "body": "• Total Workouts — lifetime count.\n• Day Streaks — current consecutive days.\n• Longest Streak — best streak ever.\n• Total Time — total logged time.\n• Favorite Exercise — most performed.\n• Favorite Day — bar chart by day of week.\n• Workout Frequency (14 days) — daily activity dots.\n• Muscle Group Distribution — pie chart, last 7 days.\n• Volume This Week — bar chart, last 7 weeks.\n• Rest Days (14 days) — non-workout days in past two weeks.\n• Personal Record — recent PRs per exercise.\n• 1RM Leaderboard — top estimated one-rep maxes."
+        "body": "• Total Workouts — lifetime count.\n• Day Streaks — current consecutive days.\n• Longest Streak — best streak ever.\n• Total Time — total logged time.\n• Favorite Exercise — most performed.\n• Favorite Day — bar chart by day of week.\n• Workout Frequency (14 days) — daily activity dots.\n• Muscle Group Distribution — pie chart, last 7 days.\n• Volume This Week — bar chart, last 7 weeks. Configurable per Workout or Exercise.\n• Rest Days (14 days) — non-workout days in past two weeks.\n• Personal Record — recent PRs. Configurable per     Exercise.\n• 1RM Leaderboard — top estimated one-rep maxes. Configurable per Exercise."
       },
       {
         "heading": "Shortcuts",
-        "body": "A Shortcut tile launches a specific saved workout, timer, voice trainer config, or exercise directly — no navigating through a list."
+        "body": "A Shortcut tile launches a specific saved workout, timer, voice trainer, or exercise directly — no navigating through a list."
       }
     ]
   },
@@ -107,27 +107,27 @@
     "title": "Workouts",
     "icon": "dumbbell",
     "summary": "Build routines and log training sessions.",
-    "keywords": ["routine", "log", "exercise", "sets", "reps", "weight", "complex", "group", "start", "complete", "history", "1rm", "personal record", "anatomy", "rest", "barbell", "kettlebell", "dumbbell"],
+    "keywords": ["routine", "log", "exercise", "sets", "reps", "weight", "complex", "superset", "circuit", "group", "start", "complete", "history", "1rm", "personal record", "anatomy", "image", "info", "rest", "barbell", "kettlebell", "dumbbell"],
     "sections": [
       {
         "heading": "Creating a Workout",
-        "body": "Tap +. Name it, then add exercises from your library. Group exercises together to form complexes — each group gets a color. Grouped exercises are performed back to back."
+        "body": "Tap +. Name it, then add exercises from your library.\n\nExercises can be left ungrouped — each is performed independently.\n\nOr group them together. Each group gets a color and a type:\n• Complex — exercises performed back to back with no rest, usually using the same weight/implement throughout.\n• Superset — two or more exercises performed back to back, typically targeting opposing muscle groups.\n• Circuit — three or more exercises cycled through in sequence, usually for conditioning or time efficiency.\n\nTap the group label to modify the configuration."
       },
       {
         "heading": "Logging a Session",
-        "body": "Tap a workout to expand it, then tap the play button to start. Log each set by entering weight and reps, then tap the checkmark. Previous session values are shown as reference. Tap 'Complete Workout' when done."
+        "body": "Tap the play button to start. Log each exercise by entering sets (weight, reps, duration). Skip forward or back. Previous session values are shown as reference. A history sheet is a tap away. 'Complete Workout' when done and the session will appear in the log."
       },
       {
-        "heading": "Personal Records and 1RM",
-        "body": "The app tracks PRs and estimated one-rep maxes automatically as you log sets. View them on the Dashboard (stat cards) or per-exercise in the Exercises module."
+        "heading": "Personal Records, 1RM and Volume",
+        "body": "The app tracks PRs, estimated one-rep maxes, and Volume automatically as you log sets. View them on the Dashboard (stat cards) or per-exercise in the Exercises module."
       },
       {
-        "heading": "Anatomy View",
-        "body": "Tap the ⓘ button next to an exercise during a session to see which muscle groups it targets."
+        "heading": "ⓘ Button",
+        "body": "Tap the ⓘ button next to an exercise during a session to expand its detail panel. This shows a larger muscle anatomy diagram for that exercise (if muscles are assigned) and any reference image you've added for how to perform it."
       },
       {
         "heading": "History",
-        "body": "Completed sessions appear in Progress. To see history for a specific workout, tap the chart icon on its row."
+        "body": "To see the history or charts for a specific workout, tap the respective icon on its row."
       }
     ]
   },
@@ -181,7 +181,7 @@
     "sections": [
       {
         "heading": "Creating a Timer",
-        "body": "Tap +. Set a name, work duration, rest duration, and round count. Optional: warmup, cooldown, sound and vibration alerts."
+        "body": "Tap +. Set a name, work duration, rest duration, and round count. Optional: warmup, cooldown."
       },
       {
         "heading": "Running",
@@ -196,26 +196,26 @@
   {
     "id": "progress",
     "category": "Modules",
-    "title": "Progress",
+    "title": "Log",
     "icon": "chart.line.uptrend.xyaxis",
     "summary": "Your full workout history — calendar and timeline views, plus journal.",
     "keywords": ["history", "log", "calendar", "timeline", "journal", "entry", "date", "week", "month", "streak", "activity", "ribbon", "search", "session"],
     "sections": [
       {
         "heading": "Calendar View",
-        "body": "Days with logged workouts are marked. Tap a date to see what was logged. Tap the month header to change months."
+        "body": "Days with logged workouts are marked. Tap a date to see what was logged."
       },
       {
         "heading": "Timeline View",
-        "body": "Sessions as cards in reverse chronological order. Filter by week or month. Search by workout name or notes."
+        "body": "Sessions as cards in reverse chronological order. Filter by week or month."
       },
       {
         "heading": "Activity Ribbon",
-        "body": "Toggle the ribbon on to see a 60-day heat map of training frequency at a glance."
+        "body": "Toggle the ribbon to see a 60-day heat map of training frequency at a glance."
       },
       {
         "heading": "Journal",
-        "body": "Tap the compose button to write a free-form note. Journal entries appear in the timeline alongside workout logs."
+        "body": "Tap the compose button to write a free-form note. These appear as dots on the Activity Ribbon."
       }
     ]
   },
@@ -237,7 +237,7 @@
       },
       {
         "heading": "Favorites",
-        "body": "Star an exercise to pin it to the Favorites grid and make it available in Quick Workout."
+        "body": "Star an exercise to pin it to the Favorites grid."
       },
       {
         "heading": "Stats and History",
@@ -311,7 +311,7 @@
       },
       {
         "heading": "Running a Session",
-        "body": "Tap a config to start. The screen shows the current cue, round, and elapsed time. Tap Pause to pause. Tap X or 'Complete Session' early — both ask for confirmation. Completing saves the session to Progress."
+        "body": "Tap a config to start. The screen shows the current cue, round, and elapsed time. Tap Pause to pause. Completing saves the session to the Log."
       },
       {
         "heading": "Favorites",
@@ -324,7 +324,7 @@
     "category": "Modules",
     "title": "Stick Figure Animator",
     "icon": "figure.stand",
-    "summary": "Pose a stick figure frame by frame and export as an animated GIF.",
+    "summary": "Build frame-by-frame stick figure animations, export as GIFs, and attach them to exercises as how-to references.",
     "keywords": ["stick figure", "animator", "pose", "frame", "animation", "gif", "export", "skeleton", "canvas", "editor", "object", "emoji", "studio"],
     "sections": [
       {
@@ -355,7 +355,7 @@
     "sections": [
       {
         "heading": "Playing",
-        "body": "Swap adjacent tiles to match 3 or more of the same type. Larger matches earn powerups. Work through 500 levels."
+        "body": "Swap adjacent tiles to match 3 or more of the same type. Larger matches earn powerups. As a test to dedication, beat all 1000 levels."
       },
       {
         "heading": "Progress",

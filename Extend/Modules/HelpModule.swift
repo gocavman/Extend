@@ -126,7 +126,7 @@ private struct HelpArticleRow: View {
                 Text(article.summary)
                     .font(.caption)
                     .foregroundColor(.secondary)
-                    .lineLimit(2)
+                    .lineLimit(3)
             }
         }
         .padding(.vertical, 4)
@@ -141,11 +141,6 @@ struct HelpDetailView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 24) {
-                Text(article.summary)
-                    .font(.subheadline)
-                    .foregroundColor(.secondary)
-                    .padding(.top, 4)
-
                 ForEach(Array(article.sections.enumerated()), id: \.offset) { _, section in
                     VStack(alignment: .leading, spacing: 8) {
                         Text(section.heading)
