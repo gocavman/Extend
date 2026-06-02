@@ -55,7 +55,7 @@
       },
       {
         "heading": "Customize Dashboard",
-        "body": "Add, remove, resize, and reorder tiles on your Dashboard.\n\nTile types:\n• Module Shortcut — opens a module.\n• Stat Card — shows a live stat.\n• Shortcut — launches a specific workout, timer, voice trainer, or exercise.\n• Blank — fill in space with animated emoticon.\n\nStat cards available: Total Workouts, Day Streaks, Longest Streak, Total Time, Favorite Exercise, Favorite Day, Workout Frequency (14 days), Muscle Group Distribution (7 days), Volume This Week, Rest Days (14 days), Personal Record, 1RM Leaderboard.\n\nEach tile supports: custom title, icon, size (small/medium/large), accent color and placement (none/left/top/right/bottom), and optional background tint."
+        "body": "Add, remove, resize, and reorder tiles on your Dashboard.\n\nTile types:\n• Module Shortcut — opens a module.\n• Stat Card — shows a live stat.\n• Shortcut — launches a specific workout, timer, voice trainer, or exercise.\n• Blank — fill in space with animated emoticon.\n\nStat cards available: Total Workouts, Day Streaks, Longest Streak, Total Time, Favorite Exercise, Favorite Day, Workout Frequency (14 days), Muscle Group Distribution (7 days), Volume This Week, Rest Days (14 days), Personal Record, 1RM Leaderboard.\n\nEach tile supports: custom title, icon, size (small/medium/large), accent color and placement (none/left/top/right/bottom), and optional background tint. Click the gear icon to access these configuration options."
       },
       {
         "heading": "Dashboard Header",
@@ -350,8 +350,8 @@
     "category": "Modules",
     "title": "Workout Match",
     "icon": "gamecontroller.fill",
-    "summary": "A match-3 puzzle game. 500 levels.",
-    "keywords": ["game", "match", "puzzle", "level", "powerup", "mini game", "500 levels", "fun"],
+    "summary": "A match-3 puzzle game. 1000 levels.",
+    "keywords": ["game", "match", "puzzle", "level", "powerup", "mini game", "1000 levels", "fun"],
     "sections": [
       {
         "heading": "Playing",

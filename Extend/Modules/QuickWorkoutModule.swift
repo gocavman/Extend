@@ -114,7 +114,7 @@ private struct QuickWorkoutModuleView: View {
                             .frame(maxWidth: .infinity, alignment: .leading)
 
                             Image(systemName: quickWorkoutState.isFavorite(exercise.id) ? "star.fill" : "star")
-                                .foregroundColor(quickWorkoutState.isFavorite(exercise.id) ? .primary : .gray)
+                                .foregroundColor(quickWorkoutState.isFavorite(exercise.id) ? .yellow : .gray)
                                 .contentShape(Rectangle())
                                 .highPriorityGesture(
                                     TapGesture().onEnded {

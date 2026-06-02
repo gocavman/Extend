@@ -83,9 +83,11 @@ private struct DashboardModuleView: View {
             
             Spacer()
         }
+        .tourAnchor(.dashboardBody)
         .overlay(alignment: .topTrailing) {
             if !headerState.isVisible {
                 floatingGearButton
+                    .tourAnchor(.settingsGear)
             }
         }
         .alert("Blank Tile", isPresented: $showBlankAlert) {
@@ -354,6 +356,7 @@ private struct DashboardModuleView: View {
                         .foregroundColor(effectiveHeaderTextColor.opacity(0.7))
                 }
                 .buttonStyle(.plain)
+                .tourAnchor(.settingsGear)
             }
         }
         .frame(height: 72)

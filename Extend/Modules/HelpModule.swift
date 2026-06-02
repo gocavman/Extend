@@ -72,37 +72,47 @@ struct HelpView: View {
     @State private var store = HelpStore()
 
     var body: some View {
-        List {
-            if store.groupedFiltered.isEmpty {
-                HStack {
-                    Spacer()
-                    VStack(spacing: 8) {
-                        Image(systemName: "magnifyingglass")
-                            .font(.system(size: 28, weight: .light))
-                            .foregroundColor(.secondary)
-                        Text("No results for \"\(store.searchText)\"")
-                            .font(.subheadline)
-                            .foregroundColor(.secondary)
+        VStack(spacing: 0) {
+            SearchField(text: $store.searchText, placeholder: "Search help topics...")
+                .padding(.horizontal, 16)
+                .padding(.top, 8)
+                .padding(.bottom, 4)
+                .background(Color(UIColor.systemBackground))
+
+            List {
+                if store.groupedFiltered.isEmpty {
+                    HStack {
+                        Spacer()
+                        VStack(spacing: 8) {
+                            Image(systemName: "magnifyingglass")
+                                .font(.system(size: 28, weight: .light))
+                                .foregroundColor(.secondary)
+                            Text("No results for \"\(store.searchText)\"")
+                                .font(.subheadline)
+                                .foregroundColor(.secondary)
+                        }
+                        .padding(.vertical, 40)
+                        Spacer()
                     }
-                    .padding(.vertical, 40)
-                    Spacer()
-                }
-                .listRowBackground(Color.clear)
-            } else {
-                ForEach(store.groupedFiltered, id: \.category) { group in
-                    Section(group.category) {
-                        ForEach(group.articles) { article in
-                            NavigationLink(destination: HelpDetailView(article: article)) {
-                                HelpArticleRow(article: article)
+                    .listRowBackground(Color.clear)
+                } else {
+                    ForEach(store.groupedFiltered, id: \.category) { group in
+                        Section(group.category) {
+                            ForEach(group.articles) { article in
+                                NavigationLink(destination: HelpDetailView(article: article)) {
+                                    HelpArticleRow(article: article)
+                                }
                             }
                         }
                     }
                 }
             }
+            .scrollContentBackground(.hidden)
+            .background(Color(UIColor.systemBackground))
         }
+        .background(Color(UIColor.systemBackground))
         .navigationTitle("Help")
         .navigationBarTitleDisplayMode(.inline)
-        .searchable(text: $store.searchText, prompt: "Search help topics...")
     }
 }
 
@@ -156,6 +166,7 @@ struct HelpDetailView: View {
             .padding(.horizontal, 20)
             .padding(.vertical, 16)
         }
+        .background(Color(UIColor.systemBackground))
         .navigationTitle(article.title)
         .navigationBarTitleDisplayMode(.inline)
     }

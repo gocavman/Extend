@@ -450,6 +450,7 @@ private struct SettingsModuleView: View {
         equipmentState.resetItems()
         ExercisesState.shared.resetExercises()
         WorkoutsState.shared.resetWorkouts()
+        WorkoutsState.shared.resetFavorites()
         GenerateState.shared.resetGenerated()
         GenerateState.shared.resetFilterPresets()
         QuickWorkoutState.shared.resetFavorites()
@@ -482,7 +483,17 @@ private struct SettingsModuleView: View {
 
         // Route back to Dashboard after reset
         moduleState.selectModule(ModuleIDs.dashboard)
-        if presentedAsSheet { dismiss() }
+        let shouldDismiss = presentedAsSheet
+        let dismiss = dismiss
+        // Show welcome modal — delay so any sheet dismiss animation completes first,
+        // then force a true→false transition so @AppStorage onChange always fires.
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+            if shouldDismiss { dismiss() }
+            UserDefaults.standard.set(true, forKey: "hasSeenWelcome")
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+                UserDefaults.standard.set(false, forKey: "hasSeenWelcome")
+            }
+        }
     }
 }
 

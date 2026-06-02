@@ -15,6 +15,12 @@ struct ContentView: View {
     @Environment(DashboardState.self) var dashboardState
 
     @AppStorage("appColorScheme") private var appColorScheme: String = "light"
+    @AppStorage("hasSeenWelcome") private var hasSeenWelcome: Bool = false
+
+    @State private var showWelcome: Bool = false
+    @State private var showTour: Bool = false
+    @State private var showHelpFromWelcome: Bool = false
+    @State private var tourAnchorRects: [TourStop: CGRect] = [:]
 
     private var preferredScheme: ColorScheme? {
         switch appColorScheme {
@@ -30,37 +36,104 @@ struct ContentView: View {
 
         // Single stable VStack — no branch switching, so SwiftUI never tears down
         // the view tree when top/bottom navbar membership changes.
-        VStack(spacing: 0) {
-            if hasTopModules && !shouldHideNavBars {
-                navBarBackground
-                    .ignoresSafeArea(edges: .top)
-                    .frame(height: 0)
+        ZStack {
+            VStack(spacing: 0) {
+                if hasTopModules && !shouldHideNavBars {
+                    navBarBackground
+                        .ignoresSafeArea(edges: .top)
+                        .frame(height: 0)
 
-                ModuleNavBar(position: .top)
-            }
+                    ModuleNavBar(position: .top)
+                        .tourAnchor(.topNavBar)
+                }
 
-            ZStack {
-                if let selectedModuleID = state.selectedModuleID,
-                   let selectedModule = registry.moduleWithID(selectedModuleID) {
-                    selectedModule.moduleView
-                        .transition(.opacity)
-                } else {
-                    EmptyStateView()
-                        .transition(.opacity)
+                ZStack {
+                    if let selectedModuleID = state.selectedModuleID,
+                       let selectedModule = registry.moduleWithID(selectedModuleID) {
+                        selectedModule.moduleView
+                            .transition(.opacity)
+                    } else {
+                        EmptyStateView()
+                            .transition(.opacity)
+                    }
+                }
+                .ignoresSafeArea()
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+
+                if !shouldHideNavBars {
+                    ModuleNavBar(position: .bottom)
+                        .tourAnchor(.bottomNavBar)
+
+                    navBarBackground
+                        .ignoresSafeArea(edges: .bottom)
+                        .frame(height: 0)
                 }
             }
-            .ignoresSafeArea()
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
 
-            if !shouldHideNavBars {
-                ModuleNavBar(position: .bottom)
+            // Welcome modal — centered card
+            if showWelcome {
+                Color.black.opacity(0.4)
+                    .ignoresSafeArea()
+                    .transition(.opacity)
 
-                navBarBackground
-                    .ignoresSafeArea(edges: .bottom)
-                    .frame(height: 0)
+                WelcomeModal(isPresented: $showWelcome, showTour: $showTour, showHelp: $showHelpFromWelcome)
+                    .transition(.scale(scale: 0.95).combined(with: .opacity))
             }
         }
+        // Resolve all tour anchors at the ZStack level — the common ancestor of all tagged views.
+        // The GeometryProxy here shares the same coordinate space as the anchored views.
+        .overlayPreferenceValue(TourAnchorKey.self) { anchors in
+            // Use ignoresSafeArea so this GeometryReader shares the same full-screen
+            // coordinate space as TourOverlay's GeometryReader (which also ignores safe area).
+            GeometryReader { geo in
+                Color.clear
+                    .onChange(of: anchors.count) { _, _ in
+                        tourAnchorRects = anchors.reduce(into: [:]) { $0[$1.key] = geo[$1.value] }
+                    }
+                    .onAppear {
+                        tourAnchorRects = anchors.reduce(into: [:]) { $0[$1.key] = geo[$1.value] }
+                    }
+            }
+            .ignoresSafeArea()
+        }
+        // Tour overlay rendered after preference resolution, on top of everything
+        .overlay {
+            if showTour {
+                TourOverlay(isPresented: $showTour, anchorRects: tourAnchorRects) {
+                    withAnimation { showWelcome = true }
+                }
+                .ignoresSafeArea()
+                .transition(.opacity)
+            }
+        }
+        .animation(.easeInOut(duration: 0.25), value: showWelcome)
+        .animation(.easeInOut(duration: 0.25), value: showTour)
         .preferredColorScheme(preferredScheme)
+        .fullScreenCover(isPresented: $showHelpFromWelcome) {
+            NavigationStack {
+                HelpView()
+                    .toolbar {
+                        ToolbarItem(placement: .navigationBarTrailing) {
+                            Button("Done") { showHelpFromWelcome = false }
+                        }
+                    }
+            }
+        }
+        .onAppear {
+            if !hasSeenWelcome {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) {
+                    withAnimation { showWelcome = true }
+                }
+            }
+        }
+        .onChange(of: hasSeenWelcome) { _, newValue in
+            // Re-show the modal when reset clears this flag back to false
+            if !newValue && !showWelcome {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) {
+                    withAnimation { showWelcome = true }
+                }
+            }
+        }
     }
 
     /// Whether the stored navbar background color is still the default (near-white).
