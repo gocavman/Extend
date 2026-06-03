@@ -114,7 +114,10 @@ Left and Right Uppercuts
             numberOfRounds: 5,
             randomOrder: true,  // Enabled
             cooldownPeriod: 0,  // No cooldown by default
-            healthKitActivityType: 73  // HKWorkoutActivityType.boxing
+            healthKitActivityType: 73,  // HKWorkoutActivityType.boxing
+            primaryMuscleGroupIDs: [UUID(uuidString: "0000002A-0000-0000-0000-000000000000")!],   // Full Body
+            secondaryMuscleGroupIDs: [UUID(uuidString: "00000022-0000-0000-0000-000000000000")!], // Cardio
+            equipmentIDs: [UUID(uuidString: "00000112-0000-0000-0000-000000000000")!]             // Boxing bag
         )
         
         savedConfigurations.append(heavyBagConfig)
@@ -268,6 +271,12 @@ struct VoiceTrainerConfig: Identifiable, Codable, Hashable {
     var isFavorite: Bool
     /// Raw value of HKWorkoutActivityType. nil = use .other at export time.
     var healthKitActivityType: UInt?
+    /// Muscle groups primarily targeted by this workout
+    var primaryMuscleGroupIDs: [UUID]
+    /// Muscle groups secondarily targeted by this workout
+    var secondaryMuscleGroupIDs: [UUID]
+    /// Equipment used in this workout
+    var equipmentIDs: [UUID]
     
     // Custom decoding to provide default values for new fields (backward compatibility)
     init(from decoder: Decoder) throws {
@@ -286,10 +295,13 @@ struct VoiceTrainerConfig: Identifiable, Codable, Hashable {
         restEndWarning = try container.decodeIfPresent(Int.self, forKey: .restEndWarning) ?? 10
         isFavorite = try container.decodeIfPresent(Bool.self, forKey: .isFavorite) ?? false
         healthKitActivityType = try container.decodeIfPresent(UInt.self, forKey: .healthKitActivityType)
+        primaryMuscleGroupIDs = try container.decodeIfPresent([UUID].self, forKey: .primaryMuscleGroupIDs) ?? []
+        secondaryMuscleGroupIDs = try container.decodeIfPresent([UUID].self, forKey: .secondaryMuscleGroupIDs) ?? []
+        equipmentIDs = try container.decodeIfPresent([UUID].self, forKey: .equipmentIDs) ?? []
     }
     
     // Standard initializer for creating new configs
-    init(id: UUID = UUID(), name: String, notes: String = "", text: String, roundLength: Int, restLength: Int, delayBetweenLines: Int, numberOfRounds: Int, randomOrder: Bool, cooldownPeriod: Int, workoutStartWarning: Int = 10, restEndWarning: Int = 10, isFavorite: Bool = false, healthKitActivityType: UInt? = nil) {
+    init(id: UUID = UUID(), name: String, notes: String = "", text: String, roundLength: Int, restLength: Int, delayBetweenLines: Int, numberOfRounds: Int, randomOrder: Bool, cooldownPeriod: Int, workoutStartWarning: Int = 10, restEndWarning: Int = 10, isFavorite: Bool = false, healthKitActivityType: UInt? = nil, primaryMuscleGroupIDs: [UUID] = [], secondaryMuscleGroupIDs: [UUID] = [], equipmentIDs: [UUID] = []) {
         self.id = id
         self.name = name
         self.notes = notes
@@ -304,6 +316,9 @@ struct VoiceTrainerConfig: Identifiable, Codable, Hashable {
         self.restEndWarning = restEndWarning
         self.isFavorite = isFavorite
         self.healthKitActivityType = healthKitActivityType
+        self.primaryMuscleGroupIDs = primaryMuscleGroupIDs
+        self.secondaryMuscleGroupIDs = secondaryMuscleGroupIDs
+        self.equipmentIDs = equipmentIDs
     }
     
     var parameterSummary: String {

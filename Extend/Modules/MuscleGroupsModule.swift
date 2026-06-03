@@ -596,6 +596,17 @@ private struct MuscleGroupHistorySheet: View {
     private var sessions: [SessionEntry] {
         let ids = targetExerciseIDs
         return logState.sortedLogs.compactMap { log in
+            // Include VoiceTrainer logs that target this muscle group directly
+            if log.logType == .voiceTrainer &&
+               (log.primaryMuscleGroupIDs.contains(group.id) || log.secondaryMuscleGroupIDs.contains(group.id)) {
+                return SessionEntry(
+                    id: log.id,
+                    date: log.completedAt,
+                    workoutName: log.workoutName,
+                    exercises: []
+                )
+            }
+            // Include regular logs with exercises targeting this muscle
             let relevant = log.exercises.filter { ids.contains($0.exerciseID) && !$0.sets.isEmpty }
             guard !relevant.isEmpty else { return nil }
             return SessionEntry(

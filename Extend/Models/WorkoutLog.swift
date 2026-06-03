@@ -7,11 +7,19 @@
 
 import Foundation
 
+/// The source that created this log entry.
+public enum WorkoutLogType: String, Codable {
+    case workout
+    case voiceTrainer
+    case timer
+}
+
 /// Represents a completed workout that has been logged
 public struct WorkoutLog: Identifiable, Codable, Hashable {
     public let id: UUID
     public var workoutName: String
     public var completedAt: Date
+    public var logType: WorkoutLogType
     public var exercises: [LoggedExercise]
     public var restPeriods: [LoggedRest]
     public var notes: String
@@ -20,27 +28,41 @@ public struct WorkoutLog: Identifiable, Codable, Hashable {
     public var healthKitUUID: UUID?
     /// Raw value of HKWorkoutActivityType used when exporting to Apple Health (nil → .other)
     public var healthKitActivityTypeRaw: UInt?
+    /// Muscle groups primarily targeted by this log (used for non-exercise-based logs like voiceTrainer)
+    public var primaryMuscleGroupIDs: [UUID]
+    /// Muscle groups secondarily targeted by this log
+    public var secondaryMuscleGroupIDs: [UUID]
+    /// Equipment used in this log (used for non-exercise-based logs like voiceTrainer)
+    public var logEquipmentIDs: [UUID]
 
     public init(
         id: UUID = UUID(),
         workoutName: String,
         completedAt: Date = Date(),
+        logType: WorkoutLogType = .workout,
         exercises: [LoggedExercise] = [],
         restPeriods: [LoggedRest] = [],
         notes: String = "",
         duration: TimeInterval = 0,
         healthKitUUID: UUID? = nil,
-        healthKitActivityTypeRaw: UInt? = nil
+        healthKitActivityTypeRaw: UInt? = nil,
+        primaryMuscleGroupIDs: [UUID] = [],
+        secondaryMuscleGroupIDs: [UUID] = [],
+        logEquipmentIDs: [UUID] = []
     ) {
         self.id = id
         self.workoutName = workoutName
         self.completedAt = completedAt
+        self.logType = logType
         self.exercises = exercises
         self.restPeriods = restPeriods
         self.notes = notes
         self.duration = duration
         self.healthKitUUID = healthKitUUID
         self.healthKitActivityTypeRaw = healthKitActivityTypeRaw
+        self.primaryMuscleGroupIDs = primaryMuscleGroupIDs
+        self.secondaryMuscleGroupIDs = secondaryMuscleGroupIDs
+        self.logEquipmentIDs = logEquipmentIDs
     }
 
     public init(from decoder: Decoder) throws {
@@ -48,12 +70,16 @@ public struct WorkoutLog: Identifiable, Codable, Hashable {
         id = try c.decode(UUID.self, forKey: .id)
         workoutName = try c.decode(String.self, forKey: .workoutName)
         completedAt = try c.decode(Date.self, forKey: .completedAt)
+        logType = (try? c.decodeIfPresent(WorkoutLogType.self, forKey: .logType)) ?? .workout
         exercises = try c.decode([LoggedExercise].self, forKey: .exercises)
         restPeriods = (try? c.decodeIfPresent([LoggedRest].self, forKey: .restPeriods)) ?? []
         notes = try c.decode(String.self, forKey: .notes)
         duration = try c.decode(TimeInterval.self, forKey: .duration)
         healthKitUUID = try? c.decodeIfPresent(UUID.self, forKey: .healthKitUUID)
         healthKitActivityTypeRaw = try? c.decodeIfPresent(UInt.self, forKey: .healthKitActivityTypeRaw)
+        primaryMuscleGroupIDs = (try? c.decodeIfPresent([UUID].self, forKey: .primaryMuscleGroupIDs)) ?? []
+        secondaryMuscleGroupIDs = (try? c.decodeIfPresent([UUID].self, forKey: .secondaryMuscleGroupIDs)) ?? []
+        logEquipmentIDs = (try? c.decodeIfPresent([UUID].self, forKey: .logEquipmentIDs)) ?? []
     }
 }
 

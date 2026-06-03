@@ -341,9 +341,13 @@ Total Lines Read: \(playbackState.linesSpoken)
             id: UUID(),
             workoutName: "Trainer – \(config.name)",
             completedAt: Date(),
+            logType: .voiceTrainer,
             exercises: [],
             notes: logNotes,
-            duration: TimeInterval(playbackState.elapsedTime)
+            duration: TimeInterval(playbackState.elapsedTime),
+            primaryMuscleGroupIDs: config.primaryMuscleGroupIDs,
+            secondaryMuscleGroupIDs: config.secondaryMuscleGroupIDs,
+            logEquipmentIDs: config.equipmentIDs
         )
         logState.addLog(
             workoutLog,
@@ -455,6 +459,8 @@ private struct VoiceTrainerListRow: View {
 
 private struct VoiceTrainerEditorView: View {
     @Environment(\.dismiss) var dismiss
+    @Environment(MuscleGroupsState.self) var muscleGroupsState
+    @Environment(EquipmentState.self) var equipmentState
 
     let title: String
     let initialConfig: VoiceTrainerConfig?
@@ -474,6 +480,9 @@ private struct VoiceTrainerEditorView: View {
     @State private var workoutStartWarning: Int = 10
     @State private var restEndWarning: Int = 10
     @State private var healthKitActivityType: UInt? = nil
+    @State private var primaryMuscleGroupIDs: [UUID] = []
+    @State private var secondaryMuscleGroupIDs: [UUID] = []
+    @State private var equipmentIDs: [UUID] = []
 
     init(title: String, initialConfig: VoiceTrainerConfig? = nil, onSave: @escaping (VoiceTrainerConfig) -> Void, onDelete: (() -> Void)? = nil) {
         self.title = title
@@ -494,6 +503,9 @@ private struct VoiceTrainerEditorView: View {
             _workoutStartWarning = State(initialValue: c.workoutStartWarning)
             _restEndWarning = State(initialValue: c.restEndWarning)
             _healthKitActivityType = State(initialValue: c.healthKitActivityType)
+            _primaryMuscleGroupIDs = State(initialValue: c.primaryMuscleGroupIDs)
+            _secondaryMuscleGroupIDs = State(initialValue: c.secondaryMuscleGroupIDs)
+            _equipmentIDs = State(initialValue: c.equipmentIDs)
         }
     }
 
@@ -659,6 +671,107 @@ private struct VoiceTrainerEditorView: View {
                         HKActivityTypePicker(rawValue: $healthKitActivityType)
                     }
                 }
+
+                Section("Muscles") {
+                    if muscleGroupsState.sortedGroups.isEmpty {
+                        Text("No muscle groups defined")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    } else {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Primary")
+                                .font(.caption)
+                                .fontWeight(.semibold)
+                                .foregroundColor(.secondary)
+                            FlowLayout(spacing: 6) {
+                                ForEach(muscleGroupsState.sortedGroups) { group in
+                                    let selected = primaryMuscleGroupIDs.contains(group.id)
+                                    Button(action: {
+                                        if selected {
+                                            primaryMuscleGroupIDs.removeAll { $0 == group.id }
+                                        } else {
+                                            primaryMuscleGroupIDs.append(group.id)
+                                            secondaryMuscleGroupIDs.removeAll { $0 == group.id }
+                                        }
+                                    }) {
+                                        Text(group.name)
+                                            .font(.caption)
+                                            .padding(.horizontal, 10)
+                                            .padding(.vertical, 5)
+                                            .background(selected ? Color.red : Color.primary.opacity(0.1))
+                                            .foregroundColor(selected ? .white : .primary)
+                                            .cornerRadius(12)
+                                    }
+                                    .buttonStyle(.plain)
+                                }
+                            }
+                        }
+                        .padding(.vertical, 4)
+
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Secondary")
+                                .font(.caption)
+                                .fontWeight(.semibold)
+                                .foregroundColor(.secondary)
+                            FlowLayout(spacing: 6) {
+                                ForEach(muscleGroupsState.sortedGroups) { group in
+                                    let selected = secondaryMuscleGroupIDs.contains(group.id)
+                                    let isPrimary = primaryMuscleGroupIDs.contains(group.id)
+                                    Button(action: {
+                                        guard !isPrimary else { return }
+                                        if selected {
+                                            secondaryMuscleGroupIDs.removeAll { $0 == group.id }
+                                        } else {
+                                            secondaryMuscleGroupIDs.append(group.id)
+                                        }
+                                    }) {
+                                        Text(group.name)
+                                            .font(.caption)
+                                            .padding(.horizontal, 10)
+                                            .padding(.vertical, 5)
+                                            .background(selected ? Color.red.opacity(0.5) : Color.primary.opacity(0.1))
+                                            .foregroundColor(isPrimary ? .secondary : (selected ? .white : .primary))
+                                            .cornerRadius(12)
+                                    }
+                                    .buttonStyle(.plain)
+                                    .disabled(isPrimary)
+                                }
+                            }
+                        }
+                        .padding(.vertical, 4)
+                    }
+                }
+
+                Section("Equipment") {
+                    if equipmentState.sortedItems.isEmpty {
+                        Text("No equipment defined")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    } else {
+                        FlowLayout(spacing: 6) {
+                            ForEach(equipmentState.sortedItems) { item in
+                                let selected = equipmentIDs.contains(item.id)
+                                Button(action: {
+                                    if selected {
+                                        equipmentIDs.removeAll { $0 == item.id }
+                                    } else {
+                                        equipmentIDs.append(item.id)
+                                    }
+                                }) {
+                                    Text(item.name)
+                                        .font(.caption)
+                                        .padding(.horizontal, 10)
+                                        .padding(.vertical, 5)
+                                        .background(selected ? Color.primary : Color.primary.opacity(0.1))
+                                        .foregroundColor(selected ? Color(UIColor.systemBackground) : .primary)
+                                        .cornerRadius(12)
+                                }
+                                .buttonStyle(.plain)
+                            }
+                        }
+                        .padding(.vertical, 4)
+                    }
+                }
             }
             .scrollContentBackground(.hidden)
             .background(Color(UIColor.systemBackground))
@@ -692,7 +805,10 @@ private struct VoiceTrainerEditorView: View {
                             workoutStartWarning: workoutStartWarning,
                             restEndWarning: restEndWarning,
                             isFavorite: initialConfig?.isFavorite ?? false,
-                            healthKitActivityType: healthKitActivityType
+                            healthKitActivityType: healthKitActivityType,
+                            primaryMuscleGroupIDs: primaryMuscleGroupIDs,
+                            secondaryMuscleGroupIDs: secondaryMuscleGroupIDs,
+                            equipmentIDs: equipmentIDs
                         )
                         onSave(config)
                         dismiss()

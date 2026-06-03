@@ -28,7 +28,7 @@ enum TourStop: String, CaseIterable {
     var title: String {
         switch self {
         case .bottomNavBar:  return "Main Navigation"
-        case .topNavBar:     return "Extra Modules"
+        case .topNavBar:     return "Secondary Navigation"
         case .settingsGear:  return "Settings"
         case .dashboardBody: return "Dashboard"
         }
@@ -37,13 +37,13 @@ enum TourStop: String, CaseIterable {
     var description: String {
         switch self {
         case .bottomNavBar:
-            return "Your primary modules live here — Dashboard, Workouts, Generate Workout, Quick Workout, and Logs. Fully customizable in Settings."
+            return "Your primary modules live here — Dashboard, Workouts, Generate, Quick Workout, and Logs. Fully customizable in Settings."
         case .topNavBar:
             return "Extra modules like Timers, Voice Trainer, Exercises, Muscles, and Equipment live up here. Fully customizable in Settings."
         case .settingsGear:
-            return "Tap the gear to open Settings, where you can change the theme, weight unit, rearrange navbars, customize the dashboard, manage HealthKit sync, and more."
+            return "Tap the gear to open Settings, where you can change the theme, rearrange navigation bars, customize the dashboard, manage HealthKit sync, and more."
         case .dashboardBody:
-            return "Your dashboard is pre-loaded with tiles. Scroll through and determine what data you want to see and access. Add shortcuts to run favorite workouts and exercises. Rearrange, and swap them out from Settings anytime."
+            return "Your dashboard is pre-loaded with tiles. Scroll through and quickly access the most important data. Rearrange, and swap them out in Settings. You can also add shortcuts to run favorite workouts and exercises."
         }
     }
 }
@@ -80,9 +80,9 @@ struct WelcomeModal: View {
                 Text("Your personal workout tracker.")
                     .font(.subheadline)
                 Text("No bloat (subscriptions or ads).")
-                    .font(.footnote)
+                    .font(.caption)
                     .italic()
-                Text("Just training. As it should be.")
+                Text("Just tracking. As it should be.")
                     .font(.subheadline)
             }
             .foregroundColor(.secondary)

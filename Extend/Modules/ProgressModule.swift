@@ -1180,14 +1180,7 @@ private struct WorkoutLogCard: View {
                 }
                 
                 HStack(spacing: 16) {
-                    // Show lines count for Voice Trainer sessions, exercises count for workouts
-                    if log.workoutName.contains("Voice Trainer") || log.workoutName.contains("Trainer Session") {
-                        // Extract lines count from notes if available
-                        let linesCount = extractLinesCount(from: log.notes)
-                        Label("\(linesCount) lines", systemImage: "list.bullet")
-                            .font(.caption)
-                            .foregroundColor(.gray)
-                    } else {
+                    if !log.exercises.isEmpty {
                         Label("\(log.exercises.count) exercises", systemImage: "list.bullet")
                             .font(.caption)
                             .foregroundColor(.gray)
@@ -1363,14 +1356,52 @@ private struct WorkoutLogDetailView: View {
         return 0
     }
     
-    private var exercisesCountLabel: String {
-        // For Trainer Sessions, show lines count instead of exercises count
-        if log.workoutName.contains("Voice Trainer") || log.workoutName.contains("Trainer Session") {
-            let linesCount = extractLinesCount(from: log.notes)
-            return "\(linesCount) lines"
-        } else {
-            return "\(log.exercises.count) exercises"
+    /// Swaps the orderIndex of the item at `position` in orderedItems with its neighbor
+    /// at `position + delta` (delta = -1 for up, +1 for down).
+    private func moveOrderedItem(at position: Int, delta: Int) {
+        let items = orderedItems
+        let target = position + delta
+        guard items.indices.contains(position), items.indices.contains(target) else { return }
+
+        func orderIndex(for item: OrderedLogItem) -> Int {
+            switch item {
+            case .exercise(let i): return log.exercises[i].orderIndex
+            case .rest(let i): return log.restPeriods[i].orderIndex
+            case .loopHeader(_, let indices): return indices.map { log.exercises[$0].orderIndex }.min() ?? 0
+            case .complexHeader(_, let indices): return indices.map { log.exercises[$0].orderIndex }.min() ?? 0
+            }
         }
+
+        let srcOrder = orderIndex(for: items[position])
+        let dstOrder = orderIndex(for: items[target])
+
+        // Swap orderIndex values between the two items
+        func applyOrder(_ item: OrderedLogItem, newOrder: Int) {
+            switch item {
+            case .exercise(let i): log.exercises[i].orderIndex = newOrder
+            case .rest(let i): log.restPeriods[i].orderIndex = newOrder
+            case .loopHeader(_, let indices):
+                // Offset all exercises in the group by the same delta
+                let baseOrder = indices.map { log.exercises[$0].orderIndex }.min() ?? 0
+                let diff = newOrder - baseOrder
+                for i in indices { log.exercises[i].orderIndex += diff }
+            case .complexHeader(_, let indices):
+                let baseOrder = indices.map { log.exercises[$0].orderIndex }.min() ?? 0
+                let diff = newOrder - baseOrder
+                for i in indices { log.exercises[i].orderIndex += diff }
+            }
+        }
+
+        applyOrder(items[position], newOrder: dstOrder)
+        applyOrder(items[target], newOrder: srcOrder)
+        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+    }
+
+    private var exercisesCountLabel: String? {
+        guard !log.exercises.isEmpty else {
+            return nil
+        }
+        return "\(log.exercises.count) exercises"
     }
     
     private var dateTimeString: String {
@@ -1481,9 +1512,11 @@ private struct WorkoutLogDetailView: View {
                             
                             Spacer()
                             
-                            Label(exercisesCountLabel, systemImage: "list.bullet")
-                                .font(.caption)
-                                .foregroundColor(.gray)
+                            if let label = exercisesCountLabel {
+                                Label(label, systemImage: "list.bullet")
+                                    .font(.caption)
+                                    .foregroundColor(.gray)
+                            }
                         }
                     }
                     .padding(.horizontal, 16)
@@ -1521,12 +1554,16 @@ private struct WorkoutLogDetailView: View {
                     Divider()
                     
                     // Exercises, rests, and loop headers in original workout order
-                    ForEach(Array(orderedItems.enumerated()), id: \.offset) { _, item in
+                    let snapshot = orderedItems
+                    ForEach(Array(snapshot.enumerated()), id: \.offset) { pos, item in
                         switch item {
                         case .loopHeader(_, let indices):
                             // Loop header: superset for 2, circuit for 3+
                             let loopLabel = indices.count == 2 ? "Loop / Superset" : "Loop / Circuit"
                             HStack(spacing: 6) {
+                                if isEditing {
+                                    reorderButtons(pos: pos, total: snapshot.count)
+                                }
                                 Image(systemName: "arrow.triangle.2.circlepath")
                                     .font(.caption)
                                     .foregroundColor(.secondary)
@@ -1543,6 +1580,9 @@ private struct WorkoutLogDetailView: View {
 
                         case .complexHeader(_, let indices):
                             HStack(spacing: 6) {
+                                if isEditing {
+                                    reorderButtons(pos: pos, total: snapshot.count)
+                                }
                                 Image(systemName: "square.stack.3d.up")
                                     .font(.caption)
                                     .foregroundColor(.secondary)
@@ -1558,10 +1598,10 @@ private struct WorkoutLogDetailView: View {
                             .padding(.top, 4)
 
                         case .exercise(let exIdx):
-                            exerciseRow(exIdx: exIdx)
+                            exerciseRow(exIdx: exIdx, pos: pos, total: snapshot.count)
 
                         case .rest(let restIdx):
-                            restRow(restIdx: restIdx)
+                            restRow(restIdx: restIdx, pos: pos, total: snapshot.count)
                         }
                     }
 
@@ -1571,7 +1611,8 @@ private struct WorkoutLogDetailView: View {
                             Spacer()
                             Button(action: {
                                 UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                                log.restPeriods.append(LoggedRest(configuredDuration: 60, actualDuration: 60))
+                                let maxOrder = (log.exercises.map(\.orderIndex) + log.restPeriods.map(\.orderIndex)).max() ?? -1
+                                log.restPeriods.append(LoggedRest(configuredDuration: 60, actualDuration: 60, orderIndex: maxOrder + 1))
                             }) {
                                 Label("Add Rest", systemImage: "plus.circle.fill")
                                     .font(.caption)
@@ -1644,11 +1685,35 @@ private struct WorkoutLogDetailView: View {
     }
 
     @ViewBuilder
-    private func exerciseRow(exIdx: Int) -> some View {
+    private func reorderButtons(pos: Int, total: Int) -> some View {
+        VStack(spacing: 0) {
+            Button(action: { moveOrderedItem(at: pos, delta: -1) }) {
+                Image(systemName: "chevron.up")
+                    .font(.system(size: 10, weight: .semibold))
+                    .foregroundColor(pos > 0 ? .secondary : .secondary.opacity(0.25))
+            }
+            .buttonStyle(.plain)
+            .disabled(pos == 0)
+            Button(action: { moveOrderedItem(at: pos, delta: 1) }) {
+                Image(systemName: "chevron.down")
+                    .font(.system(size: 10, weight: .semibold))
+                    .foregroundColor(pos < total - 1 ? .secondary : .secondary.opacity(0.25))
+            }
+            .buttonStyle(.plain)
+            .disabled(pos == total - 1)
+        }
+        .frame(width: 20)
+    }
+
+    @ViewBuilder
+    private func exerciseRow(exIdx: Int, pos: Int = 0, total: Int = 1) -> some View {
         // We need a binding to the exercise at this index
         let exercise = log.exercises[exIdx]
         VStack(alignment: .leading, spacing: 8) {
             HStack {
+                if isEditing {
+                    reorderButtons(pos: pos, total: total)
+                }
                 Text(exercise.exerciseName)
                     .font(.subheadline)
                     .fontWeight(.semibold)
@@ -1790,11 +1855,11 @@ private struct WorkoutLogDetailView: View {
                                     HStack(spacing: 4) {
                                         Image(systemName: selected ? "checkmark.circle.fill" : "circle")
                                             .font(.system(size: 11))
-                                            .foregroundColor(selected ? Color(UIColor.systemBackground) : .secondary)
-                                        Text(item.name).font(.caption).foregroundColor(selected ? Color(UIColor.systemBackground) : .secondary)
+                                            .foregroundColor(selected ? Color(UIColor.systemBackground) : .primary)
+                                        Text(item.name).font(.caption).foregroundColor(selected ? Color(UIColor.systemBackground) : .primary)
                                     }
                                     .padding(.horizontal, 8).padding(.vertical, 4)
-                                    .background(selected ? Color.primary : Color(red: 0.88, green: 0.88, blue: 0.90))
+                                    .background(selected ? Color.primary : Color.primary.opacity(0.1))
                                     .cornerRadius(12)
                                 }
                                 .buttonStyle(.plain)
@@ -1820,9 +1885,12 @@ private struct WorkoutLogDetailView: View {
     }
 
     @ViewBuilder
-    private func restRow(restIdx: Int) -> some View {
+    private func restRow(restIdx: Int, pos: Int = 0, total: Int = 1) -> some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack(spacing: 8) {
+                if isEditing {
+                    reorderButtons(pos: pos, total: total)
+                }
                 Image(systemName: "zzz")
                     .font(.caption)
                     .foregroundColor(.secondary)
@@ -1845,24 +1913,7 @@ private struct WorkoutLogDetailView: View {
             HStack(spacing: 12) {
                 if isEditing {
                     VStack(alignment: .leading, spacing: 2) {
-                        Text("Configured").font(.caption2).foregroundColor(.secondary)
-                        HStack(spacing: 2) {
-                            TextField("0", value: Binding(
-                                get: { log.restPeriods[restIdx].configuredDuration / 60 },
-                                set: { log.restPeriods[restIdx].configuredDuration = $0 * 60 + log.restPeriods[restIdx].configuredDuration % 60 }
-                            ), format: .number)
-                                .keyboardType(.numberPad).font(.caption).frame(width: 28).textFieldStyle(.roundedBorder)
-                            Text("min").font(.caption).foregroundColor(.secondary)
-                            TextField("0", value: Binding(
-                                get: { log.restPeriods[restIdx].configuredDuration % 60 },
-                                set: { log.restPeriods[restIdx].configuredDuration = log.restPeriods[restIdx].configuredDuration / 60 * 60 + min($0, 59) }
-                            ), format: .number)
-                                .keyboardType(.numberPad).font(.caption).frame(width: 28).textFieldStyle(.roundedBorder)
-                            Text("sec").font(.caption).foregroundColor(.secondary)
-                        }
-                    }
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("Rested").font(.caption2).foregroundColor(.secondary)
+                        Text("Duration").font(.caption2).foregroundColor(.secondary)
                         HStack(spacing: 2) {
                             TextField("0", value: Binding(
                                 get: { log.restPeriods[restIdx].actualDuration / 60 },

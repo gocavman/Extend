@@ -89,7 +89,6 @@ struct ExtendApp: App {
                 .environment(DashboardState.shared)
                 .environment(ModuleRegistry.shared)
                 .environment(ModuleState.shared)
-                .environment(DashboardHeaderState.shared)
                 .environment(exercisesState)
                 .environment(workoutsState)
                 .environment(generateState)

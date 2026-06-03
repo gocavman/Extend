@@ -276,33 +276,23 @@ struct MuscleStatsView: View {
 
     private var weekBuckets: [WeekBucket] {
         let ids = targetExerciseIDs
-        guard !ids.isEmpty else { return [] }
+        let muscleID = muscleGroup.id
 
         let start = timeRange.startDate
         let relevantLogs = logState.logs
             .filter { $0.completedAt >= start }
-            .filter { log in log.exercises.contains(where: { ids.contains($0.exerciseID) }) }
+            .filter { log in
+                // Regular logs: exercises targeting this muscle
+                log.exercises.contains(where: { ids.contains($0.exerciseID) }) ||
+                // VoiceTrainer logs: muscle group directly assigned to config
+                (log.logType == .voiceTrainer &&
+                 (log.primaryMuscleGroupIDs.contains(muscleID) || log.secondaryMuscleGroupIDs.contains(muscleID)))
+            }
 
-        // Group by week start (Monday)
+        guard !relevantLogs.isEmpty else { return [] }
+
+        // Group by week start (Monday), distinct log dates per week
         let calendar = Calendar(identifier: .gregorian)
-        var byWeek: [Date: (sessions: Int, volume: Double)] = [:]
-
-        for log in relevantLogs {
-            let weekday = calendar.component(.weekday, from: log.completedAt) // 1=Sun
-            let daysToMonday = (weekday == 1) ? -6 : -(weekday - 2)
-            let monday = calendar.date(byAdding: .day, value: daysToMonday, to: calendar.startOfDay(for: log.completedAt))!
-
-            let volume = log.exercises
-                .filter { ids.contains($0.exerciseID) }
-                .flatMap { $0.sets }
-                .reduce(0.0) { $0 + ($1.weight * Double($1.reps)) }
-
-            byWeek[monday, default: (0, 0.0)].sessions += 1
-            byWeek[monday, default: (0, 0.0)].volume += volume
-        }
-
-        // Also increment sessions correctly (sessions = distinct days in that week that had a workout targeting this muscle)
-        // Rebuild: distinct log dates per week
         var byWeekSessions: [Date: Set<Date>] = [:]
         var byWeekVolume: [Date: Double] = [:]
         for log in relevantLogs {
@@ -707,12 +697,16 @@ struct EquipmentStatsView: View {
         Set(linkedExercises.map { $0.id })
     }
 
-    /// Logs within the time range that contain at least one linked exercise
+    /// Logs within the time range that contain at least one linked exercise, or a VoiceTrainer log using this equipment
     private var filteredLogs: [WorkoutLog] {
         let start = timeRange.startDate
+        let equipID = equipment.id
         return logState.logs
             .filter { $0.completedAt >= start }
-            .filter { $0.exercises.contains(where: { linkedExerciseIDs.contains($0.exerciseID) }) }
+            .filter { log in
+                log.exercises.contains(where: { linkedExerciseIDs.contains($0.exerciseID) }) ||
+                (log.logType == .voiceTrainer && log.logEquipmentIDs.contains(equipID))
+            }
             .sorted { $0.completedAt < $1.completedAt }
     }
 

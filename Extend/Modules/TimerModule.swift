@@ -1003,6 +1003,7 @@ private struct ActiveTimerView: View {
         let log = WorkoutLog(
             workoutName: "\(config.type.rawValue) – \(name)",
             completedAt: Date(),
+            logType: .timer,
             exercises: [],
             notes: buildLogNotes(),
             duration: TimeInterval(totalElapsed)

@@ -290,6 +290,15 @@ private struct EquipmentHistorySheet: View {
 
     private var sessions: [SessionEntry] {
         logState.sortedLogs.compactMap { log in
+            // Include VoiceTrainer logs that list this equipment directly
+            if log.logType == .voiceTrainer && log.logEquipmentIDs.contains(equipment.id) {
+                return SessionEntry(
+                    id: log.id,
+                    date: log.completedAt,
+                    workoutName: log.workoutName,
+                    exercises: []
+                )
+            }
             // Only include exercises where the user confirmed they used this equipment
             let relevant = log.exercises.filter { $0.usedEquipmentIDs.contains(equipment.id) }
             guard !relevant.isEmpty else { return nil }

@@ -93,7 +93,7 @@ private extension Array where Element == PredefinedSet {
 // MARK: - Flow Layout
 
 /// Wraps chips left-to-right, flowing onto new lines as needed.
-private struct FlowLayout: Layout {
+struct FlowLayout: Layout {
     var spacing: CGFloat = 5
 
     func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
@@ -657,7 +657,7 @@ private struct WorkoutEditor: View {
 
     @ViewBuilder
     private var navigationContent: some View {
-        Form {
+        List {
                 Section("Workout Details") {
                     TextField("Workout Name", text: $name)
                     ZStack(alignment: .topLeading) {
@@ -731,9 +731,10 @@ private struct WorkoutEditor: View {
                         Text("No exercises added")
                             .font(.caption)
                             .foregroundColor(.secondary)
+                            .moveDisabled(true)
                     } else {
-                        ForEach(Array(workoutItems.enumerated()), id: \.element.id) { index, item in
-                            switch item {
+                        ForEach(workoutItems.indices, id: \.self) { index in
+                            switch workoutItems[index] {
                             case .exercise(let ex):
                                 EditorExerciseRow(
                                     exercise: ex,
@@ -797,12 +798,12 @@ private struct WorkoutEditor: View {
                     }
                 }
             }
-            .environment(\.editMode, $editMode)
+            .listStyle(.insetGrouped)
+            .environment(\.editMode, .constant(.active))
             .scrollContentBackground(.hidden)
             .background(Color(UIColor.systemBackground))
             .navigationTitle(title)
             .navigationBarTitleDisplayMode(.inline)
-            .tint(.primary)
             .toolbar {
                 ToolbarItemGroup(placement: .topBarLeading) {
                     Button("Cancel") { dismiss() }
@@ -1053,7 +1054,7 @@ private struct EditorExerciseRow: View {
                             .foregroundColor(isInfoExpanded ? .primary : .secondary)
                             .font(.system(size: 14))
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(.borderless)
 
                     Spacer()
 
@@ -1068,7 +1069,7 @@ private struct EditorExerciseRow: View {
                                 .foregroundColor(exercise.complexID != nil ? (exerciseComplexColor ?? .purple) : (exercise.loopID != nil ? (exerciseLoopColor ?? .green) : .secondary))
                                 .font(.system(size: 16))
                         }
-                        .buttonStyle(.plain)
+                        .buttonStyle(.borderless)
                         .sheet(isPresented: $showingGroupingSheet) {
                             ExerciseGroupingSheet(
                                 exercise: exercise,
@@ -1090,7 +1091,7 @@ private struct EditorExerciseRow: View {
                                 .foregroundColor(.primary)
                                 .font(.system(size: 16))
                         }
-                        .buttonStyle(.plain)
+                        .buttonStyle(.borderless)
 
                         // Clone
                         Button(action: {
@@ -1106,7 +1107,7 @@ private struct EditorExerciseRow: View {
                             Image(systemName: "doc.on.doc")
                                 .foregroundColor(.primary)
                         }
-                        .buttonStyle(.plain)
+                        .buttonStyle(.borderless)
 
                         // Delete
                         Button(action: {
@@ -1118,7 +1119,7 @@ private struct EditorExerciseRow: View {
                             Image(systemName: "xmark.circle.fill")
                                 .foregroundColor(.red)
                         }
-                        .buttonStyle(.plain)
+                        .buttonStyle(.borderless)
                     }
                 }
 
@@ -1169,7 +1170,7 @@ private struct EditorExerciseRow: View {
                             .background(color)
                             .cornerRadius(4)
                         }
-                        .buttonStyle(.plain)
+                        .buttonStyle(.borderless)
                     }
 
                     // Complex badge — tap to open ComplexEditorSheet
@@ -1206,7 +1207,7 @@ private struct EditorExerciseRow: View {
                             .background(color)
                             .cornerRadius(4)
                         }
-                        .buttonStyle(.plain)
+                        .buttonStyle(.borderless)
                     }
 
                     // Predefined sets summary (read-only label; pencil button opens editor)
@@ -1361,15 +1362,15 @@ private struct SetsEditorSheet: View {
                                     HStack(spacing: 4) {
                                         Image(systemName: selected ? "checkmark.circle.fill" : "circle")
                                             .font(.system(size: 11))
-                                            .foregroundColor(selected ? Color(UIColor.systemBackground) : .secondary)
+                                            .foregroundColor(selected ? Color(UIColor.systemBackground) : .primary)
                                         Text(item.name)
                                             .font(.caption)
-                                            .foregroundColor(selected ? Color(UIColor.systemBackground) : .secondary)
+                                            .foregroundColor(selected ? Color(UIColor.systemBackground) : .primary)
                                             .fixedSize()
                                     }
                                     .padding(.horizontal, 10)
                                     .padding(.vertical, 5)
-                                    .background(selected ? Color.primary : Color(uiColor: .systemGray5))
+                                    .background(selected ? Color.primary : Color.primary.opacity(0.1))
                                     .cornerRadius(12)
                                 }
                                 .buttonStyle(.plain)
@@ -1746,7 +1747,6 @@ private struct ExerciseGroupingSheet: View {
             .listStyle(.insetGrouped)
             .navigationTitle("Grouping")
             .navigationBarTitleDisplayMode(.inline)
-            .tint(.primary)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Done") { dismiss() }
@@ -1872,7 +1872,6 @@ private struct RestLoopGroupingSheet: View {
             .listStyle(.insetGrouped)
             .navigationTitle("Loop Grouping")
             .navigationBarTitleDisplayMode(.inline)
-            .tint(.primary)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Done") { dismiss() }
@@ -1982,7 +1981,7 @@ private struct EditorRestRow: View {
                             .background(color)
                             .cornerRadius(4)
                         }
-                        .buttonStyle(.plain)
+                        .buttonStyle(.borderless)
                     }
                 }
 
@@ -1997,7 +1996,7 @@ private struct EditorRestRow: View {
                         .foregroundColor(rest.loopID != nil ? (restLoopColor ?? .green) : .secondary)
                         .font(.system(size: 16))
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(.borderless)
                 .sheet(isPresented: $showingLoopMenu) {
                     RestLoopGroupingSheet(
                         rest: rest,
@@ -2015,7 +2014,7 @@ private struct EditorRestRow: View {
                     Image(systemName: "pencil")
                         .foregroundColor(.primary)
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(.borderless)
 
                 // Clone button
                 Button(action: {
@@ -2025,7 +2024,7 @@ private struct EditorRestRow: View {
                     Image(systemName: "doc.on.doc")
                         .foregroundColor(.primary)
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(.borderless)
 
                 // Delete button
                 Button(action: {
@@ -2035,7 +2034,7 @@ private struct EditorRestRow: View {
                     Image(systemName: "xmark.circle.fill")
                         .foregroundColor(.red)
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(.borderless)
             }
         }
         .padding(.vertical, 6)
@@ -2095,7 +2094,6 @@ private struct RestEditorSheet: View {
             .background(Color(UIColor.systemBackground))
             .navigationTitle("Edit Rest")
             .navigationBarTitleDisplayMode(.inline)
-            .tint(.primary)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
                     Button("Cancel") { dismiss() }
@@ -2203,7 +2201,6 @@ private struct ExercisePickerView: View {
             .scrollContentBackground(.hidden)
             .background(Color(UIColor.systemBackground))
             .navigationTitle("Add Exercise")
-            .tint(.primary)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Done") {
@@ -2772,10 +2769,7 @@ public struct StartWorkoutView: View {
             (g.primaryImageAssetName ?? "").isEmpty && (g.secondaryImageAssetName ?? "").isEmpty &&
             (g.customPrimaryImageFilename != nil || g.customSecondaryImageFilename != nil)
         }
-        // Adaptive background for muscle images: white in light mode, gray in dark mode
-        let muscleImageBg = Color(UIColor { trait in
-            trait.userInterfaceStyle == .dark ? .systemGray5 : .white
-        })
+        let muscleImageBg = Color.white
 
         // Expandable info section
         if expandedInfo {
@@ -2803,13 +2797,14 @@ public struct StartWorkoutView: View {
                                             .opacity(0.7)
                                     }
                                     Image(exFrontBase).resizable().scaledToFit()
+                                    ForEach(exFrontMasksSecondary, id: \.self) { mask in
+                                        Image(mask).resizable().scaledToFit().blendMode(.screen).opacity(0.6)
+                                    }
                                     ForEach(exFrontMasksPrimary, id: \.self) { mask in
                                         Image(mask).resizable().scaledToFit().blendMode(.screen)
                                     }
-                                    ForEach(exFrontMasksSecondary, id: \.self) { mask in
-                                        Image(mask).resizable().scaledToFit().opacity(0.8).blendMode(.screen)
-                                    }
                                 }
+                                .drawingGroup()
                                 .padding(4)
                             }
                             .frame(width: panelWidth)
@@ -2827,13 +2822,14 @@ public struct StartWorkoutView: View {
                                             .opacity(0.7)
                                     }
                                     Image(exBackBase).resizable().scaledToFit()
+                                    ForEach(exBackMasksSecondary, id: \.self) { mask in
+                                        Image(mask).resizable().scaledToFit().blendMode(.screen).opacity(0.6)
+                                    }
                                     ForEach(exBackMasksPrimary, id: \.self) { mask in
                                         Image(mask).resizable().scaledToFit().blendMode(.screen)
                                     }
-                                    ForEach(exBackMasksSecondary, id: \.self) { mask in
-                                        Image(mask).resizable().scaledToFit().opacity(0.8).blendMode(.screen)
-                                    }
                                 }
+                                .drawingGroup()
                                 .padding(4)
                             }
                             .frame(width: panelWidth)
@@ -2925,13 +2921,14 @@ public struct StartWorkoutView: View {
                                     .opacity(0.7)
                             }
                             Image(exFrontBase).resizable().scaledToFit()
+                            ForEach(exFrontMasksSecondary, id: \.self) { mask in
+                                Image(mask).resizable().scaledToFit().blendMode(.screen).opacity(0.6)
+                            }
                             ForEach(exFrontMasksPrimary, id: \.self) { mask in
                                 Image(mask).resizable().scaledToFit().blendMode(.screen)
                             }
-                            ForEach(exFrontMasksSecondary, id: \.self) { mask in
-                                Image(mask).resizable().scaledToFit().opacity(0.8).blendMode(.screen)
-                            }
                         }
+                        .drawingGroup()
                         .padding(3)
                     }
                     .frame(width: 56, height: 80)
@@ -2976,13 +2973,14 @@ public struct StartWorkoutView: View {
                                     .opacity(0.7)
                             }
                             Image(exBackBase).resizable().scaledToFit()
+                            ForEach(exBackMasksSecondary, id: \.self) { mask in
+                                Image(mask).resizable().scaledToFit().blendMode(.screen).opacity(0.6)
+                            }
                             ForEach(exBackMasksPrimary, id: \.self) { mask in
                                 Image(mask).resizable().scaledToFit().blendMode(.screen)
                             }
-                            ForEach(exBackMasksSecondary, id: \.self) { mask in
-                                Image(mask).resizable().scaledToFit().opacity(0.8).blendMode(.screen)
-                            }
                         }
+                        .drawingGroup()
                         .padding(3)
                     }
                     .frame(width: 56, height: 80)
@@ -3013,15 +3011,15 @@ public struct StartWorkoutView: View {
                             HStack(spacing: 4) {
                                 Image(systemName: selected ? "checkmark.circle.fill" : "circle")
                                     .font(.system(size: 11))
-                                    .foregroundColor(selected ? Color(UIColor.systemBackground) : .secondary)
+                                    .foregroundColor(selected ? Color(UIColor.systemBackground) : .primary)
                                 Text(item.name)
                                     .font(.caption)
-                                    .foregroundColor(selected ? Color(UIColor.systemBackground) : .secondary)
+                                    .foregroundColor(selected ? Color(UIColor.systemBackground) : .primary)
                                     .fixedSize()
                             }
                             .padding(.horizontal, 8)
                             .padding(.vertical, 4)
-                            .background(selected ? Color.primary : Color(UIColor.tertiarySystemBackground))
+                            .background(selected ? Color.primary : Color.primary.opacity(0.1))
                             .cornerRadius(12)
                         }
                         .buttonStyle(.plain)
@@ -4889,7 +4887,6 @@ private struct LoopEditorSheet: View {
             .background(Color(UIColor.systemBackground))
             .navigationTitle("Edit Loop")
             .navigationBarTitleDisplayMode(.inline)
-            .tint(.primary)
             .toolbar {
                 ToolbarItemGroup(placement: .topBarLeading) {
                     Button("Cancel") { dismiss() }
@@ -5015,7 +5012,6 @@ private struct ComplexEditorSheet: View {
             .background(Color(UIColor.systemBackground))
             .navigationTitle("Edit Complex")
             .navigationBarTitleDisplayMode(.inline)
-            .tint(.primary)
             .toolbar {
                 ToolbarItemGroup(placement: .topBarLeading) {
                     Button("Cancel") { dismiss() }
@@ -5203,7 +5199,6 @@ struct ExerciseHistorySheet: View {
             }
             .navigationTitle("History: \(exercise.name)")
             .navigationBarTitleDisplayMode(.inline)
-            .tint(.primary)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Done") { dismiss() }

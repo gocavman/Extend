@@ -44,7 +44,6 @@ private struct DashboardModuleView: View {
     @Environment(WorkoutLogState.self) var logState
     @Environment(ExercisesState.self) var exercisesState
     @Environment(MuscleGroupsState.self) var muscleGroupsState
-    @Environment(DashboardHeaderState.self) var headerState
     @Environment(WorkoutsState.self) var workoutsState
     @Environment(TimerState.self) var timerState
     @Environment(VoiceTrainerState.self) var voiceTrainerState
@@ -65,13 +64,9 @@ private struct DashboardModuleView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            if headerState.isVisible {
-                headerView
-            } else {
-                // Reserve safe area at top so tiles don't bleed under the status bar
-                Color.clear.frame(height: topNavBarHeight)
-            }
-            
+            // Reserve safe area at top so tiles don't bleed under the status bar
+            Color.clear.frame(height: topNavBarHeight)
+
             // MARK: - Tiles Content
             if dashboardState.tiles.isEmpty {
                 // Empty state
@@ -85,10 +80,8 @@ private struct DashboardModuleView: View {
         }
         .tourAnchor(.dashboardBody)
         .overlay(alignment: .topTrailing) {
-            if !headerState.isVisible {
-                floatingGearButton
-                    .tourAnchor(.settingsGear)
-            }
+            floatingGearButton
+                .tourAnchor(.settingsGear)
         }
         .alert("Blank Tile", isPresented: $showBlankAlert) {
             Button("OK", role: .cancel) {}
@@ -321,50 +314,6 @@ private struct DashboardModuleView: View {
         .padding(.top, topNavBarHeight)
     }
 
-    /// True when the user has not customized the header text color (default black).
-    private var isDefaultHeaderTextColor: Bool {
-        let c = UIColor(headerState.textColor)
-        var r: CGFloat = 0, g: CGFloat = 0, b: CGFloat = 0, a: CGFloat = 0
-        c.getRed(&r, green: &g, blue: &b, alpha: &a)
-        return abs(Double(r)) < 0.01 && abs(Double(g)) < 0.01 && abs(Double(b)) < 0.01
-    }
-
-    private var effectiveHeaderTextColor: Color {
-        isDefaultHeaderTextColor ? Color.primary : headerState.textColor
-    }
-
-    private var headerView: some View {
-        ZStack {
-            // Centered title + image
-            HStack(spacing: 20) {
-                headerImageView
-                Text(headerState.title)
-                    .font(.headline)
-                    .fontWeight(.semibold)
-                    .foregroundColor(effectiveHeaderTextColor)
-            }
-
-            // Settings gear pinned to far right
-            HStack {
-                Spacer()
-                Button(action: {
-                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                    showingSettings = true
-                }) {
-                    Image(systemName: "gearshape")
-                        .font(.system(size: 18))
-                        .foregroundColor(effectiveHeaderTextColor.opacity(0.7))
-                }
-                .buttonStyle(.plain)
-                .tourAnchor(.settingsGear)
-            }
-        }
-        .frame(height: 72)
-        .padding(.horizontal, 16)
-        .padding(.top, topNavBarHeight)
-        .background(headerBackgroundView)
-    }
-
     // Returns the height needed to clear the top safe area when no top navbar is present.
     // When a top navbar exists it already handles safe area, so no extra padding is needed.
     private var topNavBarHeight: CGFloat {
@@ -570,6 +519,17 @@ private struct DashboardModuleView: View {
 
         var counts: [String: Int] = [:]
         for log in recentLogs {
+            // For logs with directly-assigned muscle groups (e.g. VoiceTrainer), count those
+            let directMuscleIDs = log.primaryMuscleGroupIDs + log.secondaryMuscleGroupIDs
+            if !directMuscleIDs.isEmpty {
+                let names = directMuscleIDs.compactMap { id in
+                    muscleGroupsState.sortedGroups.first { $0.id == id }?.name
+                }
+                for name in names {
+                    counts[name, default: 0] += 1
+                }
+            }
+            // For exercise-based logs, look up muscle groups from each exercise definition
             for exercise in log.exercises {
                 if let sourceExercise = exercisesState.exercises.first(where: { $0.id == exercise.exerciseID }) {
                     let muscleIDs = sourceExercise.primaryMuscleGroupIDs + sourceExercise.secondaryMuscleGroupIDs
@@ -702,67 +662,6 @@ private struct DashboardModuleView: View {
         return CGPoint(x: x, y: y)
     }
 
-    private var headerImageView: some View {
-        if let data = headerState.imageData, let uiImage = UIImage(data: data) {
-            let image = Image(uiImage: uiImage)
-                .resizable()
-                .scaledToFill()
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .background(Color(UIColor.secondarySystemBackground))
-            return applyHeaderImageStyle(to: image)
-        }
-        let placeholder = Image(systemName: "dumbbell")
-            .font(.system(size: 20, weight: .semibold))
-            .foregroundColor(.primary)
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .background(Color(UIColor.secondarySystemBackground))
-        return applyHeaderImageStyle(to: placeholder)
-    }
-
-    private func applyHeaderImageStyle<V: View>(to view: V) -> AnyView {
-        let sized = view.frame(width: 64, height: 64)
-        switch headerState.imageStyle {
-        case .square:
-            return AnyView(sized)
-        case .rounded:
-            return AnyView(sized.clipShape(RoundedRectangle(cornerRadius: 12)))
-        case .circle:
-            return AnyView(sized.clipShape(Circle()))
-        }
-    }
-    
-    /// True when the user has not customized the header background (stored color matches default near-white).
-    private var isDefaultHeaderBgColor: Bool {
-        let c = UIColor(headerState.backgroundColor)
-        var r: CGFloat = 0, g: CGFloat = 0, b: CGFloat = 0, a: CGFloat = 0
-        c.getRed(&r, green: &g, blue: &b, alpha: &a)
-        return abs(Double(r) - 0.98) < 0.01 && abs(Double(g) - 0.98) < 0.01 && abs(Double(b) - 1.0) < 0.01
-    }
-
-    private var effectiveHeaderBgColor: Color {
-        isDefaultHeaderBgColor ? Color(UIColor.systemBackground) : headerState.backgroundColor
-    }
-
-    private var headerBackgroundView: some View {
-        Group {
-            if headerState.backgroundUseGradient {
-                let effectiveSecondary: Color = {
-                    let c = UIColor(headerState.backgroundGradientSecondaryColor)
-                    var r: CGFloat = 0, g: CGFloat = 0, b: CGFloat = 0, a: CGFloat = 0
-                    c.getRed(&r, green: &g, blue: &b, alpha: &a)
-                    let isDefault = abs(Double(r) - 0.96) < 0.01 && abs(Double(g) - 0.96) < 0.01 && abs(Double(b) - 0.97) < 0.01
-                    return isDefault ? Color(UIColor.secondarySystemBackground) : headerState.backgroundGradientSecondaryColor
-                }()
-                LinearGradient(
-                    colors: [effectiveHeaderBgColor, effectiveSecondary],
-                    startPoint: .leading,
-                    endPoint: .trailing
-                )
-            } else {
-                effectiveHeaderBgColor
-            }
-        }
-    }
 }
 
 // MARK: - Add Tile Sheet

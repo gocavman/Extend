@@ -104,7 +104,8 @@ public final class WorkoutsState {
                     exerciseID: ex.exerciseID,
                     loopID: newLoopID,
                     complexID: newComplexID,
-                    predefinedSets: ex.predefinedSets.map { PredefinedSet(target: $0.target, weight: $0.weight) }
+                    predefinedSets: ex.predefinedSets.map { PredefinedSet(target: $0.target, weight: $0.weight) },
+                    defaultEquipmentIDs: ex.defaultEquipmentIDs
                 ))
             case .rest(let r):
                 return .rest(RestItem(duration: r.duration))

@@ -44,7 +44,6 @@ private struct SettingsModuleView: View {
     @Environment(WorkoutsState.self) var workoutsState
     @Environment(MuscleGroupsState.self) var muscleGroupsState
     @Environment(EquipmentState.self) var equipmentState
-    @Environment(DashboardHeaderState.self) var dashboardHeaderState
     @Environment(VoiceTrainerState.self) var voiceTrainerState
     @Environment(HealthKitState.self) var healthKitState
     @Environment(ExercisesState.self) var exercisesState
@@ -63,6 +62,10 @@ private struct SettingsModuleView: View {
     @State private var isNavBarColorExpanded = false
     @State private var isDashboardSectionExpanded = false
     @State private var isMusclesSectionExpanded = false
+    @State private var isAppleHealthSectionExpanded = false
+    @State private var isWorkoutsSectionExpanded = false
+    @State private var isSystemSectionExpanded = false
+    @State private var isAboutSectionExpanded = false
     @State private var showingExportSheet = false
     @State private var showingImportPicker = false
     @State private var importResult: ImportResult? = nil
@@ -110,13 +113,18 @@ private struct SettingsModuleView: View {
 
             NavigationStack {
                 Form {
-                    // MARK: - NavBar / Dashboard / Image Set / Weight Unit Section
+                    // MARK: - Main Settings Section
                     Section {
-                        DisclosureGroup("NavBar", isExpanded: $isNavBarSectionExpanded) {
-                            NavigationLink(destination: NavBarCustomizationView()) {
-                                Text("Customize")
+                        NavigationLink(destination: HelpView()) {
+                            HStack {
+                                Text("Help Center")
+                                    .foregroundColor(.primary)
+                                Image(systemName: "questionmark.circle.fill")
+                                    .foregroundColor(.secondary)
                             }
+                        }
 
+                        DisclosureGroup("Navigation Bar(s)", isExpanded: $isNavBarSectionExpanded) {
                             DisclosureGroup("Color", isExpanded: $isNavBarColorExpanded) {
                                 ColorPicker("Background Color", selection: Binding(
                                     get: { moduleState.navBarBackgroundColor },
@@ -140,71 +148,193 @@ private struct SettingsModuleView: View {
                                     set: { moduleState.updateNavBarTextColor($0) }
                                 ))
                             }
+
+                            NavigationLink(destination: NavBarCustomizationView()) {
+                                Text("Customize")
+                            }
                         }
 
                         DisclosureGroup("Dashboard", isExpanded: $isDashboardSectionExpanded) {
                             NavigationLink(destination: DashboardCustomizationView()) {
                                 Text("Customize")
                             }
+                        }
 
-                            NavigationLink(destination: DashboardHeaderSettingsView()) {
-                                Text("Header")
+                        DisclosureGroup("Workouts", isExpanded: $isWorkoutsSectionExpanded) {
+                            VStack(alignment: .leading, spacing: 4) {
+                                HStack {
+                                    Text("Image Set")
+                                    Spacer()
+                                    Picker("", selection: Binding(
+                                        get: { muscleGroupsState.selectedBodyOption },
+                                        set: { muscleGroupsState.applyBodyOption($0) }
+                                    )) {
+                                        Text("Option 1").tag(MuscleGroupsState.BodyImageOption.male)
+                                        Text("Option 2").tag(MuscleGroupsState.BodyImageOption.female)
+                                        Text("None").tag(MuscleGroupsState.BodyImageOption.none)
+                                    }
+                                    .pickerStyle(.menu)
+                                    .tint(.primary)
+                                }
+                                Text({
+                                    switch muscleGroupsState.selectedBodyOption {
+                                    case .male:   return "Option 1: Default anatomy images used. Custom overrides are supported."
+                                    case .female: return "Option 2: Default anatomy images used. Custom overrides are supported."
+                                    case .none:   return "None: Muscle images are hidden everywhere in the app."
+                                    }
+                                }())
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            }
+
+                            Button {
+                                showingExportSheet = true
+                            } label: {
+                                HStack {
+                                    Image(systemName: "square.and.arrow.up")
+                                        .foregroundColor(.primary)
+                                    Text("Export Workouts")
+                                        .foregroundColor(.primary)
+                                    Spacer()
+                                    Text("\(workoutsState.workouts.count)")
+                                        .foregroundColor(.secondary)
+                                        .font(.subheadline)
+                                }
+                            }
+                            .disabled(workoutsState.workouts.isEmpty)
+
+                            Button {
+                                showingImportPicker = true
+                            } label: {
+                                HStack {
+                                    Image(systemName: "square.and.arrow.down")
+                                        .foregroundColor(.primary)
+                                    Text("Import Workouts")
+                                        .foregroundColor(.primary)
+                                }
                             }
                         }
 
-                        DisclosureGroup("Image Set", isExpanded: $isMusclesSectionExpanded) {
+                        DisclosureGroup("System Preferences", isExpanded: $isSystemSectionExpanded) {
                             HStack {
-                                Text("Muscles")
+                                Text("Theme")
                                 Spacer()
-                                Picker("", selection: Binding(
-                                    get: { muscleGroupsState.selectedBodyOption },
-                                    set: { muscleGroupsState.applyBodyOption($0) }
-                                )) {
-                                    Text("Option 1").tag(MuscleGroupsState.BodyImageOption.male)
-                                    Text("Option 2").tag(MuscleGroupsState.BodyImageOption.female)
-                                    Text("None").tag(MuscleGroupsState.BodyImageOption.none)
+                                Picker("", selection: $appColorScheme) {
+                                    Text("Light").tag("light")
+                                    Text("Dark").tag("dark")
                                 }
-                                .pickerStyle(.menu)
-                                .tint(.primary)
+                                .pickerStyle(.segmented)
+                                .frame(width: 120)
                             }
-                            Text({
-                                switch muscleGroupsState.selectedBodyOption {
-                                case .male:   return "Option 1: Default images are used for all muscles. Open a muscle in the Muscles section to upload a custom override."
-                                case .female: return "Option 2: Default images are used for all muscles. Open a muscle in the Muscles section to upload a custom override."
-                                case .none:   return "None: Muscle images are hidden everywhere in the app."
+
+                            HStack {
+                                Text("Weight Unit")
+                                Spacer()
+                                Picker("", selection: $weightUnit) {
+                                    Text("lbs").tag("lbs")
+                                    Text("kg").tag("kg")
                                 }
-                            }())
-                                .font(.caption)
-                                .foregroundColor(.secondary)
-                        }
-
-                        HStack {
-                            Text("Theme")
-                            Spacer()
-                            Picker("", selection: $appColorScheme) {
-                                Text("Light").tag("light")
-                                Text("Dark").tag("dark")
+                                .pickerStyle(.segmented)
+                                .frame(width: 120)
                             }
-                            .pickerStyle(.segmented)
-                            .frame(width: 120)
-                        }
 
-                        HStack {
-                            Text("Weight Unit")
-                            Spacer()
-                            Picker("", selection: $weightUnit) {
-                                Text("lbs").tag("lbs")
-                                Text("kg").tag("kg")
+                            DisclosureGroup("Apple Health", isExpanded: $isAppleHealthSectionExpanded) {
+                                Toggle("Export Workouts to Health", isOn: Binding(
+                                    get: { healthKitState.exportStrengthWorkouts },
+                                    set: { healthKitState.exportStrengthWorkouts = $0 }
+                                ))
+
+                                NavigationLink("Import Activities") {
+                                    ImportActivitiesView()
+                                        .environment(healthKitState)
+                                }
+
+                                if let lastDate = healthKitState.lastImportDate {
+                                    HStack {
+                                        Text("Last Synced")
+                                        Spacer()
+                                        Text(lastDate, style: .relative)
+                                            .foregroundColor(.secondary)
+                                            .font(.subheadline)
+                                    }
+                                }
+
+                                Button {
+                                    isSyncingHealthKit = true
+                                    Task {
+                                        await WorkoutLogState.shared.importFromHealthKit()
+                                        await WorkoutLogState.shared.exportPendingLogsToHealthKit()
+                                        isSyncingHealthKit = false
+                                    }
+                                } label: {
+                                    HStack {
+                                        Text(isSyncingHealthKit ? "Syncing…" : "Sync Now")
+                                            .foregroundColor(.primary)
+                                        Spacer()
+                                        if isSyncingHealthKit {
+                                            ProgressView()
+                                        }
+                                    }
+                                }
+                                .disabled(isSyncingHealthKit || (!healthKitState.anyImportEnabled && !healthKitState.exportStrengthWorkouts))
                             }
-                            .pickerStyle(.segmented)
-                            .frame(width: 120)
+
+                            VStack(alignment: .leading, spacing: 4) {
+                                Toggle("Keep Screen On During Sessions", isOn: $keepScreenOnDuringSession)
+                                Text("Prevents the screen from locking during active timers, workouts, and voice trainer sessions. Uses more battery.")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            }
+
+                            VStack(alignment: .leading, spacing: 4) {
+                                Button(role: .destructive) {
+                                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                                    showingResetAlert = true
+                                } label: {
+                                    Text("Reset App")
+                                }
+                                Text("Clears all data and customizations — logs, workouts, exercises, muscles, equipment, timers, voice trainer configs, and settings. Cannot be undone.")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            }
                         }
 
-                        VStack(alignment: .leading, spacing: 4) {
-                            Toggle("Keep Screen On During Sessions", isOn: $keepScreenOnDuringSession)
-                            Text("Prevents the screen from locking during active timers, workouts, and voice trainer sessions. Uses more battery.")
-                                .font(.caption)
-                                .foregroundColor(.secondary)
+                        DisclosureGroup("About", isExpanded: $isAboutSectionExpanded) {
+                            HStack {
+                                Text("App Version")
+                                Spacer()
+                                Text(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "—")
+                                    .foregroundColor(.gray)
+                            }
+
+                            HStack {
+                                Text("Build")
+                                Spacer()
+                                Text(Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "—")
+                                    .foregroundColor(.gray)
+                            }
+
+                            Link(destination: URL(string: "https://www.gocavman.com")!) {
+                                HStack {
+                                    Text("Developer Website")
+                                        .foregroundColor(.primary)
+                                    Spacer()
+                                    Image(systemName: "arrow.up.right")
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                }
+                            }
+
+                            Link(destination: URL(string: "https://www.gocavman.com/privacy")!) {
+                                HStack {
+                                    Text("Privacy Policy")
+                                        .foregroundColor(.primary)
+                                    Spacer()
+                                    Image(systemName: "arrow.up.right")
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                }
+                            }
                         }
                     }
 
@@ -233,117 +363,6 @@ private struct SettingsModuleView: View {
                                     .font(.caption)
                                     .foregroundColor(.secondary)
                             }
-                        }
-                    }
-
-                    // MARK: - Help Section
-                    Section("Help") {
-                        NavigationLink(destination: HelpView()) {
-                            HStack {
-                                Image(systemName: "questionmark.circle.fill")
-                                    .foregroundColor(.blue)
-                                Text("Help & User Guide")
-                                    .foregroundColor(.primary)
-                            }
-                        }
-                    }
-
-                    // MARK: - Workouts Section
-                    Section("Workouts") {
-                        Button {
-                            showingExportSheet = true
-                        } label: {
-                            HStack {
-                                Image(systemName: "square.and.arrow.up")
-                                    .foregroundColor(.primary)
-                                Text("Export Workouts")
-                                    .foregroundColor(.primary)
-                                Spacer()
-                                Text("\(workoutsState.workouts.count)")
-                                    .foregroundColor(.secondary)
-                                    .font(.subheadline)
-                            }
-                        }
-                        .disabled(workoutsState.workouts.isEmpty)
-
-                        Button {
-                            showingImportPicker = true
-                        } label: {
-                            HStack {
-                                Image(systemName: "square.and.arrow.down")
-                                    .foregroundColor(.primary)
-                                Text("Import Workouts")
-                                    .foregroundColor(.primary)
-                            }
-                        }
-                    }
-
-                    // MARK: - Apple Health Section
-                    Section("Apple Health") {
-                        Toggle("Export Workouts to Health", isOn: Binding(
-                            get: { healthKitState.exportStrengthWorkouts },
-                            set: { healthKitState.exportStrengthWorkouts = $0 }
-                        ))
-
-                        NavigationLink("Import Activities") {
-                            ImportActivitiesView()
-                                .environment(healthKitState)
-                        }
-
-                        if let lastDate = healthKitState.lastImportDate {
-                            HStack {
-                                Text("Last Synced")
-                                Spacer()
-                                Text(lastDate, style: .relative)
-                                    .foregroundColor(.secondary)
-                                    .font(.subheadline)
-                            }
-                        }
-
-                        Button {
-                            isSyncingHealthKit = true
-                            Task {
-                                await WorkoutLogState.shared.importFromHealthKit()
-                                await WorkoutLogState.shared.exportPendingLogsToHealthKit()
-                                isSyncingHealthKit = false
-                            }
-                        } label: {
-                            HStack {
-                                Text(isSyncingHealthKit ? "Syncing…" : "Sync Now")
-                                    .foregroundColor(.primary)
-                                Spacer()
-                                if isSyncingHealthKit {
-                                    ProgressView()
-                                }
-                            }
-                        }
-                        .disabled(isSyncingHealthKit || (!healthKitState.anyImportEnabled && !healthKitState.exportStrengthWorkouts))
-                    }
-
-                    // MARK: - Reset Section
-                    Section("Reset") {
-                        Button(role: .destructive) {
-                            UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                            showingResetAlert = true
-                        } label: {
-                            Text("Reset App")
-                        }
-                    }
-
-                    // MARK: - About Section
-                    Section("About") {
-                        HStack {
-                            Text("App Version")
-                            Spacer()
-                            Text("1.0.0")
-                                .foregroundColor(.gray)
-                        }
-
-                        HStack {
-                            Text("Build")
-                            Spacer()
-                            Text("1")
-                                .foregroundColor(.gray)
                         }
                     }
                 }
@@ -444,7 +463,6 @@ private struct SettingsModuleView: View {
 
         // Reset data
         dashboardState.resetTiles()
-        dashboardHeaderState.resetDefaults()
         muscleGroupsState.resetGroups()
         muscleGroupsState.applyBodyOption(.male)
         equipmentState.resetItems()
@@ -1936,120 +1954,6 @@ private struct DashboardEditTileSheet: View {
                     }
                     .disabled(!isBlankTile && title.isEmpty)
                     .fontWeight(.semibold)
-                }
-            }
-        }
-    }
-}
-
-// MARK: - Dashboard Header Settings View
-
-@available(iOS 16.0, *)
-private struct DashboardHeaderSettingsView: View {
-    @Environment(DashboardHeaderState.self) var dashboardHeaderState
-    
-    @State private var selectedHeaderImage: PhotosPickerItem? = nil
-    @State private var showingClearHeaderImageAlert = false
-    
-    var body: some View {
-        Form {
-            Section {
-                Toggle("Show Header", isOn: Binding(
-                    get: { dashboardHeaderState.isVisible },
-                    set: { dashboardHeaderState.updateIsVisible($0) }
-                ))
-            } footer: {
-                Text("When hidden, the settings gear remains visible in the top-right corner.")
-                    .font(.caption)
-            }
-
-            Section("Title") {
-                TextField(
-                    "Title",
-                    text: Binding(
-                        get: { dashboardHeaderState.title },
-                        set: { dashboardHeaderState.updateTitle($0) }
-                    )
-                )
-            }
-            
-            Section("Image") {
-                Picker("Image Style", selection: Binding(
-                    get: { dashboardHeaderState.imageStyle },
-                    set: { dashboardHeaderState.updateImageStyle($0) }
-                )) {
-                    ForEach(HeaderImageStyle.allCases, id: \.self) { style in
-                        Text(style.displayName).tag(style)
-                    }
-                }
-                
-                HStack {
-                    PhotosPicker(selection: $selectedHeaderImage, matching: .images) {
-                        HStack {
-                            Text("Choose Image")
-                            Spacer()
-                            Image(systemName: "photo")
-                                .foregroundColor(.gray)
-                        }
-                    }
-
-                    if dashboardHeaderState.imageData != nil {
-                        Button(action: {
-                            UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                            showingClearHeaderImageAlert = true
-                        }) {
-                            Image(systemName: "xmark.circle.fill")
-                                .foregroundColor(.primary)
-                        }
-                        .buttonStyle(.plain)
-                    }
-                }
-            }
-
-            Section("Background") {
-                ColorPicker("Background Color", selection: Binding(
-                    get: { dashboardHeaderState.backgroundColor },
-                    set: { dashboardHeaderState.updateBackgroundColor($0) }
-                ))
-
-                Toggle("Use Gradient", isOn: Binding(
-                    get: { dashboardHeaderState.backgroundUseGradient },
-                    set: { dashboardHeaderState.updateBackgroundUseGradient($0) }
-                ))
-
-                if dashboardHeaderState.backgroundUseGradient {
-                    ColorPicker("Gradient Secondary", selection: Binding(
-                        get: { dashboardHeaderState.backgroundGradientSecondaryColor },
-                        set: { dashboardHeaderState.updateBackgroundGradientSecondaryColor($0) }
-                    ))
-                }
-            }
-            
-            Section("Text") {
-                ColorPicker("Text Color", selection: Binding(
-                    get: { dashboardHeaderState.textColor },
-                    set: { dashboardHeaderState.updateTextColor($0) }
-                ))
-            }
-        }
-        .scrollContentBackground(.hidden)
-        .background(Color(UIColor.systemBackground))
-        .navigationTitle("Header")
-        .navigationBarTitleDisplayMode(.inline)
-        .alert("Remove dashboard image?", isPresented: $showingClearHeaderImageAlert) {
-            Button("Cancel", role: .cancel) {}
-            Button("Remove", role: .destructive) {
-                UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-                dashboardHeaderState.updateImageData(nil)
-            }
-        } message: {
-            Text("This will remove the custom dashboard header image.")
-        }
-        .onChange(of: selectedHeaderImage) { _, newItem in
-            guard let newItem else { return }
-            Task {
-                if let data = try? await newItem.loadTransferable(type: Data.self) {
-                    dashboardHeaderState.updateImageData(data)
                 }
             }
         }

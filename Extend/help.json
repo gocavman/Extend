@@ -50,16 +50,12 @@
         "body": "Chooses the built-in anatomy images used in workout and muscle views — Option 1, Option 2, or None. Individual muscles can also have custom images overriding this."
       },
       {
-        "heading": "Customize NavBar",
+        "heading": "Customize Navigation Bar(s)",
         "body": "Add, remove, and reorder modules across the top and bottom navigation bars. Each bar is configured independently. Change color for more pizazz."
       },
       {
         "heading": "Customize Dashboard",
         "body": "Add, remove, resize, and reorder tiles on your Dashboard.\n\nTile types:\n• Module Shortcut — opens a module.\n• Stat Card — shows a live stat.\n• Shortcut — launches a specific workout, timer, voice trainer, or exercise.\n• Blank — fill in space with animated emoticon.\n\nStat cards available: Total Workouts, Day Streaks, Longest Streak, Total Time, Favorite Exercise, Favorite Day, Workout Frequency (14 days), Muscle Group Distribution (7 days), Volume This Week, Rest Days (14 days), Personal Record, 1RM Leaderboard.\n\nEach tile supports: custom title, icon, size (small/medium/large), accent color and placement (none/left/top/right/bottom), and optional background tint. Click the gear icon to access these configuration options."
-      },
-      {
-        "heading": "Dashboard Header",
-        "body": "Optional banner at the top of the Dashboard. Toggle on or off. Customizable background color, gradient, custom image (from your photo library), and text color."
       },
       {
         "heading": "Export Workouts",
