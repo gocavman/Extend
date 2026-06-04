@@ -5081,10 +5081,13 @@ struct ExerciseHistorySheet: View {
 
     let exercise: Exercise
     let logState: WorkoutLogState
+    @State private var timeRange: StatsTimeRange = .oneMonth
 
     private var history: [(date: Date, sets: [LoggedSet], notes: String, activeSeconds: Int)] {
-        logState.sortedLogs.compactMap { log in
-            guard let ex = log.exercises.first(where: { $0.exerciseID == exercise.id }),
+        let start = timeRange.startDate
+        return logState.sortedLogs.compactMap { log in
+            guard log.completedAt >= start,
+                  let ex = log.exercises.first(where: { $0.exerciseID == exercise.id }),
                   !ex.sets.isEmpty else { return nil }
             return (date: log.completedAt, sets: ex.sets, notes: ex.notes, activeSeconds: ex.activeSeconds)
         }
@@ -5100,24 +5103,34 @@ struct ExerciseHistorySheet: View {
 
     var body: some View {
         NavigationStack {
-            Group {
-                if history.isEmpty {
-                    VStack(spacing: 12) {
-                        Image(systemName: "clock.arrow.circlepath")
-                            .font(.system(size: 40, weight: .light))
-                            .foregroundColor(.secondary)
-                        Text("No History")
-                            .font(.headline)
-                            .foregroundColor(.secondary)
-                        Text("Complete a workout with this exercise to see history here.")
-                            .font(.subheadline)
-                            .foregroundColor(.secondary)
-                            .multilineTextAlignment(.center)
-                            .padding(.horizontal, 32)
+            VStack(spacing: 0) {
+                Picker("Time Range", selection: $timeRange) {
+                    ForEach(StatsTimeRange.allCases, id: \.self) {
+                        Text($0.rawValue).tag($0)
                     }
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                } else {
-                    List {
+                }
+                .pickerStyle(.segmented)
+                .padding(.horizontal, 16)
+                .padding(.vertical, 10)
+
+                Group {
+                    if history.isEmpty {
+                        VStack(spacing: 12) {
+                            Image(systemName: "clock.arrow.circlepath")
+                                .font(.system(size: 40, weight: .light))
+                                .foregroundColor(.secondary)
+                            Text("No History")
+                                .font(.headline)
+                                .foregroundColor(.secondary)
+                            Text("Complete a workout with this exercise to see history here.")
+                                .font(.subheadline)
+                                .foregroundColor(.secondary)
+                                .multilineTextAlignment(.center)
+                                .padding(.horizontal, 32)
+                        }
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    } else {
+                        List {
                         // 1RM summary header
                         if let rm = best1RM {
                             HStack(spacing: 12) {
@@ -5196,6 +5209,7 @@ struct ExerciseHistorySheet: View {
                     }
                     .listStyle(.plain)
                 }
+            }
             }
             .navigationTitle("History: \(exercise.name)")
             .navigationBarTitleDisplayMode(.inline)

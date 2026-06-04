@@ -971,9 +971,11 @@ struct WorkoutHistorySheet: View {
     @Environment(\.dismiss) var dismiss
     let workout: Workout
     let logState: WorkoutLogState
+    @State private var timeRange: StatsTimeRange = .oneMonth
 
     private var history: [WorkoutLog] {
-        logState.sortedLogs.filter { $0.workoutName == workout.name }
+        let start = timeRange.startDate
+        return logState.sortedLogs.filter { $0.workoutName == workout.name && $0.completedAt >= start }
     }
 
     private func formatDuration(_ seconds: TimeInterval) -> String {
@@ -987,25 +989,35 @@ struct WorkoutHistorySheet: View {
 
     var body: some View {
         NavigationStack {
-            Group {
-                if history.isEmpty {
-                    VStack(spacing: 12) {
-                        Image(systemName: "clock.arrow.circlepath")
-                            .font(.system(size: 40, weight: .light))
-                            .foregroundColor(.secondary)
-                        Text("No History")
-                            .font(.headline)
-                            .foregroundColor(.secondary)
-                        Text("Complete this workout to see history here.")
-                            .font(.subheadline)
-                            .foregroundColor(.secondary)
-                            .multilineTextAlignment(.center)
-                            .padding(.horizontal, 32)
+            VStack(spacing: 0) {
+                Picker("Time Range", selection: $timeRange) {
+                    ForEach(StatsTimeRange.allCases, id: \.self) {
+                        Text($0.rawValue).tag($0)
                     }
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                } else {
-                    List {
-                        ForEach(history) { log in
+                }
+                .pickerStyle(.segmented)
+                .padding(.horizontal, 16)
+                .padding(.vertical, 10)
+
+                Group {
+                    if history.isEmpty {
+                        VStack(spacing: 12) {
+                            Image(systemName: "clock.arrow.circlepath")
+                                .font(.system(size: 40, weight: .light))
+                                .foregroundColor(.secondary)
+                            Text("No History")
+                                .font(.headline)
+                                .foregroundColor(.secondary)
+                            Text("Complete this workout to see history here.")
+                                .font(.subheadline)
+                                .foregroundColor(.secondary)
+                                .multilineTextAlignment(.center)
+                                .padding(.horizontal, 32)
+                        }
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    } else {
+                        List {
+                            ForEach(history) { log in
                             VStack(alignment: .leading, spacing: 8) {
                                 HStack(spacing: 6) {
                                     Text(log.completedAt, style: .date)
@@ -1051,6 +1063,7 @@ struct WorkoutHistorySheet: View {
                     }
                     .listStyle(.plain)
                 }
+            }
             }
             .navigationTitle(workout.name)
             .navigationBarTitleDisplayMode(.inline)
@@ -1233,9 +1246,11 @@ struct TimerHistorySheet: View {
     @Environment(\.dismiss) var dismiss
     let config: TimerConfig
     let logState: WorkoutLogState
+    @State private var timeRange: StatsTimeRange = .oneMonth
 
     private var history: [WorkoutLog] {
-        logState.sortedLogs.filter { $0.workoutName.hasSuffix("– \(config.name)") && !$0.workoutName.hasPrefix("Trainer") }
+        let start = timeRange.startDate
+        return logState.sortedLogs.filter { $0.workoutName.hasSuffix("– \(config.name)") && !$0.workoutName.hasPrefix("Trainer") && $0.completedAt >= start }
     }
 
     private func formatDuration(_ seconds: TimeInterval) -> String {
@@ -1247,20 +1262,30 @@ struct TimerHistorySheet: View {
 
     var body: some View {
         NavigationStack {
-            Group {
-                if history.isEmpty {
-                    VStack(spacing: 12) {
-                        Image(systemName: "clock.arrow.circlepath")
-                            .font(.system(size: 40, weight: .light)).foregroundColor(.secondary)
-                        Text("No History").font(.headline).foregroundColor(.secondary)
-                        Text("Complete this timer to see history here.")
-                            .font(.subheadline).foregroundColor(.secondary)
-                            .multilineTextAlignment(.center).padding(.horizontal, 32)
+            VStack(spacing: 0) {
+                Picker("Time Range", selection: $timeRange) {
+                    ForEach(StatsTimeRange.allCases, id: \.self) {
+                        Text($0.rawValue).tag($0)
                     }
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                } else {
-                    List {
-                        ForEach(history) { log in
+                }
+                .pickerStyle(.segmented)
+                .padding(.horizontal, 16)
+                .padding(.vertical, 10)
+
+                Group {
+                    if history.isEmpty {
+                        VStack(spacing: 12) {
+                            Image(systemName: "clock.arrow.circlepath")
+                                .font(.system(size: 40, weight: .light)).foregroundColor(.secondary)
+                            Text("No History").font(.headline).foregroundColor(.secondary)
+                            Text("Complete this timer to see history here.")
+                                .font(.subheadline).foregroundColor(.secondary)
+                                .multilineTextAlignment(.center).padding(.horizontal, 32)
+                        }
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    } else {
+                        List {
+                            ForEach(history) { log in
                             HStack(spacing: 6) {
                                 Text(log.completedAt, style: .date)
                                     .font(.subheadline).fontWeight(.semibold)
@@ -1277,6 +1302,7 @@ struct TimerHistorySheet: View {
                     }
                     .listStyle(.plain)
                 }
+            }
             }
             .navigationTitle(config.name)
             .navigationBarTitleDisplayMode(.inline)
@@ -1403,9 +1429,11 @@ struct VoiceTrainerHistorySheet: View {
     @Environment(\.dismiss) var dismiss
     let config: VoiceTrainerConfig
     let logState: WorkoutLogState
+    @State private var timeRange: StatsTimeRange = .oneMonth
 
     private var history: [WorkoutLog] {
-        logState.sortedLogs.filter { $0.workoutName == "Trainer – \(config.name)" }
+        let start = timeRange.startDate
+        return logState.sortedLogs.filter { $0.workoutName == "Trainer – \(config.name)" && $0.completedAt >= start }
     }
 
     private func formatDuration(_ seconds: TimeInterval) -> String {
@@ -1417,35 +1445,46 @@ struct VoiceTrainerHistorySheet: View {
 
     var body: some View {
         NavigationStack {
-            Group {
-                if history.isEmpty {
-                    VStack(spacing: 12) {
-                        Image(systemName: "clock.arrow.circlepath")
-                            .font(.system(size: 40, weight: .light)).foregroundColor(.secondary)
-                        Text("No History").font(.headline).foregroundColor(.secondary)
-                        Text("Complete a session with this trainer to see history here.")
-                            .font(.subheadline).foregroundColor(.secondary)
-                            .multilineTextAlignment(.center).padding(.horizontal, 32)
+            VStack(spacing: 0) {
+                Picker("Time Range", selection: $timeRange) {
+                    ForEach(StatsTimeRange.allCases, id: \.self) {
+                        Text($0.rawValue).tag($0)
                     }
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                } else {
-                    List {
-                        ForEach(history) { log in
-                            HStack(spacing: 6) {
-                                Text(log.completedAt, style: .date)
-                                    .font(.subheadline).fontWeight(.semibold)
-                                Text(log.completedAt, style: .time)
-                                    .font(.caption).foregroundColor(.secondary)
-                                Spacer()
-                                if log.duration > 0 {
-                                    Label(formatDuration(log.duration), systemImage: "clock")
-                                        .font(.caption).foregroundColor(.secondary)
-                                }
-                            }
-                            .padding(.vertical, 4)
+                }
+                .pickerStyle(.segmented)
+                .padding(.horizontal, 16)
+                .padding(.vertical, 10)
+
+                Group {
+                    if history.isEmpty {
+                        VStack(spacing: 12) {
+                            Image(systemName: "clock.arrow.circlepath")
+                                .font(.system(size: 40, weight: .light)).foregroundColor(.secondary)
+                            Text("No History").font(.headline).foregroundColor(.secondary)
+                            Text("Complete a session with this trainer to see history here.")
+                                .font(.subheadline).foregroundColor(.secondary)
+                                .multilineTextAlignment(.center).padding(.horizontal, 32)
                         }
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    } else {
+                        List {
+                            ForEach(history) { log in
+                                HStack(spacing: 6) {
+                                    Text(log.completedAt, style: .date)
+                                        .font(.subheadline).fontWeight(.semibold)
+                                    Text(log.completedAt, style: .time)
+                                        .font(.caption).foregroundColor(.secondary)
+                                    Spacer()
+                                    if log.duration > 0 {
+                                        Label(formatDuration(log.duration), systemImage: "clock")
+                                            .font(.caption).foregroundColor(.secondary)
+                                    }
+                                }
+                                .padding(.vertical, 4)
+                            }
+                        }
+                        .listStyle(.plain)
                     }
-                    .listStyle(.plain)
                 }
             }
             .navigationTitle(config.name)

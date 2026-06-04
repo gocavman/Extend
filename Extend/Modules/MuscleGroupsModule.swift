@@ -574,6 +574,7 @@ private struct MuscleGroupHistorySheet: View {
     let group: MuscleGroup
     let logState: WorkoutLogState
     let exercisesState: ExercisesState
+    @State private var timeRange: StatsTimeRange = .oneMonth
 
     // Exercise IDs that target this muscle (primary or secondary)
     private var targetExerciseIDs: Set<UUID> {
@@ -595,7 +596,8 @@ private struct MuscleGroupHistorySheet: View {
 
     private var sessions: [SessionEntry] {
         let ids = targetExerciseIDs
-        return logState.sortedLogs.compactMap { log in
+        let start = timeRange.startDate
+        return logState.sortedLogs.filter { $0.completedAt >= start }.compactMap { log in
             // Include VoiceTrainer logs that target this muscle group directly
             if log.logType == .voiceTrainer &&
                (log.primaryMuscleGroupIDs.contains(group.id) || log.secondaryMuscleGroupIDs.contains(group.id)) {
@@ -620,24 +622,34 @@ private struct MuscleGroupHistorySheet: View {
 
     var body: some View {
         NavigationStack {
-            Group {
-                if sessions.isEmpty {
-                    VStack(spacing: 12) {
-                        Image(systemName: "clock.arrow.circlepath")
-                            .font(.system(size: 40, weight: .light))
-                            .foregroundColor(.secondary)
-                        Text("No History")
-                            .font(.headline)
-                            .foregroundColor(.secondary)
-                        Text("Complete workouts with exercises targeting this muscle to see history here.")
-                            .font(.subheadline)
-                            .foregroundColor(.secondary)
-                            .multilineTextAlignment(.center)
-                            .padding(.horizontal, 32)
+            VStack(spacing: 0) {
+                Picker("Time Range", selection: $timeRange) {
+                    ForEach(StatsTimeRange.allCases, id: \.self) {
+                        Text($0.rawValue).tag($0)
                     }
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                } else {
-                    List {
+                }
+                .pickerStyle(.segmented)
+                .padding(.horizontal, 16)
+                .padding(.vertical, 10)
+
+                Group {
+                    if sessions.isEmpty {
+                        VStack(spacing: 12) {
+                            Image(systemName: "clock.arrow.circlepath")
+                                .font(.system(size: 40, weight: .light))
+                                .foregroundColor(.secondary)
+                            Text("No History")
+                                .font(.headline)
+                                .foregroundColor(.secondary)
+                            Text("Complete workouts with exercises targeting this muscle to see history here.")
+                                .font(.subheadline)
+                                .foregroundColor(.secondary)
+                                .multilineTextAlignment(.center)
+                                .padding(.horizontal, 32)
+                        }
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    } else {
+                        List {
                         ForEach(sessions) { session in
                             VStack(alignment: .leading, spacing: 8) {
                                 HStack(spacing: 6) {
@@ -682,6 +694,7 @@ private struct MuscleGroupHistorySheet: View {
                     }
                     .listStyle(.plain)
                 }
+            }
             }
             .navigationTitle("History: \(group.name)")
             .navigationBarTitleDisplayMode(.inline)

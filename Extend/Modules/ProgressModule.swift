@@ -1775,6 +1775,7 @@ private struct WorkoutLogDetailView: View {
                             ), format: .number)
                                 .keyboardType(.decimalPad).font(.caption).frame(width: 50).textFieldStyle(.roundedBorder)
                             Text(weightUnit).font(.caption).foregroundColor(.gray)
+                            Spacer()
                             HStack(spacing: 2) {
                                 Image(systemName: "timer").font(.caption2).foregroundColor(.secondary)
                                 TextField("0", value: Binding(
@@ -1806,13 +1807,13 @@ private struct WorkoutLogDetailView: View {
                                 .font(.caption)
                                 .foregroundColor(.gray)
                             Spacer()
+                            Text("\(run.set.reps) reps").font(.caption)
+                            Text("×").font(.caption).foregroundColor(.gray)
+                            Text(String(format: "%.1f \(weightUnit)", run.set.weight)).font(.caption)
                             if hasTimedSets {
                                 Text(run.set.timedSeconds > 0 ? formatLogTime(run.set.timedSeconds) : "—")
                                     .font(.caption).foregroundColor(.secondary).frame(width: 64, alignment: .trailing)
                             }
-                            Text("\(run.set.reps) reps").font(.caption)
-                            Text("×").font(.caption).foregroundColor(.gray)
-                            Text(String(format: "%.1f \(weightUnit)", run.set.weight)).font(.caption)
                         }
                     }
                 }
