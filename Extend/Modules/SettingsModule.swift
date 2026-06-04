@@ -596,7 +596,7 @@ private struct SettingsModuleView: View {
         if !workouts.isEmpty && !exercises.isEmpty {
             for i in 0..<40 {
                 let workout = workouts.randomElement()!
-                let date = randomHour(randomDaysAgo(90))
+                let date = randomHour(randomDaysAgo(190))
                 let duration = Double(Int.random(in: 20...75) * 60)
 
                 // Pick 2-5 random exercises

@@ -473,6 +473,8 @@ struct BarChartView: View {
     let barColor: Color
     var labelMode: BarLabelMode = .date
 
+    @State private var selectedIndex: Int? = nil
+
     private var displayPoints: [(Date, Double)] {
         if points.count <= 20 { return points }
         let step = points.count / 20
@@ -490,7 +492,6 @@ struct BarChartView: View {
                 let totalWidth  = geo.size.width
                 let totalHeight = geo.size.height
                 let labelHeight: CGFloat = 14
-                // The chart area sits above the label strip — baseline is exact pixel
                 let baseline    = totalHeight - labelHeight
                 let chartHeight = baseline
                 let barSpacing: CGFloat = count > 12 ? 2 : 4
@@ -509,25 +510,27 @@ struct BarChartView: View {
                             ctx.stroke(line, with: .color(Color(uiColor: .systemGray5)), lineWidth: 1)
                         }
 
-                        // Bars
+                        // Bars — selected bar renders at full opacity, others dim slightly
                         for i in fractions.indices {
                             let barH  = fractions[i] * chartHeight
                             let barX  = CGFloat(i) * (barWidth + barSpacing)
-                            let barY  = baseline - barH          // top-left corner of bar
+                            let barY  = baseline - barH
                             let rect  = CGRect(x: barX, y: barY, width: barWidth, height: barH)
                             let rr    = Path(roundedRect: rect, cornerRadius: 3)
-                            ctx.fill(rr, with: .color(barColor.opacity(0.85)))
+                            let isSelected = selectedIndex == i
+                            let hasSelection = selectedIndex != nil
+                            let opacity: Double = hasSelection ? (isSelected ? 1.0 : 0.35) : 0.85
+                            ctx.fill(rr, with: .color(barColor.opacity(opacity)))
                         }
                     }
                     .frame(width: totalWidth, height: totalHeight)
 
-                    // Value labels — drawn as SwiftUI Text so they scale with Dynamic Type
-                    // Positioned absolutely inside the bar using known bar geometry
+                    // Value labels inside bars (only when bar is wide/tall enough)
                     ForEach(displayPoints.indices, id: \.self) { i in
                         let val    = displayPoints[i].1
                         let barH   = fractions[i] * chartHeight
                         let barX   = CGFloat(i) * (barWidth + barSpacing)
-                        let showValue = barWidth >= 18 && barH >= 22
+                        let showValue = barWidth >= 18 && barH >= 22 && selectedIndex == nil
                         if showValue {
                             Text(formatBarValue(val))
                                 .font(.system(size: min(barWidth * 0.42, 13), weight: .semibold))
@@ -535,7 +538,6 @@ struct BarChartView: View {
                                 .lineLimit(1)
                                 .minimumScaleFactor(0.6)
                                 .frame(width: barWidth - 2)
-                                // Center the text within the bar vertically
                                 .position(x: barX + barWidth / 2,
                                           y: baseline - barH / 2)
                         }
@@ -572,6 +574,63 @@ struct BarChartView: View {
                         .padding(-overflow)
                         .allowsHitTesting(false)
                     }
+
+                    // Tooltip above selected bar
+                    if let idx = selectedIndex {
+                        let val  = displayPoints[idx].1
+                        let date = displayPoints[idx].0
+                        let barH = fractions[idx] * chartHeight
+                        let barX = CGFloat(idx) * (barWidth + barSpacing)
+                        let tipW: CGFloat = 90
+                        let tipH: CGFloat = 36
+                        let tipPad: CGFloat = 6
+                        // Clamp tooltip so it stays within chart bounds
+                        let rawX = barX + barWidth / 2
+                        let clampedX = min(max(rawX, tipW / 2), totalWidth - tipW / 2)
+                        let tipY = max(tipH / 2 + 2, baseline - barH - tipPad - tipH / 2)
+
+                        VStack(spacing: 2) {
+                            Text(formatBarValue(val))
+                                .font(.system(size: 13, weight: .bold))
+                                .foregroundColor(.primary)
+                            Text(tooltipDateLabel(for: date))
+                                .font(.system(size: 10))
+                                .foregroundColor(.secondary)
+                        }
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 5)
+                        .frame(minWidth: tipW)
+                        .background(
+                            RoundedRectangle(cornerRadius: 8)
+                                .fill(Color(uiColor: .secondarySystemBackground))
+                                .shadow(color: .black.opacity(0.15), radius: 4, x: 0, y: 2)
+                        )
+                        .position(x: clampedX, y: tipY)
+                        .allowsHitTesting(false)
+                        .transition(.opacity)
+                    }
+
+                    // Invisible gesture layer covering the chart area (not the label strip)
+                    Color.clear
+                        .contentShape(Rectangle())
+                        .frame(width: totalWidth, height: baseline)
+                        .gesture(
+                            DragGesture(minimumDistance: 0)
+                                .onChanged { value in
+                                    let x = value.location.x
+                                    let idx = Int(x / (barWidth + barSpacing))
+                                    let clamped = max(0, min(count - 1, idx))
+                                    if selectedIndex != clamped {
+                                        selectedIndex = clamped
+                                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                                    }
+                                }
+                                .onEnded { _ in
+                                    withAnimation(.easeOut(duration: 0.2)) {
+                                        selectedIndex = nil
+                                    }
+                                }
+                        )
                 }
             }
         }
@@ -584,6 +643,17 @@ struct BarChartView: View {
         return val.truncatingRemainder(dividingBy: 1) == 0
             ? "\(Int(val))"
             : String(format: "%.1f", val)
+    }
+
+    private func tooltipDateLabel(for date: Date) -> String {
+        let f = DateFormatter()
+        switch labelMode {
+        case .date:
+            f.dateFormat = "MMM d, yyyy"
+        case .week:
+            f.dateFormat = "'Week of' MMM d"
+        }
+        return f.string(from: date)
     }
 
     private func barLabel(for date: Date, index: Int, total: Int) -> String {
