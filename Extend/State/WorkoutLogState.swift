@@ -639,6 +639,14 @@ public final class WorkoutLogState {
         saveJournalEntries()
     }
 
+    #if DEBUG
+    /// Bulk-inserts logs without HealthKit export. Used by developer test data generator.
+    public func bulkAddLogs(_ newLogs: [WorkoutLog]) {
+        logs.append(contentsOf: newLogs)
+        saveLogs()
+    }
+    #endif
+
     // MARK: - HealthKit Import
 
     /// Fetches cardio workouts from Apple Health since the last import date

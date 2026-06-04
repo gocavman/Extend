@@ -368,7 +368,7 @@ private struct ProgressModuleView: View {
             MonthYearPickerSheet(currentMonth: $currentMonth, onNavigate: applyDefaultSelection)
         }
         .sheet(isPresented: $showSearch) {
-            LogSearchView(logState: logState, selectedLog: $selectedLog,
+            LogSearchView(logState: logState,
                           selectedJournalEntry: $selectedJournalEntry)
         }
         .fullScreenCover(isPresented: $showJournalEditor) {
@@ -2053,11 +2053,12 @@ private enum SearchResult {
 
 private struct LogSearchView: View {
     let logState: WorkoutLogState
-    @Binding var selectedLog: WorkoutLog?
     @Binding var selectedJournalEntry: JournalEntry?
     @Environment(\.dismiss) var dismiss
+    @Environment(ExercisesState.self) var exercisesState
 
     @State private var query = ""
+    @State private var selectedLog: WorkoutLog? = nil
     @FocusState private var isFocused: Bool
 
     private var results: [SearchResult] {
@@ -2138,11 +2139,12 @@ private struct LogSearchView: View {
                 } else {
                     List(Array(results.enumerated()), id: \.offset) { _, result in
                         Button(action: {
-                            dismiss()
-                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
-                                switch result {
-                                case .workout(let log): selectedLog = log
-                                case .journal(let entry): selectedJournalEntry = entry
+                            switch result {
+                            case .workout(let log): selectedLog = log
+                            case .journal(let entry):
+                                dismiss()
+                                DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
+                                    selectedJournalEntry = entry
                                 }
                             }
                         }) {
@@ -2195,6 +2197,11 @@ private struct LogSearchView: View {
                 }
             }
             .onAppear { isFocused = true }
+            .fullScreenCover(item: $selectedLog) { log in
+                WorkoutLogDetailView(log: log)
+                    .environment(logState)
+                    .environment(exercisesState)
+            }
         }
     }
 }

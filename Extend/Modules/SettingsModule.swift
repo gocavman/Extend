@@ -69,6 +69,10 @@ private struct SettingsModuleView: View {
     @State private var showingExportSheet = false
     @State private var showingImportPicker = false
     @State private var importResult: ImportResult? = nil
+    #if DEBUG
+    @State private var showingClearLogsAlert = false
+    @State private var devToolsMessage: String? = nil
+    #endif
 
     private enum ImportResult: Identifiable {
         case success(Int)
@@ -338,6 +342,38 @@ private struct SettingsModuleView: View {
                         }
                     }
 
+                    // MARK: - Developer Tools (DEBUG only)
+                    #if DEBUG
+                    Section {
+                        if let msg = devToolsMessage {
+                            Text(msg)
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                        Button {
+                            generateTestData()
+                        } label: {
+                            Label("Generate Test Data (~60 logs)", systemImage: "wand.and.stars")
+                        }
+                        Button(role: .destructive) {
+                            showingClearLogsAlert = true
+                        } label: {
+                            Label("Clear All Logs", systemImage: "trash")
+                        }
+                    } header: {
+                        Label("Developer Tools", systemImage: "hammer")
+                    }
+                    .alert("Clear All Logs?", isPresented: $showingClearLogsAlert) {
+                        Button("Cancel", role: .cancel) {}
+                        Button("Clear", role: .destructive) {
+                            WorkoutLogState.shared.resetLogs()
+                            devToolsMessage = "All logs cleared."
+                        }
+                    } message: {
+                        Text("This will permanently delete all workout logs and journal entries.")
+                    }
+                    #endif
+
                     // MARK: - Support Section
                     Section("Support the Developer") {
                         Link(destination: URL(string: "https://paypal.me/gocavman")!) {
@@ -513,6 +549,136 @@ private struct SettingsModuleView: View {
             }
         }
     }
+
+    #if DEBUG
+    // MARK: - Test Data Generator
+    private func generateTestData() {
+        let logState = WorkoutLogState.shared
+        let exercises = exercisesState.exercises
+        let workouts = workoutsState.workouts
+        var generated: [WorkoutLog] = []
+
+        let cal = Calendar.current
+        let now = Date()
+
+        // Random helpers
+        func randomDaysAgo(_ max: Int) -> Date {
+            cal.date(byAdding: .day, value: -Int.random(in: 0..<max), to: now) ?? now
+        }
+        func randomHour(_ date: Date) -> Date {
+            let hours = [6, 7, 8, 9, 12, 17, 18, 19, 20]
+            return cal.date(bySettingHour: hours.randomElement()!, minute: Int.random(in: 0..<60), second: 0, of: date) ?? date
+        }
+        func randomWeight() -> Double {
+            let options: [Double] = [10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70, 75, 80, 85, 90, 95, 100, 115, 120, 135, 145, 155, 165, 185, 205, 225]
+            return options.randomElement()!
+        }
+        func randomReps() -> Int { Int.random(in: 5...15) }
+        func randomSets(for exercise: Exercise) -> [LoggedSet] {
+            let count = Int.random(in: 2...5)
+            let baseWeight = randomWeight()
+            return (0..<count).map { i in
+                LoggedSet(reps: randomReps(), weight: baseWeight + Double(i * 5))
+            }
+        }
+        let sampleNotes = [
+            "", "", "", // mostly empty
+            "Felt strong today.",
+            "Struggled on last set.",
+            "Good form throughout.",
+            "Increased weight from last time.",
+            "Right shoulder a bit tight.",
+            "PR attempt next session.",
+            "Superset felt great."
+        ]
+
+        // --- Generate ~40 workout logs ---
+        if !workouts.isEmpty && !exercises.isEmpty {
+            for i in 0..<40 {
+                let workout = workouts.randomElement()!
+                let date = randomHour(randomDaysAgo(90))
+                let duration = Double(Int.random(in: 20...75) * 60)
+
+                // Pick 2-5 random exercises
+                let exCount = min(exercises.count, Int.random(in: 2...5))
+                let pickedExercises = Array(exercises.shuffled().prefix(exCount))
+                let loggedExercises: [LoggedExercise] = pickedExercises.enumerated().map { idx, ex in
+                    LoggedExercise(
+                        exerciseID: ex.id,
+                        exerciseName: ex.name,
+                        sets: randomSets(for: ex),
+                        notes: sampleNotes.randomElement()!,
+                        activeSeconds: Int.random(in: 60...300),
+                        orderIndex: idx
+                    )
+                }
+
+                let log = WorkoutLog(
+                    workoutName: workout.name,
+                    completedAt: date,
+                    logType: .workout,
+                    exercises: loggedExercises,
+                    notes: i % 5 == 0 ? sampleNotes.filter { !$0.isEmpty }.randomElement()! : "",
+                    duration: duration
+                )
+                generated.append(log)
+            }
+        }
+
+        // --- Generate ~10 quick workout logs (single exercises) ---
+        if !exercises.isEmpty {
+            let quickNames = ["Quick Arms", "Quick Core", "Morning Stretch", "Quick Legs", "Lunchtime Lift"]
+            for i in 0..<10 {
+                let ex = exercises.randomElement()!
+                let date = randomHour(randomDaysAgo(60))
+                let log = WorkoutLog(
+                    workoutName: quickNames[i % quickNames.count],
+                    completedAt: date,
+                    logType: .workout,
+                    exercises: [
+                        LoggedExercise(
+                            exerciseID: ex.id,
+                            exerciseName: ex.name,
+                            sets: randomSets(for: ex),
+                            orderIndex: 0
+                        )
+                    ],
+                    duration: Double(Int.random(in: 10...25) * 60)
+                )
+                generated.append(log)
+            }
+        }
+
+        // --- Generate ~10 voice trainer logs ---
+        let vtNames = ["Heavy Bag Workout", "Shadow Boxing", "Cardio Blast", "HIIT Session"]
+        for i in 0..<10 {
+            let date = randomHour(randomDaysAgo(60))
+            let log = WorkoutLog(
+                workoutName: vtNames[i % vtNames.count],
+                completedAt: date,
+                logType: .voiceTrainer,
+                duration: Double(Int.random(in: 15...45) * 60)
+            )
+            generated.append(log)
+        }
+
+        // --- Generate ~5 timer logs ---
+        let timerNames = ["Tabata Timer", "EMOM 20", "Rest Timer", "Interval Training"]
+        for i in 0..<5 {
+            let date = randomHour(randomDaysAgo(45))
+            let log = WorkoutLog(
+                workoutName: timerNames[i % timerNames.count],
+                completedAt: date,
+                logType: .timer,
+                duration: Double(Int.random(in: 10...30) * 60)
+            )
+            generated.append(log)
+        }
+
+        logState.bulkAddLogs(generated)
+        devToolsMessage = "Generated \(generated.count) test logs."
+    }
+    #endif
 }
 
 // MARK: - Workout Export Sheet
