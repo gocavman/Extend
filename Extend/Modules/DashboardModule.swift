@@ -1730,14 +1730,14 @@ private struct VolumeBarChartView: View {
                                 ZStack {
                                     if week.volume > 0 {
                                         RoundedRectangle(cornerRadius: 3)
-                                            .fill(isCurrentWeek ? Color.black : Color.black.opacity(0.25))
+                                            .fill(isCurrentWeek ? Color.primary : Color.primary.opacity(0.35))
                                             .frame(height: barHeight)
                                         let volLabel = week.volume >= 1000
                                             ? String(format: "%.1fk", week.volume / 1000)
                                             : String(format: "%.0f", week.volume)
                                         Text(volLabel)
                                             .font(.system(size: 11, weight: .bold))
-                                            .foregroundColor(isCurrentWeek ? .white : .black.opacity(0.6))
+                                            .foregroundColor(isCurrentWeek ? Color(UIColor.systemBackground) : Color.primary.opacity(0.7))
                                             .minimumScaleFactor(0.5)
                                             .lineLimit(1)
                                     }
@@ -1774,7 +1774,8 @@ private struct VolumeBarChartView: View {
                 let curr = weeks[weeks.count - 1].volume
                 if prev > 0 {
                     let pct = Int(((curr - prev) / prev) * 100)
-                    HStack(spacing: 2) {
+                    HStack {
+                        Spacer()
                         Image(systemName: pct >= 0 ? "arrow.up" : "arrow.down")
                             .font(.system(size: 9, weight: .bold))
                             .foregroundColor(pct >= 0 ? .green : .red)

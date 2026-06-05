@@ -3035,12 +3035,23 @@ public struct StartWorkoutView: View {
                 .font(.subheadline)
                 .fontWeight(.semibold)
 
-            TextField("Add notes...", text: $notes, axis: .vertical)
-                .lineLimit(1...6)
-                .font(.caption)
-                .padding(8)
-                .background(Color(UIColor.secondarySystemBackground))
-                .cornerRadius(6)
+            ZStack(alignment: .topLeading) {
+                TextEditor(text: $notes)
+                    .font(.caption)
+                    .frame(minHeight: 72)
+                    .scrollContentBackground(.hidden)
+                    .padding(4)
+                    .background(Color(UIColor.secondarySystemBackground))
+                    .cornerRadius(6)
+                if notes.isEmpty {
+                    Text("Add notes...")
+                        .font(.caption)
+                        .foregroundColor(Color(UIColor.placeholderText))
+                        .padding(.top, 12)
+                        .padding(.leading, 8)
+                        .allowsHitTesting(false)
+                }
+            }
         }
         .padding(.horizontal, 16)
     }

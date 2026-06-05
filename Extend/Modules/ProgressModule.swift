@@ -25,7 +25,10 @@ public struct ProgressModule: AppModule {
 private struct ProgressModuleView: View {
     @Environment(WorkoutLogState.self) var logState
     @Environment(ExercisesState.self) var exercisesState
+    @Environment(TrainingPlanState.self) var planState
+    @Environment(WorkoutsState.self) var workoutsState
 
+    @State private var showPlan = false
     @State private var selectedDate = Date()
     /// Whether the user has explicitly tapped a day. False when just browsing months.
     @State private var hasSelectedDate = true
@@ -44,8 +47,13 @@ private struct ProgressModuleView: View {
     @AppStorage("logViewMode") private var logViewMode: String = "calendar"
     /// Persisted: show 60-day activity ribbon
     @AppStorage("logShowRibbon") private var showRibbon: Bool = false
+    /// Persisted calendar visibility filters
+    @AppStorage("calendarShowWorkouts") private var showWorkouts: Bool = true
+    @AppStorage("calendarShowJournals") private var showJournals: Bool = true
+    @AppStorage("calendarShowPlans")    private var showPlans:    Bool = true
     /// Week vs month scope in list (timeline) view
     @State private var listShowWeek: Bool = false
+    @State private var showFilterPopover: Bool = false
 
     private let calendar = Calendar.current
 
@@ -153,6 +161,15 @@ private struct ProgressModuleView: View {
                         .foregroundColor(.primary)
                 }
 
+                // Training plan
+                Button(action: {
+                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                    showPlan = true
+                }) {
+                    Image(systemName: "calendar.badge.checkmark")
+                        .foregroundColor(planState.activePlan != nil ? .accentColor : .primary)
+                }
+
                 // Activity ribbon toggle
                 Button(action: {
                     UIImpactFeedbackGenerator(style: .light).impactOccurred()
@@ -160,6 +177,23 @@ private struct ProgressModuleView: View {
                 }) {
                     Image(systemName: showRibbon ? "chart.bar.fill" : "chart.bar")
                         .foregroundColor(showRibbon ? .blue : .primary)
+                }
+
+                // Calendar visibility filter
+                Button(action: {
+                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                    showFilterPopover = true
+                }) {
+                    Image(systemName: "line.3.horizontal.decrease")
+                        .foregroundColor((!showWorkouts || !showJournals || !showPlans) ? .accentColor : .primary)
+                }
+                .popover(isPresented: $showFilterPopover, arrowEdge: .top) {
+                    CalendarFilterPopover(
+                        showWorkouts: $showWorkouts,
+                        showJournals: $showJournals,
+                        showPlans: $showPlans
+                    )
+                    .presentationCompactAdaptation(.popover)
                 }
 
                 // View mode toggle
@@ -242,7 +276,7 @@ private struct ProgressModuleView: View {
                 VStack(spacing: 16) {
                     // Activity ribbon (optional)
                     if showRibbon {
-                        ActivityRibbonView(logState: logState, anchorMonth: currentMonth)
+                        ActivityRibbonView(logState: logState, anchorMonth: currentMonth, showWorkouts: showWorkouts, showJournals: showJournals, showPlans: showPlans)
                             .padding(.horizontal, 16)
                     }
 
@@ -254,6 +288,9 @@ private struct ProgressModuleView: View {
                                 selectedDate: $selectedDate,
                                 logState: logState,
                                 hasSelectedDate: hasSelectedDate,
+                                showWorkouts: showWorkouts,
+                                showJournals: showJournals,
+                                showPlans: showPlans,
                                 onDaySelected: { hasSelectedDate = true }
                             ) {
                                 // Collapse when a day is tapped
@@ -261,7 +298,7 @@ private struct ProgressModuleView: View {
                                     isCalendarExpanded = false
                                 }
                             }
-                            .padding(.horizontal, 16)
+                            .padding(.horizontal, 8)
                             .transition(.opacity.combined(with: .move(edge: .top)))
                         } else {
                             // Compact week strip + expand button
@@ -270,9 +307,12 @@ private struct ProgressModuleView: View {
                                     selectedDate: $selectedDate,
                                     logState: logState,
                                     weekDays: weekDaysForDate(selectedDate),
+                                    showWorkouts: showWorkouts,
+                                    showJournals: showJournals,
+                                    showPlans: showPlans,
                                     onDaySelected: { hasSelectedDate = true }
                                 )
-                                .padding(.horizontal, 16)
+                                .padding(.horizontal, 8)
                                 .transition(.opacity.combined(with: .move(edge: .top)))
 
                                 // Expand chevron pill
@@ -299,11 +339,18 @@ private struct ProgressModuleView: View {
                         if hasSelectedDate {
                             let dayLogs = logState.logsForDate(selectedDate)
                             let dayJournal = logState.journalEntriesForDate(selectedDate)
+                            let dayPlanDay = planState.planDay(for: selectedDate)
                             if !dayLogs.isEmpty || !dayJournal.isEmpty {
                                 VStack(alignment: .leading, spacing: 12) {
                                     Text(formattedDate(selectedDate))
                                         .font(.headline)
                                         .padding(.horizontal, 16)
+
+                                    // Plan card — shown when this day has a planned workout
+                                    if let pd = dayPlanDay, !pd.isEmpty {
+                                        PlanDayCard(planDay: pd, planName: planState.activePlan?.name ?? "")
+                                            .padding(.horizontal, 16)
+                                    }
 
                                     // Interleave workouts and journal entries sorted by time
                                     let workoutItems: [(date: Date, view: AnyView)] = dayLogs.map { log in
@@ -326,20 +373,28 @@ private struct ProgressModuleView: View {
                                     }
                                 }
                             } else {
-                                VStack(spacing: 8) {
-                                    Image(systemName: "calendar.badge.clock")
-                                        .font(.system(size: 44))
-                                        .foregroundColor(.gray)
+                                VStack(spacing: 12) {
+                                    // Plan card for this day (if any)
+                                    if let pd = dayPlanDay, !pd.isEmpty {
+                                        PlanDayCard(planDay: pd, planName: planState.activePlan?.name ?? "")
+                                            .padding(.horizontal, 16)
+                                    }
 
-                                    Text("No workouts logged")
-                                        .font(.subheadline)
-                                        .foregroundColor(.gray)
+                                    VStack(spacing: 8) {
+                                        Image(systemName: "calendar.badge.clock")
+                                            .font(.system(size: 44))
+                                            .foregroundColor(.gray)
 
-                                    Text("for \(formattedDate(selectedDate))")
-                                        .font(.caption)
-                                        .foregroundColor(.gray)
+                                        Text("No workouts logged")
+                                            .font(.subheadline)
+                                            .foregroundColor(.gray)
+
+                                        Text("for \(formattedDate(selectedDate))")
+                                            .font(.caption)
+                                            .foregroundColor(.gray)
+                                    }
+                                    .padding(.vertical, isCalendarExpanded ? 40 : 24)
                                 }
-                                .padding(.vertical, isCalendarExpanded ? 40 : 24)
                             }
                         }
                     } else {
@@ -348,7 +403,10 @@ private struct ProgressModuleView: View {
                             logState: logState,
                             month: currentMonth,
                             selectedDate: selectedDate,
-                            showWeek: $listShowWeek
+                            showWeek: $listShowWeek,
+                            showWorkouts: showWorkouts,
+                            showJournals: showJournals,
+                            showPlans: showPlans
                         ) { log in
                             selectedLog = log
                         } onJournalTap: { entry in
@@ -385,6 +443,12 @@ private struct ProgressModuleView: View {
                 initialDate: entry.date
             )
         }
+        .fullScreenCover(isPresented: $showPlan) {
+            PlanModuleView()
+                .environment(planState)
+                .environment(workoutsState)
+                .environment(exercisesState)
+        }
 
     }
     
@@ -398,10 +462,14 @@ private struct ProgressModuleView: View {
 // MARK: - Calendar View
 
 private struct CalendarView: View {
+    @Environment(TrainingPlanState.self) var planState
     @Binding var currentMonth: Date
     @Binding var selectedDate: Date
     let logState: WorkoutLogState
     var hasSelectedDate: Bool = true
+    var showWorkouts: Bool = true
+    var showJournals: Bool = true
+    var showPlans: Bool = true
     /// Called when user explicitly taps a day — lets parent mark a day as selected
     var onDaySelected: (() -> Void)? = nil
     /// Called after a day is selected — lets the parent collapse the calendar
@@ -463,9 +531,10 @@ private struct CalendarView: View {
                             isSelected: hasSelectedDate && calendar.isDate(date, inSameDayAs: selectedDate),
                             isToday: calendar.isDateInToday(date),
                             isCurrentMonth: isCurrentMonth(date),
-                            workoutCount: logState.logsForDate(date).count,
-                            logs: logState.logsForDate(date),
-                            journalEntries: logState.journalEntriesForDate(date)
+                            workoutCount: showWorkouts ? logState.logsForDate(date).count : 0,
+                            logs: showWorkouts ? logState.logsForDate(date) : [],
+                            journalEntries: showJournals ? logState.journalEntriesForDate(date) : [],
+                            planName: (showPlans && planState.planDay(for: date) != nil) ? planState.activePlan?.name : nil
                         ) {
                             selectedDate = date
                             onDaySelected?()
@@ -485,7 +554,91 @@ private struct CalendarView: View {
 
 }
 
+// MARK: - Plan Day Card (shown in selected-day detail)
+
+private struct PlanDayCard: View {
+    @Environment(WorkoutsState.self) private var workoutsState
+    @Environment(ExercisesState.self) private var exercisesState
+
+    let planDay: PlanDay
+    let planName: String
+
+    private var workouts: [Workout] {
+        planDay.workoutIDs.compactMap { id in workoutsState.workouts.first { $0.id == id } }
+    }
+
+    private var exercises: [Exercise] {
+        planDay.exerciseIDs.compactMap { id in exercisesState.exercises.first { $0.id == id } }
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(spacing: 6) {
+                Image(systemName: "calendar.badge.checkmark")
+                    .font(.caption)
+                    .foregroundColor(.accentColor)
+                Text(planName)
+                    .font(.caption)
+                    .fontWeight(.semibold)
+                    .foregroundColor(.accentColor)
+            }
+
+            if !workouts.isEmpty {
+                ForEach(workouts) { w in
+                    HStack(spacing: 6) {
+                        Image(systemName: "dumbbell.fill")
+                            .font(.caption2)
+                            .foregroundColor(.secondary)
+                        Text(w.name)
+                            .font(.caption)
+                            .foregroundColor(.primary)
+                    }
+                }
+            }
+
+            if !exercises.isEmpty {
+                HStack(spacing: 6) {
+                    Image(systemName: "figure.strengthtraining.traditional")
+                        .font(.caption2)
+                        .foregroundColor(.secondary)
+                    Text(exercises.map { $0.name }.joined(separator: ", "))
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                        .lineLimit(2)
+                }
+            }
+
+            if !planDay.note.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                HStack(spacing: 6) {
+                    Image(systemName: "note.text")
+                        .font(.caption2)
+                        .foregroundColor(.secondary)
+                    Text(planDay.note)
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                        .lineLimit(2)
+                }
+            }
+        }
+        .padding(10)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color.accentColor.opacity(0.08))
+        .overlay(
+            RoundedRectangle(cornerRadius: 8)
+                .stroke(Color.accentColor.opacity(0.25), lineWidth: 1)
+        )
+        .cornerRadius(8)
+    }
+}
+
 // MARK: - Day Cell
+
+private struct DayCellLabel {
+    let text: String
+    let isJournal: Bool
+    let isPlan: Bool
+    let isOverflow: Bool
+}
 
 private struct DayCell: View {
     let date: Date
@@ -495,72 +648,92 @@ private struct DayCell: View {
     let workoutCount: Int
     let logs: [WorkoutLog]
     var journalEntries: [JournalEntry] = []
+    var planName: String? = nil
     let onTap: () -> Void
 
-    private var hasJournalOnly: Bool { workoutCount == 0 && !journalEntries.isEmpty }
-
-    private var backgroundColor: Color {
-        if workoutCount > 0 {
-            // Greener with more workouts
-            let intensity = min(Double(workoutCount) / 5.0, 1.0)
-            let greenColor = Color(red: 0.4 * (1 - intensity), green: 0.8, blue: 0.4 * (1 - intensity))
-            // Fade out color for non-current month
-            return isCurrentMonth ? greenColor : greenColor.opacity(0.3)
-        } else {
-            return isCurrentMonth ? Color(UIColor.secondarySystemBackground) : Color(UIColor.secondarySystemBackground).opacity(0.5)
-        }
-    }
-    
     private var hasWorkout: Bool { workoutCount > 0 }
 
-    private var textColor: Color {
-        if hasWorkout {
-            // Always use dark text on green backgrounds for readability
-            return Color(UIColor.darkText)
-        } else if isCurrentMonth {
-            return .primary
+    // Build up to 3 labels: workouts first, then journals, then plan.
+    // If total > 3, slot 3 becomes "+N more" overflow label (iOS Calendar style).
+    private var cellLabels: [DayCellLabel] {
+        let total = logs.count + journalEntries.count + (planName != nil ? 1 : 0)
+        var result: [DayCellLabel] = []
+
+        if total <= 3 {
+            // All items fit — plan always gets its own slot
+            let maxOther = planName != nil ? 2 : 3
+            for log in logs.prefix(maxOther) {
+                result.append(DayCellLabel(text: String(log.workoutName.prefix(10)), isJournal: false, isPlan: false, isOverflow: false))
+            }
+            if result.count < maxOther {
+                for entry in journalEntries.prefix(maxOther - result.count) {
+                    result.append(DayCellLabel(text: String(entry.title.prefix(10)), isJournal: true, isPlan: false, isOverflow: false))
+                }
+            }
+            if let name = planName {
+                result.append(DayCellLabel(text: String(name.prefix(10)), isJournal: false, isPlan: true, isOverflow: false))
+            }
         } else {
-            return .gray
+            // Overflow: show 2 real items, then "+N more" in slot 3
+            var filled = 0
+            for log in logs.prefix(2) where filled < 2 {
+                result.append(DayCellLabel(text: String(log.workoutName.prefix(10)), isJournal: false, isPlan: false, isOverflow: false))
+                filled += 1
+            }
+            if filled < 2 {
+                for entry in journalEntries.prefix(2 - filled) {
+                    result.append(DayCellLabel(text: String(entry.title.prefix(10)), isJournal: true, isPlan: false, isOverflow: false))
+                    filled += 1
+                }
+            }
+            result.append(DayCellLabel(text: "+\(total - 2) more", isJournal: false, isPlan: false, isOverflow: true))
         }
+        return result
     }
-    
+
+    private var backgroundColor: Color {
+        isCurrentMonth ? Color(UIColor.secondarySystemBackground) : Color(UIColor.secondarySystemBackground).opacity(0.5)
+    }
+
+    private var textColor: Color {
+        isCurrentMonth ? .primary : .gray
+    }
+
     var body: some View {
         Button(action: {
             UIImpactFeedbackGenerator(style: .light).impactOccurred()
             onTap()
         }) {
             VStack(alignment: .leading, spacing: 2) {
+                // Day number — smaller to leave more room for labels
                 ZStack {
                     if isSelected {
                         Circle()
-                            .stroke(hasWorkout ? Color(UIColor.darkText) : Color.primary, lineWidth: 2)
-                            .frame(width: 32, height: 32)
+                            .stroke(Color.primary, lineWidth: 2)
+                            .frame(width: 26, height: 26)
                     }
-                    
                     Text("\(Calendar.current.component(.day, from: date))")
-                        .font(.system(size: 20, weight: isToday ? .bold : .regular))
+                        .font(.system(size: 15, weight: isToday ? .bold : .regular))
                         .foregroundColor(textColor)
                 }
-                .frame(height: 32)
-                    .frame(maxWidth: .infinity, alignment: .center)
-                    .padding(.top, 10)
-                
-                // Workout name labels
-                let allLabels: [(text: String, isJournal: Bool)] =
-                    logs.prefix(3).map { (text: String($0.workoutName.prefix(10)), isJournal: false) } +
-                    (logs.count < 3 ? journalEntries.prefix(3 - logs.count).map { (text: String($0.title.prefix(10)), isJournal: true) } : [])
+                .frame(height: 26)
+                .frame(maxWidth: .infinity, alignment: .center)
+                .padding(.top, 6)
 
-                if !allLabels.isEmpty {
+                // Name labels: workouts (black/primary), journals (purple), plan (accent)
+                if !cellLabels.isEmpty {
                     VStack(spacing: 1) {
-                        ForEach(Array(allLabels.enumerated()), id: \.offset) { _, item in
+                        ForEach(Array(cellLabels.enumerated()), id: \.offset) { _, item in
                             ZStack(alignment: .leading) {
+                                let labelColor: Color = item.isOverflow
+                                    ? Color.secondary
+                                    : (item.isPlan
+                                        ? Color.accentColor
+                                        : (item.isJournal ? Color(red: 0.4, green: 0.35, blue: 0.75) : textColor))
                                 ClippedTextLabel(
                                     text: item.text,
                                     fontSize: 9,
-                                    textColor: (item.isJournal
-                                        ? Color(red: 0.4, green: 0.35, blue: 0.75)
-                                        : textColor)
-                                        .opacity(isCurrentMonth ? 0.85 : 0.45)
+                                    textColor: labelColor.opacity(isCurrentMonth ? 0.85 : 0.45)
                                 )
                                 .frame(maxWidth: .infinity, alignment: .leading)
 
@@ -581,16 +754,30 @@ private struct DayCell: View {
                     }
                     .padding(.leading, 4)
                     .padding(.trailing, 4)
-                } else if hasJournalOnly {
-                    // Journal-only day: show a small purple dot
-                    Circle()
-                        .fill(Color(red: 0.4, green: 0.35, blue: 0.75).opacity(isCurrentMonth ? 0.75 : 0.35))
-                        .frame(width: 6, height: 6)
-                        .frame(maxWidth: .infinity, alignment: .center)
-                        .padding(.top, 2)
                 }
 
                 Spacer()
+
+                // Dot row at the bottom: green = workout, purple = journal, accent = plan
+                HStack(spacing: 3) {
+                    if workoutCount > 0 {
+                        Circle()
+                            .fill(Color(red: 0.2, green: 0.75, blue: 0.35).opacity(isCurrentMonth ? 1 : 0.4))
+                            .frame(width: 5, height: 5)
+                    }
+                    if !journalEntries.isEmpty {
+                        Circle()
+                            .fill(Color(red: 0.4, green: 0.35, blue: 0.75).opacity(isCurrentMonth ? 0.85 : 0.4))
+                            .frame(width: 5, height: 5)
+                    }
+                    if planName != nil {
+                        Circle()
+                            .fill(Color.accentColor.opacity(isCurrentMonth ? 0.85 : 0.4))
+                            .frame(width: 5, height: 5)
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .center)
+                .padding(.bottom, 4)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .frame(height: 85)
@@ -598,7 +785,7 @@ private struct DayCell: View {
             .cornerRadius(4)
             .overlay(
                 RoundedRectangle(cornerRadius: 4)
-                    .stroke(isToday ? (hasWorkout ? Color(UIColor.darkText) : Color.primary) : Color.clear, lineWidth: 2)
+                    .stroke(isToday ? Color.primary : Color.clear, lineWidth: 2)
             )
         }
         .buttonStyle(.plain)
@@ -609,9 +796,13 @@ private struct DayCell: View {
 
 /// Compact week strip shown when the calendar is collapsed.
 private struct WeekStripView: View {
+    @Environment(TrainingPlanState.self) var planState
     @Binding var selectedDate: Date
     let logState: WorkoutLogState
     let weekDays: [Date]
+    var showWorkouts: Bool = true
+    var showJournals: Bool = true
+    var showPlans: Bool = true
     var onDaySelected: (() -> Void)? = nil
 
     private let calendar = Calendar.current
@@ -637,8 +828,9 @@ private struct WeekStripView: View {
                 ForEach(weekDays, id: \.self) { day in
                     let isSelected = calendar.isDate(day, inSameDayAs: selectedDate)
                     let isToday = calendar.isDateInToday(day)
-                    let count = logState.logsForDate(day).count
-                    let journalCount = logState.journalEntriesForDate(day).count
+                    let count = showWorkouts ? logState.logsForDate(day).count : 0
+                    let journalCount = showJournals ? logState.journalEntriesForDate(day).count : 0
+                    let hasPlan = showPlans && planState.planDay(for: day) != nil
                     let dayNum = calendar.component(.day, from: day)
 
                     Button(action: {
@@ -664,14 +856,29 @@ private struct WeekStripView: View {
                             }
                             .frame(width: 34, height: 34)
 
-                            // Dot indicator: green for workouts, purple for journal-only, clear for nothing
-                            Circle()
-                                .fill(count > 0
-                                    ? Color(red: 0.2, green: 0.75, blue: 0.35)
-                                    : journalCount > 0
-                                        ? Color(red: 0.4, green: 0.35, blue: 0.75)
-                                        : Color.clear)
-                                .frame(width: 5, height: 5)
+                            // Dots: green = workout, purple = journal, accent = plan
+                            HStack(spacing: 3) {
+                                if count > 0 {
+                                    Circle()
+                                        .fill(Color(red: 0.2, green: 0.75, blue: 0.35))
+                                        .frame(width: 5, height: 5)
+                                }
+                                if journalCount > 0 {
+                                    Circle()
+                                        .fill(Color(red: 0.4, green: 0.35, blue: 0.75))
+                                        .frame(width: 5, height: 5)
+                                }
+                                if hasPlan {
+                                    Circle()
+                                        .fill(Color.accentColor)
+                                        .frame(width: 5, height: 5)
+                                }
+                                // Placeholder to keep height consistent when no dots
+                                if count == 0 && journalCount == 0 && !hasPlan {
+                                    Color.clear.frame(width: 5, height: 5)
+                                }
+
+                            }
                         }
                     }
                     .buttonStyle(.plain)
@@ -690,24 +897,32 @@ private struct WeekStripView: View {
 
 // MARK: - Timeline View
 
-/// An item in the timeline — either a workout log or a journal entry
+/// An item in the timeline — a workout log, journal entry, or plan day
 private enum TimelineItem {
     case workout(WorkoutLog)
     case journal(JournalEntry)
+    case plan(PlanDay, planName: String)
 
     var date: Date {
         switch self {
         case .workout(let l): return l.completedAt
         case .journal(let e): return e.date
+        case .plan(_, _): return Date()  // replaced per-day during grouping
         }
     }
 }
 
 private struct TimelineLogView: View {
+    @Environment(TrainingPlanState.self) var planState
+    @Environment(WorkoutsState.self) var workoutsState
+    @Environment(ExercisesState.self) var exercisesState
     let logState: WorkoutLogState
     let month: Date
     let selectedDate: Date
     @Binding var showWeek: Bool
+    var showWorkouts: Bool = true
+    var showJournals: Bool = true
+    var showPlans: Bool = true
     let onTap: (WorkoutLog) -> Void
     var onJournalTap: ((JournalEntry) -> Void)? = nil
 
@@ -716,6 +931,19 @@ private struct TimelineLogView: View {
     private var weekDays: [Date] {
         guard let interval = calendar.dateInterval(of: .weekOfYear, for: selectedDate) else { return [] }
         return (0..<7).compactMap { calendar.date(byAdding: .day, value: $0, to: interval.start) }
+    }
+
+    /// All calendar days in the current scope (week or month), sorted descending
+    private var scopeDays: [Date] {
+        if showWeek {
+            return weekDays.reversed()
+        } else {
+            let comps = calendar.dateComponents([.year, .month], from: month)
+            guard let firstOfMonth = calendar.date(from: comps),
+                  let endOfMonth = calendar.date(byAdding: DateComponents(month: 1, day: -1), to: firstOfMonth) else { return [] }
+            let dayCount = calendar.dateComponents([.day], from: firstOfMonth, to: endOfMonth).day ?? 0
+            return (0...dayCount).compactMap { calendar.date(byAdding: .day, value: $0, to: firstOfMonth) }.reversed()
+        }
     }
 
     private var groupedItems: [(date: Date, items: [TimelineItem])] {
@@ -734,25 +962,50 @@ private struct TimelineLogView: View {
 
         let filteredLogs = logState.sortedLogs.filter { $0.completedAt >= start && $0.completedAt < end }
         let filteredJournal = logState.sortedJournalEntries.filter { $0.date >= start && $0.date < end }
-        let allItems: [TimelineItem] = (filteredLogs.map { TimelineItem.workout($0) } +
-                                        filteredJournal.map { TimelineItem.journal($0) })
-            .sorted { $0.date > $1.date }
 
-        var groups: [(date: Date, items: [TimelineItem])] = []
-        var currentDay: Date? = nil
-        var currentGroup: [TimelineItem] = []
-        for item in allItems {
-            let day = calendar.startOfDay(for: item.date)
-            if let cd = currentDay, calendar.isDate(day, inSameDayAs: cd) {
-                currentGroup.append(item)
-            } else {
-                if let cd = currentDay { groups.append((date: cd, items: currentGroup)) }
-                currentDay = day
-                currentGroup = [item]
+        // Build a dict of day → [logs/journal items]
+        var dayItems: [Date: [TimelineItem]] = [:]
+        if showWorkouts {
+            for log in filteredLogs {
+                let day = calendar.startOfDay(for: log.completedAt)
+                dayItems[day, default: []].append(.workout(log))
             }
         }
-        if let cd = currentDay { groups.append((date: cd, items: currentGroup)) }
-        return groups
+        if showJournals {
+            for entry in filteredJournal {
+                let day = calendar.startOfDay(for: entry.date)
+                dayItems[day, default: []].append(.journal(entry))
+            }
+        }
+
+        // Add plan days into the dict (only non-empty days within scope)
+        if showPlans {
+            if let activePlan = planState.activePlan, let planName = planState.activePlan?.name {
+                var current = start
+                while current < end {
+                    let day = calendar.startOfDay(for: current)
+                    if planState.planDay(for: day) != nil {
+                        let pd = activePlan.planDay(for: day)
+                        if !pd.isEmpty {
+                            dayItems[day, default: []].append(.plan(pd, planName: planName))
+                        }
+                    }
+                    current = calendar.date(byAdding: .day, value: 1, to: current) ?? end
+                }
+            }
+        }
+
+        // Sort each day's items (workout/journal first, plan last)
+        let sortedDays = dayItems.keys.sorted { $0 > $1 }
+        return sortedDays.map { day in
+            var items = dayItems[day] ?? []
+            // Keep workouts & journals sorted by time desc, plan appended at end
+            let nonPlan = items.filter { if case .plan = $0 { return false }; return true }
+                               .sorted { $0.date > $1.date }
+            let plans = items.filter { if case .plan = $0 { return true }; return false }
+            items = nonPlan + plans
+            return (date: day, items: items)
+        }
     }
 
     var body: some View {
@@ -817,6 +1070,10 @@ private struct TimelineLogView: View {
                                         WorkoutLogCard(log: log) { onTap(log) }
                                     case .journal(let entry):
                                         JournalEntryCard(entry: entry) { onJournalTap?(entry) }
+                                    case .plan(let pd, let planName):
+                                        PlanDayCard(planDay: pd, planName: planName)
+                                            .environment(workoutsState)
+                                            .environment(exercisesState)
                                     }
                                 }
                             }
@@ -841,14 +1098,18 @@ private struct TimelineLogView: View {
 // MARK: - Activity Ribbon View
 
 private struct ActivityRibbonView: View {
+    @Environment(TrainingPlanState.self) var planState
     let logState: WorkoutLogState
     let anchorMonth: Date
+    var showWorkouts: Bool = true
+    var showJournals: Bool = true
+    var showPlans: Bool = true
 
     private let cellSize: CGFloat = 11
     private let cellSpacing: CGFloat = 3
 
     // Nil entries = padding cells before the first real day
-    private var buckets: [(date: Date?, workoutCount: Int, journalOnly: Bool)] {
+    private var buckets: [(date: Date?, workoutCount: Int, journalOnly: Bool, hasPlan: Bool)] {
         let calendar = Calendar.current
         let today = calendar.startOfDay(for: Date())
 
@@ -858,12 +1119,13 @@ private struct ActivityRibbonView: View {
         let anchor = lastOfMonth
 
         // Build 63 real days ending at anchor, oldest first
-        let realDays: [(date: Date?, workoutCount: Int, journalOnly: Bool)] = (0..<63).reversed().map { offset in
+        let realDays: [(date: Date?, workoutCount: Int, journalOnly: Bool, hasPlan: Bool)] = (0..<63).reversed().map { offset in
             let date = calendar.date(byAdding: .day, value: -offset, to: anchor)!
-            guard date <= today else { return (date: date, workoutCount: 0, journalOnly: false) }
-            let wCount = logState.logsForDate(date).count
-            let jCount = logState.journalEntriesForDate(date).count
-            return (date: date, workoutCount: wCount, journalOnly: jCount > 0)
+            guard date <= today else { return (date: date, workoutCount: 0, journalOnly: false, hasPlan: false) }
+            let wCount = showWorkouts ? logState.logsForDate(date).count : 0
+            let jCount = showJournals ? logState.journalEntriesForDate(date).count : 0
+            let plan = showPlans && planState.planDay(for: date) != nil
+            return (date: date, workoutCount: wCount, journalOnly: jCount > 0 && wCount == 0, hasPlan: plan)
         }
 
         // Find the weekday of the oldest day (1=Sun … 7=Sat) and pad the front
@@ -871,8 +1133,8 @@ private struct ActivityRibbonView: View {
         let firstDate = realDays.first!.date!
         let weekday = calendar.component(.weekday, from: firstDate) // 1-based
         let paddingCount = weekday - 1  // number of empty cells before first real day
-        let padding: [(date: Date?, workoutCount: Int, journalOnly: Bool)] = Array(
-            repeating: (date: nil, workoutCount: -1, journalOnly: false), count: paddingCount)
+        let padding: [(date: Date?, workoutCount: Int, journalOnly: Bool, hasPlan: Bool)] = Array(
+            repeating: (date: nil, workoutCount: -1, journalOnly: false, hasPlan: false), count: paddingCount)
         return padding + realDays
     }
 
@@ -898,11 +1160,19 @@ private struct ActivityRibbonView: View {
                                 RoundedRectangle(cornerRadius: 2)
                                     .fill(bucket.date == nil ? Color.clear : cellColor(bucket.workoutCount))
                                     .frame(width: cellSize, height: cellSize)
-                                // Purple dot overlay for journal-only days
+                                // Purple dot for journal-only days
                                 if bucket.journalOnly {
                                     Circle()
                                         .fill(Color(red: 0.4, green: 0.35, blue: 0.75).opacity(0.85))
                                         .frame(width: cellSize * 0.45, height: cellSize * 0.45)
+                                }
+                                // Accent dot for planned days (bottom-right corner)
+                                if bucket.hasPlan && bucket.date != nil {
+                                    Circle()
+                                        .fill(Color.accentColor.opacity(0.9))
+                                        .frame(width: cellSize * 0.38, height: cellSize * 0.38)
+                                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomTrailing)
+                                        .padding(1)
                                 }
                             }
                             .frame(width: cellSize, height: cellSize)
@@ -1043,11 +1313,21 @@ private struct JournalEntryEditorSheet: View {
                             .font(.caption)
                             .fontWeight(.semibold)
                             .foregroundColor(.secondary)
-                        TextEditor(text: $entryBody)
-                            .font(.body)
-                            .frame(minHeight: 260)
-                            .scrollContentBackground(.hidden)
-                            .background(Color.clear)
+                        ZStack(alignment: .topLeading) {
+                            TextEditor(text: $entryBody)
+                                .font(.body)
+                                .frame(minHeight: 260)
+                                .scrollContentBackground(.hidden)
+                                .background(Color.clear)
+                            if entryBody.isEmpty {
+                                Text("Add notes here...")
+                                    .font(.body)
+                                    .foregroundColor(Color(UIColor.placeholderText))
+                                    .padding(.top, 8)
+                                    .padding(.leading, 4)
+                                    .allowsHitTesting(false)
+                            }
+                        }
                     }
                     .padding(.horizontal, 16)
                     .padding(.vertical, 16)
@@ -1822,16 +2102,31 @@ private struct WorkoutLogDetailView: View {
             if isEditing {
                 VStack(alignment: .leading, spacing: 2) {
                     Text("Notes").font(.caption2).fontWeight(.semibold).foregroundColor(.gray)
-                    TextField("Exercise notes", text: Binding(
-                        get: { log.exercises[exIdx].notes },
-                        set: { log.exercises[exIdx].notes = $0 }
-                    ), axis: .vertical)
-                        .font(.caption).textFieldStyle(.roundedBorder).lineLimit(2, reservesSpace: true)
+                    ZStack(alignment: .topLeading) {
+                        TextEditor(text: Binding(
+                            get: { log.exercises[exIdx].notes },
+                            set: { log.exercises[exIdx].notes = $0 }
+                        ))
+                        .font(.caption)
+                        .frame(minHeight: 52)
+                        .scrollContentBackground(.hidden)
+                        .padding(4)
+                        .background(Color(UIColor.tertiarySystemBackground))
+                        .cornerRadius(6)
+                        if log.exercises[exIdx].notes.isEmpty {
+                            Text("Exercise notes")
+                                .font(.caption)
+                                .foregroundColor(Color(UIColor.placeholderText))
+                                .padding(.top, 12)
+                                .padding(.leading, 8)
+                                .allowsHitTesting(false)
+                        }
+                    }
                 }
                 .padding(.top, 4)
             } else if !exercise.notes.isEmpty {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("Notes").font(.caption2).fontWeight(.semibold).foregroundColor(.gray)
+                HStack(alignment: .top, spacing: 0) {
+                    Text("Notes: ").font(.caption).fontWeight(.semibold).foregroundColor(.gray)
                     Text(exercise.notes).font(.caption).foregroundColor(.gray)
                 }
                 .padding(.top, 4)
@@ -1840,43 +2135,44 @@ private struct WorkoutLogDetailView: View {
             let allEquipment = (exercisesState.exercises.first { $0.id == exercise.exerciseID }?.equipmentIDs ?? [])
                 .compactMap { id in equipmentState.sortedItems.first { $0.id == id } }
             if !allEquipment.isEmpty {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("Equipment Used").font(.caption2).fontWeight(.semibold).foregroundColor(.gray)
-                    if isEditing {
-                        HStack(spacing: 6) {
-                            ForEach(allEquipment) { item in
-                                let selected = exercise.usedEquipmentIDs.contains(item.id)
-                                Button(action: {
-                                    if selected {
-                                        log.exercises[exIdx].usedEquipmentIDs.removeAll { $0 == item.id }
-                                    } else {
-                                        log.exercises[exIdx].usedEquipmentIDs.append(item.id)
+                let usedEquipment = allEquipment.filter { exercise.usedEquipmentIDs.contains($0.id) }
+                if isEditing || !usedEquipment.isEmpty {
+                    VStack(alignment: .leading, spacing: 4) {
+                        if isEditing {
+                            Text("Equipment Used").font(.caption2).fontWeight(.semibold).foregroundColor(.gray)
+                            HStack(spacing: 6) {
+                                ForEach(allEquipment) { item in
+                                    let selected = exercise.usedEquipmentIDs.contains(item.id)
+                                    Button(action: {
+                                        if selected {
+                                            log.exercises[exIdx].usedEquipmentIDs.removeAll { $0 == item.id }
+                                        } else {
+                                            log.exercises[exIdx].usedEquipmentIDs.append(item.id)
+                                        }
+                                    }) {
+                                        HStack(spacing: 4) {
+                                            Image(systemName: selected ? "checkmark.circle.fill" : "circle")
+                                                .font(.system(size: 11))
+                                                .foregroundColor(selected ? Color(UIColor.systemBackground) : .primary)
+                                            Text(item.name).font(.caption).foregroundColor(selected ? Color(UIColor.systemBackground) : .primary)
+                                        }
+                                        .padding(.horizontal, 8).padding(.vertical, 4)
+                                        .background(selected ? Color.primary : Color.primary.opacity(0.1))
+                                        .cornerRadius(12)
                                     }
-                                }) {
-                                    HStack(spacing: 4) {
-                                        Image(systemName: selected ? "checkmark.circle.fill" : "circle")
-                                            .font(.system(size: 11))
-                                            .foregroundColor(selected ? Color(UIColor.systemBackground) : .primary)
-                                        Text(item.name).font(.caption).foregroundColor(selected ? Color(UIColor.systemBackground) : .primary)
-                                    }
-                                    .padding(.horizontal, 8).padding(.vertical, 4)
-                                    .background(selected ? Color.primary : Color.primary.opacity(0.1))
-                                    .cornerRadius(12)
+                                    .buttonStyle(.plain)
                                 }
-                                .buttonStyle(.plain)
+                                Spacer()
                             }
-                            Spacer()
-                        }
-                    } else {
-                        let usedEquipment = allEquipment.filter { exercise.usedEquipmentIDs.contains($0.id) }
-                        if usedEquipment.isEmpty {
-                            Text("None recorded").font(.caption).foregroundColor(.secondary)
                         } else {
-                            Text(usedEquipment.map { $0.name }.joined(separator: ", ")).font(.caption).foregroundColor(.secondary)
+                            HStack(alignment: .top, spacing: 0) {
+                                Text("Equipment: ").font(.caption).fontWeight(.semibold).foregroundColor(.gray)
+                                Text(usedEquipment.map { $0.name }.joined(separator: ", ")).font(.caption).foregroundColor(.secondary)
+                            }
                         }
                     }
+                    .padding(.top, 4)
                 }
-                .padding(.top, 4)
             }
         }
         .padding(12)
@@ -2204,6 +2500,63 @@ private struct LogSearchView: View {
                     .environment(exercisesState)
             }
         }
+    }
+}
+
+// MARK: - Calendar Filter Popover
+
+private struct CalendarFilterPopover: View {
+    @Binding var showWorkouts: Bool
+    @Binding var showJournals: Bool
+    @Binding var showPlans: Bool
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            Text("Show in Calendar")
+                .font(.caption)
+                .fontWeight(.semibold)
+                .foregroundColor(.secondary)
+                .padding(.horizontal, 16)
+                .padding(.top, 14)
+                .padding(.bottom, 8)
+
+            Divider()
+
+            filterRow(label: "Workouts", systemImage: "dumbbell.fill",
+                      color: Color(red: 0.2, green: 0.75, blue: 0.35), isOn: $showWorkouts)
+            Divider().padding(.leading, 48)
+            filterRow(label: "Journals", systemImage: "note.text",
+                      color: Color(red: 0.4, green: 0.35, blue: 0.75), isOn: $showJournals)
+            Divider().padding(.leading, 48)
+            filterRow(label: "Plans", systemImage: "calendar.badge.checkmark",
+                      color: .accentColor, isOn: $showPlans)
+
+            Divider()
+        }
+        .frame(width: 220)
+    }
+
+    @ViewBuilder
+    private func filterRow(label: String, systemImage: String, color: Color, isOn: Binding<Bool>) -> some View {
+        Button(action: { isOn.wrappedValue.toggle() }) {
+            HStack(spacing: 12) {
+                Image(systemName: systemImage)
+                    .foregroundColor(color)
+                    .frame(width: 20)
+                Text(label)
+                    .font(.body)
+                    .foregroundColor(.primary)
+                Spacer()
+                if isOn.wrappedValue {
+                    Image(systemName: "checkmark")
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundColor(.accentColor)
+                }
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 12)
+        }
+        .buttonStyle(.plain)
     }
 }
 

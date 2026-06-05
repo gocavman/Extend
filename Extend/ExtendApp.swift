@@ -37,6 +37,7 @@ struct ExtendApp: App {
     let timerState = TimerState.shared
     let voiceTrainerState = VoiceTrainerState()
     let healthKitState = HealthKitState.shared
+    let trainingPlanState = TrainingPlanState.shared
 
     init() {
         // Register all modules synchronously before the first render so the
@@ -99,6 +100,7 @@ struct ExtendApp: App {
                 .environment(timerState)
                 .environment(voiceTrainerState)
                 .environment(healthKitState)
+                .environment(trainingPlanState)
                 .task {
                     // Request HealthKit auth on first launch if any sync is configured
                     guard !healthKitState.authorizationRequested else { return }
