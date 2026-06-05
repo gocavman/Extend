@@ -23,13 +23,14 @@ struct TrainingPlan: Identifiable, Codable {
         self.weekOverrides = [:]
     }
 
-    /// Returns the PlanDay for a given date, respecting week overrides.
+    /// Returns the PlanDay for a given date.
+    /// Fixed plans use per-week data; repeating plans use week 0 data.
     func planDay(for date: Date) -> PlanDay {
         let calendar = Calendar.current
         let weekday = calendar.component(.weekday, from: date) - 1  // 0=Sun..6=Sat
 
         if weeks > 0 {
-            // Compute which week of the program this date falls in
+            // Fixed plan: look up this date's week index
             let startOfStart = calendar.startOfDay(for: startDate)
             let startOfDate = calendar.startOfDay(for: date)
             let dayDiff = calendar.dateComponents([.day], from: startOfStart, to: startOfDate).day ?? 0
@@ -39,9 +40,15 @@ struct TrainingPlan: Identifiable, Codable {
                let day = overrideDays.first(where: { $0.dayOfWeek == weekday }) {
                 return day
             }
+            return PlanDay(dayOfWeek: weekday)
+        } else {
+            // Repeating plan: use week 0 as the single template
+            if let days = weekOverrides["0"],
+               let day = days.first(where: { $0.dayOfWeek == weekday }) {
+                return day
+            }
+            return PlanDay(dayOfWeek: weekday)
         }
-
-        return template.first(where: { $0.dayOfWeek == weekday }) ?? PlanDay(dayOfWeek: weekday)
     }
 
     /// Returns true only if `date` falls within this plan's active date range.
@@ -55,33 +62,32 @@ struct TrainingPlan: Identifiable, Codable {
         return dayDiff / 7 < weeks
     }
 
-    mutating func setTemplateDay(_ day: PlanDay) {
-        if let idx = template.firstIndex(where: { $0.dayOfWeek == day.dayOfWeek }) {
-            template[idx] = day
-        }
-    }
-
-    mutating func setOverrideDay(_ day: PlanDay, forWeek weekIndex: Int) {
+    /// Set a day for a specific week index (0-based). For repeating plans pass weekIndex 0.
+    mutating func setDay(_ day: PlanDay, forWeek weekIndex: Int) {
         let key = String(weekIndex)
         var days = weekOverrides[key] ?? []
         if let idx = days.firstIndex(where: { $0.dayOfWeek == day.dayOfWeek }) {
-            days[idx] = day
-        } else {
+            if day.isEmpty {
+                days.remove(at: idx)
+            } else {
+                days[idx] = day
+            }
+        } else if !day.isEmpty {
             days.append(day)
         }
-        // Remove the entry entirely if all overrides are now empty
-        let nonEmpty = days.filter { !$0.isEmpty }
-        if nonEmpty.isEmpty {
+        if days.isEmpty {
             weekOverrides.removeValue(forKey: key)
         } else {
             weekOverrides[key] = days
         }
     }
 
-    mutating func clearOverride(forWeek weekIndex: Int, dayOfWeek: Int) {
-        let key = String(weekIndex)
-        weekOverrides[key]?.removeAll { $0.dayOfWeek == dayOfWeek }
-        if weekOverrides[key]?.isEmpty == true { weekOverrides.removeValue(forKey: key) }
+    /// Copy a day to every week in a fixed plan (weeks > 0).
+    mutating func applyToAllWeeks(_ day: PlanDay) {
+        guard weeks > 0 else { return }
+        for weekIndex in 0..<weeks {
+            setDay(day, forWeek: weekIndex)
+        }
     }
 }
 

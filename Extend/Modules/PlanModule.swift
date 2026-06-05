@@ -16,12 +16,6 @@ struct PlanModuleView: View {
 
     @State private var planEditorItem: PlanEditorItem? = nil
     @State private var showingManagePlans = false
-    @State private var selectedTab: PlanTab = .thisWeek
-
-    enum PlanTab: String, CaseIterable {
-        case thisWeek = "This Week"
-        case fullProgram = "Full Program"
-    }
 
     var body: some View {
         NavigationStack {
@@ -126,33 +120,20 @@ struct PlanModuleView: View {
                 activePlanHeader(plan: plan)
             }
 
-            // Tab picker
-            Picker("View", selection: $selectedTab) {
-                ForEach(PlanTab.allCases, id: \.self) { Text($0.rawValue).tag($0) }
-            }
-            .pickerStyle(.segmented)
-            .padding(.horizontal, 16)
-            .padding(.vertical, 10)
-
             Divider()
 
-            // Content
+            // Content: repeating plans show the current week; fixed plans show all weeks
             if let plan = planState.activePlan {
-                switch selectedTab {
-                case .thisWeek:
+                if plan.weeks > 0 {
+                    FullProgramView(plan: plan)
+                        .environment(planState)
+                        .environment(workoutsState)
+                        .environment(exercisesState)
+                } else {
                     WeekView(plan: plan)
                         .environment(planState)
                         .environment(workoutsState)
                         .environment(exercisesState)
-                case .fullProgram:
-                    if plan.weeks > 0 {
-                        FullProgramView(plan: plan)
-                            .environment(planState)
-                            .environment(workoutsState)
-                            .environment(exercisesState)
-                    } else {
-                        repeatingNote
-                    }
                 }
             }
         }
@@ -180,20 +161,6 @@ struct PlanModuleView: View {
         .background(Color(UIColor.secondarySystemBackground))
     }
 
-    private var repeatingNote: some View {
-        VStack(spacing: 12) {
-            Image(systemName: "repeat")
-                .font(.system(size: 36, weight: .light))
-                .foregroundColor(.secondary)
-            Text("This plan repeats weekly.")
-                .font(.subheadline).foregroundColor(.secondary)
-            Text("Switch to \"This Week\" to view and edit the schedule.")
-                .font(.caption).foregroundColor(.secondary)
-                .multilineTextAlignment(.center)
-                .padding(.horizontal, 32)
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-    }
 }
 
 // MARK: - Week View (This Week tab)
@@ -252,12 +219,14 @@ private struct WeekView: View {
                 day: day,
                 weekIndex: editingWeekIndex,
                 plan: plan
-            ) { updatedDay, weekIdx in
+            ) { updatedDay, applyToAll in
                 var updated = plan
-                if let wi = weekIdx {
-                    updated.setOverrideDay(updatedDay, forWeek: wi)
+                if applyToAll {
+                    updated.applyToAllWeeks(updatedDay)
                 } else {
-                    updated.setTemplateDay(updatedDay)
+                    // Repeating plan uses week 0; fixed plan uses current week
+                    let wi = editingWeekIndex ?? 0
+                    updated.setDay(updatedDay, forWeek: wi)
                 }
                 planState.updatePlan(updated)
             }
@@ -412,12 +381,12 @@ private struct FullProgramView: View {
                 day: day,
                 weekIndex: editingWeekIndex,
                 plan: plan
-            ) { updatedDay, weekIdx in
+            ) { updatedDay, applyToAll in
                 var updated = plan
-                if let wi = weekIdx {
-                    updated.setOverrideDay(updatedDay, forWeek: wi)
+                if applyToAll {
+                    updated.applyToAllWeeks(updatedDay)
                 } else {
-                    updated.setTemplateDay(updatedDay)
+                    updated.setDay(updatedDay, forWeek: editingWeekIndex ?? 0)
                 }
                 planState.updatePlan(updated)
             }
@@ -435,32 +404,55 @@ private struct WeekSection: View {
     let weekIndex: Int
     let onEditDay: (PlanDay, Int?) -> Void
 
+    private let calendar = Calendar.current
+
+    /// Returns the date for day offset (0–6) within this week, where 0 = plan.startDate's weekday.
+    private func date(forDayIndex index: Int) -> Date {
+        let start = calendar.startOfDay(for: plan.startDate)
+        return calendar.date(byAdding: .day, value: weekIndex * 7 + index, to: start) ?? start
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("Week \(weekIndex + 1)")
-                .font(.headline)
-                .padding(.bottom, 2)
+            HStack(alignment: .firstTextBaseline, spacing: 6) {
+                Text("Week \(weekIndex + 1)")
+                    .font(.headline)
+                let firstDay = date(forDayIndex: 0)
+                let lastDay = date(forDayIndex: 6)
+                let fmt = DateFormatter()
+                let _ = { fmt.dateFormat = "MMM d" }()
+                Text("· \(fmt.string(from: firstDay))–\(calendar.component(.day, from: lastDay))")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
+            .padding(.bottom, 2)
 
-            ForEach(0..<7, id: \.self) { dayOfWeek in
+            ForEach(0..<7, id: \.self) { dayIndex in
+                let actualDate = date(forDayIndex: dayIndex)
+                let dayOfWeek = calendar.component(.weekday, from: actualDate) - 1  // 0=Sun..6=Sat
                 let day: PlanDay = {
                     let key = String(weekIndex)
                     if let overrides = plan.weekOverrides[key],
                        let d = overrides.first(where: { $0.dayOfWeek == dayOfWeek }) {
                         return d
                     }
-                    return plan.template.first(where: { $0.dayOfWeek == dayOfWeek }) ?? PlanDay(dayOfWeek: dayOfWeek)
+                    return PlanDay(dayOfWeek: dayOfWeek)
                 }()
-                let hasOverride: Bool = {
-                    let key = String(weekIndex)
-                    return plan.weekOverrides[key]?.contains { $0.dayOfWeek == dayOfWeek && !$0.isEmpty } ?? false
-                }()
+                let isToday = calendar.isDateInToday(actualDate)
 
                 Button(action: { onEditDay(day, weekIndex) }) {
                     HStack {
-                        Text(dayOfWeek.dayOfWeekLabel)
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                            .frame(width: 32, alignment: .leading)
+                        // Day label + date number column
+                        VStack(spacing: 1) {
+                            Text(dayOfWeek.dayOfWeekLabel)
+                                .font(.caption2)
+                                .foregroundColor(isToday ? .accentColor : .secondary)
+                            Text("\(calendar.component(.day, from: actualDate))")
+                                .font(.caption)
+                                .fontWeight(isToday ? .bold : .regular)
+                                .foregroundColor(isToday ? .accentColor : .primary)
+                        }
+                        .frame(width: 32, alignment: .center)
 
                         if day.isEmpty {
                             Text("Rest")
@@ -476,8 +468,11 @@ private struct WeekSection: View {
                                     Text(w.name).font(.caption).fontWeight(.semibold)
                                 }
                                 if !day.exerciseIDs.isEmpty {
-                                    Text("\(day.exerciseIDs.count) exercise\(day.exerciseIDs.count == 1 ? "" : "s")")
-                                        .font(.caption2).foregroundColor(.secondary)
+                                    let names = day.exerciseIDs.compactMap { id in
+                                        exercisesState.exercises.first { $0.id == id }?.name
+                                    }
+                                    Text(names.joined(separator: ", "))
+                                        .font(.caption2).foregroundColor(.secondary).lineLimit(2)
                                 }
                                 if !day.note.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                                     Text(day.note).font(.caption2).foregroundColor(.secondary).lineLimit(1)
@@ -487,20 +482,19 @@ private struct WeekSection: View {
 
                         Spacer()
 
-                        if hasOverride {
-                            Text("custom")
-                                .font(.caption2)
-                                .foregroundColor(.accentColor)
-                        }
-
                         Image(systemName: "chevron.right")
                             .font(.caption2)
                             .foregroundColor(.secondary)
                     }
                     .padding(.vertical, 6)
                     .padding(.horizontal, 10)
-                    .background(Color(UIColor.tertiarySystemBackground))
-                    .cornerRadius(6)
+                    .background(
+                        RoundedRectangle(cornerRadius: 6)
+                            .fill(Color(UIColor.tertiarySystemBackground))
+                            .overlay(
+                                isToday ? RoundedRectangle(cornerRadius: 6).stroke(Color.accentColor, lineWidth: 1.5) : nil
+                            )
+                    )
                 }
                 .buttonStyle(.plain)
             }
@@ -519,21 +513,26 @@ struct DayEditorSheet: View {
     @Environment(ExercisesState.self) private var exercisesState
 
     let day: PlanDay
-    let weekIndex: Int?
+    let weekIndex: Int?   // nil = repeating plan (week 0)
     let plan: TrainingPlan
-    let onSave: (PlanDay, Int?) -> Void
+    /// Called with the updated day and whether to apply to all weeks.
+    let onSave: (PlanDay, Bool) -> Void
 
     @State private var editedDay: PlanDay
+    @State private var applyToAll: Bool = false
     @State private var showingWorkoutPicker = false
     @State private var showingExercisePicker = false
 
-    init(day: PlanDay, weekIndex: Int?, plan: TrainingPlan, onSave: @escaping (PlanDay, Int?) -> Void) {
+    init(day: PlanDay, weekIndex: Int?, plan: TrainingPlan, onSave: @escaping (PlanDay, Bool) -> Void) {
         self.day = day
         self.weekIndex = weekIndex
         self.plan = plan
         self.onSave = onSave
         _editedDay = State(initialValue: day)
     }
+
+    /// For fixed multi-week plans only — show the scope picker.
+    private var isFixedPlan: Bool { plan.weeks > 0 }
 
     private var dayTitle: String {
         let base = day.dayOfWeek.dayOfWeekFullLabel
@@ -613,6 +612,21 @@ struct DayEditorSheet: View {
                     }
                 }
 
+                // Apply scope — only shown for fixed multi-week plans
+                if isFixedPlan {
+                    Section {
+                        Toggle(isOn: $applyToAll) {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("Apply to all weeks")
+                                    .font(.subheadline)
+                                Text("Copy this day's schedule to every week in the plan")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            }
+                        }
+                    }
+                }
+
                 // Clear day
                 if !editedDay.isEmpty {
                     Section {
@@ -634,7 +648,7 @@ struct DayEditorSheet: View {
                 }
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Save") {
-                        onSave(editedDay, weekIndex)
+                        onSave(editedDay, applyToAll)
                         dismiss()
                     }
                     .fontWeight(.semibold)
