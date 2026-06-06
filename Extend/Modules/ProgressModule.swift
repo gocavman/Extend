@@ -446,6 +446,8 @@ private struct ProgressModuleView: View {
 
 private struct CalendarView: View {
     @Environment(TrainingPlanState.self) var planState
+    @Environment(WorkoutsState.self) private var workoutsState
+    @Environment(ExercisesState.self) private var exercisesState
     @Binding var currentMonth: Date
     @Binding var selectedDate: Date
     let logState: WorkoutLogState
@@ -517,7 +519,21 @@ private struct CalendarView: View {
                             workoutCount: showWorkouts ? logState.logsForDate(date).count : 0,
                             logs: showWorkouts ? logState.logsForDate(date) : [],
                             journalEntries: showJournals ? logState.journalEntriesForDate(date) : [],
-                            planName: (showPlans && planState.planDay(for: date) != nil) ? planState.activePlan?.name : nil
+                            planName: {
+                                guard showPlans, let pd = planState.planDay(for: date), let plan = planState.activePlan else { return nil }
+                                let totalItems = pd.workoutIDs.count + pd.exerciseIDs.count
+                                if totalItems == 1 {
+                                    if let wid = pd.workoutIDs.first,
+                                       let name = workoutsState.workouts.first(where: { $0.id == wid })?.name {
+                                        return name
+                                    }
+                                    if let eid = pd.exerciseIDs.first,
+                                       let name = exercisesState.exercises.first(where: { $0.id == eid })?.name {
+                                        return name
+                                    }
+                                }
+                                return plan.name
+                            }()
                         ) {
                             selectedDate = date
                             onDaySelected?()
