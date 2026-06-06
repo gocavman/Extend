@@ -62,6 +62,13 @@ final class TrainingPlanState {
         saveActiveID()
     }
 
+    func resetPlans() {
+        plans = []
+        activePlanID = nil
+        defaults.removeObject(forKey: plansKey)
+        defaults.removeObject(forKey: activeKey)
+    }
+
     // MARK: - Persistence
 
     private func load() {

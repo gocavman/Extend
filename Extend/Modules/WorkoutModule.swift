@@ -158,6 +158,9 @@ private struct WorkoutInfoChip: View {
 private struct WorkoutsModuleView: View {
     @Environment(WorkoutsState.self) var state
     @Environment(ExercisesState.self) var exercisesState
+    @Environment(TrainingPlanState.self) private var planState
+    @Environment(VoiceTrainerState.self) private var voiceTrainerState
+    @Environment(ModuleState.self) private var moduleState
 
     @State private var showingAdd = false
     @State private var editingWorkout: Workout?
@@ -166,6 +169,7 @@ private struct WorkoutsModuleView: View {
     @State private var searchText: String = ""
     @State private var historyWorkout: Workout?
     @State private var statsWorkout: Workout?
+    @State private var showingPlanLauncher = false
 
     private var filteredWorkouts: [Workout] {
         let trimmedSearch = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -182,6 +186,15 @@ private struct WorkoutsModuleView: View {
                     .font(.title2)
                     .fontWeight(.bold)
                 Spacer()
+                if planState.activePlan != nil {
+                    Button(action: {
+                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                        showingPlanLauncher = true
+                    }) {
+                        Image(systemName: "calendar.badge.checkmark")
+                            .foregroundColor(planState.planDay(for: Date()) != nil ? .accentColor : .primary)
+                    }
+                }
                 Button(action: {
                     UIImpactFeedbackGenerator(style: .light).impactOccurred()
                     showingAdd = true
@@ -194,6 +207,35 @@ private struct WorkoutsModuleView: View {
             .padding(.vertical, 12)
 
             List {
+                // Today's Plan banner — shown when active plan has items today
+                if planState.planDay(for: Date()) != nil {
+                    Section {
+                        Button(action: {
+                            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                            showingPlanLauncher = true
+                        }) {
+                            HStack(spacing: 12) {
+                                Image(systemName: "calendar.badge.checkmark")
+                                    .font(.title3)
+                                    .foregroundColor(.accentColor)
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text("Today's Plan")
+                                        .font(.subheadline).fontWeight(.semibold)
+                                        .foregroundColor(.primary)
+                                    if let name = planState.activePlan?.name {
+                                        Text(name)
+                                            .font(.caption).foregroundColor(.secondary)
+                                    }
+                                }
+                                Spacer()
+                                Image(systemName: "chevron.right").foregroundColor(.secondary)
+                            }
+                        }
+                        .buttonStyle(.plain)
+                    }
+                    .listRowInsets(EdgeInsets(top: 4, leading: 16, bottom: 4, trailing: 16))
+                }
+
                 // Favorites tiles
                 if !state.favoriteWorkouts.isEmpty {
                     Section {
@@ -441,6 +483,25 @@ private struct WorkoutsModuleView: View {
             .onChange(of: state.pendingLaunchID) { _, _ in
                 launchPendingWorkoutIfNeeded()
             }
+            .fullScreenCover(isPresented: $showingPlanLauncher) {
+                PlanDayLauncherSheet(
+                    onLaunchWorkout: { workout in
+                        startingWorkout = workout
+                    },
+                    onLaunchExercise: { exercise in
+                        startingWorkout = Workout(
+                            name: "\(exercise.name) (Quick)",
+                            notes: "",
+                            items: [.exercise(WorkoutExercise(exerciseID: exercise.id))]
+                        )
+                    }
+                )
+                .environment(planState)
+                .environment(state)
+                .environment(exercisesState)
+                .environment(voiceTrainerState)
+                .environment(moduleState)
+            }
         }
     }
 
@@ -459,6 +520,120 @@ private struct WorkoutsModuleView: View {
             exercisesState.exercises.first { $0.id == item.exerciseID }?.name
         }
         return exerciseNames.contains { $0.localizedCaseInsensitiveContains(searchKey) }
+    }
+}
+
+// MARK: - Plan Day Launcher Sheet
+
+struct PlanDayLauncherSheet: View {
+    @Environment(\.dismiss) private var dismiss
+    @Environment(TrainingPlanState.self) private var planState
+    @Environment(WorkoutsState.self) private var workoutsState
+    @Environment(ExercisesState.self) private var exercisesState
+    @Environment(VoiceTrainerState.self) private var voiceTrainerState
+    @Environment(ModuleState.self) private var moduleState
+
+    var onLaunchWorkout: (Workout) -> Void
+    var onLaunchExercise: (Exercise) -> Void
+
+    @State private var selectedDate: Date = Calendar.current.startOfDay(for: Date())
+
+    private var planDay: PlanDay? { planState.planDay(for: selectedDate) }
+
+    var body: some View {
+        NavigationStack {
+            VStack(spacing: 0) {
+                // Date navigation bar
+                HStack {
+                    Button {
+                        selectedDate = Calendar.current.date(byAdding: .day, value: -1, to: selectedDate)!
+                    } label: {
+                        Image(systemName: "chevron.left")
+                            .font(.title3)
+                            .foregroundColor(.accentColor)
+                    }
+                    Spacer()
+                    Text(selectedDate, style: .date)
+                        .font(.headline)
+                    Spacer()
+                    Button {
+                        selectedDate = Calendar.current.date(byAdding: .day, value: 1, to: selectedDate)!
+                    } label: {
+                        Image(systemName: "chevron.right")
+                            .font(.title3)
+                            .foregroundColor(.accentColor)
+                    }
+                }
+                .padding()
+
+                if let pd = planDay, !pd.isEmpty {
+                    List {
+                        let workouts = pd.workoutIDs.compactMap { id in workoutsState.workouts.first { $0.id == id } }
+                        if !workouts.isEmpty {
+                            Section("Workouts") {
+                                ForEach(workouts) { w in
+                                    Button {
+                                        dismiss()
+                                        onLaunchWorkout(w)
+                                    } label: {
+                                        Label(w.name, systemImage: "dumbbell.fill")
+                                            .foregroundColor(.primary)
+                                    }
+                                }
+                            }
+                        }
+
+                        let exercises = pd.exerciseIDs.compactMap { id in exercisesState.exercises.first { $0.id == id } }
+                        if !exercises.isEmpty {
+                            Section("Exercises") {
+                                ForEach(exercises) { ex in
+                                    Button {
+                                        dismiss()
+                                        onLaunchExercise(ex)
+                                    } label: {
+                                        Label(ex.name, systemImage: "figure.strengthtraining.traditional")
+                                            .foregroundColor(.primary)
+                                    }
+                                }
+                            }
+                        }
+
+                        let configs = pd.voiceActivityIDs.compactMap { id in voiceTrainerState.savedConfigurations.first { $0.id == id } }
+                        if !configs.isEmpty {
+                            Section("Voice Activities") {
+                                ForEach(configs) { c in
+                                    Button {
+                                        dismiss()
+                                        voiceTrainerState.pendingLaunchID = c.id
+                                        moduleState.selectModule(ModuleIDs.voiceTrainer)
+                                    } label: {
+                                        Label(c.name, systemImage: "waveform")
+                                            .foregroundColor(.primary)
+                                    }
+                                }
+                            }
+                        }
+                    }
+                } else {
+                    Spacer()
+                    VStack(spacing: 8) {
+                        Image(systemName: "calendar.badge.checkmark")
+                            .font(.largeTitle)
+                            .foregroundColor(.secondary)
+                        Text("Rest day")
+                            .foregroundColor(.secondary)
+                    }
+                    Spacer()
+                }
+            }
+            .navigationTitle("Today's Plan")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Done") { dismiss() }
+                }
+            }
+        }
     }
 }
 

@@ -58,6 +58,7 @@ struct ExtendApp: App {
         registry.registerModule(VoiceTrainerModule())
         registry.registerModule(StickFigureAnimatorModule())
         registry.registerModule(MatchGameModule())
+        registry.registerModule(TodaysPlanModule())
 
         // Set default navbar layout on first launch
         if state.topNavBarModules.isEmpty && state.bottomNavBarModules.isEmpty {

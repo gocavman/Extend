@@ -47,6 +47,7 @@ private struct SettingsModuleView: View {
     @Environment(VoiceTrainerState.self) var voiceTrainerState
     @Environment(HealthKitState.self) var healthKitState
     @Environment(ExercisesState.self) var exercisesState
+    @Environment(TrainingPlanState.self) var planState
 
     @AppStorage("weightUnit") private var weightUnit: String = "lbs"
     @AppStorage("appColorScheme") private var appColorScheme: String = "light"
@@ -435,7 +436,7 @@ private struct SettingsModuleView: View {
                         resetApp()
                     }
                 } message: {
-                    Text("This will reset the whole app back to default settings; clearing history, logs, favorites and customizations (navbars, dashboard tiles, exercises, workouts, muscle groups, equipment, timers and voice trainers).")
+                    Text("This will reset the whole app back to default settings; clearing history, logs, favorites and customizations (navbars, dashboard tiles, exercises, workouts, muscle groups, equipment, timers, voice trainers and training plans).")
                 }
                 .fullScreenCover(isPresented: $showingExportSheet) {
                     WorkoutExportSheet(
@@ -502,17 +503,18 @@ private struct SettingsModuleView: View {
         let bottomModules: [UUID] = [
             ModuleIDs.dashboard,
             ModuleIDs.workouts,
-            ModuleIDs.generate,
             ModuleIDs.quickWorkout,
+            ModuleIDs.todaysPlan,
             ModuleIDs.progress
         ]
 
         let topModules: [UUID] = [
-            ModuleIDs.timer,
+            
             ModuleIDs.voiceTrainer,
+            ModuleIDs.generate,
+            ModuleIDs.timer,
             ModuleIDs.exercises,
-            ModuleIDs.muscles,
-            ModuleIDs.equipment
+            ModuleIDs.muscles
         ]
 
         moduleState.setBottomNavBarModules(bottomModules)
@@ -533,6 +535,7 @@ private struct SettingsModuleView: View {
         TimerState.shared.reset()
         WorkoutLogState.shared.resetLogs()
         voiceTrainerState.resetConfigurations()
+        planState.resetPlans()
         HealthKitState.shared.resetAll()
 
         // Reset Game Progress - Workout Match (Match Game)
@@ -1317,6 +1320,7 @@ private struct DashboardAddTileSheet: View {
         case .restDays: return "moon"
         case .personalRecord: return "medal"
         case .oneRepMax: return "trophy.fill"
+        case .todaysPlan: return "calendar.badge.checkmark"
         }
     }
 
@@ -1334,6 +1338,7 @@ private struct DashboardAddTileSheet: View {
         case .restDays:                return "Days with no workout logged in the last 14 days."
         case .personalRecord:          return "Your heaviest single set weight ever logged."
         case .oneRepMax:               return "Leaderboard of your best estimated 1-rep maxes by exercise."
+        case .todaysPlan:              return "Shows today's planned workouts, exercises, and voice activities."
         }
     }
 

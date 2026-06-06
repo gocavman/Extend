@@ -37,9 +37,9 @@ enum TourStop: String, CaseIterable {
     var description: String {
         switch self {
         case .bottomNavBar:
-            return "Your primary modules live here — Dashboard, Workouts, Generate, Quick Workout, and Logs. Fully customizable in Settings."
+            return "Your primary modules live here — Dashboard, Workout, Quick Workout, Planner, and Logs. Fully customizable in Settings."
         case .topNavBar:
-            return "Extra modules like Timers, Voice Trainer, Exercises, Muscles, and Equipment live up here. Fully customizable in Settings."
+            return "Extra modules like Voice Trainer, Generate Workout, Timer, Exercises, and Muscles live up here. Fully customizable in Settings."
         case .settingsGear:
             return "Tap the gear to open Settings, where you can change the theme, rearrange navigation bars, customize the dashboard, manage HealthKit sync, and more."
         case .dashboardBody:

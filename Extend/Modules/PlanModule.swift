@@ -13,6 +13,7 @@ struct PlanModuleView: View {
     @Environment(TrainingPlanState.self) private var planState
     @Environment(WorkoutsState.self) private var workoutsState
     @Environment(ExercisesState.self) private var exercisesState
+    @Environment(VoiceTrainerState.self) private var voiceTrainerState
 
     @State private var planEditorItem: PlanEditorItem? = nil
     @State private var showingManagePlans = false
@@ -169,6 +170,7 @@ private struct WeekView: View {
     @Environment(TrainingPlanState.self) private var planState
     @Environment(WorkoutsState.self) private var workoutsState
     @Environment(ExercisesState.self) private var exercisesState
+    @Environment(VoiceTrainerState.self) private var voiceTrainerState
 
     let plan: TrainingPlan
 
@@ -203,7 +205,8 @@ private struct WeekView: View {
                         planDay: planDay,
                         isToday: isToday,
                         workoutsState: workoutsState,
-                        exercisesState: exercisesState
+                        exercisesState: exercisesState,
+                        voiceTrainerState: voiceTrainerState
                     ) {
                         editingDay = planDay.isEmpty
                             ? PlanDay(dayOfWeek: weekday)
@@ -232,6 +235,7 @@ private struct WeekView: View {
             }
             .environment(workoutsState)
             .environment(exercisesState)
+            .environment(voiceTrainerState)
         }
     }
 }
@@ -244,6 +248,7 @@ private struct DayCard: View {
     let isToday: Bool
     let workoutsState: WorkoutsState
     let exercisesState: ExercisesState
+    let voiceTrainerState: VoiceTrainerState
     let onTap: () -> Void
 
     private let calendar = Calendar.current
@@ -267,6 +272,12 @@ private struct DayCard: View {
     private var exercises: [Exercise] {
         planDay.exerciseIDs.compactMap { id in
             exercisesState.exercises.first { $0.id == id }
+        }
+    }
+
+    private var voiceActivities: [VoiceTrainerConfig] {
+        planDay.voiceActivityIDs.compactMap { id in
+            voiceTrainerState.savedConfigurations.first { $0.id == id }
         }
     }
 
@@ -314,6 +325,17 @@ private struct DayCard: View {
                                     .lineLimit(2)
                             }
                         }
+                        if !voiceActivities.isEmpty {
+                            HStack(spacing: 6) {
+                                Image(systemName: "waveform")
+                                    .font(.caption)
+                                    .foregroundColor(.primary)
+                                Text(voiceActivities.map { $0.name }.joined(separator: ", "))
+                                    .font(.caption)
+                                    .foregroundColor(.primary)
+                                    .lineLimit(2)
+                            }
+                        }
                         if !planDay.note.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                             HStack(spacing: 6) {
                                 Image(systemName: "note.text")
@@ -355,6 +377,7 @@ private struct FullProgramView: View {
     @Environment(TrainingPlanState.self) private var planState
     @Environment(WorkoutsState.self) private var workoutsState
     @Environment(ExercisesState.self) private var exercisesState
+    @Environment(VoiceTrainerState.self) private var voiceTrainerState
 
     let plan: TrainingPlan
 
@@ -392,6 +415,7 @@ private struct FullProgramView: View {
             }
             .environment(workoutsState)
             .environment(exercisesState)
+            .environment(voiceTrainerState)
         }
     }
 }
@@ -399,6 +423,7 @@ private struct FullProgramView: View {
 private struct WeekSection: View {
     @Environment(WorkoutsState.self) private var workoutsState
     @Environment(ExercisesState.self) private var exercisesState
+    @Environment(VoiceTrainerState.self) private var voiceTrainerState
 
     let plan: TrainingPlan
     let weekIndex: Int
@@ -465,13 +490,21 @@ private struct WeekSection: View {
                                     workoutsState.workouts.first { $0.id == id }
                                 }
                                 ForEach(dayWorkouts) { w in
-                                    Text(w.name).font(.caption).fontWeight(.semibold)
+                                    Label(w.name, systemImage: "dumbbell.fill")
+                                        .font(.caption).fontWeight(.semibold).foregroundColor(.primary)
                                 }
                                 if !day.exerciseIDs.isEmpty {
                                     let names = day.exerciseIDs.compactMap { id in
                                         exercisesState.exercises.first { $0.id == id }?.name
                                     }
-                                    Text(names.joined(separator: ", "))
+                                    Label(names.joined(separator: ", "), systemImage: "figure.strengthtraining.traditional")
+                                        .font(.caption2).foregroundColor(.primary).lineLimit(2)
+                                }
+                                if !day.voiceActivityIDs.isEmpty {
+                                    let names = day.voiceActivityIDs.compactMap { id in
+                                        voiceTrainerState.savedConfigurations.first { $0.id == id }?.name
+                                    }
+                                    Label(names.joined(separator: ", "), systemImage: "waveform")
                                         .font(.caption2).foregroundColor(.primary).lineLimit(2)
                                 }
                                 if !day.note.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
@@ -511,6 +544,7 @@ struct DayEditorSheet: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(WorkoutsState.self) private var workoutsState
     @Environment(ExercisesState.self) private var exercisesState
+    @Environment(VoiceTrainerState.self) private var voiceTrainerState
 
     let day: PlanDay
     let weekIndex: Int?   // nil = repeating plan (week 0)
@@ -522,6 +556,7 @@ struct DayEditorSheet: View {
     @State private var applyToAll: Bool = false
     @State private var showingWorkoutPicker = false
     @State private var showingExercisePicker = false
+    @State private var showingVoicePicker = false
 
     init(day: PlanDay, weekIndex: Int?, plan: TrainingPlan, onSave: @escaping (PlanDay, Bool) -> Void) {
         self.day = day
@@ -536,8 +571,16 @@ struct DayEditorSheet: View {
 
     private var dayTitle: String {
         let base = day.dayOfWeek.dayOfWeekFullLabel
-        if let wi = weekIndex { return "Week \(wi + 1) – \(base)" }
-        return base
+        let calendar = Calendar.current
+        let start = calendar.startOfDay(for: plan.startDate)
+        let weekIdx = weekIndex ?? 0
+        let startWeekday = calendar.component(.weekday, from: start) - 1 // 0 = Sunday
+        var dayOffset = day.dayOfWeek - startWeekday
+        if dayOffset < 0 { dayOffset += 7 }
+        let date = calendar.date(byAdding: .day, value: weekIdx * 7 + dayOffset, to: start) ?? start
+        let formatted = date.formatted(.dateTime.month(.abbreviated).day())
+        if let wi = weekIndex { return "Week \(wi + 1) · \(base), \(formatted)" }
+        return "\(base), \(formatted)"
     }
 
     private var selectedWorkouts: [Workout] {
@@ -546,6 +589,10 @@ struct DayEditorSheet: View {
 
     private var selectedExercises: [Exercise] {
         editedDay.exerciseIDs.compactMap { id in exercisesState.exercises.first { $0.id == id } }
+    }
+
+    private var selectedVoiceActivities: [VoiceTrainerConfig] {
+        editedDay.voiceActivityIDs.compactMap { id in voiceTrainerState.savedConfigurations.first { $0.id == id } }
     }
 
     var body: some View {
@@ -594,6 +641,26 @@ struct DayEditorSheet: View {
                     Text("Exercises")
                 }
 
+                // Voice Activities section
+                Section("Voice Activities") {
+                    ForEach(selectedVoiceActivities) { config in
+                        HStack {
+                            Label(config.name, systemImage: "waveform")
+                                .font(.subheadline)
+                            Spacer()
+                            Button(action: { editedDay.voiceActivityIDs.removeAll { $0 == config.id } }) {
+                                Image(systemName: "xmark.circle.fill")
+                                    .foregroundColor(.secondary)
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                    Button(action: { showingVoicePicker = true }) {
+                        Label("Add Voice Activity", systemImage: "plus")
+                            .foregroundColor(.accentColor)
+                    }
+                }
+
                 // Note section
                 Section("Note") {
                     ZStack(alignment: .topLeading) {
@@ -633,6 +700,7 @@ struct DayEditorSheet: View {
                         Button(role: .destructive, action: {
                             editedDay.workoutIDs = []
                             editedDay.exerciseIDs = []
+                            editedDay.voiceActivityIDs = []
                             editedDay.note = ""
                         }) {
                             Label("Clear Day (Rest)", systemImage: "trash")
@@ -663,6 +731,11 @@ struct DayEditorSheet: View {
             .fullScreenCover(isPresented: $showingExercisePicker) {
                 ExercisePickerSheet(selectedIDs: $editedDay.exerciseIDs)
                     .environment(exercisesState)
+            }
+            // Full-screen voice activity picker
+            .fullScreenCover(isPresented: $showingVoicePicker) {
+                VoiceActivityPickerSheet(selectedIDs: $editedDay.voiceActivityIDs)
+                    .environment(voiceTrainerState)
             }
         }
     }
@@ -761,6 +834,63 @@ private struct ExercisePickerSheet: View {
             }
             .listStyle(.plain)
             .navigationTitle("Select Exercises")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Done") { dismiss() }
+                        .fontWeight(.semibold)
+                }
+            }
+        }
+    }
+}
+
+// MARK: - Voice Activity Picker Sheet
+
+private struct VoiceActivityPickerSheet: View {
+    @Environment(\.dismiss) private var dismiss
+    @Environment(VoiceTrainerState.self) private var voiceTrainerState
+    @Binding var selectedIDs: [UUID]
+    @State private var searchText = ""
+
+    private var filtered: [VoiceTrainerConfig] {
+        let sorted = voiceTrainerState.savedConfigurations.sorted { $0.name < $1.name }
+        guard !searchText.isEmpty else { return sorted }
+        return sorted.filter { $0.name.localizedCaseInsensitiveContains(searchText) }
+    }
+
+    var body: some View {
+        NavigationStack {
+            List {
+                SearchField(text: $searchText, placeholder: "Search voice activities...")
+                    .listRowSeparator(.hidden)
+                if filtered.isEmpty {
+                    Text("No saved voice activities")
+                        .foregroundColor(.secondary)
+                        .listRowSeparator(.hidden)
+                }
+                ForEach(filtered) { config in
+                    let isSelected = selectedIDs.contains(config.id)
+                    Button(action: {
+                        if isSelected {
+                            selectedIDs.removeAll { $0 == config.id }
+                        } else {
+                            selectedIDs.append(config.id)
+                        }
+                    }) {
+                        HStack {
+                            Label(config.name, systemImage: "waveform")
+                            Spacer()
+                            if isSelected {
+                                Image(systemName: "checkmark").foregroundColor(.accentColor)
+                            }
+                        }
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            .listStyle(.plain)
+            .navigationTitle("Select Voice Activities")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
@@ -917,6 +1047,155 @@ private struct ManagePlansSheet: View {
                     Button("Done") { dismiss() }
                 }
             }
+        }
+    }
+}
+
+// MARK: - Today's Plan Module
+
+/// Module for viewing and launching today's planned activities from the navbar.
+public struct TodaysPlanModule: AppModule {
+    public let id: UUID = ModuleIDs.todaysPlan
+    public let displayName: String = "Plan"
+    public let iconName: String = "calendar.badge.checkmark"
+    public let description: String = "View and launch today's planned workouts, exercises, and voice activities"
+
+    public var order: Int = 14
+    public var isVisible: Bool = true
+
+    public var moduleView: AnyView {
+        AnyView(TodaysPlanModuleView())
+    }
+}
+
+struct TodaysPlanModuleView: View {
+    @Environment(TrainingPlanState.self) private var planState
+    @Environment(WorkoutsState.self) private var workoutsState
+    @Environment(ExercisesState.self) private var exercisesState
+    @Environment(VoiceTrainerState.self) private var voiceTrainerState
+    @Environment(ModuleState.self) private var moduleState
+
+    @State private var selectedDate: Date = Calendar.current.startOfDay(for: Date())
+    @State private var startingWorkout: Workout? = nil
+    @State private var showPlan = false
+
+    private var planDay: PlanDay? { planState.planDay(for: selectedDate) }
+
+    var body: some View {
+        NavigationStack {
+            VStack(spacing: 0) {
+                // Date navigation bar
+                HStack {
+                    Button {
+                        selectedDate = Calendar.current.date(byAdding: .day, value: -1, to: selectedDate)!
+                    } label: {
+                        Image(systemName: "chevron.left")
+                            .font(.title3)
+                            .foregroundColor(.accentColor)
+                    }
+                    Spacer()
+                    Text(selectedDate, style: .date)
+                        .font(.headline)
+                    Spacer()
+                    Button {
+                        selectedDate = Calendar.current.date(byAdding: .day, value: 1, to: selectedDate)!
+                    } label: {
+                        Image(systemName: "chevron.right")
+                            .font(.title3)
+                            .foregroundColor(.accentColor)
+                    }
+                }
+                .padding()
+
+                if let pd = planDay, !pd.isEmpty {
+                    List {
+                        let workouts = pd.workoutIDs.compactMap { id in workoutsState.workouts.first { $0.id == id } }
+                        if !workouts.isEmpty {
+                            Section("Workouts") {
+                                ForEach(workouts) { w in
+                                    Button {
+                                        startingWorkout = w
+                                    } label: {
+                                        Label(w.name, systemImage: "dumbbell.fill")
+                                            .foregroundColor(.primary)
+                                    }
+                                }
+                            }
+                        }
+
+                        let exercises = pd.exerciseIDs.compactMap { id in exercisesState.exercises.first { $0.id == id } }
+                        if !exercises.isEmpty {
+                            Section("Exercises") {
+                                ForEach(exercises) { ex in
+                                    Button {
+                                        startingWorkout = Workout(
+                                            name: "\(ex.name) (Quick)",
+                                            notes: "",
+                                            items: [.exercise(WorkoutExercise(exerciseID: ex.id))]
+                                        )
+                                    } label: {
+                                        Label(ex.name, systemImage: "figure.strengthtraining.traditional")
+                                            .foregroundColor(.primary)
+                                    }
+                                }
+                            }
+                        }
+
+                        let configs = pd.voiceActivityIDs.compactMap { id in voiceTrainerState.savedConfigurations.first { $0.id == id } }
+                        if !configs.isEmpty {
+                            Section("Voice Activities") {
+                                ForEach(configs) { c in
+                                    Button {
+                                        voiceTrainerState.pendingLaunchID = c.id
+                                        moduleState.selectModule(ModuleIDs.voiceTrainer)
+                                    } label: {
+                                        Label(c.name, systemImage: "waveform")
+                                            .foregroundColor(.primary)
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    .scrollContentBackground(.hidden)
+                } else {
+                    Spacer()
+                    VStack(spacing: 8) {
+                        Image(systemName: "calendar.badge.checkmark")
+                            .font(.largeTitle)
+                            .foregroundColor(.secondary)
+                        Text(planState.activePlan == nil ? "No active plan" : "Rest day")
+                            .foregroundColor(.secondary)
+                    }
+                    Spacer()
+                }
+            }
+            .background(Color(UIColor.systemBackground))
+            .navigationTitle("Today's Plan")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button {
+                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                        showPlan = true
+                    } label: {
+                        Image(systemName: "calendar.badge.checkmark")
+                    }
+                }
+            }
+        }
+        .fullScreenCover(isPresented: $showPlan) {
+            PlanModuleView()
+                .environment(planState)
+                .environment(workoutsState)
+                .environment(exercisesState)
+                .environment(voiceTrainerState)
+        }
+        .fullScreenCover(item: $startingWorkout) { workout in
+            StartWorkoutView(workout: workout)
+                .environment(exercisesState)
+                .environment(MuscleGroupsState.shared)
+                .environment(EquipmentState.shared)
+                .environment(WorkoutLogState.shared)
         }
     }
 }

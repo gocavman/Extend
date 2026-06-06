@@ -49,6 +49,9 @@ public struct ModuleIDs {
     
     /// Match Game module - match challenge game
     public static let matchGame = UUID(uuidString: "0000000E-0000-0000-0000-000000000000")!
+
+    /// Today's Plan module - view and launch today's planned activities
+    public static let todaysPlan = UUID(uuidString: "0000000F-0000-0000-0000-000000000000")!
 }
 
 /// Module Registry - manages all registered modules in the app

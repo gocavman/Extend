@@ -96,19 +96,22 @@ struct TrainingPlan: Identifiable, Codable {
 struct PlanDay: Identifiable, Codable {
     let id: UUID
     var dayOfWeek: Int          // 0 = Sunday … 6 = Saturday
-    var workoutIDs: [UUID]      // ordered list of workouts for this day
-    var exerciseIDs: [UUID]     // individual exercises
-    var note: String            // free-text note
+    var workoutIDs: [UUID]         // ordered list of workouts for this day
+    var exerciseIDs: [UUID]        // individual exercises
+    var voiceActivityIDs: [UUID]   // voice trainer configurations
+    var note: String               // free-text note
 
     var isEmpty: Bool {
-        workoutIDs.isEmpty && exerciseIDs.isEmpty && note.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        workoutIDs.isEmpty && exerciseIDs.isEmpty && voiceActivityIDs.isEmpty &&
+        note.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
 
-    init(id: UUID = UUID(), dayOfWeek: Int, workoutIDs: [UUID] = [], exerciseIDs: [UUID] = [], note: String = "") {
+    init(id: UUID = UUID(), dayOfWeek: Int, workoutIDs: [UUID] = [], exerciseIDs: [UUID] = [], voiceActivityIDs: [UUID] = [], note: String = "") {
         self.id = id
         self.dayOfWeek = dayOfWeek
         self.workoutIDs = workoutIDs
         self.exerciseIDs = exerciseIDs
+        self.voiceActivityIDs = voiceActivityIDs
         self.note = note
     }
 }

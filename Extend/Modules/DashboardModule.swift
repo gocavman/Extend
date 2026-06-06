@@ -47,8 +47,10 @@ private struct DashboardModuleView: View {
     @Environment(WorkoutsState.self) var workoutsState
     @Environment(TimerState.self) var timerState
     @Environment(VoiceTrainerState.self) var voiceTrainerState
+    @Environment(TrainingPlanState.self) var planState
 
     @State private var quickStartWorkout: Workout? = nil
+    @State private var showingPlanLauncher = false
     
     @State private var spinningTiles: [UUID: Double] = [:]
     @State private var flyingTiles: Set<UUID> = []
@@ -94,6 +96,25 @@ private struct DashboardModuleView: View {
                 .environment(MuscleGroupsState.shared)
                 .environment(EquipmentState.shared)
                 .environment(WorkoutLogState.shared)
+        }
+        .fullScreenCover(isPresented: $showingPlanLauncher) {
+            PlanDayLauncherSheet(
+                onLaunchWorkout: { workout in
+                    quickStartWorkout = workout
+                },
+                onLaunchExercise: { exercise in
+                    quickStartWorkout = Workout(
+                        name: "\(exercise.name) (Quick)",
+                        notes: "",
+                        items: [.exercise(WorkoutExercise(exerciseID: exercise.id))]
+                    )
+                }
+            )
+            .environment(planState)
+            .environment(workoutsState)
+            .environment(exercisesState)
+            .environment(voiceTrainerState)
+            .environment(state)
         }
         .fullScreenCover(isPresented: $showingSettings) {
             SettingsModule().sheetView
@@ -175,7 +196,25 @@ private struct DashboardModuleView: View {
             : columnWidth
         
         return Group {
-            if tile.tileType == .statCard, let statCard = tile.statCardType {
+            if tile.tileType == .statCard, let statCard = tile.statCardType, statCard == .todaysPlan {
+                TodaysPlanTileView(
+                    tileTint: tile.tileTintColor,
+                    accentPlacement: tile.accentPlacement,
+                    accentColor: tile.accentColor,
+                    onLaunch: { showingPlanLauncher = true }
+                )
+                .frame(width: tileWidth, height: tileHeight)
+                .rotationEffect(.degrees(tileRotations[tile.id] ?? 0))
+                .offset(
+                    x: tileOffsets[tile.id]?.x ?? 0,
+                    y: tileOffsets[tile.id]?.y ?? 0
+                )
+                .opacity(flyingTiles.contains(tile.id) ? 0.3 : 1.0)
+                .animation(.easeOut(duration: 2.5), value: tileRotations[tile.id])
+                .animation(.easeOut(duration: 2.5), value: tileOffsets[tile.id]?.x)
+                .animation(.easeOut(duration: 2.5), value: tileOffsets[tile.id]?.y)
+                .animation(.easeOut(duration: 2.5), value: flyingTiles.contains(tile.id))
+            } else if tile.tileType == .statCard, let statCard = tile.statCardType {
                 StatCardTileView(
                     title: tile.title,
                     icon: tile.icon,
@@ -418,6 +457,9 @@ private struct DashboardModuleView: View {
             return "—"
         case .oneRepMax:
             // Value not shown as text; tile renders its own leaderboard list
+            return ""
+        case .todaysPlan:
+            // Value not shown as text; tile renders its own plan content
             return ""
         }
     }
@@ -742,6 +784,8 @@ private struct AddTileSheet: View {
             return "medal"
         case .oneRepMax:
             return "trophy.fill"
+        case .todaysPlan:
+            return "calendar.badge.checkmark"
         }
     }
 
@@ -2073,6 +2117,83 @@ private struct WalkingDogView: View {
             .offset(x: -3 * scale, y: 0)
         }
         .position(position)
+    }
+}
+
+// MARK: - Today's Plan Tile View
+
+private struct TodaysPlanTileView: View {
+    @Environment(TrainingPlanState.self) private var planState
+    @Environment(WorkoutsState.self) private var workoutsState
+    @Environment(ExercisesState.self) private var exercisesState
+    @Environment(VoiceTrainerState.self) private var voiceTrainerState
+
+    var tileTint: Color?
+    var accentPlacement: AccentPlacement
+    var accentColor: Color
+    var onLaunch: () -> Void
+
+    private var planDay: PlanDay? {
+        planState.planDay(for: Calendar.current.startOfDay(for: Date()))
+    }
+
+    var body: some View {
+        let bg = tileTint ?? Color(UIColor.secondarySystemBackground)
+        ZStack(alignment: .leading) {
+            Button(action: {
+                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                onLaunch()
+            }) {
+                VStack(alignment: .leading, spacing: 6) {
+                    HStack(spacing: 6) {
+                        Image(systemName: "calendar.badge.checkmark")
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundColor(.accentColor)
+                            .fixedSize()
+                        Text("Today's Plan")
+                            .font(.caption)
+                            .fontWeight(.bold)
+                            .foregroundColor(.primary)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+
+                    Spacer().frame(height: 2)
+
+                    if let pd = planDay, !pd.isEmpty {
+                        let names = itemNames(pd)
+                        ForEach(names, id: \.self) { name in
+                            Text("· \(name)")
+                                .font(.caption2)
+                                .foregroundColor(.primary)
+                                .lineLimit(1)
+                        }
+                    } else {
+                        Text("Rest day")
+                            .font(.caption2)
+                            .foregroundColor(.secondary)
+                    }
+
+                    Spacer(minLength: 0)
+                }
+                .padding(12)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                .background(bg)
+                .clipShape(RoundedRectangle(cornerRadius: 12))
+            }
+            .buttonStyle(.plain)
+
+            if accentPlacement != .none {
+                AccentBarView(placement: accentPlacement, color: accentColor)
+            }
+        }
+    }
+
+    private func itemNames(_ pd: PlanDay) -> [String] {
+        var names: [String] = []
+        names += pd.workoutIDs.compactMap { id in workoutsState.workouts.first { $0.id == id }?.name }
+        names += pd.exerciseIDs.compactMap { id in exercisesState.exercises.first { $0.id == id }?.name }
+        names += pd.voiceActivityIDs.compactMap { id in voiceTrainerState.savedConfigurations.first { $0.id == id }?.name }
+        return names
     }
 }
 

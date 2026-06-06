@@ -148,6 +148,7 @@ public enum StatCardType: String, Codable, CaseIterable {
     case restDays = "Rest Days (14 days)"
     case personalRecord = "Personal Record"
     case oneRepMax = "1RM Leaderboard"
+    case todaysPlan = "Today's Plan"
 }
 
 /// Tile sizes for the dashboard grid
