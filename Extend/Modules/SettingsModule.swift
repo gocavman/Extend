@@ -164,33 +164,7 @@ private struct SettingsModuleView: View {
                             }
                         }
 
-                        DisclosureGroup("Workouts", isExpanded: $isWorkoutsSectionExpanded) {
-                            VStack(alignment: .leading, spacing: 4) {
-                                HStack {
-                                    Text("Image Set")
-                                    Spacer()
-                                    Picker("", selection: Binding(
-                                        get: { muscleGroupsState.selectedBodyOption },
-                                        set: { muscleGroupsState.applyBodyOption($0) }
-                                    )) {
-                                        Text("Option 1").tag(MuscleGroupsState.BodyImageOption.male)
-                                        Text("Option 2").tag(MuscleGroupsState.BodyImageOption.female)
-                                        Text("None").tag(MuscleGroupsState.BodyImageOption.none)
-                                    }
-                                    .pickerStyle(.menu)
-                                    .tint(.primary)
-                                }
-                                Text({
-                                    switch muscleGroupsState.selectedBodyOption {
-                                    case .male:   return "Option 1: Default anatomy images used. Custom overrides are supported."
-                                    case .female: return "Option 2: Default anatomy images used. Custom overrides are supported."
-                                    case .none:   return "None: Muscle images are hidden everywhere in the app."
-                                    }
-                                }())
-                                    .font(.caption)
-                                    .foregroundColor(.secondary)
-                            }
-
+                        DisclosureGroup("Data", isExpanded: $isWorkoutsSectionExpanded) {
                             Button {
                                 showingExportSheet = true
                             } label: {
@@ -217,6 +191,28 @@ private struct SettingsModuleView: View {
                                         .foregroundColor(.primary)
                                 }
                             }
+
+                            Button {
+                                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                                if let url = WorkoutLogState.shared.exportToCSVFileURL() {
+                                    let ac = UIActivityViewController(activityItems: [url], applicationActivities: nil)
+                                    if let scene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+                                       let root = scene.windows.first?.rootViewController {
+                                        var presenter = root
+                                        while let presented = presenter.presentedViewController {
+                                            presenter = presented
+                                        }
+                                        presenter.present(ac, animated: true)
+                                    }
+                                }
+                            } label: {
+                                HStack {
+                                    Image(systemName: "doc.text")
+                                        .foregroundColor(.primary)
+                                    Text("Export Log Data")
+                                        .foregroundColor(.primary)
+                                }
+                            }
                         }
 
                         DisclosureGroup("System Preferences", isExpanded: $isSystemSectionExpanded) {
@@ -229,6 +225,32 @@ private struct SettingsModuleView: View {
                                 }
                                 .pickerStyle(.segmented)
                                 .frame(width: 120)
+                            }
+
+                            VStack(alignment: .leading, spacing: 4) {
+                                HStack {
+                                    Text("Image Set")
+                                    Spacer()
+                                    Picker("", selection: Binding(
+                                        get: { muscleGroupsState.selectedBodyOption },
+                                        set: { muscleGroupsState.applyBodyOption($0) }
+                                    )) {
+                                        Text("Option 1").tag(MuscleGroupsState.BodyImageOption.male)
+                                        Text("Option 2").tag(MuscleGroupsState.BodyImageOption.female)
+                                        Text("None").tag(MuscleGroupsState.BodyImageOption.none)
+                                    }
+                                    .pickerStyle(.menu)
+                                    .tint(.primary)
+                                }
+                                Text({
+                                    switch muscleGroupsState.selectedBodyOption {
+                                    case .male:   return "Option 1: Default anatomy images used. Custom overrides are supported."
+                                    case .female: return "Option 2: Default anatomy images used. Custom overrides are supported."
+                                    case .none:   return "None: Muscle images are hidden everywhere in the app."
+                                    }
+                                }())
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
                             }
 
                             HStack {

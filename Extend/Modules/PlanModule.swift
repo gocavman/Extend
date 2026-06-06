@@ -307,10 +307,10 @@ private struct DayCard: View {
                             HStack(spacing: 6) {
                                 Image(systemName: "figure.strengthtraining.traditional")
                                     .font(.caption)
-                                    .foregroundColor(.secondary)
+                                    .foregroundColor(.primary)
                                 Text(exercises.map { $0.name }.joined(separator: ", "))
                                     .font(.caption)
-                                    .foregroundColor(.secondary)
+                                    .foregroundColor(.primary)
                                     .lineLimit(2)
                             }
                         }
@@ -472,7 +472,7 @@ private struct WeekSection: View {
                                         exercisesState.exercises.first { $0.id == id }?.name
                                     }
                                     Text(names.joined(separator: ", "))
-                                        .font(.caption2).foregroundColor(.secondary).lineLimit(2)
+                                        .font(.caption2).foregroundColor(.primary).lineLimit(2)
                                 }
                                 if !day.note.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                                     Text(day.note).font(.caption2).foregroundColor(.secondary).lineLimit(1)

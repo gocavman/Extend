@@ -211,24 +211,7 @@ private struct ProgressModuleView: View {
                         .foregroundColor(.primary)
                 }
 
-                // Export
-                Button(action: {
-                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                    if let url = logState.exportToCSVFileURL() {
-                        let ac = UIActivityViewController(activityItems: [url], applicationActivities: nil)
-                        if let scene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
-                           let root = scene.windows.first?.rootViewController {
-                            var presenter = root
-                            while let presented = presenter.presentedViewController {
-                                presenter = presented
-                            }
-                            presenter.present(ac, animated: true)
-                        }
-                    }
-                }) {
-                    Image(systemName: "square.and.arrow.up")
-                        .foregroundColor(.primary)
-                }
+
             }
             .padding(.horizontal, 16)
             .padding(.top, 12)
