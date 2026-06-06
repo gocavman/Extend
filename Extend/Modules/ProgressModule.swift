@@ -651,6 +651,8 @@ private struct DayCell: View {
     var planName: String? = nil
     let onTap: () -> Void
 
+    @Environment(\.colorScheme) private var colorScheme
+
     private var hasWorkout: Bool { workoutCount > 0 }
 
     // Build up to 3 labels: workouts first, then journals, then plan.
@@ -663,26 +665,26 @@ private struct DayCell: View {
             // All items fit — plan always gets its own slot
             let maxOther = planName != nil ? 2 : 3
             for log in logs.prefix(maxOther) {
-                result.append(DayCellLabel(text: String(log.workoutName.prefix(10)), isJournal: false, isPlan: false, isOverflow: false))
+                result.append(DayCellLabel(text: log.workoutName, isJournal: false, isPlan: false, isOverflow: false))
             }
             if result.count < maxOther {
                 for entry in journalEntries.prefix(maxOther - result.count) {
-                    result.append(DayCellLabel(text: String(entry.title.prefix(10)), isJournal: true, isPlan: false, isOverflow: false))
+                    result.append(DayCellLabel(text: entry.title, isJournal: true, isPlan: false, isOverflow: false))
                 }
             }
             if let name = planName {
-                result.append(DayCellLabel(text: String(name.prefix(10)), isJournal: false, isPlan: true, isOverflow: false))
+                result.append(DayCellLabel(text: name, isJournal: false, isPlan: true, isOverflow: false))
             }
         } else {
             // Overflow: show 2 real items, then "+N more" in slot 3
             var filled = 0
             for log in logs.prefix(2) where filled < 2 {
-                result.append(DayCellLabel(text: String(log.workoutName.prefix(10)), isJournal: false, isPlan: false, isOverflow: false))
+                result.append(DayCellLabel(text: log.workoutName, isJournal: false, isPlan: false, isOverflow: false))
                 filled += 1
             }
             if filled < 2 {
                 for entry in journalEntries.prefix(2 - filled) {
-                    result.append(DayCellLabel(text: String(entry.title.prefix(10)), isJournal: true, isPlan: false, isOverflow: false))
+                    result.append(DayCellLabel(text: entry.title, isJournal: true, isPlan: false, isOverflow: false))
                     filled += 1
                 }
             }
@@ -720,27 +722,47 @@ private struct DayCell: View {
                 .frame(maxWidth: .infinity, alignment: .center)
                 .padding(.top, 6)
 
-                // Name labels: workouts (black/primary), journals (purple), plan (accent)
+                // Name labels: iOS Calendar-style colored capsule pills
+                // ClippedTextLabel (UILabel-backed) inside a fixed-height frame handles
+                // containment without "..." — gradient fades the right edge into the pill color.
                 if !cellLabels.isEmpty {
                     VStack(spacing: 1) {
                         ForEach(Array(cellLabels.enumerated()), id: \.offset) { _, item in
+                            let pillBg: Color = item.isOverflow
+                                ? Color(UIColor.tertiarySystemFill)
+                                : (item.isPlan
+                                    ? Color.accentColor.opacity(isCurrentMonth ? 0.18 : 0.08)
+                                    : (item.isJournal
+                                        ? Color(red: 0.4, green: 0.35, blue: 0.75).opacity(isCurrentMonth ? 0.18 : 0.08)
+                                        : Color(red: 0.2, green: 0.75, blue: 0.35).opacity(isCurrentMonth ? 0.18 : 0.08)))
+                            // Text: darker in light mode, lighter in dark mode for readability
+                            let textOpacity: Double = isCurrentMonth ? 1 : 0.5
+                            let pillText: Color = item.isOverflow
+                                ? Color.secondary
+                                : (item.isPlan
+                                    ? (colorScheme == .dark
+                                        ? Color(red: 0.45, green: 0.72, blue: 1.0).opacity(textOpacity)
+                                        : Color(red: 0.0, green: 0.30, blue: 0.78).opacity(textOpacity))
+                                    : (item.isJournal
+                                        ? (colorScheme == .dark
+                                            ? Color(red: 0.65, green: 0.60, blue: 1.0).opacity(textOpacity)
+                                            : Color(red: 0.28, green: 0.22, blue: 0.60).opacity(textOpacity))
+                                        : (colorScheme == .dark
+                                            ? Color(red: 0.35, green: 0.90, blue: 0.50).opacity(textOpacity)
+                                            : Color(red: 0.08, green: 0.50, blue: 0.18).opacity(textOpacity))))
                             ZStack(alignment: .leading) {
-                                let labelColor: Color = item.isOverflow
-                                    ? Color.secondary
-                                    : (item.isPlan
-                                        ? Color.accentColor
-                                        : (item.isJournal ? Color(red: 0.4, green: 0.35, blue: 0.75) : textColor))
                                 ClippedTextLabel(
                                     text: item.text,
                                     fontSize: 9,
-                                    textColor: labelColor.opacity(isCurrentMonth ? 0.85 : 0.45)
+                                    textColor: pillText
                                 )
                                 .frame(maxWidth: .infinity, alignment: .leading)
 
+                                // Gradient fades into pill background color (not cell background)
                                 LinearGradient(
                                     gradient: Gradient(stops: [
-                                        .init(color: .clear, location: 0),
-                                        .init(color: backgroundColor, location: 1)
+                                        .init(color: pillBg.opacity(0), location: 0),
+                                        .init(color: pillBg, location: 1)
                                     ]),
                                     startPoint: .leading,
                                     endPoint: .trailing
@@ -748,12 +770,12 @@ private struct DayCell: View {
                                 .frame(width: 15)
                                 .frame(maxWidth: .infinity, alignment: .trailing)
                             }
-                            .frame(height: 11)
+                            .frame(height: 13)
                             .clipped()
+                            .background(Capsule().fill(pillBg))
                         }
                     }
-                    .padding(.leading, 4)
-                    .padding(.trailing, 4)
+                    .padding(.horizontal, 3)
                 }
 
                 Spacer()
