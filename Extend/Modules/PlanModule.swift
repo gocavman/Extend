@@ -1091,7 +1091,7 @@ struct TodaysPlanModuleView: View {
                     } label: {
                         Image(systemName: "chevron.left")
                             .font(.title3)
-                            .foregroundColor(.accentColor)
+                            .foregroundColor(.primary)
                     }
                     Spacer()
                     Text(selectedDate, style: .date)
@@ -1102,7 +1102,7 @@ struct TodaysPlanModuleView: View {
                     } label: {
                         Image(systemName: "chevron.right")
                             .font(.title3)
-                            .foregroundColor(.accentColor)
+                            .foregroundColor(.primary)
                     }
                 }
                 .padding()

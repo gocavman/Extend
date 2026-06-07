@@ -165,57 +165,6 @@ private struct SettingsModuleView: View {
                             }
                         }
 
-                        DisclosureGroup("Data", isExpanded: $isWorkoutsSectionExpanded) {
-                            Button {
-                                showingExportSheet = true
-                            } label: {
-                                HStack {
-                                    Image(systemName: "square.and.arrow.up")
-                                        .foregroundColor(.primary)
-                                    Text("Export Workouts")
-                                        .foregroundColor(.primary)
-                                    Spacer()
-                                    Text("\(workoutsState.workouts.count)")
-                                        .foregroundColor(.secondary)
-                                        .font(.subheadline)
-                                }
-                            }
-                            .disabled(workoutsState.workouts.isEmpty)
-
-                            Button {
-                                showingImportPicker = true
-                            } label: {
-                                HStack {
-                                    Image(systemName: "square.and.arrow.down")
-                                        .foregroundColor(.primary)
-                                    Text("Import Workouts")
-                                        .foregroundColor(.primary)
-                                }
-                            }
-
-                            Button {
-                                UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                                if let url = WorkoutLogState.shared.exportToCSVFileURL() {
-                                    let ac = UIActivityViewController(activityItems: [url], applicationActivities: nil)
-                                    if let scene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
-                                       let root = scene.windows.first?.rootViewController {
-                                        var presenter = root
-                                        while let presented = presenter.presentedViewController {
-                                            presenter = presented
-                                        }
-                                        presenter.present(ac, animated: true)
-                                    }
-                                }
-                            } label: {
-                                HStack {
-                                    Image(systemName: "doc.text")
-                                        .foregroundColor(.primary)
-                                    Text("Export Log Data")
-                                        .foregroundColor(.primary)
-                                }
-                            }
-                        }
-
                         DisclosureGroup("System Preferences", isExpanded: $isSystemSectionExpanded) {
                             HStack {
                                 Text("Theme")
@@ -311,6 +260,57 @@ private struct SettingsModuleView: View {
                                 Text("Prevents the screen from locking during active timers, workouts, and voice trainer sessions. Uses more battery.")
                                     .font(.caption)
                                     .foregroundColor(.secondary)
+                            }
+                        }
+
+                        DisclosureGroup("Data", isExpanded: $isWorkoutsSectionExpanded) {
+                            Button {
+                                showingExportSheet = true
+                            } label: {
+                                HStack {
+                                    Image(systemName: "square.and.arrow.up")
+                                        .foregroundColor(.primary)
+                                    Text("Export Workouts")
+                                        .foregroundColor(.primary)
+                                    Spacer()
+                                    Text("\(workoutsState.workouts.count)")
+                                        .foregroundColor(.secondary)
+                                        .font(.subheadline)
+                                }
+                            }
+                            .disabled(workoutsState.workouts.isEmpty)
+
+                            Button {
+                                showingImportPicker = true
+                            } label: {
+                                HStack {
+                                    Image(systemName: "square.and.arrow.down")
+                                        .foregroundColor(.primary)
+                                    Text("Import Workouts")
+                                        .foregroundColor(.primary)
+                                }
+                            }
+
+                            Button {
+                                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                                if let url = WorkoutLogState.shared.exportToCSVFileURL() {
+                                    let ac = UIActivityViewController(activityItems: [url], applicationActivities: nil)
+                                    if let scene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+                                       let root = scene.windows.first?.rootViewController {
+                                        var presenter = root
+                                        while let presented = presenter.presentedViewController {
+                                            presenter = presented
+                                        }
+                                        presenter.present(ac, animated: true)
+                                    }
+                                }
+                            } label: {
+                                HStack {
+                                    Image(systemName: "doc.text")
+                                        .foregroundColor(.primary)
+                                    Text("Export Log Data")
+                                        .foregroundColor(.primary)
+                                }
                             }
 
                             VStack(alignment: .leading, spacing: 4) {
