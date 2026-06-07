@@ -537,6 +537,7 @@ struct PlanDayLauncherSheet: View {
     var onLaunchExercise: (Exercise) -> Void
 
     @State private var selectedDate: Date = Calendar.current.startOfDay(for: Date())
+    @State private var showPlan = false
 
     private var planDay: PlanDay? { planState.planDay(for: selectedDate) }
 
@@ -629,10 +630,25 @@ struct PlanDayLauncherSheet: View {
             .navigationTitle("Today's Plan")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
+                ToolbarItem(placement: .topBarLeading) {
                     Button("Done") { dismiss() }
                 }
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button {
+                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                        showPlan = true
+                    } label: {
+                        Image(systemName: "calendar.badge.checkmark")
+                    }
+                }
             }
+        }
+        .fullScreenCover(isPresented: $showPlan) {
+            PlanModuleView()
+                .environment(planState)
+                .environment(workoutsState)
+                .environment(exercisesState)
+                .environment(voiceTrainerState)
         }
     }
 }

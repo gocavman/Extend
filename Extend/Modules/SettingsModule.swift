@@ -120,15 +120,6 @@ private struct SettingsModuleView: View {
                 Form {
                     // MARK: - Main Settings Section
                     Section {
-                        NavigationLink(destination: HelpView()) {
-                            HStack {
-                                Text("Help Center")
-                                    .foregroundColor(.primary)
-                                Image(systemName: "questionmark.circle.fill")
-                                    .foregroundColor(.secondary)
-                            }
-                        }
-
                         DisclosureGroup("Navigation Bar(s)", isExpanded: $isNavBarSectionExpanded) {
                             DisclosureGroup("Color", isExpanded: $isNavBarColorExpanded) {
                                 ColorPicker("Background Color", selection: Binding(
@@ -322,6 +313,15 @@ private struct SettingsModuleView: View {
                                 }
                                 Text("Clears all data and customizations — logs, workouts, exercises, muscles, equipment, timers, voice trainer configs, and settings. Cannot be undone.")
                                     .font(.caption)
+                                    .foregroundColor(.secondary)
+                            }
+                        }
+                        
+                        NavigationLink(destination: HelpView()) {
+                            HStack {
+                                Text("Help Center")
+                                    .foregroundColor(.primary)
+                                Image(systemName: "questionmark.circle.fill")
                                     .foregroundColor(.secondary)
                             }
                         }
