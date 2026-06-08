@@ -99,19 +99,22 @@ struct PlanDay: Identifiable, Codable {
     var workoutIDs: [UUID]         // ordered list of workouts for this day
     var exerciseIDs: [UUID]        // individual exercises
     var voiceActivityIDs: [UUID]   // voice trainer configurations
+    var timerIDs: [UUID]           // timer configurations
     var note: String               // free-text note
 
     var isEmpty: Bool {
         workoutIDs.isEmpty && exerciseIDs.isEmpty && voiceActivityIDs.isEmpty &&
+        timerIDs.isEmpty &&
         note.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
 
-    init(id: UUID = UUID(), dayOfWeek: Int, workoutIDs: [UUID] = [], exerciseIDs: [UUID] = [], voiceActivityIDs: [UUID] = [], note: String = "") {
+    init(id: UUID = UUID(), dayOfWeek: Int, workoutIDs: [UUID] = [], exerciseIDs: [UUID] = [], voiceActivityIDs: [UUID] = [], timerIDs: [UUID] = [], note: String = "") {
         self.id = id
         self.dayOfWeek = dayOfWeek
         self.workoutIDs = workoutIDs
         self.exerciseIDs = exerciseIDs
         self.voiceActivityIDs = voiceActivityIDs
+        self.timerIDs = timerIDs
         self.note = note
     }
 }

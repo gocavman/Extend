@@ -90,8 +90,9 @@ private struct DashboardModuleView: View {
         } message: {
             Text(blankAlertMessage)
         }
-        .sheet(item: $quickStartWorkout) { workout in
+        .fullScreenCover(item: $quickStartWorkout) { workout in
             StartWorkoutView(workout: workout)
+                .environment(state)
                 .environment(exercisesState)
                 .environment(MuscleGroupsState.shared)
                 .environment(EquipmentState.shared)
@@ -100,20 +101,25 @@ private struct DashboardModuleView: View {
         .fullScreenCover(isPresented: $showingPlanLauncher) {
             PlanDayLauncherSheet(
                 onLaunchWorkout: { workout in
-                    quickStartWorkout = workout
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
+                        quickStartWorkout = workout
+                    }
                 },
                 onLaunchExercise: { exercise in
-                    quickStartWorkout = Workout(
-                        name: "\(exercise.name) (Quick)",
-                        notes: "",
-                        items: [.exercise(WorkoutExercise(exerciseID: exercise.id))]
-                    )
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
+                        quickStartWorkout = Workout(
+                            name: "\(exercise.name) (Quick)",
+                            notes: "",
+                            items: [.exercise(WorkoutExercise(exerciseID: exercise.id))]
+                        )
+                    }
                 }
             )
             .environment(planState)
             .environment(workoutsState)
             .environment(exercisesState)
             .environment(voiceTrainerState)
+            .environment(timerState)
             .environment(state)
         }
         .fullScreenCover(isPresented: $showingSettings) {
@@ -184,9 +190,10 @@ private struct DashboardModuleView: View {
         // Dynamic-height entries for PR and 1RM tiles
         let prEntries: [(name: String, value: Double)] = tile.statCardType == .personalRecord ? personalRecordEntries(for: tile) : []
         let rmEntries: [(name: String, value: Double)] = tile.statCardType == .oneRepMax ? oneRMEntries(for: tile) : []
-        // PR and 1RM tiles use content-driven height (nil) so layout flows naturally
+        // PR, 1RM, and todaysPlan tiles use content-driven height (nil) so layout flows naturally
         let dynamicEntryCount: Int = tile.statCardType == .personalRecord ? 1
             : tile.statCardType == .oneRepMax ? 1
+            : tile.statCardType == .todaysPlan ? 1
             : 0
         // favoriteDay: header(44) + 7 rows × 19pt each + bottom padding(12) ≈ 189
         // volumeThisWeek: header(44) + bars(107) + trend(20) + padding(16) ≈ 187
@@ -203,7 +210,7 @@ private struct DashboardModuleView: View {
                     accentColor: tile.accentColor,
                     onLaunch: { showingPlanLauncher = true }
                 )
-                .frame(width: tileWidth, height: tileHeight)
+                .frame(width: tileWidth)
                 .rotationEffect(.degrees(tileRotations[tile.id] ?? 0))
                 .offset(
                     x: tileOffsets[tile.id]?.x ?? 0,
@@ -2127,6 +2134,7 @@ private struct TodaysPlanTileView: View {
     @Environment(WorkoutsState.self) private var workoutsState
     @Environment(ExercisesState.self) private var exercisesState
     @Environment(VoiceTrainerState.self) private var voiceTrainerState
+    @Environment(TimerState.self) private var timerState
 
     var tileTint: Color?
     var accentPlacement: AccentPlacement
@@ -2148,7 +2156,7 @@ private struct TodaysPlanTileView: View {
                     HStack(spacing: 6) {
                         Image(systemName: "calendar.badge.checkmark")
                             .font(.system(size: 14, weight: .semibold))
-                            .foregroundColor(.accentColor)
+                            .foregroundColor(.primary)
                             .fixedSize()
                         Text("Today's Plan")
                             .font(.caption)
@@ -2160,23 +2168,32 @@ private struct TodaysPlanTileView: View {
                     Spacer().frame(height: 2)
 
                     if let pd = planDay, !pd.isEmpty {
-                        let names = itemNames(pd)
-                        ForEach(names, id: \.self) { name in
-                            Text("· \(name)")
-                                .font(.caption2)
-                                .foregroundColor(.primary)
-                                .lineLimit(1)
+                        let entries = planItems(pd)
+                        ForEach(entries, id: \.name) { entry in
+                            HStack(spacing: 4) {
+                                Image(systemName: entry.icon)
+                                    .font(.caption2)
+                                    .foregroundColor(.secondary)
+                                Text(entry.name)
+                                    .font(.caption2)
+                                    .foregroundColor(.primary)
+                                    .lineLimit(1)
+                                //Spacer(minLength: 0)
+                                if entry.completed {
+                                    Image(systemName: "checkmark.circle.fill")
+                                        .font(.caption2)
+                                        .foregroundColor(.green)
+                                }
+                            }
                         }
                     } else {
                         Text("Rest day")
                             .font(.caption2)
                             .foregroundColor(.secondary)
                     }
-
-                    Spacer(minLength: 0)
                 }
                 .padding(12)
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                .frame(maxWidth: .infinity, alignment: .topLeading)
                 .background(bg)
                 .clipShape(RoundedRectangle(cornerRadius: 12))
             }
@@ -2188,12 +2205,44 @@ private struct TodaysPlanTileView: View {
         }
     }
 
-    private func itemNames(_ pd: PlanDay) -> [String] {
-        var names: [String] = []
-        names += pd.workoutIDs.compactMap { id in workoutsState.workouts.first { $0.id == id }?.name }
-        names += pd.exerciseIDs.compactMap { id in exercisesState.exercises.first { $0.id == id }?.name }
-        names += pd.voiceActivityIDs.compactMap { id in voiceTrainerState.savedConfigurations.first { $0.id == id }?.name }
-        return names
+    private struct PlanItem {
+        let name: String
+        let icon: String
+        let completed: Bool
+    }
+
+    private var todayCompletedLogNames: Set<String> {
+        let cal = Calendar.current
+        let today = cal.startOfDay(for: Date())
+        let logs = WorkoutLogState.shared.logs.filter { cal.isDate($0.completedAt, inSameDayAs: today) }
+        return Set(logs.map { $0.workoutName })
+    }
+
+    private func planItems(_ pd: PlanDay) -> [PlanItem] {
+        let completed = todayCompletedLogNames
+        var items: [PlanItem] = []
+        items += pd.workoutIDs.compactMap { id in
+            workoutsState.workouts.first { $0.id == id }.map {
+                PlanItem(name: $0.name, icon: "dumbbell.fill", completed: completed.contains($0.name))
+            }
+        }
+        items += pd.exerciseIDs.compactMap { id in
+            exercisesState.exercises.first { $0.id == id }.map {
+                PlanItem(name: $0.name, icon: "figure.strengthtraining.traditional", completed: completed.contains("\($0.name) (Quick)"))
+            }
+        }
+        items += pd.voiceActivityIDs.compactMap { id in
+            voiceTrainerState.savedConfigurations.first { $0.id == id }.map {
+                PlanItem(name: $0.name, icon: "waveform", completed: completed.contains("Trainer – \($0.name)"))
+            }
+        }
+        items += pd.timerIDs.compactMap { id in
+            timerState.configs.first { $0.id == id }.map { c in
+                let displayName = c.name.isEmpty ? c.type.rawValue : c.name
+                return PlanItem(name: displayName, icon: c.type.iconName, completed: completed.contains("\(c.type.rawValue) – \(displayName)"))
+            }
+        }
+        return items
     }
 }
 

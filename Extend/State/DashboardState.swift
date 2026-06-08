@@ -130,6 +130,18 @@ public final class DashboardState {
         }
 
         // Large tiles
+        tiles.append(DashboardTile(
+            title: StatCardType.todaysPlan.rawValue,
+            icon: "calendar.badge.checkmark",
+            order: order,
+            tileType: .statCard,
+            statCardType: .todaysPlan,
+            size: .large,
+            accentPlacement: .none,
+            accentColorHex: "#CCCCCC"
+        ))
+        order += 1
+
         tiles.append(graphCard(.workoutFrequency, icon: "chart.bar"))
         order += 1
 

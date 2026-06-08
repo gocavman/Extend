@@ -160,6 +160,7 @@ private struct WorkoutsModuleView: View {
     @Environment(ExercisesState.self) var exercisesState
     @Environment(TrainingPlanState.self) private var planState
     @Environment(VoiceTrainerState.self) private var voiceTrainerState
+    @Environment(TimerState.self) private var timerState
     @Environment(ModuleState.self) private var moduleState
 
     @State private var showingAdd = false
@@ -207,35 +208,6 @@ private struct WorkoutsModuleView: View {
             .padding(.vertical, 12)
 
             List {
-                // Today's Plan banner — shown when active plan has items today
-                if planState.planDay(for: Date()) != nil {
-                    Section {
-                        Button(action: {
-                            UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                            showingPlanLauncher = true
-                        }) {
-                            HStack(spacing: 12) {
-                                Image(systemName: "calendar.badge.checkmark")
-                                    .font(.title3)
-                                    .foregroundColor(.accentColor)
-                                VStack(alignment: .leading, spacing: 2) {
-                                    Text("Today's Plan")
-                                        .font(.subheadline).fontWeight(.semibold)
-                                        .foregroundColor(.primary)
-                                    if let name = planState.activePlan?.name {
-                                        Text(name)
-                                            .font(.caption).foregroundColor(.secondary)
-                                    }
-                                }
-                                Spacer()
-                                Image(systemName: "chevron.right").foregroundColor(.secondary)
-                            }
-                        }
-                        .buttonStyle(.plain)
-                    }
-                    .listRowInsets(EdgeInsets(top: 4, leading: 16, bottom: 4, trailing: 16))
-                }
-
                 // Favorites tiles
                 if !state.favoriteWorkouts.isEmpty {
                     Section {
@@ -486,20 +458,25 @@ private struct WorkoutsModuleView: View {
             .fullScreenCover(isPresented: $showingPlanLauncher) {
                 PlanDayLauncherSheet(
                     onLaunchWorkout: { workout in
-                        startingWorkout = workout
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
+                            startingWorkout = workout
+                        }
                     },
                     onLaunchExercise: { exercise in
-                        startingWorkout = Workout(
-                            name: "\(exercise.name) (Quick)",
-                            notes: "",
-                            items: [.exercise(WorkoutExercise(exerciseID: exercise.id))]
-                        )
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
+                            startingWorkout = Workout(
+                                name: "\(exercise.name) (Quick)",
+                                notes: "",
+                                items: [.exercise(WorkoutExercise(exerciseID: exercise.id))]
+                            )
+                        }
                     }
                 )
                 .environment(planState)
                 .environment(state)
                 .environment(exercisesState)
                 .environment(voiceTrainerState)
+                .environment(timerState)
                 .environment(moduleState)
             }
         }
@@ -531,6 +508,7 @@ struct PlanDayLauncherSheet: View {
     @Environment(WorkoutsState.self) private var workoutsState
     @Environment(ExercisesState.self) private var exercisesState
     @Environment(VoiceTrainerState.self) private var voiceTrainerState
+    @Environment(TimerState.self) private var timerState
     @Environment(ModuleState.self) private var moduleState
 
     var onLaunchWorkout: (Workout) -> Void
@@ -540,6 +518,26 @@ struct PlanDayLauncherSheet: View {
     @State private var showPlan = false
 
     private var planDay: PlanDay? { planState.planDay(for: selectedDate) }
+
+    /// Names of logs completed on selectedDate for checkmark display
+    private var completedLogNames: Set<String> {
+        let cal = Calendar.current
+        let logs = WorkoutLogState.shared.logs.filter { cal.isDate($0.completedAt, inSameDayAs: selectedDate) }
+        return Set(logs.map { $0.workoutName })
+    }
+
+    private func isCompleted(workoutName name: String) -> Bool {
+        completedLogNames.contains(name)
+    }
+
+    private func isVoiceCompleted(_ config: VoiceTrainerConfig) -> Bool {
+        completedLogNames.contains("Trainer – \(config.name)")
+    }
+
+    private func isTimerCompleted(_ config: TimerConfig) -> Bool {
+        let displayName = config.name.isEmpty ? config.type.rawValue : config.name
+        return completedLogNames.contains("\(config.type.rawValue) – \(displayName)")
+    }
 
     var body: some View {
         NavigationStack {
@@ -551,7 +549,7 @@ struct PlanDayLauncherSheet: View {
                     } label: {
                         Image(systemName: "chevron.left")
                             .font(.title3)
-                            .foregroundColor(.accentColor)
+                            .foregroundColor(.primary)
                     }
                     Spacer()
                     Text(selectedDate, style: .date)
@@ -562,7 +560,7 @@ struct PlanDayLauncherSheet: View {
                     } label: {
                         Image(systemName: "chevron.right")
                             .font(.title3)
-                            .foregroundColor(.accentColor)
+                            .foregroundColor(.primary)
                     }
                 }
                 .padding()
@@ -577,8 +575,15 @@ struct PlanDayLauncherSheet: View {
                                         dismiss()
                                         onLaunchWorkout(w)
                                     } label: {
-                                        Label(w.name, systemImage: "dumbbell.fill")
-                                            .foregroundColor(.primary)
+                                        HStack {
+                                            Label(w.name, systemImage: "dumbbell.fill")
+                                                .foregroundColor(.primary)
+                                            Spacer()
+                                            if isCompleted(workoutName: w.name) {
+                                                Image(systemName: "checkmark.circle.fill")
+                                                    .foregroundColor(.green)
+                                            }
+                                        }
                                     }
                                 }
                             }
@@ -592,8 +597,15 @@ struct PlanDayLauncherSheet: View {
                                         dismiss()
                                         onLaunchExercise(ex)
                                     } label: {
-                                        Label(ex.name, systemImage: "figure.strengthtraining.traditional")
-                                            .foregroundColor(.primary)
+                                        HStack {
+                                            Label(ex.name, systemImage: "figure.strengthtraining.traditional")
+                                                .foregroundColor(.primary)
+                                            Spacer()
+                                            if isCompleted(workoutName: "\(ex.name) (Quick)") {
+                                                Image(systemName: "checkmark.circle.fill")
+                                                    .foregroundColor(.green)
+                                            }
+                                        }
                                     }
                                 }
                             }
@@ -608,8 +620,38 @@ struct PlanDayLauncherSheet: View {
                                         voiceTrainerState.pendingLaunchID = c.id
                                         moduleState.selectModule(ModuleIDs.voiceTrainer)
                                     } label: {
-                                        Label(c.name, systemImage: "waveform")
-                                            .foregroundColor(.primary)
+                                        HStack {
+                                            Label(c.name, systemImage: "waveform")
+                                                .foregroundColor(.primary)
+                                            Spacer()
+                                            if isVoiceCompleted(c) {
+                                                Image(systemName: "checkmark.circle.fill")
+                                                    .foregroundColor(.green)
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        let timerConfigs = pd.timerIDs.compactMap { id in timerState.configs.first { $0.id == id } }
+                        if !timerConfigs.isEmpty {
+                            Section("Timers") {
+                                ForEach(timerConfigs) { c in
+                                    Button {
+                                        dismiss()
+                                        timerState.pendingLaunchID = c.id
+                                        moduleState.selectModule(ModuleIDs.timer)
+                                    } label: {
+                                        HStack {
+                                            Label(c.name.isEmpty ? c.type.rawValue : c.name, systemImage: c.type.iconName)
+                                                .foregroundColor(.primary)
+                                            Spacer()
+                                            if isTimerCompleted(c) {
+                                                Image(systemName: "checkmark.circle.fill")
+                                                    .foregroundColor(.green)
+                                            }
+                                        }
                                     }
                                 }
                             }

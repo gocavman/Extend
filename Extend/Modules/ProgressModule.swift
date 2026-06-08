@@ -52,7 +52,7 @@ private struct ProgressModuleView: View {
     @AppStorage("calendarShowJournals") private var showJournals: Bool = true
     @AppStorage("calendarShowPlans")    private var showPlans:    Bool = true
     /// Week vs month scope in list (timeline) view
-    @State private var listShowWeek: Bool = false
+    @AppStorage("logListShowWeek") private var listShowWeek: Bool = false
     @State private var showFilterPopover: Bool = false
 
     private let calendar = Calendar.current
@@ -147,6 +147,7 @@ private struct ProgressModuleView: View {
                     showSearch = true
                 }) {
                     Image(systemName: "magnifyingglass")
+                        .frame(width: 22, height: 22, alignment: .center)
                         .foregroundColor(.primary)
                 }
 
@@ -158,6 +159,7 @@ private struct ProgressModuleView: View {
                     showJournalEditor = true
                 }) {
                     Image(systemName: "square.and.pencil")
+                        .frame(width: 22, height: 22, alignment: .center)
                         .foregroundColor(.primary)
                 }
 
@@ -167,6 +169,7 @@ private struct ProgressModuleView: View {
                     showPlan = true
                 }) {
                     Image(systemName: "calendar.badge.checkmark")
+                        .frame(width: 22, height: 22, alignment: .center)
                         .foregroundColor(planState.activePlan != nil ? .accentColor : .primary)
                 }
 
@@ -176,24 +179,8 @@ private struct ProgressModuleView: View {
                     showRibbon.toggle()
                 }) {
                     Image(systemName: showRibbon ? "chart.bar.fill" : "chart.bar")
+                        .frame(width: 22, height: 22, alignment: .center)
                         .foregroundColor(showRibbon ? .blue : .primary)
-                }
-
-                // Calendar visibility filter
-                Button(action: {
-                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                    showFilterPopover = true
-                }) {
-                    Image(systemName: "line.3.horizontal.decrease")
-                        .foregroundColor((!showWorkouts || !showJournals || !showPlans) ? .accentColor : .primary)
-                }
-                .popover(isPresented: $showFilterPopover, arrowEdge: .top) {
-                    CalendarFilterPopover(
-                        showWorkouts: $showWorkouts,
-                        showJournals: $showJournals,
-                        showPlans: $showPlans
-                    )
-                    .presentationCompactAdaptation(.popover)
                 }
 
                 // View mode toggle
@@ -208,9 +195,27 @@ private struct ProgressModuleView: View {
                     }
                 }) {
                     Image(systemName: logViewMode == "calendar" ? "list.bullet.below.rectangle" : "calendar")
+                        .frame(width: 22, height: 22, alignment: .center)
                         .foregroundColor(.primary)
                 }
-
+                
+                // Calendar visibility filter
+                Button(action: {
+                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                    showFilterPopover = true
+                }) {
+                    Image(systemName: "line.3.horizontal.decrease")
+                        .frame(width: 22, height: 22, alignment: .center)
+                        .foregroundColor((!showWorkouts || !showJournals || !showPlans) ? .accentColor : .primary)
+                }
+                .popover(isPresented: $showFilterPopover, arrowEdge: .top) {
+                    CalendarFilterPopover(
+                        showWorkouts: $showWorkouts,
+                        showJournals: $showJournals,
+                        showPlans: $showPlans
+                    )
+                    .presentationCompactAdaptation(.popover)
+                }
 
             }
             .padding(.horizontal, 16)

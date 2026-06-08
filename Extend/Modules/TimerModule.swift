@@ -642,6 +642,7 @@ private struct ActiveTimerView: View {
     @State private var timerTask: Task<Void, Never>?
     @State private var amrapRounds = 0
     @State private var showingCancelConfirm = false
+    @State private var showingEarlyCompleteConfirm = false
 
     private var currentPhase: TimerPhase? {
         guard phaseIndex < phases.count else { return nil }
@@ -828,7 +829,11 @@ private struct ActiveTimerView: View {
             }
             ToolbarItem(placement: .topBarTrailing) {
                 Button("Complete") {
-                    saveToLog()
+                    if sessionProgress < 1.0 {
+                        showingEarlyCompleteConfirm = true
+                    } else {
+                        saveToLog()
+                    }
                 }
                 .fontWeight(.semibold)
             }
@@ -838,6 +843,12 @@ private struct ActiveTimerView: View {
             Button("Stop", role: .destructive) { dismiss() }
         } message: {
             Text("The timer session will be discarded.")
+        }
+        .alert("Timer Not Finished", isPresented: $showingEarlyCompleteConfirm) {
+            Button("Keep Going", role: .cancel) { }
+            Button("Complete Anyway", role: .destructive) { saveToLog() }
+        } message: {
+            Text("The timer hasn't finished yet. Do you want to complete and save the session now?")
         }
         .onAppear {
             buildPhases()

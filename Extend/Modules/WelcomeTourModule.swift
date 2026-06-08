@@ -37,9 +37,9 @@ enum TourStop: String, CaseIterable {
     var description: String {
         switch self {
         case .bottomNavBar:
-            return "Your primary modules live here — Dashboard, Workout, Quick Workout, Planner, and Logs. Fully customizable in Settings."
+            return "Your primary modules live here — Dashboard, Workout, Quick Workout, Voice Trainer, and Logs. Fully customizable in Settings."
         case .topNavBar:
-            return "Extra modules like Voice Trainer, Generate Workout, Timer, Exercises, and Muscles live up here. Fully customizable in Settings."
+            return "Extra modules like Generate Workout, Timer, Exercises, Muscles, and Equipment live up here. Fully customizable in Settings."
         case .settingsGear:
             return "Tap the gear to open Settings, where you can change the theme, rearrange navigation bars, customize the dashboard, manage HealthKit sync, and more."
         case .dashboardBody:
@@ -79,11 +79,11 @@ struct WelcomeModal: View {
             VStack(spacing: 2) {
                 Text("Your personal workout tracker.")
                     .font(.subheadline)
-                Text("No bloat (subscriptions or ads).")
-                    .font(.caption)
-                    .italic()
-                Text("Just tracking. As it should be.")
-                    .font(.subheadline)
+                //Text("")
+                    //.font(.caption)
+                    //.italic()
+                //Text("Just tracking. As it should be.")
+                    //.font(.subheadline)
             }
             .foregroundColor(.secondary)
             .multilineTextAlignment(.center)

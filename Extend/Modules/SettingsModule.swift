@@ -504,17 +504,18 @@ private struct SettingsModuleView: View {
             ModuleIDs.dashboard,
             ModuleIDs.workouts,
             ModuleIDs.quickWorkout,
-            ModuleIDs.todaysPlan,
+            ModuleIDs.voiceTrainer,
             ModuleIDs.progress
         ]
 
         let topModules: [UUID] = [
             
-            ModuleIDs.voiceTrainer,
+            
             ModuleIDs.generate,
             ModuleIDs.timer,
             ModuleIDs.exercises,
-            ModuleIDs.muscles
+            ModuleIDs.muscles,
+            ModuleIDs.equipment
         ]
 
         moduleState.setBottomNavBarModules(bottomModules)
@@ -556,6 +557,7 @@ private struct SettingsModuleView: View {
         // Reset Progress module calendar view state
         UserDefaults.standard.removeObject(forKey: "logViewMode")
         UserDefaults.standard.removeObject(forKey: "logShowRibbon")
+        UserDefaults.standard.removeObject(forKey: "logListShowWeek")
 
         // Reset theme to light
         appColorScheme = "light"
@@ -1689,15 +1691,15 @@ private struct DashboardAddTileSheet: View {
                             let isGraph = statCard == .workoutFrequency || statCard == .muscleGroupDistribution
                                 || statCard == .oneRepMax || statCard == .personalRecord
                                 || statCard == .volumeThisWeek || statCard == .favoriteDay
-                            let size: TileSize = isGraph ? .large : .small
+                                || statCard == .todaysPlan
                             let tile = DashboardTile(
                                 title: statCard.rawValue,
                                 icon: iconForStatCard(statCard),
                                 order: dashboardState.tiles.count,
                                 tileType: .statCard,
                                 statCardType: statCard,
-                                size: size,
-                                accentPlacement: isGraph ? .none : .left,
+                                size: isGraph ? .large : .small,
+                                accentPlacement: (isGraph || statCard == .todaysPlan) ? .none : .left,
                                 accentColorHex: "#CCCCCC"
                             )
                             onAdd(tile)
@@ -1841,7 +1843,7 @@ private struct DashboardEditTileSheet: View {
                 || statCard == .volumeThisWeek || statCard == .favoriteDay {
                 return [.large]
             }
-            if statCard == .oneRepMax || statCard == .personalRecord {
+            if statCard == .oneRepMax || statCard == .personalRecord || statCard == .todaysPlan {
                 return [.medium, .large]
             }
         }

@@ -1321,12 +1321,35 @@ struct TimerStatsView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var timeRange: StatsTimeRange = .oneMonth
 
-    private var sessionPoints: [(Date, Double)] {
+    private var matchingLogs: [WorkoutLog] {
         let start = timeRange.startDate
         return logState.logs
             .filter { $0.workoutName.hasSuffix("– \(config.name)") && !$0.workoutName.hasPrefix("Trainer") && $0.completedAt >= start }
             .sorted { $0.completedAt < $1.completedAt }
-            .map { ($0.completedAt, $0.duration / 60) }
+    }
+
+    private var sessionPoints: [(Date, Double)] {
+        matchingLogs.map { ($0.completedAt, $0.duration / 60) }
+    }
+
+    // For AMRAP: rounds from sessions whose configured duration matches config.duration
+    private var amrapRoundsPoints: [(Date, Double)] {
+        guard config.type == .amrap else { return [] }
+        let configDurationLine = "Duration: \(formattedConfigDuration(config.duration))"
+        return matchingLogs.compactMap { log in
+            guard log.notes.contains(configDurationLine) else { return nil }
+            guard let line = log.notes.split(separator: "\n").first(where: { $0.hasPrefix("Rounds Completed:") }),
+                  let val = Int(line.split(separator: ":").last?.trimmingCharacters(in: .whitespaces) ?? "") else { return nil }
+            return (log.completedAt, Double(val))
+        }
+    }
+
+    // Mirror of TimerModule's formattedDuration for note matching
+    private func formattedConfigDuration(_ seconds: Int) -> String {
+        if seconds < 60 { return "\(seconds)s" }
+        let m = seconds / 60
+        let s = seconds % 60
+        return s == 0 ? "\(m)m" : "\(m)m \(s)s"
     }
 
     var body: some View {
@@ -1345,6 +1368,12 @@ struct TimerStatsView: View {
                             title: "Duration (mins)", unit: "min",
                             points: sessionPoints, color: .blue
                         )
+                        if !amrapRoundsPoints.isEmpty {
+                            timerStatsCard(
+                                title: "Rounds (\(formattedConfigDuration(config.duration)) AMRAP)", unit: "rounds",
+                                points: amrapRoundsPoints, color: .orange
+                            )
+                        }
                     }
                 }
                 .padding(.vertical, 16)
