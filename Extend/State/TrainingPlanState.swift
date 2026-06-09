@@ -2,6 +2,21 @@ import Foundation
 import Observation
 import WidgetKit
 
+// MARK: - Plan Package (self-contained export/import format)
+
+/// A portable bundle containing training plans plus all referenced workouts, exercises,
+/// equipment, muscle groups, voice trainer configs, and timer configs.
+/// UUIDs are only used for internal package consistency; import resolves everything by name.
+struct PlanPackage: Codable {
+    var plans: [TrainingPlan]
+    var workouts: [Workout]
+    var exercises: [Exercise]
+    var equipment: [Equipment]
+    var muscleGroups: [MuscleGroup]
+    var voiceConfigs: [VoiceTrainerConfig]
+    var timerConfigs: [TimerConfig]
+}
+
 @Observable
 final class TrainingPlanState {
     static let shared = TrainingPlanState()
@@ -69,6 +84,269 @@ final class TrainingPlanState {
         activePlanID = nil
         defaults.removeObject(forKey: plansKey)
         defaults.removeObject(forKey: activeKey)
+    }
+
+    // MARK: - Export / Import
+
+    func exportData(
+        for plansToExport: [TrainingPlan],
+        workoutsState: WorkoutsState,
+        exercisesState: ExercisesState,
+        equipmentState: EquipmentState,
+        muscleGroupsState: MuscleGroupsState,
+        voiceTrainerState: VoiceTrainerState,
+        timerState: TimerState
+    ) -> Data? {
+        // Collect all referenced IDs across every plan day
+        var workoutIDs = Set<UUID>()
+        var exerciseIDs = Set<UUID>()
+        var voiceIDs = Set<UUID>()
+        var timerIDs = Set<UUID>()
+
+        for plan in plansToExport {
+            let allDays = plan.template + plan.weekOverrides.values.flatMap { $0 }
+            for day in allDays {
+                workoutIDs.formUnion(day.workoutIDs)
+                exerciseIDs.formUnion(day.exerciseIDs)
+                voiceIDs.formUnion(day.voiceActivityIDs)
+                timerIDs.formUnion(day.timerIDs)
+            }
+        }
+
+        let referencedWorkouts = workoutsState.workouts.filter { workoutIDs.contains($0.id) }
+
+        // Collect exercises referenced by the workouts too
+        let workoutExerciseIDs = Set(referencedWorkouts.flatMap { w in
+            w.items.compactMap { item -> UUID? in
+                if case .exercise(let we) = item { return we.exerciseID }
+                return nil
+            }
+        })
+        exerciseIDs.formUnion(workoutExerciseIDs)
+
+        let referencedExercises = exercisesState.exercises.filter { exerciseIDs.contains($0.id) }
+        let equipIDs = Set(referencedExercises.flatMap { $0.equipmentIDs })
+        let muscleIDs = Set(referencedExercises.flatMap { $0.primaryMuscleGroupIDs + $0.secondaryMuscleGroupIDs })
+
+        let package = PlanPackage(
+            plans: plansToExport,
+            workouts: referencedWorkouts,
+            exercises: referencedExercises,
+            equipment: equipmentState.items.filter { equipIDs.contains($0.id) },
+            muscleGroups: muscleGroupsState.groups.filter { muscleIDs.contains($0.id) },
+            voiceConfigs: voiceTrainerState.savedConfigurations.filter { voiceIDs.contains($0.id) },
+            timerConfigs: timerState.configs.filter { timerIDs.contains($0.id) }
+        )
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = .prettyPrinted
+        return try? encoder.encode(package)
+    }
+
+    @discardableResult
+    func importPlans(
+        from data: Data,
+        workoutsState: WorkoutsState,
+        exercisesState: ExercisesState,
+        equipmentState: EquipmentState,
+        muscleGroupsState: MuscleGroupsState,
+        voiceTrainerState: VoiceTrainerState,
+        timerState: TimerState
+    ) throws -> Int {
+        let package = try JSONDecoder().decode(PlanPackage.self, from: data)
+
+        // ── 1. Resolve muscle groups ──────────────────────────────────
+        var muscleIDMap: [UUID: UUID] = [:]
+        for mg in package.muscleGroups {
+            if let existing = muscleGroupsState.groups.first(where: {
+                $0.name.localizedCaseInsensitiveCompare(mg.name) == .orderedSame
+            }) {
+                muscleIDMap[mg.id] = existing.id
+            } else {
+                let fresh = MuscleGroup(name: mg.name)
+                muscleGroupsState.groups.append(fresh)
+                muscleIDMap[mg.id] = fresh.id
+            }
+        }
+
+        // ── 2. Resolve equipment ──────────────────────────────────────
+        var equipIDMap: [UUID: UUID] = [:]
+        for eq in package.equipment {
+            if let existing = equipmentState.items.first(where: {
+                $0.name.localizedCaseInsensitiveCompare(eq.name) == .orderedSame
+            }) {
+                equipIDMap[eq.id] = existing.id
+            } else {
+                let fresh = Equipment(name: eq.name)
+                equipmentState.items.append(fresh)
+                equipIDMap[eq.id] = fresh.id
+            }
+        }
+
+        // ── 3. Resolve exercises ──────────────────────────────────────
+        var exerciseIDMap: [UUID: UUID] = [:]
+        for ex in package.exercises {
+            if let existing = exercisesState.exercises.first(where: {
+                $0.name.localizedCaseInsensitiveCompare(ex.name) == .orderedSame
+            }) {
+                exerciseIDMap[ex.id] = existing.id
+            } else {
+                let fresh = Exercise(
+                    name: ex.name,
+                    notes: ex.notes,
+                    primaryMuscleGroupIDs: ex.primaryMuscleGroupIDs.map { muscleIDMap[$0] ?? $0 },
+                    secondaryMuscleGroupIDs: ex.secondaryMuscleGroupIDs.map { muscleIDMap[$0] ?? $0 },
+                    equipmentIDs: ex.equipmentIDs.map { equipIDMap[$0] ?? $0 },
+                    defaultEquipmentIDs: ex.defaultEquipmentIDs.map { equipIDMap[$0] ?? $0 },
+                    healthKitActivityType: ex.healthKitActivityType
+                )
+                exercisesState.addExercise(fresh)
+                exerciseIDMap[ex.id] = fresh.id
+            }
+        }
+
+        // ── 4. Resolve workouts ───────────────────────────────────────
+        var workoutIDMap: [UUID: UUID] = [:]
+        for original in package.workouts {
+            if let existing = workoutsState.workouts.first(where: {
+                $0.name.localizedCaseInsensitiveCompare(original.name) == .orderedSame
+            }) {
+                workoutIDMap[original.id] = existing.id
+            } else {
+                let remappedItems: [WorkoutItem] = original.items.map { item in
+                    guard case .exercise(let we) = item else { return item }
+                    return .exercise(WorkoutExercise(
+                        id: UUID(),
+                        exerciseID: exerciseIDMap[we.exerciseID] ?? we.exerciseID,
+                        loopID: we.loopID,
+                        complexID: we.complexID,
+                        predefinedSets: we.predefinedSets,
+                        defaultEquipmentIDs: we.defaultEquipmentIDs.map { equipIDMap[$0] ?? $0 }
+                    ))
+                }
+                let fresh = Workout(
+                    id: UUID(),
+                    name: original.name,
+                    notes: original.notes,
+                    items: remappedItems,
+                    healthKitActivityType: original.healthKitActivityType,
+                    loops: original.loops,
+                    complexes: original.complexes,
+                    warmupSeconds: original.warmupSeconds,
+                    cooldownSeconds: original.cooldownSeconds,
+                    showNotes: original.showNotes
+                )
+                workoutsState.addWorkout(fresh)
+                workoutIDMap[original.id] = fresh.id
+            }
+        }
+
+        // ── 5. Resolve voice trainer configs ──────────────────────────
+        var voiceIDMap: [UUID: UUID] = [:]
+        for vc in package.voiceConfigs {
+            if let existing = voiceTrainerState.savedConfigurations.first(where: {
+                $0.name.localizedCaseInsensitiveCompare(vc.name) == .orderedSame
+            }) {
+                voiceIDMap[vc.id] = existing.id
+            } else {
+                var fresh = vc
+                fresh = VoiceTrainerConfig(
+                    id: UUID(),
+                    name: vc.name,
+                    notes: vc.notes,
+                    text: vc.text,
+                    roundLength: vc.roundLength,
+                    restLength: vc.restLength,
+                    delayBetweenLines: vc.delayBetweenLines,
+                    numberOfRounds: vc.numberOfRounds,
+                    randomOrder: vc.randomOrder,
+                    cooldownPeriod: vc.cooldownPeriod,
+                    workoutStartWarning: vc.workoutStartWarning,
+                    restEndWarning: vc.restEndWarning,
+                    isFavorite: vc.isFavorite,
+                    healthKitActivityType: vc.healthKitActivityType,
+                    primaryMuscleGroupIDs: vc.primaryMuscleGroupIDs.map { muscleIDMap[$0] ?? $0 },
+                    secondaryMuscleGroupIDs: vc.secondaryMuscleGroupIDs.map { muscleIDMap[$0] ?? $0 },
+                    equipmentIDs: vc.equipmentIDs.map { equipIDMap[$0] ?? $0 }
+                )
+                voiceTrainerState.savedConfigurations.append(fresh)
+                voiceTrainerState.saveConfigurations()
+                voiceIDMap[vc.id] = fresh.id
+            }
+        }
+
+        // ── 6. Resolve timer configs ──────────────────────────────────
+        var timerIDMap: [UUID: UUID] = [:]
+        for tc in package.timerConfigs {
+            if let existing = timerState.configs.first(where: {
+                $0.name.localizedCaseInsensitiveCompare(tc.name) == .orderedSame
+            }) {
+                timerIDMap[tc.id] = existing.id
+            } else {
+                let fresh = TimerConfig(
+                    id: UUID(),
+                    name: tc.name,
+                    notes: tc.notes,
+                    type: tc.type,
+                    direction: tc.direction,
+                    duration: tc.duration,
+                    restDuration: tc.restDuration,
+                    rounds: tc.rounds,
+                    warmupDuration: tc.warmupDuration,
+                    cooldownDuration: tc.cooldownDuration,
+                    ladderStep: tc.ladderStep,
+                    ladderPeakRounds: tc.ladderPeakRounds,
+                    isFavorite: tc.isFavorite,
+                    healthKitActivityType: tc.healthKitActivityType
+                )
+                timerState.addConfig(fresh)
+                timerIDMap[tc.id] = fresh.id
+            }
+        }
+
+        // ── 7. Import plans, remapping all IDs ────────────────────────
+        var count = 0
+        for original in package.plans {
+            let freshID = UUID()
+
+            func remapDay(_ day: PlanDay) -> PlanDay {
+                PlanDay(
+                    id: UUID(),
+                    dayOfWeek: day.dayOfWeek,
+                    workoutIDs: day.workoutIDs.map { workoutIDMap[$0] ?? $0 },
+                    exerciseIDs: day.exerciseIDs.map { exerciseIDMap[$0] ?? $0 },
+                    voiceActivityIDs: day.voiceActivityIDs.map { voiceIDMap[$0] ?? $0 },
+                    timerIDs: day.timerIDs.map { timerIDMap[$0] ?? $0 },
+                    note: day.note
+                )
+            }
+
+            var fresh = TrainingPlan(
+                id: freshID,
+                name: uniquePlanName(for: original.name),
+                startDate: original.startDate,
+                weeks: original.weeks
+            )
+            fresh.template = original.template.map { remapDay($0) }
+            fresh.weekOverrides = Dictionary(uniqueKeysWithValues:
+                original.weekOverrides.map { key, days in
+                    (key, days.map { remapDay($0) })
+                }
+            )
+            plans.append(fresh)
+            count += 1
+        }
+        save()
+        return count
+    }
+
+    private func uniquePlanName(for name: String) -> String {
+        var candidate = name
+        var suffix = 2
+        while plans.contains(where: { $0.name == candidate }) {
+            candidate = "\(name) (\(suffix))"
+            suffix += 1
+        }
+        return candidate
     }
 
     // MARK: - Persistence

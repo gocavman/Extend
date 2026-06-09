@@ -69,19 +69,23 @@ private struct SettingsModuleView: View {
     @State private var isSystemSectionExpanded = false
     @State private var isAboutSectionExpanded = false
     @State private var showingExportSheet = false
+    @State private var showingExportPlanSheet = false
     @State private var showingImportPicker = false
+    @State private var activeImportKind: ImportKind? = nil
     @State private var importResult: ImportResult? = nil
+
+    private enum ImportKind { case workouts, plans }
     #if DEBUG
     @State private var showingClearLogsAlert = false
     @State private var devToolsMessage: String? = nil
     #endif
 
     private enum ImportResult: Identifiable {
-        case success(Int)
+        case success(Int, String)   // count, item label e.g. "workout"
         case failure(String)
         var id: String {
             switch self {
-            case .success(let n): return "success_\(n)"
+            case .success(let n, let l): return "success_\(n)_\(l)"
             case .failure(let m): return "failure_\(m)"
             }
         }
@@ -317,12 +321,41 @@ private struct SettingsModuleView: View {
                             .disabled(workoutsState.workouts.isEmpty)
 
                             Button {
+                                activeImportKind = .workouts
                                 showingImportPicker = true
                             } label: {
                                 HStack {
                                     Image(systemName: "square.and.arrow.down")
                                         .foregroundColor(.primary)
                                     Text("Import Workouts")
+                                        .foregroundColor(.primary)
+                                }
+                            }
+
+                            Button {
+                                showingExportPlanSheet = true
+                            } label: {
+                                HStack {
+                                    Image(systemName: "square.and.arrow.up")
+                                        .foregroundColor(.primary)
+                                    Text("Export Plans")
+                                        .foregroundColor(.primary)
+                                    Spacer()
+                                    Text("\(planState.plans.count)")
+                                        .foregroundColor(.secondary)
+                                        .font(.subheadline)
+                                }
+                            }
+                            .disabled(planState.plans.isEmpty)
+
+                            Button {
+                                activeImportKind = .plans
+                                showingImportPicker = true
+                            } label: {
+                                HStack {
+                                    Image(systemName: "square.and.arrow.down")
+                                        .foregroundColor(.primary)
+                                    Text("Import Plans")
                                         .foregroundColor(.primary)
                                 }
                             }
@@ -496,36 +529,57 @@ private struct SettingsModuleView: View {
                     allowedContentTypes: [.json],
                     allowsMultipleSelection: false
                 ) { result in
-                    switch result {
-                    case .success(let urls):
-                        guard let url = urls.first else { return }
-                        do {
-                            guard url.startAccessingSecurityScopedResource() else {
-                                importResult = .failure("Permission denied for selected file.")
-                                return
+                    let kind = activeImportKind
+                    DispatchQueue.main.async {
+                        activeImportKind = nil
+                        showingImportPicker = false
+                        switch result {
+                        case .success(let urls):
+                            guard let url = urls.first else { return }
+                            do {
+                                guard url.startAccessingSecurityScopedResource() else {
+                                    importResult = .failure("Permission denied for selected file.")
+                                    return
+                                }
+                                defer { url.stopAccessingSecurityScopedResource() }
+                                let data = try Data(contentsOf: url)
+                                switch kind {
+                                case .workouts:
+                                    let count = try workoutsState.importWorkouts(
+                                        from: data,
+                                        exercisesState: exercisesState,
+                                        equipmentState: equipmentState,
+                                        muscleGroupsState: muscleGroupsState
+                                    )
+                                    importResult = .success(count, "workout")
+                                case .plans:
+                                    let count = try TrainingPlanState.shared.importPlans(
+                                        from: data,
+                                        workoutsState: workoutsState,
+                                        exercisesState: exercisesState,
+                                        equipmentState: equipmentState,
+                                        muscleGroupsState: muscleGroupsState,
+                                        voiceTrainerState: voiceTrainerState,
+                                        timerState: TimerState.shared
+                                    )
+                                    importResult = .success(count, "plan")
+                                case nil:
+                                    importResult = .failure("Unknown import type.")
+                                }
+                            } catch {
+                                importResult = .failure(error.localizedDescription)
                             }
-                            defer { url.stopAccessingSecurityScopedResource() }
-                            let data = try Data(contentsOf: url)
-                            let count = try workoutsState.importWorkouts(
-                                from: data,
-                                exercisesState: exercisesState,
-                                equipmentState: equipmentState,
-                                muscleGroupsState: muscleGroupsState
-                            )
-                            importResult = .success(count)
-                        } catch {
+                        case .failure(let error):
                             importResult = .failure(error.localizedDescription)
                         }
-                    case .failure(let error):
-                        importResult = .failure(error.localizedDescription)
                     }
                 }
                 .alert(item: $importResult) { result in
                     switch result {
-                    case .success(let count):
+                    case .success(let count, let label):
                         return Alert(
                             title: Text("Import Complete"),
-                            message: Text("\(count) workout\(count == 1 ? "" : "s") imported successfully."),
+                            message: Text("\(count) \(label)\(count == 1 ? "" : "s") imported successfully."),
                             dismissButton: .default(Text("OK"))
                         )
                     case .failure(let message):
@@ -535,6 +589,16 @@ private struct SettingsModuleView: View {
                             dismissButton: .default(Text("OK"))
                         )
                     }
+                }
+                .fullScreenCover(isPresented: $showingExportPlanSheet) {
+                    PlanExportSheet(
+                        plans: planState.plans,
+                        workoutsState: workoutsState,
+                        exercisesState: exercisesState,
+                        equipmentState: equipmentState,
+                        muscleGroupsState: muscleGroupsState,
+                        voiceTrainerState: voiceTrainerState
+                    )
                 }
             }
         }
@@ -893,6 +957,158 @@ private struct WorkoutExportSheet: View {
         let stamp = formatter.string(from: Date())
         let tempURL = FileManager.default.temporaryDirectory
             .appendingPathComponent("extend-workouts-\(stamp).json")
+        do {
+            try data.write(to: tempURL)
+            shareItem = ExportItem(url: tempURL)
+        } catch {}
+    }
+}
+
+// MARK: - Plan Export Sheet
+
+private struct PlanExportSheet: View {
+    @Environment(\.dismiss) private var dismiss
+    let plans: [TrainingPlan]
+    let workoutsState: WorkoutsState
+    let exercisesState: ExercisesState
+    let equipmentState: EquipmentState
+    let muscleGroupsState: MuscleGroupsState
+    let voiceTrainerState: VoiceTrainerState
+
+    @State private var selectedIDs: Set<UUID> = []
+    @State private var shareItem: ExportItem? = nil
+    @State private var searchText: String = ""
+    @State private var showingExportSuccess = false
+
+    private struct ExportItem: Identifiable {
+        let id = UUID()
+        let url: URL
+    }
+
+    private var filteredPlans: [TrainingPlan] {
+        guard !searchText.isEmpty else { return plans }
+        return plans.filter { $0.name.localizedCaseInsensitiveContains(searchText) }
+    }
+
+    var body: some View {
+        VStack(spacing: 0) {
+            // Header
+            HStack {
+                Button("Cancel") { dismiss() }
+                    .foregroundColor(.blue)
+                Spacer()
+                Text("Export Plans")
+                    .font(.headline)
+                Spacer()
+                Button("Select All") {
+                    if selectedIDs.count == filteredPlans.count {
+                        selectedIDs = []
+                    } else {
+                        selectedIDs = Set(filteredPlans.map { $0.id })
+                    }
+                }
+                .foregroundColor(.blue)
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 12)
+            .background(Color(uiColor: .systemBackground))
+            .overlay(alignment: .bottom) { Divider() }
+
+            // Search bar
+            HStack(spacing: 8) {
+                Image(systemName: "magnifyingglass")
+                    .foregroundColor(.secondary)
+                TextField("Search plans", text: $searchText)
+                    .autocorrectionDisabled()
+                if !searchText.isEmpty {
+                    Button { searchText = "" } label: {
+                        Image(systemName: "xmark.circle.fill")
+                            .foregroundColor(.secondary)
+                    }
+                }
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
+            .background(Color(uiColor: .secondarySystemBackground))
+            .cornerRadius(10)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 8)
+
+            List(filteredPlans) { plan in
+                Button {
+                    if selectedIDs.contains(plan.id) {
+                        selectedIDs.remove(plan.id)
+                    } else {
+                        selectedIDs.insert(plan.id)
+                    }
+                } label: {
+                    HStack(spacing: 12) {
+                        Image(systemName: selectedIDs.contains(plan.id) ? "checkmark.circle.fill" : "circle")
+                            .foregroundColor(selectedIDs.contains(plan.id) ? .primary : .secondary)
+                            .font(.system(size: 20))
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(plan.name)
+                                .font(.body)
+                                .foregroundColor(.primary)
+                            Text(plan.weeks == 0 ? "Repeating weekly" : "\(plan.weeks) week\(plan.weeks == 1 ? "" : "s")")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                        Spacer()
+                    }
+                }
+                .buttonStyle(.plain)
+            }
+            .listStyle(.plain)
+            .scrollContentBackground(.hidden)
+            .background(Color(UIColor.systemBackground))
+
+            // Export button
+            Button {
+                exportSelected()
+            } label: {
+                Text("Export \(selectedIDs.count) Plan\(selectedIDs.count == 1 ? "" : "s")")
+                    .font(.body)
+                    .fontWeight(.semibold)
+                    .foregroundColor(selectedIDs.isEmpty ? .secondary : .white)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 14)
+                    .background(selectedIDs.isEmpty ? Color(uiColor: .systemGray4) : Color.black)
+                    .cornerRadius(12)
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 12)
+            }
+            .disabled(selectedIDs.isEmpty)
+        }
+        .background(Color(UIColor.systemBackground).ignoresSafeArea())
+        .sheet(item: $shareItem) { item in
+            ShareSheet(url: item.url) {
+                showingExportSuccess = true
+            }
+        }
+        .alert("Export Successful", isPresented: $showingExportSuccess) {
+            Button("OK", role: .cancel) { dismiss() }
+        } message: {
+            Text("Your plan\(selectedIDs.count == 1 ? "" : "s") \(selectedIDs.count == 1 ? "was" : "were") exported successfully.")
+        }
+    }
+
+    private func exportSelected() {
+        let toExport = plans.filter { selectedIDs.contains($0.id) }
+        guard let data = TrainingPlanState.shared.exportData(
+            for: toExport,
+            workoutsState: workoutsState,
+            exercisesState: exercisesState,
+            equipmentState: equipmentState,
+            muscleGroupsState: muscleGroupsState,
+            voiceTrainerState: voiceTrainerState,
+            timerState: TimerState.shared
+        ) else { return }
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy-MM-dd_HH-mm-ss"
+        let stamp = formatter.string(from: Date())
+        let tempURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent("extend-plans-\(stamp).json")
         do {
             try data.write(to: tempURL)
             shareItem = ExportItem(url: tempURL)
@@ -1576,7 +1792,7 @@ private struct DashboardAddTileSheet: View {
                                     if selectedShortcuts.contains(key) { selectedShortcuts.remove(key) } else { selectedShortcuts.insert(key) }
                                 }) {
                                     HStack {
-                                        Image(systemName: "figure.strengthtraining.traditional")
+                                        Image(systemName: "dumbbell.fill")
                                             .foregroundColor(.secondary)
                                         Text(workout.name).foregroundColor(.primary)
                                         Spacer()
@@ -1660,7 +1876,7 @@ private struct DashboardAddTileSheet: View {
                                     if selectedShortcuts.contains(key) { selectedShortcuts.remove(key) } else { selectedShortcuts.insert(key) }
                                 }) {
                                     HStack {
-                                        Image(systemName: "bolt.fill")
+                                        Image(systemName: "flame.fill")
                                             .foregroundColor(.secondary)
                                         Text(exercise.name).foregroundColor(.primary)
                                         Spacer()
@@ -1781,7 +1997,7 @@ private struct DashboardAddTileSheet: View {
                             if parts[0] == "workout", let workout = workoutsState.workouts.first(where: { $0.id == itemID }) {
                                 let tile = DashboardTile(
                                     title: workout.name,
-                                    icon: "figure.strengthtraining.traditional",
+                                    icon: "dumbbell.fill",
                                     order: dashboardState.tiles.count,
                                     tileType: .shortcut,
                                     size: .small,
@@ -1814,7 +2030,7 @@ private struct DashboardAddTileSheet: View {
                             } else if parts[0] == "quickexercise", let exercise = exercisesState.exercises.first(where: { $0.id == itemID }) {
                                 let tile = DashboardTile(
                                     title: exercise.name,
-                                    icon: "bolt.fill",
+                                    icon: "flame.fill",
                                     order: dashboardState.tiles.count,
                                     tileType: .shortcut,
                                     size: .small,

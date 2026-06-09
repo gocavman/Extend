@@ -14,7 +14,7 @@ import UniformTypeIdentifiers
 public struct ExercisesModule: AppModule {
     public let id: UUID = ModuleIDs.exercises
     public let displayName: String = "Exercises"
-    public let iconName: String = "flame.fill"
+    public let iconName: String = "figure.strengthtraining.traditional"
     public let description: String = "Add and manage exercises with muscle groups and equipment"
     
     public var order: Int = 6
@@ -80,7 +80,7 @@ private struct ExercisesModuleView: View {
                                     launchExercise(exercise)
                                 }) {
                                     VStack(spacing: 4) {
-                                        Image(systemName: "flame.fill")
+                                        Image(systemName: "figure.strengthtraining.traditional")
                                             .font(.system(size: 18, weight: .semibold))
                                         Text(exercise.name)
                                             .font(.caption2).fontWeight(.semibold)

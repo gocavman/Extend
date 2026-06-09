@@ -126,6 +126,7 @@ private struct ModuleNavButton: View {
             VStack(spacing: 4) {
                 Image(systemName: module.iconName)
                     .font(.system(size: 16, weight: .semibold))
+                    .frame(width: 24, height: 24, alignment: .center)
 
                 Text(module.displayName)
                     .font(.caption2)

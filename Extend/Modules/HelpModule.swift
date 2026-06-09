@@ -156,7 +156,7 @@ struct HelpDetailView: View {
                         Text(section.heading)
                             .font(.headline)
                             .foregroundColor(.primary)
-                        Text(section.body)
+                        HelpBodyText(section.body)
                             .font(.body)
                             .foregroundColor(.secondary)
                             .fixedSize(horizontal: false, vertical: true)
@@ -170,4 +170,50 @@ struct HelpDetailView: View {
         .navigationTitle(article.title)
         .navigationBarTitleDisplayMode(.inline)
     }
+}
+
+// MARK: - Inline SF Symbol renderer
+//
+// Parses tokens of the form [sf:symbol.name] in body text and replaces them
+// with the actual SF Symbol image inline. Everything else renders as plain text.
+
+private func HelpBodyText(_ raw: String) -> Text {
+    // Split on [sf:...] tokens and render each as an inline SF Symbol image.
+    // Text concatenation via + is the only reliable way to mix Image and String
+    // in a single Text value; the deprecation warning is suppressed below.
+    let pattern = #"\[sf:([^\]]+)\]"#
+    guard let regex = try? NSRegularExpression(pattern: pattern) else {
+        return Text(raw)
+    }
+    let ns = raw as NSString
+    let fullRange = NSRange(location: 0, length: ns.length)
+    let matches = regex.matches(in: raw, range: fullRange)
+
+    var result = Text(verbatim: "")
+    var cursor = 0
+
+    for match in matches {
+        let preRange = NSRange(location: cursor, length: match.range.location - cursor)
+        if preRange.length > 0 {
+            let segment = ns.substring(with: preRange)
+            result = concatText(result, Text(verbatim: segment))
+        }
+        let symbolName = ns.substring(with: match.range(at: 1))
+        result = concatText(result, Text(Image(systemName: symbolName)))
+        cursor = match.range.location + match.range.length
+    }
+
+    if cursor < ns.length {
+        result = concatText(result, Text(verbatim: ns.substring(from: cursor)))
+    }
+
+    return result
+}
+
+// Wrapper that isolates the deprecated + operator so the warning fires once
+// in one place and can be suppressed cleanly.
+@inline(__always)
+private func concatText(_ lhs: Text, _ rhs: Text) -> Text {
+    // swiftlint:disable:next deprecated_text_concatenation
+    lhs + rhs
 }

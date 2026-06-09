@@ -13,7 +13,7 @@ import PhotosUI
 public struct MuscleGroupsModule: AppModule {
     public let id: UUID = ModuleIDs.muscles
     public let displayName: String = "Muscles"
-    public let iconName: String = "figure.strengthtraining.traditional"
+    public let iconName: String = "figure"
     public let description: String = "Add and manage muscles"
 
     public var order: Int = 7
@@ -74,7 +74,7 @@ private struct MuscleGroupsModuleView: View {
                                     statsGroup = group
                                 }) {
                                     VStack(spacing: 4) {
-                                        Image(systemName: "figure.strengthtraining.traditional")
+                                        Image(systemName: "figure")
                                             .font(.system(size: 18, weight: .semibold))
                                             .foregroundColor(.primary)
                                         Text(group.name)

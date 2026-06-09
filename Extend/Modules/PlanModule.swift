@@ -33,22 +33,19 @@ struct PlanModuleView: View {
                 ToolbarItem(placement: .topBarLeading) {
                     Button("Done") { dismiss() }
                 }
-                ToolbarItem(placement: .topBarTrailing) {
-                    Menu {
+                ToolbarItemGroup(placement: .topBarTrailing) {
+                    if !planState.plans.isEmpty {
                         Button {
-                            planEditorItem = PlanEditorItem(id: UUID(), plan: nil)
+                            showingManagePlans = true
                         } label: {
-                            Label("New Plan", systemImage: "plus")
+                            Image(systemName: "list.bullet")
+                                .foregroundColor(.primary)
                         }
-                        if !planState.plans.isEmpty {
-                            Button {
-                                showingManagePlans = true
-                            } label: {
-                                Label("Manage Plans", systemImage: "list.bullet")
-                            }
-                        }
+                    }
+                    Button {
+                        planEditorItem = PlanEditorItem(id: UUID(), plan: nil)
                     } label: {
-                        Image(systemName: "ellipsis.circle")
+                        Image(systemName: "plus")
                             .foregroundColor(.primary)
                     }
                 }
@@ -1181,7 +1178,7 @@ public struct TodaysPlanModule: AppModule {
     public let id: UUID = ModuleIDs.todaysPlan
     public let displayName: String = "Plan"
     public let iconName: String = "calendar.badge.checkmark"
-    public let description: String = "View and launch today's planned workouts, exercises, and voice activities."
+    public let description: String = "View and launch today's planned activities"
 
     public var order: Int = 14
     public var isVisible: Bool = true
