@@ -34,52 +34,32 @@
     "keywords": ["settings", "theme", "dark", "light", "dark mode", "lbs", "kg", "weight unit", "screen on", "keep screen on", "health", "healthkit", "export", "import", "reset", "navbar", "nav bar", "navigation bar", "dashboard", "image set", "male", "female", "gradient", "color", "background", "tint", "accent", "icon", "reorder", "modules", "tile", "stat card", "header", "paypal", "venmo", "donate", "support", "backup", "restore", "sync", "customize", "plan"],
     "sections": [
       {
-        "heading": "Theme",
-        "body": "Light or Dark. (The Stick Figure Editor, Animation Studio, and Match Game always stay light regardless of this setting.)"
+        "heading": "Navigation Bar(s)",
+        "body": "Add, remove, and reorder modules across the top and bottom navigation bars. Each bar is configured independently.\n\n• Color — set a background color, optional gradient, gradient direction, and text color.\n• Customize — opens the full nav bar editor to add, remove, and reorder module icons."
       },
       {
-        "heading": "Weight Unit",
-        "body": "lbs or kg. Affects all weight display and entry throughout the app — logs, stat cards, personal records."
+        "heading": "Dashboard",
+        "body": "Configure the appearance and contents of your Dashboard.\n\n• Color — set a background color and optional gradient for the Dashboard.\n• Customize — opens the tile editor to add, remove, resize, and reorder tiles.\n\nTile types:\n• Module Shortcut — opens a module.\n• Stat Card — shows a live stat.\n• Shortcut — launches a specific workout, timer, voice trainer, or exercise.\n• Blank — fill in space with an animated emoticon.\n\nStat cards available: Total Workouts, Day Streaks, Longest Streak, Total Time, Favorite Exercise, Favorite Day, Workout Frequency (14 days), Muscle Group Distribution (7 days), Volume This Week, Rest Days (14 days), Personal Record, 1RM Leaderboard.\n\nEach tile supports: custom title, icon, size (small/medium/large), accent color and placement (none/left/top/right/bottom), and optional background tint. Tap [sf:gear] on any tile to access its configuration."
       },
       {
-        "heading": "Keep Screen On",
-        "body": "Prevents the screen from locking during active timers, workouts, and voice trainer sessions. Uses slightly more battery."
+        "heading": "System Preferences",
+        "body": "• Theme — Light or Dark. (The Stick Figure Editor, Animation Studio, and Match Game always stay light regardless of this setting.)\n• Image Set — chooses the built-in anatomy images used in workout and muscle views — Option 1, Option 2, or None.\n• Weight Unit — lbs or kg. Affects all weight display and entry throughout the app — logs, stat cards, personal records.\n• Apple Health — Export: sends completed workout sessions to Apple Health. Import Activities: pulls workout data from Health into your Log. Sync Now: manually trigger a sync.\n• Keep Screen On During Sessions — prevents the screen from locking during active timers, workouts, and voice trainer sessions. Uses more battery."
       },
       {
-        "heading": "Muscle Image Set",
-        "body": "Chooses the built-in anatomy images used in workout and muscle views — Option 1, Option 2, or None. Individual muscles can also have custom images overriding this."
+        "heading": "Data",
+        "body": "• Export Workouts — exports selected workout routines as a JSON file. Useful as a backup or for transferring to another device. Exports routine definitions only, not logged session history.\n• Import Workouts — imports workout routines from a previously exported JSON file. Missing exercises, muscles, or equipment are created automatically.\n• Export Plans — exports selected training plans as a JSON file, including all referenced workouts, exercises, muscles, equipment, voice trainer configs, and timer configs.\n• Import Plans — imports training plans from a previously exported plan JSON file. All dependencies are resolved by name — created if missing, matched if found.\n• Export Log Data — exports your full session history as a CSV file.\n• Reset App — deletes everything: logs, routines, exercises, muscles, equipment, timers, voice trainer configs, training plans, and all customizations. Cannot be undone."
       },
       {
-        "heading": "Customize Navigation Bar(s)",
-        "body": "Add, remove, and reorder modules across the top and bottom navigation bars. Each bar is configured independently. Change color for more pizazz."
+        "heading": "Help Center",
+        "body": "Opens this help system. Browse articles by module, or search for any topic."
       },
       {
-        "heading": "Customize Dashboard",
-        "body": "Add, remove, resize, and reorder tiles on your Dashboard.\n\nTile types:\n• Module Shortcut — opens a module.\n• Stat Card — shows a live stat.\n• Shortcut — launches a specific workout, timer, voice trainer, or exercise.\n• Blank — fill in space with animated emoticon.\n\nStat cards available: Total Workouts, Day Streaks, Longest Streak, Total Time, Favorite Exercise, Favorite Day, Workout Frequency (14 days), Muscle Group Distribution (7 days), Volume This Week, Rest Days (14 days), Personal Record, 1RM Leaderboard.\n\nEach tile supports: custom title, icon, size (small/medium/large), accent color and placement (none/left/top/right/bottom), and optional background tint. Click the [sf:gear] icon to access these configuration options."
+        "heading": "About",
+        "body": "• App Version and Build number.\n• Developer Website link.\n• Privacy Policy link."
       },
       {
-        "heading": "Export Workouts",
-        "body": "Exports selected workout routines as a JSON file — useful as a backup or for transferring to another device. Exports routine definitions only, not logged session history."
-      },
-      {
-        "heading": "Import Workouts",
-        "body": "Imports workout routines from a previously exported JSON file. Opens the system file picker. If an exercise, muscle group, or equipment item referenced in the file doesn't exist locally, it is created automatically. Imported workouts are added alongside existing ones."
-      },
-      {
-        "heading": "Export Plans",
-        "body": "Exports selected training plans as a JSON file, including all referenced workouts, exercises, muscle groups, equipment, voice trainer configs, and timer configs needed to fully recreate them."
-      },
-      {
-        "heading": "Import Plans",
-        "body": "Imports training plans from a previously exported plan JSON file. All dependencies (workouts, exercises, muscles, equipment, voice trainer configs, timer configs) are resolved by name — created if missing, matched to existing ones if found."
-      },
-      {
-        "heading": "Apple Health",
-        "body": "Export: sends completed workout sessions to Apple Health.\nImport: pulls workout activity data from Health into your Log.\nSync Now: manually trigger a sync. The app also syncs automatically on launch."
-      },
-      {
-        "heading": "Reset App",
-        "body": "Deletes everything — logs, routines, exercises, muscles, equipment, timers, voice trainer configs, training plans, and all customizations. Returns the app to default. Cannot be undone. Requires confirmation."
+        "heading": "Support the Developer",
+        "body": "If you enjoy Extend, consider leaving a tip via PayPal or Venmo. No pressure — just appreciated."
       }
     ]
   },
@@ -93,7 +73,7 @@
     "sections": [
       {
         "heading": "Tiles",
-        "body": "The Dashboard is a grid of tiles you build yourself. Choose which ones, and in which order they appear. Each tile can be a module, a stat card, or a shortcut to a specific workout or exercise.\n\nSizes: small (1 column), medium (2 columns), large (full row)."
+        "body": "The Dashboard is a grid of tiles you build yourself. Choose which ones, and in which order they appear. Each tile can be a module shortcut, a stat card, or a shortcut to a specific workout, exercise, timer, or voice trainer config.\n\nSizes: small (1 column), medium (2 columns), large (full row)."
       },
       {
         "heading": "Stat Cards",
@@ -144,28 +124,36 @@
     ]
   },
   {
-    "id": "generate",
+    "id": "exercises",
     "category": "Modules",
-    "title": "Generate",
-    "icon": "sparkles",
-    "summary": "Auto-generate a workout from your equipment and muscle filters.",
-    "keywords": ["random", "generate", "auto", "filter", "equipment", "muscle", "preset", "shuffle", "create"],
+    "title": "Exercises",
+    "icon": "figure.strengthtraining.traditional",
+    "summary": "Your exercise library — create, organize, launch quick sessions, and track stats per movement.",
+    "keywords": ["exercise", "library", "add", "edit", "delete", "muscle", "equipment", "image", "photo", "favorite", "search", "stats", "history", "1rm", "pr", "quick", "launch", "play"],
     "sections": [
       {
         "heading": "Header Buttons",
-        "body": "• [sf:slider.horizontal.3] — modify saved configurations.\n• [sf:star] — save selected configuration for quick generation later."
+        "body": "• [sf:plus] — add a new exercise.\n• [sf:magnifyingglass] — search the exercise list."
       },
       {
-        "heading": "How It Works",
-        "body": "Choose which equipment and muscle groups to include, then tap Generate. The app picks a random set of matching exercises and builds a workout for you."
+        "heading": "Row Buttons",
+        "body": "Each exercise row shows buttons:\n• [sf:play.circle.fill] — launch an immediate single-exercise session (no routine needed).\n• [sf:star] / [sf:star.fill] — toggle favorite (pins to the Favorites grid).\n• [sf:clock.arrow.circlepath] — view session history for this exercise.\n• [sf:chart.bar] — view stats (total sets, average weight, PRs, 1RM).\n• [sf:pencil] — edit the exercise."
       },
       {
-        "heading": "Saving",
-        "body": "Tap Save as Workout, give it a name, and it appears in your Workouts list. Or, tap Start Workout to kickoff the session."
+        "heading": "Tapping a Row",
+        "body": "Tapping anywhere on an exercise row also launches a quick session for that exercise."
       },
       {
-        "heading": "Filter Presets",
-        "body": "Saved filter combinations appear as tiles at the top. Tap one to apply that filter instantly (e.g. 'Home' vs. 'Gym')."
+        "heading": "Favorites Grid",
+        "body": "Favorited exercises appear as 3-piece tiles at the top:\n• Top [sf:flame.fill] — tap to launch a quick session.\n• Bottom-left [sf:chart.bar.fill] — opens stats.\n• Bottom-right [sf:clock.arrow.trianglehead.counterclockwise.rotate.90] — opens history."
+      },
+      {
+        "heading": "Quick Sessions",
+        "body": "Launching an exercise opens a full workout session for just that one movement. Log sets, reps, and weight, then complete it. The session is saved to the Log."
+      },
+      {
+        "heading": "Stats and History",
+        "body": "Tap [sf:chart.bar] to see total sets, average weight, PRs, and estimated 1RM over time. Tap [sf:clock.arrow.circlepath] for a full list of every session that included this exercise."
       }
     ]
   },
@@ -204,40 +192,6 @@
     ]
   },
   {
-    "id": "timer",
-    "category": "Modules",
-    "title": "Timer",
-    "icon": "timer",
-    "summary": "Create and run interval timers for any training style.",
-    "keywords": ["interval", "countdown", "rest", "round", "tabata", "amrap", "emom", "work", "rounds", "warmup", "cooldown"],
-    "sections": [
-      {
-        "heading": "Header Buttons",
-        "body": "• [sf:plus] — create a new timer config."
-      },
-      {
-        "heading": "Row Buttons",
-        "body": "Each timer row shows buttons:\n• [sf:play.circle.fill] — start the timer immediately.\n• [sf:star] / [sf:star.fill] — toggle favorite (pins to the Favorites grid).\n• [sf:clock.arrow.circlepath] — view session history for this timer.\n• [sf:chart.bar] — view usage stats.\n• [sf:pencil] — edit the timer config."
-      },
-      {
-        "heading": "Favorites Grid",
-        "body": "Favorited timers appear as 3-piece tiles at the top:\n• Top — tap to launch the timer.\n• Bottom-left [sf:chart.bar.fill] — opens stats.\n• Bottom-right [sf:clock.arrow.circlepath] — opens history."
-      },
-      {
-        "heading": "Creating a Timer",
-        "body": "Tap [sf:plus]. Set a name, type, duration, and round count. Optional: warmup, cooldown."
-      },
-      {
-        "heading": "Running",
-        "body": "Tap [sf:play.circle.fill] to start. The screen shows current phase (work/rest), time remaining, and round. Tap Pause to pause, Resume to continue."
-      },
-      {
-        "heading": "Completing",
-        "body": "Tap Complete to add the session to Logs."
-      }
-    ]
-  },
-  {
     "id": "progress",
     "category": "Modules",
     "title": "Log",
@@ -272,36 +226,100 @@
     ]
   },
   {
-    "id": "exercises",
+    "id": "trainer",
     "category": "Modules",
-    "title": "Exercises",
-    "icon": "figure.strengthtraining.traditional",
-    "summary": "Your exercise library — create, organize, launch quick sessions, and track stats per movement.",
-    "keywords": ["exercise", "library", "add", "edit", "delete", "muscle", "equipment", "image", "photo", "favorite", "search", "stats", "history", "1rm", "pr", "quick", "launch", "play"],
+    "title": "Trainer",
+    "icon": "speaker.wave.2",
+    "summary": "Voice-guided sessions — the app calls out your cues at timed intervals.",
+    "keywords": ["voice", "trainer", "audio", "speak", "cue", "round", "rest", "interval", "boxing", "heavy bag", "random", "delay", "cooldown", "warning", "lines", "text", "rounds", "session"],
     "sections": [
       {
         "heading": "Header Buttons",
-        "body": "• [sf:plus] — add a new exercise.\n• [sf:magnifyingglass] — search the exercise list."
+        "body": "• [sf:plus] — create a new voice trainer config."
       },
       {
         "heading": "Row Buttons",
-        "body": "Each exercise row shows buttons:\n• [sf:play.circle.fill] — launch an immediate single-exercise session (no routine needed).\n• [sf:star] / [sf:star.fill] — toggle favorite (pins to the Favorites grid).\n• [sf:clock.arrow.circlepath] — view session history for this exercise.\n• [sf:chart.bar] — view stats (total sets, average weight, PRs, 1RM).\n• [sf:pencil] — edit the exercise."
-      },
-      {
-        "heading": "Tapping a Row",
-        "body": "Tapping anywhere on an exercise row also launches a quick session for that exercise."
+        "body": "Each config row shows buttons:\n• [sf:play.circle.fill] — start a session immediately.\n• [sf:star] / [sf:star.fill] — toggle favorite (pins to the Favorites grid).\n• [sf:clock.arrow.circlepath] — view session history.\n• [sf:chart.bar] — view usage stats.\n• [sf:pencil] — edit the config."
       },
       {
         "heading": "Favorites Grid",
-        "body": "Favorited exercises appear as 3-piece tiles at the top:\n• Top [sf:flame.fill] — tap to launch a quick session.\n• Bottom-left [sf:chart.bar.fill] — opens stats.\n• Bottom-right [sf:clock.arrow.trianglehead.counterclockwise.rotate.90] — opens history."
+        "body": "Favorited configs appear as 3-piece tiles at the top:\n• Top — tap to launch a session.\n• Bottom-left [sf:chart.bar.fill] — opens stats.\n• Bottom-right [sf:clock.arrow.circlepath] — opens history."
       },
       {
-        "heading": "Quick Sessions",
-        "body": "Launching an exercise opens a full workout session for just that one movement. Log sets, reps, and weight, then complete it. The session is saved to the Log."
+        "heading": "How It Works",
+        "body": "Write cues (one per line), set your timing, and the app reads them aloud during your session. Works great for boxing, martial arts, circuits, or any interval training."
       },
       {
-        "heading": "Stats and History",
-        "body": "Tap [sf:chart.bar] to see total sets, average weight, PRs, and estimated 1RM over time. Tap [sf:clock.arrow.circlepath] for a full list of every session that included this exercise."
+        "heading": "Creating a Config",
+        "body": "Tap [sf:plus]. Name it, enter cues (e.g. 'Jab', '1-2', 'Right Hook'), then set:\n• Rounds and round length\n• Rest between rounds\n• Delay between spoken cues\n• Start warning countdown\n• Rest end warning\n• Cooldown period"
+      },
+      {
+        "heading": "Random Order",
+        "body": "Shuffles cues each round so sessions stay unpredictable."
+      },
+      {
+        "heading": "Running a Session",
+        "body": "Tap [sf:play.circle.fill] to start. The screen shows the current cue, round, and elapsed time. Tap Pause to pause. Completing saves the session to the Log."
+      }
+    ]
+  },
+  {
+    "id": "generate",
+    "category": "Modules",
+    "title": "Generate",
+    "icon": "sparkles",
+    "summary": "Auto-generate a workout from your equipment and muscle filters.",
+    "keywords": ["random", "generate", "auto", "filter", "equipment", "muscle", "preset", "shuffle", "create"],
+    "sections": [
+      {
+        "heading": "Header Buttons",
+        "body": "• [sf:slider.horizontal.3] — modify saved configurations.\n• [sf:star] — save selected configuration for quick generation later."
+      },
+      {
+        "heading": "How It Works",
+        "body": "Choose which equipment and muscle groups to include, then tap Generate. The app picks a random set of matching exercises and builds a workout for you."
+      },
+      {
+        "heading": "Saving",
+        "body": "Tap Save as Workout, give it a name, and it appears in your Workouts list. Or, tap Start Workout to kickoff the session."
+      },
+      {
+        "heading": "Filter Presets",
+        "body": "Saved filter combinations appear as tiles at the top. Tap one to apply that filter instantly (e.g. 'Home' vs. 'Gym')."
+      }
+    ]
+  },
+  {
+    "id": "timer",
+    "category": "Modules",
+    "title": "Timer",
+    "icon": "timer",
+    "summary": "Create and run interval timers for any training style.",
+    "keywords": ["interval", "countdown", "rest", "round", "tabata", "amrap", "emom", "work", "rounds", "warmup", "cooldown"],
+    "sections": [
+      {
+        "heading": "Header Buttons",
+        "body": "• [sf:plus] — create a new timer config."
+      },
+      {
+        "heading": "Row Buttons",
+        "body": "Each timer row shows buttons:\n• [sf:play.circle.fill] — start the timer immediately.\n• [sf:star] / [sf:star.fill] — toggle favorite (pins to the Favorites grid).\n• [sf:clock.arrow.circlepath] — view session history for this timer.\n• [sf:chart.bar] — view usage stats.\n• [sf:pencil] — edit the timer config."
+      },
+      {
+        "heading": "Favorites Grid",
+        "body": "Favorited timers appear as 3-piece tiles at the top:\n• Top — tap to launch the timer.\n• Bottom-left [sf:chart.bar.fill] — opens stats.\n• Bottom-right [sf:clock.arrow.circlepath] — opens history."
+      },
+      {
+        "heading": "Creating a Timer",
+        "body": "Tap [sf:plus]. Set a name, type, duration, and round count. Optional: warmup, cooldown."
+      },
+      {
+        "heading": "Running",
+        "body": "Tap [sf:play.circle.fill] to start. The screen shows current phase (work/rest), time remaining, and round. Tap Pause to pause, Resume to continue."
+      },
+      {
+        "heading": "Completing",
+        "body": "Tap Complete to add the session to Logs."
       }
     ]
   },
@@ -366,84 +384,20 @@
     ]
   },
   {
-    "id": "trainer",
+    "id": "mini-games",
     "category": "Modules",
-    "title": "Trainer",
-    "icon": "speaker.wave.2",
-    "summary": "Voice-guided sessions — the app calls out your cues at timed intervals.",
-    "keywords": ["voice", "trainer", "audio", "speak", "cue", "round", "rest", "interval", "boxing", "heavy bag", "random", "delay", "cooldown", "warning", "lines", "text", "rounds", "session"],
-    "sections": [
-      {
-        "heading": "Header Buttons",
-        "body": "• [sf:plus] — create a new voice trainer config."
-      },
-      {
-        "heading": "Row Buttons",
-        "body": "Each config row shows buttons:\n• [sf:play.circle.fill] — start a session immediately.\n• [sf:star] / [sf:star.fill] — toggle favorite (pins to the Favorites grid).\n• [sf:clock.arrow.circlepath] — view session history.\n• [sf:chart.bar] — view usage stats.\n• [sf:pencil] — edit the config."
-      },
-      {
-        "heading": "Favorites Grid",
-        "body": "Favorited configs appear as 3-piece tiles at the top:\n• Top — tap to launch a session.\n• Bottom-left [sf:chart.bar.fill] — opens stats.\n• Bottom-right [sf:clock.arrow.circlepath] — opens history."
-      },
-      {
-        "heading": "How It Works",
-        "body": "Write cues (one per line), set your timing, and the app reads them aloud during your session. Works great for boxing, martial arts, circuits, or any interval training."
-      },
-      {
-        "heading": "Creating a Config",
-        "body": "Tap [sf:plus]. Name it, enter cues (e.g. 'Jab', '1-2', 'Right Hook'), then set:\n• Rounds and round length\n• Rest between rounds\n• Delay between spoken cues\n• Start warning countdown\n• Rest end warning\n• Cooldown period"
-      },
-      {
-        "heading": "Random Order",
-        "body": "Shuffles cues each round so sessions stay unpredictable."
-      },
-      {
-        "heading": "Running a Session",
-        "body": "Tap [sf:play.circle.fill] to start. The screen shows the current cue, round, and elapsed time. Tap Pause to pause. Completing saves the session to the Log."
-      }
-    ]
-  },
-  {
-    "id": "stick-figure-animator",
-    "category": "Modules",
-    "title": "Stick Figure Animator",
-    "icon": "figure.stand",
-    "summary": "Build frame-by-frame stick figure animations, export as GIFs, and attach them to exercises as how-to references.",
-    "keywords": ["stick figure", "animator", "pose", "frame", "animation", "gif", "export", "skeleton", "canvas", "editor", "object", "emoji", "studio"],
-    "sections": [
-      {
-        "heading": "Frame Editor",
-        "body": "Drag joints to pose the figure. Use X/Y controls to position it on the canvas. Adjust scale, limb thickness, and body proportions with the sliders below."
-      },
-      {
-        "heading": "Saving Frames",
-        "body": "Tap 'Save Frame', give it a name. Open the frame list to load, copy, rename, or delete frames."
-      },
-      {
-        "heading": "Animation Studio",
-        "body": "Tap 'Open Studio' to arrange frames into a sequence, set speed, preview, and export as a GIF. Attach your animated GIFs to specific exercises (in the Exercise Module). These can be viewed during your workout session."
-      },
-      {
-        "heading": "Adding Objects",
-        "body": "Tap 'Add Object' to place emojis, images, or colored boxes on the canvas. Each object can be moved, scaled, and rotated independently."
-      }
-    ]
-  },
-  {
-    "id": "match-game",
-    "category": "Modules",
-    "title": "Workout Match",
+    "title": "Mini Games",
     "icon": "gamecontroller.fill",
-    "summary": "A match-3 puzzle game. 1000 levels.",
-    "keywords": ["game", "match", "puzzle", "level", "powerup", "mini game", "1000 levels", "fun"],
+    "summary": "Fun extras built into the app.",
+    "keywords": ["game", "match", "puzzle", "level", "powerup", "stick figure", "animator", "pose", "frame", "animation", "gif", "export", "skeleton", "canvas", "editor", "mini game", "1000 levels", "fun"],
     "sections": [
       {
-        "heading": "Playing",
-        "body": "Swap adjacent tiles to match 3 or more of the same type. Larger matches earn powerups. If you get stuck a tile will visibly shake as hint. If you can't beat a level first try, no worries. The next try(s) will have more moves available. As a test to patience and sheer dedication, beat all 1000 levels."
+        "heading": "Workout Match",
+        "body": "A match-3 puzzle game with 1000 levels.\n\nSwap adjacent tiles to match 3 or more of the same type. Larger matches earn powerups. If you get stuck, a tile will visibly shake as a hint. If you can't beat a level first try, no worries — the next attempt will have more moves available.\n\nYour level saves automatically. Add the Workout Match tile to your Dashboard to see your current level at a glance."
       },
       {
-        "heading": "Progress",
-        "body": "Your level saves automatically. Add this mini game as a tile to the Dashboard to see your current level at a glance."
+        "heading": "Stick Figure Animator",
+        "body": "Build frame-by-frame stick figure animations, export as GIFs, and attach them to exercises as how-to references.\n\n• Frame Editor — drag joints to pose the figure. Use X/Y controls to position it on the canvas. Adjust scale, limb thickness, and body proportions with the sliders below.\n• Saving Frames — tap 'Save Frame', give it a name. Open the frame list to load, copy, rename, or delete frames.\n• Animation Studio — tap 'Open Studio' to arrange frames into a sequence, set speed, preview, and export as a GIF.\n• Adding Objects — tap 'Add Object' to place emojis, images, or colored boxes on the canvas. Each object can be moved, scaled, and rotated independently."
       }
     ]
   }

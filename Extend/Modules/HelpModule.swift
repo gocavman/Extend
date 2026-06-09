@@ -176,11 +176,11 @@ struct HelpDetailView: View {
 //
 // Parses tokens of the form [sf:symbol.name] in body text and replaces them
 // with the actual SF Symbol image inline. Everything else renders as plain text.
+//
+// Uses LocalizedStringKey string interpolation (appendInterpolation) to mix
+// text segments and SF Symbol images without the deprecated Text + operator.
 
 private func HelpBodyText(_ raw: String) -> Text {
-    // Split on [sf:...] tokens and render each as an inline SF Symbol image.
-    // Text concatenation via + is the only reliable way to mix Image and String
-    // in a single Text value; the deprecation warning is suppressed below.
     let pattern = #"\[sf:([^\]]+)\]"#
     guard let regex = try? NSRegularExpression(pattern: pattern) else {
         return Text(raw)
@@ -189,31 +189,26 @@ private func HelpBodyText(_ raw: String) -> Text {
     let fullRange = NSRange(location: 0, length: ns.length)
     let matches = regex.matches(in: raw, range: fullRange)
 
-    var result = Text(verbatim: "")
+    // Build a LocalizedStringKey interpolation so the compiler uses
+    // appendInterpolation(_: Image) and appendInterpolation(_: Text),
+    // which are the non-deprecated paths on iOS 26.
+    var interp = LocalizedStringKey.StringInterpolation(literalCapacity: raw.count,
+                                                        interpolationCount: matches.count * 2)
     var cursor = 0
 
     for match in matches {
         let preRange = NSRange(location: cursor, length: match.range.location - cursor)
         if preRange.length > 0 {
-            let segment = ns.substring(with: preRange)
-            result = concatText(result, Text(verbatim: segment))
+            interp.appendLiteral(ns.substring(with: preRange))
         }
         let symbolName = ns.substring(with: match.range(at: 1))
-        result = concatText(result, Text(Image(systemName: symbolName)))
+        interp.appendInterpolation(Image(systemName: symbolName))
         cursor = match.range.location + match.range.length
     }
 
     if cursor < ns.length {
-        result = concatText(result, Text(verbatim: ns.substring(from: cursor)))
+        interp.appendLiteral(ns.substring(from: cursor))
     }
 
-    return result
-}
-
-// Wrapper that isolates the deprecated + operator so the warning fires once
-// in one place and can be suppressed cleanly.
-@inline(__always)
-private func concatText(_ lhs: Text, _ rhs: Text) -> Text {
-    // swiftlint:disable:next deprecated_text_concatenation
-    lhs + rhs
+    return Text(LocalizedStringKey(stringInterpolation: interp))
 }
