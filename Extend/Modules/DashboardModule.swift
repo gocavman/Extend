@@ -51,8 +51,20 @@ private struct DashboardModuleView: View {
 
     @State private var quickStartWorkout: Workout? = nil
     @State private var showingPlanLauncher = false
+    // Exercise direct sheets
     @State private var statsExercise: Exercise? = nil
     @State private var historyExercise: Exercise? = nil
+    // Workout direct sheets
+    @State private var statsWorkout: Workout? = nil
+    @State private var historyWorkout: Workout? = nil
+    // Timer direct sheets
+    @State private var statsTimerConfig: TimerConfig? = nil
+    @State private var historyTimerConfig: TimerConfig? = nil
+    @State private var activeTimerConfig: TimerConfig? = nil
+    // Voice trainer direct playback
+    @State private var activeVoiceConfig: VoiceTrainerConfig? = nil
+    @State private var statsVoiceConfig: VoiceTrainerConfig? = nil
+    @State private var historyVoiceConfig: VoiceTrainerConfig? = nil
     
     @State private var spinningTiles: [UUID: Double] = [:]
     @State private var flyingTiles: Set<UUID> = []
@@ -134,6 +146,33 @@ private struct DashboardModuleView: View {
         }
         .fullScreenCover(item: $historyExercise) { exercise in
             ExerciseHistorySheet(exercise: exercise, logState: logState)
+        }
+        .fullScreenCover(item: $statsWorkout) { workout in
+            WorkoutStatsView(workout: workout)
+                .environment(logState)
+        }
+        .fullScreenCover(item: $historyWorkout) { workout in
+            WorkoutHistorySheet(workout: workout, logState: logState)
+        }
+        .fullScreenCover(item: $activeTimerConfig) { config in
+            ActiveTimerView(config: config)
+        }
+        .fullScreenCover(item: $statsTimerConfig) { config in
+            TimerStatsView(config: config)
+                .environment(logState)
+        }
+        .fullScreenCover(item: $historyTimerConfig) { config in
+            TimerHistorySheet(config: config, logState: logState)
+        }
+        .fullScreenCover(item: $activeVoiceConfig) { config in
+            VoiceTrainerPlaybackView(config: config, logState: logState)
+        }
+        .fullScreenCover(item: $statsVoiceConfig) { config in
+            VoiceTrainerStatsView(config: config)
+                .environment(logState)
+        }
+        .fullScreenCover(item: $historyVoiceConfig) { config in
+            VoiceTrainerHistorySheet(config: config, logState: logState)
         }
         .onAppear {
             matchGameLevel = defaults.integer(forKey: "matchGameCurrentLevel")
@@ -281,18 +320,22 @@ private struct DashboardModuleView: View {
                         // Top: launch button
                         Button(action: {
                             UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-                            if tile.shortcutType == .workout, let itemID = tile.shortcutItemID {
-                                workoutsState.pendingLaunchID = itemID
-                                state.selectModule(ModuleIDs.workouts)
-                            } else if tile.shortcutType == .timer, let itemID = tile.shortcutItemID {
-                                timerState.pendingLaunchID = itemID
-                                state.selectModule(ModuleIDs.timer)
+                            if tile.shortcutType == .workout, let itemID = tile.shortcutItemID,
+                               let workout = workoutsState.workouts.first(where: { $0.id == itemID }) {
+                                quickStartWorkout = workout
+                            } else if tile.shortcutType == .timer, let itemID = tile.shortcutItemID,
+                                      let config = timerState.configs.first(where: { $0.id == itemID }) {
+                                activeTimerConfig = config
                             } else if tile.shortcutType == .voiceTrainer, let itemID = tile.shortcutItemID {
-                                voiceTrainerState.pendingLaunchID = itemID
-                                state.selectModule(ModuleIDs.voiceTrainer)
-                            } else if tile.shortcutType == .quickExercise, let itemID = tile.shortcutItemID {
-                                exercisesState.pendingLaunchID = itemID
-                                state.selectModule(ModuleIDs.exercises)
+                                activeVoiceConfig = voiceTrainerState.savedConfigurations.first { $0.id == itemID }
+                            } else if tile.shortcutType == .quickExercise, let itemID = tile.shortcutItemID,
+                                      let exercise = exercisesState.exercises.first(where: { $0.id == itemID }) {
+                                quickStartWorkout = Workout(
+                                    name: "\(exercise.name)",
+                                    notes: "",
+                                    items: [WorkoutItem.exercise(WorkoutExercise(exerciseID: exercise.id))],
+                                    healthKitActivityType: exercise.healthKitActivityType
+                                )
                             }
                         }) {
                             VStack(spacing: 5) {
@@ -320,14 +363,11 @@ private struct DashboardModuleView: View {
                             Button(action: {
                                 UIImpactFeedbackGenerator(style: .light).impactOccurred()
                                 if tile.shortcutType == .workout, let itemID = tile.shortcutItemID {
-                                    workoutsState.pendingStatsID = itemID
-                                    state.selectModule(ModuleIDs.workouts)
+                                    statsWorkout = workoutsState.workouts.first { $0.id == itemID }
                                 } else if tile.shortcutType == .timer, let itemID = tile.shortcutItemID {
-                                    timerState.pendingStatsID = itemID
-                                    state.selectModule(ModuleIDs.timer)
+                                    statsTimerConfig = timerState.configs.first { $0.id == itemID }
                                 } else if tile.shortcutType == .voiceTrainer, let itemID = tile.shortcutItemID {
-                                    voiceTrainerState.pendingStatsID = itemID
-                                    state.selectModule(ModuleIDs.voiceTrainer)
+                                    statsVoiceConfig = voiceTrainerState.savedConfigurations.first { $0.id == itemID }
                                 } else if tile.shortcutType == .quickExercise, let itemID = tile.shortcutItemID {
                                     statsExercise = exercisesState.exercises.first { $0.id == itemID }
                                 }
@@ -345,14 +385,11 @@ private struct DashboardModuleView: View {
                             Button(action: {
                                 UIImpactFeedbackGenerator(style: .light).impactOccurred()
                                 if tile.shortcutType == .workout, let itemID = tile.shortcutItemID {
-                                    workoutsState.pendingHistoryID = itemID
-                                    state.selectModule(ModuleIDs.workouts)
+                                    historyWorkout = workoutsState.workouts.first { $0.id == itemID }
                                 } else if tile.shortcutType == .timer, let itemID = tile.shortcutItemID {
-                                    timerState.pendingHistoryID = itemID
-                                    state.selectModule(ModuleIDs.timer)
+                                    historyTimerConfig = timerState.configs.first { $0.id == itemID }
                                 } else if tile.shortcutType == .voiceTrainer, let itemID = tile.shortcutItemID {
-                                    voiceTrainerState.pendingHistoryID = itemID
-                                    state.selectModule(ModuleIDs.voiceTrainer)
+                                    historyVoiceConfig = voiceTrainerState.savedConfigurations.first { $0.id == itemID }
                                 } else if tile.shortcutType == .quickExercise, let itemID = tile.shortcutItemID {
                                     historyExercise = exercisesState.exercises.first { $0.id == itemID }
                                 }

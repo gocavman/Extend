@@ -41,11 +41,8 @@ private struct VoiceTrainerModuleView: View {
     @State private var historyConfig: VoiceTrainerConfig?
     @State private var statsConfig: VoiceTrainerConfig?
 
-    // Playback state
+    // Playback
     @State private var activeConfig: VoiceTrainerConfig?
-    @State private var voiceManager: VoiceManager?
-    @State private var updateTimer: Timer?
-    @State private var playbackState = VoiceTrainerState()
 
     private var filteredConfigs: [VoiceTrainerConfig] {
         let trimmed = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -211,22 +208,7 @@ private struct VoiceTrainerModuleView: View {
             }
         }
         .fullScreenCover(item: $activeConfig) { config in
-            PlaybackScreen(
-                state: playbackState,
-                numberOfRounds: config.numberOfRounds,
-                onPause: { pausePlayback() },
-                onResume: { resumePlayback() },
-                onStop: {
-                    resetPlayback()
-                    activeConfig = nil
-                },
-                onComplete: {
-                    completeSession()
-                    activeConfig = nil
-                },
-                onStartPlayback: { startUpdateTimer() },
-                formatTime: formatTime
-            )
+            VoiceTrainerPlaybackView(config: config, logState: logState)
         }
         .fullScreenCover(item: $historyConfig) { config in
             VoiceTrainerHistorySheet(config: config, logState: WorkoutLogState.shared)
@@ -291,150 +273,7 @@ private struct VoiceTrainerModuleView: View {
     }
 
     private func play(_ config: VoiceTrainerConfig) {
-        // Stop and discard any previous session
-        updateTimer?.invalidate()
-        updateTimer = nil
-        voiceManager?.stop()
-        voiceManager = VoiceManager()
-
-        playbackState.isPlaying = false
-        playbackState.isPaused = false
-        playbackState.elapsedTime = 0
-        playbackState.currentRound = 1
-        playbackState.currentLineIndex = 0
-        playbackState.currentLineText = ""
-        playbackState.lineHistory = []
-        playbackState.linesSpoken = 0
-        playbackState.totalTime = calculateTotalTime(config)
-
-        let pbConfig = VoicePlaybackConfig(
-            text: config.text,
-            roundLength: config.roundLength,
-            restLength: config.restLength,
-            delayBetweenLines: config.delayBetweenLines,
-            numberOfRounds: config.numberOfRounds,
-            randomOrder: config.randomOrder,
-            cooldownPeriod: config.cooldownPeriod,
-            workoutStartWarning: config.workoutStartWarning,
-            restEndWarning: config.restEndWarning
-        )
-        voiceManager?.startPlayback(config: pbConfig, state: playbackState)
         activeConfig = config
-    }
-
-    private func pausePlayback() {
-        playbackState.isPlaying = false
-        playbackState.isPaused = true
-        voiceManager?.pausePlayback()
-    }
-
-    private func resumePlayback() {
-        playbackState.isPlaying = true
-        playbackState.isPaused = false
-        if updateTimer == nil { startUpdateTimer() }
-        voiceManager?.resumePlayback()
-    }
-
-    private func resetPlayback() {
-        updateTimer?.invalidate()
-        updateTimer = nil
-        voiceManager?.stop()
-        playbackState.reset()
-    }
-
-    private func startUpdateTimer() {
-        guard let config = activeConfig else { return }
-        // Invalidate any existing timer before creating a new one
-        updateTimer?.invalidate()
-        updateTimer = nil
-        let numRounds = config.numberOfRounds
-        let restLength = config.restLength
-        let cooldownPeriod = config.cooldownPeriod
-        let restEndWarning = config.restEndWarning
-        // Capture playbackState and voiceManager as strong references (both are classes)
-        let ps = playbackState
-        let vm = voiceManager
-        updateTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { timer in
-            if ps.isPaused { return }
-
-            if ps.isPlaying {
-                if !ps.isInInitialCountdown {
-                    ps.elapsedTime += 1
-                }
-
-                if ps.restCountdown > 0 {
-                    ps.restCountdown = max(0, ps.restCountdown - 1)
-                    vm?.handleRestCountdownTick()
-                } else if ps.roundTimeRemaining > 0 && !ps.isInInitialCountdown {
-                    ps.roundTimeRemaining -= 1
-
-                    if ps.roundTimeRemaining == 0 {
-                        if restLength > 0 && ps.currentRound < numRounds {
-                            vm?.startRestCountdownIfNeeded(duration: restLength, warningAt: restEndWarning)
-                        } else if cooldownPeriod > 0 && ps.currentRound == numRounds {
-                            vm?.startCooldownCountdownIfNeeded(duration: cooldownPeriod * 60)
-                        }
-                        vm?.forceRoundComplete()
-                    }
-                }
-
-                // Advance pause-aware inter-line delay countdown
-                vm?.tick()
-            }
-
-            if !ps.isPlaying && !ps.isPaused {
-                timer.invalidate()
-            }
-        }
-    }
-
-    private func completeSession() {
-        guard let config = activeConfig else { return }
-        let linesSpoken = playbackState.lineHistory + (playbackState.currentLineText.isEmpty ? [] : [playbackState.currentLineText])
-        let linesText = linesSpoken.joined(separator: "\n")
-        let logNotes = """
-Voice Trainer Session: \(config.name)
-\(config.parameterSummary)
-
-Lines Read (in order):
-\(linesText)
-
-Total Lines Read: \(playbackState.linesSpoken)
-"""
-        let workoutLog = WorkoutLog(
-            id: UUID(),
-            workoutName: "Trainer – \(config.name)",
-            completedAt: Date(),
-            logType: .voiceTrainer,
-            exercises: [],
-            notes: logNotes,
-            duration: TimeInterval(playbackState.elapsedTime),
-            primaryMuscleGroupIDs: config.primaryMuscleGroupIDs,
-            secondaryMuscleGroupIDs: config.secondaryMuscleGroupIDs,
-            logEquipmentIDs: config.equipmentIDs
-        )
-        logState.addLog(
-            workoutLog,
-            exportToHealthKit: HealthKitState.shared.exportStrengthWorkouts,
-            activityTypeRaw: config.healthKitActivityType
-        )
-        resetPlayback()
-        ModuleState.shared.selectedModuleID = ModuleIDs.progress
-    }
-
-    private func calculateTotalTime(_ config: VoiceTrainerConfig) -> Int {
-        let totalRoundsTime = config.roundLength * config.numberOfRounds
-        let restPeriodsCount = max(0, config.numberOfRounds - 1)
-        let totalRestTime = restPeriodsCount * config.restLength
-        return totalRoundsTime + totalRestTime + (config.cooldownPeriod * 60)
-    }
-
-    private func formatTime(_ seconds: Int) -> String {
-        let hours = seconds / 3600
-        let minutes = (seconds % 3600) / 60
-        let secs = seconds % 60
-        if hours > 0 { return String(format: "%02d:%02d:%02d", hours, minutes, secs) }
-        return String(format: "%02d:%02d", minutes, secs)
     }
 }
 
@@ -893,9 +732,176 @@ private struct VoiceTrainerEditorView: View {
     }
 }
 
+// MARK: - Voice Trainer Playback View (self-contained, presentable from anywhere)
+
+/// A self-contained view that starts and manages a full voice trainer session.
+/// Present this directly via fullScreenCover — no module navigation required.
+struct VoiceTrainerPlaybackView: View {
+    let config: VoiceTrainerConfig
+    let logState: WorkoutLogState
+
+    @State private var playbackState = VoiceTrainerState()
+    @State private var voiceManager: VoiceManager?
+    @State private var updateTimer: Timer?
+    @State private var isActive = true   // controls this cover's own dismissal
+
+    var body: some View {
+        if isActive {
+            PlaybackScreen(
+                state: playbackState,
+                numberOfRounds: config.numberOfRounds,
+                onPause: { pausePlayback() },
+                onResume: { resumePlayback() },
+                onStop: {
+                    resetPlayback()
+                    isActive = false
+                },
+                onComplete: {
+                    completeSession()
+                    isActive = false
+                },
+                onStartPlayback: { startUpdateTimer() },
+                formatTime: formatTime
+            )
+            .onAppear { play() }
+        }
+    }
+
+    private func play() {
+        updateTimer?.invalidate()
+        updateTimer = nil
+        voiceManager?.stop()
+        voiceManager = VoiceManager()
+
+        playbackState.isPlaying = false
+        playbackState.isPaused = false
+        playbackState.elapsedTime = 0
+        playbackState.currentRound = 1
+        playbackState.currentLineIndex = 0
+        playbackState.currentLineText = ""
+        playbackState.lineHistory = []
+        playbackState.linesSpoken = 0
+        playbackState.totalTime = calculateTotalTime(config)
+
+        let pbConfig = VoicePlaybackConfig(
+            text: config.text,
+            roundLength: config.roundLength,
+            restLength: config.restLength,
+            delayBetweenLines: config.delayBetweenLines,
+            numberOfRounds: config.numberOfRounds,
+            randomOrder: config.randomOrder,
+            cooldownPeriod: config.cooldownPeriod,
+            workoutStartWarning: config.workoutStartWarning,
+            restEndWarning: config.restEndWarning
+        )
+        voiceManager?.startPlayback(config: pbConfig, state: playbackState)
+    }
+
+    private func pausePlayback() {
+        playbackState.isPlaying = false
+        playbackState.isPaused = true
+        voiceManager?.pausePlayback()
+    }
+
+    private func resumePlayback() {
+        playbackState.isPlaying = true
+        playbackState.isPaused = false
+        if updateTimer == nil { startUpdateTimer() }
+        voiceManager?.resumePlayback()
+    }
+
+    private func resetPlayback() {
+        updateTimer?.invalidate()
+        updateTimer = nil
+        voiceManager?.stop()
+        playbackState.reset()
+    }
+
+    private func startUpdateTimer() {
+        updateTimer?.invalidate()
+        updateTimer = nil
+        let numRounds = config.numberOfRounds
+        let restLength = config.restLength
+        let cooldownPeriod = config.cooldownPeriod
+        let restEndWarning = config.restEndWarning
+        let ps = playbackState
+        let vm = voiceManager
+        updateTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { timer in
+            if ps.isPaused { return }
+            if ps.isPlaying {
+                if !ps.isInInitialCountdown { ps.elapsedTime += 1 }
+                if ps.restCountdown > 0 {
+                    ps.restCountdown = max(0, ps.restCountdown - 1)
+                    vm?.handleRestCountdownTick()
+                } else if ps.roundTimeRemaining > 0 && !ps.isInInitialCountdown {
+                    ps.roundTimeRemaining -= 1
+                    if ps.roundTimeRemaining == 0 {
+                        if restLength > 0 && ps.currentRound < numRounds {
+                            vm?.startRestCountdownIfNeeded(duration: restLength, warningAt: restEndWarning)
+                        } else if cooldownPeriod > 0 && ps.currentRound == numRounds {
+                            vm?.startCooldownCountdownIfNeeded(duration: cooldownPeriod * 60)
+                        }
+                        vm?.forceRoundComplete()
+                    }
+                }
+                vm?.tick()
+            }
+            if !ps.isPlaying && !ps.isPaused { timer.invalidate() }
+        }
+    }
+
+    private func completeSession() {
+        let linesSpoken = playbackState.lineHistory + (playbackState.currentLineText.isEmpty ? [] : [playbackState.currentLineText])
+        let linesText = linesSpoken.joined(separator: "\n")
+        let logNotes = """
+Voice Trainer Session: \(config.name)
+\(config.parameterSummary)
+
+Lines Read (in order):
+\(linesText)
+
+Total Lines Read: \(playbackState.linesSpoken)
+"""
+        let workoutLog = WorkoutLog(
+            id: UUID(),
+            workoutName: "Trainer – \(config.name)",
+            completedAt: Date(),
+            logType: .voiceTrainer,
+            exercises: [],
+            notes: logNotes,
+            duration: TimeInterval(playbackState.elapsedTime),
+            primaryMuscleGroupIDs: config.primaryMuscleGroupIDs,
+            secondaryMuscleGroupIDs: config.secondaryMuscleGroupIDs,
+            logEquipmentIDs: config.equipmentIDs
+        )
+        logState.addLog(
+            workoutLog,
+            exportToHealthKit: HealthKitState.shared.exportStrengthWorkouts,
+            activityTypeRaw: config.healthKitActivityType
+        )
+        resetPlayback()
+        ModuleState.shared.selectedModuleID = ModuleIDs.progress
+    }
+
+    private func calculateTotalTime(_ config: VoiceTrainerConfig) -> Int {
+        let totalRoundsTime = config.roundLength * config.numberOfRounds
+        let restPeriodsCount = max(0, config.numberOfRounds - 1)
+        let totalRestTime = restPeriodsCount * config.restLength
+        return totalRoundsTime + totalRestTime + (config.cooldownPeriod * 60)
+    }
+
+    private func formatTime(_ seconds: Int) -> String {
+        let hours = seconds / 3600
+        let minutes = (seconds % 3600) / 60
+        let secs = seconds % 60
+        if hours > 0 { return String(format: "%02d:%02d:%02d", hours, minutes, secs) }
+        return String(format: "%02d:%02d", minutes, secs)
+    }
+}
+
 // MARK: - Voice Playback Configuration
 
-private struct VoicePlaybackConfig {
+struct VoicePlaybackConfig {
     let text: String
     let roundLength: Int
     let restLength: Int
@@ -909,7 +915,7 @@ private struct VoicePlaybackConfig {
 
 // MARK: - Voice Manager
 
-private class VoiceManager: NSObject, AVSpeechSynthesizerDelegate {
+class VoiceManager: NSObject, AVSpeechSynthesizerDelegate {
     private var synthesizer: AVSpeechSynthesizer
     private var scheduledWorkItems: [DispatchWorkItem] = []
     private var stopRequested = false
@@ -1560,7 +1566,7 @@ private class VoiceManager: NSObject, AVSpeechSynthesizerDelegate {
 
 // MARK: - Playback Screen
 
-private struct PlaybackScreen: View {
+struct PlaybackScreen: View {
     @Bindable var state: VoiceTrainerState
     let numberOfRounds: Int
     let onPause: () -> Void

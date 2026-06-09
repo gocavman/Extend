@@ -692,7 +692,7 @@ private struct TimerPhase {
     let isCountUp: Bool
 }
 
-private struct ActiveTimerView: View {
+struct ActiveTimerView: View {
     @Environment(\.dismiss) var dismiss
 
     let config: TimerConfig
