@@ -63,27 +63,62 @@ private struct MuscleGroupsModuleView: View {
                 .padding(.horizontal, 16)
                 .padding(.vertical, 12)
 
-                // Favorites grid — lives outside the List so it never disrupts List row identity
+                // Favorites grid — 3-piece tiles: top=name, bottom-left=stats, bottom-right=history
                 if !state.favoriteGroups.isEmpty && searchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                    LazyVGrid(columns: [GridItem(.adaptive(minimum: 70), spacing: 10)], spacing: 10) {
+                    LazyVGrid(columns: [GridItem(.adaptive(minimum: 76), spacing: 10)], spacing: 10) {
                         ForEach(state.favoriteGroups) { group in
-                            Button(action: {
-                                UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                                statsGroup = group
-                            }) {
-                                VStack(spacing: 4) {
-                                    Image(systemName: "figure.strengthtraining.traditional")
-                                        .font(.system(size: 20))
-                                        .foregroundColor(.primary)
-                                    Text(group.name)
-                                        .font(.caption).fontWeight(.semibold).foregroundColor(.primary)
-                                        .lineLimit(2).multilineTextAlignment(.center)
+                            VStack(spacing: 0) {
+                                // Top: name button (opens stats)
+                                Button(action: {
+                                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                                    statsGroup = group
+                                }) {
+                                    VStack(spacing: 4) {
+                                        Image(systemName: "figure.strengthtraining.traditional")
+                                            .font(.system(size: 18, weight: .semibold))
+                                            .foregroundColor(.primary)
+                                        Text(group.name)
+                                            .font(.caption2).fontWeight(.semibold).foregroundColor(.primary)
+                                            .lineLimit(2).multilineTextAlignment(.center)
+                                    }
+                                    .frame(maxWidth: .infinity)
+                                    .frame(height: 57)
                                 }
-                                .frame(width: 70, height: 80)
-                                .background(Color(UIColor.secondarySystemBackground))
-                                .cornerRadius(10)
+                                .buttonStyle(.plain)
+
+                                Divider()
+
+                                // Bottom: stats | history
+                                HStack(spacing: 0) {
+                                    Button(action: {
+                                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                                        statsGroup = group
+                                    }) {
+                                        Image(systemName: "chart.bar.fill")
+                                            .font(.system(size: 11))
+                                            .foregroundColor(.secondary)
+                                            .frame(maxWidth: .infinity)
+                                            .frame(height: 30)
+                                    }
+                                    .buttonStyle(.plain)
+
+                                    Divider().frame(height: 18)
+
+                                    Button(action: {
+                                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                                        historyGroup = group
+                                    }) {
+                                        Image(systemName: "clock.arrow.trianglehead.counterclockwise.rotate.90")
+                                            .font(.system(size: 11))
+                                            .foregroundColor(.secondary)
+                                            .frame(maxWidth: .infinity)
+                                            .frame(height: 30)
+                                    }
+                                    .buttonStyle(.plain)
+                                }
                             }
-                            .buttonStyle(.plain)
+                            .background(Color(UIColor.secondarySystemBackground))
+                            .cornerRadius(10)
                         }
                     }
                     .padding(.horizontal, 16)

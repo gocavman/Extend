@@ -79,28 +79,60 @@ private struct GenerateModuleView: View {
                     }
                 }
                 
-                // Filter tags
+                // Filter preset tiles
                 if !generateState.filterPresets.isEmpty {
-                    ScrollView(.horizontal, showsIndicators: false) {
-                        HStack(spacing: 8) {
-                            ForEach(generateState.filterPresets) { preset in
-                                Button(action: {
-                                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                                    generateState.applyFilterPreset(preset)
-                                    selectedPresetId = preset.id
-                                }) {
-                                    Text(preset.name)
-                                        .font(.caption)
-                                        .fontWeight(.semibold)
-                                        .foregroundColor(selectedPresetId == preset.id ? Color(UIColor.systemBackground) : .primary)
-                                        .padding(.horizontal, 10)
-                                        .padding(.vertical, 6)
-                                        .background(selectedPresetId == preset.id ? Color.primary : Color.clear)
-                                        .clipShape(Capsule())
+                    LazyVGrid(columns: [GridItem(.adaptive(minimum: 100), spacing: 10)], spacing: 10) {
+                        ForEach(generateState.filterPresets) { preset in
+                            Button(action: {
+                                UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                                generateState.applyFilterPreset(preset)
+                                selectedPresetId = preset.id
+                            }) {
+                                VStack(alignment: .center, spacing: 3) {
+                                    Text("✨ \(preset.name)")
+                                        .font(.system(size: 11, weight: .semibold))
+                                        .foregroundColor(.primary)
+                                        .lineLimit(1)
+                                        .frame(maxWidth: .infinity, alignment: .center)
+                                        .multilineTextAlignment(.center)
+                                    Text("↕ \(preset.minExercises)–\(preset.maxExercises)")
+                                        .font(.system(size: 10))
+                                        .foregroundColor(.secondary)
+                                        .lineLimit(1)
+                                    let muscleNames: String = {
+                                        guard !preset.muscleGroupIDs.isEmpty else { return "All" }
+                                        let names = preset.muscleGroupIDs.compactMap { id in
+                                            muscleGroupsState.sortedGroups.first { $0.id == id }?.name
+                                        }
+                                        return names.isEmpty ? "All" : names.joined(separator: ", ")
+                                    }()
+                                    Text("💪 \(muscleNames)")
+                                        .font(.system(size: 10))
+                                        .foregroundColor(.secondary)
+                                        .lineLimit(1)
+                                    let equipmentNames: String = {
+                                        guard !preset.equipmentIDs.isEmpty else { return "All" }
+                                        let names = preset.equipmentIDs.compactMap { id in
+                                            equipmentState.sortedItems.first { $0.id == id }?.name
+                                        }
+                                        return names.isEmpty ? "All" : names.joined(separator: ", ")
+                                    }()
+                                    Text("🏋️ \(equipmentNames)")
+                                        .font(.system(size: 10))
+                                        .foregroundColor(.secondary)
+                                        .lineLimit(1)
                                 }
-                                .buttonStyle(.plain)
-                                .overlay(Capsule().stroke(Color.primary, lineWidth: 1))
+                                .padding(.horizontal, 8)
+                                .padding(.vertical, 6)
+                                .frame(maxWidth: .infinity, minHeight: 88, alignment: .top)
+                                .background(selectedPresetId == preset.id ? Color.primary.opacity(0.15) : Color(UIColor.secondarySystemBackground))
+                                .cornerRadius(10)
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 10)
+                                        .stroke(selectedPresetId == preset.id ? Color.primary : Color.clear, lineWidth: 1.5)
+                                )
                             }
+                            .buttonStyle(.plain)
                         }
                     }
                 }
@@ -168,7 +200,7 @@ private struct GenerateModuleView: View {
                         }
                     }
                     .buttonStyle(.plain)
-                    .sheet(isPresented: $showEquipmentFilter) {
+                    .fullScreenCover(isPresented: $showEquipmentFilter) {
                         EquipmentFilterView()
                             .environment(generateState)
                             .environment(equipmentState)
@@ -189,7 +221,7 @@ private struct GenerateModuleView: View {
                         }
                     }
                     .buttonStyle(.plain)
-                    .sheet(isPresented: $showMuscleFilter) {
+                    .fullScreenCover(isPresented: $showMuscleFilter) {
                         MuscleGroupFilterView()
                             .environment(generateState)
                             .environment(muscleGroupsState)
