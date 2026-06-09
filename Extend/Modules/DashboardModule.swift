@@ -51,6 +51,8 @@ private struct DashboardModuleView: View {
 
     @State private var quickStartWorkout: Workout? = nil
     @State private var showingPlanLauncher = false
+    @State private var statsExercise: Exercise? = nil
+    @State private var historyExercise: Exercise? = nil
     
     @State private var spinningTiles: [UUID: Double] = [:]
     @State private var flyingTiles: Set<UUID> = []
@@ -109,7 +111,7 @@ private struct DashboardModuleView: View {
                 onLaunchExercise: { exercise in
                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
                         quickStartWorkout = Workout(
-                            name: "\(exercise.name) (Quick)",
+                            name: "\(exercise.name)",
                             notes: "",
                             items: [.exercise(WorkoutExercise(exerciseID: exercise.id))]
                         )
@@ -125,6 +127,13 @@ private struct DashboardModuleView: View {
         }
         .fullScreenCover(isPresented: $showingSettings) {
             SettingsModule().sheetView
+        }
+        .fullScreenCover(item: $statsExercise) { exercise in
+            ExerciseStatsView(exercise: exercise)
+                .environment(logState)
+        }
+        .fullScreenCover(item: $historyExercise) { exercise in
+            ExerciseHistorySheet(exercise: exercise, logState: logState)
         }
         .onAppear {
             matchGameLevel = defaults.integer(forKey: "matchGameCurrentLevel")
@@ -261,7 +270,8 @@ private struct DashboardModuleView: View {
     private func interactiveTileView(tile: DashboardTile, width: CGFloat, height: CGFloat) -> some View {
         let bg: Color = tile.tileTintColor ?? Color(UIColor.secondarySystemBackground)
         let isThreePieceShortcut = tile.tileType == .shortcut &&
-            (tile.shortcutType == .workout || tile.shortcutType == .timer || tile.shortcutType == .voiceTrainer)
+            (tile.shortcutType == .workout || tile.shortcutType == .timer ||
+             tile.shortcutType == .voiceTrainer || tile.shortcutType == .quickExercise)
 
         return Group {
             if isThreePieceShortcut {
@@ -280,6 +290,9 @@ private struct DashboardModuleView: View {
                             } else if tile.shortcutType == .voiceTrainer, let itemID = tile.shortcutItemID {
                                 voiceTrainerState.pendingLaunchID = itemID
                                 state.selectModule(ModuleIDs.voiceTrainer)
+                            } else if tile.shortcutType == .quickExercise, let itemID = tile.shortcutItemID {
+                                exercisesState.pendingLaunchID = itemID
+                                state.selectModule(ModuleIDs.exercises)
                             }
                         }) {
                             VStack(spacing: 5) {
@@ -315,6 +328,8 @@ private struct DashboardModuleView: View {
                                 } else if tile.shortcutType == .voiceTrainer, let itemID = tile.shortcutItemID {
                                     voiceTrainerState.pendingStatsID = itemID
                                     state.selectModule(ModuleIDs.voiceTrainer)
+                                } else if tile.shortcutType == .quickExercise, let itemID = tile.shortcutItemID {
+                                    statsExercise = exercisesState.exercises.first { $0.id == itemID }
                                 }
                             }) {
                                 Image(systemName: "chart.bar.fill")
@@ -338,6 +353,8 @@ private struct DashboardModuleView: View {
                                 } else if tile.shortcutType == .voiceTrainer, let itemID = tile.shortcutItemID {
                                     voiceTrainerState.pendingHistoryID = itemID
                                     state.selectModule(ModuleIDs.voiceTrainer)
+                                } else if tile.shortcutType == .quickExercise, let itemID = tile.shortcutItemID {
+                                    historyExercise = exercisesState.exercises.first { $0.id == itemID }
                                 }
                             }) {
                                 Image(systemName: "clock.arrow.trianglehead.counterclockwise.rotate.90")
@@ -363,15 +380,6 @@ private struct DashboardModuleView: View {
                     UIImpactFeedbackGenerator(style: .light).impactOccurred()
                     if isBlankTile(tile) {
                         handleBlankTileAction(tile)
-                    } else if tile.tileType == .shortcut {
-                        if tile.shortcutType == .quickExercise, let itemID = tile.shortcutItemID,
-                           let exercise = exercisesState.exercises.first(where: { $0.id == itemID }) {
-                            quickStartWorkout = Workout(
-                                name: "\(exercise.name) (Quick)",
-                                notes: "",
-                                items: [WorkoutItem.exercise(WorkoutExercise(exerciseID: exercise.id))]
-                            )
-                        }
                     } else if let targetID = findModuleID(for: tile) {
                         state.selectModule(targetID)
                     }
@@ -2334,7 +2342,7 @@ private struct TodaysPlanTileView: View {
         }
         items += pd.exerciseIDs.compactMap { id in
             exercisesState.exercises.first { $0.id == id }.map {
-                PlanItem(name: $0.name, icon: "figure.strengthtraining.traditional", completed: completed.contains("\($0.name) (Quick)"))
+                PlanItem(name: $0.name, icon: "figure.strengthtraining.traditional", completed: completed.contains("\($0.name)"))
             }
         }
         items += pd.voiceActivityIDs.compactMap { id in

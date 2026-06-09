@@ -20,6 +20,11 @@ public final class ExercisesState {
     
     public var exercises: [Exercise] = []
 
+    // Pending IDs for dashboard deep-linking (same pattern as WorkoutsState)
+    public var pendingLaunchID: UUID? = nil
+    public var pendingStatsID: UUID? = nil
+    public var pendingHistoryID: UUID? = nil
+
     public var favoriteExercises: [Exercise] {
         exercises.filter { $0.isFavorite }.sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
     }

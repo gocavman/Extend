@@ -1280,7 +1280,7 @@ struct TodaysPlanModuleView: View {
                                 ForEach(exercises) { ex in
                                     Button {
                                         startingWorkout = Workout(
-                                            name: "\(ex.name) (Quick)",
+                                            name: "\(ex.name)",
                                             notes: "",
                                             items: [.exercise(WorkoutExercise(exerciseID: ex.id))]
                                         )
@@ -1289,7 +1289,7 @@ struct TodaysPlanModuleView: View {
                                             Label(ex.name, systemImage: "figure.strengthtraining.traditional")
                                                 .foregroundColor(.primary)
                                             Spacer()
-                                            if isCompleted(workoutName: "\(ex.name) (Quick)") {
+                                            if isCompleted(workoutName: "\(ex.name)") {
                                                 Image(systemName: "checkmark.circle.fill")
                                                     .foregroundColor(.green)
                                             }

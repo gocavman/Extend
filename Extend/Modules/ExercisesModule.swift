@@ -37,6 +37,7 @@ private struct ExercisesModuleView: View {
     @State private var deletingExercise: Exercise?
     @State private var statsExercise: Exercise?
     @State private var historyExercise: Exercise?
+    @State private var startingWorkout: Workout?
     
     private var filteredExercises: [Exercise] {
         let trimmedSearch = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -68,27 +69,62 @@ private struct ExercisesModuleView: View {
                 .padding(.horizontal, 16)
                 .padding(.vertical, 12)
 
-                // Favorites grid — lives outside the List so it never disrupts List row identity
+                // Favorites grid — 3-piece tiles (lives outside List so it never disrupts row identity)
                 if !state.favoriteExercises.isEmpty && searchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                    LazyVGrid(columns: [GridItem(.adaptive(minimum: 70), spacing: 10)], spacing: 10) {
+                    LazyVGrid(columns: [GridItem(.adaptive(minimum: 76), spacing: 10)], spacing: 10) {
                         ForEach(state.favoriteExercises) { exercise in
-                            Button(action: {
-                                UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                                statsExercise = exercise
-                            }) {
-                                VStack(spacing: 4) {
-                                    Image(systemName: "flame.fill")
-                                        .font(.system(size: 20))
-                                        .foregroundColor(.primary)
-                                    Text(exercise.name)
-                                        .font(.caption).fontWeight(.semibold).foregroundColor(.primary)
-                                        .lineLimit(2).multilineTextAlignment(.center)
+                            VStack(spacing: 0) {
+                                // Top: launch button
+                                Button(action: {
+                                    UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                                    launchExercise(exercise)
+                                }) {
+                                    VStack(spacing: 4) {
+                                        Image(systemName: "flame.fill")
+                                            .font(.system(size: 18, weight: .semibold))
+                                        Text(exercise.name)
+                                            .font(.caption2).fontWeight(.semibold)
+                                            .lineLimit(2).multilineTextAlignment(.center)
+                                    }
+                                    .foregroundColor(.primary)
+                                    .frame(maxWidth: .infinity)
+                                    .frame(height: 57)
                                 }
-                                .frame(width: 70, height: 80)
-                                .background(Color(UIColor.secondarySystemBackground))
-                                .cornerRadius(10)
+                                .buttonStyle(.plain)
+
+                                Divider()
+
+                                // Bottom: stats | history
+                                HStack(spacing: 0) {
+                                    Button(action: {
+                                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                                        statsExercise = exercise
+                                    }) {
+                                        Image(systemName: "chart.bar.fill")
+                                            .font(.system(size: 11))
+                                            .foregroundColor(.secondary)
+                                            .frame(maxWidth: .infinity)
+                                            .frame(height: 30)
+                                    }
+                                    .buttonStyle(.plain)
+
+                                    Divider().frame(height: 18)
+
+                                    Button(action: {
+                                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                                        historyExercise = exercise
+                                    }) {
+                                        Image(systemName: "clock.arrow.trianglehead.counterclockwise.rotate.90")
+                                            .font(.system(size: 11))
+                                            .foregroundColor(.secondary)
+                                            .frame(maxWidth: .infinity)
+                                            .frame(height: 30)
+                                    }
+                                    .buttonStyle(.plain)
+                                }
                             }
-                            .buttonStyle(.plain)
+                            .background(Color(UIColor.secondarySystemBackground))
+                            .cornerRadius(10)
                         }
                     }
                     .padding(.horizontal, 16)
@@ -108,8 +144,19 @@ private struct ExercisesModuleView: View {
                     } else {
                         ForEach(filteredExercises) { exercise in
                             VStack(alignment: .leading, spacing: 4) {
-                                // Top row: name, action buttons
+                                // Top row: play button, name, action buttons
                                 HStack(spacing: 12) {
+                                    // Play button — launches the exercise directly
+                                    Button(action: {
+                                        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                                        launchExercise(exercise)
+                                    }) {
+                                        Image(systemName: "play.circle.fill")
+                                            .font(.system(size: 20))
+                                            .foregroundColor(.primary)
+                                    }
+                                    .buttonStyle(.plain)
+
                                     Text(exercise.name)
                                         .font(.subheadline)
                                         .fontWeight(.semibold)
@@ -200,7 +247,7 @@ private struct ExercisesModuleView: View {
                             .contentShape(Rectangle())
                             .onTapGesture {
                                 UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                                statsExercise = exercise
+                                launchExercise(exercise)
                             }
                             .swipeActions(edge: .leading, allowsFullSwipe: false) {
                                 Button {
@@ -242,6 +289,13 @@ private struct ExercisesModuleView: View {
                 .fullScreenCover(item: $historyExercise) { exercise in
                     ExerciseHistorySheet(exercise: exercise, logState: logState)
                 }
+                .fullScreenCover(item: $startingWorkout) { workout in
+                    StartWorkoutView(workout: workout)
+                        .environment(ExercisesState.shared)
+                        .environment(MuscleGroupsState.shared)
+                        .environment(EquipmentState.shared)
+                        .environment(WorkoutLogState.shared)
+                }
                 .alert("Delete Exercise?", isPresented: .constant(deletingExercise != nil)) {
                     Button("Cancel", role: .cancel) { deletingExercise = nil }
                     Button("Delete", role: .destructive) {
@@ -258,6 +312,56 @@ private struct ExercisesModuleView: View {
                 ExerciseStatsView(exercise: exercise)
                     .environment(logState)
             }
+            .onAppear {
+                openPendingLaunchIfNeeded()
+                openPendingStatsIfNeeded()
+                openPendingHistoryIfNeeded()
+            }
+            .onChange(of: state.pendingLaunchID) { _, id in
+                if id != nil { openPendingLaunchIfNeeded() }
+            }
+            .onChange(of: state.pendingStatsID) { _, id in
+                if id != nil { openPendingStatsIfNeeded() }
+            }
+            .onChange(of: state.pendingHistoryID) { _, id in
+                if id != nil { openPendingHistoryIfNeeded() }
+            }
+        }
+    }
+
+    private func launchExercise(_ exercise: Exercise) {
+        startingWorkout = Workout(
+            name: "\(exercise.name)",
+            notes: "",
+            items: [WorkoutItem.exercise(WorkoutExercise(exerciseID: exercise.id))],
+            healthKitActivityType: exercise.healthKitActivityType
+        )
+    }
+
+    private func openPendingLaunchIfNeeded() {
+        guard let id = state.pendingLaunchID,
+              let exercise = state.exercises.first(where: { $0.id == id }) else { return }
+        state.pendingLaunchID = nil
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
+            launchExercise(exercise)
+        }
+    }
+
+    private func openPendingStatsIfNeeded() {
+        guard let id = state.pendingStatsID,
+              let exercise = state.exercises.first(where: { $0.id == id }) else { return }
+        state.pendingStatsID = nil
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
+            statsExercise = exercise
+        }
+    }
+
+    private func openPendingHistoryIfNeeded() {
+        guard let id = state.pendingHistoryID,
+              let exercise = state.exercises.first(where: { $0.id == id }) else { return }
+        state.pendingHistoryID = nil
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
+            historyExercise = exercise
         }
     }
     

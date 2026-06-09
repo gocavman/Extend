@@ -33,7 +33,6 @@ struct ExtendApp: App {
     let generateState = GenerateState.shared
     let muscleGroupsState = MuscleGroupsState.shared
     let equipmentState = EquipmentState.shared
-    let quickWorkoutState = QuickWorkoutState.shared
     let workoutLogState = WorkoutLogState.shared
     let timerState = TimerState.shared
     let voiceTrainerState = VoiceTrainerState()
@@ -48,7 +47,6 @@ struct ExtendApp: App {
 
         registry.registerModule(DashboardModule())
         registry.registerModule(WorkoutModule())
-        registry.registerModule(QuickWorkoutModule())
         registry.registerModule(TimerModule())
         registry.registerModule(ProgressModule())
         registry.registerModule(ExercisesModule())
@@ -67,7 +65,7 @@ struct ExtendApp: App {
                 ModuleIDs.dashboard,
                 ModuleIDs.workouts,
                 ModuleIDs.generate,
-                ModuleIDs.quickWorkout,
+                ModuleIDs.exercises,
                 ModuleIDs.settings
             ])
             state.setTopNavBarModules([
@@ -97,7 +95,6 @@ struct ExtendApp: App {
                 .environment(generateState)
                 .environment(muscleGroupsState)
                 .environment(equipmentState)
-                .environment(quickWorkoutState)
                 .environment(workoutLogState)
                 .environment(timerState)
                 .environment(voiceTrainerState)

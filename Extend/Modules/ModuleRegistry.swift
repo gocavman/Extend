@@ -38,9 +38,6 @@ public struct ModuleIDs {
     /// Generate module - random workout generation
     public static let generate = UUID(uuidString: "00000009-0000-0000-0000-000000000000")!
     
-    /// Quick Workout module - quick workout from exercises
-    public static let quickWorkout = UUID(uuidString: "0000000A-0000-0000-0000-000000000000")!
-    
     /// Voice Trainer module - speak text with customizable timing
     public static let voiceTrainer = UUID(uuidString: "0000000B-0000-0000-0000-000000000000")!
     

@@ -543,22 +543,20 @@ private struct SettingsModuleView: View {
 
     private func resetApp() {
         // Reset to default navbar configuration using ModuleIDs (UUID-based identification)
-        // Order: Dashboard, Workout, Generate, Quick, Settings, Log, Timer, Exercises, Muscles, Equipment
+        // Order: Dashboard, Workout, Generate, Settings, Log, Timer, Exercises, Muscles, Equipment
 
         let bottomModules: [UUID] = [
             ModuleIDs.dashboard,
             ModuleIDs.workouts,
-            ModuleIDs.quickWorkout,
-            ModuleIDs.voiceTrainer,
+            ModuleIDs.exercises,
+            ModuleIDs.todaysPlan,
             ModuleIDs.progress
         ]
 
         let topModules: [UUID] = [
-            
-            
+            ModuleIDs.voiceTrainer,
             ModuleIDs.generate,
             ModuleIDs.timer,
-            ModuleIDs.exercises,
             ModuleIDs.muscles,
             ModuleIDs.equipment
         ]
@@ -577,7 +575,6 @@ private struct SettingsModuleView: View {
         WorkoutsState.shared.resetFavorites()
         GenerateState.shared.resetGenerated()
         GenerateState.shared.resetFilterPresets()
-        QuickWorkoutState.shared.resetFavorites()
         TimerState.shared.reset()
         WorkoutLogState.shared.resetLogs()
         voiceTrainerState.resetConfigurations()
