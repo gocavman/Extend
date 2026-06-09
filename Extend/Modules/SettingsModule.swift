@@ -62,6 +62,7 @@ private struct SettingsModuleView: View {
     @State private var isNavBarSectionExpanded = false
     @State private var isNavBarColorExpanded = false
     @State private var isDashboardSectionExpanded = false
+    @State private var isDashboardColorExpanded = false
     @State private var isMusclesSectionExpanded = false
     @State private var isAppleHealthSectionExpanded = false
     @State private var isWorkoutsSectionExpanded = false
@@ -137,6 +138,16 @@ private struct SettingsModuleView: View {
                                         get: { moduleState.navBarGradientSecondaryColor },
                                         set: { moduleState.updateNavBarGradientSecondaryColor($0) }
                                     ))
+
+                                    Picker("Direction", selection: Binding(
+                                        get: { moduleState.navBarGradientDirection },
+                                        set: { moduleState.updateNavBarGradientDirection($0) }
+                                    )) {
+                                        ForEach(GradientDirection.allCases, id: \.self) { dir in
+                                            Text(dir.rawValue).tag(dir)
+                                        }
+                                    }
+                                    .pickerStyle(.segmented)
                                 }
 
                                 ColorPicker("Text Color", selection: Binding(
@@ -151,6 +162,40 @@ private struct SettingsModuleView: View {
                         }
 
                         DisclosureGroup("Dashboard", isExpanded: $isDashboardSectionExpanded) {
+                            DisclosureGroup("Color", isExpanded: $isDashboardColorExpanded) {
+                                ColorPicker("Background Color", selection: Binding(
+                                    get: { moduleState.dashboardBackgroundColor ?? Color(UIColor.systemBackground) },
+                                    set: { moduleState.updateDashboardBackgroundColor($0) }
+                                ))
+
+                                Toggle("Use Gradient", isOn: Binding(
+                                    get: { moduleState.dashboardUseGradient },
+                                    set: { moduleState.updateDashboardUseGradient($0) }
+                                ))
+
+                                if moduleState.dashboardUseGradient {
+                                    ColorPicker("Gradient Secondary", selection: Binding(
+                                        get: { moduleState.dashboardGradientSecondaryColor },
+                                        set: { moduleState.updateDashboardGradientSecondaryColor($0) }
+                                    ))
+
+                                    Picker("Direction", selection: Binding(
+                                        get: { moduleState.dashboardGradientDirection },
+                                        set: { moduleState.updateDashboardGradientDirection($0) }
+                                    )) {
+                                        ForEach(GradientDirection.allCases, id: \.self) { dir in
+                                            Text(dir.rawValue).tag(dir)
+                                        }
+                                    }
+                                    .pickerStyle(.segmented)
+                                }
+
+                                Button("Reset to Default", role: .destructive) {
+                                    moduleState.updateDashboardBackgroundColor(nil)
+                                    moduleState.updateDashboardUseGradient(false)
+                                }
+                            }
+
                             NavigationLink(destination: DashboardCustomizationView()) {
                                 Text("Customize")
                             }

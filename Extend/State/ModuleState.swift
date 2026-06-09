@@ -18,6 +18,26 @@ public enum NavBarPosition: String, CaseIterable {
     case both = "Top & Bottom"
 }
 
+/// Gradient direction for navigation bar
+public enum GradientDirection: String, CaseIterable, Codable {
+    case horizontal = "Horizontal"
+    case vertical = "Vertical"
+
+    var startPoint: UnitPoint {
+        switch self {
+        case .horizontal: return .leading
+        case .vertical: return .top
+        }
+    }
+
+    var endPoint: UnitPoint {
+        switch self {
+        case .horizontal: return .trailing
+        case .vertical: return .bottom
+        }
+    }
+}
+
 /// Central state management for the app, coordinating module navigation and configuration.
 @Observable
 public final class ModuleState {
@@ -47,11 +67,25 @@ public final class ModuleState {
     public var navBarTextColor: Color
     public var navBarUseGradient: Bool
     public var navBarGradientSecondaryColor: Color
+    public var navBarGradientDirection: GradientDirection
 
     private let navBarBackgroundColorKey = "navBarBackgroundColor"
     private let navBarTextColorKey = "navBarTextColor"
     private let navBarUseGradientKey = "navBarUseGradient"
     private let navBarGradientSecondaryColorKey = "navBarGradientSecondaryColor"
+    private let navBarGradientDirectionKey = "navBarGradientDirection"
+
+    // MARK: - Dashboard Appearance
+
+    public var dashboardBackgroundColor: Color?
+    public var dashboardUseGradient: Bool
+    public var dashboardGradientSecondaryColor: Color
+    public var dashboardGradientDirection: GradientDirection
+
+    private let dashboardBackgroundColorKey = "dashboardBackgroundColor"
+    private let dashboardUseGradientKey = "dashboardUseGradient"
+    private let dashboardGradientSecondaryColorKey = "dashboardGradientSecondaryColor"
+    private let dashboardGradientDirectionKey = "dashboardGradientDirection"
 
     private init() {
         navBarBackgroundColor = ModuleState.loadColor(for: navBarBackgroundColorKey)
@@ -61,6 +95,25 @@ public final class ModuleState {
         navBarUseGradient = defaults.bool(forKey: navBarUseGradientKey)
         navBarGradientSecondaryColor = ModuleState.loadColor(for: navBarGradientSecondaryColorKey)
             ?? Color(red: 0.96, green: 0.96, blue: 0.97)
+
+        if let dirRaw = defaults.string(forKey: navBarGradientDirectionKey),
+           let dir = GradientDirection(rawValue: dirRaw) {
+            navBarGradientDirection = dir
+        } else {
+            navBarGradientDirection = .horizontal
+        }
+
+        dashboardBackgroundColor = ModuleState.loadColor(for: dashboardBackgroundColorKey)
+        dashboardUseGradient = defaults.bool(forKey: dashboardUseGradientKey)
+        dashboardGradientSecondaryColor = ModuleState.loadColor(for: dashboardGradientSecondaryColorKey)
+            ?? Color(UIColor.secondarySystemBackground)
+
+        if let dirRaw = defaults.string(forKey: dashboardGradientDirectionKey),
+           let dir = GradientDirection(rawValue: dirRaw) {
+            dashboardGradientDirection = dir
+        } else {
+            dashboardGradientDirection = .horizontal
+        }
 
         loadNavBarPreferences()
     }
@@ -127,6 +180,37 @@ public final class ModuleState {
         ModuleState.saveColor(color, for: navBarGradientSecondaryColorKey)
     }
 
+    public func updateNavBarGradientDirection(_ direction: GradientDirection) {
+        navBarGradientDirection = direction
+        defaults.set(direction.rawValue, forKey: navBarGradientDirectionKey)
+    }
+
+    // MARK: - Dashboard Appearance Updates
+
+    public func updateDashboardBackgroundColor(_ color: Color?) {
+        dashboardBackgroundColor = color
+        if let color {
+            ModuleState.saveColor(color, for: dashboardBackgroundColorKey)
+        } else {
+            defaults.removeObject(forKey: dashboardBackgroundColorKey)
+        }
+    }
+
+    public func updateDashboardUseGradient(_ useGradient: Bool) {
+        dashboardUseGradient = useGradient
+        defaults.set(useGradient, forKey: dashboardUseGradientKey)
+    }
+
+    public func updateDashboardGradientSecondaryColor(_ color: Color) {
+        dashboardGradientSecondaryColor = color
+        ModuleState.saveColor(color, for: dashboardGradientSecondaryColorKey)
+    }
+
+    public func updateDashboardGradientDirection(_ direction: GradientDirection) {
+        dashboardGradientDirection = direction
+        defaults.set(direction.rawValue, forKey: dashboardGradientDirectionKey)
+    }
+
     public func resetNavBarAppearance() {
         let defaultBg = Color(red: 0.98, green: 0.98, blue: 1.0)
         let defaultSecondary = Color(red: 0.96, green: 0.96, blue: 0.97)
@@ -134,10 +218,12 @@ public final class ModuleState {
         navBarTextColor = .black
         navBarUseGradient = false
         navBarGradientSecondaryColor = defaultSecondary
+        navBarGradientDirection = .horizontal
         ModuleState.saveColor(defaultBg, for: navBarBackgroundColorKey)
         ModuleState.saveColor(.black, for: navBarTextColorKey)
         defaults.set(false, forKey: navBarUseGradientKey)
         ModuleState.saveColor(defaultSecondary, for: navBarGradientSecondaryColorKey)
+        defaults.removeObject(forKey: navBarGradientDirectionKey)
     }
 
     private func saveNavBarPreferences() {

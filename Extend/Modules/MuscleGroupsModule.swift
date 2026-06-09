@@ -80,7 +80,7 @@ private struct MuscleGroupsModuleView: View {
                                         .lineLimit(2).multilineTextAlignment(.center)
                                 }
                                 .frame(width: 70, height: 80)
-                                .background(Color(red: 0.92, green: 0.92, blue: 0.94))
+                                .background(Color(UIColor.secondarySystemBackground))
                                 .cornerRadius(10)
                             }
                             .buttonStyle(.plain)

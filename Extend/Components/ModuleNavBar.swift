@@ -91,10 +91,17 @@ public struct ModuleNavBar: View {
                     let isDefaultSecondary = abs(Double(r) - 0.96) < 0.01 && abs(Double(g) - 0.96) < 0.01 && abs(Double(b) - 0.97) < 0.01
                     return isDefaultSecondary ? Color(UIColor.secondarySystemBackground) : state.navBarGradientSecondaryColor
                 }()
+                // For vertical gradient on the bottom bar, reverse the colors so
+                // primary→secondary flows top-to-bottom on the top bar, and
+                // secondary→primary flows top-to-bottom on the bottom bar.
+                // This makes both bars feel like one continuous gradient sweep.
+                let isReversed = state.navBarGradientDirection == .vertical && position == .bottom
                 LinearGradient(
-                    colors: [effectiveNavBarBgColor, effectiveSecondary],
-                    startPoint: .leading,
-                    endPoint: .trailing
+                    colors: isReversed
+                        ? [effectiveSecondary, effectiveNavBarBgColor]
+                        : [effectiveNavBarBgColor, effectiveSecondary],
+                    startPoint: state.navBarGradientDirection.startPoint,
+                    endPoint: state.navBarGradientDirection.endPoint
                 )
             } else {
                 effectiveNavBarBgColor

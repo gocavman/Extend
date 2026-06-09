@@ -211,28 +211,64 @@ private struct WorkoutsModuleView: View {
                 // Favorites tiles
                 if !state.favoriteWorkouts.isEmpty {
                     Section {
-                        LazyVGrid(columns: [GridItem(.adaptive(minimum: 70), spacing: 10)], spacing: 10) {
+                        LazyVGrid(columns: [GridItem(.adaptive(minimum: 76), spacing: 10)], spacing: 10) {
                             ForEach(state.favoriteWorkouts) { workout in
-                                Button(action: {
-                                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                                    startingWorkout = workout
-                                }) {
-                                    VStack(spacing: 6) {
-                                        Image(systemName: "dumbbell.fill")
-                                            .font(.system(size: 20))
-                                            .foregroundColor(.primary)
-                                        Text(workout.name)
-                                            .font(.caption)
-                                            .fontWeight(.semibold)
-                                            .foregroundColor(.primary)
-                                            .lineLimit(2)
-                                            .multilineTextAlignment(.center)
+                                VStack(spacing: 0) {
+                                    // Top: launch
+                                    Button(action: {
+                                        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                                        startingWorkout = workout
+                                    }) {
+                                        VStack(spacing: 5) {
+                                            Image(systemName: "dumbbell.fill")
+                                                .font(.system(size: 18))
+                                                .foregroundColor(.primary)
+                                            Text(workout.name)
+                                                .font(.caption)
+                                                .fontWeight(.semibold)
+                                                .foregroundColor(.primary)
+                                                .lineLimit(2)
+                                                .multilineTextAlignment(.center)
+                                        }
+                                        .frame(maxWidth: .infinity)
+                                        .frame(height: 58)
                                     }
-                                    .frame(width: 70, height: 80)
-                                    .background(Color(UIColor.secondarySystemBackground))
-                                    .cornerRadius(10)
+                                    .buttonStyle(.plain)
+
+                                    Divider()
+
+                                    // Bottom: chart | history
+                                    HStack(spacing: 0) {
+                                        Button(action: {
+                                            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                                            statsWorkout = workout
+                                        }) {
+                                            Image(systemName: "chart.bar.fill")
+                                                .font(.system(size: 13))
+                                                .foregroundColor(.secondary)
+                                                .frame(maxWidth: .infinity)
+                                                .frame(height: 32)
+                                        }
+                                        .buttonStyle(.plain)
+
+                                        Divider().frame(height: 20)
+
+                                        Button(action: {
+                                            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                                            historyWorkout = workout
+                                        }) {
+                                            Image(systemName: "clock.arrow.trianglehead.counterclockwise.rotate.90")
+                                                .font(.system(size: 13))
+                                                .foregroundColor(.secondary)
+                                                .frame(maxWidth: .infinity)
+                                                .frame(height: 32)
+                                        }
+                                        .buttonStyle(.plain)
+                                    }
                                 }
-                                .buttonStyle(.plain)
+                                .frame(width: 76)
+                                .background(Color(UIColor.secondarySystemBackground))
+                                .cornerRadius(10)
                             }
                         }
                         .padding(.vertical, 4)
@@ -451,9 +487,17 @@ private struct WorkoutsModuleView: View {
             }
             .onAppear {
                 launchPendingWorkoutIfNeeded()
+                openPendingStatsIfNeeded()
+                openPendingHistoryIfNeeded()
             }
             .onChange(of: state.pendingLaunchID) { _, _ in
                 launchPendingWorkoutIfNeeded()
+            }
+            .onChange(of: state.pendingStatsID) { _, _ in
+                openPendingStatsIfNeeded()
+            }
+            .onChange(of: state.pendingHistoryID) { _, _ in
+                openPendingHistoryIfNeeded()
             }
             .fullScreenCover(isPresented: $showingPlanLauncher) {
                 PlanDayLauncherSheet(
@@ -487,6 +531,26 @@ private struct WorkoutsModuleView: View {
         state.pendingLaunchID = nil
         if let workout = state.workouts.first(where: { $0.id == id }) {
             startingWorkout = workout
+        }
+    }
+
+    private func openPendingStatsIfNeeded() {
+        guard let id = state.pendingStatsID else { return }
+        state.pendingStatsID = nil
+        if let workout = state.workouts.first(where: { $0.id == id }) {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
+                statsWorkout = workout
+            }
+        }
+    }
+
+    private func openPendingHistoryIfNeeded() {
+        guard let id = state.pendingHistoryID else { return }
+        state.pendingHistoryID = nil
+        if let workout = state.workouts.first(where: { $0.id == id }) {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
+                historyWorkout = workout
+            }
         }
     }
 

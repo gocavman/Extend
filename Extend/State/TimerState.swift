@@ -28,6 +28,12 @@ public final class TimerState {
     /// Set by the dashboard to deep-link directly into a specific timer's active screen
     public var pendingLaunchID: UUID? = nil
 
+    /// Set by the dashboard to deep-link directly into a specific timer's stats screen
+    public var pendingStatsID: UUID? = nil
+
+    /// Set by the dashboard to deep-link directly into a specific timer's history screen
+    public var pendingHistoryID: UUID? = nil
+
     private init() {
         loadConfigs()
     }

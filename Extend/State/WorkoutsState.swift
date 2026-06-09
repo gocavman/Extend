@@ -36,6 +36,12 @@ public final class WorkoutsState {
     /// Set by the dashboard to deep-link directly into a specific workout's start screen
     public var pendingLaunchID: UUID? = nil
 
+    /// Set by the dashboard to deep-link directly into a specific workout's stats screen
+    public var pendingStatsID: UUID? = nil
+
+    /// Set by the dashboard to deep-link directly into a specific workout's history screen
+    public var pendingHistoryID: UUID? = nil
+
     private init() {
         loadWorkouts()
         loadFavorites()

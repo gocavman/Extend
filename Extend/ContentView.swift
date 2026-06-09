@@ -39,7 +39,9 @@ struct ContentView: View {
         ZStack {
             VStack(spacing: 0) {
                 if hasTopModules && !shouldHideNavBars {
-                    navBarBackground
+                    // height:0 + ignoresSafeArea lets the background bleed into the
+                    // top safe area without taking up any layout space.
+                    topSafeAreaFill
                         .ignoresSafeArea(edges: .top)
                         .frame(height: 0)
 
@@ -64,7 +66,8 @@ struct ContentView: View {
                     ModuleNavBar(position: .bottom)
                         .tourAnchor(.bottomNavBar)
 
-                    navBarBackground
+                    // Same trick for the bottom safe area.
+                    bottomSafeAreaFill
                         .ignoresSafeArea(edges: .bottom)
                         .frame(height: 0)
                 }
@@ -136,7 +139,8 @@ struct ContentView: View {
         }
     }
 
-    /// Whether the stored navbar background color is still the default (near-white).
+    // MARK: - Helpers
+
     private var isDefaultNavBarColor: Bool {
         let c = UIColor(state.navBarBackgroundColor)
         var r: CGFloat = 0, g: CGFloat = 0, b: CGFloat = 0, a: CGFloat = 0
@@ -148,21 +152,57 @@ struct ContentView: View {
         isDefaultNavBarColor ? Color(UIColor.systemBackground) : state.navBarBackgroundColor
     }
 
-    private var navBarBackground: some View {
+    private var effectiveSecondaryColor: Color {
+        let c = UIColor(state.navBarGradientSecondaryColor)
+        var r: CGFloat = 0, g: CGFloat = 0, b: CGFloat = 0, a: CGFloat = 0
+        c.getRed(&r, green: &g, blue: &b, alpha: &a)
+        let isDefault = abs(Double(r) - 0.96) < 0.01 && abs(Double(g) - 0.96) < 0.01 && abs(Double(b) - 0.97) < 0.01
+        return isDefault ? Color(UIColor.secondarySystemBackground) : state.navBarGradientSecondaryColor
+    }
+
+    /// Fill for the top safe area (above the top navbar).
+    /// For vertical gradient this should be solid colorA so the gradient appears
+    /// to start at the very top of the screen.
+    /// For horizontal gradient it matches the navbar gradient seamlessly.
+    /// For no gradient it's just the flat bg color.
+    private var topSafeAreaFill: some View {
         Group {
             if state.navBarUseGradient {
-                let effectiveSecondary: Color = {
-                    let c = UIColor(state.navBarGradientSecondaryColor)
-                    var r: CGFloat = 0, g: CGFloat = 0, b: CGFloat = 0, a: CGFloat = 0
-                    c.getRed(&r, green: &g, blue: &b, alpha: &a)
-                    let isDefault = abs(Double(r) - 0.96) < 0.01 && abs(Double(g) - 0.96) < 0.01 && abs(Double(b) - 0.97) < 0.01
-                    return isDefault ? Color(UIColor.secondarySystemBackground) : state.navBarGradientSecondaryColor
-                }()
-                LinearGradient(
-                    colors: [effectiveNavBarBgColor, effectiveSecondary],
-                    startPoint: .leading,
-                    endPoint: .trailing
-                )
+                switch state.navBarGradientDirection {
+                case .horizontal:
+                    LinearGradient(
+                        colors: [effectiveNavBarBgColor, effectiveSecondaryColor],
+                        startPoint: .leading,
+                        endPoint: .trailing
+                    )
+                case .vertical:
+                    // Safe area is above the bar — hold solid colorA (the start color).
+                    effectiveNavBarBgColor
+                }
+            } else {
+                effectiveNavBarBgColor
+            }
+        }
+    }
+
+    /// Fill for the bottom safe area (below the bottom navbar).
+    /// For vertical gradient this should be solid colorB so the gradient appears
+    /// to end at the very bottom of the screen.
+    private var bottomSafeAreaFill: some View {
+        Group {
+            if state.navBarUseGradient {
+                switch state.navBarGradientDirection {
+                case .horizontal:
+                    LinearGradient(
+                        colors: [effectiveNavBarBgColor, effectiveSecondaryColor],
+                        startPoint: .leading,
+                        endPoint: .trailing
+                    )
+                case .vertical:
+                    // Bottom bar is reversed (secondary→primary), so the very bottom
+                    // edge is colorA (primary). Hold that solid so it blends seamlessly.
+                    effectiveNavBarBgColor
+                }
             } else {
                 effectiveNavBarBgColor
             }

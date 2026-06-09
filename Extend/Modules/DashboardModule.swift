@@ -80,6 +80,7 @@ private struct DashboardModuleView: View {
             
             Spacer()
         }
+        .background(dashboardBackground)
         .tourAnchor(.dashboardBody)
         .overlay(alignment: .topTrailing) {
             floatingGearButton
@@ -259,80 +260,171 @@ private struct DashboardModuleView: View {
     
     private func interactiveTileView(tile: DashboardTile, width: CGFloat, height: CGFloat) -> some View {
         let bg: Color = tile.tileTintColor ?? Color(UIColor.secondarySystemBackground)
-        return Button(action: {
-            UIImpactFeedbackGenerator(style: .light).impactOccurred()
-            if isBlankTile(tile) {
-                handleBlankTileAction(tile)
-            } else if tile.tileType == .shortcut {
-                // Shortcut tiles deep-link directly into the item
-                if tile.shortcutType == .workout, let itemID = tile.shortcutItemID {
-                    workoutsState.pendingLaunchID = itemID
-                    state.selectModule(ModuleIDs.workouts)
-                } else if tile.shortcutType == .timer, let itemID = tile.shortcutItemID {
-                    timerState.pendingLaunchID = itemID
-                    state.selectModule(ModuleIDs.timer)
-                } else if tile.shortcutType == .voiceTrainer, let itemID = tile.shortcutItemID {
-                    voiceTrainerState.pendingLaunchID = itemID
-                    state.selectModule(ModuleIDs.voiceTrainer)
-                } else if tile.shortcutType == .quickExercise, let itemID = tile.shortcutItemID,
-                          let exercise = exercisesState.exercises.first(where: { $0.id == itemID }) {
-                    quickStartWorkout = Workout(
-                        name: "\(exercise.name) (Quick)",
-                        notes: "",
-                        items: [WorkoutItem.exercise(WorkoutExercise(exerciseID: exercise.id))]
-                    )
-                }
-            } else if let targetID = findModuleID(for: tile) {
-                state.selectModule(targetID)
-            }
-        }) {
-            ZStack(alignment: .leading) {
-                VStack(spacing: 0) {
-                    Spacer(minLength: 0)
+        let isThreePieceShortcut = tile.tileType == .shortcut &&
+            (tile.shortcutType == .workout || tile.shortcutType == .timer || tile.shortcutType == .voiceTrainer)
 
-                    Image(systemName: tile.icon)
-                        .font(.system(size: 28, weight: .semibold))
+        return Group {
+            if isThreePieceShortcut {
+                // 3-piece tile: top=launch, bottom-left=stats, bottom-right=history
+                ZStack(alignment: .leading) {
+                    VStack(spacing: 0) {
+                        // Top: launch button
+                        Button(action: {
+                            UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                            if tile.shortcutType == .workout, let itemID = tile.shortcutItemID {
+                                workoutsState.pendingLaunchID = itemID
+                                state.selectModule(ModuleIDs.workouts)
+                            } else if tile.shortcutType == .timer, let itemID = tile.shortcutItemID {
+                                timerState.pendingLaunchID = itemID
+                                state.selectModule(ModuleIDs.timer)
+                            } else if tile.shortcutType == .voiceTrainer, let itemID = tile.shortcutItemID {
+                                voiceTrainerState.pendingLaunchID = itemID
+                                state.selectModule(ModuleIDs.voiceTrainer)
+                            }
+                        }) {
+                            VStack(spacing: 5) {
+                                Image(systemName: tile.icon)
+                                    .font(.system(size: 18, weight: .semibold))
+                                    .foregroundColor(.primary)
+                                if !tile.title.isEmpty {
+                                    Text(tile.title)
+                                        .font(.caption)
+                                        .fontWeight(.semibold)
+                                        .lineLimit(2)
+                                        .multilineTextAlignment(.center)
+                                        .foregroundColor(.primary)
+                                }
+                            }
+                            .frame(maxWidth: .infinity)
+                            .frame(height: height - 33)
+                        }
+                        .buttonStyle(.plain)
+
+                        Divider()
+
+                        // Bottom: stats (left) + history (right)
+                        HStack(spacing: 0) {
+                            Button(action: {
+                                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                                if tile.shortcutType == .workout, let itemID = tile.shortcutItemID {
+                                    workoutsState.pendingStatsID = itemID
+                                    state.selectModule(ModuleIDs.workouts)
+                                } else if tile.shortcutType == .timer, let itemID = tile.shortcutItemID {
+                                    timerState.pendingStatsID = itemID
+                                    state.selectModule(ModuleIDs.timer)
+                                } else if tile.shortcutType == .voiceTrainer, let itemID = tile.shortcutItemID {
+                                    voiceTrainerState.pendingStatsID = itemID
+                                    state.selectModule(ModuleIDs.voiceTrainer)
+                                }
+                            }) {
+                                Image(systemName: "chart.bar.fill")
+                                    .font(.system(size: 13))
+                                    .foregroundColor(.secondary)
+                                    .frame(maxWidth: .infinity)
+                                    .frame(height: 32)
+                            }
+                            .buttonStyle(.plain)
+
+                            Divider().frame(height: 20)
+
+                            Button(action: {
+                                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                                if tile.shortcutType == .workout, let itemID = tile.shortcutItemID {
+                                    workoutsState.pendingHistoryID = itemID
+                                    state.selectModule(ModuleIDs.workouts)
+                                } else if tile.shortcutType == .timer, let itemID = tile.shortcutItemID {
+                                    timerState.pendingHistoryID = itemID
+                                    state.selectModule(ModuleIDs.timer)
+                                } else if tile.shortcutType == .voiceTrainer, let itemID = tile.shortcutItemID {
+                                    voiceTrainerState.pendingHistoryID = itemID
+                                    state.selectModule(ModuleIDs.voiceTrainer)
+                                }
+                            }) {
+                                Image(systemName: "clock.arrow.trianglehead.counterclockwise.rotate.90")
+                                    .font(.system(size: 13))
+                                    .foregroundColor(.secondary)
+                                    .frame(maxWidth: .infinity)
+                                    .frame(height: 32)
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                    .background(bg)
+                    .cornerRadius(12)
+
+                    if tile.accentPlacement != .none {
+                        AccentBarView(placement: tile.accentPlacement, color: tile.accentColor)
+                    }
+                }
+                .frame(width: width, height: height)
+            } else {
+                // Standard single-button tile
+                Button(action: {
+                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                    if isBlankTile(tile) {
+                        handleBlankTileAction(tile)
+                    } else if tile.tileType == .shortcut {
+                        if tile.shortcutType == .quickExercise, let itemID = tile.shortcutItemID,
+                           let exercise = exercisesState.exercises.first(where: { $0.id == itemID }) {
+                            quickStartWorkout = Workout(
+                                name: "\(exercise.name) (Quick)",
+                                notes: "",
+                                items: [WorkoutItem.exercise(WorkoutExercise(exerciseID: exercise.id))]
+                            )
+                        }
+                    } else if let targetID = findModuleID(for: tile) {
+                        state.selectModule(targetID)
+                    }
+                }) {
+                    ZStack(alignment: .leading) {
+                        VStack(spacing: 0) {
+                            Spacer(minLength: 0)
+
+                            Image(systemName: tile.icon)
+                                .font(.system(size: 28, weight: .semibold))
+                                .foregroundColor(.primary)
+                                .rotationEffect(.degrees(spinningTiles[tile.id] ?? 0))
+                                .animation(.easeInOut(duration: 1.0), value: spinningTiles[tile.id])
+
+                            if !tile.title.isEmpty {
+                                Text(tile.title)
+                                    .font(.subheadline)
+                                    .fontWeight(.semibold)
+                                    .lineLimit(2)
+                                    .multilineTextAlignment(.center)
+                                    .padding(.top, 8)
+                            }
+
+                            Spacer(minLength: 0)
+
+                            // Show game levels at bottom
+                            if tile.targetModuleID == ModuleIDs.matchGame {
+                                Text("Level \(matchGameLevel)")
+                                    .font(.caption2)
+                                    .foregroundColor(.gray)
+                                    .padding(.bottom, 4)
+                            } else if isBlankTile(tile), let count = dashboardState.tileClickCounts[tile.id], count > 0 {
+                                Text("\(count)")
+                                    .font(.caption2)
+                                    .foregroundColor(.gray)
+                                    .padding(.bottom, 4)
+                            }
+                        }
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .padding(10)
+                        .background(bg)
+                        .cornerRadius(12)
                         .foregroundColor(.primary)
-                        .rotationEffect(.degrees(spinningTiles[tile.id] ?? 0))
-                        .animation(.easeInOut(duration: 1.0), value: spinningTiles[tile.id])
 
-                    if !tile.title.isEmpty {
-                        Text(tile.title)
-                            .font(.subheadline)
-                            .fontWeight(.semibold)
-                            .lineLimit(2)
-                            .multilineTextAlignment(.center)
-                            .padding(.top, 8)
-                    }
-
-                    Spacer(minLength: 0)
-
-                    // Show game levels at bottom
-                    if tile.targetModuleID == ModuleIDs.matchGame {
-                        Text("Level \(matchGameLevel)")
-                            .font(.caption2)
-                            .foregroundColor(.gray)
-                            .padding(.bottom, 4)
-                    } else if isBlankTile(tile), let count = dashboardState.tileClickCounts[tile.id], count > 0 {
-                        Text("\(count)")
-                            .font(.caption2)
-                            .foregroundColor(.gray)
-                            .padding(.bottom, 4)
+                        // Accent bar overlay
+                        if tile.accentPlacement != .none {
+                            AccentBarView(placement: tile.accentPlacement, color: tile.accentColor)
+                        }
                     }
                 }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .padding(10)
-                .background(bg)
-                .cornerRadius(12)
-                .foregroundColor(.primary)
-
-                // Accent bar overlay
-                if tile.accentPlacement != .none {
-                    AccentBarView(placement: tile.accentPlacement, color: tile.accentColor)
-                }
+                .frame(width: width, height: height)
             }
         }
-        .frame(width: width, height: height)
         .rotationEffect(.degrees(tileRotations[tile.id] ?? 0))
         .offset(
             x: tileOffsets[tile.id]?.x ?? 0,
@@ -371,6 +463,20 @@ private struct DashboardModuleView: View {
             .flatMap { $0.windows }
             .first(where: { $0.isKeyWindow })?.safeAreaInsets.top ?? 0
         return inset
+    }
+
+    @ViewBuilder
+    private var dashboardBackground: some View {
+        let baseColor = state.dashboardBackgroundColor ?? Color(UIColor.systemBackground)
+        if state.dashboardUseGradient {
+            LinearGradient(
+                colors: [baseColor, state.dashboardGradientSecondaryColor],
+                startPoint: state.dashboardGradientDirection.startPoint,
+                endPoint: state.dashboardGradientDirection.endPoint
+            )
+        } else {
+            baseColor
+        }
     }
 
     // MARK: - Helper Methods

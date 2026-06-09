@@ -73,31 +73,67 @@ private struct TimerModuleView: View {
                     // Favorites tiles
                     if !timerState.favoriteConfigs.isEmpty {
                         Section {
-                            LazyVGrid(columns: [GridItem(.adaptive(minimum: 70), spacing: 10)], spacing: 10) {
+                            LazyVGrid(columns: [GridItem(.adaptive(minimum: 76), spacing: 10)], spacing: 10) {
                                 ForEach(timerState.favoriteConfigs) { config in
-                                    Button(action: {
-                                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                                        activeConfig = config
-                                    }) {
-                                        VStack(spacing: 4) {
-                                            Image(systemName: config.type.iconName)
-                                                .font(.system(size: 20))
-                                                .foregroundColor(.primary)
-                                            Text(config.name)
-                                                .font(.caption)
-                                                .fontWeight(.semibold)
-                                                .foregroundColor(.primary)
-                                                .lineLimit(2)
-                                                .multilineTextAlignment(.center)
-                                            Text(config.type.rawValue)
-                                                .font(.system(size: 9))
-                                                .foregroundColor(.gray)
+                                    VStack(spacing: 0) {
+                                        // Top: launch
+                                        Button(action: {
+                                            UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                                            activeConfig = config
+                                        }) {
+                                            VStack(spacing: 4) {
+                                                Image(systemName: config.type.iconName)
+                                                    .font(.system(size: 18))
+                                                    .foregroundColor(.primary)
+                                                Text(config.name)
+                                                    .font(.caption)
+                                                    .fontWeight(.semibold)
+                                                    .foregroundColor(.primary)
+                                                    .lineLimit(2)
+                                                    .multilineTextAlignment(.center)
+                                                Text(config.type.rawValue)
+                                                    .font(.system(size: 9))
+                                                    .foregroundColor(.secondary)
+                                            }
+                                            .frame(maxWidth: .infinity)
+                                            .frame(height: 58)
                                         }
-                                        .frame(width: 70, height: 80)
-                                        .background(Color(UIColor.secondarySystemBackground))
-                                        .cornerRadius(10)
+                                        .buttonStyle(.plain)
+
+                                        Divider()
+
+                                        // Bottom: chart | history
+                                        HStack(spacing: 0) {
+                                            Button(action: {
+                                                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                                                statsConfig = config
+                                            }) {
+                                                Image(systemName: "chart.bar.fill")
+                                                    .font(.system(size: 13))
+                                                    .foregroundColor(.secondary)
+                                                    .frame(maxWidth: .infinity)
+                                                    .frame(height: 32)
+                                            }
+                                            .buttonStyle(.plain)
+
+                                            Divider().frame(height: 20)
+
+                                            Button(action: {
+                                                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                                                historyConfig = config
+                                            }) {
+                                                Image(systemName: "clock.arrow.trianglehead.counterclockwise.rotate.90")
+                                                    .font(.system(size: 13))
+                                                    .foregroundColor(.secondary)
+                                                    .frame(maxWidth: .infinity)
+                                                    .frame(height: 32)
+                                            }
+                                            .buttonStyle(.plain)
+                                        }
                                     }
-                                    .buttonStyle(.plain)
+                                    .frame(width: 76)
+                                    .background(Color(UIColor.secondarySystemBackground))
+                                    .cornerRadius(10)
                                 }
                             }
                             .padding(.vertical, 4)
@@ -192,9 +228,17 @@ private struct TimerModuleView: View {
             }
             .onAppear {
                 launchPendingTimerIfNeeded()
+                openPendingTimerStatsIfNeeded()
+                openPendingTimerHistoryIfNeeded()
             }
             .onChange(of: timerState.pendingLaunchID) { _, _ in
                 launchPendingTimerIfNeeded()
+            }
+            .onChange(of: timerState.pendingStatsID) { _, _ in
+                openPendingTimerStatsIfNeeded()
+            }
+            .onChange(of: timerState.pendingHistoryID) { _, _ in
+                openPendingTimerHistoryIfNeeded()
             }
         }
     }
@@ -204,6 +248,26 @@ private struct TimerModuleView: View {
         timerState.pendingLaunchID = nil
         if let config = timerState.configs.first(where: { $0.id == id }) {
             activeConfig = config
+        }
+    }
+
+    private func openPendingTimerStatsIfNeeded() {
+        guard let id = timerState.pendingStatsID else { return }
+        timerState.pendingStatsID = nil
+        if let config = timerState.configs.first(where: { $0.id == id }) {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
+                statsConfig = config
+            }
+        }
+    }
+
+    private func openPendingTimerHistoryIfNeeded() {
+        guard let id = timerState.pendingHistoryID else { return }
+        timerState.pendingHistoryID = nil
+        if let config = timerState.configs.first(where: { $0.id == id }) {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
+                historyConfig = config
+            }
         }
     }
 }

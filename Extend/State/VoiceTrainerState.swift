@@ -42,6 +42,12 @@ final class VoiceTrainerState {
 
     /// Set by the dashboard to deep-link directly into a specific config's playback screen
     var pendingLaunchID: UUID? = nil
+
+    /// Set by the dashboard to deep-link directly into a specific config's stats screen
+    var pendingStatsID: UUID? = nil
+
+    /// Set by the dashboard to deep-link directly into a specific config's history screen
+    var pendingHistoryID: UUID? = nil
     
     init() {
         loadSavedConfigurations()

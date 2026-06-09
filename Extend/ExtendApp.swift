@@ -8,6 +8,7 @@
 import SwiftUI
 import SwiftData
 import HealthKit
+import WidgetKit
 
 @main
 struct ExtendApp: App {
@@ -103,6 +104,9 @@ struct ExtendApp: App {
                 .environment(healthKitState)
                 .environment(trainingPlanState)
                 .task {
+                    // Refresh widget snapshot so Today's Plan widget has current data on launch
+                    trainingPlanState.refreshWidgetSnapshot()
+
                     // Request HealthKit auth on first launch if any sync is configured
                     guard !healthKitState.authorizationRequested else { return }
                     guard HealthKitService.shared.isAvailable else { return }
