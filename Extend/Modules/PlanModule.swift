@@ -1143,7 +1143,9 @@ private struct ManagePlansSheet: View {
                     }
                     .contentShape(Rectangle())
                     .onTapGesture {
-                        planState.setActive(id: plan.id)
+                        // Tapping the already-active plan deactivates it; tapping another activates it
+                        let newID: UUID? = planState.activePlanID == plan.id ? nil : plan.id
+                        planState.setActive(id: newID)
                     }
                     .swipeActions(edge: .trailing) {
                         Button(role: .destructive) {

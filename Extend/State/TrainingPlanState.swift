@@ -382,27 +382,47 @@ final class TrainingPlanState {
             return
         }
         let wDefaults = UserDefaults(suiteName: "group.com.cavanmannenbach.extend") ?? .standard
+
+        // Build the set of today's completed log names (same logic as dashboard tile)
+        let cal = Calendar.current
+        let today = cal.startOfDay(for: Date())
+        var completedNames: Set<String> = []
+        if let logData = wDefaults.data(forKey: "workout_logs"),
+           let logs = try? JSONDecoder().decode([WorkoutLog].self, from: logData) {
+            let todayLogs = logs.filter { cal.isDate($0.completedAt, inSameDayAs: today) }
+            completedNames = Set(todayLogs.map { $0.workoutName })
+        }
+
         var items: [WidgetPlanItem] = []
 
         // Workouts
         if let data = wDefaults.data(forKey: "workouts_data"),
            let workouts = try? JSONDecoder().decode([Workout].self, from: data) {
             items += pd.workoutIDs.compactMap { id in
-                workouts.first { $0.id == id }.map { WidgetPlanItem(name: $0.name, icon: "dumbbell.fill") }
+                workouts.first { $0.id == id }.map {
+                    WidgetPlanItem(name: $0.name, icon: "dumbbell.fill",
+                                  isCompleted: completedNames.contains($0.name))
+                }
             }
         }
         // Exercises
         if let data = wDefaults.data(forKey: "exercises_data"),
            let exercises = try? JSONDecoder().decode([Exercise].self, from: data) {
             items += pd.exerciseIDs.compactMap { id in
-                exercises.first { $0.id == id }.map { WidgetPlanItem(name: $0.name, icon: "figure.strengthtraining.traditional") }
+                exercises.first { $0.id == id }.map {
+                    WidgetPlanItem(name: $0.name, icon: "figure.strengthtraining.traditional",
+                                  isCompleted: completedNames.contains($0.name))
+                }
             }
         }
         // Voice trainers
         if let data = wDefaults.data(forKey: "VoiceTrainerConfigs"),
            let configs = try? JSONDecoder().decode([VoiceTrainerConfig].self, from: data) {
             items += pd.voiceActivityIDs.compactMap { id in
-                configs.first { $0.id == id }.map { WidgetPlanItem(name: $0.name, icon: "waveform") }
+                configs.first { $0.id == id }.map {
+                    WidgetPlanItem(name: $0.name, icon: "waveform",
+                                  isCompleted: completedNames.contains("Trainer – \($0.name)"))
+                }
             }
         }
         // Timers
@@ -410,7 +430,9 @@ final class TrainingPlanState {
            let configs = try? JSONDecoder().decode([TimerConfig].self, from: data) {
             items += pd.timerIDs.compactMap { id in
                 configs.first { $0.id == id }.map { c in
-                    WidgetPlanItem(name: c.name.isEmpty ? c.type.rawValue : c.name, icon: c.type.iconName)
+                    let displayName = c.name.isEmpty ? c.type.rawValue : c.name
+                    return WidgetPlanItem(name: displayName, icon: c.type.iconName,
+                                         isCompleted: completedNames.contains("\(c.type.rawValue) – \(displayName)"))
                 }
             }
         }

@@ -740,31 +740,30 @@ struct VoiceTrainerPlaybackView: View {
     let config: VoiceTrainerConfig
     let logState: WorkoutLogState
 
+    @Environment(\.dismiss) private var dismiss
+
     @State private var playbackState = VoiceTrainerState()
     @State private var voiceManager: VoiceManager?
     @State private var updateTimer: Timer?
-    @State private var isActive = true   // controls this cover's own dismissal
 
     var body: some View {
-        if isActive {
-            PlaybackScreen(
-                state: playbackState,
-                numberOfRounds: config.numberOfRounds,
-                onPause: { pausePlayback() },
-                onResume: { resumePlayback() },
-                onStop: {
-                    resetPlayback()
-                    isActive = false
-                },
-                onComplete: {
-                    completeSession()
-                    isActive = false
-                },
-                onStartPlayback: { startUpdateTimer() },
-                formatTime: formatTime
-            )
-            .onAppear { play() }
-        }
+        PlaybackScreen(
+            state: playbackState,
+            numberOfRounds: config.numberOfRounds,
+            onPause: { pausePlayback() },
+            onResume: { resumePlayback() },
+            onStop: {
+                resetPlayback()
+                dismiss()
+            },
+            onComplete: {
+                completeSession()
+                dismiss()
+            },
+            onStartPlayback: { startUpdateTimer() },
+            formatTime: formatTime
+        )
+        .onAppear { play() }
     }
 
     private func play() {

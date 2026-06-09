@@ -14,6 +14,13 @@ private let snapshotKey = "widget_plan_snapshot"
 public struct WidgetPlanItem: Codable {
     public let name: String
     public let icon: String   // SF Symbol name
+    public let isCompleted: Bool
+
+    public init(name: String, icon: String, isCompleted: Bool = false) {
+        self.name = name
+        self.icon = icon
+        self.isCompleted = isCompleted
+    }
 }
 
 /// The full snapshot written by the main app and read by the widget.

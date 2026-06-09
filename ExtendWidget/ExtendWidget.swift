@@ -239,6 +239,12 @@ struct TodaysPlanWidgetView: View {
                 .font(.system(size: iconSize + 1))
                 .foregroundColor(.primary)
                 .lineLimit(1)
+            Spacer(minLength: 0)
+            if item.isCompleted {
+                Image(systemName: "checkmark.circle.fill")
+                    .font(.system(size: iconSize))
+                    .foregroundColor(.green)
+            }
         }
     }
 }

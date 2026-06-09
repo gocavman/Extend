@@ -36,6 +36,8 @@ public final class WorkoutLogState {
         log.healthKitActivityTypeRaw = activityTypeRaw
         logs.append(log)
         saveLogs()
+        // Refresh widget so completion checkboxes update immediately
+        TrainingPlanState.shared.refreshWidgetSnapshot()
 
         if exportToHealthKit {
             Task {
