@@ -18,9 +18,9 @@
  
  PLATFORM SCOPE
  ==============
- This app is built for iOS 17+ and Apple Watch (future).
- - No macOS or iPad support needed
- - Optimize for iPhone screen sizes (compact to regular)
+ This app is built for iOS 17+ (iPhone and iPad) and Apple Watch (future).
+ - No macOS support needed
+ - iPad uses the same top/bottom ModuleNavBar layout as iPhone (scales naturally)
  - Keep future watchOS support in mind for state management
  - Use iOS-specific UI patterns (no conditional compilation needed)
  
@@ -116,7 +116,7 @@
  2. Test module reordering and visibility toggling
  3. Validate all modules conform to ModuleProtocol
  4. Use SwiftData test models for persistence tests
- 5. Test on various iPhone sizes (SE, regular, Pro Max)
+ 5. Test on various iPhone sizes (SE, regular, Pro Max) and iPad
  
  MODULE PROTOCOL REQUIREMENTS
  =============================
@@ -128,7 +128,7 @@
  5. Return a View via moduleView property
  6. Support order/visibility management
  7. Be registered in ModuleRegistry at app launch
- 8. Optimize layout for all iPhone screen sizes
+ 8. Optimize layout for all iPhone and iPad screen sizes
  
  CRITICAL: MODULE IDENTIFICATION
  ================================

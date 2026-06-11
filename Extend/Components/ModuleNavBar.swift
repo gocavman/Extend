@@ -14,6 +14,7 @@ public struct ModuleNavBar: View {
     @Environment(ModuleRegistry.self) var registry
     @Environment(ModuleState.self) var state
     @Environment(\.colorScheme) var colorScheme
+    @Environment(\.horizontalSizeClass) var sizeClass
 
     let position: NavBarPosition
     
@@ -38,7 +39,8 @@ public struct ModuleNavBar: View {
                             ModuleNavButton(
                                 module: module,
                                 isSelected: state.selectedModuleID == module.id,
-                                textColor: effectiveNavBarTextColor
+                                textColor: effectiveNavBarTextColor,
+                                isLarge: sizeClass == .regular
                             ) {
                                 state.selectModule(module.id)
                             }
@@ -50,7 +52,7 @@ public struct ModuleNavBar: View {
                     .frame(minWidth: geo.size.width)
                 }
             }
-            .frame(height: 60)
+            .frame(height: sizeClass == .regular ? 74 : 60)
             .background(navBarBackground)
         }
     }
@@ -116,6 +118,7 @@ private struct ModuleNavButton: View {
     let module: AnyAppModule
     let isSelected: Bool
     let textColor: Color
+    var isLarge: Bool = false
     let action: () -> Void
 
     var body: some View {
@@ -125,14 +128,14 @@ private struct ModuleNavButton: View {
         }) {
             VStack(spacing: 4) {
                 Image(systemName: module.iconName)
-                    .font(.system(size: 16, weight: .semibold))
-                    .frame(width: 24, height: 24, alignment: .center)
+                    .font(.system(size: isLarge ? 22 : 16, weight: .semibold))
+                    .frame(width: isLarge ? 32 : 24, height: isLarge ? 32 : 24, alignment: .center)
 
                 Text(module.displayName)
-                    .font(.caption2)
+                    .font(isLarge ? .caption : .caption2)
                     .lineLimit(1)
             }
-            .frame(width: 60, height: 52)
+            .frame(width: isLarge ? 76 : 60, height: isLarge ? 64 : 52)
             .foregroundColor(isSelected ? textColor : textColor.opacity(0.6))
         }
         .background(

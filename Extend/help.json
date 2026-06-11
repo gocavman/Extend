@@ -64,6 +64,40 @@
     ]
   },
   {
+    "id": "widget",
+    "category": "General",
+    "title": "Widget",
+    "icon": "rectangle.on.rectangle",
+    "summary": "Add Today's Plan to your Home Screen or Lock Screen.",
+    "keywords": ["widget", "home screen", "lock screen", "today's plan", "plan", "checkmark", "completed", "small", "medium", "large", "add widget", "widgetkit", "rest day"],
+    "sections": [
+      {
+        "heading": "Today's Plan Widget",
+        "body": "The widget shows today's scheduled items from your active Training Plan — workouts, exercises, voice trainer sessions, and timers. Three sizes are available: small, medium, and large."
+      },
+      {
+        "heading": "Adding the Widget",
+        "body": "Long-press your Home Screen → tap [sf:plus] in the top-left corner → search for Extend → choose a size and tap Add Widget."
+      },
+      {
+        "heading": "Completion Checkmarks",
+        "body": "Items that have been completed today show a green [sf:checkmark.circle.fill] next to their name. The widget updates automatically when you complete a workout, exercise, timer, or voice trainer session inside the app."
+      },
+      {
+        "heading": "Rest Days",
+        "body": "When today has no scheduled items, the widget shows 'Rest day'."
+      },
+      {
+        "heading": "Keeping It Current",
+        "body": "The widget refreshes immediately whenever you complete a session or make plan changes inside the app. It also refreshes on its own every hour so it stays accurate even when the app hasn't been opened."
+      },
+      {
+        "heading": "Requirements",
+        "body": "A Training Plan must be active and have items scheduled for today. Set one up in the Plan module."
+      }
+    ]
+  },
+  {
     "id": "dashboard",
     "category": "Modules",
     "title": "Dashboard",

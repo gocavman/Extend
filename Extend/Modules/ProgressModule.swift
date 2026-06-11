@@ -27,6 +27,8 @@ private struct ProgressModuleView: View {
     @Environment(ExercisesState.self) var exercisesState
     @Environment(TrainingPlanState.self) var planState
     @Environment(WorkoutsState.self) var workoutsState
+    @AppStorage("appColorScheme") private var appColorScheme: String = "system"
+    private var preferredScheme: ColorScheme? { appColorScheme == "dark" ? .dark : appColorScheme == "light" ? .light : nil }
 
     @State private var showPlan = false
     @State private var selectedDate = Date()
@@ -436,6 +438,7 @@ private struct ProgressModuleView: View {
                 .environment(planState)
                 .environment(workoutsState)
                 .environment(exercisesState)
+                .preferredColorScheme(preferredScheme)
         }
 
     }
@@ -500,7 +503,10 @@ private struct CalendarView: View {
         calendar.isDate(date, equalTo: currentMonth, toGranularity: .month)
     }
     
+    @Environment(\.horizontalSizeClass) private var sizeClass
+
     var body: some View {
+        let cellHeight: CGFloat = sizeClass == .regular ? 140 : 85
         VStack(spacing: 8) {
             // Weekday headers
             LazyVGrid(columns: columns, spacing: 2) {
@@ -511,7 +517,7 @@ private struct CalendarView: View {
                         .foregroundColor(.gray)
                 }
             }
-            
+
             // Days grid
             LazyVGrid(columns: columns, spacing: 2) {
                 ForEach(days.indices, id: \.self) { index in
@@ -538,7 +544,8 @@ private struct CalendarView: View {
                                     }
                                 }
                                 return plan.name
-                            }()
+                            }(),
+                            cellHeight: cellHeight
                         ) {
                             selectedDate = date
                             onDaySelected?()
@@ -546,7 +553,7 @@ private struct CalendarView: View {
                         }
                     } else {
                         Color.clear
-                            .frame(height: 85)
+                            .frame(height: cellHeight)
                     }
                 }
             }
@@ -653,9 +660,12 @@ private struct DayCell: View {
     let logs: [WorkoutLog]
     var journalEntries: [JournalEntry] = []
     var planName: String? = nil
+    var cellHeight: CGFloat = 85
     let onTap: () -> Void
 
     @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.horizontalSizeClass) private var sizeClass
+    private var iPad: Bool { sizeClass == .regular }
 
     private var hasWorkout: Bool { workoutCount > 0 }
 
@@ -716,13 +726,13 @@ private struct DayCell: View {
                     if isSelected {
                         Circle()
                             .stroke(Color.primary, lineWidth: 2)
-                            .frame(width: 26, height: 26)
+                            .frame(width: iPad ? 42 : 26, height: iPad ? 42 : 26)
                     }
                     Text("\(Calendar.current.component(.day, from: date))")
-                        .font(.system(size: 15, weight: isToday ? .bold : .regular))
+                        .font(.system(size: iPad ? 24 : 15, weight: isToday ? .bold : .regular))
                         .foregroundColor(textColor)
                 }
-                .frame(height: 26)
+                .frame(height: iPad ? 42 : 26)
                 .frame(maxWidth: .infinity, alignment: .center)
                 .padding(.top, 6)
 
@@ -757,7 +767,7 @@ private struct DayCell: View {
                             ZStack(alignment: .leading) {
                                 ClippedTextLabel(
                                     text: item.text,
-                                    fontSize: 9,
+                                    fontSize: iPad ? 14 : 9,
                                     textColor: pillText
                                 )
                                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -774,7 +784,7 @@ private struct DayCell: View {
                                 .frame(width: 15)
                                 .frame(maxWidth: .infinity, alignment: .trailing)
                             }
-                            .frame(height: 13)
+                            .frame(height: iPad ? 20 : 13)
                             .clipped()
                             .background(Capsule().fill(pillBg))
                         }
@@ -789,24 +799,24 @@ private struct DayCell: View {
                     if workoutCount > 0 {
                         Circle()
                             .fill(Color(red: 0.2, green: 0.75, blue: 0.35).opacity(isCurrentMonth ? 1 : 0.4))
-                            .frame(width: 5, height: 5)
+                            .frame(width: iPad ? 8 : 5, height: iPad ? 8 : 5)
                     }
                     if !journalEntries.isEmpty {
                         Circle()
                             .fill(Color(red: 0.4, green: 0.35, blue: 0.75).opacity(isCurrentMonth ? 0.85 : 0.4))
-                            .frame(width: 5, height: 5)
+                            .frame(width: iPad ? 8 : 5, height: iPad ? 8 : 5)
                     }
                     if planName != nil {
                         Circle()
                             .fill(Color.accentColor.opacity(isCurrentMonth ? 0.85 : 0.4))
-                            .frame(width: 5, height: 5)
+                            .frame(width: iPad ? 8 : 5, height: iPad ? 8 : 5)
                     }
                 }
                 .frame(maxWidth: .infinity, alignment: .center)
                 .padding(.bottom, 4)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
-            .frame(height: 85)
+            .frame(height: cellHeight)
             .background(backgroundColor)
             .cornerRadius(4)
             .overlay(

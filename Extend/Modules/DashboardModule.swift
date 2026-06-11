@@ -46,6 +46,7 @@ private struct DashboardModuleView: View {
     @Environment(MuscleGroupsState.self) var muscleGroupsState
     @Environment(WorkoutsState.self) var workoutsState
     @Environment(TimerState.self) var timerState
+    @Environment(\.horizontalSizeClass) private var sizeClass
     @Environment(VoiceTrainerState.self) var voiceTrainerState
     @Environment(TrainingPlanState.self) var planState
 
@@ -244,17 +245,20 @@ private struct DashboardModuleView: View {
             : tile.statCardType == .oneRepMax ? 1
             : tile.statCardType == .todaysPlan ? 1
             : 0
+        let isIPad = sizeClass == .regular
         // favoriteDay: header(44) + 7 rows × 19pt each + bottom padding(12) ≈ 189
         // volumeThisWeek: header(44) + bars(107) + trend(20) + padding(16) ≈ 187
         let tileHeight: CGFloat = isDoubleHeight ? columnWidth * 2 + spacing
-            : tile.statCardType == .favoriteDay ? CGFloat(44 + 7 * 19 + 12)
-            : tile.statCardType == .volumeThisWeek ? CGFloat(44 + 107 + 20 + 16)
+            : tile.statCardType == .favoriteDay ? CGFloat(44 + 7 * 19 + 12) * (isIPad ? 1.6 : 1.0)
+            : tile.statCardType == .volumeThisWeek ? CGFloat(44 + 107 + 20 + 16) * (isIPad ? 1.6 : 1.0)
             : columnWidth
         
         return Group {
             if tile.tileType == .statCard, let statCard = tile.statCardType, statCard == .todaysPlan {
                 TodaysPlanTileView(
                     tileTint: tile.tileTintColor,
+                    defaultBackground: state.dashboardTileBackgroundColor,
+                    borderColor: state.dashboardTileBorderColor,
                     accentPlacement: tile.accentPlacement,
                     accentColor: tile.accentColor,
                     onLaunch: { showingPlanLauncher = true }
@@ -282,6 +286,8 @@ private struct DashboardModuleView: View {
                     accentPlacement: tile.accentPlacement,
                     accentColor: tile.accentColor,
                     tileTint: tile.tileTintColor,
+                    defaultBackground: state.dashboardTileBackgroundColor,
+                    borderColor: state.dashboardTileBorderColor,
                     trend: trendInfo(for: statCard),
                     personalRecordLabel: statCard == .personalRecord ? logState.personalRecord?.exerciseName : nil,
                     oneRMEntries: rmEntries,
@@ -307,7 +313,8 @@ private struct DashboardModuleView: View {
     }
     
     private func interactiveTileView(tile: DashboardTile, width: CGFloat, height: CGFloat) -> some View {
-        let bg: Color = tile.tileTintColor ?? Color(UIColor.secondarySystemBackground)
+        let bg: Color = tile.tileTintColor ?? state.dashboardTileBackgroundColor ?? Color(UIColor.secondarySystemBackground)
+        let tileBorder: Color = tile.tileTintColor != nil ? .clear : (state.dashboardTileBorderColor ?? .clear)
         let isThreePieceShortcut = tile.tileType == .shortcut &&
             (tile.shortcutType == .workout || tile.shortcutType == .timer ||
              tile.shortcutType == .voiceTrainer || tile.shortcutType == .quickExercise)
@@ -405,6 +412,7 @@ private struct DashboardModuleView: View {
                     }
                     .background(bg)
                     .cornerRadius(12)
+                    .overlay(RoundedRectangle(cornerRadius: 12).stroke(tileBorder, lineWidth: 1))
 
                     if tile.accentPlacement != .none {
                         AccentBarView(placement: tile.accentPlacement, color: tile.accentColor)
@@ -459,6 +467,7 @@ private struct DashboardModuleView: View {
                         .padding(10)
                         .background(bg)
                         .cornerRadius(12)
+                        .overlay(RoundedRectangle(cornerRadius: 12).stroke(tileBorder, lineWidth: 1))
                         .foregroundColor(.primary)
 
                         // Accent bar overlay
@@ -1516,6 +1525,8 @@ private struct StatCardTileView: View {
     let accentPlacement: AccentPlacement
     let accentColor: Color
     let tileTint: Color?
+    var defaultBackground: Color? = nil
+    var borderColor: Color? = nil
     let trend: (symbol: String, color: Color)?
     let personalRecordLabel: String?   // exercise name for PR card (legacy single-value path)
     var oneRMEntries: [(name: String, value: Double)] = []
@@ -1523,19 +1534,22 @@ private struct StatCardTileView: View {
     var volumeWeeks: [(label: String, volume: Double)] = []
     var dayOfWeekCounts: [(label: String, count: Int)] = []
 
+    @Environment(\.horizontalSizeClass) private var sizeClass
+    private var iPad: Bool { sizeClass == .regular }
+
     var body: some View {
-        let bg = tileTint ?? Color(UIColor.secondarySystemBackground)
+        let bg = tileTint ?? defaultBackground ?? Color(UIColor.secondarySystemBackground)
+        let tileBorder: Color = tileTint != nil ? .clear : (borderColor ?? .clear)
         ZStack(alignment: .leading) {
             VStack(spacing: 6) {
                 // Header row: icon + title
                 HStack(spacing: 6) {
                     Image(systemName: icon)
-                        .font(.system(size: 14, weight: .semibold))
+                        .font(.system(size: iPad ? 22 : 14, weight: .semibold))
                         .foregroundColor(.primary)
                         .fixedSize()
                     Text(title)
-                        .font(.caption)
-                        .fontWeight(.bold)
+                        .font(.system(size: iPad ? 17 : 11, weight: .bold))
                         .foregroundColor(.primary)
                         .multilineTextAlignment(.leading)
                         .fixedSize(horizontal: false, vertical: true)
@@ -1549,7 +1563,7 @@ private struct StatCardTileView: View {
                     VStack(spacing: 6) {
                         WeekFrequencyView(days: frequencyDays)
                         Text(frequencyRangeLabel)
-                            .font(.caption2)
+                            .font(.system(size: iPad ? 16 : 10))
                             .foregroundColor(.gray)
                     }
                 } else if statType == .oneRepMax {
@@ -1557,10 +1571,10 @@ private struct StatCardTileView: View {
                         VStack(spacing: 4) {
                             Spacer()
                             Image(systemName: "trophy")
-                                .font(.system(size: 22, weight: .light))
+                                .font(.system(size: iPad ? 35 : 22, weight: .light))
                                 .foregroundColor(.gray)
                             Text("Log sets with 3–10 reps\nto see your 1RM estimates")
-                                .font(.caption2)
+                                .font(.system(size: iPad ? 16 : 10))
                                 .foregroundColor(.gray)
                                 .multilineTextAlignment(.center)
                             Spacer()
@@ -1573,12 +1587,12 @@ private struct StatCardTileView: View {
                                 HStack(spacing: 6) {
                                     // Rank badge
                                     Text("#\(index + 1)")
-                                        .font(.system(size: 10, weight: .bold, design: .rounded))
+                                        .font(.system(size: iPad ? 16 : 10, weight: .bold, design: .rounded))
                                         .foregroundColor(index == 0 ? .yellow : .gray)
-                                        .frame(width: 20)
+                                        .frame(width: iPad ? 32 : 20)
                                     // Exercise name
                                     Text(entry.name)
-                                        .font(.caption2)
+                                        .font(.system(size: iPad ? 16 : 10))
                                         .fontWeight(.semibold)
                                         .foregroundColor(.primary)
                                         .lineLimit(1)
@@ -1586,8 +1600,7 @@ private struct StatCardTileView: View {
                                         .frame(maxWidth: .infinity, alignment: .leading)
                                     // 1RM value
                                     Text(String(format: "%.0f", entry.value))
-                                        .font(.caption2)
-                                        .fontWeight(.bold)
+                                        .font(.system(size: iPad ? 16 : 10, weight: .bold))
                                         .foregroundColor(.primary)
                                 }
                                 // Mini progress bar
@@ -1611,10 +1624,10 @@ private struct StatCardTileView: View {
                         VStack(spacing: 4) {
                             Spacer()
                             Image(systemName: "star")
-                                .font(.system(size: 22, weight: .light))
+                                .font(.system(size: iPad ? 35 : 22, weight: .light))
                                 .foregroundColor(.gray)
                             Text("Log sets with weights\nto see your records")
-                                .font(.caption2)
+                                .font(.system(size: iPad ? 16 : 10))
                                 .foregroundColor(.gray)
                                 .multilineTextAlignment(.center)
                             Spacer()
@@ -1626,19 +1639,18 @@ private struct StatCardTileView: View {
                             ForEach(Array(personalRecordEntries.prefix(10).enumerated()), id: \.offset) { index, entry in
                                 HStack(spacing: 6) {
                                     Text("#\(index + 1)")
-                                        .font(.system(size: 10, weight: .bold, design: .rounded))
+                                        .font(.system(size: iPad ? 16 : 10, weight: .bold, design: .rounded))
                                         .foregroundColor(index == 0 ? Color(red: 1, green: 0.8, blue: 0) : .gray)
-                                        .frame(width: 20)
+                                        .frame(width: iPad ? 32 : 20)
                                     Text(entry.name)
-                                        .font(.caption2)
+                                        .font(.system(size: iPad ? 16 : 10))
                                         .fontWeight(.semibold)
                                         .foregroundColor(.primary)
                                         .lineLimit(1)
                                         .minimumScaleFactor(0.7)
                                         .frame(maxWidth: .infinity, alignment: .leading)
                                     Text(String(format: "%.0f", entry.value))
-                                        .font(.caption2)
-                                        .fontWeight(.bold)
+                                        .font(.system(size: iPad ? 16 : 10, weight: .bold))
                                         .foregroundColor(.primary)
                                 }
                                 GeometryReader { geo in
@@ -1670,8 +1682,7 @@ private struct StatCardTileView: View {
                                     ZStack {
                                         PieChartView(segments: [PieSegment(label: "No Data", value: 1.0, color: .gray)])
                                         Text("No workouts\nlogged")
-                                            .font(.caption2)
-                                            .fontWeight(.semibold)
+                                            .font(.system(size: iPad ? 16 : 10, weight: .semibold))
                                             .foregroundColor(.primary)
                                             .multilineTextAlignment(.center)
                                     }
@@ -1692,7 +1703,7 @@ private struct StatCardTileView: View {
                                                     .fill(segment.color)
                                                     .frame(width: 6, height: 6)
                                                 Text(segment.label)
-                                                    .font(.caption2)
+                                                    .font(.system(size: iPad ? 16 : 10))
                                                     .foregroundColor(.primary)
                                                     .lineLimit(1)
                                                     .minimumScaleFactor(0.75)
@@ -1709,10 +1720,10 @@ private struct StatCardTileView: View {
                         VStack(spacing: 4) {
                             Spacer()
                             Image(systemName: "chart.bar")
-                                .font(.system(size: 22, weight: .light))
+                                .font(.system(size: iPad ? 35 : 22, weight: .light))
                                 .foregroundColor(.gray)
                             Text("No volume logged yet")
-                                .font(.caption2)
+                                .font(.system(size: iPad ? 16 : 10))
                                 .foregroundColor(.gray)
                             Spacer()
                         }
@@ -1726,10 +1737,10 @@ private struct StatCardTileView: View {
                         VStack(spacing: 4) {
                             Spacer()
                             Image(systemName: "calendar")
-                                .font(.system(size: 22, weight: .light))
+                                .font(.system(size: iPad ? 35 : 22, weight: .light))
                                 .foregroundColor(.gray)
                             Text("No workouts logged yet")
-                                .font(.caption2)
+                                .font(.system(size: iPad ? 16 : 10))
                                 .foregroundColor(.gray)
                             Spacer()
                         }
@@ -1743,7 +1754,7 @@ private struct StatCardTileView: View {
                         || statType == .totalTime
                         || statType == .longestStreak || statType == .restDays
                     Text(value)
-                        .font(.system(size: isNumeric ? 28 : 16, weight: .bold, design: isNumeric ? .rounded : .default))
+                        .font(.system(size: isNumeric ? (iPad ? 44 : 28) : (iPad ? 25 : 16), weight: .bold, design: isNumeric ? .rounded : .default))
                         .foregroundColor(.primary)
                         .lineLimit(2)
                         .minimumScaleFactor(0.6)
@@ -1752,14 +1763,14 @@ private struct StatCardTileView: View {
                     // Trend arrow below the main value
                     if let t = trend {
                         Text(t.symbol)
-                            .font(.system(size: 13, weight: .bold))
+                            .font(.system(size: iPad ? 20 : 13, weight: .bold))
                             .foregroundColor(t.color)
                     }
 
                     // Secondary label for Personal Record card
                     if statType == .personalRecord, let exercise = personalRecordLabel {
                         Text(exercise)
-                            .font(.caption2)
+                            .font(.system(size: iPad ? 16 : 10))
                             .foregroundColor(.gray)
                             .lineLimit(1)
                             .minimumScaleFactor(0.7)
@@ -1772,6 +1783,7 @@ private struct StatCardTileView: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .background(bg)
             .clipShape(RoundedRectangle(cornerRadius: 12))
+            .overlay(RoundedRectangle(cornerRadius: 12).stroke(tileBorder, lineWidth: 1))
 
             // Accent bar
             if accentPlacement != .none {
@@ -1824,28 +1836,31 @@ private struct AccentBarView: View {
 private struct WeekFrequencyView: View {
     let days: [WeekdayFrequency]
 
+    @Environment(\.horizontalSizeClass) private var sizeClass
+
     var body: some View {
-        HStack(spacing: 4) {
+        let iPad = sizeClass == .regular
+        HStack(spacing: iPad ? 8 : 4) {
             ForEach(days) { day in
-                VStack(spacing: 4) {
+                VStack(spacing: iPad ? 8 : 4) {
                     Text(day.label)
-                        .font(.system(size: 9, weight: .medium))
+                        .font(.system(size: iPad ? 14 : 9, weight: .medium))
                         .foregroundColor(.gray)
 
                     if day.hasWorkout {
                         Image(systemName: "checkmark.circle.fill")
                             .foregroundColor(.green)
-                            .font(.system(size: 14))
+                            .font(.system(size: iPad ? 22 : 14))
                     } else {
                         Circle()
                             .stroke(Color.gray.opacity(0.55), lineWidth: 1.5)
-                            .frame(width: 14, height: 14)
+                            .frame(width: iPad ? 22 : 14, height: iPad ? 22 : 14)
                     }
                 }
                 .frame(maxWidth: .infinity)
-                .padding(.vertical, 5)
+                .padding(.vertical, iPad ? 10 : 5)
                 .background(Color.gray.opacity(0.12))
-                .cornerRadius(6)
+                .cornerRadius(iPad ? 10 : 6)
             }
         }
         .frame(maxWidth: .infinity)
@@ -1909,11 +1924,13 @@ private struct VolumeTrendLine: View {
 private struct VolumeBarChartView: View {
     let weeks: [(label: String, volume: Double)]
 
-    private let barAreaH: CGFloat = 90
-    private let labelH: CGFloat = 14
-    private let barSpacing: CGFloat = 6
+    @Environment(\.horizontalSizeClass) private var sizeClass
 
     var body: some View {
+        let iPad = sizeClass == .regular
+        let barAreaH: CGFloat = iPad ? 160 : 90
+        let labelH: CGFloat = iPad ? 22 : 14
+        let barSpacing: CGFloat = iPad ? 10 : 6
         let maxVol = weeks.map { $0.volume }.max() ?? 1
         let currentWeekIdx = weeks.count - 1
         let fractions: [Double] = weeks.map { maxVol > 0 ? $0.volume / maxVol : 0 }
@@ -1926,7 +1943,7 @@ private struct VolumeBarChartView: View {
                     HStack(alignment: .bottom, spacing: barSpacing) {
                         ForEach(Array(weeks.enumerated()), id: \.offset) { idx, week in
                             let fraction = CGFloat(fractions[idx])
-                            let barHeight = week.volume > 0 ? max(18, barAreaH * fraction) : 0
+                            let barHeight = week.volume > 0 ? max(iPad ? 28 : 18, barAreaH * fraction) : 0
                             let isCurrentWeek = idx == currentWeekIdx
                             VStack(spacing: 3) {
                                 ZStack {
@@ -1938,7 +1955,7 @@ private struct VolumeBarChartView: View {
                                             ? String(format: "%.1fk", week.volume / 1000)
                                             : String(format: "%.0f", week.volume)
                                         Text(volLabel)
-                                            .font(.system(size: 11, weight: .bold))
+                                            .font(.system(size: iPad ? 17 : 11, weight: .bold))
                                             .foregroundColor(isCurrentWeek ? Color(UIColor.systemBackground) : Color.primary.opacity(0.7))
                                             .minimumScaleFactor(0.5)
                                             .lineLimit(1)
@@ -1946,7 +1963,7 @@ private struct VolumeBarChartView: View {
                                 }
                                 .frame(height: barHeight)
                                 Text(week.label)
-                                    .font(.system(size: 10))
+                                    .font(.system(size: iPad ? 15 : 10))
                                     .foregroundColor(.gray)
                                     .lineLimit(1)
                                     .minimumScaleFactor(0.5)
@@ -1968,7 +1985,7 @@ private struct VolumeBarChartView: View {
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
             }
-            .frame(maxWidth: .infinity, minHeight: 107)
+            .frame(maxWidth: .infinity, minHeight: iPad ? 185 : 107)
 
             // % vs last week
             if weeks.count >= 2 {
@@ -1979,10 +1996,10 @@ private struct VolumeBarChartView: View {
                     HStack {
                         Spacer()
                         Image(systemName: pct >= 0 ? "arrow.up" : "arrow.down")
-                            .font(.system(size: 9, weight: .bold))
+                            .font(.system(size: iPad ? 14 : 9, weight: .bold))
                             .foregroundColor(pct >= 0 ? .green : .red)
                         Text("\(abs(pct))% vs last week")
-                            .font(.system(size: 9))
+                            .font(.system(size: iPad ? 14 : 9))
                             .foregroundColor(.gray)
                     }
                 }
@@ -1997,35 +2014,38 @@ private struct VolumeBarChartView: View {
 private struct DayOfWeekBarChartView: View {
     let days: [(label: String, count: Int)]
 
+    @Environment(\.horizontalSizeClass) private var sizeClass
+
     var body: some View {
+        let iPad = sizeClass == .regular
         let sorted = days.sorted { $0.count > $1.count }
         let maxCount = sorted.map { $0.count }.max() ?? 1
 
-        VStack(alignment: .leading, spacing: 5) {
+        VStack(alignment: .leading, spacing: iPad ? 10 : 5) {
             ForEach(Array(sorted.enumerated()), id: \.offset) { idx, day in
                 let fraction = maxCount > 0 ? CGFloat(day.count) / CGFloat(maxCount) : 0
-                HStack(spacing: 6) {
+                HStack(spacing: iPad ? 10 : 6) {
                     Text(String(day.label.prefix(3)))
-                        .font(.system(size: 9, weight: idx == 0 ? .bold : .semibold))
+                        .font(.system(size: iPad ? 15 : 9, weight: idx == 0 ? .bold : .semibold))
                         .foregroundColor(idx == 0 ? .primary : .gray)
-                        .frame(width: 26, alignment: .leading)
+                        .frame(width: iPad ? 42 : 26, alignment: .leading)
                     GeometryReader { barGeo in
                         ZStack(alignment: .leading) {
                             RoundedRectangle(cornerRadius: 2)
                                 .fill(Color.primary.opacity(0.08))
-                                .frame(height: 10)
+                                .frame(height: iPad ? 18 : 10)
                             RoundedRectangle(cornerRadius: 2)
                                 .fill(idx == 0 ? Color.primary : Color.primary.opacity(0.3))
-                                .frame(width: barGeo.size.width * fraction, height: 10)
+                                .frame(width: barGeo.size.width * fraction, height: iPad ? 18 : 10)
                         }
                     }
-                    .frame(height: 10)
+                    .frame(height: iPad ? 18 : 10)
                     Text("\(day.count)")
-                        .font(.system(size: 9, weight: .bold))
+                        .font(.system(size: iPad ? 15 : 9, weight: .bold))
                         .foregroundColor(idx == 0 ? .primary : .gray)
-                        .frame(width: 18, alignment: .trailing)
+                        .frame(width: iPad ? 28 : 18, alignment: .trailing)
                 }
-                .frame(height: 14)
+                .frame(height: iPad ? 24 : 14)
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -2288,16 +2308,22 @@ private struct TodaysPlanTileView: View {
     @Environment(TimerState.self) private var timerState
 
     var tileTint: Color?
+    var defaultBackground: Color? = nil
+    var borderColor: Color? = nil
     var accentPlacement: AccentPlacement
     var accentColor: Color
     var onLaunch: () -> Void
+
+    @Environment(\.horizontalSizeClass) private var sizeClass
+    private var iPad: Bool { sizeClass == .regular }
 
     private var planDay: PlanDay? {
         planState.planDay(for: Calendar.current.startOfDay(for: Date()))
     }
 
     var body: some View {
-        let bg = tileTint ?? Color(UIColor.secondarySystemBackground)
+        let bg = tileTint ?? defaultBackground ?? Color(UIColor.secondarySystemBackground)
+        let tileBorder: Color = tileTint != nil ? .clear : (borderColor ?? .clear)
         ZStack(alignment: .leading) {
             Button(action: {
                 UIImpactFeedbackGenerator(style: .light).impactOccurred()
@@ -2306,12 +2332,11 @@ private struct TodaysPlanTileView: View {
                 VStack(alignment: .leading, spacing: 6) {
                     HStack(spacing: 6) {
                         Image(systemName: "calendar.badge.checkmark")
-                            .font(.system(size: 14, weight: .semibold))
+                            .font(.system(size: iPad ? 22 : 14, weight: .semibold))
                             .foregroundColor(.primary)
                             .fixedSize()
                         Text("Today's Plan")
-                            .font(.caption)
-                            .fontWeight(.bold)
+                            .font(.system(size: iPad ? 17 : 11, weight: .bold))
                             .foregroundColor(.primary)
                             .frame(maxWidth: .infinity, alignment: .leading)
                     }
@@ -2323,23 +2348,22 @@ private struct TodaysPlanTileView: View {
                         ForEach(entries, id: \.name) { entry in
                             HStack(spacing: 4) {
                                 Image(systemName: entry.icon)
-                                    .font(.caption2)
+                                    .font(.system(size: iPad ? 16 : 10))
                                     .foregroundColor(.secondary)
                                 Text(entry.name)
-                                    .font(.caption2)
+                                    .font(.system(size: iPad ? 16 : 10))
                                     .foregroundColor(.primary)
                                     .lineLimit(1)
-                                //Spacer(minLength: 0)
                                 if entry.completed {
                                     Image(systemName: "checkmark.circle.fill")
-                                        .font(.caption2)
+                                        .font(.system(size: iPad ? 16 : 10))
                                         .foregroundColor(.green)
                                 }
                             }
                         }
                     } else {
                         Text("Rest day")
-                            .font(.caption2)
+                            .font(.system(size: iPad ? 16 : 10))
                             .foregroundColor(.secondary)
                     }
                 }
@@ -2347,6 +2371,7 @@ private struct TodaysPlanTileView: View {
                 .frame(maxWidth: .infinity, alignment: .topLeading)
                 .background(bg)
                 .clipShape(RoundedRectangle(cornerRadius: 12))
+                .overlay(RoundedRectangle(cornerRadius: 12).stroke(tileBorder, lineWidth: 1))
             }
             .buttonStyle(.plain)
 

@@ -694,6 +694,7 @@ private struct TimerPhase {
 
 struct ActiveTimerView: View {
     @Environment(\.dismiss) var dismiss
+    @Environment(\.horizontalSizeClass) private var sizeClass
 
     let config: TimerConfig
 
@@ -765,31 +766,32 @@ struct ActiveTimerView: View {
                         .padding(.top, 24)
 
                     // Big clock with circular progress ring
+                    let iPad = sizeClass == .regular
                     ZStack {
                         // Track ring
                         Circle()
-                            .stroke(Color(UIColor.secondarySystemBackground), lineWidth: 10)
+                            .stroke(Color(UIColor.secondarySystemBackground), lineWidth: iPad ? 16 : 10)
 
                         // Progress ring
                         Circle()
                             .trim(from: 0, to: phaseProgress)
-                            .stroke(Color.black.opacity(0.85), style: StrokeStyle(lineWidth: 10, lineCap: .round))
+                            .stroke(Color.black.opacity(0.85), style: StrokeStyle(lineWidth: iPad ? 16 : 10, lineCap: .round))
                             .rotationEffect(.degrees(-90))
                             .animation(.linear(duration: 0.5), value: phaseProgress)
 
                         // Time text
                         Text(formatTime(displaySeconds))
-                            .font(.system(size: 64, weight: .bold, design: .monospaced))
+                            .font(.system(size: iPad ? 100 : 64, weight: .bold, design: .monospaced))
                             .minimumScaleFactor(0.4)
                             .lineLimit(1)
                     }
-                    .frame(width: 240, height: 240)
+                    .frame(width: iPad ? 380 : 240, height: iPad ? 380 : 240)
 
                     // Phase navigation
-                    HStack(spacing: 32) {
+                    HStack(spacing: iPad ? 56 : 32) {
                         Button(action: previousPhase) {
                             Image(systemName: "chevron.left.circle.fill")
-                                .font(.system(size: 36))
+                                .font(.system(size: iPad ? 56 : 36))
                                 .foregroundColor(phaseIndex > 0 ? .primary : .gray)
                         }
                         .buttonStyle(.plain)
@@ -798,14 +800,14 @@ struct ActiveTimerView: View {
                         // Play / Pause
                         Button(action: toggleTimer) {
                             Image(systemName: isRunning ? "pause.circle.fill" : "play.circle.fill")
-                                .font(.system(size: 56))
+                                .font(.system(size: iPad ? 88 : 56))
                                 .foregroundColor(.primary)
                         }
                         .buttonStyle(.plain)
 
                         Button(action: nextPhase) {
                             Image(systemName: "chevron.right.circle.fill")
-                                .font(.system(size: 36))
+                                .font(.system(size: iPad ? 56 : 36))
                                 .foregroundColor(phaseIndex < phases.count - 1 ? .primary : .gray)
                         }
                         .buttonStyle(.plain)
@@ -839,20 +841,20 @@ struct ActiveTimerView: View {
                                     if amrapRounds > 0 { amrapRounds -= 1 }
                                 }) {
                                     Image(systemName: "minus.circle.fill")
-                                        .font(.system(size: 32))
+                                        .font(.system(size: sizeClass == .regular ? 52 : 32))
                                         .foregroundColor(.primary)
                                 }
                                 .buttonStyle(.plain)
 
                                 Text("\(amrapRounds)")
-                                    .font(.system(size: 40, weight: .bold, design: .monospaced))
+                                    .font(.system(size: sizeClass == .regular ? 64 : 40, weight: .bold, design: .monospaced))
 
                                 Button(action: {
                                     UIImpactFeedbackGenerator(style: .light).impactOccurred()
                                     amrapRounds += 1
                                 }) {
                                     Image(systemName: "plus.circle.fill")
-                                        .font(.system(size: 32))
+                                        .font(.system(size: sizeClass == .regular ? 52 : 32))
                                         .foregroundColor(.primary)
                                 }
                                 .buttonStyle(.plain)

@@ -14,7 +14,7 @@ struct ContentView: View {
     @Environment(ModuleState.self) var state
     @Environment(DashboardState.self) var dashboardState
 
-    @AppStorage("appColorScheme") private var appColorScheme: String = "light"
+    @AppStorage("appColorScheme") private var appColorScheme: String = "system"
     @AppStorage("hasSeenWelcome") private var hasSeenWelcome: Bool = false
 
     @State private var showWelcome: Bool = false
@@ -25,7 +25,8 @@ struct ContentView: View {
     private var preferredScheme: ColorScheme? {
         switch appColorScheme {
         case "dark": return .dark
-        default: return .light
+        case "light": return .light
+        default: return nil  // "system" — follow iOS setting
         }
     }
 

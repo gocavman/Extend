@@ -64,14 +64,14 @@ struct ExtendApp: App {
             state.setBottomNavBarModules([
                 ModuleIDs.dashboard,
                 ModuleIDs.workouts,
-                ModuleIDs.generate,
                 ModuleIDs.exercises,
-                ModuleIDs.settings
+                ModuleIDs.todaysPlan,
+                ModuleIDs.progress
             ])
             state.setTopNavBarModules([
-                ModuleIDs.progress,
+                ModuleIDs.voiceTrainer,
+                ModuleIDs.generate,
                 ModuleIDs.timer,
-                ModuleIDs.exercises,
                 ModuleIDs.muscles,
                 ModuleIDs.equipment
             ])

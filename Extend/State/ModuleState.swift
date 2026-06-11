@@ -81,11 +81,15 @@ public final class ModuleState {
     public var dashboardUseGradient: Bool
     public var dashboardGradientSecondaryColor: Color
     public var dashboardGradientDirection: GradientDirection
+    public var dashboardTileBackgroundColor: Color?
+    public var dashboardTileBorderColor: Color?
 
     private let dashboardBackgroundColorKey = "dashboardBackgroundColor"
     private let dashboardUseGradientKey = "dashboardUseGradient"
     private let dashboardGradientSecondaryColorKey = "dashboardGradientSecondaryColor"
     private let dashboardGradientDirectionKey = "dashboardGradientDirection"
+    private let dashboardTileBackgroundColorKey = "dashboardTileBackgroundColor"
+    private let dashboardTileBorderColorKey = "dashboardTileBorderColor"
 
     private init() {
         navBarBackgroundColor = ModuleState.loadColor(for: navBarBackgroundColorKey)
@@ -103,10 +107,21 @@ public final class ModuleState {
             navBarGradientDirection = .horizontal
         }
 
+        // Clear any stale background color saved before the user explicitly set it via settings
+        if !defaults.bool(forKey: "dashboardBackgroundColorUserSet") {
+            defaults.removeObject(forKey: dashboardBackgroundColorKey)
+        }
         dashboardBackgroundColor = ModuleState.loadColor(for: dashboardBackgroundColorKey)
         dashboardUseGradient = defaults.bool(forKey: dashboardUseGradientKey)
         dashboardGradientSecondaryColor = ModuleState.loadColor(for: dashboardGradientSecondaryColorKey)
             ?? Color(UIColor.secondarySystemBackground)
+        // Clear any stale tile colors saved before the user explicitly set them via settings
+        if !defaults.bool(forKey: "dashboardTileColorsUserSet") {
+            defaults.removeObject(forKey: dashboardTileBackgroundColorKey)
+            defaults.removeObject(forKey: dashboardTileBorderColorKey)
+        }
+        dashboardTileBackgroundColor = ModuleState.loadColor(for: dashboardTileBackgroundColorKey)
+        dashboardTileBorderColor = ModuleState.loadColor(for: dashboardTileBorderColorKey)
 
         if let dirRaw = defaults.string(forKey: dashboardGradientDirectionKey),
            let dir = GradientDirection(rawValue: dirRaw) {
@@ -190,9 +205,11 @@ public final class ModuleState {
     public func updateDashboardBackgroundColor(_ color: Color?) {
         dashboardBackgroundColor = color
         if let color {
+            defaults.set(true, forKey: "dashboardBackgroundColorUserSet")
             ModuleState.saveColor(color, for: dashboardBackgroundColorKey)
         } else {
             defaults.removeObject(forKey: dashboardBackgroundColorKey)
+            defaults.removeObject(forKey: "dashboardBackgroundColorUserSet")
         }
     }
 
@@ -209,6 +226,26 @@ public final class ModuleState {
     public func updateDashboardGradientDirection(_ direction: GradientDirection) {
         dashboardGradientDirection = direction
         defaults.set(direction.rawValue, forKey: dashboardGradientDirectionKey)
+    }
+
+    public func updateDashboardTileBackgroundColor(_ color: Color?) {
+        dashboardTileBackgroundColor = color
+        if let color {
+            defaults.set(true, forKey: "dashboardTileColorsUserSet")
+            ModuleState.saveColor(color, for: dashboardTileBackgroundColorKey)
+        } else {
+            defaults.removeObject(forKey: dashboardTileBackgroundColorKey)
+        }
+    }
+
+    public func updateDashboardTileBorderColor(_ color: Color?) {
+        dashboardTileBorderColor = color
+        if let color {
+            defaults.set(true, forKey: "dashboardTileColorsUserSet")
+            ModuleState.saveColor(color, for: dashboardTileBorderColorKey)
+        } else {
+            defaults.removeObject(forKey: dashboardTileBorderColorKey)
+        }
     }
 
     public func resetNavBarAppearance() {

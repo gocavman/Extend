@@ -574,6 +574,8 @@ struct PlanDayLauncherSheet: View {
     @Environment(VoiceTrainerState.self) private var voiceTrainerState
     @Environment(TimerState.self) private var timerState
     @Environment(ModuleState.self) private var moduleState
+    @AppStorage("appColorScheme") private var appColorScheme: String = "system"
+    private var preferredScheme: ColorScheme? { appColorScheme == "dark" ? .dark : appColorScheme == "light" ? .light : nil }
 
     var onLaunchWorkout: (Workout) -> Void
     var onLaunchExercise: (Exercise) -> Void
@@ -604,8 +606,28 @@ struct PlanDayLauncherSheet: View {
     }
 
     var body: some View {
-        NavigationStack {
+        ZStack {
+            Color(UIColor.systemBackground).ignoresSafeArea()
             VStack(spacing: 0) {
+                // Custom header row (replaces NavigationStack title + toolbar)
+                HStack {
+                    Button("Done") { dismiss() }
+                        .foregroundColor(.primary)
+                    Spacer()
+                    Text("Today's Plan")
+                        .font(.headline)
+                    Spacer()
+                    Button {
+                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                        showPlan = true
+                    } label: {
+                        Image(systemName: "calendar.badge.checkmark")
+                            .foregroundColor(.primary)
+                    }
+                }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 12)
+
                 // Date navigation bar
                 HStack {
                     Button {
@@ -627,7 +649,8 @@ struct PlanDayLauncherSheet: View {
                             .foregroundColor(.primary)
                     }
                 }
-                .padding()
+                .padding(.horizontal, 16)
+                .padding(.bottom, 8)
 
                 if let pd = planDay, !pd.isEmpty {
                     List {
@@ -721,6 +744,9 @@ struct PlanDayLauncherSheet: View {
                             }
                         }
                     }
+                    .listStyle(.plain)
+                    .scrollContentBackground(.hidden)
+                    .background(Color(UIColor.systemBackground))
                 } else {
                     Spacer()
                     VStack(spacing: 8) {
@@ -732,29 +758,15 @@ struct PlanDayLauncherSheet: View {
                     }
                     Spacer()
                 }
-            }
-            .navigationTitle("Today's Plan")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
-                    Button("Done") { dismiss() }
-                }
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button {
-                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                        showPlan = true
-                    } label: {
-                        Image(systemName: "calendar.badge.checkmark")
-                    }
-                }
-            }
-        }
+            } // VStack
+        } // ZStack
         .fullScreenCover(isPresented: $showPlan) {
             PlanModuleView()
                 .environment(planState)
                 .environment(workoutsState)
                 .environment(exercisesState)
                 .environment(voiceTrainerState)
+                .preferredColorScheme(preferredScheme)
         }
     }
 }

@@ -1,6 +1,6 @@
 import SwiftUI
 
-// MARK: - Plan Module View (entry point, shown as fullScreenCover from ProgressModule)
+// MARK: - Plan Module View (entry point — Manage Plans root with push to day view)
 
 /// Wrapper so fullScreenCover(item:) captures the plan correctly at trigger time.
 private struct PlanEditorItem: Identifiable {
@@ -13,82 +13,154 @@ struct PlanModuleView: View {
     @Environment(TrainingPlanState.self) private var planState
     @Environment(WorkoutsState.self) private var workoutsState
     @Environment(ExercisesState.self) private var exercisesState
+    @AppStorage("appColorScheme") private var appColorScheme: String = "system"
+    private var preferredScheme: ColorScheme? { appColorScheme == "dark" ? .dark : appColorScheme == "light" ? .light : nil }
     @Environment(VoiceTrainerState.self) private var voiceTrainerState
 
     @State private var planEditorItem: PlanEditorItem? = nil
-    @State private var showingManagePlans = false
+    @State private var navigationPath = NavigationPath()
 
     var body: some View {
-        NavigationStack {
-            Group {
-                if planState.plans.isEmpty {
-                    emptyState
-                } else {
-                    planContent
+        NavigationStack(path: $navigationPath) {
+            planListRoot
+                .navigationDestination(for: TrainingPlan.self) { plan in
+                    PlanDaysView(plan: plan)
+                        .environment(planState)
+                        .environment(workoutsState)
+                        .environment(exercisesState)
+                        .environment(voiceTrainerState)
                 }
+        }
+        .preferredColorScheme(preferredScheme)
+        .background(Color(UIColor.systemBackground).ignoresSafeArea())
+        // Full-screen plan editor (new or edit)
+        .fullScreenCover(item: $planEditorItem) { item in
+            PlanEditorSheet(
+                plan: item.plan,
+                onSave: { saved in
+                    if item.plan != nil {
+                        planState.updatePlan(saved)
+                    } else {
+                        planState.addPlan(saved)
+                        planState.setActive(id: saved.id)
+                    }
+                },
+                onDelete: item.plan != nil ? { id in
+                    planState.removePlan(id: id)
+                    // If we were viewing this plan's days, pop back
+                    navigationPath = NavigationPath()
+                } : nil
+            )
+            .environment(workoutsState)
+            .environment(exercisesState)
+            .preferredColorScheme(preferredScheme)
+        }
+    }
+
+    // MARK: - Plan List Root (Manage Plans)
+
+    private var planListRoot: some View {
+        ZStack {
+            Color(UIColor.systemBackground).ignoresSafeArea()
+            if planState.plans.isEmpty {
+                emptyState
+            } else {
+                planList
             }
-            .navigationTitle("Plan")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
-                    Button("Done") { dismiss() }
+        }
+        .navigationTitle("Plans")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .topBarLeading) {
+                Button("Done") { dismiss() }
+            }
+            ToolbarItem(placement: .topBarTrailing) {
+                Button {
+                    planEditorItem = PlanEditorItem(id: UUID(), plan: nil)
+                } label: {
+                    Image(systemName: "plus")
                 }
-                ToolbarItemGroup(placement: .topBarTrailing) {
-                    if !planState.plans.isEmpty {
-                        Button {
-                            showingManagePlans = true
-                        } label: {
-                            Image(systemName: "list.bullet")
-                                .foregroundColor(.primary)
-                        }
-                    }
-                    Button {
-                        planEditorItem = PlanEditorItem(id: UUID(), plan: nil)
-                    } label: {
-                        Image(systemName: "plus")
-                            .foregroundColor(.primary)
-                    }
-                }
-            }
-            // Full-screen plan editor (new or edit) — item: binding guarantees correct capture
-            .fullScreenCover(item: $planEditorItem) { item in
-                PlanEditorSheet(
-                    plan: item.plan,
-                    onSave: { saved in
-                        if item.plan != nil {
-                            planState.updatePlan(saved)
-                        } else {
-                            planState.addPlan(saved)
-                            planState.setActive(id: saved.id)
-                        }
-                    },
-                    onDelete: item.plan != nil ? { id in planState.removePlan(id: id) } : nil
-                )
-                .environment(workoutsState)
-                .environment(exercisesState)
-            }
-            // Full-screen manage plans
-            .fullScreenCover(isPresented: $showingManagePlans) {
-                ManagePlansSheet(onEdit: { plan in
-                    showingManagePlans = false
-                    // Small delay so the first cover dismisses before the next presents
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
-                        planEditorItem = PlanEditorItem(id: plan.id, plan: plan)
-                    }
-                })
-                .environment(planState)
             }
         }
     }
 
-    // MARK: Empty State
+    private var planList: some View {
+        ScrollView {
+            VStack(spacing: 10) {
+                ForEach(planState.plans) { plan in
+                    planRow(plan: plan)
+                }
+            }
+            .padding(16)
+        }
+    }
+
+    private func planRow(plan: TrainingPlan) -> some View {
+        let isActive = planState.activePlanID == plan.id
+        return HStack {
+            // Tappable area — pushes to plan days view
+            Button {
+                navigationPath.append(plan)
+            } label: {
+                HStack {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(plan.name)
+                            .font(.subheadline)
+                            .fontWeight(isActive ? .bold : .regular)
+                            .foregroundColor(.primary)
+                        Text(plan.weeks == 0 ? "Repeating weekly" : "\(plan.weeks) week\(plan.weeks == 1 ? "" : "s")")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                    Spacer()
+                }
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+
+            // Trailing action buttons
+            HStack(spacing: 8) {
+                // Activate / Active badge
+                Button {
+                    let newID: UUID? = isActive ? nil : plan.id
+                    planState.setActive(id: newID)
+                } label: {
+                    Text(isActive ? "Active" : "Activate")
+                        .font(.caption)
+                        .fontWeight(.medium)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 5)
+                        .background(isActive ? Color.accentColor : Color(UIColor.tertiarySystemBackground))
+                        .foregroundColor(isActive ? .white : .primary)
+                        .clipShape(Capsule())
+                }
+                .buttonStyle(.plain)
+
+                // Edit plan name/settings
+                Button {
+                    planEditorItem = PlanEditorItem(id: plan.id, plan: plan)
+                } label: {
+                    Image(systemName: "pencil")
+                        .foregroundColor(.secondary)
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .padding(14)
+        .background(
+            RoundedRectangle(cornerRadius: 10)
+                .fill(Color(UIColor.secondarySystemBackground))
+        )
+    }
+
+    // MARK: - Empty State
 
     private var emptyState: some View {
         VStack(spacing: 20) {
             Image(systemName: "calendar.badge.plus")
                 .font(.system(size: 56, weight: .light))
                 .foregroundColor(.secondary)
-            Text("No Training Plan")
+            Text("No Training Plans")
                 .font(.title3).fontWeight(.semibold)
             Text("Create a plan to schedule workouts and exercises across the week.")
                 .font(.subheadline).foregroundColor(.secondary)
@@ -108,57 +180,65 @@ struct PlanModuleView: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
+}
 
-    // MARK: Plan Content
+// MARK: - Plan Days View (pushed from Manage Plans)
 
-    private var planContent: some View {
-        VStack(spacing: 0) {
-            // Active plan header
-            if let plan = planState.activePlan {
-                activePlanHeader(plan: plan)
+/// Shows the week or full program for a given plan.
+private struct PlanDaysView: View {
+    @Environment(TrainingPlanState.self) private var planState
+    @Environment(WorkoutsState.self) private var workoutsState
+    @Environment(ExercisesState.self) private var exercisesState
+    @Environment(VoiceTrainerState.self) private var voiceTrainerState
+    @AppStorage("appColorScheme") private var appColorScheme: String = "system"
+    private var preferredScheme: ColorScheme? { appColorScheme == "dark" ? .dark : appColorScheme == "light" ? .light : nil }
+
+    let plan: TrainingPlan
+
+    @State private var planEditorItem: PlanEditorItem? = nil
+
+    /// The live version of this plan from state (so edits reflect immediately).
+    private var livePlan: TrainingPlan {
+        planState.plans.first { $0.id == plan.id } ?? plan
+    }
+
+    var body: some View {
+        ZStack {
+            Color(UIColor.systemBackground).ignoresSafeArea()
+            if livePlan.weeks > 0 {
+                FullProgramView(plan: livePlan)
+                    .environment(planState)
+                    .environment(workoutsState)
+                    .environment(exercisesState)
+            } else {
+                WeekView(plan: livePlan)
+                    .environment(planState)
+                    .environment(workoutsState)
+                    .environment(exercisesState)
             }
-
-            Divider()
-
-            // Content: repeating plans show the current week; fixed plans show all weeks
-            if let plan = planState.activePlan {
-                if plan.weeks > 0 {
-                    FullProgramView(plan: plan)
-                        .environment(planState)
-                        .environment(workoutsState)
-                        .environment(exercisesState)
-                } else {
-                    WeekView(plan: plan)
-                        .environment(planState)
-                        .environment(workoutsState)
-                        .environment(exercisesState)
+        }
+        .navigationTitle(livePlan.name)
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Button {
+                    planEditorItem = PlanEditorItem(id: livePlan.id, plan: livePlan)
+                } label: {
+                    Image(systemName: "pencil")
                 }
             }
         }
-    }
-
-    private func activePlanHeader(plan: TrainingPlan) -> some View {
-        HStack {
-            VStack(alignment: .leading, spacing: 2) {
-                Text(plan.name)
-                    .font(.headline)
-                Text(plan.weeks == 0 ? "Repeating weekly" : "\(plan.weeks) week\(plan.weeks == 1 ? "" : "s")")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-            }
-            Spacer()
-            Button(action: {
-                planEditorItem = PlanEditorItem(id: plan.id, plan: plan)
-            }) {
-                Image(systemName: "pencil")
-                    .foregroundColor(.secondary)
-            }
+        .fullScreenCover(item: $planEditorItem) { item in
+            PlanEditorSheet(
+                plan: item.plan,
+                onSave: { saved in planState.updatePlan(saved) },
+                onDelete: { id in planState.removePlan(id: id) }
+            )
+            .environment(workoutsState)
+            .environment(exercisesState)
+            .preferredColorScheme(preferredScheme)
         }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 10)
-        .background(Color(UIColor.secondarySystemBackground))
     }
-
 }
 
 // MARK: - Week View (This Week tab)
@@ -573,6 +653,8 @@ struct DayEditorSheet: View {
     @Environment(ExercisesState.self) private var exercisesState
     @Environment(VoiceTrainerState.self) private var voiceTrainerState
     @Environment(TimerState.self) private var timerState
+    @AppStorage("appColorScheme") private var appColorScheme: String = "system"
+    private var preferredScheme: ColorScheme? { appColorScheme == "dark" ? .dark : appColorScheme == "light" ? .light : nil }
 
     let day: PlanDay
     let weekIndex: Int?   // nil = repeating plan (week 0)
@@ -714,6 +796,21 @@ struct DayEditorSheet: View {
                     }
                 }
 
+                // Apply scope — only shown for fixed multi-week plans
+                if isFixedPlan {
+                    Section {
+                        Toggle(isOn: $applyToAll) {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("Apply to all weeks")
+                                    .font(.subheadline)
+                                Text("Copy this day's schedule to every week in the plan")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            }
+                        }
+                    }
+                }
+
                 // Note section
                 Section("Note") {
                     ZStack(alignment: .topLeading) {
@@ -728,21 +825,6 @@ struct DayEditorSheet: View {
                                 .padding(.top, 8)
                                 .padding(.leading, 4)
                                 .allowsHitTesting(false)
-                        }
-                    }
-                }
-
-                // Apply scope — only shown for fixed multi-week plans
-                if isFixedPlan {
-                    Section {
-                        Toggle(isOn: $applyToAll) {
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text("Apply to all weeks")
-                                    .font(.subheadline)
-                                Text("Copy this day's schedule to every week in the plan")
-                                    .font(.caption)
-                                    .foregroundColor(.secondary)
-                            }
                         }
                     }
                 }
@@ -762,6 +844,8 @@ struct DayEditorSheet: View {
                     }
                 }
             }
+            .scrollContentBackground(.hidden)
+            .background(Color(UIColor.systemBackground))
             .navigationTitle(dayTitle)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -796,7 +880,8 @@ struct DayEditorSheet: View {
                 TimerPickerSheet(selectedIDs: $editedDay.timerIDs)
                     .environment(timerState)
             }
-        }
+        } // NavigationStack
+        .preferredColorScheme(preferredScheme)
     }
 }
 
@@ -807,6 +892,8 @@ private struct WorkoutPickerSheet: View {
     @Environment(WorkoutsState.self) private var workoutsState
     @Binding var selectedIDs: [UUID]
     @State private var searchText = ""
+    @AppStorage("appColorScheme") private var appColorScheme: String = "system"
+    private var preferredScheme: ColorScheme? { appColorScheme == "dark" ? .dark : appColorScheme == "light" ? .light : nil }
 
     private var filtered: [Workout] {
         let sorted = workoutsState.workouts.sorted { $0.name < $1.name }
@@ -849,6 +936,7 @@ private struct WorkoutPickerSheet: View {
                 }
             }
         }
+        .preferredColorScheme(preferredScheme)
     }
 }
 
@@ -859,6 +947,8 @@ private struct ExercisePickerSheet: View {
     @Environment(ExercisesState.self) private var exercisesState
     @Binding var selectedIDs: [UUID]
     @State private var searchText = ""
+    @AppStorage("appColorScheme") private var appColorScheme: String = "system"
+    private var preferredScheme: ColorScheme? { appColorScheme == "dark" ? .dark : appColorScheme == "light" ? .light : nil }
 
     private var filtered: [Exercise] {
         let sorted = exercisesState.exercises.sorted { $0.name < $1.name }
@@ -901,6 +991,7 @@ private struct ExercisePickerSheet: View {
                 }
             }
         }
+        .preferredColorScheme(preferredScheme)
     }
 }
 
@@ -911,6 +1002,8 @@ private struct VoiceActivityPickerSheet: View {
     @Environment(VoiceTrainerState.self) private var voiceTrainerState
     @Binding var selectedIDs: [UUID]
     @State private var searchText = ""
+    @AppStorage("appColorScheme") private var appColorScheme: String = "system"
+    private var preferredScheme: ColorScheme? { appColorScheme == "dark" ? .dark : appColorScheme == "light" ? .light : nil }
 
     private var filtered: [VoiceTrainerConfig] {
         let sorted = voiceTrainerState.savedConfigurations.sorted { $0.name < $1.name }
@@ -958,6 +1051,7 @@ private struct VoiceActivityPickerSheet: View {
                 }
             }
         }
+        .preferredColorScheme(preferredScheme)
     }
 }
 
@@ -968,6 +1062,8 @@ private struct TimerPickerSheet: View {
     @Environment(TimerState.self) private var timerState
     @Binding var selectedIDs: [UUID]
     @State private var searchText = ""
+    @AppStorage("appColorScheme") private var appColorScheme: String = "system"
+    private var preferredScheme: ColorScheme? { appColorScheme == "dark" ? .dark : appColorScheme == "light" ? .light : nil }
 
     private var filtered: [TimerConfig] {
         let sorted = timerState.configs.sorted { $0.name < $1.name }
@@ -1019,6 +1115,7 @@ private struct TimerPickerSheet: View {
                 }
             }
         }
+        .preferredColorScheme(preferredScheme)
     }
 }
 
@@ -1026,6 +1123,8 @@ private struct TimerPickerSheet: View {
 
 struct PlanEditorSheet: View {
     @Environment(\.dismiss) private var dismiss
+    @AppStorage("appColorScheme") private var appColorScheme: String = "system"
+    private var preferredScheme: ColorScheme? { appColorScheme == "dark" ? .dark : appColorScheme == "light" ? .light : nil }
 
     let plan: TrainingPlan?
     let onSave: (TrainingPlan) -> Void
@@ -1071,6 +1170,8 @@ struct PlanEditorSheet: View {
                     }
                 }
             }
+            .scrollContentBackground(.hidden)
+            .background(Color(UIColor.systemBackground))
             .navigationTitle(plan == nil ? "New Plan" : "Edit Plan")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -1095,6 +1196,7 @@ struct PlanEditorSheet: View {
                 Text("This will permanently delete \"\(plan?.name ?? "")\".")
             }
         }
+        .preferredColorScheme(preferredScheme)
     }
 
     private func save() {
@@ -1104,72 +1206,6 @@ struct PlanEditorSheet: View {
         saved.weeks = isRepeating ? 0 : weeks
         onSave(saved)
         dismiss()
-    }
-}
-
-// MARK: - Manage Plans Sheet
-
-private struct ManagePlansSheet: View {
-    @Environment(\.dismiss) private var dismiss
-    @Environment(TrainingPlanState.self) private var planState
-    let onEdit: (TrainingPlan) -> Void
-
-    var body: some View {
-        NavigationStack {
-            List {
-                ForEach(planState.plans) { plan in
-                    HStack {
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(plan.name)
-                                .font(.subheadline)
-                                .fontWeight(planState.activePlanID == plan.id ? .bold : .regular)
-                            Text(plan.weeks == 0 ? "Repeating" : "\(plan.weeks) weeks")
-                                .font(.caption)
-                                .foregroundColor(.secondary)
-                        }
-                        Spacer()
-                        if planState.activePlanID == plan.id {
-                            Text("Active")
-                                .font(.caption)
-                                .foregroundColor(.accentColor)
-                        }
-                        // Pencil icon to edit
-                        Button(action: { onEdit(plan) }) {
-                            Image(systemName: "pencil")
-                                .foregroundColor(.secondary)
-                                .padding(.leading, 8)
-                        }
-                        .buttonStyle(.plain)
-                    }
-                    .contentShape(Rectangle())
-                    .onTapGesture {
-                        // Tapping the already-active plan deactivates it; tapping another activates it
-                        let newID: UUID? = planState.activePlanID == plan.id ? nil : plan.id
-                        planState.setActive(id: newID)
-                    }
-                    .swipeActions(edge: .trailing) {
-                        Button(role: .destructive) {
-                            planState.removePlan(id: plan.id)
-                        } label: {
-                            Label("Delete", systemImage: "trash")
-                        }
-                        Button {
-                            onEdit(plan)
-                        } label: {
-                            Label("Edit", systemImage: "pencil")
-                        }
-                        .tint(.orange)
-                    }
-                }
-            }
-            .navigationTitle("Plans")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button("Done") { dismiss() }
-                }
-            }
-        }
     }
 }
 
@@ -1197,6 +1233,8 @@ struct TodaysPlanModuleView: View {
     @Environment(VoiceTrainerState.self) private var voiceTrainerState
     @Environment(TimerState.self) private var timerState
     @Environment(ModuleState.self) private var moduleState
+    @AppStorage("appColorScheme") private var appColorScheme: String = "system"
+    private var preferredScheme: ColorScheme? { appColorScheme == "dark" ? .dark : appColorScheme == "light" ? .light : nil }
 
     @State private var selectedDate: Date = Calendar.current.startOfDay(for: Date())
     @State private var startingWorkout: Workout? = nil
@@ -1225,8 +1263,26 @@ struct TodaysPlanModuleView: View {
     }
 
     var body: some View {
-        NavigationStack {
+        ZStack {
+            Color(UIColor.systemBackground).ignoresSafeArea()
             VStack(spacing: 0) {
+                // Custom header row (replaces NavigationStack title + toolbar)
+                HStack {
+                    Text("Today's Plan")
+                        .font(.title2)
+                        .fontWeight(.bold)
+                    Spacer()
+                    Button {
+                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                        showPlan = true
+                    } label: {
+                        Image(systemName: "calendar.badge.checkmark")
+                            .foregroundColor(.primary)
+                    }
+                }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 12)
+
                 // Date navigation bar
                 HStack {
                     Button {
@@ -1248,7 +1304,8 @@ struct TodaysPlanModuleView: View {
                             .foregroundColor(.primary)
                     }
                 }
-                .padding()
+                .padding(.horizontal, 16)
+                .padding(.bottom, 8)
 
                 if let pd = planDay, !pd.isEmpty {
                     List {
@@ -1342,7 +1399,9 @@ struct TodaysPlanModuleView: View {
                             }
                         }
                     }
+                    .listStyle(.plain)
                     .scrollContentBackground(.hidden)
+                    .background(Color(UIColor.systemBackground))
                 } else {
                     Spacer()
                     VStack(spacing: 8) {
@@ -1354,27 +1413,15 @@ struct TodaysPlanModuleView: View {
                     }
                     Spacer()
                 }
-            }
-            .background(Color(UIColor.systemBackground))
-            .navigationTitle("Today's Plan")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button {
-                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                        showPlan = true
-                    } label: {
-                        Image(systemName: "calendar.badge.checkmark")
-                    }
-                }
-            }
-        }
+            } // VStack
+        } // ZStack
         .fullScreenCover(isPresented: $showPlan) {
             PlanModuleView()
                 .environment(planState)
                 .environment(workoutsState)
                 .environment(exercisesState)
                 .environment(voiceTrainerState)
+                .preferredColorScheme(preferredScheme)
         }
         .fullScreenCover(item: $startingWorkout) { workout in
             StartWorkoutView(workout: workout)

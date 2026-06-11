@@ -2,7 +2,7 @@ import Foundation
 
 // MARK: - Training Plan Model
 
-struct TrainingPlan: Identifiable, Codable {
+struct TrainingPlan: Identifiable, Codable, Hashable {
     let id: UUID
     var name: String
     var startDate: Date
@@ -93,7 +93,7 @@ struct TrainingPlan: Identifiable, Codable {
 
 // MARK: - Plan Day
 
-struct PlanDay: Identifiable, Codable {
+struct PlanDay: Identifiable, Codable, Hashable {
     let id: UUID
     var dayOfWeek: Int          // 0 = Sunday … 6 = Saturday
     var workoutIDs: [UUID]         // ordered list of workouts for this day

@@ -4,6 +4,7 @@
 ////
 
 import SwiftUI
+import UIKit
 import Observation
 
 // MARK: - Models
@@ -156,10 +157,7 @@ struct HelpDetailView: View {
                         Text(section.heading)
                             .font(.headline)
                             .foregroundColor(.primary)
-                        HelpBodyText(section.body)
-                            .font(.body)
-                            .foregroundColor(.secondary)
-                            .fixedSize(horizontal: false, vertical: true)
+                        HelpBodyView(raw: section.body)
                     }
                 }
             }
@@ -177,38 +175,95 @@ struct HelpDetailView: View {
 // Parses tokens of the form [sf:symbol.name] in body text and replaces them
 // with the actual SF Symbol image inline. Everything else renders as plain text.
 //
-// Uses LocalizedStringKey string interpolation (appendInterpolation) to mix
-// text segments and SF Symbol images without the deprecated Text + operator.
+// Splits the raw string into a flat array of segments (plain text or symbol name),
+// then assembles a View using a helper that returns AnyView so the body property
+// can lay out each segment. This sidesteps both the deprecated Text + operator
+// and the LocalizedStringKey.StringInterpolation manual-append path that crashed
+// the Swift 6.2 compiler.
 
-private func HelpBodyText(_ raw: String) -> Text {
+// A parsed segment: either a run of plain text or an SF Symbol name.
+private enum HelpSegment {
+    case text(String)
+    case symbol(String)
+}
+
+private func parseHelpSegments(_ raw: String) -> [HelpSegment] {
     let pattern = #"\[sf:([^\]]+)\]"#
     guard let regex = try? NSRegularExpression(pattern: pattern) else {
-        return Text(raw)
+        return [.text(raw)]
     }
     let ns = raw as NSString
-    let fullRange = NSRange(location: 0, length: ns.length)
-    let matches = regex.matches(in: raw, range: fullRange)
+    let matches = regex.matches(in: raw, range: NSRange(location: 0, length: ns.length))
+    guard !matches.isEmpty else { return [.text(raw)] }
 
-    // Build a LocalizedStringKey interpolation so the compiler uses
-    // appendInterpolation(_: Image) and appendInterpolation(_: Text),
-    // which are the non-deprecated paths on iOS 26.
-    var interp = LocalizedStringKey.StringInterpolation(literalCapacity: raw.count,
-                                                        interpolationCount: matches.count * 2)
+    var segments: [HelpSegment] = []
     var cursor = 0
-
     for match in matches {
-        let preRange = NSRange(location: cursor, length: match.range.location - cursor)
-        if preRange.length > 0 {
-            interp.appendLiteral(ns.substring(with: preRange))
+        let preLen = match.range.location - cursor
+        if preLen > 0 {
+            segments.append(.text(ns.substring(with: NSRange(location: cursor, length: preLen))))
         }
-        let symbolName = ns.substring(with: match.range(at: 1))
-        interp.appendInterpolation(Image(systemName: symbolName))
+        segments.append(.symbol(ns.substring(with: match.range(at: 1))))
         cursor = match.range.location + match.range.length
     }
-
     if cursor < ns.length {
-        interp.appendLiteral(ns.substring(from: cursor))
+        segments.append(.text(ns.substring(from: cursor)))
+    }
+    return segments
+}
+
+// Renders segments as a SwiftUI view. Plain-text runs become Text; symbols
+// become Image views baseline-aligned with the text. Wrapped in a flowing
+// layout using ViewThatFits isn't needed here — we just use an HStack with
+// wrapping via a custom FlowLayout would be ideal, but for help body text a
+// simple Text with per-segment rendering is sufficient.
+//
+// Since Text + Text is deprecated and LocalizedStringKey.StringInterpolation
+// crashes swiftc 6.2, we render each segment as its own view inside a
+// wrapping HStack that allows line wrapping.
+struct HelpBodyView: View {
+    let raw: String
+
+    var body: some View {
+        let segments = parseHelpSegments(raw)
+        // If there are no symbols, just use a plain Text — fastest path.
+        if !segments.contains(where: { if case .symbol = $0 { return true } else { return false } }) {
+            Text(raw)
+                .font(.body)
+                .foregroundColor(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+        } else {
+            // Render segments inline. Text views with embedded Image via
+            // \(Image(systemName:)) string interpolation is the recommended
+            // iOS 26 approach — we build one Text per segment and join with
+            // a single string-interpolation Text at call site where possible.
+            // Here we use a wrapping HStack with flexible layout.
+            SegmentedHelpText(segments: segments)
+                .font(.body)
+                .foregroundColor(.secondary)
+        }
+    }
+}
+
+private struct SegmentedHelpText: View {
+    let segments: [HelpSegment]
+
+    var body: some View {
+        buildText(from: segments)
+            .fixedSize(horizontal: false, vertical: true)
     }
 
-    return Text(LocalizedStringKey(stringInterpolation: interp))
+    // Recursively build a single Text by prepending each segment via
+    // string interpolation — the iOS 26 recommended path that avoids
+    // the deprecated + operator.
+    private func buildText(from remaining: [HelpSegment]) -> Text {
+        guard let first = remaining.first else { return Text(verbatim: "") }
+        let rest = buildText(from: Array(remaining.dropFirst()))
+        switch first {
+        case .text(let s):
+            return Text("\(Text(verbatim: s))\(rest)")
+        case .symbol(let n):
+            return Text("\(Image(systemName: n))\(rest)")
+        }
+    }
 }

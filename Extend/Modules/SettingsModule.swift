@@ -50,11 +50,15 @@ private struct SettingsModuleView: View {
     @Environment(TrainingPlanState.self) var planState
 
     @AppStorage("weightUnit") private var weightUnit: String = "lbs"
-    @AppStorage("appColorScheme") private var appColorScheme: String = "light"
+    @AppStorage("appColorScheme") private var appColorScheme: String = "system"
     @AppStorage("keepScreenOnDuringSession") private var keepScreenOnDuringSession: Bool = true
 
     private var preferredScheme: ColorScheme? {
-        appColorScheme == "dark" ? .dark : .light
+        switch appColorScheme {
+        case "dark": return .dark
+        case "light": return .light
+        default: return nil
+        }
     }
 
     @State private var showingResetAlert = false
@@ -194,9 +198,31 @@ private struct SettingsModuleView: View {
                                     .pickerStyle(.segmented)
                                 }
 
+                                Divider()
+
+                                ColorPicker("Tile Color", selection: Binding(
+                                    get: { moduleState.dashboardTileBackgroundColor ?? Color(UIColor.secondarySystemBackground) },
+                                    set: { moduleState.updateDashboardTileBackgroundColor($0) }
+                                ))
+
+                                ColorPicker("Tile Border", selection: Binding(
+                                    get: { moduleState.dashboardTileBorderColor ?? .clear },
+                                    set: { moduleState.updateDashboardTileBorderColor($0) }
+                                ))
+
+                                Button("Reset Tile Colors", role: .destructive) {
+                                    moduleState.updateDashboardTileBackgroundColor(nil)
+                                    moduleState.updateDashboardTileBorderColor(nil)
+                                    UserDefaults.standard.removeObject(forKey: "dashboardTileColorsUserSet")
+                                }
+
+                                Divider()
+
                                 Button("Reset to Default", role: .destructive) {
                                     moduleState.updateDashboardBackgroundColor(nil)
                                     moduleState.updateDashboardUseGradient(false)
+                                    moduleState.updateDashboardTileBackgroundColor(nil)
+                                    moduleState.updateDashboardTileBorderColor(nil)
                                 }
                             }
 
@@ -210,11 +236,12 @@ private struct SettingsModuleView: View {
                                 Text("Theme")
                                 Spacer()
                                 Picker("", selection: $appColorScheme) {
+                                    Text("System").tag("system")
                                     Text("Light").tag("light")
                                     Text("Dark").tag("dark")
                                 }
-                                .pickerStyle(.segmented)
-                                .frame(width: 120)
+                                .pickerStyle(.menu)
+                                .tint(.primary)
                             }
 
                             VStack(alignment: .leading, spacing: 4) {
@@ -628,6 +655,9 @@ private struct SettingsModuleView: View {
         moduleState.setBottomNavBarModules(bottomModules)
         moduleState.setTopNavBarModules(topModules)
         moduleState.resetNavBarAppearance()
+        moduleState.updateDashboardBackgroundColor(nil)
+        moduleState.updateDashboardTileBackgroundColor(nil)
+        moduleState.updateDashboardTileBorderColor(nil)
 
         // Reset data
         dashboardState.resetTiles()
@@ -665,8 +695,8 @@ private struct SettingsModuleView: View {
         UserDefaults.standard.removeObject(forKey: "logShowRibbon")
         UserDefaults.standard.removeObject(forKey: "logListShowWeek")
 
-        // Reset theme to light
-        appColorScheme = "light"
+        // Reset theme to system default
+        appColorScheme = "system"
 
         // Route back to Dashboard after reset
         moduleState.selectModule(ModuleIDs.dashboard)
@@ -891,9 +921,6 @@ private struct WorkoutExportSheet: View {
                     }
                 } label: {
                     HStack(spacing: 12) {
-                        Image(systemName: selectedIDs.contains(workout.id) ? "checkmark.circle.fill" : "circle")
-                            .foregroundColor(selectedIDs.contains(workout.id) ? .primary : .secondary)
-                            .font(.system(size: 20))
                         VStack(alignment: .leading, spacing: 2) {
                             Text(workout.name)
                                 .font(.body)
@@ -906,6 +933,11 @@ private struct WorkoutExportSheet: View {
                                 .foregroundColor(.secondary)
                         }
                         Spacer()
+                        if selectedIDs.contains(workout.id) {
+                            Image(systemName: "checkmark")
+                                .foregroundColor(.primary)
+                                .font(.system(size: 14, weight: .semibold))
+                        }
                     }
                 }
                 .buttonStyle(.plain)
@@ -1043,9 +1075,6 @@ private struct PlanExportSheet: View {
                     }
                 } label: {
                     HStack(spacing: 12) {
-                        Image(systemName: selectedIDs.contains(plan.id) ? "checkmark.circle.fill" : "circle")
-                            .foregroundColor(selectedIDs.contains(plan.id) ? .primary : .secondary)
-                            .font(.system(size: 20))
                         VStack(alignment: .leading, spacing: 2) {
                             Text(plan.name)
                                 .font(.body)
@@ -1055,6 +1084,11 @@ private struct PlanExportSheet: View {
                                 .foregroundColor(.secondary)
                         }
                         Spacer()
+                        if selectedIDs.contains(plan.id) {
+                            Image(systemName: "checkmark")
+                                .foregroundColor(.primary)
+                                .font(.system(size: 14, weight: .semibold))
+                        }
                     }
                 }
                 .buttonStyle(.plain)
