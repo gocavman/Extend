@@ -475,6 +475,8 @@ private struct ManageFilterPresetsView: View {
                     }
                 }
             }
+            .scrollContentBackground(.hidden)
+            .background(Color(UIColor.systemBackground))
             .environment(\.editMode, .constant(.active))
             .navigationTitle("Saved Filters")
             .navigationBarTitleDisplayMode(.inline)
@@ -699,6 +701,8 @@ private struct SaveFilterPresetSheet: View {
                     TextField("Enter name", text: $name)
                 }
             }
+            .scrollContentBackground(.hidden)
+            .background(Color(UIColor.systemBackground))
             .navigationTitle("Save Filter Preset")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {

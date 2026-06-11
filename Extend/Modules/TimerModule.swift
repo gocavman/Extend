@@ -148,11 +148,13 @@ private struct TimerModuleView: View {
 
                     // All timers
                     if filteredConfigs.isEmpty {
-                        Text(timerState.configs.isEmpty ? "No timers yet" : "No timers found")
-                            .font(.subheadline)
-                            .foregroundColor(.gray)
-                            .frame(maxWidth: .infinity, alignment: .center)
-                            .padding(.vertical, 20)
+                        Section {
+                            Text(timerState.configs.isEmpty ? "No timers yet" : "No timers found")
+                                .font(.subheadline)
+                                .foregroundColor(.gray)
+                                .frame(maxWidth: .infinity, alignment: .center)
+                                .padding(.vertical, 20)
+                        }
                     } else {
                         ForEach(filteredConfigs) { config in
                             TimerRowView(

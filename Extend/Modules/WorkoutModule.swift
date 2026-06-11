@@ -4846,7 +4846,7 @@ private struct ComplexScreen: View {
                         .frame(width: ringSize, height: ringSize)
                         .position(x: geo.size.width / 2, y: ringSize / 2)
                     }
-                    .frame(height: min(max(UIScreen.main.bounds.width * 0.6, 170), 300))
+                    .frame(height: 300)
                 }
 
                 Divider().padding(.horizontal, 16)
