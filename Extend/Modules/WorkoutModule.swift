@@ -211,7 +211,7 @@ private struct WorkoutsModuleView: View {
                 // Favorites tiles
                 if !state.favoriteWorkouts.isEmpty {
                     Section {
-                        LazyVGrid(columns: [GridItem(.adaptive(minimum: 76), spacing: 10)], spacing: 10) {
+                        LazyVGrid(columns: [GridItem(.adaptive(minimum: 100), spacing: 10)], spacing: 10) {
                             ForEach(state.favoriteWorkouts) { workout in
                                 VStack(spacing: 0) {
                                     // Top: launch
@@ -266,7 +266,6 @@ private struct WorkoutsModuleView: View {
                                         .buttonStyle(.plain)
                                     }
                                 }
-                                .frame(width: 76)
                                 .background(Color(UIColor.secondarySystemBackground))
                                 .cornerRadius(10)
                             }

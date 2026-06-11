@@ -12,7 +12,7 @@ import UIKit
 public struct EquipmentModule: AppModule {
     public let id: UUID = ModuleIDs.equipment
     public let displayName: String = "Equipment"
-    public let iconName: String = "figure.walk.treadmill"
+    public let iconName: String = "dumbbell.fill"
     public let description: String = "Add and manage equipment"
 
     public var order: Int = 8
@@ -63,7 +63,7 @@ private struct EquipmentModuleView: View {
 
                 // Favorites grid — 3-piece tiles: top=name, bottom-left=stats, bottom-right=history
                 if !state.favoriteItems.isEmpty && searchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                    LazyVGrid(columns: [GridItem(.adaptive(minimum: 76), spacing: 10)], spacing: 10) {
+                    LazyVGrid(columns: [GridItem(.adaptive(minimum: 100), spacing: 10)], spacing: 10) {
                         ForEach(state.favoriteItems) { item in
                             VStack(spacing: 0) {
                                 // Top: name button (opens stats)
@@ -72,7 +72,7 @@ private struct EquipmentModuleView: View {
                                     statsItem = item
                                 }) {
                                     VStack(spacing: 4) {
-                                        Image(systemName: "figure.walk.treadmill")
+                                        Image(systemName: item.sfSymbol ?? EquipmentState.defaultSFSymbol(for: item.name))
                                             .font(.system(size: 18, weight: .semibold))
                                             .foregroundColor(.primary)
                                         Text(item.name)
@@ -128,11 +128,11 @@ private struct EquipmentModuleView: View {
 
                     ForEach(filteredItems) { item in
                         HStack(spacing: 12) {
-                            Image(systemName: "figure.walk.treadmill")
+                            Image(systemName: item.sfSymbol ?? EquipmentState.defaultSFSymbol(for: item.name))
                                 .font(.system(size: 16, weight: .semibold))
-                                .foregroundColor(.blue)
+                                .foregroundColor(.primary)
                                 .frame(width: 32, height: 32)
-                                .background(Color.blue.opacity(0.1))
+                                .background(Color.primary.opacity(0.08))
                                 .cornerRadius(6)
 
                             Text(item.name)
@@ -207,14 +207,15 @@ private struct EquipmentModuleView: View {
                 }
                 .listStyle(.plain)
                 .fullScreenCover(isPresented: $showingAdd) {
-                    EquipmentEditor(title: "Add Equipment") { name in
-                        state.addItem(name: name)
+                    EquipmentEditor(title: "Add Equipment") { name, symbol in
+                        state.addItem(name: name, sfSymbol: symbol)
                     }
                 }
                 .fullScreenCover(item: $editingItem) { item in
-                    EquipmentEditor(title: "Edit Equipment", initialName: item.name) { name in
+                    EquipmentEditor(title: "Edit Equipment", initialName: item.name, initialSymbol: item.sfSymbol ?? EquipmentState.defaultSFSymbol(for: item.name)) { name, symbol in
                         var updated = item
                         updated.name = name
+                        updated.sfSymbol = symbol
                         state.updateItem(updated)
                     } onDelete: {
                         state.removeItem(id: item.id)
@@ -248,18 +249,23 @@ private struct EquipmentEditor: View {
     @Environment(\.dismiss) var dismiss
     let title: String
     let initialName: String
-    let onSave: (String) -> Void
+    let initialSymbol: String
+    let onSave: (String, String) -> Void
     let onDelete: (() -> Void)?
 
     @State private var name: String
+    @State private var selectedSymbol: String
     @State private var showDeleteConfirm = false
+    @State private var showSymbolPicker = false
 
-    init(title: String, initialName: String = "", onSave: @escaping (String) -> Void, onDelete: (() -> Void)? = nil) {
+    init(title: String, initialName: String = "", initialSymbol: String = "dumbbell.fill", onSave: @escaping (String, String) -> Void, onDelete: (() -> Void)? = nil) {
         self.title = title
         self.initialName = initialName
+        self.initialSymbol = initialSymbol
         self.onSave = onSave
         self.onDelete = onDelete
         _name = State(initialValue: initialName)
+        _selectedSymbol = State(initialValue: initialSymbol)
     }
 
     var body: some View {
@@ -267,6 +273,26 @@ private struct EquipmentEditor: View {
             Form {
                 Section("Details") {
                     TextField("Name", text: $name)
+                }
+
+                Section("Icon") {
+                    Button(action: { showSymbolPicker = true }) {
+                        HStack {
+                            Image(systemName: selectedSymbol)
+                                .font(.system(size: 22, weight: .semibold))
+                                .foregroundColor(.primary)
+                                .frame(width: 36, height: 36)
+                                .background(Color.primary.opacity(0.08))
+                                .cornerRadius(8)
+                            Text("Change Icon")
+                                .foregroundColor(.primary)
+                            Spacer()
+                            Image(systemName: "chevron.right")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                    }
+                    .buttonStyle(.plain)
                 }
             }
             .scrollContentBackground(.hidden)
@@ -287,7 +313,7 @@ private struct EquipmentEditor: View {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Save") {
                         UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                        onSave(name)
+                        onSave(name, selectedSymbol)
                         dismiss()
                     }
                     .disabled(name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
@@ -301,6 +327,147 @@ private struct EquipmentEditor: View {
                 }
             } message: {
                 Text("This will permanently delete the equipment.")
+            }
+            .sheet(isPresented: $showSymbolPicker) {
+                EquipmentSymbolPicker(selectedSymbol: $selectedSymbol)
+            }
+        }
+    }
+}
+
+// MARK: - SF Symbol Picker
+
+private struct EquipmentSymbolPicker: View {
+    @Environment(\.dismiss) var dismiss
+    @Binding var selectedSymbol: String
+    @State private var searchText = ""
+
+    // Curated fitness / activity symbols
+    private let allSymbols: [(category: String, symbols: [String])] = [
+        ("Weights & Strength", [
+            "dumbbell.fill", "dumbbell",
+            "figure.strengthtraining.functional",
+            "figure.strengthtraining.traditional",
+            "figure.strengthtraining.functional",
+            "figure.highintensity.intervaltraining",
+            "figure.cross.training",
+        ]),
+        ("Cardio", [
+            "figure.walk.treadmill",
+            "figure.run",
+            "figure.walk",
+            "figure.rower",
+            "figure.elliptical",
+            "figure.stair.stepper",
+            "figure.indoor.cycle",
+            "bicycle",
+            "figure.outdoor.cycle",
+            "figure.jumprope",
+        ]),
+        ("Sports & Combat", [
+            "figure.boxing",
+            "figure.martial.arts",
+            "figure.gymnastics",
+            "figure.basketball",
+            "figure.soccer",
+            "figure.tennis",
+            "figure.volleyball",
+            "figure.skiing.downhill",
+            "figure.pool.swim",
+        ]),
+        ("Bodyweight & Flexibility", [
+            "figure.strengthtraining.traditional",
+            "figure.core.training",
+            "figure.cooldown",
+            "figure.flexibility",
+            "figure.pilates",
+            "figure.yoga",
+            "figure.roll",
+            "figure.climbing",
+            "figure.hand.cycling",
+        ]),
+        ("Equipment Icons", [
+            "rectangle.portrait.fill",
+            "circle.fill",
+            "square.fill",
+            "circle.dotted",
+            "xmark.circle",
+            "hare.fill",
+            "bolt.fill",
+            "flame.fill",
+            "heart.fill",
+            "waveform.path.ecg",
+            "timer",
+            "stopwatch.fill",
+            "target",
+            "trophy.fill",
+        ]),
+    ]
+
+    private var filteredCategories: [(category: String, symbols: [String])] {
+        let q = searchText.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        guard !q.isEmpty else { return allSymbols }
+        return allSymbols.compactMap { cat in
+            let filtered = cat.symbols.filter { $0.lowercased().contains(q) }
+            return filtered.isEmpty ? nil : (category: cat.category, symbols: filtered)
+        }
+    }
+
+    private let columns = Array(repeating: GridItem(.flexible(), spacing: 12), count: 5)
+
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 20) {
+                    // Search bar
+                    HStack {
+                        Image(systemName: "magnifyingglass")
+                            .foregroundColor(.secondary)
+                        TextField("Search icons...", text: $searchText)
+                            .autocorrectionDisabled()
+                    }
+                    .padding(10)
+                    .background(Color(UIColor.secondarySystemBackground))
+                    .cornerRadius(10)
+                    .padding(.horizontal, 16)
+
+                    ForEach(filteredCategories, id: \.category) { cat in
+                        VStack(alignment: .leading, spacing: 10) {
+                            Text(cat.category)
+                                .font(.caption)
+                                .fontWeight(.semibold)
+                                .foregroundColor(.secondary)
+                                .padding(.horizontal, 16)
+
+                            LazyVGrid(columns: columns, spacing: 12) {
+                                ForEach(cat.symbols, id: \.self) { symbol in
+                                    Button(action: {
+                                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                                        selectedSymbol = symbol
+                                        dismiss()
+                                    }) {
+                                        Image(systemName: symbol)
+                                            .font(.system(size: 22, weight: .semibold))
+                                            .foregroundColor(selectedSymbol == symbol ? .white : .primary)
+                                            .frame(width: 52, height: 52)
+                                            .background(selectedSymbol == symbol ? Color.accentColor : Color(UIColor.secondarySystemBackground))
+                                            .cornerRadius(12)
+                                    }
+                                    .buttonStyle(.plain)
+                                }
+                            }
+                            .padding(.horizontal, 16)
+                        }
+                    }
+                }
+                .padding(.vertical, 16)
+            }
+            .navigationTitle("Choose Icon")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Done") { dismiss() }
+                }
             }
         }
     }

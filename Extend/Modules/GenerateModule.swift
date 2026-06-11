@@ -89,7 +89,10 @@ private struct GenerateModuleView: View {
                                 selectedPresetId = preset.id
                             }) {
                                 VStack(alignment: .center, spacing: 3) {
-                                    Text("✨ \(preset.name)")
+                                    Image(systemName: "sparkles")
+                                        .font(.system(size: 16))
+                                        .foregroundColor(.primary)
+                                    Text(preset.name)
                                         .font(.system(size: 11, weight: .semibold))
                                         .foregroundColor(.primary)
                                         .lineLimit(1)

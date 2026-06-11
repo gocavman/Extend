@@ -77,7 +77,7 @@ private struct VoiceTrainerModuleView: View {
                 // Favorites tiles
                 if !state.favoriteConfigs.isEmpty {
                     Section {
-                        LazyVGrid(columns: [GridItem(.adaptive(minimum: 76), spacing: 10)], spacing: 10) {
+                        LazyVGrid(columns: [GridItem(.adaptive(minimum: 100), spacing: 10)], spacing: 10) {
                             ForEach(state.favoriteConfigs) { config in
                                 VStack(spacing: 0) {
                                     // Top: launch
@@ -132,7 +132,6 @@ private struct VoiceTrainerModuleView: View {
                                         .buttonStyle(.plain)
                                     }
                                 }
-                                .frame(width: 76)
                                 .background(Color(UIColor.secondarySystemBackground))
                                 .cornerRadius(10)
                             }

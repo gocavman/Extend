@@ -68,6 +68,9 @@ private struct DashboardModuleView: View {
     @State private var historyVoiceConfig: VoiceTrainerConfig? = nil
     
     @State private var spinningTiles: [UUID: Double] = [:]
+    @State private var animatingTiles: Set<UUID> = []         // blocks interaction while spinning
+    @State private var windUpDegrees: [UUID: Double] = [:]    // accumulated CCW wind-up (positive = wound up)
+    @State private var lastDragAngle: [UUID: Double] = [:]    // previous drag angle for delta calc
     @State private var flyingTiles: Set<UUID> = []
     @State private var tileOffsets: [UUID: (x: CGFloat, y: CGFloat)] = [:]
     @State private var tileRotations: [UUID: Double] = [:]
@@ -320,6 +323,11 @@ private struct DashboardModuleView: View {
             (tile.shortcutType == .workout || tile.shortcutType == .timer ||
              tile.shortcutType == .voiceTrainer || tile.shortcutType == .quickExercise)
 
+        let isIPadLayout = sizeClass == .regular
+        let bottomBarHeight: CGFloat = isIPadLayout ? max(height * 0.28, 52) : 32
+        let iconSize: CGFloat = isIPadLayout ? 28 : 18
+        let bottomIconSize: CGFloat = isIPadLayout ? 18 : 13
+
         return Group {
             if isThreePieceShortcut {
                 // 3-piece tile: top=launch, bottom-left=stats, bottom-right=history
@@ -348,11 +356,11 @@ private struct DashboardModuleView: View {
                         }) {
                             VStack(spacing: 5) {
                                 Image(systemName: tile.icon)
-                                    .font(.system(size: 18, weight: .semibold))
+                                    .font(.system(size: iconSize, weight: .semibold))
                                     .foregroundColor(.primary)
                                 if !tile.title.isEmpty {
                                     Text(tile.title)
-                                        .font(.caption)
+                                        .font(isIPadLayout ? .subheadline : .caption)
                                         .fontWeight(.semibold)
                                         .lineLimit(2)
                                         .multilineTextAlignment(.center)
@@ -360,7 +368,7 @@ private struct DashboardModuleView: View {
                                 }
                             }
                             .frame(maxWidth: .infinity)
-                            .frame(height: height - 33)
+                            .frame(height: height - bottomBarHeight - 1)
                         }
                         .buttonStyle(.plain)
 
@@ -381,14 +389,14 @@ private struct DashboardModuleView: View {
                                 }
                             }) {
                                 Image(systemName: "chart.bar.fill")
-                                    .font(.system(size: 13))
+                                    .font(.system(size: bottomIconSize))
                                     .foregroundColor(.secondary)
                                     .frame(maxWidth: .infinity)
-                                    .frame(height: 32)
+                                    .frame(height: bottomBarHeight)
                             }
                             .buttonStyle(.plain)
 
-                            Divider().frame(height: 20)
+                            Divider().frame(height: bottomBarHeight * 0.6)
 
                             Button(action: {
                                 UIImpactFeedbackGenerator(style: .light).impactOccurred()
@@ -403,10 +411,10 @@ private struct DashboardModuleView: View {
                                 }
                             }) {
                                 Image(systemName: "clock.arrow.trianglehead.counterclockwise.rotate.90")
-                                    .font(.system(size: 13))
+                                    .font(.system(size: bottomIconSize))
                                     .foregroundColor(.secondary)
                                     .frame(maxWidth: .infinity)
-                                    .frame(height: 32)
+                                    .frame(height: bottomBarHeight)
                             }
                             .buttonStyle(.plain)
                         }
@@ -422,61 +430,68 @@ private struct DashboardModuleView: View {
                 .frame(width: width, height: height)
             } else {
                 // Standard single-button tile
-                Button(action: {
-                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                    if isBlankTile(tile) {
-                        handleBlankTileAction(tile)
-                    } else if let targetID = findModuleID(for: tile) {
-                        state.selectModule(targetID)
+                let isBlank = isBlankTile(tile)
+                let isSpinning = animatingTiles.contains(tile.id)
+                ZStack(alignment: .leading) {
+                    VStack(spacing: 0) {
+                        Spacer(minLength: 0)
+
+                        Image(systemName: tile.icon)
+                            .font(.system(size: 28, weight: .semibold))
+                            .foregroundColor(.primary)
+                            .rotationEffect(.degrees(spinningTiles[tile.id] ?? 0))
+                            .animation(.easeOut(duration: 2.5), value: spinningTiles[tile.id])
+
+                        if !tile.title.isEmpty {
+                            Text(tile.title)
+                                .font(.subheadline)
+                                .fontWeight(.semibold)
+                                .lineLimit(2)
+                                .multilineTextAlignment(.center)
+                                .padding(.top, 8)
+                        }
+
+                        Spacer(minLength: 0)
+
+                        // Show game levels at bottom
+                        if tile.targetModuleID == ModuleIDs.matchGame {
+                            Text("Level \(matchGameLevel)")
+                                .font(.caption2)
+                                .foregroundColor(.gray)
+                                .padding(.bottom, 4)
+                        } else if isBlank, let count = dashboardState.tileClickCounts[tile.id], count > 0 {
+                            Text("\(count)")
+                                .font(.caption2)
+                                .foregroundColor(.gray)
+                                .padding(.bottom, 4)
+                        }
                     }
-                }) {
-                    ZStack(alignment: .leading) {
-                        VStack(spacing: 0) {
-                            Spacer(minLength: 0)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .padding(10)
+                    .background(bg)
+                    .cornerRadius(12)
+                    .overlay(RoundedRectangle(cornerRadius: 12).stroke(tileBorder, lineWidth: 1))
+                    .foregroundColor(.primary)
 
-                            Image(systemName: tile.icon)
-                                .font(.system(size: 28, weight: .semibold))
-                                .foregroundColor(.primary)
-                                .rotationEffect(.degrees(spinningTiles[tile.id] ?? 0))
-                                .animation(.easeInOut(duration: 1.0), value: spinningTiles[tile.id])
-
-                            if !tile.title.isEmpty {
-                                Text(tile.title)
-                                    .font(.subheadline)
-                                    .fontWeight(.semibold)
-                                    .lineLimit(2)
-                                    .multilineTextAlignment(.center)
-                                    .padding(.top, 8)
-                            }
-
-                            Spacer(minLength: 0)
-
-                            // Show game levels at bottom
-                            if tile.targetModuleID == ModuleIDs.matchGame {
-                                Text("Level \(matchGameLevel)")
-                                    .font(.caption2)
-                                    .foregroundColor(.gray)
-                                    .padding(.bottom, 4)
-                            } else if isBlankTile(tile), let count = dashboardState.tileClickCounts[tile.id], count > 0 {
-                                Text("\(count)")
-                                    .font(.caption2)
-                                    .foregroundColor(.gray)
-                                    .padding(.bottom, 4)
-                            }
-                        }
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
-                        .padding(10)
-                        .background(bg)
-                        .cornerRadius(12)
-                        .overlay(RoundedRectangle(cornerRadius: 12).stroke(tileBorder, lineWidth: 1))
-                        .foregroundColor(.primary)
-
-                        // Accent bar overlay
-                        if tile.accentPlacement != .none {
-                            AccentBarView(placement: tile.accentPlacement, color: tile.accentColor)
-                        }
+                    // Accent bar overlay
+                    if tile.accentPlacement != .none {
+                        AccentBarView(placement: tile.accentPlacement, color: tile.accentColor)
                     }
                 }
+                .contentShape(Rectangle())
+                .modifier(BlankTileGestureModifier(
+                    tile: tile,
+                    isBlank: isBlank,
+                    isSpinning: isSpinning,
+                    windUpDegrees: $windUpDegrees,
+                    lastDragAngle: $lastDragAngle,
+                    spinningTiles: $spinningTiles,
+                    onRelease: { wound in handleBlankTileAction(tile, windUpDegrees: wound) },
+                    onTap: {
+                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                        if let targetID = findModuleID(for: tile) { state.selectModule(targetID) }
+                    }
+                ))
                 .frame(width: width, height: height)
             }
         }
@@ -559,17 +574,32 @@ private struct DashboardModuleView: View {
         tile.targetModuleID == nil && tile.tileType == .moduleShortcut && tile.statCardType == nil
     }
     
-    private func handleBlankTileAction(_ tile: DashboardTile) {
+    private func handleBlankTileAction(_ tile: DashboardTile, windUpDegrees: Double = 0) {
         // Increment click counter using persisted state
         dashboardState.incrementClickCount(for: tile.id)
         
         switch tile.blankAction ?? .animation1 {
         case .animation1:
-            // Spinning wheel animation - multiple spins with deceleration
-            let spins = Double.random(in: 3...5)  // 3-5 full rotations
-            let totalDegrees = spins * 360
-            withAnimation(.easeOut(duration: 2.5)) {
-                spinningTiles[tile.id, default: 0] += totalDegrees
+            // Simple tap = small random spin. Wound up = spin proportional to wind-up.
+            let forwardDegrees: Double
+            let duration: Double
+            if windUpDegrees > 10 {
+                // Release wound-up energy: spin forward the wound amount + extra momentum
+                forwardDegrees = windUpDegrees * 3.0 + Double.random(in: 0...180)
+                duration = 1.0 + (windUpDegrees / 360) * 0.4
+            } else {
+                // Simple tap
+                forwardDegrees = Double.random(in: 2...4) * 360
+                duration = 1.5
+            }
+            animatingTiles.insert(tile.id)
+            withAnimation(.easeOut(duration: duration)) {
+                spinningTiles[tile.id, default: 0] += forwardDegrees
+            }
+            // Unblock after animation completes
+            Task { @MainActor in
+                try? await Task.sleep(nanoseconds: UInt64(duration * 1_000_000_000))
+                animatingTiles.remove(tile.id)
             }
         case .animation2:
             blankAlertMessage = "Animation 2 Coming Soon"
@@ -874,6 +904,126 @@ private struct DashboardModuleView: View {
 
 }
 
+// MARK: - Blank Tile Gesture Modifier
+
+private struct BlankTileGestureModifier: ViewModifier {
+    let tile: DashboardTile
+    let isBlank: Bool
+    let isSpinning: Bool
+    @Binding var windUpDegrees: [UUID: Double]
+    @Binding var lastDragAngle: [UUID: Double]
+    @Binding var spinningTiles: [UUID: Double]
+    let onRelease: (Double) -> Void
+    let onTap: () -> Void
+
+    // Max wind-up: 3 full rotations = 1080°
+    private let maxWindUp: Double = 2160
+
+    func body(content: Content) -> some View {
+        if isBlank {
+            content
+                .background(GeometryReader { geo in
+                    Color.clear.preference(key: TileCenterKey.self,
+                        value: geo.frame(in: .global).center)
+                })
+                .onPreferenceChange(TileCenterKey.self) { _ in }
+                .gesture(
+                    DragGesture(minimumDistance: 0, coordinateSpace: .global)
+                        .onChanged { value in
+                            guard !isSpinning else { return }
+                            // Compute tile center from drag start (first touch position relative to tile)
+                            // Use the drag's startLocation as a proxy — we track angle relative to startLocation
+                            let center = value.startLocation
+                            let current = value.location
+                            let angle = atan2(current.y - center.y, current.x - center.x) * 180 / .pi
+
+                            if let last = lastDragAngle[tile.id] {
+                                var delta = angle - last
+                                // Normalize to [-180, 180]
+                                if delta > 180 { delta -= 360 }
+                                if delta < -180 { delta += 360 }
+
+                                // CCW = negative delta in screen coords (y flipped)
+                                // Negative delta = counterclockwise = winding up
+                                if delta < 0 {
+                                    let current = windUpDegrees[tile.id, default: 0]
+                                    // Resistance increases as we approach max
+                                    let resistance = 1.0 - (current / maxWindUp)
+                                    let contribution = abs(delta) * max(resistance, 0.05)
+                                    let newWound = min(current + contribution, maxWindUp)
+                                    windUpDegrees[tile.id] = newWound
+                                    // Rotate icon CCW to show wind-up
+                                    withAnimation(.linear(duration: 0.016)) {
+                                        spinningTiles[tile.id, default: 0] -= contribution
+                                    }
+                                    // Haptic tick every 90° of wind-up
+                                    let prev = current / 90
+                                    let next = newWound / 90
+                                    if Int(next) > Int(prev) {
+                                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                                    }
+                                } else if delta > 0 {
+                                    // Clockwise drag = slight unwind
+                                    let current = windUpDegrees[tile.id, default: 0]
+                                    let newWound = max(current - delta * 0.5, 0)
+                                    windUpDegrees[tile.id] = newWound
+                                    withAnimation(.linear(duration: 0.016)) {
+                                        spinningTiles[tile.id, default: 0] += delta * 0.5
+                                    }
+                                }
+                            }
+                            lastDragAngle[tile.id] = angle
+                        }
+                        .onEnded { value in
+                            lastDragAngle[tile.id] = nil
+                            guard !isSpinning else { return }
+                            let wound = windUpDegrees[tile.id, default: 0]
+                            windUpDegrees[tile.id] = 0
+
+                            // If barely moved, treat as a tap
+                            let dist = hypot(value.translation.width, value.translation.height)
+                            if dist < 8 && wound < 10 {
+                                onTap()
+                            } else {
+                                onRelease(wound)
+                            }
+                        }
+                )
+        } else {
+            content.onTapGesture { onTap() }
+        }
+    }
+}
+
+private struct TileCenterKey: PreferenceKey {
+    static let defaultValue: CGPoint = .zero
+    static func reduce(value: inout CGPoint, nextValue: () -> CGPoint) { value = nextValue() }
+}
+
+private extension CGRect {
+    var center: CGPoint { CGPoint(x: midX, y: midY) }
+}
+
+// MARK: - Checkmark Toggle Style
+
+private struct CheckmarkToggleStyle: ToggleStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        Button(action: { configuration.isOn.toggle() }) {
+            HStack {
+                configuration.label
+                    .foregroundColor(.primary)
+                Spacer()
+                if configuration.isOn {
+                    Image(systemName: "checkmark")
+                        .foregroundColor(.primary)
+                }
+            }
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+    }
+}
+
 // MARK: - Add Tile Sheet
 
 private struct AddTileSheet: View {
@@ -969,27 +1119,23 @@ private struct AddTileSheet: View {
                 }
 
                 Section("Modules") {
-                    ForEach(moduleQuickOptions, id: \.id) { module in
-                        Button(action: {
-                            UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                            if selectedModuleIDs.contains(module.id) {
-                                selectedModuleIDs.remove(module.id)
-                            } else {
-                                selectedModuleIDs.insert(module.id)
-                            }
-                        }) {
-                            HStack {
-                                Text(module.displayName)
+                    ForEach(moduleQuickOptions.indices, id: \.self) { i in
+                        let module = moduleQuickOptions[i]
+                        let isSelected = selectedModuleIDs.contains(module.id)
+                        HStack {
+                            Text(module.displayName)
+                                .foregroundColor(.primary)
+                            Spacer()
+                            if isSelected {
+                                Image(systemName: "checkmark")
                                     .foregroundColor(.primary)
-                                Spacer()
-                                if selectedModuleIDs.contains(module.id) {
-                                    Image(systemName: "checkmark")
-                                        .foregroundColor(.primary)
-                                }
                             }
-                            .contentShape(Rectangle())
                         }
-                        .buttonStyle(.plain)
+                        .contentShape(Rectangle())
+                        .onTapGesture {
+                            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                            if isSelected { selectedModuleIDs.remove(module.id) } else { selectedModuleIDs.insert(module.id) }
+                        }
                     }
                 }
 
@@ -1000,84 +1146,57 @@ private struct AddTileSheet: View {
                             .foregroundColor(.gray)
                     } else {
                         ForEach(statCardOptions, id: \.self) { stat in
-                            Button(action: {
-                                UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                                if selectedStatCards.contains(stat) {
-                                    selectedStatCards.remove(stat)
-                                } else {
-                                    selectedStatCards.insert(stat)
+                            let isSelected = selectedStatCards.contains(stat)
+                            Toggle(isOn: Binding(
+                                get: { isSelected },
+                                set: { on in
+                                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                                    if on { selectedStatCards.insert(stat) } else { selectedStatCards.remove(stat) }
                                 }
-                            }) {
-                                HStack {
-                                    Text(stat.rawValue)
-                                        .foregroundColor(.primary)
-                                    Spacer()
-                                    if selectedStatCards.contains(stat) {
-                                        Image(systemName: "checkmark")
-                                            .foregroundColor(.primary)
-                                    }
-                                }
-                                .contentShape(Rectangle())
+                            )) {
+                                Text(stat.rawValue)
                             }
-                            .buttonStyle(.plain)
+                            .toggleStyle(CheckmarkToggleStyle())
                         }
                     }
                 }
 
                 Section("Mini Games") {
-                    Button(action: {
-                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                        if selectedModuleIDs.contains(ModuleIDs.matchGame) {
-                            selectedModuleIDs.remove(ModuleIDs.matchGame)
-                        } else {
-                            selectedModuleIDs.insert(ModuleIDs.matchGame)
+                    let matchSelected = selectedModuleIDs.contains(ModuleIDs.matchGame)
+                    Toggle(isOn: Binding(
+                        get: { matchSelected },
+                        set: { on in
+                            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                            if on { selectedModuleIDs.insert(ModuleIDs.matchGame) } else { selectedModuleIDs.remove(ModuleIDs.matchGame) }
                         }
-                    }) {
-                        HStack {
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text("Workout Match")
-                                    .foregroundColor(.primary)
-                                Text("500 levels of match-3. Collect powerups and level up.")
-                                    .font(.caption)
-                                    .foregroundColor(.secondary)
-                            }
-                            Spacer()
-                            if selectedModuleIDs.contains(ModuleIDs.matchGame) {
-                                Image(systemName: "checkmark")
-                                    .foregroundColor(.primary)
-                            }
+                    )) {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Workout Match")
+                            Text("1000 levels of match-3. Collect powerups and level up.")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
                         }
-                        .contentShape(Rectangle())
                     }
-                    .buttonStyle(.plain)
+                    .toggleStyle(CheckmarkToggleStyle())
                 }
 
                 Section("Animator") {
-                    Button(action: {
-                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                        if selectedModuleIDs.contains(ModuleIDs.stickFigureAnimator) {
-                            selectedModuleIDs.remove(ModuleIDs.stickFigureAnimator)
-                        } else {
-                            selectedModuleIDs.insert(ModuleIDs.stickFigureAnimator)
+                    let animatorSelected = selectedModuleIDs.contains(ModuleIDs.stickFigureAnimator)
+                    Toggle(isOn: Binding(
+                        get: { animatorSelected },
+                        set: { on in
+                            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                            if on { selectedModuleIDs.insert(ModuleIDs.stickFigureAnimator) } else { selectedModuleIDs.remove(ModuleIDs.stickFigureAnimator) }
                         }
-                    }) {
-                        HStack {
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text("Stick Figure Animator")
-                                    .foregroundColor(.primary)
-                                Text("Build stick figure poses frame by frame and export animated GIFs for your exercises.")
-                                    .font(.caption)
-                                    .foregroundColor(.secondary)
-                            }
-                            Spacer()
-                            if selectedModuleIDs.contains(ModuleIDs.stickFigureAnimator) {
-                                Image(systemName: "checkmark")
-                                    .foregroundColor(.primary)
-                            }
+                    )) {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Stick Figure Animator")
+                            Text("Build stick figure poses frame by frame and export animated GIFs for your exercises.")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
                         }
-                        .contentShape(Rectangle())
                     }
-                    .buttonStyle(.plain)
+                    .toggleStyle(CheckmarkToggleStyle())
                 }
 
                 Section("Blank Tile") {
@@ -1092,7 +1211,7 @@ private struct AddTileSheet: View {
                                         .foregroundColor(.primary)
                                     Spacer()
                                     if selectedBlankAction == action && !isMiniGameSelected() {
-                                        Image(systemName: "checkmark")
+                                        Image(systemName: "checkmark.circle.fill")
                                             .foregroundColor(.primary)
                                     }
                                 }
@@ -1291,7 +1410,7 @@ private struct EditTileSheet: View {
                                                 .foregroundColor(.secondary)
                                         }
                                         if selected.contains(exercise.id) {
-                                            Image(systemName: "checkmark")
+                                            Image(systemName: "checkmark.circle.fill")
                                                 .foregroundColor(.accentColor)
                                         }
                                     }
@@ -1342,7 +1461,7 @@ private struct EditTileSheet: View {
                                                 .foregroundColor(.secondary)
                                         }
                                         if selected.contains(exercise.id) {
-                                            Image(systemName: "checkmark")
+                                            Image(systemName: "checkmark.circle.fill")
                                                 .foregroundColor(.accentColor)
                                         }
                                     }
@@ -1375,7 +1494,7 @@ private struct EditTileSheet: View {
                                     Text("All Workouts")
                                     Spacer()
                                     if volumeWorkoutName == nil {
-                                        Image(systemName: "checkmark").foregroundColor(.primary)
+                                        Image(systemName: "checkmark.circle.fill").foregroundColor(.primary)
                                     }
                                 }
                                 .contentShape(Rectangle())
@@ -1390,7 +1509,7 @@ private struct EditTileSheet: View {
                                         Text(name)
                                         Spacer()
                                         if volumeWorkoutName == name {
-                                            Image(systemName: "checkmark").foregroundColor(.primary)
+                                            Image(systemName: "checkmark.circle.fill").foregroundColor(.primary)
                                         }
                                     }
                                     .contentShape(Rectangle())
@@ -1423,7 +1542,7 @@ private struct EditTileSheet: View {
                                     Text("All Exercises")
                                     Spacer()
                                     if volumeExerciseID == nil {
-                                        Image(systemName: "checkmark").foregroundColor(.primary)
+                                        Image(systemName: "checkmark.circle.fill").foregroundColor(.primary)
                                     }
                                 }
                                 .contentShape(Rectangle())
@@ -1437,7 +1556,7 @@ private struct EditTileSheet: View {
                                         Text(exercise.name)
                                         Spacer()
                                         if volumeExerciseID == exercise.id {
-                                            Image(systemName: "checkmark").foregroundColor(.primary)
+                                            Image(systemName: "checkmark.circle.fill").foregroundColor(.primary)
                                         }
                                     }
                                     .contentShape(Rectangle())
@@ -1541,7 +1660,7 @@ private struct StatCardTileView: View {
     var body: some View {
         let bg = tileTint ?? defaultBackground ?? Color(UIColor.secondarySystemBackground)
         let tileBorder: Color = tileTint != nil ? .clear : (borderColor ?? .clear)
-        ZStack(alignment: .leading) {
+        ZStack(alignment: .topLeading) {
             VStack(spacing: 6) {
                 // Header row: icon + title
                 HStack(spacing: 6) {
@@ -1754,28 +1873,36 @@ private struct StatCardTileView: View {
                     let isNumeric = statType == .totalWorkouts || statType == .dayStreaks
                         || statType == .totalTime
                         || statType == .longestStreak || statType == .restDays
-                    Text(value)
-                        .font(.system(size: isNumeric ? (iPad ? 44 : 28) : (iPad ? 25 : 16), weight: .bold, design: isNumeric ? .rounded : .default))
-                        .foregroundColor(.primary)
-                        .lineLimit(2)
-                        .minimumScaleFactor(0.6)
-                        .multilineTextAlignment(.center)
+                    VStack(spacing: 4) {
+                        Spacer(minLength: 0)
+                        Text(value)
+                            .font(.system(size: isNumeric ? (iPad ? 44 : 28) : (iPad ? 25 : 16), weight: .bold, design: isNumeric ? .rounded : .default))
+                            .foregroundColor(.primary)
+                            .lineLimit(2)
+                            .minimumScaleFactor(0.6)
+                            .multilineTextAlignment(.center)
+                            .frame(maxWidth: .infinity, alignment: .center)
 
-                    // Trend arrow below the main value
-                    if let t = trend {
-                        Text(t.symbol)
-                            .font(.system(size: iPad ? 20 : 13, weight: .bold))
-                            .foregroundColor(t.color)
-                    }
+                        // Trend arrow below the main value
+                        if let t = trend {
+                            Text(t.symbol)
+                                .font(.system(size: iPad ? 20 : 13, weight: .bold))
+                                .foregroundColor(t.color)
+                                .frame(maxWidth: .infinity, alignment: .center)
+                        }
 
-                    // Secondary label for Personal Record card
-                    if statType == .personalRecord, let exercise = personalRecordLabel {
-                        Text(exercise)
-                            .font(.system(size: iPad ? 16 : 10))
-                            .foregroundColor(.gray)
-                            .lineLimit(1)
-                            .minimumScaleFactor(0.7)
+                        // Secondary label for Personal Record card
+                        if statType == .personalRecord, let exercise = personalRecordLabel {
+                            Text(exercise)
+                                .font(.system(size: iPad ? 16 : 10))
+                                .foregroundColor(.gray)
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.7)
+                                .frame(maxWidth: .infinity, alignment: .center)
+                        }
+                        Spacer(minLength: 0)
                     }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
 
                 Spacer(minLength: 0)

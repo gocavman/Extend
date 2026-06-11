@@ -71,7 +71,7 @@ private struct ExercisesModuleView: View {
 
                 // Favorites grid — 3-piece tiles (lives outside List so it never disrupts row identity)
                 if !state.favoriteExercises.isEmpty && searchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                    LazyVGrid(columns: [GridItem(.adaptive(minimum: 76), spacing: 10)], spacing: 10) {
+                    LazyVGrid(columns: [GridItem(.adaptive(minimum: 100), spacing: 10)], spacing: 10) {
                         ForEach(state.favoriteExercises) { exercise in
                             VStack(spacing: 0) {
                                 // Top: launch button

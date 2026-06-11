@@ -13,12 +13,14 @@ public struct Equipment: Identifiable, Hashable, Codable {
     public var name: String
     public var imageAssetName: String?
     public var isFavorite: Bool
+    public var sfSymbol: String?
 
-    public init(id: UUID = UUID(), name: String, imageAssetName: String? = nil, isFavorite: Bool = false) {
+    public init(id: UUID = UUID(), name: String, imageAssetName: String? = nil, isFavorite: Bool = false, sfSymbol: String? = nil) {
         self.id = id
         self.name = name
         self.imageAssetName = imageAssetName
         self.isFavorite = isFavorite
+        self.sfSymbol = sfSymbol
     }
 
     // MARK: - Backward-compatible decoding
@@ -28,9 +30,10 @@ public struct Equipment: Identifiable, Hashable, Codable {
         name = try container.decode(String.self, forKey: .name)
         imageAssetName = try container.decodeIfPresent(String.self, forKey: .imageAssetName)
         isFavorite = try container.decodeIfPresent(Bool.self, forKey: .isFavorite) ?? false
+        sfSymbol = try container.decodeIfPresent(String.self, forKey: .sfSymbol)
     }
 
     private enum CodingKeys: String, CodingKey {
-        case id, name, imageAssetName, isFavorite
+        case id, name, imageAssetName, isFavorite, sfSymbol
     }
 }

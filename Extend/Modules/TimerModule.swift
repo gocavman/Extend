@@ -73,7 +73,7 @@ private struct TimerModuleView: View {
                     // Favorites tiles
                     if !timerState.favoriteConfigs.isEmpty {
                         Section {
-                            LazyVGrid(columns: [GridItem(.adaptive(minimum: 76), spacing: 10)], spacing: 10) {
+                            LazyVGrid(columns: [GridItem(.adaptive(minimum: 100), spacing: 10)], spacing: 10) {
                                 ForEach(timerState.favoriteConfigs) { config in
                                     VStack(spacing: 0) {
                                         // Top: launch
@@ -131,7 +131,6 @@ private struct TimerModuleView: View {
                                             .buttonStyle(.plain)
                                         }
                                     }
-                                    .frame(width: 76)
                                     .background(Color(UIColor.secondarySystemBackground))
                                     .cornerRadius(10)
                                 }

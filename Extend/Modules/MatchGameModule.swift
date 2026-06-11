@@ -12,7 +12,7 @@ public struct MatchGameModule: AppModule {
     public let id: UUID = ModuleIDs.matchGame
     public let displayName: String = "Workout Match"
     public let iconName: String = "gamecontroller.fill"
-    public let description: String = "500 levels of match 3. Collect powerups and level up."
+    public let description: String = "1000 levels of match 3. Collect powerups and level up."
 
     public var order: Int = 0
     public var isVisible: Bool = true

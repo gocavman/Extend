@@ -420,18 +420,22 @@
   {
     "id": "mini-games",
     "category": "Modules",
-    "title": "Mini Games",
+    "title": "Extras",
     "icon": "gamecontroller.fill",
     "summary": "Fun extras built into the app.",
     "keywords": ["game", "match", "puzzle", "level", "powerup", "stick figure", "animator", "pose", "frame", "animation", "gif", "export", "skeleton", "canvas", "editor", "mini game", "1000 levels", "fun"],
     "sections": [
       {
-        "heading": "Workout Match",
-        "body": "A match-3 puzzle game with 1000 levels.\n\nSwap adjacent tiles to match 3 or more of the same type. Larger matches earn powerups. If you get stuck, a tile will visibly shake as a hint. If you can't beat a level first try, no worries — the next attempt will have more moves available.\n\nYour level saves automatically. Add the Workout Match tile to your Dashboard to see your current level at a glance."
+        "heading": "Workout Match - mini game",
+        "body": "A match-3 puzzle game with 1000 levels.\n\nSwap adjacent tiles to match 3 or more of the same type. Larger matches earn powerups. If you get stuck, a tile will visibly shake as a hint. If you can't beat a level first try, no worries — the next attempt(s) will have more moves available.\n\nYour level saves automatically. Add the Workout Match tile to your Dashboard to see your current level at a glance."
       },
       {
         "heading": "Stick Figure Animator",
         "body": "Build frame-by-frame stick figure animations, export as GIFs, and attach them to exercises as how-to references.\n\n• Frame Editor — drag joints to pose the figure. Use X/Y controls to position it on the canvas. Adjust scale, limb thickness, and body proportions with the sliders below.\n• Saving Frames — tap 'Save Frame', give it a name. Open the frame list to load, copy, rename, or delete frames.\n• Animation Studio — tap 'Open Studio' to arrange frames into a sequence, set speed, preview, and export as a GIF.\n• Adding Objects — tap 'Add Object' to place emojis, images, or colored boxes on the canvas. Each object can be moved, scaled, and rotated independently."
+      },
+      {
+        "heading": "Empty Tiles on dashboard",
+        "body": "Add an empty tile to the dashboard and choose an emoticon to go with it.  Wind it up counter-clockwise and let it go to spin forward. For your OCD ticks, it keeps track of how many times you've done it."
       }
     ]
   }

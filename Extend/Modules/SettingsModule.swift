@@ -688,7 +688,7 @@ private struct SettingsModuleView: View {
             }
         }
         
-        print("🔄 Game progress reset: Workout Match back to level 1")
+        //print("🔄 Game progress reset: Workout Match back to level 1")
 
         // Reset Progress module calendar view state
         UserDefaults.standard.removeObject(forKey: "logViewMode")

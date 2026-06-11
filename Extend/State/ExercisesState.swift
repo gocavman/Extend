@@ -175,6 +175,14 @@ public final class ExercisesState {
         let boxingBagID      = UUID(uuidString: "00000112-0000-0000-0000-000000000000")!
         let bicycleOutID     = UUID(uuidString: "00000115-0000-0000-0000-000000000000")!
         let bicycleStatID    = UUID(uuidString: "00000116-0000-0000-0000-000000000000")!
+        let ezCurlBarID      = UUID(uuidString: "00000117-0000-0000-0000-000000000000")!
+        let latPulldownMachineID = UUID(uuidString: "00000118-0000-0000-0000-000000000000")!
+        let dipStationID     = UUID(uuidString: "00000119-0000-0000-0000-000000000000")!
+        let chestPressMachineID = UUID(uuidString: "0000011A-0000-0000-0000-000000000000")!
+        let legPressMachineID = UUID(uuidString: "0000011B-0000-0000-0000-000000000000")!
+        let legCurlMachineID = UUID(uuidString: "0000011C-0000-0000-0000-000000000000")!
+        let legExtMachineID  = UUID(uuidString: "0000011D-0000-0000-0000-000000000000")!
+        let sledID           = UUID(uuidString: "0000011E-0000-0000-0000-000000000000")!
 
         return [
             // A
@@ -186,11 +194,11 @@ public final class ExercisesState {
 
             // B
             exercise(name: "Battle Ropes",          primaryMuscleGroupIDs: [deltsID, pecsID],                                                                         equipmentIDs: [battleRopesID],                                                              hkType: .highIntensityIntervalTraining),
-            exercise(name: "Bench (Close Grip)",    primaryMuscleGroupIDs: [tricepsID, pecsID],               secondaryMuscleGroupIDs: [deltsID],                     equipmentIDs: [barbellID, dumbbellID, benchID],  defaultEquipmentIDs: [benchID],                hkType: .traditionalStrengthTraining),
-            exercise(name: "Bench (Decline)",       primaryMuscleGroupIDs: [pecsID, tricepsID],               secondaryMuscleGroupIDs: [deltsID],                     equipmentIDs: [barbellID, dumbbellID, benchID],  defaultEquipmentIDs: [benchID],                hkType: .traditionalStrengthTraining),
-            exercise(name: "Bench (Incline)",       primaryMuscleGroupIDs: [pecsID, deltsID],                 secondaryMuscleGroupIDs: [tricepsID],                   equipmentIDs: [barbellID, dumbbellID, benchID],  defaultEquipmentIDs: [benchID],                hkType: .traditionalStrengthTraining),
-            exercise(name: "Bench (Regular)",       primaryMuscleGroupIDs: [pecsID, tricepsID],               secondaryMuscleGroupIDs: [deltsID],                     equipmentIDs: [barbellID, dumbbellID, benchID],  defaultEquipmentIDs: [benchID],                hkType: .traditionalStrengthTraining),
-            exercise(name: "Bicep Curls",           primaryMuscleGroupIDs: [bicepsID],                        secondaryMuscleGroupIDs: [forearmID],                   equipmentIDs: [dumbbellID, barbellID],           defaultEquipmentIDs: [dumbbellID],             hkType: .traditionalStrengthTraining),
+            exercise(name: "Bench (Close Grip)",    primaryMuscleGroupIDs: [tricepsID, pecsID],               secondaryMuscleGroupIDs: [deltsID],                     equipmentIDs: [barbellID, dumbbellID, benchID, chestPressMachineID], defaultEquipmentIDs: [benchID], hkType: .traditionalStrengthTraining),
+            exercise(name: "Bench (Decline)",       primaryMuscleGroupIDs: [pecsID, tricepsID],               secondaryMuscleGroupIDs: [deltsID],                     equipmentIDs: [barbellID, dumbbellID, benchID, chestPressMachineID], defaultEquipmentIDs: [benchID], hkType: .traditionalStrengthTraining),
+            exercise(name: "Bench (Incline)",       primaryMuscleGroupIDs: [pecsID, deltsID],                 secondaryMuscleGroupIDs: [tricepsID],                   equipmentIDs: [barbellID, dumbbellID, benchID, chestPressMachineID], defaultEquipmentIDs: [benchID], hkType: .traditionalStrengthTraining),
+            exercise(name: "Bench (Regular)",       primaryMuscleGroupIDs: [pecsID, tricepsID],               secondaryMuscleGroupIDs: [deltsID],                     equipmentIDs: [barbellID, dumbbellID, benchID, chestPressMachineID], defaultEquipmentIDs: [benchID], hkType: .traditionalStrengthTraining),
+            exercise(name: "Bicep Curls",           primaryMuscleGroupIDs: [bicepsID],                        secondaryMuscleGroupIDs: [forearmID],                   equipmentIDs: [dumbbellID, barbellID, ezCurlBarID], defaultEquipmentIDs: [dumbbellID],          hkType: .traditionalStrengthTraining),
             exercise(name: "Bulgarian Split Squats",primaryMuscleGroupIDs: [quadsID, glutesID, adductorsID],  secondaryMuscleGroupIDs: [hamstringsID, calvesID, absID],equipmentIDs: [dumbbellID, benchID, noneID],                                                    hkType: .traditionalStrengthTraining),
             exercise(name: "Sumo Squat",            primaryMuscleGroupIDs: [adductorsID, glutesID, quadsID], secondaryMuscleGroupIDs: [hamstringsID, calvesID, absID, obliquesID, lowerBackID], equipmentIDs: [barbellID, dumbbellID, kettlebellID, noneID], hkType: .traditionalStrengthTraining),
             exercise(name: "Box Jumps",             primaryMuscleGroupIDs: [quadsID, glutesID],               secondaryMuscleGroupIDs: [calvesID, hamstringsID],      equipmentIDs: [plyoBoxID],                                                                  hkType: .highIntensityIntervalTraining),
@@ -210,7 +218,7 @@ public final class ExercisesState {
             // D
             exercise(name: "Deadlift",              primaryMuscleGroupIDs: [hamstringsID, glutesID],          secondaryMuscleGroupIDs: [latsID, trapsID],             equipmentIDs: [barbellID, dumbbellID, kettlebellID], defaultEquipmentIDs: [barbellID],      hkType: .traditionalStrengthTraining),
             exercise(name: "Dead Hang",             primaryMuscleGroupIDs: [upperBackID],                     secondaryMuscleGroupIDs: [latsID, forearmID],           equipmentIDs: [pullupBarID, ringsID],             defaultEquipmentIDs: [pullupBarID],          hkType: .traditionalStrengthTraining),
-            exercise(name: "Dips",                  primaryMuscleGroupIDs: [tricepsID, pecsID],               secondaryMuscleGroupIDs: [deltsID],                     equipmentIDs: [noneID, benchID, ringsID],                                                   hkType: .traditionalStrengthTraining),
+            exercise(name: "Dips",                  primaryMuscleGroupIDs: [tricepsID, pecsID],               secondaryMuscleGroupIDs: [deltsID],                     equipmentIDs: [noneID, benchID, ringsID, dipStationID],                                     hkType: .traditionalStrengthTraining),
 
             // E
             exercise(name: "Elliptical",            primaryMuscleGroupIDs: [quadsID, hamstringsID],                                                                   equipmentIDs: [ellipticalID],                                                               hkType: .elliptical),
@@ -240,7 +248,11 @@ public final class ExercisesState {
             exercise(name: "Kettlebell Swing",      primaryMuscleGroupIDs: [glutesID, hamstringsID],          secondaryMuscleGroupIDs: [lowerBackID, deltsID, absID], equipmentIDs: [kettlebellID],                                                               hkType: .traditionalStrengthTraining),
 
             // L
+            exercise(name: "Lat Pulldown",          primaryMuscleGroupIDs: [latsID],                          secondaryMuscleGroupIDs: [bicepsID, trapsID, deltsID],  equipmentIDs: [latPulldownMachineID],                                                       hkType: .traditionalStrengthTraining),
             exercise(name: "Lateral Raises",        primaryMuscleGroupIDs: [deltsID],                         secondaryMuscleGroupIDs: [trapsID],                     equipmentIDs: [dumbbellID, bandsID],                                                        hkType: .traditionalStrengthTraining),
+            exercise(name: "Leg Curls",             primaryMuscleGroupIDs: [hamstringsID],                    secondaryMuscleGroupIDs: [calvesID],                    equipmentIDs: [legCurlMachineID],                                                           hkType: .traditionalStrengthTraining),
+            exercise(name: "Leg Extensions",        primaryMuscleGroupIDs: [quadsID],                                                                                 equipmentIDs: [legExtMachineID],                                                            hkType: .traditionalStrengthTraining),
+            exercise(name: "Leg Press",             primaryMuscleGroupIDs: [quadsID, hamstringsID, glutesID], secondaryMuscleGroupIDs: [adductorsID, calvesID],       equipmentIDs: [legPressMachineID],                                                          hkType: .traditionalStrengthTraining),
             exercise(name: "Leg Raises",            primaryMuscleGroupIDs: [absID, quadsID],                                                                          equipmentIDs: [noneID],                                                                     hkType: .traditionalStrengthTraining),
             exercise(name: "Lunge (Forward)",       primaryMuscleGroupIDs: [quadsID, glutesID],               secondaryMuscleGroupIDs: [hamstringsID],                equipmentIDs: [dumbbellID, barbellID, noneID],                                               hkType: .traditionalStrengthTraining),
             exercise(name: "Lunge (Lateral)",       primaryMuscleGroupIDs: [quadsID, glutesID],               secondaryMuscleGroupIDs: [hamstringsID],                equipmentIDs: [dumbbellID, noneID],                                                          hkType: .traditionalStrengthTraining),
@@ -284,6 +296,7 @@ public final class ExercisesState {
 
             // S
             exercise(name: "Shrugs",                primaryMuscleGroupIDs: [trapsID],                         secondaryMuscleGroupIDs: [deltsID, forearmID],          equipmentIDs: [dumbbellID, barbellID],                                                       hkType: .traditionalStrengthTraining),
+            exercise(name: "Sled Push",             primaryMuscleGroupIDs: [fullBodyID],                                                                              equipmentIDs: [sledID],                                                                     hkType: .highIntensityIntervalTraining),
             exercise(name: "Sit Ups",               primaryMuscleGroupIDs: [absID],                                                                                    equipmentIDs: [noneID],                                                                     hkType: .traditionalStrengthTraining),
             exercise(name: "Skull Crusher",         primaryMuscleGroupIDs: [tricepsID],                       secondaryMuscleGroupIDs: [deltsID],                     equipmentIDs: [barbellID, dumbbellID],           defaultEquipmentIDs: [dumbbellID],             hkType: .traditionalStrengthTraining),
             exercise(name: "Squat Jumps",           primaryMuscleGroupIDs: [quadsID, glutesID, calvesID],     secondaryMuscleGroupIDs: [hamstringsID, absID],          equipmentIDs: [noneID],                                                                     hkType: .highIntensityIntervalTraining),
