@@ -251,6 +251,7 @@ private struct DashboardModuleView: View {
         let tileHeight: CGFloat = isDoubleHeight ? columnWidth * 2 + spacing
             : tile.statCardType == .favoriteDay ? CGFloat(44 + 7 * 19 + 12) * (isIPad ? 1.6 : 1.0)
             : tile.statCardType == .volumeThisWeek ? CGFloat(44 + 107 + 20 + 16) * (isIPad ? 1.6 : 1.0)
+            : tile.statCardType == .workoutFrequency ? CGFloat(isIPad ? 130 : 110)
             : columnWidth
         
         return Group {
@@ -1858,7 +1859,7 @@ private struct WeekFrequencyView: View {
                     }
                 }
                 .frame(maxWidth: .infinity)
-                .padding(.vertical, iPad ? 10 : 5)
+                .padding(.vertical, 5)
                 .background(Color.gray.opacity(0.12))
                 .cornerRadius(iPad ? 10 : 6)
             }
