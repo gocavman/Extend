@@ -63,6 +63,10 @@ private struct SettingsModuleView: View {
 
     @State private var showingResetAlert = false
     @State private var isSyncingHealthKit = false
+    @State private var isWatchSectionExpanded = false
+    @State private var watchSettings: WatchStepsSettings = readWatchStepsSettings()
+    @State private var watchStepsGoalText: String = ""
+    @State private var watchDistanceGoalText: String = ""
     @State private var isNavBarSectionExpanded = false
     @State private var isNavBarColorExpanded = false
     @State private var isDashboardSectionExpanded = false
@@ -422,6 +426,96 @@ private struct SettingsModuleView: View {
                             }
                         }
                         
+                        DisclosureGroup("Apple Watch", isExpanded: $isWatchSectionExpanded) {
+                            // Complication mode
+                            HStack {
+                                Text("Complication Shows")
+                                Spacer()
+                                Picker("", selection: $watchSettings.mode) {
+                                    ForEach(WatchStepsMode.allCases, id: \.self) { mode in
+                                        Text(mode.displayName).tag(mode)
+                                    }
+                                }
+                                .pickerStyle(.menu)
+                                .tint(.primary)
+                            }
+
+                            // Distance unit (only when distance is involved)
+                            if watchSettings.mode != .stepsOnly {
+                                HStack {
+                                    Text("Distance Unit")
+                                    Spacer()
+                                    Picker("", selection: $watchSettings.distanceUnit) {
+                                        ForEach(WatchDistanceUnit.allCases, id: \.self) { unit in
+                                            Text(unit.displayName).tag(unit)
+                                        }
+                                    }
+                                    .pickerStyle(.menu)
+                                    .tint(.primary)
+                                }
+                            }
+
+                            // Steps goal (only when steps is involved)
+                            if watchSettings.mode != .distanceOnly {
+                                HStack {
+                                    Text("Daily Steps Goal")
+                                    Spacer()
+                                    TextField("10000", text: $watchStepsGoalText)
+                                        .keyboardType(.numberPad)
+                                        .multilineTextAlignment(.trailing)
+                                        .frame(width: 90)
+                                        .onChange(of: watchStepsGoalText) {
+                                            if let v = Double(watchStepsGoalText), v > 0 {
+                                                watchSettings.stepsGoal = v
+                                                writeWatchStepsSettings(watchSettings)
+                                            }
+                                        }
+                                    Text("steps")
+                                        .foregroundColor(.secondary)
+                                        .font(.subheadline)
+                                }
+                            }
+
+                            // Distance goal (only when distance is involved)
+                            if watchSettings.mode != .stepsOnly {
+                                HStack {
+                                    Text("Daily Distance Goal")
+                                    Spacer()
+                                    TextField("8.0", text: $watchDistanceGoalText)
+                                        .keyboardType(.decimalPad)
+                                        .multilineTextAlignment(.trailing)
+                                        .frame(width: 70)
+                                        .onChange(of: watchDistanceGoalText) {
+                                            if let v = Double(watchDistanceGoalText), v > 0 {
+                                                watchSettings.distanceGoal = v
+                                                writeWatchStepsSettings(watchSettings)
+                                            }
+                                        }
+                                    Text(watchSettings.distanceUnit.rawValue)
+                                        .foregroundColor(.secondary)
+                                        .font(.subheadline)
+                                }
+                            }
+
+                            Text("These settings control the Steps/Distance ring complication on your Apple Watch.")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                        .onAppear {
+                            let s = readWatchStepsSettings()
+                            watchSettings = s
+                            watchStepsGoalText = String(Int(s.stepsGoal))
+                            let dGoal = s.distanceGoal
+                            watchDistanceGoalText = dGoal.truncatingRemainder(dividingBy: 1) == 0
+                                ? String(Int(dGoal)) : String(format: "%.1f", dGoal)
+                        }
+                        .onChange(of: watchSettings.mode) {
+                            writeWatchStepsSettings(watchSettings)
+                        }
+                        .onChange(of: watchSettings.distanceUnit) {
+                            writeWatchStepsSettings(watchSettings)
+                        }
+
                         NavigationLink(destination: HelpView()) {
                             HStack {
                                 Text("Help Center")

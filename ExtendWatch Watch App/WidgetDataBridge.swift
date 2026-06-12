@@ -1,19 +1,20 @@
 ////
 ////  WidgetDataBridge.swift
-////  Extend
+////  ExtendWatch
 ////
-////  Shared data model written by the main app into the App Group container
-////  so the Today's Plan widget and Watch app can display current plan items
-////  without needing to decode the full model graph.
+////  Watch-side copy of the shared data bridge.
+////  The Watch app only reads from the App Group; writing is done by the iPhone app.
+////  This file omits WidgetKit-only APIs and write functions not needed on Watch.
 ////
 
 import Foundation
-import WidgetKit
 
-private let appGroupID = "group.com.cavanmannenbach.extend"
-private let snapshotKey = "widget_plan_snapshot"
-private let multidayKey = "widget_plan_multiday"
+private let appGroupID       = "group.com.cavanmannenbach.extend"
+private let snapshotKey      = "widget_plan_snapshot"
+private let multidayKey      = "widget_plan_multiday"
 private let stepsSettingsKey = "watch_steps_settings"
+
+// MARK: - Plan item models
 
 /// A single displayable item in today's plan.
 public struct WidgetPlanItem: Codable {
@@ -28,7 +29,7 @@ public struct WidgetPlanItem: Codable {
     }
 }
 
-/// The full snapshot written by the main app and read by the widget.
+/// The full snapshot written by the main app and read by the Watch.
 public struct WidgetPlanSnapshot: Codable {
     public let planName: String?
     public let date: Date
@@ -36,27 +37,7 @@ public struct WidgetPlanSnapshot: Codable {
     public let isRestDay: Bool
 }
 
-// MARK: - Writing (main app calls this)
-
-public func writeWidgetSnapshot(
-    planName: String?,
-    items: [WidgetPlanItem]
-) {
-    let snapshot = WidgetPlanSnapshot(
-        planName: planName,
-        date: Calendar.current.startOfDay(for: Date()),
-        items: items,
-        isRestDay: items.isEmpty
-    )
-    let defaults = UserDefaults(suiteName: appGroupID) ?? .standard
-    if let encoded = try? JSONEncoder().encode(snapshot) {
-        defaults.set(encoded, forKey: snapshotKey)
-    }
-    // Tell WidgetKit to reload all timelines
-    WidgetCenter.shared.reloadAllTimelines()
-}
-
-// MARK: - Reading (widget calls this)
+// MARK: - Reading
 
 public func readWidgetSnapshot() -> WidgetPlanSnapshot {
     let defaults = UserDefaults(suiteName: appGroupID) ?? .standard
@@ -67,17 +48,6 @@ public func readWidgetSnapshot() -> WidgetPlanSnapshot {
     return WidgetPlanSnapshot(planName: nil, date: Date(), items: [], isRestDay: true)
 }
 
-// MARK: - Multi-day snapshots (Watch app day browsing)
-
-/// Writes a window of plan snapshots (±7 days) so the Watch app can browse days.
-public func writeMultiDaySnapshots(_ snapshots: [WidgetPlanSnapshot]) {
-    let defaults = UserDefaults(suiteName: appGroupID) ?? .standard
-    if let encoded = try? JSONEncoder().encode(snapshots) {
-        defaults.set(encoded, forKey: multidayKey)
-    }
-}
-
-/// Reads the multi-day plan snapshots. Returns an empty array if not yet written.
 public func readMultiDaySnapshots() -> [WidgetPlanSnapshot] {
     let defaults = UserDefaults(suiteName: appGroupID) ?? .standard
     if let data = defaults.data(forKey: multidayKey),
@@ -87,7 +57,7 @@ public func readMultiDaySnapshots() -> [WidgetPlanSnapshot] {
     return []
 }
 
-// MARK: - Steps / Distance goal settings (Watch complication #2)
+// MARK: - Steps / Distance goal settings
 
 /// Which health metric(s) the Watch steps complication shows.
 public enum WatchStepsMode: String, Codable, CaseIterable {
@@ -119,29 +89,17 @@ public enum WatchDistanceUnit: String, Codable, CaseIterable {
 
 /// User-editable goal settings for the Watch steps/distance complication.
 public struct WatchStepsSettings: Codable {
-    /// What the complication ring tracks.
     public var mode: WatchStepsMode
-    /// Daily step goal (used when mode is .stepsOnly or .both).
     public var stepsGoal: Double
-    /// Daily distance goal in the chosen unit (used when mode is .distanceOnly or .both).
     public var distanceGoal: Double
-    /// Distance unit preference.
     public var distanceUnit: WatchDistanceUnit
 
     public static let `default` = WatchStepsSettings(
         mode: .stepsOnly,
         stepsGoal: 10_000,
-        distanceGoal: 8.0,   // ~8 km / 5 mi equivalent of 10 000 steps
+        distanceGoal: 8.0,
         distanceUnit: .km
     )
-}
-
-public func writeWatchStepsSettings(_ settings: WatchStepsSettings) {
-    let defaults = UserDefaults(suiteName: appGroupID) ?? .standard
-    if let encoded = try? JSONEncoder().encode(settings) {
-        defaults.set(encoded, forKey: stepsSettingsKey)
-    }
-    WidgetCenter.shared.reloadAllTimelines()
 }
 
 public func readWatchStepsSettings() -> WatchStepsSettings {

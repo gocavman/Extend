@@ -438,6 +438,73 @@ final class TrainingPlanState {
         }
 
         writeWidgetSnapshot(planName: plan.name, items: items)
+
+        // Also write a ±7-day window so the Watch app can browse nearby days.
+        refreshMultiDaySnapshots()
+    }
+
+    /// Builds plan snapshots for today ±7 days and writes them to the App Group
+    /// under the "widget_plan_multiday" key for the Watch app's day-browsing view.
+    private func refreshMultiDaySnapshots() {
+        guard let plan = activePlan else {
+            writeMultiDaySnapshots([])
+            return
+        }
+        let cal = Calendar.current
+        let today = cal.startOfDay(for: Date())
+        let wDefaults = UserDefaults(suiteName: "group.com.cavanmannenbach.extend") ?? .standard
+
+        // Decode all supporting data once
+        let workouts  = (wDefaults.data(forKey: "workouts_data").flatMap  { try? JSONDecoder().decode([Workout].self,           from: $0) }) ?? []
+        let exercises = (wDefaults.data(forKey: "exercises_data").flatMap { try? JSONDecoder().decode([Exercise].self,          from: $0) }) ?? []
+        let voices    = (wDefaults.data(forKey: "VoiceTrainerConfigs").flatMap { try? JSONDecoder().decode([VoiceTrainerConfig].self, from: $0) }) ?? []
+        let timers    = (wDefaults.data(forKey: "timer_configs").flatMap  { try? JSONDecoder().decode([TimerConfig].self,        from: $0) }) ?? []
+        let logs      = (wDefaults.data(forKey: "workout_logs").flatMap   { try? JSONDecoder().decode([WorkoutLog].self,         from: $0) }) ?? []
+
+        var snapshots: [WidgetPlanSnapshot] = []
+        for offset in -7...7 {
+            guard let date = cal.date(byAdding: .day, value: offset, to: today) else { continue }
+            guard plan.isActive(on: date) else { continue }
+            let pd = plan.planDay(for: date)
+
+            if pd.isEmpty {
+                snapshots.append(WidgetPlanSnapshot(planName: plan.name, date: date, items: [], isRestDay: true))
+                continue
+            }
+
+            // Build completed set for this date
+            let dayLogs = logs.filter { cal.isDate($0.completedAt, inSameDayAs: date) }
+            let completedNames = Set(dayLogs.map { $0.workoutName })
+
+            var items: [WidgetPlanItem] = []
+            items += pd.workoutIDs.compactMap { id in
+                workouts.first { $0.id == id }.map {
+                    WidgetPlanItem(name: $0.name, icon: "dumbbell.fill",
+                                  isCompleted: completedNames.contains($0.name))
+                }
+            }
+            items += pd.exerciseIDs.compactMap { id in
+                exercises.first { $0.id == id }.map {
+                    WidgetPlanItem(name: $0.name, icon: "figure.strengthtraining.traditional",
+                                  isCompleted: completedNames.contains($0.name))
+                }
+            }
+            items += pd.voiceActivityIDs.compactMap { id in
+                voices.first { $0.id == id }.map {
+                    WidgetPlanItem(name: $0.name, icon: "waveform",
+                                  isCompleted: completedNames.contains("Trainer – \($0.name)"))
+                }
+            }
+            items += pd.timerIDs.compactMap { id in
+                timers.first { $0.id == id }.map { c in
+                    let displayName = c.name.isEmpty ? c.type.rawValue : c.name
+                    return WidgetPlanItem(name: displayName, icon: c.type.iconName,
+                                         isCompleted: completedNames.contains("\(c.type.rawValue) – \(displayName)"))
+                }
+            }
+            snapshots.append(WidgetPlanSnapshot(planName: plan.name, date: date, items: items, isRestDay: false))
+        }
+        writeMultiDaySnapshots(snapshots)
     }
 
     private func saveActiveID() {

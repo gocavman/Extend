@@ -11,6 +11,10 @@
 		86F095C92FD77A6800B92B82 /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 86F095C82FD77A6800B92B82 /* WidgetKit.framework */; };
 		86F095CB2FD77A6800B92B82 /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 86F095CA2FD77A6800B92B82 /* SwiftUI.framework */; };
 		86F095DA2FD77A6800B92B82 /* ExtendWidgetExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 86F095C62FD77A6800B92B82 /* ExtendWidgetExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		86F90FBF2FDBB67B005A4181 /* ExtendWatch Watch App.app in Embed Watch Content */ = {isa = PBXBuildFile; fileRef = 86F90F9F2FDBB67A005A4181 /* ExtendWatch Watch App.app */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		86F90FD92FDBBE7C005A4181 /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 86F095C82FD77A6800B92B82 /* WidgetKit.framework */; };
+		86F90FDA2FDBBE7C005A4181 /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 86F095CA2FD77A6800B92B82 /* SwiftUI.framework */; };
+		86F90FE72FDBBE7D005A4181 /* ExtendWatchWidgetExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 86F90FD82FDBBE7C005A4181 /* ExtendWatchWidgetExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -35,6 +39,34 @@
 			remoteGlobalIDString = 86F095C52FD77A6800B92B82;
 			remoteInfo = ExtendWidgetExtension;
 		};
+		86F90FAC2FDBB67B005A4181 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 86D712502F3EC9F7002C00D1 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 86F90F9E2FDBB67A005A4181;
+			remoteInfo = "ExtendWatch Watch App";
+		};
+		86F90FB62FDBB67B005A4181 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 86D712502F3EC9F7002C00D1 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 86F90F9E2FDBB67A005A4181;
+			remoteInfo = "ExtendWatch Watch App";
+		};
+		86F90FBD2FDBB67B005A4181 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 86D712502F3EC9F7002C00D1 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 86F90F9E2FDBB67A005A4181;
+			remoteInfo = "ExtendWatch Watch App";
+		};
+		86F90FE52FDBBE7D005A4181 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 86D712502F3EC9F7002C00D1 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 86F90FD72FDBBE7C005A4181;
+			remoteInfo = ExtendWatchWidgetExtension;
+		};
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -45,6 +77,28 @@
 			dstSubfolderSpec = 13;
 			files = (
 				86F095DA2FD77A6800B92B82 /* ExtendWidgetExtension.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		86F90FC32FDBB67B005A4181 /* Embed Watch Content */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "$(CONTENTS_FOLDER_PATH)/Watch";
+			dstSubfolderSpec = 16;
+			files = (
+				86F90FBF2FDBB67B005A4181 /* ExtendWatch Watch App.app in Embed Watch Content */,
+			);
+			name = "Embed Watch Content";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		86F90FEC2FDBBE7D005A4181 /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				86F90FE72FDBBE7D005A4181 /* ExtendWatchWidgetExtension.appex in Embed Foundation Extensions */,
 			);
 			name = "Embed Foundation Extensions";
 			runOnlyForDeploymentPostprocessing = 0;
@@ -60,6 +114,11 @@
 		86F095C82FD77A6800B92B82 /* WidgetKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WidgetKit.framework; path = System/Library/Frameworks/WidgetKit.framework; sourceTree = SDKROOT; };
 		86F095CA2FD77A6800B92B82 /* SwiftUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftUI.framework; path = System/Library/Frameworks/SwiftUI.framework; sourceTree = SDKROOT; };
 		86F095E22FD77ECB00B92B82 /* ExtendWidgetExtension.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = ExtendWidgetExtension.entitlements; sourceTree = "<group>"; };
+		86F90F9F2FDBB67A005A4181 /* ExtendWatch Watch App.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "ExtendWatch Watch App.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+		86F90FAB2FDBB67B005A4181 /* ExtendWatch Watch AppTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "ExtendWatch Watch AppTests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
+		86F90FB52FDBB67B005A4181 /* ExtendWatch Watch AppUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "ExtendWatch Watch AppUITests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
+		86F90FD82FDBBE7C005A4181 /* ExtendWatchWidgetExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = ExtendWatchWidgetExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		86F90FED2FDBBEC3005A4181 /* ExtendWatchWidgetExtension.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = ExtendWatchWidgetExtension.entitlements; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -76,6 +135,20 @@
 				Info.plist,
 			);
 			target = 86F095C52FD77A6800B92B82 /* ExtendWidgetExtension */;
+		};
+		86F90FCB2FDBB804005A4181 /* Exceptions for "ExtendWatch Watch App" folder in "ExtendWatch Watch App" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				WatchComplicationBundle.swift,
+			);
+			target = 86F90F9E2FDBB67A005A4181 /* ExtendWatch Watch App */;
+		};
+		86F90FEB2FDBBE7D005A4181 /* Exceptions for "ExtendWatchWidget" folder in "ExtendWatchWidgetExtension" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 86F90FD72FDBBE7C005A4181 /* ExtendWatchWidgetExtension */;
 		};
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
@@ -104,6 +177,32 @@
 				86F095DE2FD77A6800B92B82 /* Exceptions for "ExtendWidget" folder in "ExtendWidgetExtension" target */,
 			);
 			path = ExtendWidget;
+			sourceTree = "<group>";
+		};
+		86F90FA02FDBB67A005A4181 /* ExtendWatch Watch App */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				86F90FCB2FDBB804005A4181 /* Exceptions for "ExtendWatch Watch App" folder in "ExtendWatch Watch App" target */,
+			);
+			path = "ExtendWatch Watch App";
+			sourceTree = "<group>";
+		};
+		86F90FAE2FDBB67B005A4181 /* ExtendWatch Watch AppTests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = "ExtendWatch Watch AppTests";
+			sourceTree = "<group>";
+		};
+		86F90FB82FDBB67B005A4181 /* ExtendWatch Watch AppUITests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = "ExtendWatch Watch AppUITests";
+			sourceTree = "<group>";
+		};
+		86F90FDB2FDBBE7C005A4181 /* ExtendWatchWidget */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				86F90FEB2FDBBE7D005A4181 /* Exceptions for "ExtendWatchWidget" folder in "ExtendWatchWidgetExtension" target */,
+			);
+			path = ExtendWatchWidget;
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -139,20 +238,56 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		86F90F9C2FDBB67A005A4181 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		86F90FA82FDBB67B005A4181 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		86F90FB22FDBB67B005A4181 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		86F90FD52FDBBE7C005A4181 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				86F90FDA2FDBBE7C005A4181 /* SwiftUI.framework in Frameworks */,
+				86F90FD92FDBBE7C005A4181 /* WidgetKit.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
 		86D7124F2F3EC9F7002C00D1 = {
 			isa = PBXGroup;
 			children = (
+				86F90FED2FDBBEC3005A4181 /* ExtendWatchWidgetExtension.entitlements */,
 				86F095E22FD77ECB00B92B82 /* ExtendWidgetExtension.entitlements */,
 				86D712982F3ED2E6002C00D1 /* CodeRules.swift */,
 				86D7125A2F3EC9F7002C00D1 /* Extend */,
 				86D7126C2F3EC9F8002C00D1 /* ExtendTests */,
 				86D712762F3EC9F8002C00D1 /* ExtendUITests */,
 				86F095CC2FD77A6800B92B82 /* ExtendWidget */,
+				86F90FA02FDBB67A005A4181 /* ExtendWatch Watch App */,
+				86F90FAE2FDBB67B005A4181 /* ExtendWatch Watch AppTests */,
+				86F90FB82FDBB67B005A4181 /* ExtendWatch Watch AppUITests */,
+				86F90FDB2FDBBE7C005A4181 /* ExtendWatchWidget */,
 				86F095C72FD77A6800B92B82 /* Frameworks */,
 				86D712592F3EC9F7002C00D1 /* Products */,
+				86F90F8F2FDBB4CE005A4181 /* ExtendWatch */,
 			);
 			sourceTree = "<group>";
 		};
@@ -163,6 +298,10 @@
 				86D712692F3EC9F8002C00D1 /* ExtendTests.xctest */,
 				86D712732F3EC9F8002C00D1 /* ExtendUITests.xctest */,
 				86F095C62FD77A6800B92B82 /* ExtendWidgetExtension.appex */,
+				86F90F9F2FDBB67A005A4181 /* ExtendWatch Watch App.app */,
+				86F90FAB2FDBB67B005A4181 /* ExtendWatch Watch AppTests.xctest */,
+				86F90FB52FDBB67B005A4181 /* ExtendWatch Watch AppUITests.xctest */,
+				86F90FD82FDBBE7C005A4181 /* ExtendWatchWidgetExtension.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -176,6 +315,13 @@
 			name = Frameworks;
 			sourceTree = "<group>";
 		};
+		86F90F8F2FDBB4CE005A4181 /* ExtendWatch */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			path = ExtendWatch;
+			sourceTree = "<group>";
+		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
@@ -187,11 +333,13 @@
 				86D712552F3EC9F7002C00D1 /* Frameworks */,
 				86D712562F3EC9F7002C00D1 /* Resources */,
 				86F095DF2FD77A6800B92B82 /* Embed Foundation Extensions */,
+				86F90FC32FDBB67B005A4181 /* Embed Watch Content */,
 			);
 			buildRules = (
 			);
 			dependencies = (
 				86F095D92FD77A6800B92B82 /* PBXTargetDependency */,
+				86F90FBE2FDBB67B005A4181 /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
 				86D7125A2F3EC9F7002C00D1 /* Extend */,
@@ -271,6 +419,98 @@
 			productReference = 86F095C62FD77A6800B92B82 /* ExtendWidgetExtension.appex */;
 			productType = "com.apple.product-type.app-extension";
 		};
+		86F90F9E2FDBB67A005A4181 /* ExtendWatch Watch App */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 86F90FC02FDBB67B005A4181 /* Build configuration list for PBXNativeTarget "ExtendWatch Watch App" */;
+			buildPhases = (
+				86F90F9B2FDBB67A005A4181 /* Sources */,
+				86F90F9C2FDBB67A005A4181 /* Frameworks */,
+				86F90F9D2FDBB67A005A4181 /* Resources */,
+				86F90FEC2FDBBE7D005A4181 /* Embed Foundation Extensions */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				86F90FE62FDBBE7D005A4181 /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				86F90FA02FDBB67A005A4181 /* ExtendWatch Watch App */,
+			);
+			name = "ExtendWatch Watch App";
+			packageProductDependencies = (
+			);
+			productName = "ExtendWatch Watch App";
+			productReference = 86F90F9F2FDBB67A005A4181 /* ExtendWatch Watch App.app */;
+			productType = "com.apple.product-type.application";
+		};
+		86F90FAA2FDBB67B005A4181 /* ExtendWatch Watch AppTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 86F90FC42FDBB67B005A4181 /* Build configuration list for PBXNativeTarget "ExtendWatch Watch AppTests" */;
+			buildPhases = (
+				86F90FA72FDBB67B005A4181 /* Sources */,
+				86F90FA82FDBB67B005A4181 /* Frameworks */,
+				86F90FA92FDBB67B005A4181 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				86F90FAD2FDBB67B005A4181 /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				86F90FAE2FDBB67B005A4181 /* ExtendWatch Watch AppTests */,
+			);
+			name = "ExtendWatch Watch AppTests";
+			packageProductDependencies = (
+			);
+			productName = "ExtendWatch Watch AppTests";
+			productReference = 86F90FAB2FDBB67B005A4181 /* ExtendWatch Watch AppTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
+		86F90FB42FDBB67B005A4181 /* ExtendWatch Watch AppUITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 86F90FC72FDBB67B005A4181 /* Build configuration list for PBXNativeTarget "ExtendWatch Watch AppUITests" */;
+			buildPhases = (
+				86F90FB12FDBB67B005A4181 /* Sources */,
+				86F90FB22FDBB67B005A4181 /* Frameworks */,
+				86F90FB32FDBB67B005A4181 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				86F90FB72FDBB67B005A4181 /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				86F90FB82FDBB67B005A4181 /* ExtendWatch Watch AppUITests */,
+			);
+			name = "ExtendWatch Watch AppUITests";
+			packageProductDependencies = (
+			);
+			productName = "ExtendWatch Watch AppUITests";
+			productReference = 86F90FB52FDBB67B005A4181 /* ExtendWatch Watch AppUITests.xctest */;
+			productType = "com.apple.product-type.bundle.ui-testing";
+		};
+		86F90FD72FDBBE7C005A4181 /* ExtendWatchWidgetExtension */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 86F90FE82FDBBE7D005A4181 /* Build configuration list for PBXNativeTarget "ExtendWatchWidgetExtension" */;
+			buildPhases = (
+				86F90FD42FDBBE7C005A4181 /* Sources */,
+				86F90FD52FDBBE7C005A4181 /* Frameworks */,
+				86F90FD62FDBBE7C005A4181 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				86F90FDB2FDBBE7C005A4181 /* ExtendWatchWidget */,
+			);
+			name = ExtendWatchWidgetExtension;
+			packageProductDependencies = (
+			);
+			productName = ExtendWatchWidgetExtension;
+			productReference = 86F90FD82FDBBE7C005A4181 /* ExtendWatchWidgetExtension.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -295,6 +535,20 @@
 					86F095C52FD77A6800B92B82 = {
 						CreatedOnToolsVersion = 26.3;
 					};
+					86F90F9E2FDBB67A005A4181 = {
+						CreatedOnToolsVersion = 26.3;
+					};
+					86F90FAA2FDBB67B005A4181 = {
+						CreatedOnToolsVersion = 26.3;
+						TestTargetID = 86F90F9E2FDBB67A005A4181;
+					};
+					86F90FB42FDBB67B005A4181 = {
+						CreatedOnToolsVersion = 26.3;
+						TestTargetID = 86F90F9E2FDBB67A005A4181;
+					};
+					86F90FD72FDBBE7C005A4181 = {
+						CreatedOnToolsVersion = 26.3;
+					};
 				};
 			};
 			buildConfigurationList = 86D712532F3EC9F7002C00D1 /* Build configuration list for PBXProject "Extend" */;
@@ -315,6 +569,10 @@
 				86D712682F3EC9F8002C00D1 /* ExtendTests */,
 				86D712722F3EC9F8002C00D1 /* ExtendUITests */,
 				86F095C52FD77A6800B92B82 /* ExtendWidgetExtension */,
+				86F90F9E2FDBB67A005A4181 /* ExtendWatch Watch App */,
+				86F90FAA2FDBB67B005A4181 /* ExtendWatch Watch AppTests */,
+				86F90FB42FDBB67B005A4181 /* ExtendWatch Watch AppUITests */,
+				86F90FD72FDBBE7C005A4181 /* ExtendWatchWidgetExtension */,
 			);
 		};
 /* End PBXProject section */
@@ -342,6 +600,34 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 		86F095C42FD77A6800B92B82 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		86F90F9D2FDBB67A005A4181 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		86F90FA92FDBB67B005A4181 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		86F90FB32FDBB67B005A4181 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		86F90FD62FDBBE7C005A4181 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -380,6 +666,34 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		86F90F9B2FDBB67A005A4181 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		86F90FA72FDBB67B005A4181 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		86F90FB12FDBB67B005A4181 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		86F90FD42FDBBE7C005A4181 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
@@ -397,6 +711,26 @@
 			isa = PBXTargetDependency;
 			target = 86F095C52FD77A6800B92B82 /* ExtendWidgetExtension */;
 			targetProxy = 86F095D82FD77A6800B92B82 /* PBXContainerItemProxy */;
+		};
+		86F90FAD2FDBB67B005A4181 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 86F90F9E2FDBB67A005A4181 /* ExtendWatch Watch App */;
+			targetProxy = 86F90FAC2FDBB67B005A4181 /* PBXContainerItemProxy */;
+		};
+		86F90FB72FDBB67B005A4181 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 86F90F9E2FDBB67A005A4181 /* ExtendWatch Watch App */;
+			targetProxy = 86F90FB62FDBB67B005A4181 /* PBXContainerItemProxy */;
+		};
+		86F90FBE2FDBB67B005A4181 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 86F90F9E2FDBB67A005A4181 /* ExtendWatch Watch App */;
+			targetProxy = 86F90FBD2FDBB67B005A4181 /* PBXContainerItemProxy */;
+		};
+		86F90FE62FDBBE7D005A4181 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 86F90FD72FDBBE7C005A4181 /* ExtendWatchWidgetExtension */;
+			targetProxy = 86F90FE52FDBBE7D005A4181 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
@@ -776,6 +1110,240 @@
 			};
 			name = Release;
 		};
+		86F90FC12FDBB67B005A4181 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = "ExtendWatch Watch App/ExtendWatch Watch App.entitlements";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 6CUXT7F93D;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				
+				INFOPLIST_KEY_CFBundleDisplayName = ExtendWatch;
+				INFOPLIST_KEY_NSHealthShareUsageDescription = "Extend uses HealthKit to show your daily steps and distance on the Watch complication.";
+				INFOPLIST_KEY_LSApplicationCategoryType = "";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
+				INFOPLIST_KEY_WKCompanionAppBundleIdentifier = gocavman.Extend;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = gocavman.Extend.watchkitapp;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = watchos;
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 4;
+				WATCHOS_DEPLOYMENT_TARGET = 26.2;
+			};
+			name = Debug;
+		};
+		86F90FC22FDBB67B005A4181 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = "ExtendWatch Watch App/ExtendWatch Watch App.entitlements";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 6CUXT7F93D;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				
+				INFOPLIST_KEY_CFBundleDisplayName = ExtendWatch;
+				INFOPLIST_KEY_NSHealthShareUsageDescription = "Extend uses HealthKit to show your daily steps and distance on the Watch complication.";
+				INFOPLIST_KEY_LSApplicationCategoryType = "";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
+				INFOPLIST_KEY_WKCompanionAppBundleIdentifier = gocavman.Extend;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = gocavman.Extend.watchkitapp;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = watchos;
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 4;
+				VALIDATE_PRODUCT = YES;
+				WATCHOS_DEPLOYMENT_TARGET = 26.2;
+			};
+			name = Release;
+		};
+		86F90FC52FDBB67B005A4181 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 6CUXT7F93D;
+				GENERATE_INFOPLIST_FILE = YES;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "gocavman.ExtendWatch-Watch-AppTests";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = watchos;
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 4;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/ExtendWatch Watch App.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/ExtendWatch Watch App";
+				WATCHOS_DEPLOYMENT_TARGET = 26.2;
+			};
+			name = Debug;
+		};
+		86F90FC62FDBB67B005A4181 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 6CUXT7F93D;
+				GENERATE_INFOPLIST_FILE = YES;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "gocavman.ExtendWatch-Watch-AppTests";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = watchos;
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 4;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/ExtendWatch Watch App.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/ExtendWatch Watch App";
+				VALIDATE_PRODUCT = YES;
+				WATCHOS_DEPLOYMENT_TARGET = 26.2;
+			};
+			name = Release;
+		};
+		86F90FC82FDBB67B005A4181 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 6CUXT7F93D;
+				GENERATE_INFOPLIST_FILE = YES;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "gocavman.ExtendWatch-Watch-AppUITests";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = watchos;
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 4;
+				TEST_TARGET_NAME = "ExtendWatch Watch App";
+				WATCHOS_DEPLOYMENT_TARGET = 26.2;
+			};
+			name = Debug;
+		};
+		86F90FC92FDBB67B005A4181 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 6CUXT7F93D;
+				GENERATE_INFOPLIST_FILE = YES;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "gocavman.ExtendWatch-Watch-AppUITests";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = watchos;
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 4;
+				TEST_TARGET_NAME = "ExtendWatch Watch App";
+				VALIDATE_PRODUCT = YES;
+				WATCHOS_DEPLOYMENT_TARGET = 26.2;
+			};
+			name = Release;
+		};
+		86F90FE92FDBBE7D005A4181 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
+				CODE_SIGN_ENTITLEMENTS = ExtendWatchWidgetExtension.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 6CUXT7F93D;
+				INFOPLIST_FILE = ExtendWatchWidget/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = ExtendWatchWidget;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+					"@executable_path/../../../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = gocavman.Extend.watchkitapp.ExtendWatchWidget;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = watchos;
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 4;
+				WATCHOS_DEPLOYMENT_TARGET = 26.2;
+			};
+			name = Debug;
+		};
+		86F90FEA2FDBBE7D005A4181 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
+				CODE_SIGN_ENTITLEMENTS = ExtendWatchWidgetExtension.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 6CUXT7F93D;
+				INFOPLIST_FILE = ExtendWatchWidget/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = ExtendWatchWidget;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+					"@executable_path/../../../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = gocavman.Extend.watchkitapp.ExtendWatchWidget;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = watchos;
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 4;
+				VALIDATE_PRODUCT = YES;
+				WATCHOS_DEPLOYMENT_TARGET = 26.2;
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -820,6 +1388,42 @@
 			buildConfigurations = (
 				86F095DC2FD77A6800B92B82 /* Debug */,
 				86F095DD2FD77A6800B92B82 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		86F90FC02FDBB67B005A4181 /* Build configuration list for PBXNativeTarget "ExtendWatch Watch App" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				86F90FC12FDBB67B005A4181 /* Debug */,
+				86F90FC22FDBB67B005A4181 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		86F90FC42FDBB67B005A4181 /* Build configuration list for PBXNativeTarget "ExtendWatch Watch AppTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				86F90FC52FDBB67B005A4181 /* Debug */,
+				86F90FC62FDBB67B005A4181 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		86F90FC72FDBB67B005A4181 /* Build configuration list for PBXNativeTarget "ExtendWatch Watch AppUITests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				86F90FC82FDBB67B005A4181 /* Debug */,
+				86F90FC92FDBB67B005A4181 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		86F90FE82FDBBE7D005A4181 /* Build configuration list for PBXNativeTarget "ExtendWatchWidgetExtension" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				86F90FE92FDBBE7D005A4181 /* Debug */,
+				86F90FEA2FDBBE7D005A4181 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
