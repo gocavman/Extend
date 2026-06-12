@@ -58,6 +58,7 @@ private struct ProgressModuleView: View {
     /// Week vs month scope in list (timeline) view
     @AppStorage("logListShowWeek") private var listShowWeek: Bool = false
     @State private var showFilterPopover: Bool = false
+    @State private var waterHistoryDate: IdentifiableDate? = nil
 
     private let calendar = Calendar.current
 
@@ -174,7 +175,7 @@ private struct ProgressModuleView: View {
                 }) {
                     Image(systemName: "calendar.badge.checkmark")
                         .frame(width: 22, height: 22, alignment: .center)
-                        .foregroundColor(planState.activePlan != nil ? .accentColor : .primary)
+                        .foregroundColor(planState.activePlan != nil ? Color(red: 1.0, green: 0.55, blue: 0.0) : .primary)
                 }
 
                 // Activity ribbon toggle
@@ -182,9 +183,9 @@ private struct ProgressModuleView: View {
                     UIImpactFeedbackGenerator(style: .light).impactOccurred()
                     showRibbon.toggle()
                 }) {
-                    Image(systemName: showRibbon ? "chart.bar.fill" : "chart.bar")
+                    Image(systemName: showRibbon ? "rectangle.grid.2x2.fill" : "rectangle.grid.2x2")
                         .frame(width: 22, height: 22, alignment: .center)
-                        .foregroundColor(showRibbon ? .blue : .primary)
+                        .foregroundColor(showRibbon ? .green : .primary)
                 }
 
                 // View mode toggle
@@ -198,7 +199,7 @@ private struct ProgressModuleView: View {
                         logViewMode = "calendar"
                     }
                 }) {
-                    Image(systemName: logViewMode == "calendar" ? "list.bullet.below.rectangle" : "calendar")
+                    Image(systemName: logViewMode == "calendar" ? "list.bullet.rectangle" : "calendar")
                         .frame(width: 22, height: 22, alignment: .center)
                         .foregroundColor(.primary)
                 }
@@ -335,7 +336,9 @@ private struct ProgressModuleView: View {
                             let dayLogs = logState.logsForDate(selectedDate)
                             let dayJournal = logState.journalEntriesForDate(selectedDate)
                             let dayPlanDay = planState.planDay(for: selectedDate)
-                            if !dayLogs.isEmpty || !dayJournal.isEmpty {
+                            let dayWaterOz = waterState.totalOzForDate(selectedDate)
+                            let hasWater = dayWaterOz > 0
+                            if !dayLogs.isEmpty || !dayJournal.isEmpty || hasWater {
                                 VStack(alignment: .leading, spacing: 12) {
                                     Text(formattedDate(selectedDate))
                                         .font(.headline)
@@ -365,6 +368,18 @@ private struct ProgressModuleView: View {
                                     let combined = (workoutItems + journalItems).sorted { $0.date > $1.date }
                                     ForEach(Array(combined.enumerated()), id: \.offset) { _, item in
                                         item.view
+                                    }
+
+                                    // Water summary row — tappable, opens filtered history
+                                    if hasWater {
+                                        WaterDaySummaryRow(
+                                            oz: dayWaterOz,
+                                            goal: waterState.dailyGoalOz,
+                                            unit: waterState.unit
+                                        ) {
+                                            waterHistoryDate = IdentifiableDate(date: selectedDate)
+                                        }
+                                        .padding(.horizontal, 16)
                                     }
                                 }
                             } else {
@@ -407,6 +422,8 @@ private struct ProgressModuleView: View {
                             selectedLog = log
                         } onJournalTap: { entry in
                             selectedJournalEntry = entry
+                        } onWaterTap: { date in
+                            waterHistoryDate = IdentifiableDate(date: date)
                         }
                     }
                 }
@@ -445,6 +462,12 @@ private struct ProgressModuleView: View {
                 .environment(workoutsState)
                 .environment(exercisesState)
                 .preferredColorScheme(preferredScheme)
+        }
+        .fullScreenCover(item: $waterHistoryDate) { id in
+            NavigationStack {
+                WaterHistorySheet(filterDate: id.date)
+                    .environment(waterState)
+            }
         }
 
     }
@@ -553,6 +576,7 @@ private struct CalendarView: View {
                                 return plan.name
                             }(),
                             showWater: showWater,
+                            waterOz: showWater ? WaterState.shared.totalOzForDate(date) : 0,
                             cellHeight: cellHeight
                         ) {
                             selectedDate = date
@@ -591,61 +615,65 @@ private struct PlanDayCard: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            HStack(spacing: 6) {
-                Image(systemName: "calendar.badge.checkmark")
-                    .font(.caption)
-                    .foregroundColor(Color(red: 1.0, green: 0.55, blue: 0.0))
-                Text(planName)
-                    .font(.caption)
-                    .fontWeight(.semibold)
-                    .foregroundColor(Color(red: 1.0, green: 0.55, blue: 0.0))
-            }
+        HStack(spacing: 0) {
+            // Orange left accent edge
+            RoundedRectangle(cornerRadius: 2)
+                .fill(Color(red: 1.0, green: 0.55, blue: 0.0))
+                .frame(width: 4)
+                .padding(.vertical, 2)
 
-            if !workouts.isEmpty {
-                ForEach(workouts) { w in
+            VStack(alignment: .leading, spacing: 6) {
+                HStack(spacing: 6) {
+                    Image(systemName: "calendar.badge.checkmark")
+                        .font(.caption)
+                        .foregroundColor(Color(red: 1.0, green: 0.55, blue: 0.0))
+                    Text(planName)
+                        .font(.caption)
+                        .fontWeight(.semibold)
+                        .foregroundColor(Color(red: 1.0, green: 0.55, blue: 0.0))
+                }
+
+                if !workouts.isEmpty {
+                    ForEach(workouts) { w in
+                        HStack(spacing: 6) {
+                            Image(systemName: "dumbbell.fill")
+                                .font(.caption2)
+                                .foregroundColor(.secondary)
+                            Text(w.name)
+                                .font(.caption)
+                                .foregroundColor(.primary)
+                        }
+                    }
+                }
+
+                if !exercises.isEmpty {
                     HStack(spacing: 6) {
-                        Image(systemName: "dumbbell.fill")
+                        Image(systemName: "figure.strengthtraining.traditional")
                             .font(.caption2)
                             .foregroundColor(.secondary)
-                        Text(w.name)
+                        Text(exercises.map { $0.name }.joined(separator: ", "))
                             .font(.caption)
-                            .foregroundColor(.primary)
+                            .foregroundColor(.secondary)
+                            .lineLimit(2)
+                    }
+                }
+
+                if !planDay.note.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                    HStack(spacing: 6) {
+                        Image(systemName: "note.text")
+                            .font(.caption2)
+                            .foregroundColor(.secondary)
+                        Text(planDay.note)
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                            .lineLimit(2)
                     }
                 }
             }
-
-            if !exercises.isEmpty {
-                HStack(spacing: 6) {
-                    Image(systemName: "figure.strengthtraining.traditional")
-                        .font(.caption2)
-                        .foregroundColor(.secondary)
-                    Text(exercises.map { $0.name }.joined(separator: ", "))
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                        .lineLimit(2)
-                }
-            }
-
-            if !planDay.note.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                HStack(spacing: 6) {
-                    Image(systemName: "note.text")
-                        .font(.caption2)
-                        .foregroundColor(.secondary)
-                    Text(planDay.note)
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                        .lineLimit(2)
-                }
-            }
+            .padding(10)
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
-        .padding(10)
-        .frame(maxWidth: .infinity, alignment: .leading)
         .background(Color(red: 1.0, green: 0.55, blue: 0.0).opacity(0.08))
-        .overlay(
-            RoundedRectangle(cornerRadius: 8)
-                .stroke(Color(red: 1.0, green: 0.55, blue: 0.0).opacity(0.25), lineWidth: 1)
-        )
         .cornerRadius(8)
     }
 }
@@ -656,6 +684,7 @@ private struct DayCellLabel {
     let text: String
     let isJournal: Bool
     let isPlan: Bool
+    let isWater: Bool
     let isOverflow: Bool
 }
 
@@ -669,6 +698,7 @@ private struct DayCell: View {
     var journalEntries: [JournalEntry] = []
     var planName: String? = nil
     var showWater: Bool = true
+    var waterOz: Double = 0
     var cellHeight: CGFloat = 85
     let onTap: () -> Void
 
@@ -681,37 +711,43 @@ private struct DayCell: View {
     // Build up to 3 labels: workouts first, then journals, then plan.
     // If total > 3, slot 3 becomes "+N more" overflow label (iOS Calendar style).
     private var cellLabels: [DayCellLabel] {
-        let total = logs.count + journalEntries.count + (planName != nil ? 1 : 0)
+        let hasWaterEntry = showWater && waterOz > 0
+        let waterCount = hasWaterEntry ? 1 : 0
+        let total = logs.count + journalEntries.count + (planName != nil ? 1 : 0) + waterCount
         var result: [DayCellLabel] = []
 
         if total <= 3 {
-            // All items fit — plan always gets its own slot
-            let maxOther = planName != nil ? 2 : 3
-            for log in logs.prefix(maxOther) {
-                result.append(DayCellLabel(text: log.workoutName, isJournal: false, isPlan: false, isOverflow: false))
+            // All items fit
+            let maxOther = (planName != nil ? 1 : 0) + waterCount > 0 ? 3 - (planName != nil ? 1 : 0) - waterCount : 3
+            for log in logs.prefix(max(0, maxOther)) {
+                result.append(DayCellLabel(text: log.workoutName, isJournal: false, isPlan: false, isWater: false, isOverflow: false))
             }
             if result.count < maxOther {
                 for entry in journalEntries.prefix(maxOther - result.count) {
-                    result.append(DayCellLabel(text: entry.title, isJournal: true, isPlan: false, isOverflow: false))
+                    result.append(DayCellLabel(text: entry.title, isJournal: true, isPlan: false, isWater: false, isOverflow: false))
                 }
             }
             if let name = planName {
-                result.append(DayCellLabel(text: name, isJournal: false, isPlan: true, isOverflow: false))
+                result.append(DayCellLabel(text: name, isJournal: false, isPlan: true, isWater: false, isOverflow: false))
+            }
+            if hasWaterEntry {
+                let label = String(format: "%.0f oz", waterOz)
+                result.append(DayCellLabel(text: label, isJournal: false, isPlan: false, isWater: true, isOverflow: false))
             }
         } else {
             // Overflow: show 2 real items, then "+N more" in slot 3
             var filled = 0
             for log in logs.prefix(2) where filled < 2 {
-                result.append(DayCellLabel(text: log.workoutName, isJournal: false, isPlan: false, isOverflow: false))
+                result.append(DayCellLabel(text: log.workoutName, isJournal: false, isPlan: false, isWater: false, isOverflow: false))
                 filled += 1
             }
             if filled < 2 {
                 for entry in journalEntries.prefix(2 - filled) {
-                    result.append(DayCellLabel(text: entry.title, isJournal: true, isPlan: false, isOverflow: false))
+                    result.append(DayCellLabel(text: entry.title, isJournal: true, isPlan: false, isWater: false, isOverflow: false))
                     filled += 1
                 }
             }
-            result.append(DayCellLabel(text: "+\(total - 2) more", isJournal: false, isPlan: false, isOverflow: true))
+            result.append(DayCellLabel(text: "+\(total - 2) more", isJournal: false, isPlan: false, isWater: false, isOverflow: true))
         }
         return result
     }
@@ -757,7 +793,9 @@ private struct DayCell: View {
                                     ? Color(red: 1.0, green: 0.55, blue: 0.0).opacity(isCurrentMonth ? 0.18 : 0.08)
                                     : (item.isJournal
                                         ? Color(red: 0.4, green: 0.35, blue: 0.75).opacity(isCurrentMonth ? 0.18 : 0.08)
-                                        : Color(red: 0.2, green: 0.75, blue: 0.35).opacity(isCurrentMonth ? 0.18 : 0.08)))
+                                        : (item.isWater
+                                            ? Color(red: 0.2, green: 0.55, blue: 1.0).opacity(isCurrentMonth ? 0.18 : 0.08)
+                                            : Color(red: 0.2, green: 0.75, blue: 0.35).opacity(isCurrentMonth ? 0.18 : 0.08))))
                             // Text: darker in light mode, lighter in dark mode for readability
                             let textOpacity: Double = isCurrentMonth ? 1 : 0.5
                             let pillText: Color = item.isOverflow
@@ -770,9 +808,13 @@ private struct DayCell: View {
                                         ? (colorScheme == .dark
                                             ? Color(red: 0.65, green: 0.60, blue: 1.0).opacity(textOpacity)
                                             : Color(red: 0.28, green: 0.22, blue: 0.60).opacity(textOpacity))
-                                        : (colorScheme == .dark
-                                            ? Color(red: 0.35, green: 0.90, blue: 0.50).opacity(textOpacity)
-                                            : Color(red: 0.08, green: 0.50, blue: 0.18).opacity(textOpacity))))
+                                        : (item.isWater
+                                            ? (colorScheme == .dark
+                                                ? Color(red: 0.55, green: 0.78, blue: 1.0).opacity(textOpacity)
+                                                : Color(red: 0.08, green: 0.35, blue: 0.80).opacity(textOpacity))
+                                            : (colorScheme == .dark
+                                                ? Color(red: 0.35, green: 0.90, blue: 0.50).opacity(textOpacity)
+                                                : Color(red: 0.08, green: 0.50, blue: 0.18).opacity(textOpacity)))))
                             ZStack(alignment: .leading) {
                                 ClippedTextLabel(
                                     text: item.text,
@@ -800,8 +842,6 @@ private struct DayCell: View {
                     }
                     .padding(.horizontal, 3)
                 }
-
-                Spacer()
 
                 // Dot row: green = workout, purple = journal, orange = plan, blue = water
                 HStack(spacing: 3) {
@@ -957,12 +997,14 @@ private enum TimelineItem {
     case workout(WorkoutLog)
     case journal(JournalEntry)
     case plan(PlanDay, planName: String)
+    case water(oz: Double, goal: Double, unit: WaterUnit, date: Date)
 
     var date: Date {
         switch self {
         case .workout(let l): return l.completedAt
         case .journal(let e): return e.date
         case .plan(_, _): return Date()  // replaced per-day during grouping
+        case .water(_, _, _, let d): return d
         }
     }
 }
@@ -981,6 +1023,7 @@ private struct TimelineLogView: View {
     var showWater: Bool = true
     let onTap: (WorkoutLog) -> Void
     var onJournalTap: ((JournalEntry) -> Void)? = nil
+    var onWaterTap: ((Date) -> Void)? = nil
 
     private let calendar = Calendar.current
 
@@ -1048,6 +1091,21 @@ private struct TimelineLogView: View {
                     }
                     current = calendar.date(byAdding: .day, value: 1, to: current) ?? end
                 }
+            }
+        }
+
+        // Add water entries (one row per day that has water logged)
+        if showWater {
+            var current = start
+            while current < end {
+                let day = calendar.startOfDay(for: current)
+                let oz = WaterState.shared.totalOzForDate(day)
+                if oz > 0 {
+                    let goal = WaterState.shared.dailyGoalOz
+                    let unit = WaterState.shared.unit
+                    dayItems[day, default: []].append(.water(oz: oz, goal: goal, unit: unit, date: day))
+                }
+                current = calendar.date(byAdding: .day, value: 1, to: current) ?? end
             }
         }
 
@@ -1130,6 +1188,10 @@ private struct TimelineLogView: View {
                                         PlanDayCard(planDay: pd, planName: planName)
                                             .environment(workoutsState)
                                             .environment(exercisesState)
+                                    case .water(let oz, let goal, let unit, let date):
+                                        WaterDaySummaryRow(oz: oz, goal: goal, unit: unit) {
+                                            onWaterTap?(date)
+                                        }
                                     }
                                 }
                             }
@@ -1155,6 +1217,7 @@ private struct TimelineLogView: View {
 
 private struct ActivityRibbonView: View {
     @Environment(TrainingPlanState.self) var planState
+    @Environment(\.horizontalSizeClass) private var sizeClass
     let logState: WorkoutLogState
     let anchorMonth: Date
     var showWorkouts: Bool = true
@@ -1162,11 +1225,12 @@ private struct ActivityRibbonView: View {
     var showPlans: Bool = true
     var showWater: Bool = true
 
-    private let cellSize: CGFloat = 11
-    private let cellSpacing: CGFloat = 3
+    private var iPad: Bool { sizeClass == .regular }
+    private var cellSize: CGFloat { iPad ? 18 : 11 }
+    private var cellSpacing: CGFloat { iPad ? 5 : 3 }
 
     // Nil entries = padding cells before the first real day
-    private var buckets: [(date: Date?, workoutCount: Int, journalOnly: Bool, hasPlan: Bool)] {
+    private var buckets: [(date: Date?, workoutCount: Int, hasJournal: Bool, hasPlan: Bool)] {
         let calendar = Calendar.current
         let today = calendar.startOfDay(for: Date())
 
@@ -1176,13 +1240,13 @@ private struct ActivityRibbonView: View {
         let anchor = lastOfMonth
 
         // Build 63 real days ending at anchor, oldest first
-        let realDays: [(date: Date?, workoutCount: Int, journalOnly: Bool, hasPlan: Bool)] = (0..<63).reversed().map { offset in
+        let realDays: [(date: Date?, workoutCount: Int, hasJournal: Bool, hasPlan: Bool)] = (0..<63).reversed().map { offset in
             let date = calendar.date(byAdding: .day, value: -offset, to: anchor)!
-            guard date <= today else { return (date: date, workoutCount: 0, journalOnly: false, hasPlan: false) }
+            guard date <= today else { return (date: date, workoutCount: 0, hasJournal: false, hasPlan: false) }
             let wCount = showWorkouts ? logState.logsForDate(date).count : 0
             let jCount = showJournals ? logState.journalEntriesForDate(date).count : 0
             let plan = showPlans && planState.planDay(for: date) != nil
-            return (date: date, workoutCount: wCount, journalOnly: jCount > 0 && wCount == 0, hasPlan: plan)
+            return (date: date, workoutCount: wCount, hasJournal: jCount > 0, hasPlan: plan)
         }
 
         // Find the weekday of the oldest day (1=Sun … 7=Sat) and pad the front
@@ -1190,8 +1254,8 @@ private struct ActivityRibbonView: View {
         let firstDate = realDays.first!.date!
         let weekday = calendar.component(.weekday, from: firstDate) // 1-based
         let paddingCount = weekday - 1  // number of empty cells before first real day
-        let padding: [(date: Date?, workoutCount: Int, journalOnly: Bool, hasPlan: Bool)] = Array(
-            repeating: (date: nil, workoutCount: -1, journalOnly: false, hasPlan: false), count: paddingCount)
+        let padding: [(date: Date?, workoutCount: Int, hasJournal: Bool, hasPlan: Bool)] = Array(
+            repeating: (date: nil, workoutCount: -1, hasJournal: false, hasPlan: false), count: paddingCount)
         return padding + realDays
     }
 
@@ -1201,7 +1265,7 @@ private struct ActivityRibbonView: View {
             HStack(spacing: cellSpacing) {
                 ForEach(Array(["S","M","T","W","T","F","S"].enumerated()), id: \.offset) { _, d in
                     Text(d)
-                        .font(.system(size: 9))
+                        .font(.system(size: iPad ? 13 : 9))
                         .foregroundColor(.secondary)
                         .frame(width: cellSize, alignment: .center)
                 }
@@ -1217,11 +1281,13 @@ private struct ActivityRibbonView: View {
                                 RoundedRectangle(cornerRadius: 2)
                                     .fill(bucket.date == nil ? Color.clear : cellColor(bucket.workoutCount))
                                     .frame(width: cellSize, height: cellSize)
-                                // Purple dot for journal-only days
-                                if bucket.journalOnly {
+                                // Purple dot for journal days (top-right corner)
+                                if bucket.hasJournal {
                                     Circle()
-                                        .fill(Color(red: 0.4, green: 0.35, blue: 0.75).opacity(0.85))
-                                        .frame(width: cellSize * 0.45, height: cellSize * 0.45)
+                                        .fill(Color(red: 0.4, green: 0.35, blue: 0.75).opacity(0.9))
+                                        .frame(width: cellSize * 0.38, height: cellSize * 0.38)
+                                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
+                                        .padding(1)
                                 }
                                 // Orange dot for planned days (bottom-right corner)
                                 if bucket.hasPlan && bucket.date != nil {
@@ -1292,30 +1358,38 @@ private struct JournalEntryCard: View {
             UIImpactFeedbackGenerator(style: .light).impactOccurred()
             onTap()
         }) {
-            VStack(alignment: .leading, spacing: 6) {
-                HStack {
-                    HStack(spacing: 6) {
-                        Image(systemName: "note.text")
+            HStack(spacing: 0) {
+                // Purple left accent edge
+                RoundedRectangle(cornerRadius: 2)
+                    .fill(Color(red: 0.4, green: 0.35, blue: 0.75))
+                    .frame(width: 4)
+                    .padding(.vertical, 2)
+
+                VStack(alignment: .leading, spacing: 6) {
+                    HStack {
+                        HStack(spacing: 6) {
+                            Image(systemName: "note.text")
+                                .font(.caption)
+                                .foregroundColor(Color(red: 0.4, green: 0.35, blue: 0.75))
+                            Text(entry.title.isEmpty ? "Untitled" : entry.title)
+                                .font(.subheadline)
+                                .fontWeight(.semibold)
+                                .foregroundColor(.primary)
+                        }
+                        Spacer()
+                        Text(timeString)
                             .font(.caption)
-                            .foregroundColor(Color(red: 0.4, green: 0.35, blue: 0.75))
-                        Text(entry.title.isEmpty ? "Untitled" : entry.title)
-                            .font(.subheadline)
-                            .fontWeight(.semibold)
-                            .foregroundColor(.primary)
+                            .foregroundColor(.gray)
                     }
-                    Spacer()
-                    Text(timeString)
-                        .font(.caption)
-                        .foregroundColor(.gray)
+                    if !entry.body.isEmpty {
+                        Text(entry.body)
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                            .lineLimit(2)
+                    }
                 }
-                if !entry.body.isEmpty {
-                    Text(entry.body)
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                        .lineLimit(2)
-                }
+                .padding(12)
             }
-            .padding(12)
             .background(Color(UIColor.secondarySystemBackground))
             .cornerRadius(8)
         }
@@ -1510,33 +1584,41 @@ private struct WorkoutLogCard: View {
             UIImpactFeedbackGenerator(style: .light).impactOccurred()
             onTap()
         }) {
-            VStack(alignment: .leading, spacing: 8) {
-                HStack {
-                    Text(log.workoutName)
-                        .font(.subheadline)
-                        .fontWeight(.semibold)
-                        .foregroundColor(.primary)
-                    
-                    Spacer()
-                    
-                    Text(timeString)
-                        .font(.caption)
-                        .foregroundColor(.gray)
-                }
-                
-                HStack(spacing: 16) {
-                    if !log.exercises.isEmpty {
-                        Label("\(log.exercises.count) exercises", systemImage: "list.bullet")
+            HStack(spacing: 0) {
+                // Green left accent edge
+                RoundedRectangle(cornerRadius: 2)
+                    .fill(Color(red: 0.2, green: 0.75, blue: 0.35))
+                    .frame(width: 4)
+                    .padding(.vertical, 2)
+
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack {
+                        Text(log.workoutName)
+                            .font(.subheadline)
+                            .fontWeight(.semibold)
+                            .foregroundColor(.primary)
+
+                        Spacer()
+
+                        Text(timeString)
                             .font(.caption)
                             .foregroundColor(.gray)
                     }
-                    
-                    Label(durationString, systemImage: "clock")
-                        .font(.caption)
-                        .foregroundColor(.gray)
+
+                    HStack(spacing: 16) {
+                        if !log.exercises.isEmpty {
+                            Label("\(log.exercises.count) exercises", systemImage: "list.bullet")
+                                .font(.caption)
+                                .foregroundColor(.gray)
+                        }
+
+                        Label(durationString, systemImage: "clock")
+                            .font(.caption)
+                            .foregroundColor(.gray)
+                    }
                 }
+                .padding(12)
             }
-            .padding(12)
             .background(Color(UIColor.secondarySystemBackground))
             .cornerRadius(8)
         }
@@ -2624,6 +2706,73 @@ private struct CalendarFilterPopover: View {
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 12)
+        }
+        .buttonStyle(.plain)
+    }
+}
+
+// MARK: - Identifiable wrapper for Date (used for fullScreenCover(item:))
+
+struct IdentifiableDate: Identifiable {
+    let id = UUID()
+    let date: Date
+}
+
+// MARK: - Water day summary row (used in calendar day detail)
+
+private struct WaterDaySummaryRow: View {
+    let oz: Double
+    let goal: Double
+    let unit: WaterUnit
+    let onTap: () -> Void
+
+    @Environment(\.colorScheme) private var colorScheme
+
+    private let waterBlue = Color(red: 0.2, green: 0.55, blue: 1.0)
+
+    var body: some View {
+        let display = unit.fromOz(oz)
+        let goalDisplay = unit.fromOz(goal)
+        let metGoal = oz >= goal
+        let pillText = colorScheme == .dark
+            ? Color(red: 0.55, green: 0.78, blue: 1.0)
+            : Color(red: 0.08, green: 0.35, blue: 0.80)
+
+        Button(action: onTap) {
+            HStack(spacing: 0) {
+                // Blue left accent edge
+                RoundedRectangle(cornerRadius: 2)
+                    .fill(waterBlue)
+                    .frame(width: 4)
+                    .padding(.vertical, 2)
+
+                HStack(spacing: 10) {
+                    Image(systemName: "drop.fill")
+                        .foregroundColor(waterBlue)
+                        .font(.system(size: 13, weight: .semibold))
+                        .frame(width: 20)
+
+                    Text(String(format: "%.0f / %.0f %@", display, goalDisplay, unit.displayName))
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundColor(pillText)
+
+                    Spacer()
+
+                    if metGoal {
+                        Image(systemName: "checkmark.circle.fill")
+                            .foregroundColor(waterBlue)
+                            .font(.system(size: 13))
+                    }
+
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundColor(pillText.opacity(0.5))
+                }
+                .padding(.horizontal, 12)
+                .padding(.vertical, 9)
+            }
+            .background(Color(UIColor.secondarySystemBackground))
+            .cornerRadius(8)
         }
         .buttonStyle(.plain)
     }

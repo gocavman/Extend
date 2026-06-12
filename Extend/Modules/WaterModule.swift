@@ -31,6 +31,8 @@ private let waterBlue = Color(red: 0.2, green: 0.55, blue: 1.0)
 
 private struct WaterModuleView: View {
     @Environment(WaterState.self) var waterState
+    @Environment(\.horizontalSizeClass) private var sizeClass
+    private var iPad: Bool { sizeClass == .regular }
 
     @State private var showHistory = false
     @State private var showGraphs  = false
@@ -144,12 +146,12 @@ private struct WaterModuleView: View {
     // MARK: - Drop fill animation
 
     private var dropFillView: some View {
-        let size: CGFloat = 180
+        let size: CGFloat = iPad ? 360 : 180
         return ZStack {
-            // Background drop outline
-            Image(systemName: "drop")
-                .font(.system(size: size, weight: .ultraLight))
-                .foregroundColor(waterBlue.opacity(0.15))
+            // Background drop (empty portion) — same shape as the fill mask so edges align
+            Image(systemName: "drop.fill")
+                .font(.system(size: size))
+                .foregroundColor(waterBlue.opacity(0.12))
 
             // Filled portion — rises from bottom
             GeometryReader { geo in
@@ -318,23 +320,31 @@ private struct WaterCustomEntrySheet: View {
 
 struct WaterHistorySheet: View {
     @Environment(WaterState.self) var waterState
+    @Environment(\.dismiss) private var dismiss
+
+    /// When set, filters to a single day and hides the range picker.
+    var filterDate: Date? = nil
 
     @State private var selectedRange: WaterTimeRange = .week
     @State private var editingLog: WaterLog? = nil
+    @State private var deletingLog: WaterLog? = nil
+    @State private var showDeleteConfirm: Bool = false
 
     var body: some View {
         VStack(spacing: 0) {
-            // Time range picker
-            Picker("Range", selection: $selectedRange) {
-                ForEach(WaterTimeRange.allCases, id: \.self) { range in
-                    Text(range.label).tag(range)
+            // Time range picker — hidden when showing a specific day
+            if filterDate == nil {
+                Picker("Range", selection: $selectedRange) {
+                    ForEach(WaterTimeRange.allCases, id: \.self) { range in
+                        Text(range.label).tag(range)
+                    }
                 }
-            }
-            .pickerStyle(.segmented)
-            .padding(.horizontal, 16)
-            .padding(.vertical, 10)
+                .pickerStyle(.segmented)
+                .padding(.horizontal, 16)
+                .padding(.vertical, 10)
 
-            Divider()
+                Divider()
+            }
 
             if filteredLogs.isEmpty {
                 Spacer()
@@ -349,31 +359,60 @@ struct WaterHistorySheet: View {
             } else {
                 List {
                     ForEach(filteredLogs) { log in
-                        WaterLogRow(log: log)
-                            .contentShape(Rectangle())
-                            .onTapGesture { editingLog = log }
-                            .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+                        WaterLogRow(log: log,
+                                    onEdit: { editingLog = log },
+                                    onDelete: { deletingLog = log; showDeleteConfirm = true })
+                            .swipeActions(edge: .trailing, allowsFullSwipe: false) {
                                 Button(role: .destructive) {
-                                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                                    waterState.deleteLog(id: log.id)
+                                    deletingLog = log; showDeleteConfirm = true
                                 } label: {
                                     Label("Delete", systemImage: "trash")
                                 }
+                                Button {
+                                    editingLog = log
+                                } label: {
+                                    Label("Edit", systemImage: "pencil")
+                                }
+                                .tint(Color(UIColor.systemGray))
                             }
                     }
                 }
                 .listStyle(.plain)
             }
         }
-        .navigationTitle("Water History")
+        .navigationTitle(filterDate.map { d in
+            let f = DateFormatter(); f.dateFormat = "MMM d"; return "Water – \(f.string(from: d))"
+        } ?? "Water History")
         .navigationBarTitleDisplayMode(.inline)
-        .sheet(item: $editingLog) { log in
+        .toolbar {
+            if filterDate != nil {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button("Done") { dismiss() }
+                }
+            }
+        }
+        .fullScreenCover(item: $editingLog) { log in
             WaterEditSheet(log: log)
                 .environment(waterState)
+        }
+        .alert("Delete Entry?", isPresented: $showDeleteConfirm) {
+            Button("Cancel", role: .cancel) { deletingLog = nil }
+            Button("Delete", role: .destructive) {
+                if let log = deletingLog {
+                    UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                    waterState.deleteLog(id: log.id)
+                }
+                deletingLog = nil
+            }
+        } message: {
+            Text("This will permanently delete this water entry.")
         }
     }
 
     private var filteredLogs: [WaterLog] {
+        if let date = filterDate {
+            return waterState.sortedLogs.filter { Calendar.current.isDate($0.loggedAt, inSameDayAs: date) }
+        }
         let cutoff = selectedRange.cutoffDate
         return waterState.sortedLogs.filter { $0.loggedAt >= cutoff }
     }
@@ -381,6 +420,8 @@ struct WaterHistorySheet: View {
 
 private struct WaterLogRow: View {
     let log: WaterLog
+    var onEdit: (() -> Void)? = nil
+    var onDelete: (() -> Void)? = nil
     @Environment(WaterState.self) var waterState
 
     private static let timeFormatter: DateFormatter = {
@@ -413,6 +454,26 @@ private struct WaterLogRow: View {
                 }
             }
             Spacer()
+            if onEdit != nil || onDelete != nil {
+                HStack(spacing: 16) {
+                    if let onEdit {
+                        Button(action: onEdit) {
+                            Image(systemName: "pencil")
+                                .foregroundColor(.secondary)
+                                .font(.system(size: 15))
+                        }
+                        .buttonStyle(.plain)
+                    }
+                    if let onDelete {
+                        Button(action: onDelete) {
+                            Image(systemName: "trash")
+                                .foregroundColor(.red)
+                                .font(.system(size: 15))
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+            }
         }
         .padding(.vertical, 2)
     }
@@ -446,23 +507,20 @@ private struct WaterEditSheet: View {
                     TextField("Optional notes", text: $notes)
                 }
             }
-            .scrollContentBackground(.visible)
+            .scrollContentBackground(.hidden)
             .background(Color(UIColor.systemBackground))
             .navigationTitle("Edit Entry")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    HStack(spacing: 16) {
-                        Button(role: .destructive) {
-                            showDeleteConfirm = true
-                        } label: {
-                            Image(systemName: "trash")
-                                .foregroundColor(.red)
-                        }
-                        Button("Cancel") { dismiss() }
+                ToolbarItemGroup(placement: .topBarLeading) {
+                    Button("Cancel") { dismiss() }
+                    Button(action: { showDeleteConfirm = true }) {
+                        Image(systemName: "trash.circle.fill")
+                            .foregroundColor(.red)
+                            .font(.system(size: 22))
                     }
                 }
-                ToolbarItem(placement: .confirmationAction) {
+                ToolbarItem(placement: .topBarTrailing) {
                     Button("Save") {
                         if let v = Double(amountText), v > 0 {
                             var updated = log
@@ -489,8 +547,7 @@ private struct WaterEditSheet: View {
                 Button("Cancel", role: .cancel) {}
             }
         }
-        .presentationDetents([.large])
-        .presentationDragIndicator(.hidden)
+
     }
 }
 
@@ -498,16 +555,38 @@ private struct WaterEditSheet: View {
 
 struct WaterGraphsSheet: View {
     @Environment(WaterState.self) var waterState
+    @State private var selectedRange: WaterTimeRange = .week
+
+    private var days: Int {
+        switch selectedRange {
+        case .week:        return 7
+        case .month:       return 30
+        case .threeMonths: return 90
+        case .sixMonths:   return 180
+        case .year:        return 365
+        case .all:
+            let cal = Calendar.current
+            let earliest = waterState.logs.map { $0.loggedAt }.min() ?? Date()
+            return max(1, cal.dateComponents([.day], from: cal.startOfDay(for: earliest), to: cal.startOfDay(for: Date())).day ?? 7)
+        }
+    }
 
     var body: some View {
-        ScrollView {
-            VStack(spacing: 20) {
-                WaterDailyBarChartCard(days: 14)
-                    .environment(waterState)
-                WaterDailyBarChartCard(days: 30)
-                    .environment(waterState)
+        VStack(spacing: 0) {
+            Picker("Range", selection: $selectedRange) {
+                ForEach(WaterTimeRange.allCases, id: \.self) { range in
+                    Text(range.label).tag(range)
+                }
             }
-            .padding(16)
+            .pickerStyle(.segmented)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 12)
+
+            ScrollView {
+                WaterDailyBarChartCard(days: days)
+                    .environment(waterState)
+                    .padding(16)
+            }
         }
         .navigationTitle("Water Graphs")
         .navigationBarTitleDisplayMode(.inline)
@@ -578,9 +657,17 @@ struct WaterBarChartView: View {
     @Environment(\.horizontalSizeClass) private var sizeClass
     private var iPad: Bool { sizeClass == .regular }
 
+    @State private var selectedIndex: Int? = nil
+
     private static let dayFormatter: DateFormatter = {
         let f = DateFormatter()
         f.dateFormat = "M/d"
+        return f
+    }()
+
+    private static let tooltipFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.dateFormat = "MMM d"
         return f
     }()
 
@@ -605,6 +692,9 @@ struct WaterBarChartView: View {
                             let barH = item.oz > 0 ? max(iPad ? 22 : 14, barAreaH * CGFloat(fraction)) : 0
                             let metGoal = item.oz >= goalOz
                             let isToday = Calendar.current.isDateInToday(item.date)
+                            let isSelected = selectedIndex == idx
+                            let hasSelection = selectedIndex != nil
+                            let barOpacity: Double = hasSelection ? (isSelected ? 1.0 : 0.3) : 1.0
                             // Readability: white on full-blue bars, dark-blue on pale bars
                             let labelColor: Color = metGoal
                                 ? .white
@@ -616,7 +706,7 @@ struct WaterBarChartView: View {
                                 ZStack {
                                     if item.oz > 0 {
                                         RoundedRectangle(cornerRadius: 3)
-                                            .fill(metGoal ? waterBlue : waterBlue.opacity(0.45))
+                                            .fill((metGoal ? waterBlue : waterBlue.opacity(0.45)).opacity(barOpacity))
                                             .frame(height: barH)
                                         if barWidth > 18 {
                                             let display = unit.fromOz(item.oz)
@@ -626,10 +716,11 @@ struct WaterBarChartView: View {
                                                 .foregroundColor(labelColor)
                                                 .minimumScaleFactor(0.5)
                                                 .lineLimit(1)
+                                                .opacity(barOpacity)
                                         }
                                     } else {
                                         RoundedRectangle(cornerRadius: 3)
-                                            .fill(Color.secondary.opacity(0.1))
+                                            .fill(Color.secondary.opacity(hasSelection && !isSelected ? 0.05 : 0.1))
                                             .frame(height: 3)
                                     }
                                 }
@@ -638,8 +729,8 @@ struct WaterBarChartView: View {
                                 // Date label — show every other for dense charts
                                 if totals.count <= 14 || idx % 2 == 0 {
                                     Text(isToday ? "Today" : Self.dayFormatter.string(from: item.date))
-                                        .font(.system(size: iPad ? 11 : 7))
-                                        .foregroundColor(isToday ? waterBlue : .gray)
+                                        .font(.system(size: iPad ? 11 : 7, weight: isSelected ? .bold : .regular))
+                                        .foregroundColor(isSelected || isToday ? waterBlue : .gray)
                                         .lineLimit(1)
                                         .minimumScaleFactor(0.5)
                                         .frame(width: barWidth)
@@ -662,9 +753,91 @@ struct WaterBarChartView: View {
                         labelH: labelH
                     )
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
+
+                    // Goal line — dashed horizontal at the daily goal height
+                    if maxOz > 0 && goalOz > 0 && goalOz <= maxOz {
+                        let goalFraction = CGFloat(goalOz / maxOz)
+                        let goalY = barAreaH * goalFraction + labelH / 2
+                        Path { path in
+                            path.move(to: CGPoint(x: 0, y: 0))
+                            path.addLine(to: CGPoint(x: availableWidth, y: 0))
+                        }
+                        .stroke(
+                            waterBlue.opacity(0.55),
+                            style: StrokeStyle(lineWidth: 1, dash: [4, 4])
+                        )
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 1)
+                        .offset(y: -goalY)
+                        .allowsHitTesting(false)
+                    }
+
+                    // Gesture layer — covers bar area only (not label strip)
+                    Color.clear
+                        .contentShape(Rectangle())
+                        .frame(maxWidth: .infinity)
+                        .frame(height: barAreaH)
+                        .offset(y: -(labelH / 2))
+                        .gesture(
+                            DragGesture(minimumDistance: 0)
+                                .onChanged { value in
+                                    let idx = Int(value.location.x / (barWidth + barSpacing))
+                                    let clamped = max(0, min(totals.count - 1, idx))
+                                    if selectedIndex != clamped {
+                                        selectedIndex = clamped
+                                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                                    }
+                                }
+                                .onEnded { _ in
+                                    withAnimation(.easeOut(duration: 0.2)) { selectedIndex = nil }
+                                }
+                        )
+
+                    // Tooltip popup
+                    if let idx = selectedIndex, idx < totals.count {
+                        let item = totals[idx]
+                        let fraction = fractions[idx]
+                        let barH = item.oz > 0 ? max(iPad ? 22 : 14, barAreaH * CGFloat(fraction)) : CGFloat(0)
+                        let barX = CGFloat(idx) * (barWidth + barSpacing)
+                        let tipW: CGFloat = iPad ? 110 : 88
+                        let tipH: CGFloat = iPad ? 44 : 34
+                        let tipPad: CGFloat = 6
+                        let rawX = barX + barWidth / 2
+                        let clampedX = min(max(rawX, tipW / 2), availableWidth - tipW / 2)
+                        let tipY = max(tipH / 2 + 2, barAreaH - barH - tipPad - tipH / 2)
+                        let display = unit.fromOz(item.oz)
+                        let valueText = item.oz > 0
+                            ? String(format: "%.0f", display) + " \(unit.displayName)"
+                            : "No data"
+                        let dateText = Calendar.current.isDateInToday(item.date)
+                            ? "Today"
+                            : Self.tooltipFormatter.string(from: item.date)
+
+                        VStack(spacing: 2) {
+                            Text(valueText)
+                                .font(.system(size: iPad ? 13 : 11, weight: .bold))
+                                .foregroundColor(.primary)
+                            Text(dateText)
+                                .font(.system(size: iPad ? 11 : 9))
+                                .foregroundColor(.secondary)
+                        }
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 5)
+                        .frame(minWidth: tipW)
+                        .background(
+                            RoundedRectangle(cornerRadius: 8)
+                                .fill(Color(UIColor.secondarySystemBackground))
+                                .shadow(color: .black.opacity(0.15), radius: 4, x: 0, y: 2)
+                        )
+                        .position(x: clampedX, y: tipY)
+                        .allowsHitTesting(false)
+                        .transition(.opacity)
+                        .zIndex(10)
+                    }
                 }
             }
-            .frame(maxWidth: .infinity, minHeight: iPad ? 163 : 96)
+            .frame(maxWidth: .infinity)
+            .frame(height: barAreaH + labelH)
 
             // Legend
             HStack(spacing: 6) {
@@ -744,19 +917,23 @@ private struct WaterTrendLine: View {
 // MARK: - Time range enum
 
 enum WaterTimeRange: String, CaseIterable {
-    case week  = "7D"
-    case month = "1M"
+    case week        = "7D"
+    case month       = "1M"
     case threeMonths = "3M"
-    case all   = "All"
+    case sixMonths   = "6M"
+    case year        = "1Y"
+    case all         = "All"
 
     var label: String { rawValue }
 
     var cutoffDate: Date {
         let cal = Calendar.current
         switch self {
-        case .week:        return cal.date(byAdding: .day,   value: -7,  to: Date()) ?? Date()
-        case .month:       return cal.date(byAdding: .month, value: -1,  to: Date()) ?? Date()
-        case .threeMonths: return cal.date(byAdding: .month, value: -3,  to: Date()) ?? Date()
+        case .week:        return cal.date(byAdding: .day,   value: -7,   to: Date()) ?? Date()
+        case .month:       return cal.date(byAdding: .month, value: -1,   to: Date()) ?? Date()
+        case .threeMonths: return cal.date(byAdding: .month, value: -3,   to: Date()) ?? Date()
+        case .sixMonths:   return cal.date(byAdding: .month, value: -6,   to: Date()) ?? Date()
+        case .year:        return cal.date(byAdding: .year,  value: -1,   to: Date()) ?? Date()
         case .all:         return Date.distantPast
         }
     }

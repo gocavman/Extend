@@ -126,7 +126,7 @@ private struct HelpArticleRow: View {
         HStack(spacing: 14) {
             Image(systemName: article.icon)
                 .font(.system(size: 18, weight: .medium))
-                .foregroundColor(.accentColor)
+                .foregroundColor(.primary)
                 .frame(width: 28, alignment: .center)
 
             VStack(alignment: .leading, spacing: 2) {

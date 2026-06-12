@@ -13,7 +13,7 @@
       },
       {
         "heading": "What You Can Track",
-        "body": "Olympic weights, kettlebells, dumbbells, cardio, bodyweight — any exercise you do. Build routines, log sessions, and watch your progress and personal records build over time."
+        "body": "Olympic weights, kettlebells, dumbbells, cardio, bodyweight — any exercise you do. Build routines, log sessions, and watch your progress and personal records build over time. Also track water intake if so desired."
       },
       {
         "heading": "Customization",
@@ -39,11 +39,11 @@
       },
       {
         "heading": "Dashboard",
-        "body": "Configure the appearance and contents of your Dashboard.\n\n• Color — set a background color and optional gradient for the Dashboard.\n• Customize — opens the tile editor to add, remove, resize, and reorder tiles.\n\nTile types:\n• Module Shortcut — opens a module.\n• Stat Card — shows a live stat.\n• Shortcut — launches a specific workout, timer, voice trainer, or exercise.\n• Blank — fill in space with an animated emoticon.\n\nStat cards available: Total Workouts, Day Streaks, Longest Streak, Total Time, Favorite Exercise, Favorite Day, Workout Frequency (14 days), Muscle Group Distribution (7 days), Volume This Week, Rest Days (14 days), Personal Record, 1RM Leaderboard.\n\nEach tile supports: custom title, icon, size (small/medium/large), accent color and placement (none/left/top/right/bottom), and optional background tint. Tap [sf:gear] on any tile to access its configuration."
+        "body": "Configure the appearance and contents of your Dashboard.\n\n• Color — set a background color and optional gradient for the Dashboard.\n• Customize — opens the tile editor to add, remove, resize, and reorder tiles.\n\nTile types:\n• Module Shortcut — opens a module.\n• Stat Card — shows a live stat.\n• Shortcut — launches a specific workout, timer, voice trainer, or exercise.\n• Blank — fill in space with an animated emoticon.\n\nStat cards available: Total Workouts, Day Streaks, Longest Streak, Total Time, Favorite Exercise, Favorite Day, Workout Frequency (14 days), Muscle Group Distribution (7 days), Volume This Week, Rest Days (14 days), Personal Record, 1RM Leaderboard, Water Intake (14 days).\n\nEach tile supports: custom title, icon, size (small/medium/large), accent color and placement (none/left/top/right/bottom), and optional background tint."
       },
       {
         "heading": "System Preferences",
-        "body": "• Theme — Light or Dark. (The Stick Figure Editor, Animation Studio, and Match Game always stay light regardless of this setting.)\n• Image Set — chooses the built-in anatomy images used in workout and muscle views — Option 1, Option 2, or None.\n• Weight Unit — lbs or kg. Affects all weight display and entry throughout the app — logs, stat cards, personal records.\n• Apple Health — Export: sends completed workout sessions to Apple Health. Import Activities: pulls workout data from Health into your Log. Sync Now: manually trigger a sync.\n• Keep Screen On During Sessions — prevents the screen from locking during active timers, workouts, and voice trainer sessions. Uses more battery."
+        "body": "• Theme — Light or Dark. (The Stick Figure Editor, Animation Studio, and Match Game always stay light regardless of this setting.)\n• Image Set — chooses the built-in anatomy images used in workout and muscle views — Option 1, Option 2, or None.\n• Weight Unit — lbs or kg. Affects all weight display and entry throughout the app — logs, stat cards, personal records.\n• Apple Health — Export: sends completed workout sessions to Apple Health. Import Activities: pulls workout data from Health into your Log. Sync Now: manually trigger a sync.\n• Apple Watch — set your daily step and distance goals shown on the watch.\n• Water — set your daily intake goal and preferred unit (oz, mL). Optionally export water logs to Apple Health or import from Apple Health.\n• Keep Screen On During Sessions — prevents the screen from locking during active timers, workouts, and voice trainer sessions. Uses more battery."
       },
       {
         "heading": "Data",
@@ -93,7 +93,7 @@
       },
       {
         "heading": "Requirements",
-        "body": "A Training Plan must be active and have items scheduled for today. Set one up in the Plan module."
+        "body": "A Training Plan must be active and have items scheduled. Set one up in the Plan module."
       }
     ]
   },
@@ -111,7 +111,7 @@
       },
       {
         "heading": "Stat Cards",
-        "body": "• Total Workouts — lifetime count.\n• Day Streaks — current consecutive days.\n• Longest Streak — best streak ever.\n• Total Time — total logged time.\n• Favorite Exercise — most performed.\n• Favorite Day — bar chart by day of week.\n• Workout Frequency (14 days) — daily activity dots.\n• Muscle Group Distribution — pie chart, last 7 days.\n• Volume This Week — bar chart, last 7 weeks. Configurable per Workout or Exercise.\n• Rest Days (14 days) — non-workout days in past two weeks.\n• Personal Record — recent PRs. Configurable per Exercise.\n• 1RM Leaderboard — top estimated one-rep maxes. Configurable per Exercise."
+        "body": "• Total Workouts — lifetime count.\n• Day Streaks — current consecutive days.\n• Longest Streak — best streak ever.\n• Total Time — total logged time.\n• Favorite Exercise — most performed.\n• Favorite Day — bar chart by day of week.\n• Workout Frequency (14 days) — daily activity dots.\n• Muscle Group Distribution — interactive donut chart, last 7 days. Long-press a slice to highlight it and see its label and percentage.\n• Volume This Week — bar chart, last 7 weeks. Tap a bar to highlight and see its value. Configurable per Workout or Exercise.\n• Rest Days (14 days) — non-workout days in past two weeks.\n• Personal Record — recent PRs. Configurable per Exercise.\n• 1RM Leaderboard — top estimated one-rep maxes. Configurable per Exercise.\n• Water Intake (14 days) — daily bar chart of water logged vs. goal. Tap a bar to highlight. A dashed goal line marks your daily target."
       },
       {
         "heading": "Shortcut Tiles",
@@ -235,7 +235,7 @@
     "sections": [
       {
         "heading": "Header Buttons",
-        "body": "• [sf:magnifyingglass] — search all logged sessions by name or exercise.\n• [sf:square.and.pencil] — create a new journal entry for the selected date.\n• [sf:calendar.badge.checkmark] — open your Training Plan. Highlights in accent color when a plan is active.\n• [sf:chart.bar] / [sf:chart.bar.fill] — toggle the 60-day Activity Ribbon on/off. Blue when the ribbon is showing.\n• [sf:list.bullet.below.rectangle] / [sf:calendar] — switch between Timeline view and Calendar view.\n• [sf:line.3.horizontal.decrease] — filter what appears on the calendar: Workouts, Journal entries, and/or Plan days."
+        "body": "• [sf:magnifyingglass] — search all logged sessions by name or exercise.\n• [sf:square.and.pencil] — create a new journal entry for the selected date.\n• [sf:calendar.badge.checkmark] — open your Training Plan. Turns orange when a plan is active.\n• [sf:rectangle.grid.2x2] / [sf:rectangle.grid.2x2.fill] — toggle the 60-day Activity Ribbon on/off. Green when the ribbon is showing.\n• [sf:list.bullet.rectangle] / [sf:calendar] — switch between Timeline view and Calendar view.\n• [sf:line.3.horizontal.decrease] — filter what appears on the calendar: Workouts, Journal entries, Plan days, and Water. Turns accent color when any filter is off."
       },
       {
         "heading": "Calendar Navigation",
@@ -243,19 +243,19 @@
       },
       {
         "heading": "Calendar View",
-        "body": "Days with logged workouts are marked. Tap a date to see what was logged. Plan days are also shown when the Plan filter is on."
+        "body": "Days with activity are marked with colored pills: green for workouts, purple for journal entries, orange for plan days, and blue for water logged. Tap a date to see everything logged for that day."
       },
       {
         "heading": "Timeline View",
-        "body": "Sessions as cards in reverse chronological order. Use the Week/Month toggle at the top to scope the list."
+        "body": "All entries as cards in reverse chronological order. Workouts have a green left edge, journal entries have a purple left edge, plan days have an orange left edge, and water entries have a blue left edge. Use the Week/Month toggle at the top to scope the list."
       },
       {
         "heading": "Activity Ribbon",
-        "body": "A 60-day heat map of training frequency. Darker squares mean more activity. Journal entries appear as dots."
+        "body": "A 60-day heat map of training frequency. Darker green squares mean more workouts. Colored corner dots: purple (top-right) = journal entry, orange (bottom-right) = plan day, blue (bottom-left) = water logged."
       },
       {
         "heading": "Journal",
-        "body": "Tap [sf:square.and.pencil] to write a free-form note for any date. These appear as dots on the Activity Ribbon and as entries in the log."
+        "body": "Tap [sf:square.and.pencil] to write a free-form note for any date. These appear as purple dots on the Activity Ribbon and as purple-edged cards in the timeline."
       }
     ]
   },
@@ -391,7 +391,7 @@
     "id": "equipment",
     "category": "Modules",
     "title": "Equipment",
-    "icon": "figure.walk.treadmill",
+    "icon": "dumbbell.fill",
     "summary": "Add equipment to categorize exercises and filter generated workouts.",
     "keywords": ["equipment", "barbell", "dumbbell", "machine", "band", "cable", "bodyweight", "filter", "gym", "home"],
     "sections": [
@@ -414,6 +414,44 @@
       {
         "heading": "Filtering in Generate",
         "body": "In the Generate module, enable the Equipment filter to only include exercises matching your available gear."
+      }
+    ]
+  },
+  {
+    "id": "water",
+    "category": "Modules",
+    "title": "Water",
+    "icon": "drop.fill",
+    "summary": "Track daily water intake with goals, history, and Apple Health sync.",
+    "keywords": ["water", "hydration", "drink", "intake", "goal", "oz", "ml", "liters", "fluid", "log", "history", "health", "apple health", "streak", "daily", "chart", "stat"],
+    "sections": [
+      {
+        "heading": "Logging Water",
+        "body": "Tap one of the quick-add buttons (+4 oz, +8 oz, etc.) to instantly add water. Or enter a custom amount. Each entry is timestamped and saved to your history."
+      },
+      {
+        "heading": "Daily Goal",
+        "body": "The large water droplet shows today's progress toward your daily goal. The percentage and total logged amount update as you add entries. The droplet fills and turns solid blue when you hit your goal.\n\nSet your goal in Settings → Water → Daily Goal."
+      },
+      {
+        "heading": "History",
+        "body": "Tap History to view all past entries. Filter by week, month, or year. Tap the pencil [sf:pencil] on any row to edit an entry, or the trash [sf:trash] to delete it. A confirmation appears before deleting."
+      },
+      {
+        "heading": "Bar Chart",
+        "body": "The chart shows daily intake for the selected range. Bars that reach your goal appear in solid blue; partial days are lighter. A dashed goal line marks your daily target. Tap any bar to see the exact value and date."
+      },
+      {
+        "heading": "Apple Health Sync",
+        "body": "In Settings → Water, enable Export to Apple Health to send logged entries to the Health app, or Import from Apple Health to pull water data in. Tap Sync Now to trigger a manual sync."
+      },
+      {
+        "heading": "Dashboard Stat Card",
+        "body": "Add the Water Intake (14 days) stat card to your Dashboard to see your recent hydration at a glance. It shows a bar chart of daily totals with a goal line."
+      },
+      {
+        "heading": "Log Module Integration",
+        "body": "Water entries appear as blue pills on calendar day cells, blue dots in the Activity Ribbon, and blue-edged cards in the Timeline view. Tapping any water entry in the Log opens the filtered water history for that day."
       }
     ]
   },

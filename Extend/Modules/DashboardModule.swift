@@ -252,10 +252,10 @@ private struct DashboardModuleView: View {
         let isIPad = sizeClass == .regular
         // favoriteDay: header(44) + 7 rows × 19pt each + bottom padding(12) ≈ 189
         // volumeThisWeek: header(44) + bars(107) + trend(20) + padding(16) ≈ 187
-        let tileHeight: CGFloat = isDoubleHeight ? columnWidth * 2 + spacing
+        let tileHeight: CGFloat = isDoubleHeight ? (isIPad ? columnWidth * 1.3 + spacing : columnWidth * 2 + spacing)
             : tile.statCardType == .favoriteDay ? CGFloat(44 + 7 * 19 + 12) * (isIPad ? 1.6 : 1.0)
             : tile.statCardType == .volumeThisWeek ? CGFloat(44 + 107 + 20 + 16) * (isIPad ? 1.6 : 1.0)
-            : tile.statCardType == .waterIntake14Days ? CGFloat(44 + 107 + 20 + 16) * (isIPad ? 1.6 : 1.0)
+            : tile.statCardType == .waterIntake14Days ? CGFloat(44 + 93 + 20 + 16) * (isIPad ? 1.6 : 1.0)
             : tile.statCardType == .workoutFrequency ? CGFloat(isIPad ? 130 : 110)
             : columnWidth
         
@@ -1371,7 +1371,7 @@ private struct EditTileSheet: View {
                 return [.large]
             }
             if statCard == .oneRepMax || statCard == .personalRecord {
-                return [.medium, .large]
+                return [.large]
             }
         }
         return TileSize.allCases
@@ -1729,20 +1729,19 @@ private struct StatCardTileView: View {
                                 HStack(spacing: 6) {
                                     // Rank badge
                                     Text("#\(index + 1)")
-                                        .font(.system(size: iPad ? 16 : 10, weight: .bold, design: .rounded))
+                                        .font(.system(size: iPad ? 16 : 12, weight: .bold, design: .rounded))
                                         .foregroundColor(index == 0 ? .yellow : .gray)
-                                        .frame(width: iPad ? 32 : 20)
+                                        .frame(width: iPad ? 36 : 24, alignment: .leading)
                                     // Exercise name
                                     Text(entry.name)
-                                        .font(.system(size: iPad ? 16 : 10))
-                                        .fontWeight(.semibold)
+                                        .font(.system(size: iPad ? 16 : 12, weight: .semibold))
                                         .foregroundColor(.primary)
                                         .lineLimit(1)
                                         .minimumScaleFactor(0.7)
                                         .frame(maxWidth: .infinity, alignment: .leading)
                                     // 1RM value
                                     Text(String(format: "%.0f", entry.value))
-                                        .font(.system(size: iPad ? 16 : 10, weight: .bold))
+                                        .font(.system(size: iPad ? 16 : 12, weight: .bold))
                                         .foregroundColor(.primary)
                                 }
                                 // Mini progress bar
@@ -1781,18 +1780,17 @@ private struct StatCardTileView: View {
                             ForEach(Array(personalRecordEntries.prefix(10).enumerated()), id: \.offset) { index, entry in
                                 HStack(spacing: 6) {
                                     Text("#\(index + 1)")
-                                        .font(.system(size: iPad ? 16 : 10, weight: .bold, design: .rounded))
+                                        .font(.system(size: iPad ? 16 : 12, weight: .bold, design: .rounded))
                                         .foregroundColor(index == 0 ? Color(red: 1, green: 0.8, blue: 0) : .gray)
-                                        .frame(width: iPad ? 32 : 20)
+                                        .frame(width: iPad ? 36 : 24, alignment: .leading)
                                     Text(entry.name)
-                                        .font(.system(size: iPad ? 16 : 10))
-                                        .fontWeight(.semibold)
+                                        .font(.system(size: iPad ? 16 : 12, weight: .semibold))
                                         .foregroundColor(.primary)
                                         .lineLimit(1)
                                         .minimumScaleFactor(0.7)
                                         .frame(maxWidth: .infinity, alignment: .leading)
                                     Text(String(format: "%.0f", entry.value))
-                                        .font(.system(size: iPad ? 16 : 10, weight: .bold))
+                                        .font(.system(size: iPad ? 16 : 12, weight: .bold))
                                         .foregroundColor(.primary)
                                 }
                                 GeometryReader { geo in
@@ -1814,7 +1812,7 @@ private struct StatCardTileView: View {
                     GeometryReader { geometry in
                         let maxHeight = geometry.size.height
                         let maxWidth  = geometry.size.width
-                        let pieSize   = min(maxHeight * 0.9, maxWidth * 0.55)
+                        let pieSize   = iPad ? min(maxHeight * 0.82, maxWidth * 0.38) : min(maxHeight * 0.9, maxWidth * 0.55)
 
                         if muscleSegments.isEmpty {
                             VStack {
@@ -1895,7 +1893,7 @@ private struct StatCardTileView: View {
                                 maxOz: max(waterDailyTotals.map { $0.oz }.max() ?? waterGoalOz, waterGoalOz),
                                 unit: waterUnit
                             )
-                            .frame(maxWidth: .infinity, maxHeight: .infinity)
+                            .frame(maxWidth: .infinity)
                             if waterStreak > 0 {
                                 HStack(spacing: 4) {
                                     Spacer()
@@ -2110,6 +2108,13 @@ private struct VolumeBarChartView: View {
     let weeks: [(label: String, volume: Double)]
 
     @Environment(\.horizontalSizeClass) private var sizeClass
+    @State private var selectedIndex: Int? = nil
+
+    private static let tooltipFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.dateFormat = "MMM d"
+        return f
+    }()
 
     var body: some View {
         let iPad = sizeClass == .regular
@@ -2123,18 +2128,22 @@ private struct VolumeBarChartView: View {
         VStack(alignment: .leading, spacing: 4) {
             // Bar area with trend line overlaid
             GeometryReader { geo in
-                let barWidth = (geo.size.width - barSpacing * CGFloat(weeks.count - 1)) / CGFloat(weeks.count)
+                let availableWidth = max(geo.size.width, 1)
+                let barWidth = (availableWidth - barSpacing * CGFloat(weeks.count - 1)) / CGFloat(max(weeks.count, 1))
                 ZStack(alignment: .bottom) {
                     HStack(alignment: .bottom, spacing: barSpacing) {
                         ForEach(Array(weeks.enumerated()), id: \.offset) { idx, week in
                             let fraction = CGFloat(fractions[idx])
                             let barHeight = week.volume > 0 ? max(iPad ? 28 : 18, barAreaH * fraction) : 0
                             let isCurrentWeek = idx == currentWeekIdx
+                            let isSelected = selectedIndex == idx
+                            let hasSelection = selectedIndex != nil
+                            let barOpacity: Double = hasSelection ? (isSelected ? 1.0 : 0.3) : 1.0
                             VStack(spacing: 3) {
                                 ZStack {
                                     if week.volume > 0 {
                                         RoundedRectangle(cornerRadius: 3)
-                                            .fill(isCurrentWeek ? Color.primary : Color.primary.opacity(0.35))
+                                            .fill((isCurrentWeek ? Color.primary : Color.primary.opacity(0.35)).opacity(barOpacity))
                                             .frame(height: barHeight)
                                         let volLabel = week.volume >= 1000
                                             ? String(format: "%.1fk", week.volume / 1000)
@@ -2144,12 +2153,13 @@ private struct VolumeBarChartView: View {
                                             .foregroundColor(isCurrentWeek ? Color(UIColor.systemBackground) : Color.primary.opacity(0.7))
                                             .minimumScaleFactor(0.5)
                                             .lineLimit(1)
+                                            .opacity(barOpacity)
                                     }
                                 }
                                 .frame(height: barHeight)
                                 Text(week.label)
-                                    .font(.system(size: iPad ? 15 : 10))
-                                    .foregroundColor(.gray)
+                                    .font(.system(size: iPad ? 15 : 10, weight: isSelected ? .bold : .regular))
+                                    .foregroundColor(isSelected ? .primary : .gray)
                                     .lineLimit(1)
                                     .minimumScaleFactor(0.5)
                                     .frame(maxWidth: .infinity)
@@ -2168,6 +2178,66 @@ private struct VolumeBarChartView: View {
                         labelH: labelH
                     )
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
+
+                    // Gesture layer — covers bar area only
+                    Color.clear
+                        .contentShape(Rectangle())
+                        .frame(maxWidth: .infinity)
+                        .frame(height: barAreaH)
+                        .offset(y: -(labelH / 2))
+                        .gesture(
+                            DragGesture(minimumDistance: 0)
+                                .onChanged { value in
+                                    let idx = Int(value.location.x / (barWidth + barSpacing))
+                                    let clamped = max(0, min(weeks.count - 1, idx))
+                                    if selectedIndex != clamped {
+                                        selectedIndex = clamped
+                                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                                    }
+                                }
+                                .onEnded { _ in
+                                    withAnimation(.easeOut(duration: 0.2)) { selectedIndex = nil }
+                                }
+                        )
+
+                    // Tooltip popup
+                    if let idx = selectedIndex, idx < weeks.count {
+                        let week = weeks[idx]
+                        let fraction = CGFloat(fractions[idx])
+                        let barH = week.volume > 0 ? max(iPad ? 28 : 18, barAreaH * fraction) : CGFloat(0)
+                        let barX = CGFloat(idx) * (barWidth + barSpacing)
+                        let tipW: CGFloat = iPad ? 120 : 90
+                        let tipH: CGFloat = iPad ? 44 : 34
+                        let tipPad: CGFloat = 6
+                        let rawX = barX + barWidth / 2
+                        let clampedX = min(max(rawX, tipW / 2), availableWidth - tipW / 2)
+                        let tipY = max(tipH / 2 + 2, barAreaH - barH - tipPad - tipH / 2)
+                        let volLabel = week.volume >= 1000
+                            ? String(format: "%.1fk", week.volume / 1000)
+                            : String(format: "%.0f", week.volume)
+                        let valueText = week.volume > 0 ? volLabel : "No data"
+
+                        VStack(spacing: 2) {
+                            Text(valueText)
+                                .font(.system(size: iPad ? 13 : 11, weight: .bold))
+                                .foregroundColor(.primary)
+                            Text(week.label)
+                                .font(.system(size: iPad ? 11 : 9))
+                                .foregroundColor(.secondary)
+                        }
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 5)
+                        .frame(minWidth: tipW)
+                        .background(
+                            RoundedRectangle(cornerRadius: 8)
+                                .fill(Color(UIColor.secondarySystemBackground))
+                                .shadow(color: .black.opacity(0.15), radius: 4, x: 0, y: 2)
+                        )
+                        .position(x: clampedX, y: tipY)
+                        .allowsHitTesting(false)
+                        .transition(.opacity)
+                        .zIndex(10)
+                    }
                 }
             }
             .frame(maxWidth: .infinity, minHeight: iPad ? 185 : 107)
@@ -2274,6 +2344,8 @@ private struct DonutSeparatorShape: Shape {
 private struct PieChartView: View {
     let segments: [PieSegment]
 
+    @State private var selectedIndex: Int? = nil
+
     private var isDummyChart: Bool {
         segments.count == 1 && segments[0].value == 1.0 && segments[0].color == .gray
     }
@@ -2283,7 +2355,8 @@ private struct PieChartView: View {
             PieChartCanvas(
                 segments: segments,
                 isDummyChart: isDummyChart,
-                size: geometry.size
+                size: geometry.size,
+                selectedIndex: $selectedIndex
             )
         }
     }
@@ -2305,28 +2378,53 @@ private struct PieChartCanvas: View {
     let segments: [PieSegment]
     let isDummyChart: Bool
     let size: CGSize
+    @Binding var selectedIndex: Int?
 
     private var outerRadius: CGFloat { min(size.width, size.height) / 2 }
     private var innerRadius: CGFloat { outerRadius * 0.34 }
     private var center: CGPoint { CGPoint(x: size.width / 2, y: size.height / 2) }
 
+    /// Returns the segment index hit-tested at a point, or nil if inside the hole or outside
+    private func segmentIndex(at point: CGPoint) -> Int? {
+        let dx = point.x - center.x
+        let dy = point.y - center.y
+        let dist = sqrt(dx * dx + dy * dy)
+        guard dist >= innerRadius && dist <= outerRadius else { return nil }
+        // atan2 gives angle from positive x-axis; our slices start at -90°
+        var angle = Foundation.atan2(dy, dx) * 180 / .pi  // -180...180
+        angle += 90  // shift so 0° = top
+        if angle < 0 { angle += 360 }  // 0...360
+        let total = segments.map { $0.value }.reduce(0, +)
+        var accumulated = 0.0
+        for (i, seg) in segments.enumerated() {
+            let sweep = (seg.value / total) * 360
+            if angle < accumulated + sweep { return i }
+            accumulated += sweep
+        }
+        return nil
+    }
+
     var body: some View {
         ZStack {
             ForEach(segments.indices, id: \.self) { index in
+                let isSelected = selectedIndex == index
+                let hasSelection = selectedIndex != nil
+                let sliceOpacity: Double = hasSelection ? (isSelected ? 1.0 : 0.3) : 1.0
+
                 DonutSegmentShape(
                     startAngle: angleStart(at: index),
                     endAngle: angleEnd(at: index),
-                    outerRadius: outerRadius,
+                    outerRadius: isSelected ? outerRadius * 1.06 : outerRadius,
                     innerRadius: innerRadius,
                     center: center
                 )
-                .fill(segments[index].color)
+                .fill(segments[index].color.opacity(sliceOpacity))
 
                 if segments.count > 1 {
                     DonutSeparatorShape(
                         angle: angleStart(at: index),
                         innerRadius: innerRadius,
-                        outerRadius: outerRadius,
+                        outerRadius: isSelected ? outerRadius * 1.06 : outerRadius,
                         center: center
                     )
                     .stroke(Color.white, lineWidth: 1.5)
@@ -2334,7 +2432,7 @@ private struct PieChartCanvas: View {
 
                 // Percentage label in the middle of the ring arc — only for segments ≥ 8%
                 if !isDummyChart {
-                    percentageLabel(at: index)
+                    percentageLabel(at: index, sliceOpacity: sliceOpacity)
                 }
             }
 
@@ -2343,20 +2441,64 @@ private struct PieChartCanvas: View {
                 .fill(Color(uiColor: .systemGray6))
                 .frame(width: innerRadius * 2, height: innerRadius * 2)
                 .position(center)
+
+            // Tooltip in center hole when a slice is selected
+            if let idx = selectedIndex, idx < segments.count, !isDummyChart {
+                let seg = segments[idx]
+                let total = segments.map { $0.value }.reduce(0, +)
+                let pct = total > 0 ? Int((seg.value / total * 100).rounded()) : 0
+                VStack(spacing: 1) {
+                    Text("\(pct)%")
+                        .font(.system(size: max(9, innerRadius * 0.38), weight: .bold))
+                        .foregroundColor(.primary)
+                    Text(seg.label)
+                        .font(.system(size: max(7, innerRadius * 0.28), weight: .regular))
+                        .foregroundColor(.secondary)
+                        .multilineTextAlignment(.center)
+                        .lineLimit(2)
+                        .frame(width: innerRadius * 1.7)
+                }
+                .position(center)
+                .allowsHitTesting(false)
+                .transition(.opacity)
+                .zIndex(10)
+            }
+
+            // Gesture layer — long press to select, drag to switch, release to deselect
+            Color.clear
+                .contentShape(Rectangle())
+                .frame(width: size.width, height: size.height)
+                .gesture(
+                    DragGesture(minimumDistance: 0)
+                        .onChanged { value in
+                            let newIdx = segmentIndex(at: value.location)
+                            if newIdx != selectedIndex {
+                                selectedIndex = newIdx
+                                if newIdx != nil {
+                                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                                }
+                            }
+                        }
+                        .onEnded { _ in
+                            withAnimation(.easeOut(duration: 0.25)) { selectedIndex = nil }
+                        }
+                )
         }
     }
 
     @ViewBuilder
-    private func percentageLabel(at index: Int) -> some View {
+    private func percentageLabel(at index: Int, sliceOpacity: Double = 1.0) -> some View {
         let total = segments.map { $0.value }.reduce(0, +)
         let fraction = total > 0 ? segments[index].value / total : 0
-        // Only show label when segment is large enough to fit text
-        if fraction >= 0.08 {
+        // Only show label when segment is large enough to fit text and not dimmed
+        if fraction >= 0.08 && sliceOpacity > 0.5 {
+            let isSelected = selectedIndex == index
+            let effectiveOuter = isSelected ? outerRadius * 1.06 : outerRadius
             let start = angleStart(at: index)
             let end = angleEnd(at: index)
             let midAngle = Angle.degrees((start.degrees + end.degrees) / 2)
             // Position label in the middle of the ring band
-            let labelRadius = (innerRadius + outerRadius) / 2
+            let labelRadius = (innerRadius + effectiveOuter) / 2
             let cosA = CGFloat(Foundation.cos(midAngle.radians))
             let sinA = CGFloat(Foundation.sin(midAngle.radians))
             let labelX = center.x + labelRadius * cosA
