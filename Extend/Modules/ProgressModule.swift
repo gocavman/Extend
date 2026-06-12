@@ -27,6 +27,7 @@ private struct ProgressModuleView: View {
     @Environment(ExercisesState.self) var exercisesState
     @Environment(TrainingPlanState.self) var planState
     @Environment(WorkoutsState.self) var workoutsState
+    @Environment(WaterState.self) var waterState
     @AppStorage("appColorScheme") private var appColorScheme: String = "system"
     private var preferredScheme: ColorScheme? { appColorScheme == "dark" ? .dark : appColorScheme == "light" ? .light : nil }
 
@@ -53,6 +54,7 @@ private struct ProgressModuleView: View {
     @AppStorage("calendarShowWorkouts") private var showWorkouts: Bool = true
     @AppStorage("calendarShowJournals") private var showJournals: Bool = true
     @AppStorage("calendarShowPlans")    private var showPlans:    Bool = true
+    @AppStorage("calendarShowWater")    private var showWater:    Bool = true
     /// Week vs month scope in list (timeline) view
     @AppStorage("logListShowWeek") private var listShowWeek: Bool = false
     @State private var showFilterPopover: Bool = false
@@ -208,13 +210,14 @@ private struct ProgressModuleView: View {
                 }) {
                     Image(systemName: "line.3.horizontal.decrease")
                         .frame(width: 22, height: 22, alignment: .center)
-                        .foregroundColor((!showWorkouts || !showJournals || !showPlans) ? .accentColor : .primary)
+                        .foregroundColor((!showWorkouts || !showJournals || !showPlans || !showWater) ? .accentColor : .primary)
                 }
                 .popover(isPresented: $showFilterPopover, arrowEdge: .top) {
                     CalendarFilterPopover(
                         showWorkouts: $showWorkouts,
                         showJournals: $showJournals,
-                        showPlans: $showPlans
+                        showPlans: $showPlans,
+                        showWater: $showWater
                     )
                     .presentationCompactAdaptation(.popover)
                 }
@@ -266,7 +269,7 @@ private struct ProgressModuleView: View {
                 VStack(spacing: 16) {
                     // Activity ribbon (optional)
                     if showRibbon {
-                        ActivityRibbonView(logState: logState, anchorMonth: currentMonth, showWorkouts: showWorkouts, showJournals: showJournals, showPlans: showPlans)
+                        ActivityRibbonView(logState: logState, anchorMonth: currentMonth, showWorkouts: showWorkouts, showJournals: showJournals, showPlans: showPlans, showWater: showWater)
                             .padding(.horizontal, 16)
                     }
 
@@ -281,6 +284,7 @@ private struct ProgressModuleView: View {
                                 showWorkouts: showWorkouts,
                                 showJournals: showJournals,
                                 showPlans: showPlans,
+                                showWater: showWater,
                                 onDaySelected: { hasSelectedDate = true }
                             ) {
                                 // Collapse when a day is tapped
@@ -300,6 +304,7 @@ private struct ProgressModuleView: View {
                                     showWorkouts: showWorkouts,
                                     showJournals: showJournals,
                                     showPlans: showPlans,
+                                    showWater: showWater,
                                     onDaySelected: { hasSelectedDate = true }
                                 )
                                 .padding(.horizontal, 8)
@@ -396,7 +401,8 @@ private struct ProgressModuleView: View {
                             showWeek: $listShowWeek,
                             showWorkouts: showWorkouts,
                             showJournals: showJournals,
-                            showPlans: showPlans
+                            showPlans: showPlans,
+                            showWater: showWater
                         ) { log in
                             selectedLog = log
                         } onJournalTap: { entry in
@@ -463,6 +469,7 @@ private struct CalendarView: View {
     var showWorkouts: Bool = true
     var showJournals: Bool = true
     var showPlans: Bool = true
+    var showWater: Bool = true
     /// Called when user explicitly taps a day — lets parent mark a day as selected
     var onDaySelected: (() -> Void)? = nil
     /// Called after a day is selected — lets the parent collapse the calendar
@@ -545,6 +552,7 @@ private struct CalendarView: View {
                                 }
                                 return plan.name
                             }(),
+                            showWater: showWater,
                             cellHeight: cellHeight
                         ) {
                             selectedDate = date
@@ -587,11 +595,11 @@ private struct PlanDayCard: View {
             HStack(spacing: 6) {
                 Image(systemName: "calendar.badge.checkmark")
                     .font(.caption)
-                    .foregroundColor(.accentColor)
+                    .foregroundColor(Color(red: 1.0, green: 0.55, blue: 0.0))
                 Text(planName)
                     .font(.caption)
                     .fontWeight(.semibold)
-                    .foregroundColor(.accentColor)
+                    .foregroundColor(Color(red: 1.0, green: 0.55, blue: 0.0))
             }
 
             if !workouts.isEmpty {
@@ -633,10 +641,10 @@ private struct PlanDayCard: View {
         }
         .padding(10)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color.accentColor.opacity(0.08))
+        .background(Color(red: 1.0, green: 0.55, blue: 0.0).opacity(0.08))
         .overlay(
             RoundedRectangle(cornerRadius: 8)
-                .stroke(Color.accentColor.opacity(0.25), lineWidth: 1)
+                .stroke(Color(red: 1.0, green: 0.55, blue: 0.0).opacity(0.25), lineWidth: 1)
         )
         .cornerRadius(8)
     }
@@ -660,6 +668,7 @@ private struct DayCell: View {
     let logs: [WorkoutLog]
     var journalEntries: [JournalEntry] = []
     var planName: String? = nil
+    var showWater: Bool = true
     var cellHeight: CGFloat = 85
     let onTap: () -> Void
 
@@ -745,7 +754,7 @@ private struct DayCell: View {
                             let pillBg: Color = item.isOverflow
                                 ? Color(UIColor.tertiarySystemFill)
                                 : (item.isPlan
-                                    ? Color.accentColor.opacity(isCurrentMonth ? 0.18 : 0.08)
+                                    ? Color(red: 1.0, green: 0.55, blue: 0.0).opacity(isCurrentMonth ? 0.18 : 0.08)
                                     : (item.isJournal
                                         ? Color(red: 0.4, green: 0.35, blue: 0.75).opacity(isCurrentMonth ? 0.18 : 0.08)
                                         : Color(red: 0.2, green: 0.75, blue: 0.35).opacity(isCurrentMonth ? 0.18 : 0.08)))
@@ -755,8 +764,8 @@ private struct DayCell: View {
                                 ? Color.secondary
                                 : (item.isPlan
                                     ? (colorScheme == .dark
-                                        ? Color(red: 0.45, green: 0.72, blue: 1.0).opacity(textOpacity)
-                                        : Color(red: 0.0, green: 0.30, blue: 0.78).opacity(textOpacity))
+                                        ? Color(red: 1.0, green: 0.72, blue: 0.3).opacity(textOpacity)
+                                        : Color(red: 0.75, green: 0.38, blue: 0.0).opacity(textOpacity))
                                     : (item.isJournal
                                         ? (colorScheme == .dark
                                             ? Color(red: 0.65, green: 0.60, blue: 1.0).opacity(textOpacity)
@@ -794,7 +803,7 @@ private struct DayCell: View {
 
                 Spacer()
 
-                // Dot row at the bottom: green = workout, purple = journal, accent = plan
+                // Dot row: green = workout, purple = journal, orange = plan, blue = water
                 HStack(spacing: 3) {
                     if workoutCount > 0 {
                         Circle()
@@ -808,7 +817,12 @@ private struct DayCell: View {
                     }
                     if planName != nil {
                         Circle()
-                            .fill(Color.accentColor.opacity(isCurrentMonth ? 0.85 : 0.4))
+                            .fill(Color(red: 1.0, green: 0.55, blue: 0.0).opacity(isCurrentMonth ? 0.85 : 0.4))
+                            .frame(width: iPad ? 8 : 5, height: iPad ? 8 : 5)
+                    }
+                    if showWater && WaterState.shared.totalOzForDate(date) > 0 {
+                        Circle()
+                            .fill(Color(red: 0.2, green: 0.55, blue: 1.0).opacity(isCurrentMonth ? 0.85 : 0.4))
                             .frame(width: iPad ? 8 : 5, height: iPad ? 8 : 5)
                     }
                 }
@@ -839,6 +853,7 @@ private struct WeekStripView: View {
     var showWorkouts: Bool = true
     var showJournals: Bool = true
     var showPlans: Bool = true
+    var showWater: Bool = true
     var onDaySelected: (() -> Void)? = nil
 
     private let calendar = Calendar.current
@@ -892,7 +907,7 @@ private struct WeekStripView: View {
                             }
                             .frame(width: 34, height: 34)
 
-                            // Dots: green = workout, purple = journal, accent = plan
+                            // Dots: green = workout, purple = journal, orange = plan, blue = water
                             HStack(spacing: 3) {
                                 if count > 0 {
                                     Circle()
@@ -906,14 +921,18 @@ private struct WeekStripView: View {
                                 }
                                 if hasPlan {
                                     Circle()
-                                        .fill(Color.accentColor)
+                                        .fill(Color(red: 1.0, green: 0.55, blue: 0.0))
+                                        .frame(width: 5, height: 5)
+                                }
+                                if showWater && WaterState.shared.totalOzForDate(day) > 0 {
+                                    Circle()
+                                        .fill(Color(red: 0.2, green: 0.55, blue: 1.0))
                                         .frame(width: 5, height: 5)
                                 }
                                 // Placeholder to keep height consistent when no dots
-                                if count == 0 && journalCount == 0 && !hasPlan {
+                                if count == 0 && journalCount == 0 && !hasPlan && !(showWater && WaterState.shared.totalOzForDate(day) > 0) {
                                     Color.clear.frame(width: 5, height: 5)
                                 }
-
                             }
                         }
                     }
@@ -959,6 +978,7 @@ private struct TimelineLogView: View {
     var showWorkouts: Bool = true
     var showJournals: Bool = true
     var showPlans: Bool = true
+    var showWater: Bool = true
     let onTap: (WorkoutLog) -> Void
     var onJournalTap: ((JournalEntry) -> Void)? = nil
 
@@ -1140,6 +1160,7 @@ private struct ActivityRibbonView: View {
     var showWorkouts: Bool = true
     var showJournals: Bool = true
     var showPlans: Bool = true
+    var showWater: Bool = true
 
     private let cellSize: CGFloat = 11
     private let cellSpacing: CGFloat = 3
@@ -1202,12 +1223,20 @@ private struct ActivityRibbonView: View {
                                         .fill(Color(red: 0.4, green: 0.35, blue: 0.75).opacity(0.85))
                                         .frame(width: cellSize * 0.45, height: cellSize * 0.45)
                                 }
-                                // Accent dot for planned days (bottom-right corner)
+                                // Orange dot for planned days (bottom-right corner)
                                 if bucket.hasPlan && bucket.date != nil {
                                     Circle()
-                                        .fill(Color.accentColor.opacity(0.9))
+                                        .fill(Color(red: 1.0, green: 0.55, blue: 0.0).opacity(0.9))
                                         .frame(width: cellSize * 0.38, height: cellSize * 0.38)
                                         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomTrailing)
+                                        .padding(1)
+                                }
+                                // Blue dot for water days (bottom-left corner)
+                                if showWater, let date = bucket.date, WaterState.shared.totalOzForDate(date) > 0 {
+                                    Circle()
+                                        .fill(Color(red: 0.2, green: 0.55, blue: 1.0).opacity(0.9))
+                                        .frame(width: cellSize * 0.38, height: cellSize * 0.38)
+                                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomLeading)
                                         .padding(1)
                                 }
                             }
@@ -2545,6 +2574,7 @@ private struct CalendarFilterPopover: View {
     @Binding var showWorkouts: Bool
     @Binding var showJournals: Bool
     @Binding var showPlans: Bool
+    @Binding var showWater: Bool
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -2565,7 +2595,10 @@ private struct CalendarFilterPopover: View {
                       color: Color(red: 0.4, green: 0.35, blue: 0.75), isOn: $showJournals)
             Divider().padding(.leading, 48)
             filterRow(label: "Plans", systemImage: "calendar.badge.checkmark",
-                      color: .accentColor, isOn: $showPlans)
+                      color: Color(red: 1.0, green: 0.55, blue: 0.0), isOn: $showPlans)
+            Divider().padding(.leading, 48)
+            filterRow(label: "Water", systemImage: "drop.fill",
+                      color: Color(red: 0.2, green: 0.55, blue: 1.0), isOn: $showWater)
 
             Divider()
         }

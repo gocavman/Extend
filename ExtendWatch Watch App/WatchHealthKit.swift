@@ -21,13 +21,14 @@ final class WatchHealthKit {
 
     private let stepType     = HKQuantityType(.stepCount)
     private let distanceType = HKQuantityType(.distanceWalkingRunning)
+    private let waterType    = HKQuantityType(.dietaryWater)
 
     // MARK: - Authorization
 
     /// Requests HealthKit read access. Call once on app launch.
     func requestAuthorization() async {
         guard HKHealthStore.isHealthDataAvailable() else { return }
-        let types: Set<HKObjectType> = [stepType, distanceType]
+        let types: Set<HKObjectType> = [stepType, distanceType, waterType]
         try? await store.requestAuthorization(toShare: [], read: types)
     }
 
@@ -51,6 +52,11 @@ final class WatchHealthKit {
     /// Returns today's walking/running distance in miles.
     func todayDistanceMiles() async -> Double {
         await todayDistanceMetres() / 1609.344
+    }
+
+    /// Returns today's water intake in fluid ounces (US) from HealthKit (0 if unavailable).
+    func todayWaterOz() async -> Double {
+        await querySum(type: waterType, unit: .fluidOunceUS(), for: Date())
     }
 
     // MARK: - Private helpers

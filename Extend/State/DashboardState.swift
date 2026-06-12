@@ -160,6 +160,9 @@ public final class DashboardState {
         tiles.append(graphCard(.favoriteDay, icon: "calendar"))
         order += 1
 
+        tiles.append(graphCard(.waterIntake14Days, icon: "drop.fill"))
+        order += 1
+
         // Small tiles
         tiles.append(statCard(.totalWorkouts, icon: "list.bullet"))
         order += 1

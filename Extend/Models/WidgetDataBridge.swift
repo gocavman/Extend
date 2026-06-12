@@ -14,6 +14,9 @@ private let appGroupID = "group.com.cavanmannenbach.extend"
 private let snapshotKey = "widget_plan_snapshot"
 private let multidayKey = "widget_plan_multiday"
 private let stepsSettingsKey = "watch_steps_settings"
+private let waterTodayOzKey = "water_today_oz"
+private let waterGoalOzKey = "water_goal_oz"
+private let waterUnitKey = "water_unit"
 
 /// A single displayable item in today's plan.
 public struct WidgetPlanItem: Codable {
@@ -87,22 +90,7 @@ public func readMultiDaySnapshots() -> [WidgetPlanSnapshot] {
     return []
 }
 
-// MARK: - Steps / Distance goal settings (Watch complication #2)
-
-/// Which health metric(s) the Watch steps complication shows.
-public enum WatchStepsMode: String, Codable, CaseIterable {
-    case stepsOnly    = "steps"
-    case distanceOnly = "distance"
-    case both         = "both"
-
-    public var displayName: String {
-        switch self {
-        case .stepsOnly:    return "Steps"
-        case .distanceOnly: return "Distance"
-        case .both:         return "Steps & Distance"
-        }
-    }
-}
+// MARK: - Steps / Distance goal settings (Watch complications)
 
 /// Whether distances are shown in kilometres or miles.
 public enum WatchDistanceUnit: String, Codable, CaseIterable {
@@ -117,21 +105,18 @@ public enum WatchDistanceUnit: String, Codable, CaseIterable {
     }
 }
 
-/// User-editable goal settings for the Watch steps/distance complication.
+/// User-editable goal settings for the Watch steps/distance complications.
 public struct WatchStepsSettings: Codable {
-    /// What the complication ring tracks.
-    public var mode: WatchStepsMode
-    /// Daily step goal (used when mode is .stepsOnly or .both).
+    /// Daily step goal used by the Steps and Steps & Distance complications.
     public var stepsGoal: Double
-    /// Daily distance goal in the chosen unit (used when mode is .distanceOnly or .both).
+    /// Daily distance goal in the chosen unit used by the Distance and Steps & Distance complications.
     public var distanceGoal: Double
     /// Distance unit preference.
     public var distanceUnit: WatchDistanceUnit
 
     public static let `default` = WatchStepsSettings(
-        mode: .stepsOnly,
         stepsGoal: 10_000,
-        distanceGoal: 8.0,   // ~8 km / 5 mi equivalent of 10 000 steps
+        distanceGoal: 8.0,
         distanceUnit: .km
     )
 }
@@ -151,4 +136,25 @@ public func readWatchStepsSettings() -> WatchStepsSettings {
         return decoded
     }
     return .default
+}
+
+// MARK: - Water data (widget + watch reads)
+
+/// Reads today's total water intake in oz from the App Group container.
+public func readWaterTodayOz() -> Double {
+    let defaults = UserDefaults(suiteName: appGroupID) ?? .standard
+    return defaults.double(forKey: waterTodayOzKey)
+}
+
+/// Reads the user's daily water goal in oz from the App Group container.
+public func readWaterGoalOz() -> Double {
+    let defaults = UserDefaults(suiteName: appGroupID) ?? .standard
+    let val = defaults.double(forKey: waterGoalOzKey)
+    return val > 0 ? val : 64.0
+}
+
+/// Reads the preferred water unit string ("oz" or "mL") from the App Group container.
+public func readWaterUnit() -> String {
+    let defaults = UserDefaults(suiteName: appGroupID) ?? .standard
+    return defaults.string(forKey: waterUnitKey) ?? "oz"
 }

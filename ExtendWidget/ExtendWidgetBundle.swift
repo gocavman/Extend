@@ -12,6 +12,7 @@ import SwiftUI
 struct ExtendWidgetBundle: WidgetBundle {
     var body: some Widget {
         ExtendWidget()
+        WaterWidget()
         ExtendWidgetControl()
         ExtendWidgetLiveActivity()
     }

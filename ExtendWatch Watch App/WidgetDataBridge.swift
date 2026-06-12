@@ -13,6 +13,9 @@ private let appGroupID       = "group.com.cavanmannenbach.extend"
 private let snapshotKey      = "widget_plan_snapshot"
 private let multidayKey      = "widget_plan_multiday"
 private let stepsSettingsKey = "watch_steps_settings"
+private let waterTodayOzKey  = "water_today_oz"
+private let waterGoalOzKey   = "water_goal_oz"
+private let waterUnitKey     = "water_unit"
 
 // MARK: - Plan item models
 
@@ -59,21 +62,6 @@ public func readMultiDaySnapshots() -> [WidgetPlanSnapshot] {
 
 // MARK: - Steps / Distance goal settings
 
-/// Which health metric(s) the Watch steps complication shows.
-public enum WatchStepsMode: String, Codable, CaseIterable {
-    case stepsOnly    = "steps"
-    case distanceOnly = "distance"
-    case both         = "both"
-
-    public var displayName: String {
-        switch self {
-        case .stepsOnly:    return "Steps"
-        case .distanceOnly: return "Distance"
-        case .both:         return "Steps & Distance"
-        }
-    }
-}
-
 /// Whether distances are shown in kilometres or miles.
 public enum WatchDistanceUnit: String, Codable, CaseIterable {
     case km    = "km"
@@ -87,15 +75,16 @@ public enum WatchDistanceUnit: String, Codable, CaseIterable {
     }
 }
 
-/// User-editable goal settings for the Watch steps/distance complication.
+/// User-editable goal settings for the Watch steps/distance complications.
 public struct WatchStepsSettings: Codable {
-    public var mode: WatchStepsMode
+    /// Daily step goal used by the Steps and Steps & Distance complications.
     public var stepsGoal: Double
+    /// Daily distance goal in the chosen unit used by the Distance and Steps & Distance complications.
     public var distanceGoal: Double
+    /// Distance unit preference.
     public var distanceUnit: WatchDistanceUnit
 
     public static let `default` = WatchStepsSettings(
-        mode: .stepsOnly,
         stepsGoal: 10_000,
         distanceGoal: 8.0,
         distanceUnit: .km
@@ -109,4 +98,22 @@ public func readWatchStepsSettings() -> WatchStepsSettings {
         return decoded
     }
     return .default
+}
+
+// MARK: - Water reading
+
+public func readWaterTodayOz() -> Double {
+    let defaults = UserDefaults(suiteName: appGroupID) ?? .standard
+    return defaults.double(forKey: waterTodayOzKey)
+}
+
+public func readWaterGoalOz() -> Double {
+    let defaults = UserDefaults(suiteName: appGroupID) ?? .standard
+    let val = defaults.double(forKey: waterGoalOzKey)
+    return val > 0 ? val : 64.0
+}
+
+public func readWaterUnit() -> String {
+    let defaults = UserDefaults(suiteName: appGroupID) ?? .standard
+    return defaults.string(forKey: waterUnitKey) ?? "oz"
 }

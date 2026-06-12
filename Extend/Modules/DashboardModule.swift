@@ -48,6 +48,7 @@ private struct DashboardModuleView: View {
     @Environment(TimerState.self) var timerState
     @Environment(\.horizontalSizeClass) private var sizeClass
     @Environment(VoiceTrainerState.self) var voiceTrainerState
+    @Environment(WaterState.self) var waterState
     @Environment(TrainingPlanState.self) var planState
 
     @State private var quickStartWorkout: Workout? = nil
@@ -254,6 +255,7 @@ private struct DashboardModuleView: View {
         let tileHeight: CGFloat = isDoubleHeight ? columnWidth * 2 + spacing
             : tile.statCardType == .favoriteDay ? CGFloat(44 + 7 * 19 + 12) * (isIPad ? 1.6 : 1.0)
             : tile.statCardType == .volumeThisWeek ? CGFloat(44 + 107 + 20 + 16) * (isIPad ? 1.6 : 1.0)
+            : tile.statCardType == .waterIntake14Days ? CGFloat(44 + 107 + 20 + 16) * (isIPad ? 1.6 : 1.0)
             : tile.statCardType == .workoutFrequency ? CGFloat(isIPad ? 130 : 110)
             : columnWidth
         
@@ -297,7 +299,11 @@ private struct DashboardModuleView: View {
                     oneRMEntries: rmEntries,
                     personalRecordEntries: prEntries,
                     volumeWeeks: statCard == .volumeThisWeek ? logState.volumeByWeek(weeks: 7, workoutName: tile.volumeWorkoutName, exerciseID: tile.volumeExerciseID) : [],
-                    dayOfWeekCounts: statCard == .favoriteDay ? logState.workoutCountByDayOfWeek : []
+                    dayOfWeekCounts: statCard == .favoriteDay ? logState.workoutCountByDayOfWeek : [],
+                    waterDailyTotals: statCard == .waterIntake14Days ? waterState.dailyTotals(days: 14) : [],
+                    waterGoalOz: waterState.dailyGoalOz,
+                    waterUnit: waterState.unit,
+                    waterStreak: statCard == .waterIntake14Days ? waterState.currentStreak : 0
                 )
                 .frame(width: tileWidth, height: dynamicEntryCount > 0 ? nil : tileHeight)
                 .rotationEffect(.degrees(tileRotations[tile.id] ?? 0))
@@ -659,6 +665,10 @@ private struct DashboardModuleView: View {
         case .todaysPlan:
             // Value not shown as text; tile renders its own plan content
             return ""
+        case .waterIntake14Days:
+            let oz = waterState.todayOz
+            let display = waterState.unit.fromOz(oz)
+            return String(format: "%.0f %@", display, waterState.unit.rawValue)
         }
     }
 
@@ -678,6 +688,11 @@ private struct DashboardModuleView: View {
             let last = logState.volumeLastWeek
             if last == 0 { return nil }
             return this > last ? ("↑", .green) : this < last ? ("↓", .red) : nil
+        case .waterIntake14Days:
+            let today = waterState.todayOz
+            let yesterday = waterState.totalOzForDate(Calendar.current.date(byAdding: .day, value: -1, to: Date()) ?? Date())
+            if yesterday == 0 { return nil }
+            return today > yesterday ? ("↑", .green) : today < yesterday ? ("↓", .red) : nil
         default:
             return nil
         }
@@ -1104,6 +1119,8 @@ private struct AddTileSheet: View {
             return "trophy.fill"
         case .todaysPlan:
             return "calendar.badge.checkmark"
+        case .waterIntake14Days:
+            return "drop.fill"
         }
     }
 
@@ -1349,7 +1366,8 @@ private struct EditTileSheet: View {
         }
         if tile.tileType == .statCard, let statCard = tile.statCardType {
             if statCard == .workoutFrequency || statCard == .muscleGroupDistribution
-                || statCard == .volumeThisWeek || statCard == .favoriteDay {
+                || statCard == .volumeThisWeek || statCard == .favoriteDay
+                || statCard == .waterIntake14Days {
                 return [.large]
             }
             if statCard == .oneRepMax || statCard == .personalRecord {
@@ -1653,6 +1671,10 @@ private struct StatCardTileView: View {
     var personalRecordEntries: [(name: String, value: Double)] = []
     var volumeWeeks: [(label: String, volume: Double)] = []
     var dayOfWeekCounts: [(label: String, count: Int)] = []
+    var waterDailyTotals: [(date: Date, oz: Double)] = []
+    var waterGoalOz: Double = 64
+    var waterUnit: WaterUnit = .oz
+    var waterStreak: Int = 0
 
     @Environment(\.horizontalSizeClass) private var sizeClass
     private var iPad: Bool { sizeClass == .regular }
@@ -1851,6 +1873,41 @@ private struct StatCardTileView: View {
                     } else {
                         VolumeBarChartView(weeks: volumeWeeks)
                             .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    }
+                } else if statType == .waterIntake14Days {
+                    if waterDailyTotals.isEmpty || waterDailyTotals.allSatisfy({ $0.oz == 0 }) {
+                        VStack(spacing: 4) {
+                            Spacer()
+                            Image(systemName: "drop")
+                                .font(.system(size: iPad ? 35 : 22, weight: .light))
+                                .foregroundColor(.gray)
+                            Text("No water logged yet")
+                                .font(.system(size: iPad ? 16 : 10))
+                                .foregroundColor(.gray)
+                            Spacer()
+                        }
+                        .frame(maxWidth: .infinity)
+                    } else {
+                        VStack(spacing: 4) {
+                            WaterBarChartView(
+                                totals: waterDailyTotals,
+                                goalOz: waterGoalOz,
+                                maxOz: max(waterDailyTotals.map { $0.oz }.max() ?? waterGoalOz, waterGoalOz),
+                                unit: waterUnit
+                            )
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
+                            if waterStreak > 0 {
+                                HStack(spacing: 4) {
+                                    Spacer()
+                                    Image(systemName: "flame.fill")
+                                        .font(.system(size: iPad ? 13 : 9, weight: .bold))
+                                        .foregroundColor(.orange)
+                                    Text("\(waterStreak) day streak")
+                                        .font(.system(size: iPad ? 13 : 9))
+                                        .foregroundColor(.gray)
+                                }
+                            }
+                        }
                     }
                 } else if statType == .favoriteDay {
                     if dayOfWeekCounts.allSatisfy({ $0.count == 0 }) {

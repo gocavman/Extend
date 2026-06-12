@@ -46,6 +46,7 @@ private struct SettingsModuleView: View {
     @Environment(EquipmentState.self) var equipmentState
     @Environment(VoiceTrainerState.self) var voiceTrainerState
     @Environment(HealthKitState.self) var healthKitState
+    @Environment(WaterState.self) var waterState
     @Environment(ExercisesState.self) var exercisesState
     @Environment(TrainingPlanState.self) var planState
 
@@ -63,7 +64,9 @@ private struct SettingsModuleView: View {
 
     @State private var showingResetAlert = false
     @State private var isSyncingHealthKit = false
-    @State private var isWatchSectionExpanded = false
+    @State private var isAppleWatchSectionExpanded = false
+    @State private var isWaterSectionExpanded = false
+    @State private var waterGoalText: String = ""
     @State private var watchSettings: WatchStepsSettings = readWatchStepsSettings()
     @State private var watchStepsGoalText: String = ""
     @State private var watchDistanceGoalText: String = ""
@@ -326,6 +329,147 @@ private struct SettingsModuleView: View {
                                 .disabled(isSyncingHealthKit || (!healthKitState.anyImportEnabled && !healthKitState.exportStrengthWorkouts))
                             }
 
+                            DisclosureGroup("Apple Watch", isExpanded: $isAppleWatchSectionExpanded) {
+                                HStack {
+                                    Text("Distance Unit")
+                                    Spacer()
+                                    Picker("", selection: $watchSettings.distanceUnit) {
+                                        ForEach(WatchDistanceUnit.allCases, id: \.self) { unit in
+                                            Text(unit.displayName).tag(unit)
+                                        }
+                                    }
+                                    .pickerStyle(.menu)
+                                    .tint(.primary)
+                                }
+
+                                HStack {
+                                    Text("Daily Steps Goal")
+                                    Spacer()
+                                    TextField("10000", text: $watchStepsGoalText)
+                                        .keyboardType(.numberPad)
+                                        .multilineTextAlignment(.trailing)
+                                        .frame(width: 90)
+                                        .onChange(of: watchStepsGoalText) {
+                                            if let v = Double(watchStepsGoalText), v > 0 {
+                                                watchSettings.stepsGoal = v
+                                                writeWatchStepsSettings(watchSettings)
+                                            }
+                                        }
+                                    Text("steps")
+                                        .foregroundColor(.secondary)
+                                        .font(.subheadline)
+                                }
+
+                                HStack {
+                                    Text("Daily Distance Goal")
+                                    Spacer()
+                                    TextField("8.0", text: $watchDistanceGoalText)
+                                        .keyboardType(.decimalPad)
+                                        .multilineTextAlignment(.trailing)
+                                        .frame(width: 70)
+                                        .onChange(of: watchDistanceGoalText) {
+                                            if let v = Double(watchDistanceGoalText), v > 0 {
+                                                watchSettings.distanceGoal = v
+                                                writeWatchStepsSettings(watchSettings)
+                                            }
+                                        }
+                                    Text(watchSettings.distanceUnit.rawValue)
+                                        .foregroundColor(.secondary)
+                                        .font(.subheadline)
+                                }
+
+                                Text("These goals are used by the Steps, Distance, and Steps & Distance complications on your Apple Watch. Add the complication you want directly from the watch face editor.")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            }
+                            .onAppear {
+                                let s = readWatchStepsSettings()
+                                watchSettings = s
+                                watchStepsGoalText = String(Int(s.stepsGoal))
+                                let dGoal = s.distanceGoal
+                                watchDistanceGoalText = dGoal.truncatingRemainder(dividingBy: 1) == 0
+                                    ? String(Int(dGoal)) : String(format: "%.1f", dGoal)
+                            }
+                            .onChange(of: watchSettings.distanceUnit) {
+                                writeWatchStepsSettings(watchSettings)
+                            }
+
+                            DisclosureGroup("Water", isExpanded: $isWaterSectionExpanded) {
+                                // Daily goal
+                                HStack {
+                                    Text("Daily Goal")
+                                    Spacer()
+                                    TextField(waterState.unit == .oz ? "64" : "1893", text: $waterGoalText)
+                                        .keyboardType(.decimalPad)
+                                        .multilineTextAlignment(.trailing)
+                                        .frame(width: 70)
+                                        .onChange(of: waterGoalText) {
+                                            if let v = Double(waterGoalText), v > 0 {
+                                                waterState.dailyGoalOz = waterState.unit.toOz(v)
+                                            }
+                                        }
+                                    Text(waterState.unit.rawValue)
+                                        .foregroundColor(.secondary)
+                                        .font(.subheadline)
+                                }
+
+                                // Unit picker
+                                HStack {
+                                    Text("Unit")
+                                    Spacer()
+                                    Picker("", selection: Binding(
+                                        get: { waterState.unit },
+                                        set: { newUnit in
+                                            waterState.unit = newUnit
+                                            let display = newUnit.fromOz(waterState.dailyGoalOz)
+                                            waterGoalText = display.truncatingRemainder(dividingBy: 1) == 0
+                                                ? String(Int(display)) : String(format: "%.0f", display)
+                                        }
+                                    )) {
+                                        ForEach(WaterUnit.allCases, id: \.self) { u in
+                                            Text(u.displayName).tag(u)
+                                        }
+                                    }
+                                    .pickerStyle(.segmented)
+                                    .frame(width: 120)
+                                }
+
+                                // Apple Health sync
+                                Toggle("Export to Apple Health", isOn: Binding(
+                                    get: { waterState.exportToHealthKit },
+                                    set: { waterState.exportToHealthKit = $0 }
+                                ))
+
+                                Toggle("Import from Apple Health", isOn: Binding(
+                                    get: { waterState.importFromHealthKit },
+                                    set: { waterState.importFromHealthKit = $0 }
+                                ))
+
+                                if let lastSync = waterState.lastHealthKitSync {
+                                    HStack {
+                                        Text("Last Synced")
+                                        Spacer()
+                                        Text(lastSync, style: .relative)
+                                            .foregroundColor(.secondary)
+                                            .font(.subheadline)
+                                    }
+                                }
+
+                                if waterState.importFromHealthKit {
+                                    Button {
+                                        Task { await waterState.syncFromHealthKit() }
+                                    } label: {
+                                        Text("Sync Now")
+                                            .foregroundColor(.primary)
+                                    }
+                                }
+                            }
+                            .onAppear {
+                                let display = waterState.unit.fromOz(waterState.dailyGoalOz)
+                                waterGoalText = display.truncatingRemainder(dividingBy: 1) == 0
+                                    ? String(Int(display)) : String(format: "%.0f", display)
+                            }
+
                             VStack(alignment: .leading, spacing: 4) {
                                 Toggle("Keep Screen On During Sessions", isOn: $keepScreenOnDuringSession)
                                 Text("Prevents the screen from locking during active timers, workouts, and voice trainer sessions. Uses more battery.")
@@ -426,96 +570,6 @@ private struct SettingsModuleView: View {
                             }
                         }
                         
-                        DisclosureGroup("Apple Watch", isExpanded: $isWatchSectionExpanded) {
-                            // Complication mode
-                            HStack {
-                                Text("Complication Shows")
-                                Spacer()
-                                Picker("", selection: $watchSettings.mode) {
-                                    ForEach(WatchStepsMode.allCases, id: \.self) { mode in
-                                        Text(mode.displayName).tag(mode)
-                                    }
-                                }
-                                .pickerStyle(.menu)
-                                .tint(.primary)
-                            }
-
-                            // Distance unit (only when distance is involved)
-                            if watchSettings.mode != .stepsOnly {
-                                HStack {
-                                    Text("Distance Unit")
-                                    Spacer()
-                                    Picker("", selection: $watchSettings.distanceUnit) {
-                                        ForEach(WatchDistanceUnit.allCases, id: \.self) { unit in
-                                            Text(unit.displayName).tag(unit)
-                                        }
-                                    }
-                                    .pickerStyle(.menu)
-                                    .tint(.primary)
-                                }
-                            }
-
-                            // Steps goal (only when steps is involved)
-                            if watchSettings.mode != .distanceOnly {
-                                HStack {
-                                    Text("Daily Steps Goal")
-                                    Spacer()
-                                    TextField("10000", text: $watchStepsGoalText)
-                                        .keyboardType(.numberPad)
-                                        .multilineTextAlignment(.trailing)
-                                        .frame(width: 90)
-                                        .onChange(of: watchStepsGoalText) {
-                                            if let v = Double(watchStepsGoalText), v > 0 {
-                                                watchSettings.stepsGoal = v
-                                                writeWatchStepsSettings(watchSettings)
-                                            }
-                                        }
-                                    Text("steps")
-                                        .foregroundColor(.secondary)
-                                        .font(.subheadline)
-                                }
-                            }
-
-                            // Distance goal (only when distance is involved)
-                            if watchSettings.mode != .stepsOnly {
-                                HStack {
-                                    Text("Daily Distance Goal")
-                                    Spacer()
-                                    TextField("8.0", text: $watchDistanceGoalText)
-                                        .keyboardType(.decimalPad)
-                                        .multilineTextAlignment(.trailing)
-                                        .frame(width: 70)
-                                        .onChange(of: watchDistanceGoalText) {
-                                            if let v = Double(watchDistanceGoalText), v > 0 {
-                                                watchSettings.distanceGoal = v
-                                                writeWatchStepsSettings(watchSettings)
-                                            }
-                                        }
-                                    Text(watchSettings.distanceUnit.rawValue)
-                                        .foregroundColor(.secondary)
-                                        .font(.subheadline)
-                                }
-                            }
-
-                            Text("These settings control the Steps/Distance ring complication on your Apple Watch.")
-                                .font(.caption)
-                                .foregroundColor(.secondary)
-                        }
-                        .onAppear {
-                            let s = readWatchStepsSettings()
-                            watchSettings = s
-                            watchStepsGoalText = String(Int(s.stepsGoal))
-                            let dGoal = s.distanceGoal
-                            watchDistanceGoalText = dGoal.truncatingRemainder(dividingBy: 1) == 0
-                                ? String(Int(dGoal)) : String(format: "%.1f", dGoal)
-                        }
-                        .onChange(of: watchSettings.mode) {
-                            writeWatchStepsSettings(watchSettings)
-                        }
-                        .onChange(of: watchSettings.distanceUnit) {
-                            writeWatchStepsSettings(watchSettings)
-                        }
-
                         NavigationLink(destination: HelpView()) {
                             HStack {
                                 Text("Help Center")
@@ -768,6 +822,7 @@ private struct SettingsModuleView: View {
         voiceTrainerState.resetConfigurations()
         planState.resetPlans()
         HealthKitState.shared.resetAll()
+        WaterState.shared.resetAll()
 
         // Reset Game Progress - Workout Match (Match Game)
         defaults.removeObject(forKey: "matchGameCurrentLevel")
@@ -933,7 +988,30 @@ private struct SettingsModuleView: View {
         }
 
         logState.bulkAddLogs(generated)
-        devToolsMessage = "Generated \(generated.count) test logs."
+
+        // --- Generate ~90 days of water intake records ---
+        let waterState = WaterState.shared
+        var waterLogs: [WaterLog] = []
+        let commonAmounts: [Double] = [8, 8, 12, 16, 8, 8, 16, 12, 8] // typical sips/glasses throughout the day
+        let drinkHours = [7, 9, 10, 12, 14, 15, 17, 19, 21]
+        for daysAgo in 0..<90 {
+            guard let day = cal.date(byAdding: .day, value: -daysAgo, to: now) else { continue }
+            // Skip ~15% of days so the streak chart has realistic gaps
+            if Int.random(in: 0..<7) == 0 { continue }
+            // Pick 3–8 drink events for this day
+            let drinkCount = Int.random(in: 3...8)
+            let pickedHours = drinkHours.shuffled().prefix(drinkCount)
+            for hour in pickedHours {
+                guard let drinkTime = cal.date(bySettingHour: hour, minute: Int.random(in: 0..<60), second: 0, of: day) else { continue }
+                let oz = commonAmounts.randomElement()!
+                waterLogs.append(WaterLog(amountOz: oz, loggedAt: drinkTime))
+            }
+        }
+        for log in waterLogs {
+            waterState.addLog(log)
+        }
+
+        devToolsMessage = "Generated \(generated.count) workout logs + \(waterLogs.count) water entries."
     }
     #endif
 }
@@ -1709,6 +1787,7 @@ private struct DashboardAddTileSheet: View {
         case .personalRecord: return "medal"
         case .oneRepMax: return "trophy.fill"
         case .todaysPlan: return "calendar.badge.checkmark"
+        case .waterIntake14Days: return "drop.fill"
         }
     }
 
@@ -1727,6 +1806,7 @@ private struct DashboardAddTileSheet: View {
         case .personalRecord:          return "Your heaviest single set weight ever logged."
         case .oneRepMax:               return "Leaderboard of your best estimated 1-rep maxes by exercise."
         case .todaysPlan:              return "Shows today's planned workouts, exercises, and voice activities."
+        case .waterIntake14Days:       return "14-day daily water intake bar chart with streak."
         }
     }
 

@@ -9,6 +9,9 @@ import Foundation
 
 private let appGroupID = "group.com.cavanmannenbach.extend"
 private let snapshotKey = "widget_plan_snapshot"
+private let waterTodayOzKey = "water_today_oz"
+private let waterGoalOzKey = "water_goal_oz"
+private let waterUnitKey = "water_unit"
 
 /// A single displayable item in today's plan.
 public struct WidgetPlanItem: Codable {
@@ -31,7 +34,7 @@ public struct WidgetPlanSnapshot: Codable {
     public let isRestDay: Bool
 }
 
-// MARK: - Reading
+// MARK: - Plan reading
 
 public func readWidgetSnapshot() -> WidgetPlanSnapshot {
     let defaults = UserDefaults(suiteName: appGroupID) ?? .standard
@@ -40,4 +43,22 @@ public func readWidgetSnapshot() -> WidgetPlanSnapshot {
         return decoded
     }
     return WidgetPlanSnapshot(planName: nil, date: Date(), items: [], isRestDay: true)
+}
+
+// MARK: - Water reading
+
+public func readWaterTodayOz() -> Double {
+    let defaults = UserDefaults(suiteName: appGroupID) ?? .standard
+    return defaults.double(forKey: waterTodayOzKey)
+}
+
+public func readWaterGoalOz() -> Double {
+    let defaults = UserDefaults(suiteName: appGroupID) ?? .standard
+    let val = defaults.double(forKey: waterGoalOzKey)
+    return val > 0 ? val : 64.0
+}
+
+public func readWaterUnit() -> String {
+    let defaults = UserDefaults(suiteName: appGroupID) ?? .standard
+    return defaults.string(forKey: waterUnitKey) ?? "oz"
 }

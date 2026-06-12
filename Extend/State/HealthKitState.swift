@@ -62,7 +62,7 @@ public final class HealthKitState {
     // MARK: - Init
 
     private init() {
-        exportStrengthWorkouts = hkDefaults.object(forKey: exportStrengthKey) as? Bool ?? true
+        exportStrengthWorkouts = hkDefaults.object(forKey: exportStrengthKey) as? Bool ?? false
 
         if let stored = hkDefaults.object(forKey: "hk_importActivityTypes") as? [UInt] {
             importActivityTypes = Set(stored)
@@ -109,7 +109,7 @@ public final class HealthKitState {
     // MARK: - Reset
 
     public func resetAll() {
-        exportStrengthWorkouts = true
+        exportStrengthWorkouts = false
         importActivityTypes    = HealthKitState.defaultImportActivityTypes
         lastImportDate         = nil
         authorizationRequested = false

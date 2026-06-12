@@ -287,7 +287,6 @@
 				86F90FDB2FDBBE7C005A4181 /* ExtendWatchWidget */,
 				86F095C72FD77A6800B92B82 /* Frameworks */,
 				86D712592F3EC9F7002C00D1 /* Products */,
-				86F90F8F2FDBB4CE005A4181 /* ExtendWatch */,
 			);
 			sourceTree = "<group>";
 		};
@@ -313,13 +312,6 @@
 				86F095CA2FD77A6800B92B82 /* SwiftUI.framework */,
 			);
 			name = Frameworks;
-			sourceTree = "<group>";
-		};
-		86F90F8F2FDBB4CE005A4181 /* ExtendWatch */ = {
-			isa = PBXGroup;
-			children = (
-			);
-			path = ExtendWatch;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -1121,10 +1113,9 @@
 				DEVELOPMENT_TEAM = 6CUXT7F93D;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
-				
 				INFOPLIST_KEY_CFBundleDisplayName = ExtendWatch;
-				INFOPLIST_KEY_NSHealthShareUsageDescription = "Extend uses HealthKit to show your daily steps and distance on the Watch complication.";
 				INFOPLIST_KEY_LSApplicationCategoryType = "";
+				INFOPLIST_KEY_NSHealthShareUsageDescription = "Extend uses HealthKit to show your daily steps and distance on the Watch complication.";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
 				INFOPLIST_KEY_WKCompanionAppBundleIdentifier = gocavman.Extend;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -1158,10 +1149,9 @@
 				DEVELOPMENT_TEAM = 6CUXT7F93D;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
-				
 				INFOPLIST_KEY_CFBundleDisplayName = ExtendWatch;
-				INFOPLIST_KEY_NSHealthShareUsageDescription = "Extend uses HealthKit to show your daily steps and distance on the Watch complication.";
 				INFOPLIST_KEY_LSApplicationCategoryType = "";
+				INFOPLIST_KEY_NSHealthShareUsageDescription = "Extend uses HealthKit to show your daily steps and distance on the Watch complication.";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
 				INFOPLIST_KEY_WKCompanionAppBundleIdentifier = gocavman.Extend;
 				LD_RUNPATH_SEARCH_PATHS = (

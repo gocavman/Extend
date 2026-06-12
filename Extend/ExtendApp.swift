@@ -38,6 +38,7 @@ struct ExtendApp: App {
     let voiceTrainerState = VoiceTrainerState()
     let healthKitState = HealthKitState.shared
     let trainingPlanState = TrainingPlanState.shared
+    let waterState = WaterState.shared
 
     init() {
         // Register all modules synchronously before the first render so the
@@ -58,6 +59,7 @@ struct ExtendApp: App {
         registry.registerModule(StickFigureAnimatorModule())
         registry.registerModule(MatchGameModule())
         registry.registerModule(TodaysPlanModule())
+        registry.registerModule(WaterModule())
 
         // Set default navbar layout on first launch
         if state.topNavBarModules.isEmpty && state.bottomNavBarModules.isEmpty {
@@ -100,6 +102,7 @@ struct ExtendApp: App {
                 .environment(voiceTrainerState)
                 .environment(healthKitState)
                 .environment(trainingPlanState)
+                .environment(waterState)
                 .task {
                     // Refresh widget snapshot so Today's Plan widget has current data on launch
                     trainingPlanState.refreshWidgetSnapshot()
