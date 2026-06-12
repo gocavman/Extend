@@ -83,6 +83,10 @@ class MatchGameViewController: UIViewController {
     private let containerView = UIView()
     private let headerView = UIView()
     private let gridContainer = UIView()
+    private var lastContainerBoundsForResize: CGRect = .zero  // track bounds to avoid resize loops
+    // Computed by resizeGridContainer(), applied to gridStackView in applyStackLayout()
+    private var gridStackSize: CGSize = .zero
+    private var gridStackOffset: CGPoint = .zero
     private let gridStackView = UIStackView()
     private let exitButton = UIButton()
     private let levelLabel = UILabel()
@@ -163,6 +167,159 @@ class MatchGameViewController: UIViewController {
         startSessionTimer()
     }
 
+    override func viewDidLayoutSubviews() {
+        super.viewDidLayoutSubviews()
+        // Only resize when the container's available bounds actually change (e.g. rotation).
+        // Skipping when bounds are unchanged prevents re-layout loops from overwriting the
+        // correct size that startLevel() set after parsing gridShapeMap.
+        let currentBounds = containerView.bounds
+        if currentBounds != lastContainerBoundsForResize {
+            lastContainerBoundsForResize = currentBounds
+            resizeGridContainer()
+        }
+    }
+
+    private func resizeGridContainer() {
+        guard let level = currentLevel else { return }
+
+        // Compute the active bounding box — tightest rect around all X cells.
+        var minCol = level.gridWidth, maxCol = -1
+        var minRow = level.gridHeight, maxRow = -1
+        if !gridShapeMap.isEmpty && !gridShapeMap[0].isEmpty {
+            for r in 0..<level.gridHeight {
+                for c in 0..<level.gridWidth {
+                    if gridShapeMap[r][c] {
+                        if r < minRow { minRow = r }
+                        if r > maxRow { maxRow = r }
+                        if c < minCol { minCol = c }
+                        if c > maxCol { maxCol = c }
+                    }
+                }
+            }
+        }
+        let hasActiveBox = maxCol >= minCol && maxRow >= minRow
+        let totalCols = CGFloat(level.gridWidth)
+        let totalRows = CGFloat(level.gridHeight)
+
+        // Available area below the header
+        let availW = containerView.bounds.width - 10
+        let availH = containerView.bounds.height - 130 - 10
+        guard availW > 0, availH > 0 else { return }
+
+        // Tile size is always based on the full 10×12 frame so it's consistent across all levels.
+        let tileSize = min(availW / totalCols, availH / totalRows)
+
+        // Container fills exactly the full grid frame — tile size never changes between levels.
+        let containerW = tileSize * totalCols
+        let containerH = tileSize * totalRows
+
+        // Compute a fractional offset so the active area is pixel-perfectly centered.
+        // e.g. 7 active cols in 10 total: active center = minCol + 3.5, grid center = 5.0
+        // shift = (5.0 - (minCol + 3.5)) * tileSize  →  moves stack left/up so centers align.
+        let stackOffsetX: CGFloat
+        let stackOffsetY: CGFloat
+        if hasActiveBox {
+            let activeCols = CGFloat(maxCol - minCol + 1)
+            let activeRows = CGFloat(maxRow - minRow + 1)
+            let activeCenterCol = CGFloat(minCol) + activeCols / 2.0
+            let activeCenterRow = CGFloat(minRow) + activeRows / 2.0
+            let gridCenterCol = totalCols / 2.0
+            let gridCenterRow = totalRows / 2.0
+            stackOffsetX = (gridCenterCol - activeCenterCol) * tileSize
+            stackOffsetY = (gridCenterRow - activeCenterRow) * tileSize
+        } else {
+            stackOffsetX = 0
+            stackOffsetY = 0
+        }
+
+        // Store for applyStackLayout() which is called after the stack is added to the container.
+        gridStackSize  = CGSize(width: containerW, height: containerH)
+        gridStackOffset = CGPoint(x: stackOffsetX, y: stackOffsetY)
+
+        // Apply container size (replace any existing explicit width/height constants)
+        gridContainer.clipsToBounds = false  // no clipping needed — stack fills container exactly
+        gridContainer.constraints
+            .filter { ($0.firstAttribute == .width || $0.firstAttribute == .height) && $0.secondItem == nil }
+            .forEach { $0.isActive = false }
+        NSLayoutConstraint.activate([
+            gridContainer.widthAnchor.constraint(equalToConstant: containerW),
+            gridContainer.heightAnchor.constraint(equalToConstant: containerH),
+        ])
+
+        // If the stack is already in the hierarchy, update it immediately too
+        if gridStackView.superview == gridContainer {
+            applyStackLayout()
+            repositionArmorOverlays()
+        }
+    }
+
+    /// Repositions frame-based armor overlay views after tile size or layout changes.
+    private func repositionArmorOverlays() {
+        guard let level = currentLevel else { return }
+
+        // Use pre-computed stack geometry when available; otherwise compute from live bounds.
+        // This handles the case where renderGrid() runs before viewDidLayoutSubviews has fired.
+        let stackW: CGFloat
+        let stackH: CGFloat
+        let originX: CGFloat
+        let originY: CGFloat
+        if gridStackSize.width > 0 {
+            stackW   = gridStackSize.width
+            stackH   = gridStackSize.height
+            originX  = gridStackOffset.x
+            originY  = gridStackOffset.y
+        } else {
+            let availW = containerView.bounds.width - 10
+            let availH = containerView.bounds.height - 130 - 10
+            guard availW > 0, availH > 0 else { return }
+            let ts = min(availW / CGFloat(level.gridWidth), availH / CGFloat(level.gridHeight))
+            stackW  = ts * CGFloat(level.gridWidth)
+            stackH  = ts * CGFloat(level.gridHeight)
+            originX = 0
+            originY = 0
+        }
+
+        let tileW = stackW / CGFloat(level.gridWidth)
+        let tileH = stackH / CGFloat(level.gridHeight)
+        let spacing: CGFloat = 2
+
+        for row in 0..<level.gridHeight {
+            for col in 0..<level.gridWidth {
+                guard row < armorBorderViews.count, col < armorBorderViews[row].count,
+                      let borderView = armorBorderViews[row][col] else { continue }
+                let tileX = originX + CGFloat(col) * tileW + spacing * 0.5
+                let tileY = originY + CGFloat(row) * tileH + spacing * 0.5
+                borderView.frame = CGRect(x: tileX, y: tileY,
+                                          width: tileW - spacing, height: tileH - spacing)
+                let lw = (tileW - spacing) * 0.4
+                let lh = (tileH - spacing) * 0.35
+                armorOverlays[row][col]?.frame = CGRect(x: (tileW - spacing) - lw - 2,
+                                                         y: (tileH - spacing) - lh - 2,
+                                                         width: lw, height: lh)
+            }
+        }
+    }
+
+    /// Applies the pre-computed stack size and centering offset constraints.
+    /// Must be called after gridStackView has been added to gridContainer.
+    private func applyStackLayout() {
+        gridStackView.translatesAutoresizingMaskIntoConstraints = false
+        // Remove any existing stack positioning/sizing constraints
+        gridStackView.constraints
+            .filter { $0.secondItem == nil && ($0.firstAttribute == .width || $0.firstAttribute == .height) }
+            .forEach { $0.isActive = false }
+        gridContainer.constraints
+            .filter { ($0.firstItem as? UIView) == gridStackView || ($0.secondItem as? UIView) == gridStackView }
+            .forEach { $0.isActive = false }
+        // Stack fills container exactly; offset shifts active area to the visual center (fractional pixels allowed).
+        NSLayoutConstraint.activate([
+            gridStackView.widthAnchor.constraint(equalToConstant: gridStackSize.width),
+            gridStackView.heightAnchor.constraint(equalToConstant: gridStackSize.height),
+            gridStackView.centerXAnchor.constraint(equalTo: gridContainer.centerXAnchor, constant: gridStackOffset.x),
+            gridStackView.centerYAnchor.constraint(equalTo: gridContainer.centerYAnchor, constant: gridStackOffset.y),
+        ])
+    }
+
     override func viewWillDisappear(_ animated: Bool) {
         super.viewWillDisappear(animated)
         pauseSessionTimer()
@@ -224,11 +381,12 @@ class MatchGameViewController: UIViewController {
             levelNameLabel.trailingAnchor.constraint(lessThanOrEqualTo: headerView.trailingAnchor, constant: -60)
         ])
 
-        // Hidden dev shortcut: 5-tap on the level name label opens a level jump dialog.
+        // Hidden dev shortcut: long-press on the level name label opens a level jump dialog.
         // Not documented anywhere — invisible to regular users.
-        let devTap = UITapGestureRecognizer(target: self, action: #selector(devLevelJump))
-        devTap.numberOfTapsRequired = 5
-        levelNameLabel.addGestureRecognizer(devTap)
+        let devLongPress = UILongPressGestureRecognizer(target: self, action: #selector(devLevelJump))
+        devLongPress.minimumPressDuration = 1.5
+        levelNameLabel.isUserInteractionEnabled = true
+        levelNameLabel.addGestureRecognizer(devLongPress)
         
         // Level Selector Button (dropdown)
         levelSelectorButton.setTitle("Level 1 ▼", for: .normal)
@@ -341,9 +499,10 @@ class MatchGameViewController: UIViewController {
             gridContainer.topAnchor.constraint(greaterThanOrEqualTo: gridAreaGuide.topAnchor, constant: 5),
             gridContainer.bottomAnchor.constraint(lessThanOrEqualTo: gridAreaGuide.bottomAnchor, constant: -5),
             gridContainer.leadingAnchor.constraint(greaterThanOrEqualTo: gridAreaGuide.leadingAnchor, constant: 5),
-            gridContainer.trailingAnchor.constraint(lessThanOrEqualTo: gridAreaGuide.trailingAnchor, constant: -5)
+            gridContainer.trailingAnchor.constraint(lessThanOrEqualTo: gridAreaGuide.trailingAnchor, constant: -5),
         ])
         // Aspect ratio constraint is set dynamically in renderGrid() based on level dimensions
+        // Explicit size is set in viewDidLayoutSubviews() to fill available space
     }
     
     private func loadGameConfig() {
@@ -355,7 +514,26 @@ class MatchGameViewController: UIViewController {
         do {
             let data = try Data(contentsOf: url)
             gameConfig = try JSONDecoder().decode(MatchGameConfig.self, from: data)
-            //print("✅ Loaded matchgame.json with \(gameConfig?.levels.count ?? 0) levels")
+
+            // Wipe saved mid-level states if the JSON content has changed (e.g. after a shuffle).
+            // Fingerprint: level ID + first gridShape row for the first 20 levels — captures both
+            // ordering changes (shuffles) and shape changes (re-generates).
+            if let config = gameConfig {
+                let fingerprint = config.levels.prefix(20)
+                    .map { "\($0.id):\($0.gridShape.first ?? "")" }
+                    .joined(separator: "|")
+                let key = "matchGameConfigFingerprint"
+                let stored = defaults.string(forKey: key) ?? ""
+                if stored != fingerprint {
+                    // Config changed — purge all stale mid-level saves
+                    let allKeys = defaults.dictionaryRepresentation().keys
+                    for k in allKeys where k.hasPrefix("matchGameMidLevel_") {
+                        defaults.removeObject(forKey: k)
+                    }
+                    defaults.set(fingerprint, forKey: key)
+                    print("♻️ matchgame.json changed — cleared stale mid-level saves")
+                }
+            }
         } catch {
             print("❌ Error loading matchgame.json: \(error)")
         }
@@ -423,6 +601,11 @@ class MatchGameViewController: UIViewController {
             }
         }
         
+        // Now that gridShapeMap is populated, resize using the active bounding box.
+        // Reset the bounds tracker so viewDidLayoutSubviews doesn't skip the next resize.
+        lastContainerBoundsForResize = .zero
+        resizeGridContainer()
+        
         // Initialize empty grid
         gameGrid = Array(repeating: Array(repeating: nil, count: level.gridWidth), count: level.gridHeight)
         gridButtons = Array(repeating: Array(repeating: nil, count: level.gridWidth), count: level.gridHeight)
@@ -439,6 +622,7 @@ class MatchGameViewController: UIViewController {
 
         updateUI()
         renderGrid()
+        updateGridDisplay()  // apply shield emoji to armored tiles
 
         // Attempt to restore a mid-level snapshot (overrides the fresh grid above)
         if restoreMidLevelState(levelId: levelId) {
@@ -787,24 +971,12 @@ class MatchGameViewController: UIViewController {
         
         print("🎨 [RENDERGRID] Rendering grid: \(level.gridWidth)x\(level.gridHeight)")
         
-        // Update grid container aspect ratio to match level dimensions
-        // This ensures tiles remain square for any grid size (e.g. 10x11, 10x15)
+        // Grid container size is set explicitly in viewDidLayoutSubviews() / resizeGridContainer()
+        // Deactivate any old aspect ratio constraint
         if let existing = gridAspectRatioConstraint {
             existing.isActive = false
+            gridAspectRatioConstraint = nil
         }
-        let gridSpacing: CGFloat = 2
-        // For square tiles: containerW / containerH = (cols*tile + (cols-1)*sp) / (rows*tile + (rows-1)*sp)
-        // We approximate with a reasonable tile size; the constraint will adapt.
-        // Using the exact formula with tile size factored out:
-        // ratio = (cols + (cols-1)*sp/tile) / (rows + (rows-1)*sp/tile)
-        // For sp/tile ≈ 2/35 ≈ 0.057, this is very close to cols/rows
-        let cols = CGFloat(level.gridWidth)
-        let rows = CGFloat(level.gridHeight)
-        let approxTile: CGFloat = 40
-        let aspectRatio = (cols * approxTile + (cols - 1) * gridSpacing) / (rows * approxTile + (rows - 1) * gridSpacing)
-        gridAspectRatioConstraint = gridContainer.widthAnchor.constraint(equalTo: gridContainer.heightAnchor, multiplier: aspectRatio)
-        gridAspectRatioConstraint?.priority = UILayoutPriority(rawValue: 999)
-        gridAspectRatioConstraint?.isActive = true
         
         // Clear existing grid completely (subviews AND any leftover animation sublayers)
         gridContainer.subviews.forEach { $0.removeFromSuperview() }
@@ -820,14 +992,8 @@ class MatchGameViewController: UIViewController {
         gridStackView.distribution = .fillEqually  // Each row gets equal height
         gridContainer.addSubview(gridStackView)
         gridStackView.translatesAutoresizingMaskIntoConstraints = false
-        
-        // Make grid fill container
-        NSLayoutConstraint.activate([
-            gridStackView.topAnchor.constraint(equalTo: gridContainer.topAnchor),
-            gridStackView.leadingAnchor.constraint(equalTo: gridContainer.leadingAnchor),
-            gridStackView.trailingAnchor.constraint(equalTo: gridContainer.trailingAnchor),
-            gridStackView.bottomAnchor.constraint(equalTo: gridContainer.bottomAnchor)
-        ])
+        // Apply the pre-computed size and offset (set by resizeGridContainer after gridShapeMap is parsed)
+        applyStackLayout()
         
         // Render rows
         for row in 0..<level.gridHeight {
@@ -867,7 +1033,6 @@ class MatchGameViewController: UIViewController {
                     let item = level.items[itemIndex]
 
                     // If this piece is a powerup, show the powerup icon directly
-                    let powerupFontSize = max(16, min(40, 420 / CGFloat(max(level.gridWidth, level.gridHeight))))
                     if piece.type != .normal {
                         let powerupEmoji: String
                         switch piece.type {
@@ -881,7 +1046,9 @@ class MatchGameViewController: UIViewController {
                         }
                         button.setTitle(powerupEmoji, for: .normal)
                         button.setImage(nil, for: .normal)
-                        button.titleLabel?.font = UIFont.systemFont(ofSize: powerupFontSize)
+                        button.titleLabel?.font = UIFont.systemFont(ofSize: 200)
+                        button.titleLabel?.adjustsFontSizeToFitWidth = true
+                        button.titleLabel?.minimumScaleFactor = 0.1
                     } else
                     // Try to use asset image first, fall back to emoji
                     if let assetName = item.asset, !assetName.isEmpty {
@@ -904,12 +1071,11 @@ class MatchGameViewController: UIViewController {
                     } else {
                         // Fall back to emoji - scale font to nearly fill the tile
                         let itemEmoji = item.emoji ?? "?"
-                        let emojiFontSize = max(16, min(40, 420 / CGFloat(max(level.gridWidth, level.gridHeight))))
                         button.setTitle(itemEmoji, for: .normal)
                         button.setImage(nil, for: .normal)
-                        button.titleLabel?.font = UIFont.systemFont(ofSize: emojiFontSize)
+                        button.titleLabel?.font = UIFont.systemFont(ofSize: 200)
                         button.titleLabel?.adjustsFontSizeToFitWidth = true
-                        button.titleLabel?.minimumScaleFactor = 0.7
+                        button.titleLabel?.minimumScaleFactor = 0.1
                     }
                     
                     button.addTarget(self, action: #selector(gridButtonTapped(_:)), for: .touchUpInside)
@@ -928,61 +1094,13 @@ class MatchGameViewController: UIViewController {
             }
         }
         
-        // Add static armor overlay views on top of the grid (in gridContainer, not on buttons)
-        // These stay fixed at their grid position even when buttons transform during gravity
-        for row in 0..<level.gridHeight {
-            for col in 0..<level.gridWidth {
-                guard armorGrid[row][col] >= 1, let button = gridButtons[row][col] else { continue }
-                
-                // Create border overlay view
-                let borderView = UIView()
-                borderView.backgroundColor = .clear
-                borderView.layer.borderColor = UIColor.cyan.withAlphaComponent(0.7).cgColor
-                borderView.layer.borderWidth = 2
-                borderView.layer.cornerRadius = 8
-                borderView.isUserInteractionEnabled = false
-                borderView.translatesAutoresizingMaskIntoConstraints = false
-                gridContainer.addSubview(borderView)
-                
-                // Constrain to match the button's position in the grid
-                NSLayoutConstraint.activate([
-                    borderView.topAnchor.constraint(equalTo: button.topAnchor),
-                    borderView.bottomAnchor.constraint(equalTo: button.bottomAnchor),
-                    borderView.leadingAnchor.constraint(equalTo: button.leadingAnchor),
-                    borderView.trailingAnchor.constraint(equalTo: button.trailingAnchor)
-                ])
-                armorBorderViews[row][col] = borderView
-                
-                // Add number label to the border overlay view
-                let armorLabel = UILabel()
-                armorLabel.text = "\(armorGrid[row][col])"
-                armorLabel.font = UIFont.boldSystemFont(ofSize: 12)
-                armorLabel.adjustsFontSizeToFitWidth = true
-                armorLabel.minimumScaleFactor = 0.5
-                armorLabel.textColor = .white
-                armorLabel.textAlignment = .center
-                armorLabel.layer.shadowColor = UIColor.black.cgColor
-                armorLabel.layer.shadowOffset = CGSize(width: 1, height: 1)
-                armorLabel.layer.shadowOpacity = 1.0
-                armorLabel.layer.shadowRadius = 2
-                armorLabel.translatesAutoresizingMaskIntoConstraints = false
-                borderView.addSubview(armorLabel)
-                NSLayoutConstraint.activate([
-                    armorLabel.trailingAnchor.constraint(equalTo: borderView.trailingAnchor, constant: -2),
-                    armorLabel.bottomAnchor.constraint(equalTo: borderView.bottomAnchor, constant: -1)
-                ])
-                armorOverlays[row][col] = armorLabel
-            }
-        }
-        
-        // Add overlay views on top of blank (inactive) grid positions so pieces
-        // sliding through during gravity animations are hidden behind them
+        // Add blank tile overlays FIRST (lower z-order) — dark covers over inactive cells
+        // so pieces sliding through during gravity animations are hidden behind them.
         blankTileOverlays.forEach { $0.removeFromSuperview() }
         blankTileOverlays.removeAll()
         for row in 0..<level.gridHeight {
             for col in 0..<level.gridWidth {
                 guard !gridShapeMap[row][col] else { continue }
-                // Get the blank button at this position from the row stack
                 let rowStack = gridStackView.arrangedSubviews[row]
                 guard let stack = rowStack as? UIStackView else { continue }
                 let button = stack.arrangedSubviews[col]
@@ -992,9 +1110,6 @@ class MatchGameViewController: UIViewController {
                 overlay.isUserInteractionEnabled = false
                 overlay.translatesAutoresizingMaskIntoConstraints = false
                 gridContainer.addSubview(overlay)
-                
-                // Match the blank button's position, with slight expansion to cover
-                // the spacing gaps between tiles
                 NSLayoutConstraint.activate([
                     overlay.topAnchor.constraint(equalTo: button.topAnchor, constant: -1),
                     overlay.bottomAnchor.constraint(equalTo: button.bottomAnchor, constant: 1),
@@ -1004,6 +1119,42 @@ class MatchGameViewController: UIViewController {
                 blankTileOverlays.append(overlay)
             }
         }
+
+        // Add armor overlay views AFTER blank overlays so they sit on top in z-order.
+        // Uses frame-based layout so shields appear immediately without waiting for a layout pass.
+        for row in 0..<level.gridHeight {
+            for col in 0..<level.gridWidth {
+                guard armorGrid[row][col] >= 1 else { continue }
+
+                let borderView = UIView()
+                borderView.backgroundColor = .clear
+                borderView.layer.borderColor = UIColor.cyan.withAlphaComponent(0.7).cgColor
+                borderView.layer.borderWidth = 2
+                borderView.layer.cornerRadius = 8
+                borderView.isUserInteractionEnabled = false
+                borderView.autoresizingMask = []
+                gridContainer.addSubview(borderView)
+                armorBorderViews[row][col] = borderView
+
+                let armorLabel = UILabel()
+                armorLabel.text = "\(armorGrid[row][col])"
+                armorLabel.font = UIFont.boldSystemFont(ofSize: 20)
+                armorLabel.adjustsFontSizeToFitWidth = true
+                armorLabel.minimumScaleFactor = 0.4
+                armorLabel.textColor = .white
+                armorLabel.textAlignment = .center
+                armorLabel.layer.shadowColor = UIColor.black.cgColor
+                armorLabel.layer.shadowOffset = CGSize(width: 1, height: 1)
+                armorLabel.layer.shadowOpacity = 1.0
+                armorLabel.layer.shadowRadius = 2
+                armorLabel.autoresizingMask = []
+                borderView.addSubview(armorLabel)
+                armorOverlays[row][col] = armorLabel
+            }
+        }
+
+        // Position armor overlay frames (and the label frames inside them).
+        repositionArmorOverlays()
     }
     
     @objc private func gridButtonTapped(_ sender: UIButton) {
@@ -3663,10 +3814,11 @@ class MatchGameViewController: UIViewController {
         }
         
         // Shoot a flame line at each target tile
+        let flameSize = max(16, min(colWidth, rowHeight) * 0.55)
         for (targetX, targetY) in targetPositions {
             let flameLabel = UILabel()
             flameLabel.text = "🔥"
-            flameLabel.font = UIFont.systemFont(ofSize: 24)
+            flameLabel.font = UIFont.systemFont(ofSize: flameSize)
             flameLabel.sizeToFit()
             flameLabel.frame = CGRect(x: startX - flameLabel.bounds.width/2,
                                       y: startY - flameLabel.bounds.height/2,
@@ -3744,10 +3896,11 @@ class MatchGameViewController: UIViewController {
         }
         
         // Shoot a copy of the powerup emoji at each target tile
+        let copySize = max(16, min(colWidth, rowHeight) * 0.55)
         for (targetX, targetY) in targetPositions {
             let copyLabel = UILabel()
             copyLabel.text = emoji
-            copyLabel.font = UIFont.systemFont(ofSize: 28)
+            copyLabel.font = UIFont.systemFont(ofSize: copySize)
             copyLabel.sizeToFit()
             copyLabel.frame = CGRect(x: startX - copyLabel.bounds.width/2,
                                       y: startY - copyLabel.bounds.height/2,
@@ -5569,8 +5722,9 @@ class MatchGameViewController: UIViewController {
             
             // Convert button center to gridContainer coordinate space
             let centerInContainer = button.superview?.convert(button.center, to: gridContainer) ?? button.center
+            let tileSize = button.bounds.width
             let particleCount = 5
-            let particleSize: CGFloat = CGFloat.random(in: 6...10)
+            let particleSize: CGFloat = CGFloat.random(in: tileSize * 0.10 ... tileSize * 0.18)
             
             for i in 0..<particleCount {
                 let particle = UIView()
@@ -5583,7 +5737,7 @@ class MatchGameViewController: UIViewController {
                 
                 // Each particle drifts in a different direction
                 let angle = (CGFloat.pi * 2 / CGFloat(particleCount)) * CGFloat(i) + CGFloat.random(in: -0.3...0.3)
-                let distance: CGFloat = CGFloat.random(in: 10...18)
+                let distance: CGFloat = CGFloat.random(in: tileSize * 0.25 ... tileSize * 0.45)
                 let dx = cos(angle) * distance
                 let dy = sin(angle) * distance
                 
@@ -5638,8 +5792,9 @@ class MatchGameViewController: UIViewController {
             let centerInContainer = button.superview?.convert(button.center, to: gridContainer) ?? button.center
             
             // Smoke poof particles (fire and forget)
+            let tileSize = button.bounds.width
             let particleCount = 5
-            let particleSize: CGFloat = CGFloat.random(in: 6...10)
+            let particleSize: CGFloat = CGFloat.random(in: tileSize * 0.10 ... tileSize * 0.18)
             for i in 0..<particleCount {
                 let particle = UIView()
                 particle.bounds = CGRect(x: 0, y: 0, width: particleSize, height: particleSize)
@@ -5650,7 +5805,7 @@ class MatchGameViewController: UIViewController {
                 gridContainer.addSubview(particle)
                 
                 let angle = (CGFloat.pi * 2 / CGFloat(particleCount)) * CGFloat(i) + CGFloat.random(in: -0.3...0.3)
-                let distance: CGFloat = CGFloat.random(in: 10...18)
+                let distance: CGFloat = CGFloat.random(in: tileSize * 0.25 ... tileSize * 0.45)
                 let dx = cos(angle) * distance
                 let dy = sin(angle) * distance
                 
@@ -5898,12 +6053,13 @@ class MatchGameViewController: UIViewController {
                 
                 if let piece = gameGrid[row][col] {
                     // Display power-ups with special symbols
-                    let powerupFontSize = max(16, min(40, 420 / CGFloat(max(level.gridWidth, level.gridHeight))))
                     switch piece.type {
                     case .verticalArrow:
                         button.setTitle("↕️", for: .normal)
                         button.setImage(nil, for: .normal)
-                        button.titleLabel?.font = UIFont.systemFont(ofSize: powerupFontSize)
+                        button.titleLabel?.font = UIFont.systemFont(ofSize: 200)
+                        button.titleLabel?.adjustsFontSizeToFitWidth = true
+                        button.titleLabel?.minimumScaleFactor = 0.1
                         button.backgroundColor = .clear
                         // Vertical arrow pulse up-down
                         if button.layer.animation(forKey: "arrowPulse") == nil {
@@ -5918,7 +6074,9 @@ class MatchGameViewController: UIViewController {
                     case .horizontalArrow:
                         button.setTitle("↔️", for: .normal)
                         button.setImage(nil, for: .normal)
-                        button.titleLabel?.font = UIFont.systemFont(ofSize: powerupFontSize)
+                        button.titleLabel?.font = UIFont.systemFont(ofSize: 200)
+                        button.titleLabel?.adjustsFontSizeToFitWidth = true
+                        button.titleLabel?.minimumScaleFactor = 0.1
                         button.backgroundColor = .clear
                         // Horizontal arrow pulse left-right
                         if button.layer.animation(forKey: "arrowPulse") == nil {
@@ -5933,7 +6091,9 @@ class MatchGameViewController: UIViewController {
                     case .bomb:
                         button.setTitle("💣", for: .normal)
                         button.setImage(nil, for: .normal)
-                        button.titleLabel?.font = UIFont.systemFont(ofSize: powerupFontSize)
+                        button.titleLabel?.font = UIFont.systemFont(ofSize: 200)
+                        button.titleLabel?.adjustsFontSizeToFitWidth = true
+                        button.titleLabel?.minimumScaleFactor = 0.1
                         button.backgroundColor = .clear
                         // Bomb tick-wobble animation
                         if button.layer.animation(forKey: "bombWobble") == nil {
@@ -5948,7 +6108,9 @@ class MatchGameViewController: UIViewController {
                     case .flame:
                         button.setTitle("🔥", for: .normal)
                         button.setImage(nil, for: .normal)
-                        button.titleLabel?.font = UIFont.systemFont(ofSize: powerupFontSize)
+                        button.titleLabel?.font = UIFont.systemFont(ofSize: 200)
+                        button.titleLabel?.adjustsFontSizeToFitWidth = true
+                        button.titleLabel?.minimumScaleFactor = 0.1
                         button.backgroundColor = .clear
                         // Flame flicker animation
                         if button.layer.animation(forKey: "flameFlicker") == nil {
@@ -5975,7 +6137,9 @@ class MatchGameViewController: UIViewController {
                     case .rocket:
                         button.setTitle("🌟", for: .normal)
                         button.setImage(nil, for: .normal)
-                        button.titleLabel?.font = UIFont.systemFont(ofSize: powerupFontSize)
+                        button.titleLabel?.font = UIFont.systemFont(ofSize: 200)
+                        button.titleLabel?.adjustsFontSizeToFitWidth = true
+                        button.titleLabel?.minimumScaleFactor = 0.1
                         button.backgroundColor = .clear
                         // Rocket idle spin
                         if button.layer.animation(forKey: "rocketSpin") == nil {
@@ -5992,7 +6156,9 @@ class MatchGameViewController: UIViewController {
                         // Use the piece's fixed emoji index so it doesn't change when the piece moves
                         button.setTitle(GamePiece.ballEmojis[piece.ballEmojiIndex], for: .normal)
                         button.setImage(nil, for: .normal)
-                        button.titleLabel?.font = UIFont.systemFont(ofSize: powerupFontSize)
+                        button.titleLabel?.font = UIFont.systemFont(ofSize: 200)
+                        button.titleLabel?.adjustsFontSizeToFitWidth = true
+                        button.titleLabel?.minimumScaleFactor = 0.1
                         button.backgroundColor = .clear
                         // Ball bounce animation
                         if button.layer.animation(forKey: "ballBounce") == nil {
@@ -6040,12 +6206,11 @@ class MatchGameViewController: UIViewController {
                         } else {
                             // Fall back to emoji - scale font to nearly fill the tile
                             let itemEmoji = item.emoji ?? "?"
-                            let emojiFontSize = max(16, min(40, 420 / CGFloat(max(level.gridWidth, level.gridHeight))))
                             button.setTitle(itemEmoji, for: .normal)
                             button.setImage(nil, for: .normal)
-                            button.titleLabel?.font = UIFont.systemFont(ofSize: emojiFontSize)
+                            button.titleLabel?.font = UIFont.systemFont(ofSize: 200)
                             button.titleLabel?.adjustsFontSizeToFitWidth = true
-                            button.titleLabel?.minimumScaleFactor = 0.7
+                            button.titleLabel?.minimumScaleFactor = 0.1
                         }
                         
                         // Handle optional colors - nil means transparent background
@@ -6067,10 +6232,10 @@ class MatchGameViewController: UIViewController {
                     // If armored (shielded), show the level's shield emoji — hides actual content for mystery/strategy
                     if armorGrid[row][col] >= 1 {
                         button.setImage(nil, for: .normal)
-                        let shieldSize = max(14, min(32, 360 / CGFloat(max(level.gridWidth, level.gridHeight))))
                         button.setTitle(levelShieldEmoji, for: .normal)
-                        button.titleLabel?.font = UIFont.systemFont(ofSize: shieldSize)
-                        button.titleLabel?.adjustsFontSizeToFitWidth = false
+                        button.titleLabel?.font = UIFont.systemFont(ofSize: 200)
+                        button.titleLabel?.adjustsFontSizeToFitWidth = true
+                        button.titleLabel?.minimumScaleFactor = 0.1
                         button.backgroundColor = UIColor.systemBlue.withAlphaComponent(0.28)
                     }
 
@@ -6278,10 +6443,10 @@ class MatchGameViewController: UIViewController {
         }
     }
     
-    // MARK: - Dev Level Jump (hidden: 5-tap on level name label)
+    // MARK: - Dev Level Jump (hidden: long-press on level name label)
 
-    @objc private func devLevelJump() {
-        guard let config = gameConfig else { return }
+    @objc private func devLevelJump(_ gesture: UILongPressGestureRecognizer) {
+        guard gesture.state == .began, let config = gameConfig else { return }
         let maxId = config.levels.map { $0.id }.max() ?? 1
 
         let alert = UIAlertController(
@@ -6545,6 +6710,20 @@ class MatchGameViewController: UIViewController {
             clearMidLevelState(levelId: levelId)
             return false
         }
+        // Validate that all saved item IDs exist in the current level's items.
+        // If any are foreign (e.g. from a different level after a JSON shuffle), the save is stale.
+        let validItemIds = Set(level.items.map { $0.id })
+        let hasStaleItems = flat.contains { cell in
+            guard !cell.isEmpty else { return false }
+            let parts = cell.split(separator: "|", omittingEmptySubsequences: false).map(String.init)
+            guard parts.count == 4 else { return false }
+            return !validItemIds.contains(parts[0])
+        }
+        if hasStaleItems {
+            print("⚠️ Saved state for level \(levelId) contains item IDs not in current level — discarding")
+            clearMidLevelState(levelId: levelId)
+            return false
+        }
         let armorRaw = defaults.array(forKey: "\(key)_armor") as? [Int] ?? []
         let savedMoves = defaults.integer(forKey: "\(key)_moves")
         let savedScore = defaults.integer(forKey: "\(key)_score")
@@ -6585,6 +6764,8 @@ class MatchGameViewController: UIViewController {
     private func clearMidLevelState(levelId: Int) {
         let key = "matchGameMidLevel_\(levelId)"
         defaults.removeObject(forKey: key)
+        defaults.removeObject(forKey: "\(key)_rows")
+        defaults.removeObject(forKey: "\(key)_cols")
         defaults.removeObject(forKey: "\(key)_armor")
         defaults.removeObject(forKey: "\(key)_moves")
         defaults.removeObject(forKey: "\(key)_score")
