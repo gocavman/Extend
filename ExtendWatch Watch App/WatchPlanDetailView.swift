@@ -12,11 +12,14 @@ struct WatchPlanDetailView: View {
 
     // Offset from today: 0 = today, -1 = yesterday, +1 = tomorrow, etc.
     @State private var dayOffset: Int = 0
+    @State private var refreshToken: UUID = UUID()
 
     private let range = -7...7  // ±7 days
 
-    // Snapshots keyed by day offset (populated from multi-day snapshot array)
+    // Snapshots keyed by day offset (populated from multi-day snapshot array).
+    // refreshToken is read here so that changing it forces a re-evaluation.
     private var snapshots: [Int: WidgetPlanSnapshot] {
+        _ = refreshToken
         let cal = Calendar.current
         let today = cal.startOfDay(for: Date())
         var result: [Int: WidgetPlanSnapshot] = [:]
@@ -101,6 +104,9 @@ struct WatchPlanDetailView: View {
                 }
             }
             .navigationBarHidden(true)
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .watchPlanDataUpdated)) { _ in
+            refreshToken = UUID()
         }
     }
 

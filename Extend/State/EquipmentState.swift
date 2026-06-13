@@ -100,6 +100,7 @@ public final class EquipmentState {
         if let data = try? JSONEncoder().encode(items) {
             defaults.set(data, forKey: storageKey)
         }
+        CloudKitSyncEngine.shared.push(.equipment)
     }
     
     private func loadItems() {
@@ -110,6 +111,11 @@ public final class EquipmentState {
             items = defaultItems()
             saveItems()
         }
+    }
+
+    /// Called by CloudKitSyncEngine after a remote pull updates UserDefaults.
+    public func reloadFromDefaults() {
+        loadItems()
     }
     
     private func defaultItems() -> [Equipment] {

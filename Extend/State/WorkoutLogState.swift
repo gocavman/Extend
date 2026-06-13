@@ -611,6 +611,7 @@ public final class WorkoutLogState {
         if let encoded = try? JSONEncoder().encode(logs) {
             defaults.set(encoded, forKey: logsKey)
         }
+        CloudKitSyncEngine.shared.push(.workoutLogs)
     }
     
     private func loadLogs() {
@@ -620,10 +621,16 @@ public final class WorkoutLogState {
         }
     }
 
+    /// Called by CloudKitSyncEngine after a remote pull updates UserDefaults.
+    public func reloadFromDefaults() {
+        loadLogs()
+    }
+
     private func saveJournalEntries() {
         if let encoded = try? JSONEncoder().encode(journalEntries) {
             defaults.set(encoded, forKey: journalKey)
         }
+        CloudKitSyncEngine.shared.push(.journalEntries)
     }
 
     private func loadJournalEntries() {
@@ -631,6 +638,11 @@ public final class WorkoutLogState {
            let decoded = try? JSONDecoder().decode([JournalEntry].self, from: data) {
             journalEntries = decoded
         }
+    }
+
+    /// Called by CloudKitSyncEngine after a remote pull updates UserDefaults.
+    public func reloadJournalFromDefaults() {
+        loadJournalEntries()
     }
     
     /// Reset all logs (for app reset)

@@ -86,6 +86,7 @@ public final class GenerateState {
         if let data = try? JSONEncoder().encode(filterPresets) {
             defaults.set(data, forKey: presetsKey)
         }
+        CloudKitSyncEngine.shared.push(.generateFilterPresets)
     }
     
     public func savePresetsPublic() {
@@ -98,6 +99,11 @@ public final class GenerateState {
             return
         }
         filterPresets = presets
+    }
+
+    /// Called by CloudKitSyncEngine after a remote pull updates UserDefaults.
+    public func reloadFromDefaults() {
+        loadPresets()
     }
 
     /// Generates a balanced workout with three phases: diversity, randomness, and shuffle

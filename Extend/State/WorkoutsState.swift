@@ -436,12 +436,14 @@ public final class WorkoutsState {
         if let encoded = try? JSONEncoder().encode(workouts) {
             defaults.set(encoded, forKey: storageKey)
         }
+        CloudKitSyncEngine.shared.push(.workouts)
     }
 
     private func saveFavorites() {
         if let encoded = try? JSONEncoder().encode(Array(favoriteWorkoutIDs)) {
             defaults.set(encoded, forKey: favoritesKey)
         }
+        CloudKitSyncEngine.shared.push(.workouts)
     }
 
     private func loadFavorites() {
@@ -449,5 +451,11 @@ public final class WorkoutsState {
            let decoded = try? JSONDecoder().decode([UUID].self, from: data) {
             favoriteWorkoutIDs = Set(decoded)
         }
+    }
+
+    /// Called by CloudKitSyncEngine after a remote pull updates UserDefaults.
+    public func reloadFromDefaults() {
+        loadWorkouts()
+        loadFavorites()
     }
 }

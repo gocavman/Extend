@@ -1868,7 +1868,7 @@ struct PlaybackScreen: View {
 
 #Preview {
     VoiceTrainerModuleView(module: VoiceTrainerModule())
-        .environment(VoiceTrainerState())
+        .environment(VoiceTrainerState.shared)
         .environment(WorkoutLogState.shared)
         .environment(DashboardState.shared)
 }

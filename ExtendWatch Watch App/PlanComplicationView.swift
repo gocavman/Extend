@@ -17,14 +17,17 @@ struct PlanComplicationView: View {
     @Environment(\.widgetFamily) var family
 
     var body: some View {
-        switch family {
-        case .accessoryCircular:
-            circularView
-        case .accessoryRectangular:
-            rectangularView
-        default:
-            circularView
+        Group {
+            switch family {
+            case .accessoryCircular:
+                circularView
+            case .accessoryRectangular:
+                rectangularView
+            default:
+                circularView
+            }
         }
+        .widgetURL(URL(string: "extendwatch://plan")!)
     }
 
     // MARK: Circular — gauge ring

@@ -166,34 +166,43 @@ struct WaterWidgetView: View {
                     .rotationEffect(.degrees(-90))
 
                 VStack(spacing: 1) {
-                    Text(displayAmount(entry.todayOz))
-                        .font(.system(size: 14, weight: .bold).monospacedDigit())
-                    Text(entry.unit)
-                        .font(.system(size: 9))
-                        .foregroundColor(.secondary)
+                    Text(percentText)
+                        .font(.system(size: 11, weight: .bold).monospacedDigit())
+                        .foregroundColor(waterColor)
+                    Text("\(displayAmount(entry.todayOz)) \(entry.unit)")
+                        .font(.system(size: 10, weight: .medium).monospacedDigit())
+                        .foregroundColor(.primary)
                 }
             }
             .frame(width: 60, height: 60)
 
             // Quick-add buttons
             if #available(iOS 17.0, *) {
-                HStack(spacing: 6) {
+                HStack(spacing: 4) {
                     Button(intent: AddWater4ozIntent()) {
-                        Text("+4")
-                            .font(.system(size: 11, weight: .semibold))
+                        Text("+4oz")
+                            .font(.system(size: 10, weight: .semibold))
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 4)
                             .background(waterColor.opacity(0.15), in: RoundedRectangle(cornerRadius: 6))
                     }
                     .buttonStyle(.plain)
                     Button(intent: AddWater8ozIntent()) {
-                        Text("+8")
-                            .font(.system(size: 11, weight: .semibold))
+                        Text("+8oz")
+                            .font(.system(size: 10, weight: .semibold))
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 4)
                             .background(waterColor.opacity(0.15), in: RoundedRectangle(cornerRadius: 6))
                     }
                     .buttonStyle(.plain)
+                    Link(destination: URL(string: "extend://water/add")!) {
+                        Text("Other")
+                            .font(.system(size: 10, weight: .semibold))
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 4)
+                            .background(waterColor.opacity(0.08), in: RoundedRectangle(cornerRadius: 6))
+                            .foregroundColor(waterColor)
+                    }
                 }
             } else {
                 Text(percentText)
@@ -229,33 +238,42 @@ struct WaterWidgetView: View {
                         .stroke(waterColor, style: StrokeStyle(lineWidth: 9, lineCap: .round))
                         .rotationEffect(.degrees(-90))
                     VStack(spacing: 1) {
-                        Text(displayAmount(entry.todayOz))
-                            .font(.system(size: 13, weight: .bold).monospacedDigit())
-                        Text(entry.unit)
-                            .font(.system(size: 9))
-                            .foregroundColor(.secondary)
+                        Text(percentText)
+                            .font(.system(size: 12, weight: .bold).monospacedDigit())
+                            .foregroundColor(waterColor)
+                        Text("\(displayAmount(entry.todayOz)) \(entry.unit)")
+                            .font(.system(size: 10, weight: .medium).monospacedDigit())
+                            .foregroundColor(.primary)
                     }
                 }
                 .frame(width: 64, height: 64)
 
                 if #available(iOS 17.0, *) {
-                    HStack(spacing: 5) {
+                    HStack(spacing: 4) {
                         Button(intent: AddWater4ozIntent()) {
-                            Text("+4")
-                                .font(.system(size: 11, weight: .semibold))
+                            Text("+4oz")
+                                .font(.system(size: 10, weight: .semibold))
                                 .frame(maxWidth: .infinity)
                                 .padding(.vertical, 3)
                                 .background(waterColor.opacity(0.15), in: RoundedRectangle(cornerRadius: 6))
                         }
                         .buttonStyle(.plain)
                         Button(intent: AddWater8ozIntent()) {
-                            Text("+8")
-                                .font(.system(size: 11, weight: .semibold))
+                            Text("+8oz")
+                                .font(.system(size: 10, weight: .semibold))
                                 .frame(maxWidth: .infinity)
                                 .padding(.vertical, 3)
                                 .background(waterColor.opacity(0.15), in: RoundedRectangle(cornerRadius: 6))
                         }
                         .buttonStyle(.plain)
+                        Link(destination: URL(string: "extend://water/add")!) {
+                            Text("Other")
+                                .font(.system(size: 10, weight: .semibold))
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 3)
+                                .background(waterColor.opacity(0.08), in: RoundedRectangle(cornerRadius: 6))
+                                .foregroundColor(waterColor)
+                        }
                     }
                 } else {
                     Text(percentText)
@@ -283,7 +301,7 @@ struct WaterWidgetView: View {
     // MARK: Helpers
 
     private var percentText: String {
-        "\(Int(fillFraction * 100))% of goal"
+        "\(Int(fillFraction * 100))%"
     }
 
     private func displayAmount(_ oz: Double) -> String {
@@ -315,11 +333,18 @@ struct WeekBarChart: View {
                 ForEach(totals, id: \.offset) { item in
                     let frac = CGFloat(item.oz / max(maxOz, 1))
                     let metGoal = item.oz >= goalOz
-                    let barH = max(frac * geo.size.height * 0.82, 2)
+                    // Reserve ~18pt for the value label above + 10pt for the day label below
+                    let barH = max(frac * (geo.size.height - 28), 2)
                     let isToday = item.offset == totals.count - 1
 
-                    VStack(spacing: 2) {
+                    VStack(spacing: 1) {
                         Spacer(minLength: 0)
+                        Text(item.oz >= 1 ? String(format: "%.0f", item.oz) : "")
+                            .font(.system(size: 6, weight: .semibold).monospacedDigit())
+                            .foregroundColor(isToday ? color : .primary.opacity(0.65))
+                            .frame(width: barW)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.5)
                         RoundedRectangle(cornerRadius: 2)
                             .fill(metGoal ? color : color.opacity(0.35))
                             .frame(width: barW, height: barH)
@@ -328,10 +353,9 @@ struct WeekBarChart: View {
                                     ? RoundedRectangle(cornerRadius: 2).strokeBorder(color, lineWidth: 1)
                                     : nil
                             )
-
                         Text(dayLabel(item.offset))
-                            .font(.system(size: 7).monospacedDigit())
-                            .foregroundColor(isToday ? color : .secondary)
+                            .font(.system(size: 7, weight: .medium).monospacedDigit())
+                            .foregroundColor(isToday ? color : .primary.opacity(0.65))
                             .frame(width: barW)
                     }
                 }

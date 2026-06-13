@@ -11,7 +11,8 @@ import Observation
 private let defaults = UserDefaults(suiteName: "group.com.cavanmannenbach.extend") ?? .standard
 
 @Observable
-final class VoiceTrainerState {
+public final class VoiceTrainerState {
+    public static let shared = VoiceTrainerState()
     // Configuration
     var text: String = ""
     var roundLength: Int = 30  // seconds, 30-7200
@@ -220,6 +221,7 @@ Left and Right Uppercuts
         if let encoded = try? JSONEncoder().encode(savedConfigurations) {
             defaults.set(encoded, forKey: "VoiceTrainerConfigs")
         }
+        CloudKitSyncEngine.shared.push(.voiceTrainerConfigs)
     }
     
     public func saveConfigurations() {
@@ -231,6 +233,11 @@ Left and Right Uppercuts
            let decoded = try? JSONDecoder().decode([VoiceTrainerConfig].self, from: data) {
             savedConfigurations = decoded
         }
+    }
+
+    /// Called by CloudKitSyncEngine after a remote pull updates UserDefaults.
+    public func reloadFromDefaults() {
+        loadSavedConfigurations()
     }
     
     // MARK: - Playback Control

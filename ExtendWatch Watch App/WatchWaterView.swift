@@ -3,11 +3,11 @@
 ////  ExtendWatch
 ////
 ////  Full-screen water tracking view in the Watch app.
-////  Shows fill ring, today's total, goal, and quick-add buttons.
-////  Writes to App Group UserDefaults so the iOS app picks up widget-logged water.
+////  Ring at top, % + oz labels inside, quick-add buttons, Custom uses Digital Crown.
 ////
 
 import SwiftUI
+import WidgetKit
 
 struct WatchWaterView: View {
 
@@ -17,83 +17,73 @@ struct WatchWaterView: View {
     @State private var isLoading = true
     @State private var refreshTimer: Timer? = nil
     @State private var showCustomEntry = false
-    @State private var customText: String = ""
+    @State private var customOzDouble: Double = 12
 
     private let appGroupID = "group.com.cavanmannenbach.extend"
     private var waterColor: Color { Color(red: 0.2, green: 0.55, blue: 1.0) }
     private var fillFraction: Double { min(todayOz / max(goalOz, 1), 1.0) }
+    private var percentText: String { "\(Int(fillFraction * 100))%" }
 
     var body: some View {
-        ScrollView {
-            VStack(spacing: 12) {
-                // Fill ring
-                ZStack {
-                    Circle()
-                        .stroke(waterColor.opacity(0.2), lineWidth: 10)
-                    Circle()
-                        .trim(from: 0, to: fillFraction)
-                        .stroke(
-                            fillFraction >= 1.0 ? Color.green : waterColor,
-                            style: StrokeStyle(lineWidth: 10, lineCap: .round)
-                        )
-                        .rotationEffect(.degrees(-90))
-                        .animation(.easeOut(duration: 0.4), value: fillFraction)
+        VStack(spacing: 8) {
+            // Fill ring
+            ZStack {
+                Circle()
+                    .stroke(waterColor.opacity(0.2), lineWidth: 10)
+                Circle()
+                    .trim(from: 0, to: fillFraction)
+                    .stroke(
+                        fillFraction >= 1.0 ? Color.green : waterColor,
+                        style: StrokeStyle(lineWidth: 10, lineCap: .round)
+                    )
+                    .rotationEffect(.degrees(-90))
+                    .animation(.easeOut(duration: 0.4), value: fillFraction)
 
-                    if isLoading {
-                        ProgressView().scaleEffect(0.6)
-                    } else {
-                        VStack(spacing: 2) {
-                            Image(systemName: "drop.fill")
-                                .font(.system(size: 14, weight: .semibold))
-                            Text(displayAmount(todayOz))
-                                .font(.system(size: 16, weight: .bold).monospacedDigit())
-                            Text(unit)
-                                .font(.system(size: 10))
-                                .foregroundColor(.secondary)
-                        }
-                        .foregroundColor(fillFraction >= 1.0 ? .green : waterColor)
-                    }
-                }
-                .frame(width: 110, height: 110)
-
-                if !isLoading {
-                    Text("Goal: \(displayAmount(goalOz)) \(unit)")
-                        .font(.system(size: 11))
-                        .foregroundColor(.secondary)
-
-                    Divider()
-
-                    // Quick-add buttons
-                    VStack(spacing: 6) {
-                        HStack(spacing: 8) {
-                            quickAddButton(oz: 4)
-                            quickAddButton(oz: 8)
-                        }
-                        HStack(spacing: 8) {
-                            quickAddButton(oz: 12)
-                            quickAddButton(oz: 16)
-                        }
-                        Button {
-                            customText = ""
-                            showCustomEntry = true
-                        } label: {
-                            Text("Custom")
-                                .font(.system(size: 13, weight: .semibold))
-                                .frame(maxWidth: .infinity)
-                                .padding(.vertical, 5)
-                                .background(waterColor.opacity(0.15), in: RoundedRectangle(cornerRadius: 8))
-                                .foregroundColor(waterColor)
-                        }
-                        .buttonStyle(.plain)
+                if isLoading {
+                    ProgressView().scaleEffect(0.6)
+                } else {
+                    VStack(spacing: 1) {
+                        Text(percentText)
+                            .font(.system(size: 13, weight: .bold).monospacedDigit())
+                            .foregroundColor(fillFraction >= 1.0 ? .green : waterColor)
+                        Text("\(displayAmount(todayOz)) \(unit)")
+                            .font(.system(size: 11, weight: .medium).monospacedDigit())
+                            .foregroundColor(.primary)
                     }
                 }
             }
-            .padding(.vertical, 8)
+            .frame(width: 86, height: 86)
+
+            if !isLoading {
+                // +4 / +6 / +8 quick-add row
+                HStack(spacing: 6) {
+                    quickAddButton(oz: 4)
+                    quickAddButton(oz: 6)
+                    quickAddButton(oz: 8)
+                }
+
+                // Custom amount via Digital Crown
+                Button {
+                    customOzDouble = 12
+                    showCustomEntry = true
+                } label: {
+                    Text("Custom")
+                        .font(.system(size: 13, weight: .semibold))
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 5)
+                        .background(waterColor.opacity(0.15), in: RoundedRectangle(cornerRadius: 8))
+                        .foregroundColor(waterColor)
+                }
+                .buttonStyle(.plain)
+            }
         }
-        .navigationTitle("Water")
-        .navigationBarTitleDisplayMode(.inline)
+        .padding(.horizontal, 8)
+        .padding(.top, 4)
         .onAppear { loadData(); startTimer() }
         .onDisappear { stopTimer() }
+        .onReceive(NotificationCenter.default.publisher(for: .watchWaterDataUpdated)) { _ in
+            loadData()
+        }
         .sheet(isPresented: $showCustomEntry) {
             customEntrySheet
         }
@@ -105,44 +95,72 @@ struct WatchWaterView: View {
         Button {
             addWater(oz: oz)
         } label: {
-            Text("+\(Int(oz)) oz")
+            Text("+\(Int(oz))")
                 .font(.system(size: 13, weight: .semibold))
                 .frame(maxWidth: .infinity)
-                .padding(.vertical, 5)
+                .padding(.vertical, 6)
                 .background(waterColor.opacity(0.15), in: RoundedRectangle(cornerRadius: 8))
                 .foregroundColor(waterColor)
         }
         .buttonStyle(.plain)
     }
 
-    // MARK: - Custom entry sheet
+    // MARK: - Custom entry sheet (tap +/- or use Digital Crown)
 
     private var customEntrySheet: some View {
-        VStack(spacing: 12) {
+        VStack(spacing: 10) {
             Text("Add Water")
                 .font(.headline)
 
-            // Preset custom amounts for Watch (no free-form keyboard on watchOS)
-            ForEach([20.0, 24.0, 32.0], id: \.self) { oz in
+            HStack(spacing: 14) {
                 Button {
-                    addWater(oz: oz)
-                    showCustomEntry = false
+                    if customOzDouble > 1 { customOzDouble -= 1 }
                 } label: {
-                    Text("+\(Int(oz)) oz")
-                        .font(.system(size: 13, weight: .semibold))
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 5)
-                        .background(waterColor.opacity(0.15), in: RoundedRectangle(cornerRadius: 8))
+                    Image(systemName: "minus.circle.fill")
+                        .font(.system(size: 24))
+                        .foregroundColor(waterColor)
+                }
+                .buttonStyle(.plain)
+
+                Text("\(Int(customOzDouble.rounded()))")
+                    .font(.system(size: 32, weight: .bold).monospacedDigit())
+                    .foregroundColor(waterColor)
+                    .frame(minWidth: 52)
+                    .focusable()
+                    .digitalCrownRotation(
+                        $customOzDouble,
+                        from: 1,
+                        through: 100,
+                        by: 1,
+                        sensitivity: .medium,
+                        isContinuous: false,
+                        isHapticFeedbackEnabled: true
+                    )
+
+                Button {
+                    if customOzDouble < 100 { customOzDouble += 1 }
+                } label: {
+                    Image(systemName: "plus.circle.fill")
+                        .font(.system(size: 24))
                         .foregroundColor(waterColor)
                 }
                 .buttonStyle(.plain)
             }
 
-            Button("Cancel") {
+            Text("oz")
+                .font(.caption)
+                .foregroundColor(.secondary)
+
+            Button("Add \(Int(customOzDouble.rounded())) oz") {
+                addWater(oz: customOzDouble.rounded())
                 showCustomEntry = false
             }
-            .foregroundColor(.secondary)
-            .font(.system(size: 12))
+            .buttonStyle(.plain)
+            .font(.system(size: 13, weight: .semibold))
+            .foregroundColor(.white)
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 6)
+            .background(waterColor, in: RoundedRectangle(cornerRadius: 8))
         }
         .padding()
     }
@@ -153,10 +171,9 @@ struct WatchWaterView: View {
         let defaults = UserDefaults(suiteName: appGroupID) ?? .standard
         todayOz += oz
         defaults.set(todayOz, forKey: "water_today_oz")
-        // Write a pending log for the iOS app to pick up
         appendPendingLog(oz: oz, defaults: defaults)
-        // Reload water complication timeline
         WidgetCenter.shared.reloadTimelines(ofKind: "ExtendWatch.Water")
+        WatchConnectivityBridge.shared.sendWaterLog(oz: oz, date: Date())
     }
 
     private func appendPendingLog(oz: Double, defaults: UserDefaults) {
@@ -180,7 +197,6 @@ struct WatchWaterView: View {
         unit   = readWaterUnit()
         Task { @MainActor in
             let hkOz = await WatchHealthKit.shared.todayWaterOz()
-            // Prefer HealthKit data; fall back to locally cached value
             todayOz = hkOz > 0 ? hkOz : (defaults.double(forKey: "water_today_oz"))
             isLoading = false
         }
@@ -207,6 +223,3 @@ struct WatchWaterView: View {
         return oz >= 10 ? String(format: "%.0f", oz) : String(format: "%.1f", oz)
     }
 }
-
-// Needed in Watch target (WidgetCenter is available in watchOS 7+)
-import WidgetKit

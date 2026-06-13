@@ -71,7 +71,19 @@ private struct WaterModuleView: View {
                     .environment(waterState)
             }
         }
-        .onAppear { updateFill(animated: false) }
+        .onAppear {
+            updateFill(animated: false)
+            if waterState.pendingOpenAddLog {
+                waterState.pendingOpenAddLog = false
+                showCustomEntry = true
+            }
+        }
+        .onChange(of: waterState.pendingOpenAddLog) { _, newValue in
+            if newValue {
+                waterState.pendingOpenAddLog = false
+                showCustomEntry = true
+            }
+        }
         .onChange(of: waterState.todayOz) { updateFill(animated: true) }
         .sheet(isPresented: $showCustomEntry) {
             WaterCustomEntrySheet(isPresented: $showCustomEntry)

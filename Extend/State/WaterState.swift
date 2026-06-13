@@ -26,6 +26,9 @@ public final class WaterState {
 
     public var logs: [WaterLog] = []
 
+    /// Set to true by a deep link (e.g. from the widget "Other" button) to open the custom entry sheet.
+    public var pendingOpenAddLog: Bool = false
+
     // MARK: - Preferences (persisted via UserDefaults)
 
     public var dailyGoalOz: Double {
@@ -69,6 +72,7 @@ public final class WaterState {
         self.importFromHealthKit = ud.object(forKey: importHKKey) as? Bool ?? false
         self.lastHealthKitSync = ud.object(forKey: lastSyncKey) as? Date
         loadLogs()
+        importPendingWidgetLogs()
     }
 
     // MARK: - CRUD
@@ -175,6 +179,7 @@ public final class WaterState {
     private func saveLogs() {
         guard let data = try? JSONEncoder().encode(logs) else { return }
         defaults.set(data, forKey: logsKey)
+        CloudKitSyncEngine.shared.push(.waterLogs)
     }
 
     private func loadLogs() {
@@ -183,11 +188,51 @@ public final class WaterState {
         logs = decoded
     }
 
-    /// Write today's totals to shared UserDefaults so the widget/watch can read them.
+    /// Called by CloudKitSyncEngine after a remote pull updates UserDefaults.
+    public func reloadFromDefaults() {
+        loadLogs()
+        dailyGoalOz = defaults.object(forKey: goalKey) as? Double ?? 64.0
+        unit = WaterUnit(rawValue: defaults.string(forKey: unitKey) ?? "") ?? .oz
+        persistWidgetData()
+    }
+
+    /// Write today's totals + 7-day history to shared UserDefaults so the widget/watch can read them.
     public func persistWidgetData() {
         defaults.set(todayOz, forKey: "water_today_oz")
         defaults.set(dailyGoalOz, forKey: "water_goal_oz")
+
+        // Write 7-day totals (day 0 = 6 days ago, day 6 = today) for the bar chart widget.
+        let cal = Calendar.current
+        let today = cal.startOfDay(for: Date())
+        var weekTotals: [[String: Double]] = []
+        for daysAgo in stride(from: 6, through: 0, by: -1) {
+            if let day = cal.date(byAdding: .day, value: -daysAgo, to: today) {
+                weekTotals.append(["oz": totalOzForDate(day)])
+            } else {
+                weekTotals.append(["oz": 0])
+            }
+        }
+        if let data = try? JSONEncoder().encode(weekTotals) {
+            defaults.set(data, forKey: "water_week_totals")
+        }
+
         WidgetCenter.shared.reloadTimelines(ofKind: "ExtendWidget.Water")
+        WatchConnectivityReceiver.shared.sendWaterUpdate(todayOz: todayOz, goalOz: dailyGoalOz)
+    }
+
+    /// Imports any water logs queued by the widget (e.g. quick-add buttons) into the main log store.
+    public func importPendingWidgetLogs() {
+        let key = "water_pending_logs"
+        struct PendingLog: Codable { let oz: Double; let date: Date }
+        guard let data = defaults.data(forKey: key),
+              let pending = try? JSONDecoder().decode([PendingLog].self, from: data),
+              !pending.isEmpty else { return }
+        for p in pending {
+            logs.append(WaterLog(amountOz: p.oz, loggedAt: p.date))
+        }
+        defaults.removeObject(forKey: key)
+        saveLogs()
+        persistWidgetData()
     }
 
     // MARK: - Reset

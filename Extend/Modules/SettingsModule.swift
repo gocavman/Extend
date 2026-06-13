@@ -77,6 +77,7 @@ private struct SettingsModuleView: View {
     @State private var isMusclesSectionExpanded = false
     @State private var isAppleHealthSectionExpanded = false
     @State private var isWorkoutsSectionExpanded = false
+    @State private var isICloudSectionExpanded = false
     @State private var isSystemSectionExpanded = false
     @State private var isAboutSectionExpanded = false
     @State private var showingExportSheet = false
@@ -235,6 +236,20 @@ private struct SettingsModuleView: View {
 
                             NavigationLink(destination: DashboardCustomizationView()) {
                                 Text("Customize")
+                            }
+                        }
+
+                        DisclosureGroup("iCloud Sync", isExpanded: $isICloudSectionExpanded) {
+                            Toggle(isOn: Binding(
+                                get: { moduleState.syncUIPreferences },
+                                set: { moduleState.syncUIPreferences = $0 }
+                            )) {
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text("Sync Appearance Settings")
+                                    Text("Sync nav bar and dashboard colors across your devices.")
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                }
                             }
                         }
 

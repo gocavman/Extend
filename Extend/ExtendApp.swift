@@ -9,14 +9,30 @@ import SwiftUI
 import SwiftData
 import HealthKit
 import WidgetKit
+import CloudKit
+
+// MARK: - AppDelegate (handles silent push notifications from CloudKit)
+
+class AppDelegate: NSObject, UIApplicationDelegate {
+    func application(
+        _ application: UIApplication,
+        didReceiveRemoteNotification userInfo: [AnyHashable: Any],
+        fetchCompletionHandler completionHandler: @escaping (UIBackgroundFetchResult) -> Void
+    ) {
+        CloudKitSyncEngine.shared.handleRemoteNotification(userInfo)
+        completionHandler(.newData)
+    }
+}
 
 @main
 struct ExtendApp: App {
+    @UIApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
+    let syncEngine = CloudKitSyncEngine.shared
     var sharedModelContainer: ModelContainer = {
         let schema = Schema([
             Item.self,
         ])
-        let modelConfiguration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
+        let modelConfiguration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false, cloudKitDatabase: .none)
 
         do {
             return try ModelContainer(for: schema, configurations: [modelConfiguration])
@@ -35,10 +51,11 @@ struct ExtendApp: App {
     let equipmentState = EquipmentState.shared
     let workoutLogState = WorkoutLogState.shared
     let timerState = TimerState.shared
-    let voiceTrainerState = VoiceTrainerState()
+    let voiceTrainerState = VoiceTrainerState.shared
     let healthKitState = HealthKitState.shared
     let trainingPlanState = TrainingPlanState.shared
     let waterState = WaterState.shared
+    let watchReceiver = WatchConnectivityReceiver.shared
 
     init() {
         // Register all modules synchronously before the first render so the
@@ -103,9 +120,32 @@ struct ExtendApp: App {
                 .environment(healthKitState)
                 .environment(trainingPlanState)
                 .environment(waterState)
+                .environment(syncEngine)
+                .onOpenURL { url in
+                    guard url.scheme == "extend" else { return }
+                    if url.host == "water" {
+                        ModuleState.shared.selectModule(ModuleIDs.water)
+                        if url.path == "/add" {
+                            WaterState.shared.pendingOpenAddLog = true
+                        }
+                    }
+                }
+                .onReceive(NotificationCenter.default.publisher(for: UIApplication.willEnterForegroundNotification)) { _ in
+                    waterState.importPendingWidgetLogs()
+                    trainingPlanState.refreshWidgetSnapshot()
+                }
                 .task {
+                    // Activate Watch ↔ iPhone sync
+                    watchReceiver.activate()
+
+                    // Import any water logs queued via widget quick-add buttons
+                    waterState.importPendingWidgetLogs()
+
                     // Refresh widget snapshot so Today's Plan widget has current data on launch
                     trainingPlanState.refreshWidgetSnapshot()
+
+                    // Start CloudKit sync (registers subscriptions, pulls latest data)
+                    await CloudKitSyncEngine.shared.start()
 
                     // Request HealthKit auth on first launch if any sync is configured
                     guard !healthKitState.authorizationRequested else { return }

@@ -94,6 +94,18 @@ public final class ExercisesState {
         if let encoded = try? JSONEncoder().encode(exercises) {
             defaults.set(encoded, forKey: userDefaultsKey)
         }
+        CloudKitSyncEngine.shared.push(.exercises)
+    }
+
+    /// Called by CloudKitSyncEngine after a remote pull updates UserDefaults.
+    public func reloadFromDefaults() {
+        loadExercises()
+    }
+
+    /// Called by CloudKitSyncEngine after pulling new exercise images from CloudKit.
+    public func reloadImageCache() {
+        // Trigger observation by re-assigning exercises so any image-backed views refresh.
+        exercises = exercises
     }
     
     // MARK: - Default Exercises

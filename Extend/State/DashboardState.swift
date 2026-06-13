@@ -71,6 +71,7 @@ public final class DashboardState {
         if let encoded = try? JSONEncoder().encode(tiles) {
             defaults.set(encoded, forKey: tilesKey)
         }
+        CloudKitSyncEngine.shared.push(.dashboardTiles)
     }
     
     private func loadTiles() {
@@ -95,6 +96,11 @@ public final class DashboardState {
            let decoded = try? JSONDecoder().decode([String: Int].self, from: data) {
             tileClickCounts = decoded.compactMapKeys { UUID(uuidString: $0) }
         }
+    }
+
+    /// Called by CloudKitSyncEngine after a remote pull updates UserDefaults.
+    public func reloadFromDefaults() {
+        loadTiles()
     }
     
     private func createDefaultTiles() -> [DashboardTile] {

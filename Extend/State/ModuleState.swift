@@ -61,6 +61,13 @@ public final class ModuleState {
     private let topNavBarKey = "topNavBarModules"
     private let bottomNavBarKey = "bottomNavBarModules"
 
+    /// Whether UI preferences (nav bar / dashboard colors) should be synced via CloudKit.
+    /// Controlled by the Settings toggle "Sync Appearance Settings".
+    public var syncUIPreferences: Bool {
+        get { defaults.object(forKey: "ck_sync_ui_prefs") as? Bool ?? true }
+        set { defaults.set(newValue, forKey: "ck_sync_ui_prefs") }
+    }
+
     // MARK: - NavBar Appearance
 
     public var navBarBackgroundColor: Color
@@ -178,26 +185,31 @@ public final class ModuleState {
     public func updateNavBarBackgroundColor(_ color: Color) {
         navBarBackgroundColor = color
         ModuleState.saveColor(color, for: navBarBackgroundColorKey)
+        if syncUIPreferences { CloudKitSyncEngine.shared.push(.uiPreferences) }
     }
 
     public func updateNavBarTextColor(_ color: Color) {
         navBarTextColor = color
         ModuleState.saveColor(color, for: navBarTextColorKey)
+        if syncUIPreferences { CloudKitSyncEngine.shared.push(.uiPreferences) }
     }
 
     public func updateNavBarUseGradient(_ useGradient: Bool) {
         navBarUseGradient = useGradient
         defaults.set(useGradient, forKey: navBarUseGradientKey)
+        if syncUIPreferences { CloudKitSyncEngine.shared.push(.uiPreferences) }
     }
 
     public func updateNavBarGradientSecondaryColor(_ color: Color) {
         navBarGradientSecondaryColor = color
         ModuleState.saveColor(color, for: navBarGradientSecondaryColorKey)
+        if syncUIPreferences { CloudKitSyncEngine.shared.push(.uiPreferences) }
     }
 
     public func updateNavBarGradientDirection(_ direction: GradientDirection) {
         navBarGradientDirection = direction
         defaults.set(direction.rawValue, forKey: navBarGradientDirectionKey)
+        if syncUIPreferences { CloudKitSyncEngine.shared.push(.uiPreferences) }
     }
 
     // MARK: - Dashboard Appearance Updates
@@ -211,21 +223,25 @@ public final class ModuleState {
             defaults.removeObject(forKey: dashboardBackgroundColorKey)
             defaults.removeObject(forKey: "dashboardBackgroundColorUserSet")
         }
+        if syncUIPreferences { CloudKitSyncEngine.shared.push(.uiPreferences) }
     }
 
     public func updateDashboardUseGradient(_ useGradient: Bool) {
         dashboardUseGradient = useGradient
         defaults.set(useGradient, forKey: dashboardUseGradientKey)
+        if syncUIPreferences { CloudKitSyncEngine.shared.push(.uiPreferences) }
     }
 
     public func updateDashboardGradientSecondaryColor(_ color: Color) {
         dashboardGradientSecondaryColor = color
         ModuleState.saveColor(color, for: dashboardGradientSecondaryColorKey)
+        if syncUIPreferences { CloudKitSyncEngine.shared.push(.uiPreferences) }
     }
 
     public func updateDashboardGradientDirection(_ direction: GradientDirection) {
         dashboardGradientDirection = direction
         defaults.set(direction.rawValue, forKey: dashboardGradientDirectionKey)
+        if syncUIPreferences { CloudKitSyncEngine.shared.push(.uiPreferences) }
     }
 
     public func updateDashboardTileBackgroundColor(_ color: Color?) {
@@ -236,6 +252,7 @@ public final class ModuleState {
         } else {
             defaults.removeObject(forKey: dashboardTileBackgroundColorKey)
         }
+        if syncUIPreferences { CloudKitSyncEngine.shared.push(.uiPreferences) }
     }
 
     public func updateDashboardTileBorderColor(_ color: Color?) {
@@ -246,6 +263,7 @@ public final class ModuleState {
         } else {
             defaults.removeObject(forKey: dashboardTileBorderColorKey)
         }
+        if syncUIPreferences { CloudKitSyncEngine.shared.push(.uiPreferences) }
     }
 
     public func resetNavBarAppearance() {
@@ -261,11 +279,13 @@ public final class ModuleState {
         defaults.set(false, forKey: navBarUseGradientKey)
         ModuleState.saveColor(defaultSecondary, for: navBarGradientSecondaryColorKey)
         defaults.removeObject(forKey: navBarGradientDirectionKey)
+        if syncUIPreferences { CloudKitSyncEngine.shared.push(.uiPreferences) }
     }
 
     private func saveNavBarPreferences() {
         defaults.set(topNavBarModules.map { $0.uuidString }, forKey: topNavBarKey)
         defaults.set(bottomNavBarModules.map { $0.uuidString }, forKey: bottomNavBarKey)
+        if syncUIPreferences { CloudKitSyncEngine.shared.push(.uiPreferences) }
     }
 
     private func loadNavBarPreferences() {
@@ -274,6 +294,37 @@ public final class ModuleState {
         }
         if let bottomStrings = defaults.stringArray(forKey: bottomNavBarKey) {
             bottomNavBarModules = bottomStrings.compactMap { UUID(uuidString: $0) }
+        }
+    }
+
+    /// Called by CloudKitSyncEngine after a remote pull updates UserDefaults.
+    public func reloadFromDefaults() {
+        loadNavBarPreferences()
+        navBarBackgroundColor = ModuleState.loadColor(for: navBarBackgroundColorKey)
+            ?? Color(red: 0.98, green: 0.98, blue: 1.0)
+        navBarTextColor = ModuleState.loadColor(for: navBarTextColorKey) ?? Color.black
+        navBarUseGradient = defaults.bool(forKey: navBarUseGradientKey)
+        navBarGradientSecondaryColor = ModuleState.loadColor(for: navBarGradientSecondaryColorKey)
+            ?? Color(red: 0.96, green: 0.96, blue: 0.97)
+        if let dirRaw = defaults.string(forKey: navBarGradientDirectionKey),
+           let dir = GradientDirection(rawValue: dirRaw) {
+            navBarGradientDirection = dir
+        }
+        dashboardBackgroundColor = defaults.bool(forKey: "dashboardBackgroundColorUserSet")
+            ? ModuleState.loadColor(for: dashboardBackgroundColorKey) : nil
+        dashboardUseGradient = defaults.bool(forKey: dashboardUseGradientKey)
+        dashboardGradientSecondaryColor = ModuleState.loadColor(for: dashboardGradientSecondaryColorKey)
+            ?? Color(UIColor.secondarySystemBackground)
+        if let dirRaw = defaults.string(forKey: dashboardGradientDirectionKey),
+           let dir = GradientDirection(rawValue: dirRaw) {
+            dashboardGradientDirection = dir
+        }
+        if defaults.bool(forKey: "dashboardTileColorsUserSet") {
+            dashboardTileBackgroundColor = ModuleState.loadColor(for: dashboardTileBackgroundColorKey)
+            dashboardTileBorderColor = ModuleState.loadColor(for: dashboardTileBorderColorKey)
+        } else {
+            dashboardTileBackgroundColor = nil
+            dashboardTileBorderColor = nil
         }
     }
 }

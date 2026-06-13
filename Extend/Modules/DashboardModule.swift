@@ -252,12 +252,20 @@ private struct DashboardModuleView: View {
         let isIPad = sizeClass == .regular
         // favoriteDay: header(44) + 7 rows × 19pt each + bottom padding(12) ≈ 189
         // volumeThisWeek: header(44) + bars(107) + trend(20) + padding(16) ≈ 187
-        let tileHeight: CGFloat = isDoubleHeight ? (isIPad ? columnWidth * 1.3 + spacing : columnWidth * 2 + spacing)
-            : tile.statCardType == .favoriteDay ? CGFloat(44 + 7 * 19 + 12) * (isIPad ? 1.6 : 1.0)
-            : tile.statCardType == .volumeThisWeek ? CGFloat(44 + 107 + 20 + 16) * (isIPad ? 1.6 : 1.0)
-            : tile.statCardType == .waterIntake14Days ? CGFloat(44 + 93 + 20 + 16) * (isIPad ? 1.6 : 1.0)
-            : tile.statCardType == .workoutFrequency ? CGFloat(isIPad ? 130 : 110)
-            : columnWidth
+        let tileHeight: CGFloat
+        if isDoubleHeight {
+            tileHeight = isIPad ? columnWidth * 1.3 + spacing : columnWidth * 2 + spacing
+        } else if tile.statCardType == .favoriteDay {
+            tileHeight = CGFloat(44 + 7 * 19 + 12) * (isIPad ? 1.6 : 1.0)
+        } else if tile.statCardType == .volumeThisWeek {
+            tileHeight = CGFloat(44 + 107 + 20 + 16) * (isIPad ? 1.6 : 1.0)
+        } else if tile.statCardType == .waterIntake14Days {
+            tileHeight = CGFloat(44 + 93 + 20 + 16) * (isIPad ? 1.6 : 1.0)
+        } else if tile.statCardType == .workoutFrequency {
+            tileHeight = CGFloat(isIPad ? 130 : 110)
+        } else {
+            tileHeight = columnWidth
+        }
         
         return Group {
             if tile.tileType == .statCard, let statCard = tile.statCardType, statCard == .todaysPlan {

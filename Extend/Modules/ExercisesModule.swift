@@ -9,6 +9,7 @@ import SwiftUI
 import UIKit
 import ImageIO
 import UniformTypeIdentifiers
+import CloudKit
 
 /// Module for managing exercises
 public struct ExercisesModule: AppModule {
@@ -629,6 +630,12 @@ private struct ExerciseEditor: View {
                             let url = dir.appendingPathComponent(filename)
                             if (try? data.write(to: url)) != nil {
                                 finalImageFilename = filename
+                                // Push image to CloudKit so other devices receive it
+                                CloudKitSyncEngine.shared.pushImage(
+                                    data: data,
+                                    recordName: "exercise_image_\(exerciseID.uuidString)",
+                                    fields: ["exerciseID": exerciseID.uuidString as CKRecordValue]
+                                )
                             }
                         } else if removedImage, let fn = imageFilename {
                             // User removed the image: delete the file

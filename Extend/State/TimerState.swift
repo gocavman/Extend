@@ -102,6 +102,7 @@ public final class TimerState {
         if let encoded = try? JSONEncoder().encode(configs) {
             defaults.set(encoded, forKey: storageKey)
         }
+        CloudKitSyncEngine.shared.push(.timerConfigs)
     }
 
     private func loadConfigs() {
@@ -109,5 +110,10 @@ public final class TimerState {
            let decoded = try? JSONDecoder().decode([TimerConfig].self, from: data) {
             configs = decoded
         }
+    }
+
+    /// Called by CloudKitSyncEngine after a remote pull updates UserDefaults.
+    public func reloadFromDefaults() {
+        loadConfigs()
     }
 }

@@ -51,6 +51,7 @@ struct StepsOnlyComplicationView: View {
             .foregroundColor(color)
         }
         .containerBackground(.background, for: .widget)
+        .widgetURL(URL(string: "extendwatch://steps")!)
     }
 }
 
@@ -100,6 +101,7 @@ struct DistanceOnlyComplicationView: View {
             .foregroundColor(color)
         }
         .containerBackground(.background, for: .widget)
+        .widgetURL(URL(string: "extendwatch://steps")!)
     }
 }
 
@@ -151,6 +153,7 @@ struct StepsAndDistanceComplicationView: View {
             .foregroundColor(color)
         }
         .containerBackground(.background, for: .widget)
+        .widgetURL(URL(string: "extendwatch://steps")!)
     }
 }
 

@@ -368,6 +368,7 @@ final class TrainingPlanState {
         }
         saveActiveID()
         refreshWidgetSnapshot()
+        CloudKitSyncEngine.shared.push(.trainingPlans)
     }
 
     /// Resolves today's plan items into display names and writes the widget snapshot.
@@ -505,9 +506,16 @@ final class TrainingPlanState {
             snapshots.append(WidgetPlanSnapshot(planName: plan.name, date: date, items: items, isRestDay: false))
         }
         writeMultiDaySnapshots(snapshots)
+        WatchConnectivityReceiver.shared.sendPlanUpdate(multidaySnapshots: snapshots)
     }
 
     private func saveActiveID() {
         defaults.set(activePlanID?.uuidString, forKey: activeKey)
+        CloudKitSyncEngine.shared.push(.trainingPlans)
+    }
+
+    /// Called by CloudKitSyncEngine after a remote pull updates UserDefaults.
+    func reloadFromDefaults() {
+        load()
     }
 }

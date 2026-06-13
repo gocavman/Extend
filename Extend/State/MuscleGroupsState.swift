@@ -7,6 +7,7 @@
 
 import Foundation
 import Observation
+import CloudKit
 
 private let defaults = UserDefaults(suiteName: "group.com.cavanmannenbach.extend") ?? .standard
 
@@ -103,9 +104,17 @@ public final class MuscleGroupsState {
 
     /// Saves image data to disk and returns the filename.
     public func saveCustomImage(_ data: Data, for groupID: UUID, slot: ImageSlot) -> String {
-        let filename = "muscle_\(groupID.uuidString)_\(slot == .primary ? "primary" : "secondary").png"
+        let slotName = slot == .primary ? "primary" : "secondary"
+        let filename = "muscle_\(groupID.uuidString)_\(slotName).png"
         let url = MuscleGroup.imageStorageDirectory.appendingPathComponent(filename)
         try? data.write(to: url, options: .atomic)
+        // Push image to CloudKit so other devices receive it
+        let recordName = "muscle_image_\(groupID.uuidString)_\(slotName)"
+        CloudKitSyncEngine.shared.pushImage(
+            data: data,
+            recordName: recordName,
+            fields: ["muscleID": groupID.uuidString as CKRecordValue, "slot": slotName as CKRecordValue]
+        )
         return filename
     }
 
@@ -162,6 +171,7 @@ public final class MuscleGroupsState {
         if let data = try? JSONEncoder().encode(groups) {
             defaults.set(data, forKey: storageKey)
         }
+        CloudKitSyncEngine.shared.push(.muscleGroups)
     }
 
     private func loadGroups() {
@@ -174,6 +184,11 @@ public final class MuscleGroupsState {
             groups = defaultGroups()
             saveGroups()
         }
+    }
+
+    /// Called by CloudKitSyncEngine after a remote pull updates UserDefaults.
+    public func reloadFromDefaults() {
+        loadGroups()
     }
 
     /// Renames any groups that have a known stale name, identified by their fixed UUID.

@@ -3,7 +3,7 @@
 ////  ExtendWatchWidget
 ////
 ////  Complication code for the Extend Watch Widget Extension.
-////  Both the Plan Ring and Steps Ring complications live here.
+////  Plan Ring, Steps Ring, and Water Ring complications.
 ////
 
 import Foundation
@@ -11,12 +11,15 @@ import WidgetKit
 import SwiftUI
 import HealthKit
 
-// MARK: - Shared data bridge (read-only, no WidgetKit write calls)
+// MARK: - Shared data bridge (read-only)
 
 private let appGroupID       = "group.com.cavanmannenbach.extend"
 private let snapshotKey      = "widget_plan_snapshot"
 private let multidayKey      = "widget_plan_multiday"
 private let stepsSettingsKey = "watch_steps_settings"
+private let waterTodayOzKey  = "water_today_oz"
+private let waterGoalOzKey   = "water_goal_oz"
+private let waterUnitKey     = "water_unit"
 
 public struct WidgetPlanItem: Codable {
     public let name: String
@@ -75,6 +78,19 @@ func readWatchStepsSettings() -> WatchStepsSettings {
     return .default
 }
 
+func readWaterTodayOz() -> Double {
+    (UserDefaults(suiteName: appGroupID) ?? .standard).double(forKey: waterTodayOzKey)
+}
+
+func readWaterGoalOz() -> Double {
+    let v = (UserDefaults(suiteName: appGroupID) ?? .standard).double(forKey: waterGoalOzKey)
+    return v > 0 ? v : 64.0
+}
+
+func readWaterUnit() -> String {
+    (UserDefaults(suiteName: appGroupID) ?? .standard).string(forKey: waterUnitKey) ?? "oz"
+}
+
 // MARK: - Plan Complication
 
 struct WatchPlanEntry: TimelineEntry {
@@ -107,11 +123,14 @@ struct PlanComplicationView: View {
     var entry: WatchPlanEntry
     @Environment(\.widgetFamily) var family
     var body: some View {
-        switch family {
-        case .accessoryCircular:    circularView.containerBackground(.background, for: .widget)
-        case .accessoryRectangular: rectangularView.containerBackground(.background, for: .widget)
-        default:                    circularView.containerBackground(.background, for: .widget)
+        Group {
+            switch family {
+            case .accessoryCircular:    circularView.containerBackground(.background, for: .widget)
+            case .accessoryRectangular: rectangularView.containerBackground(.background, for: .widget)
+            default:                    circularView.containerBackground(.background, for: .widget)
+            }
         }
+        .widgetURL(URL(string: "extendwatch://plan")!)
     }
     private var completedCount: Int { entry.snapshot.items.filter { $0.isCompleted }.count }
     private var totalCount: Int     { entry.snapshot.items.count }
@@ -254,6 +273,7 @@ struct StepsComplicationView: View {
             }.foregroundColor(fraction >= 1.0 ? .green : .primary)
         }
         .containerBackground(.background, for: .widget)
+        .widgetURL(URL(string: "extendwatch://steps")!)
     }
 }
 
@@ -264,5 +284,119 @@ struct StepsComplication: Widget {
             .configurationDisplayName("Steps & Distance")
             .description("Shows today's steps or distance as a ring.")
             .supportedFamilies([.accessoryCircular])
+    }
+}
+
+// MARK: - Water Complication
+
+struct WatchWaterEntry: TimelineEntry {
+    let date: Date
+    let todayOz: Double
+    let goalOz: Double
+    let unit: String
+}
+
+struct WatchWaterProvider: TimelineProvider {
+    private let store = HKHealthStore()
+
+    func placeholder(in context: Context) -> WatchWaterEntry {
+        WatchWaterEntry(date: Date(), todayOz: 40, goalOz: 64, unit: "oz")
+    }
+    func getSnapshot(in context: Context, completion: @escaping (WatchWaterEntry) -> Void) {
+        completion(WatchWaterEntry(date: Date(), todayOz: readWaterTodayOz(), goalOz: readWaterGoalOz(), unit: readWaterUnit()))
+    }
+    func getTimeline(in context: Context, completion: @escaping (Timeline<WatchWaterEntry>) -> Void) {
+        Task {
+            let oz = await queryWaterOz()
+            let next = Calendar.current.date(byAdding: .minute, value: 15, to: Date()) ?? Date()
+            completion(Timeline(entries: [
+                WatchWaterEntry(date: Date(), todayOz: oz, goalOz: readWaterGoalOz(), unit: readWaterUnit())
+            ], policy: .after(next)))
+        }
+    }
+    private func queryWaterOz() async -> Double {
+        guard HKHealthStore.isHealthDataAvailable() else { return readWaterTodayOz() }
+        let type = HKQuantityType(.dietaryWater)
+        let cal = Calendar.current
+        let start = cal.startOfDay(for: Date())
+        let end = cal.date(byAdding: .day, value: 1, to: start) ?? Date()
+        let pred = HKQuery.predicateForSamples(withStart: start, end: end, options: .strictStartDate)
+        return await withCheckedContinuation { cont in
+            store.execute(HKStatisticsQuery(quantityType: type, quantitySamplePredicate: pred, options: .cumulativeSum) { _, s, _ in
+                let litres = s?.sumQuantity()?.doubleValue(for: .liter()) ?? 0
+                cont.resume(returning: litres > 0 ? litres * 33.814 : readWaterTodayOz())
+            })
+        }
+    }
+}
+
+struct WaterComplicationView: View {
+    var entry: WatchWaterEntry
+    @Environment(\.widgetFamily) var family
+
+    private var waterColor: Color { Color(red: 0.2, green: 0.55, blue: 1.0) }
+    private var fillFraction: Double { min(entry.todayOz / max(entry.goalOz, 1), 1.0) }
+    private var shortLabel: String {
+        if entry.unit == "mL" {
+            let ml = entry.todayOz * 29.5735
+            if ml >= 1000 { return String(format: "%.1fL", ml / 1000) }
+            return String(format: "%.0f", ml)
+        }
+        return entry.todayOz >= 10 ? String(format: "%.0f", entry.todayOz) : String(format: "%.1f", entry.todayOz)
+    }
+
+    var body: some View {
+        Group {
+            switch family {
+            case .accessoryRectangular: rectangularView
+            default:                    circularView
+            }
+        }
+        .widgetURL(URL(string: "extendwatch://water")!)
+    }
+
+    private var circularView: some View {
+        ZStack {
+            Gauge(value: fillFraction) { EmptyView() }
+                .gaugeStyle(.accessoryCircularCapacity)
+                .tint(fillFraction >= 1.0 ? .green : waterColor)
+            VStack(spacing: 0) {
+                Image(systemName: "drop.fill").font(.system(size: 10, weight: .semibold))
+                Text(shortLabel).font(.system(size: 10, weight: .bold).monospacedDigit()).lineLimit(1).minimumScaleFactor(0.7)
+            }
+            .foregroundColor(fillFraction >= 1.0 ? .green : waterColor)
+        }
+        .containerBackground(.background, for: .widget)
+    }
+
+    private var rectangularView: some View {
+        HStack(spacing: 8) {
+            Gauge(value: fillFraction) { EmptyView() }
+                .gaugeStyle(.accessoryCircularCapacity)
+                .tint(fillFraction >= 1.0 ? .green : waterColor)
+                .frame(width: 38, height: 38)
+            VStack(alignment: .leading, spacing: 2) {
+                HStack(spacing: 3) {
+                    Image(systemName: "drop.fill").font(.system(size: 11, weight: .semibold))
+                    Text("Water").font(.system(size: 11, weight: .bold))
+                }.foregroundColor(waterColor)
+                Text("\(shortLabel) \(entry.unit) today").font(.system(size: 10).monospacedDigit()).foregroundColor(.secondary)
+                Text("\(Int(fillFraction * 100))% of goal").font(.system(size: 10, weight: .semibold).monospacedDigit()).foregroundColor(fillFraction >= 1.0 ? .green : .primary)
+            }
+            Spacer(minLength: 0)
+        }
+        .containerBackground(.background, for: .widget)
+    }
+}
+
+struct WaterComplication: Widget {
+    let kind = "ExtendWatch.Water"
+    var body: some WidgetConfiguration {
+        StaticConfiguration(kind: kind, provider: WatchWaterProvider()) { entry in
+            WaterComplicationView(entry: entry)
+        }
+        .configurationDisplayName("Water")
+        .description("Shows today's water intake. Tap to open Extend.")
+        .supportedFamilies([.accessoryCircular, .accessoryRectangular])
     }
 }
