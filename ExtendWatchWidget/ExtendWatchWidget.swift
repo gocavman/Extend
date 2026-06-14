@@ -194,26 +194,38 @@ struct PlanComplication: Widget {
 
 // MARK: - Steps / Distance Complication
 
+// MARK: - Steps / Distance Complication (3 separate widgets for distinct picker entries)
+
+enum StepsDisplayMode: String, CaseIterable {
+    case stepsOnly    = "steps"
+    case distanceOnly = "distance"
+    case both         = "both"
+}
+
 struct WatchStepsEntry: TimelineEntry {
     let date: Date
     let steps: Double
     let distanceKm: Double
     let settings: WatchStepsSettings
+    let mode: StepsDisplayMode
 }
 
 struct WatchStepsProvider: TimelineProvider {
-    private let store = HKHealthStore()
+    let mode: StepsDisplayMode
+
+    private let store       = HKHealthStore()
     private let stepsKey    = "watch_cached_steps"
     private let distanceKey = "watch_cached_distance_km"
 
     func placeholder(in context: Context) -> WatchStepsEntry {
-        WatchStepsEntry(date: Date(), steps: 7342, distanceKm: 5.8, settings: .default)
+        WatchStepsEntry(date: Date(), steps: 7342, distanceKm: 5.8, settings: .default, mode: mode)
     }
+
     func getSnapshot(in context: Context, completion: @escaping (WatchStepsEntry) -> Void) {
-        let s = readWatchStepsSettings()
         let d = UserDefaults(suiteName: appGroupID) ?? .standard
-        completion(WatchStepsEntry(date: Date(), steps: d.double(forKey: stepsKey), distanceKm: d.double(forKey: distanceKey), settings: s))
+        completion(WatchStepsEntry(date: Date(), steps: d.double(forKey: stepsKey), distanceKm: d.double(forKey: distanceKey), settings: readWatchStepsSettings(), mode: mode))
     }
+
     func getTimeline(in context: Context, completion: @escaping (Timeline<WatchStepsEntry>) -> Void) {
         let settings = readWatchStepsSettings()
         Task {
@@ -223,12 +235,15 @@ struct WatchStepsProvider: TimelineProvider {
             d.set(steps, forKey: stepsKey); d.set(km, forKey: distanceKey)
             let now  = Date()
             let next = Calendar.current.date(byAdding: .minute, value: 15, to: now) ?? now
-            completion(Timeline(entries: [WatchStepsEntry(date: now, steps: steps, distanceKm: km, settings: settings)], policy: .after(next)))
+            completion(Timeline(entries: [
+                WatchStepsEntry(date: now, steps: steps, distanceKm: km, settings: settings, mode: mode)
+            ], policy: .after(next)))
         }
     }
+
     private func querySum(type: HKQuantityType, unit: HKUnit) async -> Double {
         guard HKHealthStore.isHealthDataAvailable() else { return 0 }
-        let cal = Calendar.current
+        let cal   = Calendar.current
         let start = cal.startOfDay(for: Date())
         let end   = cal.date(byAdding: .day, value: 1, to: start) ?? Date()
         let pred  = HKQuery.predicateForSamples(withStart: start, end: end, options: .strictStartDate)
@@ -242,48 +257,134 @@ struct WatchStepsProvider: TimelineProvider {
 
 struct StepsComplicationView: View {
     var entry: WatchStepsEntry
+    @Environment(\.widgetFamily) var family
+
     private var settings: WatchStepsSettings { entry.settings }
-    private var displayKm: Double { entry.distanceKm }
-    private var displayMiles: Double { entry.distanceKm / 1.60934 }
-    private var displayDist: Double { settings.distanceUnit == .km ? displayKm : displayMiles }
-    private var fraction: Double {
-        switch settings.mode {
-        case .stepsOnly:    return min(entry.steps / max(settings.stepsGoal, 1), 1.0)
-        case .distanceOnly: return min(displayDist / max(settings.distanceGoal, 0.001), 1.0)
-        case .both:         return min(entry.steps / max(settings.stepsGoal, 1), 1.0)
+    private var mode: StepsDisplayMode       { entry.mode }
+    private var displayDist: Double {
+        settings.distanceUnit == .km ? entry.distanceKm : entry.distanceKm / 1.60934
+    }
+    private var stepsFrac: Double { min(entry.steps / max(settings.stepsGoal, 1), 1.0) }
+    private var distFrac:  Double { min(displayDist / max(settings.distanceGoal, 0.001), 1.0) }
+
+    // Each mode gets a distinct accent color so they're visually unambiguous in the picker.
+    private var accentColor: Color {
+        switch mode {
+        case .stepsOnly:    return .orange
+        case .distanceOnly: return .cyan
+        case .both:         return .indigo
         }
     }
-    private func fmt(_ v: Double) -> String { v >= 1000 ? String(format: "%.1fk", v/1000) : String(Int(v)) }
-    private var label: String {
-        switch settings.mode {
-        case .stepsOnly:    return fmt(entry.steps)
-        case .distanceOnly: return String(format: "%.1f", displayDist)
-        case .both:         return fmt(entry.steps)
-        }
-    }
+
+    private func fmt(_ v: Double) -> String { v >= 1000 ? String(format: "%.1fk", v / 1000) : String(Int(v)) }
+
     var body: some View {
-        ZStack {
-            Gauge(value: fraction) { EmptyView() }.gaugeStyle(.accessoryCircularCapacity).tint(fraction >= 1.0 ? .green : .orange)
+        Group {
+            switch family {
+            case .accessoryRectangular: rectangularView
+            default:                    circularView
+            }
+        }
+        .widgetURL(URL(string: "extendwatch://steps")!)
+    }
+
+    private var circularView: some View {
+        let ringFrac = mode == .distanceOnly ? distFrac : stepsFrac
+        return ZStack {
+            Gauge(value: ringFrac) { EmptyView() }
+                .gaugeStyle(.accessoryCircularCapacity)
+                .tint(ringFrac >= 1.0 ? .green : accentColor)
             VStack(spacing: 0) {
-                Image(systemName: settings.mode == .distanceOnly ? "location.fill" : "figure.walk").font(.system(size: 10, weight: .semibold))
-                Text(label).font(.system(size: 10, weight: .bold).monospacedDigit()).lineLimit(1).minimumScaleFactor(0.7)
-                if settings.mode == .both {
-                    Text("\(String(format: "%.1f", displayDist))\(settings.distanceUnit.rawValue)").font(.system(size: 8).monospacedDigit()).foregroundColor(.secondary).lineLimit(1).minimumScaleFactor(0.7)
+                if mode != .both {
+                    Image(systemName: mode == .distanceOnly ? "location.fill" : "figure.walk")
+                        .font(.system(size: 10, weight: .semibold))
                 }
-            }.foregroundColor(fraction >= 1.0 ? .green : .primary)
+                Text(mode == .distanceOnly ? String(format: "%.1f", displayDist) : fmt(entry.steps))
+                    .font(.system(size: mode == .both ? 12 : 10, weight: .bold).monospacedDigit())
+                    .lineLimit(1).minimumScaleFactor(0.7)
+                if mode == .both {
+                    Text("\(String(format: "%.1f", displayDist))\(settings.distanceUnit.rawValue)")
+                        .font(.system(size: 10).monospacedDigit())
+                        .foregroundColor(.secondary)
+                        .lineLimit(1).minimumScaleFactor(0.7)
+                }
+            }
+            .foregroundColor(ringFrac >= 1.0 ? .green : .primary)
         }
         .containerBackground(.background, for: .widget)
-        .widgetURL(URL(string: "extendwatch://steps")!)
+    }
+
+    private var rectangularView: some View {
+        VStack(alignment: .leading, spacing: 3) {
+            switch mode {
+            case .stepsOnly:
+                HStack(spacing: 4) {
+                    Image(systemName: "figure.walk").font(.system(size: 11, weight: .semibold)).foregroundColor(accentColor)
+                    Text("Steps").font(.system(size: 11, weight: .bold))
+                    Spacer()
+                    Text(fmt(entry.steps)).font(.system(size: 13, weight: .bold).monospacedDigit()).foregroundColor(stepsFrac >= 1.0 ? .green : .primary)
+                }
+                Gauge(value: stepsFrac) { EmptyView() }.gaugeStyle(.accessoryLinearCapacity).tint(stepsFrac >= 1.0 ? .green : accentColor)
+                Text("Goal: \(fmt(settings.stepsGoal)) steps").font(.system(size: 10)).foregroundColor(.secondary)
+
+            case .distanceOnly:
+                HStack(spacing: 4) {
+                    Image(systemName: "location.fill").font(.system(size: 11, weight: .semibold)).foregroundColor(accentColor)
+                    Text("Distance").font(.system(size: 11, weight: .bold))
+                    Spacer()
+                    Text(String(format: "%.2f", displayDist) + " " + settings.distanceUnit.rawValue)
+                        .font(.system(size: 13, weight: .bold).monospacedDigit()).foregroundColor(distFrac >= 1.0 ? .green : .primary)
+                }
+                Gauge(value: distFrac) { EmptyView() }.gaugeStyle(.accessoryLinearCapacity).tint(distFrac >= 1.0 ? .green : accentColor)
+                Text("Goal: \(String(format: "%.1f", settings.distanceGoal)) \(settings.distanceUnit.rawValue)").font(.system(size: 10)).foregroundColor(.secondary)
+
+            case .both:
+                HStack(spacing: 4) {
+                    Image(systemName: "figure.walk").font(.system(size: 10, weight: .semibold)).foregroundColor(.orange)
+                    Text(fmt(entry.steps)).font(.system(size: 12, weight: .bold).monospacedDigit()).foregroundColor(stepsFrac >= 1.0 ? .green : .primary)
+                    Spacer()
+                    Text("/ \(fmt(settings.stepsGoal))").font(.system(size: 10)).foregroundColor(.secondary)
+                }
+                HStack(spacing: 4) {
+                    Image(systemName: "location.fill").font(.system(size: 10, weight: .semibold)).foregroundColor(.cyan)
+                    Text(String(format: "%.2f", displayDist) + " " + settings.distanceUnit.rawValue)
+                        .font(.system(size: 12).monospacedDigit()).foregroundColor(distFrac >= 1.0 ? .green : .primary)
+                    Spacer()
+                    Text("/ \(String(format: "%.1f", settings.distanceGoal))").font(.system(size: 10)).foregroundColor(.secondary)
+                }
+            }
+        }
+        .containerBackground(.background, for: .widget)
     }
 }
 
 struct StepsComplication: Widget {
     let kind = "ExtendWatch.StepsRing"
     var body: some WidgetConfiguration {
-        StaticConfiguration(kind: kind, provider: WatchStepsProvider()) { entry in StepsComplicationView(entry: entry) }
+        StaticConfiguration(kind: kind, provider: WatchStepsProvider(mode: .stepsOnly)) { entry in StepsComplicationView(entry: entry) }
+            .configurationDisplayName("Steps")
+            .description("Shows today's step count as a ring.")
+            .supportedFamilies([.accessoryCircular, .accessoryRectangular])
+    }
+}
+
+struct DistanceComplication: Widget {
+    let kind = "ExtendWatch.DistanceRing"
+    var body: some WidgetConfiguration {
+        StaticConfiguration(kind: kind, provider: WatchStepsProvider(mode: .distanceOnly)) { entry in StepsComplicationView(entry: entry) }
+            .configurationDisplayName("Distance")
+            .description("Shows today's walking/running distance as a ring.")
+            .supportedFamilies([.accessoryCircular, .accessoryRectangular])
+    }
+}
+
+struct StepsAndDistanceComplication: Widget {
+    let kind = "ExtendWatch.StepsDistanceRing"
+    var body: some WidgetConfiguration {
+        StaticConfiguration(kind: kind, provider: WatchStepsProvider(mode: .both)) { entry in StepsComplicationView(entry: entry) }
             .configurationDisplayName("Steps & Distance")
-            .description("Shows today's steps or distance as a ring.")
-            .supportedFamilies([.accessoryCircular])
+            .description("Shows today's step count and distance.")
+            .supportedFamilies([.accessoryCircular, .accessoryRectangular])
     }
 }
 
@@ -399,4 +500,34 @@ struct WaterComplication: Widget {
         .description("Shows today's water intake. Tap to open Extend.")
         .supportedFamilies([.accessoryCircular, .accessoryRectangular])
     }
+}
+
+// MARK: - Previews
+
+private let previewSettings = WatchStepsSettings(
+    mode: .stepsOnly, stepsGoal: 10_000, distanceGoal: 8.0, distanceUnit: .km
+)
+
+#Preview("Steps – circular", as: .accessoryCircular) {
+    StepsComplication()
+} timeline: {
+    WatchStepsEntry(date: .now, steps: 12456, distanceKm: 8.73, settings: previewSettings, mode: .stepsOnly)
+}
+
+#Preview("Distance – circular", as: .accessoryCircular) {
+    DistanceComplication()
+} timeline: {
+    WatchStepsEntry(date: .now, steps: 12456, distanceKm: 8.73, settings: previewSettings, mode: .distanceOnly)
+}
+
+#Preview("Steps & Distance – circular", as: .accessoryCircular) {
+    StepsAndDistanceComplication()
+} timeline: {
+    WatchStepsEntry(date: .now, steps: 12456, distanceKm: 8.73, settings: previewSettings, mode: .both)
+}
+
+#Preview("Steps & Distance – rectangular", as: .accessoryRectangular) {
+    StepsAndDistanceComplication()
+} timeline: {
+    WatchStepsEntry(date: .now, steps: 12456, distanceKm: 8.73, settings: previewSettings, mode: .both)
 }

@@ -30,6 +30,21 @@ struct AddWater4ozIntent: AppIntent {
 }
 
 @available(iOS 17.0, *)
+struct AddWater6ozIntent: AppIntent {
+    static var title: LocalizedStringResource = "Add 6 oz Water"
+    static var description = IntentDescription("Logs 6 oz of water.")
+
+    func perform() async throws -> some IntentResult {
+        let defaults = UserDefaults(suiteName: "group.com.cavanmannenbach.extend")
+        let current = defaults?.double(forKey: "water_today_oz") ?? 0
+        defaults?.set(current + 6, forKey: "water_today_oz")
+        appendPendingWaterLog(oz: 6, defaults: defaults)
+        WidgetCenter.shared.reloadTimelines(ofKind: "ExtendWidget.Water")
+        return .result()
+    }
+}
+
+@available(iOS 17.0, *)
 struct AddWater8ozIntent: AppIntent {
     static var title: LocalizedStringResource = "Add 8 oz Water"
     static var description = IntentDescription("Logs 8 oz of water.")
@@ -187,6 +202,14 @@ struct WaterWidgetView: View {
                             .background(waterColor.opacity(0.15), in: RoundedRectangle(cornerRadius: 6))
                     }
                     .buttonStyle(.plain)
+                    Button(intent: AddWater6ozIntent()) {
+                        Text("+6oz")
+                            .font(.system(size: 10, weight: .semibold))
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 4)
+                            .background(waterColor.opacity(0.15), in: RoundedRectangle(cornerRadius: 6))
+                    }
+                    .buttonStyle(.plain)
                     Button(intent: AddWater8ozIntent()) {
                         Text("+8oz")
                             .font(.system(size: 10, weight: .semibold))
@@ -195,14 +218,6 @@ struct WaterWidgetView: View {
                             .background(waterColor.opacity(0.15), in: RoundedRectangle(cornerRadius: 6))
                     }
                     .buttonStyle(.plain)
-                    Link(destination: URL(string: "extend://water/add")!) {
-                        Text("Other")
-                            .font(.system(size: 10, weight: .semibold))
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 4)
-                            .background(waterColor.opacity(0.08), in: RoundedRectangle(cornerRadius: 6))
-                            .foregroundColor(waterColor)
-                    }
                 }
             } else {
                 Text(percentText)
@@ -258,6 +273,14 @@ struct WaterWidgetView: View {
                                 .background(waterColor.opacity(0.15), in: RoundedRectangle(cornerRadius: 6))
                         }
                         .buttonStyle(.plain)
+                        Button(intent: AddWater6ozIntent()) {
+                            Text("+6oz")
+                                .font(.system(size: 10, weight: .semibold))
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 3)
+                                .background(waterColor.opacity(0.15), in: RoundedRectangle(cornerRadius: 6))
+                        }
+                        .buttonStyle(.plain)
                         Button(intent: AddWater8ozIntent()) {
                             Text("+8oz")
                                 .font(.system(size: 10, weight: .semibold))
@@ -266,14 +289,6 @@ struct WaterWidgetView: View {
                                 .background(waterColor.opacity(0.15), in: RoundedRectangle(cornerRadius: 6))
                         }
                         .buttonStyle(.plain)
-                        Link(destination: URL(string: "extend://water/add")!) {
-                            Text("Other")
-                                .font(.system(size: 10, weight: .semibold))
-                                .frame(maxWidth: .infinity)
-                                .padding(.vertical, 3)
-                                .background(waterColor.opacity(0.08), in: RoundedRectangle(cornerRadius: 6))
-                                .foregroundColor(waterColor)
-                        }
                     }
                 } else {
                     Text(percentText)

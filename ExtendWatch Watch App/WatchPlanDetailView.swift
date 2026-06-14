@@ -129,10 +129,10 @@ struct WatchPlanDetailView: View {
     private var noPlanView: some View {
         VStack(spacing: 6) {
             Spacer()
-            Image(systemName: "calendar.badge.exclamationmark")
+            Image(systemName: "zzz")
                 .font(.system(size: 24))
                 .foregroundColor(.secondary)
-            Text("No plan")
+            Text("Rest day")
                 .font(.subheadline)
                 .foregroundColor(.secondary)
             Spacer()

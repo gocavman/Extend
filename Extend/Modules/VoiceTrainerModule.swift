@@ -1585,7 +1585,7 @@ struct PlaybackScreen: View {
 
     var body: some View {
         ZStack {
-            Color.black
+            Color(UIColor.systemBackground)
                 .ignoresSafeArea()
             
             VStack(spacing: 0) {
@@ -1601,7 +1601,7 @@ struct PlaybackScreen: View {
                     }) {
                         Image(systemName: "xmark")
                             .font(.system(size: 20, weight: .semibold))
-                            .foregroundColor(.white)
+                            .foregroundColor(.primary)
                             .frame(width: 44, height: 44)
                     }
                     
@@ -1609,7 +1609,7 @@ struct PlaybackScreen: View {
                     
                     Text("Round \(state.currentRound)/\(numberOfRounds)")
                         .font(.headline)
-                        .foregroundColor(.white)
+                        .foregroundColor(.primary)
                     
                     Spacer()
                     
@@ -1623,7 +1623,7 @@ struct PlaybackScreen: View {
                     }) {
                         Image(systemName: state.isPlaying ? "pause.fill" : "play.fill")
                             .font(.system(size: 20, weight: .semibold))
-                            .foregroundColor(.white)
+                            .foregroundColor(.primary)
                             .frame(width: 44, height: 44)
                     }
                 }
@@ -1649,7 +1649,7 @@ struct PlaybackScreen: View {
                                 
                                 Text(line)
                                     .font(.system(size: fontSize))
-                                    .foregroundColor(.gray)
+                                    .foregroundColor(.secondary)
                                     .opacity(opacity)
                                     .multilineTextAlignment(.center)
                                     .lineLimit(1)
@@ -1698,7 +1698,7 @@ struct PlaybackScreen: View {
                         } else if !state.currentLineText.isEmpty {
                             Text(state.currentLineText)
                                 .font(.system(size: 48, weight: .bold))
-                                .foregroundColor(.white)
+                                .foregroundColor(.primary)
                                 .multilineTextAlignment(.center)
                                 .lineLimit(3)
                                 .padding(16)
@@ -1710,7 +1710,7 @@ struct PlaybackScreen: View {
                         } else {
                             Text("Get Ready...")
                                 .font(.system(size: 48, weight: .bold))
-                                .foregroundColor(.white.opacity(0.6))
+                                .foregroundColor(.secondary)
                                 .multilineTextAlignment(.center)
                                 .padding(16)
                                 .onAppear {
@@ -1720,7 +1720,7 @@ struct PlaybackScreen: View {
                     }
                     .frame(maxWidth: .infinity)
                     .frame(minHeight: 140)
-                    .background(Color.white.opacity(0.1))
+                    .background(Color.primary.opacity(0.08))
                     .cornerRadius(12)
                     .padding(.horizontal, 20)
                     .padding(.vertical, 4)
@@ -1733,7 +1733,7 @@ struct PlaybackScreen: View {
                                 let opacity = 0.8 - (Double(index) * 0.15)
                                 Text(line)
                                     .font(.system(size: max(fontSize, 8)))
-                                    .foregroundColor(.gray)
+                                    .foregroundColor(.secondary)
                                     .opacity(opacity)
                                     .lineLimit(1)
                                     .multilineTextAlignment(.center)
@@ -1754,7 +1754,7 @@ struct PlaybackScreen: View {
                         } else if state.nextItemCountdown > 0 && state.currentRound < numberOfRounds {
                             Text("Next in: \(state.nextItemCountdown)s")
                                 .font(.system(size: 18, weight: .semibold))
-                                .foregroundColor(.yellow)
+                                .foregroundColor(.orange)
                         }
                     }
                     .frame(height: 24)
@@ -1768,11 +1768,11 @@ struct PlaybackScreen: View {
                     VStack(spacing: 2) {
                         Text(formatTime(state.elapsedTime))
                             .font(.system(size: 42, weight: .bold, design: .rounded))
-                            .foregroundColor(.white)
+                            .foregroundColor(.primary)
                             .monospacedDigit()
                         Text("Time Elapsed")
                             .font(.caption2)
-                            .foregroundColor(.gray)
+                            .foregroundColor(.secondary)
                     }
 
                     HStack(spacing: 20) {
@@ -1780,11 +1780,11 @@ struct PlaybackScreen: View {
                             let remainingTime = max(0, state.totalTime - state.elapsedTime)
                             Text(formatTime(remainingTime))
                                 .font(.system(size: 42, weight: .bold, design: .rounded))
-                                .foregroundColor(.white)
+                                .foregroundColor(.primary)
                                 .monospacedDigit()
                             Text("Time Remaining")
                                 .font(.caption2)
-                                .foregroundColor(.gray)
+                                .foregroundColor(.secondary)
                         }
                         .frame(maxWidth: .infinity)
 
@@ -1800,11 +1800,11 @@ struct PlaybackScreen: View {
                             } else {
                                 Text(formatTime(state.roundTimeRemaining))
                                     .font(.system(size: 42, weight: .bold, design: .rounded))
-                                    .foregroundColor(.white)
+                                    .foregroundColor(.primary)
                                     .monospacedDigit()
                                 Text("Round Time")
                                     .font(.caption2)
-                                    .foregroundColor(.gray)
+                                    .foregroundColor(.secondary)
                             }
                         }
                         .frame(maxWidth: .infinity)
@@ -1826,7 +1826,7 @@ struct PlaybackScreen: View {
                         .foregroundColor(.primary)
                         .frame(maxWidth: .infinity)
                         .frame(height: 56)
-                        .background(Color(UIColor.systemBackground))
+                        .background(Color(UIColor.secondarySystemBackground))
                         .cornerRadius(12)
                         .overlay(
                             RoundedRectangle(cornerRadius: 12)

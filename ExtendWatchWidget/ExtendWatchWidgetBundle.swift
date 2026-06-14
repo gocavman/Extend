@@ -13,6 +13,8 @@ struct ExtendWatchWidgetBundle: WidgetBundle {
     var body: some Widget {
         PlanComplication()
         StepsComplication()
+        DistanceComplication()
+        StepsAndDistanceComplication()
         WaterComplication()
     }
 }

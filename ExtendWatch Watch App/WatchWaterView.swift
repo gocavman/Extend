@@ -17,27 +17,48 @@ struct WatchWaterView: View {
     @State private var isLoading = true
     @State private var refreshTimer: Timer? = nil
     @State private var showCustomEntry = false
-    @State private var customOzDouble: Double = 12
+    @State private var customOzDouble: Double = 3
 
     private let appGroupID = "group.com.cavanmannenbach.extend"
     private var waterColor: Color { Color(red: 0.2, green: 0.55, blue: 1.0) }
     private var fillFraction: Double { min(todayOz / max(goalOz, 1), 1.0) }
     private var percentText: String { "\(Int(fillFraction * 100))%" }
 
+    private let dropSize: CGFloat = 100
+
     var body: some View {
         VStack(spacing: 8) {
-            // Fill ring
+            // Droplet fill
             ZStack {
-                Circle()
-                    .stroke(waterColor.opacity(0.2), lineWidth: 10)
-                Circle()
-                    .trim(from: 0, to: fillFraction)
-                    .stroke(
-                        fillFraction >= 1.0 ? Color.green : waterColor,
-                        style: StrokeStyle(lineWidth: 10, lineCap: .round)
-                    )
-                    .rotationEffect(.degrees(-90))
-                    .animation(.easeOut(duration: 0.4), value: fillFraction)
+                // Background (empty portion)
+                Image(systemName: "drop.fill")
+                    .font(.system(size: dropSize))
+                    .foregroundColor(waterColor.opacity(0.12))
+
+                // Rising water fill masked to drop shape
+                GeometryReader { geo in
+                    let fillH = geo.size.height * CGFloat(fillFraction)
+                    Rectangle()
+                        .fill(
+                            LinearGradient(
+                                colors: [
+                                    fillFraction >= 1.0 ? Color.green.opacity(0.7) : waterColor.opacity(0.7),
+                                    fillFraction >= 1.0 ? Color.green : waterColor
+                                ],
+                                startPoint: .bottom,
+                                endPoint: .top
+                            )
+                        )
+                        .frame(height: max(0, fillH))
+                        .frame(maxHeight: .infinity, alignment: .bottom)
+                }
+                .mask {
+                    Image(systemName: "drop.fill")
+                        .font(.system(size: dropSize))
+                        .foregroundColor(.white)
+                }
+                .frame(width: dropSize, height: dropSize * 1.25)
+                .animation(.easeInOut(duration: 0.6), value: fillFraction)
 
                 if isLoading {
                     ProgressView().scaleEffect(0.6)
@@ -45,14 +66,17 @@ struct WatchWaterView: View {
                     VStack(spacing: 1) {
                         Text(percentText)
                             .font(.system(size: 13, weight: .bold).monospacedDigit())
-                            .foregroundColor(fillFraction >= 1.0 ? .green : waterColor)
+                            .foregroundColor(.white)
+                            .shadow(color: .black.opacity(0.4), radius: 1, x: 0, y: 1)
                         Text("\(displayAmount(todayOz)) \(unit)")
                             .font(.system(size: 11, weight: .medium).monospacedDigit())
-                            .foregroundColor(.primary)
+                            .foregroundColor(.white.opacity(0.9))
+                            .shadow(color: .black.opacity(0.3), radius: 1, x: 0, y: 1)
                     }
+                    .offset(y: 8)
                 }
             }
-            .frame(width: 86, height: 86)
+            .frame(width: dropSize, height: dropSize * 1.25)
 
             if !isLoading {
                 // +4 / +6 / +8 quick-add row
@@ -62,19 +86,25 @@ struct WatchWaterView: View {
                     quickAddButton(oz: 8)
                 }
 
-                // Custom amount via Digital Crown
-                Button {
-                    customOzDouble = 12
-                    showCustomEntry = true
-                } label: {
-                    Text("Custom")
-                        .font(.system(size: 13, weight: .semibold))
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 5)
-                        .background(waterColor.opacity(0.15), in: RoundedRectangle(cornerRadius: 8))
-                        .foregroundColor(waterColor)
+                // +12 / +16 / Custom quick-add row
+                HStack(spacing: 6) {
+                    quickAddButton(oz: 12)
+                    quickAddButton(oz: 16)
+
+                    Button {
+                        let saved = UserDefaults(suiteName: appGroupID)?.double(forKey: "water_custom_last_oz") ?? 0
+                        customOzDouble = saved > 0 ? saved : 3
+                        showCustomEntry = true
+                    } label: {
+                        Text("Custom")
+                            .font(.system(size: 13, weight: .semibold))
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 6)
+                            .background(waterColor.opacity(0.15), in: RoundedRectangle(cornerRadius: 8))
+                            .foregroundColor(waterColor)
+                    }
+                    .buttonStyle(.plain)
                 }
-                .buttonStyle(.plain)
             }
         }
         .padding(.horizontal, 8)
@@ -151,16 +181,20 @@ struct WatchWaterView: View {
                 .font(.caption)
                 .foregroundColor(.secondary)
 
-            Button("Add \(Int(customOzDouble.rounded())) oz") {
-                addWater(oz: customOzDouble.rounded())
+            Button {
+                let oz = customOzDouble.rounded()
+                UserDefaults(suiteName: appGroupID)?.set(oz, forKey: "water_custom_last_oz")
+                addWater(oz: oz)
                 showCustomEntry = false
+            } label: {
+                Text("Add")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundColor(.white)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 6)
+                    .background(waterColor, in: RoundedRectangle(cornerRadius: 8))
             }
             .buttonStyle(.plain)
-            .font(.system(size: 13, weight: .semibold))
-            .foregroundColor(.white)
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 6)
-            .background(waterColor, in: RoundedRectangle(cornerRadius: 8))
         }
         .padding()
     }
