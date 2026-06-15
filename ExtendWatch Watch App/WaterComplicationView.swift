@@ -2,7 +2,7 @@
 ////  WaterComplicationView.swift
 ////  ExtendWatch
 ////
-////  Watch complication showing today's water intake as a circular ring.
+////  Watch complication showing today's water intake as a circular ring or fill shape.
 ////  Tapping it opens the Water tab in the Watch app.
 ////
 
@@ -15,8 +15,9 @@ struct WaterComplicationView: View {
     var entry: WatchWaterEntry
     @Environment(\.widgetFamily) var family
 
-    private var waterColor: Color { Color(red: 0.2, green: 0.55, blue: 1.0) }
+    private var appearance: ComplicationAppearance { entry.appearance.water }
     private var fillFraction: Double { min(entry.todayOz / max(entry.goalOz, 1), 1.0) }
+    private var accentColor: Color { complicationColor(appearance.colorPreset, fraction: fillFraction) }
 
     var body: some View {
         Group {
@@ -34,9 +35,13 @@ struct WaterComplicationView: View {
 
     private var circularView: some View {
         ZStack {
-            Gauge(value: fillFraction) { EmptyView() }
-                .gaugeStyle(.accessoryCircularCapacity)
-                .tint(fillFraction >= 1.0 ? .green : waterColor)
+            if appearance.style == .fill {
+                ComplicationFillShape(fraction: fillFraction, color: accentColor, shape: appearance.shape)
+            } else {
+                Gauge(value: fillFraction) { EmptyView() }
+                    .gaugeStyle(.accessoryCircularCapacity)
+                    .tint(accentColor)
+            }
 
             VStack(spacing: 0) {
                 Image(systemName: "drop.fill")
@@ -46,18 +51,22 @@ struct WaterComplicationView: View {
                     .lineLimit(1)
                     .minimumScaleFactor(0.7)
             }
-            .foregroundColor(fillFraction >= 1.0 ? .green : waterColor)
+            .foregroundColor(appearance.style == .fill ? .white : accentColor)
+            .shadow(
+                color: appearance.style == .fill ? .black.opacity(0.4) : .clear,
+                radius: 1, x: 0, y: 1
+            )
         }
         .containerBackground(.background, for: .widget)
     }
 
-    // MARK: Rectangular
+    // MARK: Rectangular (always uses gauge style)
 
     private var rectangularView: some View {
         HStack(spacing: 8) {
             Gauge(value: fillFraction) { EmptyView() }
                 .gaugeStyle(.accessoryCircularCapacity)
-                .tint(fillFraction >= 1.0 ? .green : waterColor)
+                .tint(accentColor)
                 .frame(width: 38, height: 38)
 
             VStack(alignment: .leading, spacing: 2) {
@@ -67,7 +76,7 @@ struct WaterComplicationView: View {
                     Text("Water")
                         .font(.system(size: 11, weight: .bold))
                 }
-                .foregroundColor(waterColor)
+                .foregroundColor(accentColor)
                 Text("\(shortLabel) \(entry.unit) today")
                     .font(.system(size: 10).monospacedDigit())
                     .foregroundColor(.secondary)

@@ -64,6 +64,40 @@
     ]
   },
   {
+    "id": "watch-complications",
+    "category": "General",
+    "title": "Apple Watch Complications",
+    "icon": "applewatch",
+    "summary": "Add Extend complications to your watch face for at-a-glance stats.",
+    "keywords": ["watch", "complication", "apple watch", "steps", "distance", "water", "plan", "ring", "gauge", "face", "watchface", "goal"],
+    "sections": [
+      {
+        "heading": "Adding Complications",
+        "body": "Long-press your watch face → tap Edit → swipe to the Complications screen → tap a complication slot → scroll to find Extend. Five complications are available."
+      },
+      {
+        "heading": "Today's Plan",
+        "body": "Shows a ring filling up as you complete today's scheduled items. The circular version shows completed vs. total count. The rectangular version lists your first three items with checkmarks as you finish them. Shows 'Rest' on rest days and a full checkmark when everything is done."
+      },
+      {
+        "heading": "Steps",
+        "body": "An orange ring showing your step count progress toward your daily step goal. The ring turns green when you hit your goal. Numbers over 1,000 are shown compactly (e.g. 8.4k).\n\nSet your step goal in Settings → Apple Watch."
+      },
+      {
+        "heading": "Distance",
+        "body": "A cyan ring showing how far you've walked or run today toward your daily distance goal. Displays in km or miles depending on your settings. The ring turns green when you hit your goal.\n\nSet your distance goal in Settings → Apple Watch."
+      },
+      {
+        "heading": "Steps & Distance",
+        "body": "Combines both into one complication — the ring tracks steps, with your current distance shown as a second line below. No icon is shown so the text has more room."
+      },
+      {
+        "heading": "Water",
+        "body": "Shows today's water intake as a percentage of your daily goal. The circular version displays a fill ring with your logged amount inside. The rectangular version adds a small progress bar and your intake vs. goal. Turns green when your goal is reached.\n\nSet your water goal in Settings → Water."
+      }
+    ]
+  },
+  {
     "id": "widget",
     "category": "General",
     "title": "Widget",

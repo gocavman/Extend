@@ -17,6 +17,7 @@ struct WatchWaterEntry: TimelineEntry {
     let todayOz: Double
     let goalOz: Double
     let unit: String
+    let appearance: WatchComplicationUserSettings
 }
 
 // MARK: - Provider
@@ -28,7 +29,7 @@ struct WatchWaterProvider: TimelineProvider {
     private let appGroupID  = "group.com.cavanmannenbach.extend"
 
     func placeholder(in context: Context) -> WatchWaterEntry {
-        WatchWaterEntry(date: Date(), todayOz: 40, goalOz: 64, unit: "oz")
+        WatchWaterEntry(date: Date(), todayOz: 40, goalOz: 64, unit: "oz", appearance: .default)
     }
 
     func getSnapshot(in context: Context, completion: @escaping (WatchWaterEntry) -> Void) {
@@ -44,7 +45,8 @@ struct WatchWaterProvider: TimelineProvider {
                 date: Date(),
                 todayOz: oz,
                 goalOz: readWaterGoalOz(),
-                unit: readWaterUnit()
+                unit: readWaterUnit(),
+                appearance: readWatchComplicationSettings()
             )
             let next = Calendar.current.date(byAdding: .minute, value: 15, to: Date()) ?? Date()
             completion(Timeline(entries: [entry], policy: .after(next)))
@@ -77,11 +79,15 @@ struct WatchWaterProvider: TimelineProvider {
     private func makeEntryFromCache() -> WatchWaterEntry {
         let defaults = UserDefaults(suiteName: appGroupID) ?? .standard
         let oz = defaults.double(forKey: cachedOzKey)
+        let stored = readWaterTodayOz()
+        // Fall back to preview value when no real data exists (e.g. simulator)
+        let todayOz = oz > 0 ? oz : (stored > 0 ? stored : 48)
         return WatchWaterEntry(
             date: Date(),
-            todayOz: oz > 0 ? oz : readWaterTodayOz(),
+            todayOz: todayOz,
             goalOz: readWaterGoalOz(),
-            unit: readWaterUnit()
+            unit: readWaterUnit(),
+            appearance: readWatchComplicationSettings()
         )
     }
 

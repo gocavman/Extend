@@ -65,6 +65,8 @@ private struct SettingsModuleView: View {
     @State private var showingResetAlert = false
     @State private var isSyncingHealthKit = false
     @State private var isAppleWatchSectionExpanded = false
+    @State private var isComplicationSectionExpanded = false
+    @State private var complicationSettings: WatchComplicationUserSettings = readWatchComplicationSettings()
     @State private var isWaterSectionExpanded = false
     @State private var waterGoalText: String = ""
     @State private var watchSettings: WatchStepsSettings = readWatchStepsSettings()
@@ -396,6 +398,24 @@ private struct SettingsModuleView: View {
                                 Text("These goals are used by the Steps, Distance, and Steps & Distance complications on your Apple Watch. Add the complication you want directly from the watch face editor.")
                                     .font(.caption)
                                     .foregroundColor(.secondary)
+
+                                DisclosureGroup("Complication Appearance", isExpanded: $isComplicationSectionExpanded) {
+                                    complicationRow("Steps", icon: "figure.walk", appearance: $complicationSettings.stepsOnly)
+                                    Divider().padding(.vertical, 4)
+                                    complicationRow("Distance", icon: "location.fill", appearance: $complicationSettings.distanceOnly)
+                                    Divider().padding(.vertical, 4)
+                                    complicationRow("Steps & Distance", icon: "figure.walk.motion", appearance: $complicationSettings.stepsAndDistance)
+                                    Divider().padding(.vertical, 4)
+                                    complicationRow("Water", icon: "drop.fill", appearance: $complicationSettings.water)
+                                    Divider().padding(.vertical, 4)
+                                    complicationRow("Today's Plan", icon: "calendar.badge.checkmark", appearance: $complicationSettings.plan)
+                                }
+                                .onAppear {
+                                    complicationSettings = readWatchComplicationSettings()
+                                }
+                                .onChange(of: complicationSettings) {
+                                    writeWatchComplicationSettings(complicationSettings)
+                                }
                             }
                             .onAppear {
                                 let s = readWatchStepsSettings()
@@ -609,7 +629,7 @@ private struct SettingsModuleView: View {
                                     .foregroundColor(.gray)
                             }
 
-                            Link(destination: URL(string: "https://www.gocavman.com")!) {
+                            Link(destination: URL(string: "https://www.gocavman.com/extend.html")!) {
                                 HStack {
                                     Text("Developer Website")
                                         .foregroundColor(.primary)
@@ -620,7 +640,7 @@ private struct SettingsModuleView: View {
                                 }
                             }
 
-                            Link(destination: URL(string: "https://www.gocavman.com/privacy")!) {
+                            Link(destination: URL(string: "https://www.gocavman.com/extend-privacy.html")!) {
                                 HStack {
                                     Text("Privacy Policy")
                                         .foregroundColor(.primary)
@@ -1029,6 +1049,95 @@ private struct SettingsModuleView: View {
         devToolsMessage = "Generated \(generated.count) workout logs + \(waterLogs.count) water entries."
     }
     #endif
+
+    // MARK: - Complication appearance helpers
+
+    private let watchFillShapes = [
+        "circle.fill", "peacesign", "seal.fill", "shield.fill",
+        "hexagon.fill", "octagon.fill", "triangle.fill", "diamond.fill",
+        "pentagon.fill", "square.fill", "rectangle.fill", "capsule.fill",
+        "oval.fill", "oval.portrait.fill", "rectangle.portrait.fill",
+        "button.roundedbottom.horizontal.fill", "button.roundedtop.horizontal.fill",
+        "button.angledtop.vertical.left.fill", "button.angledtop.vertical.right.fill",
+        "arrowshape.up.fill", "location.north.fill", "sun.max.fill"
+    ]
+
+    private func watchComplicationColor(_ preset: ComplicationColorPreset) -> Color {
+        switch preset {
+        case .orange: return .orange
+        case .blue:   return Color(red: 0.2, green: 0.55, blue: 1.0)
+        case .green:  return .green
+        case .red:    return .red
+        case .purple: return .purple
+        case .yellow: return .yellow
+        case .cyan:   return .cyan
+        case .pink:   return .pink
+        case .mint:   return .mint
+        case .indigo: return .indigo
+        }
+    }
+
+    @ViewBuilder
+    private func complicationRow(
+        _ title: String,
+        icon: String,
+        appearance: Binding<ComplicationAppearance>
+    ) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Label(title, systemImage: icon)
+                .font(.subheadline.weight(.semibold))
+
+            // Color palette — 2 rows of 5
+            LazyVGrid(columns: Array(repeating: GridItem(.fixed(30)), count: 5), spacing: 6) {
+                ForEach(ComplicationColorPreset.allCases, id: \.self) { preset in
+                    Circle()
+                        .fill(watchComplicationColor(preset))
+                        .frame(width: 30, height: 30)
+                        .overlay(
+                            Circle()
+                                .strokeBorder(Color.primary, lineWidth: 2.5)
+                                .opacity(appearance.wrappedValue.colorPreset == preset ? 1 : 0)
+                        )
+                        .onTapGesture {
+                            appearance.colorPreset.wrappedValue = preset
+                        }
+                }
+            }
+
+            // Ring vs Fill style picker
+            Picker("Style", selection: appearance.style) {
+                Text("Ring").tag(ComplicationStyle.ring)
+                Text("Fill").tag(ComplicationStyle.fill)
+            }
+            .pickerStyle(.segmented)
+            .labelsHidden()
+
+            // Shape grid — visible only when Fill is selected
+            if appearance.wrappedValue.style == .fill {
+                LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 7), spacing: 6) {
+                    ForEach(watchFillShapes, id: \.self) { shape in
+                        let isSelected = appearance.wrappedValue.shape == shape
+                        let presetColor = watchComplicationColor(appearance.wrappedValue.colorPreset)
+                        Button {
+                            appearance.shape.wrappedValue = shape
+                        } label: {
+                            Image(systemName: shape)
+                                .font(.system(size: 18))
+                                .foregroundColor(isSelected ? presetColor : .secondary)
+                                .frame(width: 40, height: 40)
+                                .background(
+                                    RoundedRectangle(cornerRadius: 8)
+                                        .fill(isSelected ? presetColor.opacity(0.15) : Color.clear)
+                                )
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+                .padding(.top, 2)
+            }
+        }
+        .padding(.vertical, 4)
+    }
 }
 
 // MARK: - Workout Export Sheet

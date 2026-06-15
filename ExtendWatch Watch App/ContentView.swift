@@ -4,6 +4,7 @@
 //
 
 import SwiftUI
+import WidgetKit
 
 /// Root tab view: Plan list (tab 0), Steps/Distance (tab 1), Water (tab 2).
 struct RootView: View {
@@ -31,6 +32,9 @@ struct RootView: View {
         .task {
             WatchConnectivityBridge.shared.activate()
             await WatchHealthKit.shared.requestAuthorization()
+            // Reload complications from the Watch side so any settings changes
+            // made on the iPhone take effect as soon as the Watch app is opened.
+            WidgetCenter.shared.reloadAllTimelines()
         }
     }
 }

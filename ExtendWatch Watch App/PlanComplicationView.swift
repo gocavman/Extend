@@ -3,7 +3,7 @@
 ////  ExtendWatch
 ////
 ////  Views for the Plan Ring complication families:
-////    • .accessoryCircular  — gauge ring showing % complete
+////    • .accessoryCircular  — gauge ring or fill shape showing % complete
 ////    • .accessoryRectangular — item list (first 3 items)
 ////
 
@@ -30,7 +30,7 @@ struct PlanComplicationView: View {
         .widgetURL(URL(string: "extendwatch://plan")!)
     }
 
-    // MARK: Circular — gauge ring
+    // MARK: Derived values
 
     private var completedCount: Int {
         entry.snapshot.items.filter { $0.isCompleted }.count
@@ -45,14 +45,23 @@ struct PlanComplicationView: View {
         return Double(completedCount) / Double(totalCount)
     }
 
+    private var appearance: ComplicationAppearance { entry.appearance.plan }
+
+    private var accentColor: Color {
+        complicationColor(appearance.colorPreset, fraction: fraction)
+    }
+
+    // MARK: Circular — gauge ring or fill shape
+
     private var circularView: some View {
         ZStack {
-            // Background gauge ring
-            Gauge(value: fraction) {
-                EmptyView()
+            if appearance.style == .fill {
+                ComplicationFillShape(fraction: fraction, color: accentColor, shape: appearance.shape)
+            } else {
+                Gauge(value: fraction) { EmptyView() }
+                    .gaugeStyle(.accessoryCircularCapacity)
+                    .tint(accentColor)
             }
-            .gaugeStyle(.accessoryCircularCapacity)
-            .tint(entry.snapshot.isRestDay ? .green : .blue)
 
             if entry.snapshot.isRestDay {
                 VStack(spacing: 0) {
@@ -61,11 +70,19 @@ struct PlanComplicationView: View {
                     Text("Rest")
                         .font(.system(size: 9, weight: .medium))
                 }
-                .foregroundColor(.green)
+                .foregroundColor(appearance.style == .fill ? .white : .green)
+                .shadow(
+                    color: appearance.style == .fill ? .black.opacity(0.4) : .clear,
+                    radius: 1, x: 0, y: 1
+                )
             } else if totalCount == 0 {
                 Image(systemName: "calendar")
                     .font(.system(size: 14))
-                    .foregroundColor(.secondary)
+                    .foregroundColor(appearance.style == .fill ? .white : .secondary)
+                    .shadow(
+                        color: appearance.style == .fill ? .black.opacity(0.4) : .clear,
+                        radius: 1, x: 0, y: 1
+                    )
             } else {
                 VStack(spacing: 0) {
                     Image(systemName: fraction >= 1.0 ? "checkmark" : "calendar.badge.checkmark")
@@ -73,13 +90,17 @@ struct PlanComplicationView: View {
                     Text("\(completedCount)/\(totalCount)")
                         .font(.system(size: 10, weight: .semibold).monospacedDigit())
                 }
-                .foregroundColor(fraction >= 1.0 ? .green : .primary)
+                .foregroundColor(appearance.style == .fill ? .white : (fraction >= 1.0 ? .green : .primary))
+                .shadow(
+                    color: appearance.style == .fill ? .black.opacity(0.4) : .clear,
+                    radius: 1, x: 0, y: 1
+                )
             }
         }
         .containerBackground(.background, for: .widget)
     }
 
-    // MARK: Rectangular — item list
+    // MARK: Rectangular — item list (always text-based, no fill)
 
     private var rectangularView: some View {
         VStack(alignment: .leading, spacing: 3) {

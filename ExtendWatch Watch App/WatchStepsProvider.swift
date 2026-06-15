@@ -18,6 +18,7 @@ struct WatchStepsEntry: TimelineEntry {
     let steps: Double
     let distanceKm: Double
     let settings: WatchStepsSettings
+    let appearance: WatchComplicationUserSettings
 }
 
 // MARK: - Provider
@@ -30,24 +31,28 @@ struct WatchStepsProvider: TimelineProvider {
     private let appGroupID  = "group.com.cavanmannenbach.extend"
 
     func placeholder(in context: Context) -> WatchStepsEntry {
-        WatchStepsEntry(date: Date(), steps: 7342, distanceKm: 5.8, settings: .default)
+        WatchStepsEntry(date: Date(), steps: 7342, distanceKm: 5.8, settings: .default, appearance: .default)
     }
 
     func getSnapshot(in context: Context, completion: @escaping (WatchStepsEntry) -> Void) {
         let settings = readWatchStepsSettings()
         let cached = cachedValues()
-        completion(WatchStepsEntry(date: Date(), steps: cached.steps, distanceKm: cached.km, settings: settings))
+        // Fall back to preview values when no real data exists (e.g. simulator)
+        let steps = cached.steps > 0 ? cached.steps : 7342
+        let km    = cached.km   > 0 ? cached.km   : 5.8
+        completion(WatchStepsEntry(date: Date(), steps: steps, distanceKm: km, settings: settings, appearance: readWatchComplicationSettings()))
     }
 
     func getTimeline(in context: Context, completion: @escaping (Timeline<WatchStepsEntry>) -> Void) {
         let settings = readWatchStepsSettings()
+        let appearance = readWatchComplicationSettings()
         Task {
             let steps = await querySteps()
             let km    = await queryDistanceKm()
             cacheValues(steps: steps, km: km)
 
             let now   = Date()
-            let entry = WatchStepsEntry(date: now, steps: steps, distanceKm: km, settings: settings)
+            let entry = WatchStepsEntry(date: now, steps: steps, distanceKm: km, settings: settings, appearance: appearance)
             // Refresh every 15 minutes (WidgetKit budget allows this on Watch)
             let next  = Calendar.current.date(byAdding: .minute, value: 15, to: now) ?? now
             completion(Timeline(entries: [entry], policy: .after(next)))
