@@ -864,11 +864,14 @@ struct DayEditorSheet: View {
             .fullScreenCover(isPresented: $showingWorkoutPicker) {
                 WorkoutPickerSheet(selectedIDs: $editedDay.workoutIDs)
                     .environment(workoutsState)
+                    .environment(exercisesState)
             }
             // Full-screen exercise picker
             .fullScreenCover(isPresented: $showingExercisePicker) {
                 ExercisePickerSheet(selectedIDs: $editedDay.exerciseIDs)
                     .environment(exercisesState)
+                    .environment(MuscleGroupsState.shared)
+                    .environment(EquipmentState.shared)
             }
             // Full-screen voice activity picker
             .fullScreenCover(isPresented: $showingVoicePicker) {
@@ -890,6 +893,7 @@ struct DayEditorSheet: View {
 private struct WorkoutPickerSheet: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(WorkoutsState.self) private var workoutsState
+    @Environment(ExercisesState.self) private var exercisesState
     @Binding var selectedIDs: [UUID]
     @State private var searchText = ""
     @AppStorage("appColorScheme") private var appColorScheme: String = "system"
@@ -897,8 +901,25 @@ private struct WorkoutPickerSheet: View {
 
     private var filtered: [Workout] {
         let sorted = workoutsState.workouts.sorted { $0.name < $1.name }
-        guard !searchText.isEmpty else { return sorted }
-        return sorted.filter { $0.name.localizedCaseInsensitiveContains(searchText) }
+        let trimmedSearch = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedSearch.isEmpty else { return sorted }
+        return sorted.filter { matchesSearch($0, searchKey: trimmedSearch) }
+    }
+    
+    private func matchesSearch(_ workout: Workout, searchKey: String) -> Bool {
+        // Search by workout name
+        if workout.name.localizedCaseInsensitiveContains(searchKey) {
+            return true
+        }
+        // Search by notes
+        if workout.notes.localizedCaseInsensitiveContains(searchKey) {
+            return true
+        }
+        // Search by exercise names in the workout
+        let exerciseNames = workout.exerciseItems.compactMap { item in
+            exercisesState.exercises.first { $0.id == item.exerciseID }?.name
+        }
+        return exerciseNames.contains { $0.localizedCaseInsensitiveContains(searchKey) }
     }
 
     var body: some View {
@@ -945,6 +966,8 @@ private struct WorkoutPickerSheet: View {
 private struct ExercisePickerSheet: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(ExercisesState.self) private var exercisesState
+    @Environment(MuscleGroupsState.self) private var muscleGroupsState
+    @Environment(EquipmentState.self) private var equipmentState
     @Binding var selectedIDs: [UUID]
     @State private var searchText = ""
     @AppStorage("appColorScheme") private var appColorScheme: String = "system"
@@ -952,8 +975,36 @@ private struct ExercisePickerSheet: View {
 
     private var filtered: [Exercise] {
         let sorted = exercisesState.exercises.sorted { $0.name < $1.name }
-        guard !searchText.isEmpty else { return sorted }
-        return sorted.filter { $0.name.localizedCaseInsensitiveContains(searchText) }
+        let trimmedSearch = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedSearch.isEmpty else { return sorted }
+        return sorted.filter { matchesSearch($0, searchKey: trimmedSearch) }
+    }
+    
+    private func matchesSearch(_ exercise: Exercise, searchKey: String) -> Bool {
+        // Search by exercise name
+        if exercise.name.localizedCaseInsensitiveContains(searchKey) {
+            return true
+        }
+        // Search by notes
+        if exercise.notes.localizedCaseInsensitiveContains(searchKey) {
+            return true
+        }
+        // Search by muscle groups (primary and secondary)
+        let muscleIDs = exercise.primaryMuscleGroupIDs + exercise.secondaryMuscleGroupIDs
+        let muscleNames = muscleIDs.compactMap { id in
+            muscleGroupsState.sortedGroups.first { $0.id == id }?.name
+        }
+        if muscleNames.contains(where: { $0.localizedCaseInsensitiveContains(searchKey) }) {
+            return true
+        }
+        // Search by equipment
+        let equipmentNames = exercise.equipmentIDs.compactMap { id in
+            equipmentState.sortedItems.first { $0.id == id }?.name
+        }
+        if equipmentNames.contains(where: { $0.localizedCaseInsensitiveContains(searchKey) }) {
+            return true
+        }
+        return false
     }
 
     var body: some View {

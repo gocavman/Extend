@@ -4805,55 +4805,58 @@ private struct ComplexScreen: View {
                     }
                 } else {
                     // RING STYLE: size relative to available width so it's naturally larger on iPad
-                    GeometryReader { geo in
-                        let ringSize: CGFloat = min(max(geo.size.width * 0.6, 170), 300)
-                        let timeFontSize: CGFloat = ringSize < 220 ? 36 : 48
-                        let controlSize: CGFloat = ringSize < 220 ? 28 : 38
-                        let resetSize: CGFloat = ringSize < 220 ? 22 : 30
-                        ZStack {
-                            Circle()
-                                .stroke(Color(UIColor.tertiarySystemBackground), lineWidth: 10)
-                            Circle()
-                                .trim(from: 0, to: ringProgress)
-                                .stroke(
-                                    timerDone ? Color.green : ringColor,
-                                    style: StrokeStyle(lineWidth: 10, lineCap: .round)
-                                )
-                                .rotationEffect(.degrees(-90))
-                                .animation(.linear(duration: 0.5), value: ringProgress)
-                            VStack(spacing: 4) {
-                                Text(timerDone ? "Done!" : formatTime(secondsRemaining))
-                                    .font(.system(size: timeFontSize, weight: .semibold, design: .monospaced))
-                                    .foregroundColor(timerDone ? .green : (secondsRemaining <= 10 ? .red : .primary))
-                                Text("of \(formatTime(totalSeconds))")
-                                    .font(.caption2)
-                                    .foregroundColor(.secondary)
-                                // Controls inside the ring
-                                HStack(spacing: 16) {
-                                    Button(action: { isTimerRunning.toggle() }) {
-                                        Image(systemName: isTimerRunning ? "pause.circle.fill" : "play.circle.fill")
-                                            .font(.system(size: controlSize))
-                                            .foregroundColor(.primary)
+                    HStack {
+                        Spacer(minLength: 0)
+                        GeometryReader { geo in
+                            let ringSize: CGFloat = min(max(geo.size.width, 140), 220)
+                            let timeFontSize: CGFloat = ringSize < 180 ? 28 : 36
+                            let controlSize: CGFloat = ringSize < 180 ? 24 : 32
+                            let resetSize: CGFloat = ringSize < 180 ? 18 : 24
+                            ZStack {
+                                Circle()
+                                    .stroke(Color(UIColor.tertiarySystemBackground), lineWidth: 10)
+                                Circle()
+                                    .trim(from: 0, to: ringProgress)
+                                    .stroke(
+                                        timerDone ? Color.green : ringColor,
+                                        style: StrokeStyle(lineWidth: 10, lineCap: .round)
+                                    )
+                                    .rotationEffect(.degrees(-90))
+                                    .animation(.linear(duration: 0.5), value: ringProgress)
+                                VStack(spacing: 4) {
+                                    Text(timerDone ? "Done!" : formatTime(secondsRemaining))
+                                        .font(.system(size: timeFontSize, weight: .semibold, design: .monospaced))
+                                        .foregroundColor(timerDone ? .green : (secondsRemaining <= 10 ? .red : .primary))
+                                    Text("of \(formatTime(totalSeconds))")
+                                        .font(.caption2)
+                                        .foregroundColor(.secondary)
+                                    // Controls inside the ring
+                                    HStack(spacing: 16) {
+                                        Button(action: { isTimerRunning.toggle() }) {
+                                            Image(systemName: isTimerRunning ? "pause.circle.fill" : "play.circle.fill")
+                                                .font(.system(size: controlSize))
+                                                .foregroundColor(.primary)
+                                        }
+                                        .buttonStyle(.plain)
+                                        Button(action: {
+                                            isTimerRunning = false
+                                            secondsRemaining = totalSeconds
+                                            timerDone = false
+                                        }) {
+                                            Image(systemName: "arrow.counterclockwise.circle")
+                                                .font(.system(size: resetSize))
+                                                .foregroundColor(.secondary)
+                                        }
+                                        .buttonStyle(.plain)
                                     }
-                                    .buttonStyle(.plain)
-                                    Button(action: {
-                                        isTimerRunning = false
-                                        secondsRemaining = totalSeconds
-                                        timerDone = false
-                                    }) {
-                                        Image(systemName: "arrow.counterclockwise.circle")
-                                            .font(.system(size: resetSize))
-                                            .foregroundColor(.secondary)
-                                    }
-                                    .buttonStyle(.plain)
                                 }
                             }
+                            .frame(width: ringSize, height: ringSize)
                         }
-                        .frame(width: ringSize, height: ringSize)
-                        .position(x: geo.size.width / 2, y: ringSize / 2)
+                        .aspectRatio(1, contentMode: .fit)
+                        .frame(maxWidth: 220, maxHeight: 220)
+                        Spacer(minLength: 0)
                     }
-                    .aspectRatio(1, contentMode: .fit)
-                    .frame(maxHeight: 300)
                 }
 
                 Divider().padding(.horizontal, 16)
