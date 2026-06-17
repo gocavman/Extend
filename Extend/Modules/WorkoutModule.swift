@@ -251,14 +251,7 @@ private struct WorkoutsModuleView: View {
                                         }
                                         .buttonStyle(.plain)
 
-                                        Divider()
-                                            .frame(width: 1)
-                                            .frame(height: 20)
-                                            .overlay(
-                                                Rectangle()
-                                                    .fill(Color(UIColor.separator))
-                                                    .frame(width: 1)
-                                            )
+                                        Divider().frame(height: 20)
 
                                         Button(action: {
                                             UIImpactFeedbackGenerator(style: .light).impactOccurred()
@@ -4859,7 +4852,8 @@ private struct ComplexScreen: View {
                         .frame(width: ringSize, height: ringSize)
                         .position(x: geo.size.width / 2, y: ringSize / 2)
                     }
-                    .frame(height: min(max(UIScreen.main.bounds.width * 0.6, 170), 300))
+                    .aspectRatio(1, contentMode: .fit)
+                    .frame(maxHeight: 300)
                 }
 
                 Divider().padding(.horizontal, 16)
