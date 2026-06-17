@@ -251,7 +251,14 @@ private struct WorkoutsModuleView: View {
                                         }
                                         .buttonStyle(.plain)
 
-                                        Divider().frame(height: 20)
+                                        Divider()
+                                            .frame(width: 1)
+                                            .frame(height: 20)
+                                            .overlay(
+                                                Rectangle()
+                                                    .fill(Color(UIColor.separator))
+                                                    .frame(width: 1)
+                                            )
 
                                         Button(action: {
                                             UIImpactFeedbackGenerator(style: .light).impactOccurred()
@@ -2542,6 +2549,7 @@ private struct ExercisePickerView: View {
 public struct StartWorkoutView: View {
     @Environment(\.dismiss) var dismiss
     @Environment(\.scenePhase) var scenePhase
+    @Environment(\.horizontalSizeClass) private var sizeClass
     @Environment(ModuleState.self) var moduleState
     @Environment(ExercisesState.self) var exercisesState
     @Environment(MuscleGroupsState.self) var muscleGroupsState
@@ -2549,6 +2557,10 @@ public struct StartWorkoutView: View {
     @Environment(WorkoutLogState.self) var logState
 
     public let workout: Workout
+    
+    private var isIPad: Bool {
+        sizeClass == .regular
+    }
 
     @State private var currentItemIndex: Int = 0
     /// Which set-round (0-based) we are on when cycling through a loop group.
@@ -3468,7 +3480,8 @@ public struct StartWorkoutView: View {
             }
         }
         .frame(maxWidth: .infinity)
-        .padding(16)
+        .padding(.horizontal, 16)
+        .padding(.vertical, 12)
         .background(Color(UIColor.secondarySystemBackground))
         .cornerRadius(12)
     }
@@ -3574,23 +3587,23 @@ public struct StartWorkoutView: View {
 
         VStack(alignment: .leading, spacing: 6) {
             // Set / Reps / Weight / Delete row
-            HStack(spacing: 12) {
+            HStack(spacing: isIPad ? 16 : 12) {
                 VStack(alignment: .leading, spacing: 4) {
                     Text("Set")
-                        .font(.caption2)
+                        .font(isIPad ? .callout : .caption2)
                         .foregroundColor(.primary.opacity(0.6))
                     Text("\(index + 1)")
-                        .font(.caption)
+                        .font(isIPad ? .body : .caption)
                         .fontWeight(.semibold)
-                        .frame(maxWidth: .infinity, minHeight: 28, alignment: .center)
-                        .padding(.horizontal, 6)
+                        .frame(maxWidth: .infinity, minHeight: isIPad ? 50 : 28, alignment: .center)
+                        .padding(.horizontal, isIPad ? 10 : 6)
                         .background(Color(UIColor.tertiarySystemBackground))
-                        .cornerRadius(4)
+                        .cornerRadius(isIPad ? 8 : 4)
                 }
 
                 VStack(alignment: .leading, spacing: 4) {
                     Text("Reps")
-                        .font(.caption2)
+                        .font(isIPad ? .callout : .caption2)
                         .foregroundColor(.primary.opacity(0.6))
                     TextField(repPlaceholder, text: Binding(
                         get: { set.reps == 0 ? "" : "\(set.reps)" },
@@ -3600,27 +3613,27 @@ public struct StartWorkoutView: View {
                         }
                     ))
                     .keyboardType(.numberPad)
-                    .font(.caption)
-                    .frame(minHeight: 28)
-                    .padding(.horizontal, 6)
+                    .font(isIPad ? .title3 : .caption)
+                    .frame(minHeight: isIPad ? 50 : 28)
+                    .padding(.horizontal, isIPad ? 10 : 6)
                     .background(Color(UIColor.tertiarySystemBackground))
-                    .cornerRadius(4)
+                    .cornerRadius(isIPad ? 8 : 4)
                 }
 
                 VStack(alignment: .leading, spacing: 4) {
                     Text("Weight")
-                        .font(.caption2)
+                        .font(isIPad ? .callout : .caption2)
                         .foregroundColor(.primary.opacity(0.6))
                     TextField(weightPlaceholder, text: Binding(
                         get: { sets[index].weightText },
                         set: { sets[index].weightText = $0 }
                     ))
                     .keyboardType(.decimalPad)
-                    .font(.caption)
-                    .frame(minHeight: 28)
-                    .padding(.horizontal, 6)
+                    .font(isIPad ? .title3 : .caption)
+                    .frame(minHeight: isIPad ? 50 : 28)
+                    .padding(.horizontal, isIPad ? 10 : 6)
                     .background(Color(UIColor.tertiarySystemBackground))
-                    .cornerRadius(4)
+                    .cornerRadius(isIPad ? 8 : 4)
                     .onSubmit {
                         let parsed = Double(sets[index].weightText.replacingOccurrences(of: ",", with: ".")) ?? 0
                         sets[index].weight = parsed
@@ -3635,10 +3648,11 @@ public struct StartWorkoutView: View {
 
                 Button(action: { removeSet(at: index) }) {
                     Image(systemName: "xmark.circle.fill")
+                        .font(.system(size: isIPad ? 26 : 18))
                         .foregroundColor(.red)
                 }
                 .buttonStyle(.plain)
-                .padding(.top, 20)
+                .padding(.top, isIPad ? 26 : 20)
             }
 
             // Timed countdown row — shown below when this set's target is timed (hidden in phase-timer mode)
@@ -4741,7 +4755,7 @@ private struct ComplexScreen: View {
 
     var body: some View {
         ScrollView {
-            VStack(spacing: 20) {
+            VStack(spacing: 12) {
                 // Timer display — ring or bar depending on complex setting
                 if complex?.timerStyle == .bar {
                     // BAR STYLE: slim horizontal strip
@@ -4845,7 +4859,7 @@ private struct ComplexScreen: View {
                         .frame(width: ringSize, height: ringSize)
                         .position(x: geo.size.width / 2, y: ringSize / 2)
                     }
-                    .frame(height: 300)
+                    .frame(height: min(max(UIScreen.main.bounds.width * 0.6, 170), 300))
                 }
 
                 Divider().padding(.horizontal, 16)
@@ -4955,6 +4969,11 @@ private struct ComplexExerciseRow: View {
     let round: Int
     @Binding var exerciseData: [UUID: (sets: [WorkoutSet], notes: String, timerSeconds: Int, usedEquipmentIDs: Set<UUID>, phaseIndex: Int, phaseElapsed: Int, phaseTimerDone: Bool)]
     @AppStorage("weightUnit") private var weightUnit: String = "lbs"
+    @Environment(\.horizontalSizeClass) private var sizeClass
+    
+    private var isIPad: Bool {
+        sizeClass == .regular
+    }
 
     private var targetSet: PredefinedSet? {
         guard round < workoutExercise.predefinedSets.count else { return nil }
@@ -4987,26 +5006,26 @@ private struct ComplexExerciseRow: View {
             }
 
             if round < (exerciseData[workoutExercise.id]?.sets.count ?? 0) {
-                HStack(spacing: 12) {
+                HStack(spacing: isIPad ? 16 : 12) {
                     // Round label
                     VStack(alignment: .leading, spacing: 4) {
                         Text("Round")
-                            .font(.caption2)
+                            .font(isIPad ? .callout : .caption2)
                             .foregroundColor(.primary.opacity(0.6))
                         Text("\(round + 1)")
-                            .font(.caption)
+                            .font(isIPad ? .body : .caption)
                             .fontWeight(.semibold)
-                            .frame(maxWidth: .infinity, minHeight: 28, alignment: .center)
-                            .padding(.horizontal, 6)
+                            .frame(maxWidth: .infinity, minHeight: isIPad ? 50 : 28, alignment: .center)
+                            .padding(.horizontal, isIPad ? 10 : 6)
                             .background(Color(uiColor: .systemGray5))
-                            .cornerRadius(4)
+                            .cornerRadius(isIPad ? 8 : 4)
                     }
-                    .frame(width: 44)
+                    .frame(width: isIPad ? 70 : 44)
 
                     // Reps field
                     VStack(alignment: .leading, spacing: 4) {
                         Text("Reps")
-                            .font(.caption2)
+                            .font(isIPad ? .callout : .caption2)
                             .foregroundColor(.primary.opacity(0.6))
                         TextField(repPlaceholder, text: Binding(
                             get: {
@@ -5021,17 +5040,17 @@ private struct ComplexExerciseRow: View {
                             }
                         ))
                         .keyboardType(.numberPad)
-                        .font(.caption)
-                        .frame(minHeight: 28)
-                        .padding(.horizontal, 6)
+                        .font(isIPad ? .title3 : .caption)
+                        .frame(minHeight: isIPad ? 50 : 28)
+                        .padding(.horizontal, isIPad ? 10 : 6)
                         .background(Color(uiColor: .systemGray5))
-                        .cornerRadius(4)
+                        .cornerRadius(isIPad ? 8 : 4)
                     }
 
                     // Weight field
                     VStack(alignment: .leading, spacing: 4) {
                         Text("Weight (\(weightUnit))")
-                            .font(.caption2)
+                            .font(isIPad ? .callout : .caption2)
                             .foregroundColor(.primary.opacity(0.6))
                         TextField(weightPlaceholder, text: Binding(
                             get: { exerciseData[workoutExercise.id]?.sets[round].weightText ?? "" },
@@ -5044,11 +5063,11 @@ private struct ComplexExerciseRow: View {
                             }
                         ))
                         .keyboardType(.decimalPad)
-                        .font(.caption)
-                        .frame(minHeight: 28)
-                        .padding(.horizontal, 6)
+                        .font(isIPad ? .title3 : .caption)
+                        .frame(minHeight: isIPad ? 50 : 28)
+                        .padding(.horizontal, isIPad ? 10 : 6)
                         .background(Color(uiColor: .systemGray5))
-                        .cornerRadius(4)
+                        .cornerRadius(isIPad ? 8 : 4)
                     }
                 }
             }

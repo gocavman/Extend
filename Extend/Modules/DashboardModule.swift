@@ -411,7 +411,14 @@ private struct DashboardModuleView: View {
                             }
                             .buttonStyle(.plain)
 
-                            Divider().frame(height: bottomBarHeight * 0.6)
+                            Divider()
+                                .frame(width: 1)
+                                .frame(height: bottomBarHeight * 0.6)
+                                .overlay(
+                                    Rectangle()
+                                        .fill(Color(UIColor.separator))
+                                        .frame(width: 1)
+                                )
 
                             Button(action: {
                                 UIImpactFeedbackGenerator(style: .light).impactOccurred()
@@ -1737,36 +1744,38 @@ private struct StatCardTileView: View {
                         let best = oneRMEntries.map { $0.value }.max() ?? 1
                         VStack(alignment: .leading, spacing: 5) {
                             ForEach(Array(oneRMEntries.prefix(10).enumerated()), id: \.offset) { index, entry in
-                                HStack(spacing: 6) {
-                                    // Rank badge
-                                    Text("#\(index + 1)")
-                                        .font(.system(size: iPad ? 16 : 12, weight: .bold, design: .rounded))
-                                        .foregroundColor(index == 0 ? .yellow : .gray)
-                                        .frame(width: iPad ? 36 : 24, alignment: .leading)
-                                    // Exercise name
-                                    Text(entry.name)
-                                        .font(.system(size: iPad ? 16 : 12, weight: .semibold))
-                                        .foregroundColor(.primary)
-                                        .lineLimit(1)
-                                        .minimumScaleFactor(0.7)
-                                        .frame(maxWidth: .infinity, alignment: .leading)
-                                    // 1RM value
-                                    Text(String(format: "%.0f", entry.value))
-                                        .font(.system(size: iPad ? 16 : 12, weight: .bold))
-                                        .foregroundColor(.primary)
-                                }
-                                // Mini progress bar
-                                GeometryReader { geo in
-                                    ZStack(alignment: .leading) {
-                                        RoundedRectangle(cornerRadius: 2)
-                                            .fill(Color.primary.opacity(0.08))
-                                            .frame(height: 3)
-                                        RoundedRectangle(cornerRadius: 2)
-                                            .fill(index == 0 ? Color.yellow : Color.primary.opacity(0.35))
-                                            .frame(width: geo.size.width * CGFloat(entry.value / best), height: 3)
+                                VStack(alignment: .leading, spacing: 2) {
+                                    HStack(spacing: 6) {
+                                        // Rank badge
+                                        Text("#\(index + 1)")
+                                            .font(.system(size: iPad ? 16 : 12, weight: .bold, design: .rounded))
+                                            .foregroundColor(index == 0 ? .yellow : .gray)
+                                            .frame(width: iPad ? 36 : 24, alignment: .leading)
+                                        // Exercise name
+                                        Text(entry.name)
+                                            .font(.system(size: iPad ? 16 : 12, weight: .semibold))
+                                            .foregroundColor(.primary)
+                                            .lineLimit(1)
+                                            .minimumScaleFactor(0.7)
+                                            .frame(maxWidth: .infinity, alignment: .leading)
+                                        // 1RM value
+                                        Text(String(format: "%.0f", entry.value))
+                                            .font(.system(size: iPad ? 16 : 12, weight: .bold))
+                                            .foregroundColor(.primary)
                                     }
+                                    // Mini progress bar
+                                    GeometryReader { geo in
+                                        ZStack(alignment: .leading) {
+                                            RoundedRectangle(cornerRadius: 2)
+                                                .fill(Color.primary.opacity(0.08))
+                                                .frame(height: 3)
+                                            RoundedRectangle(cornerRadius: 2)
+                                                .fill(index == 0 ? Color.yellow : Color.primary.opacity(0.35))
+                                                .frame(width: geo.size.width * CGFloat(entry.value / best), height: 3)
+                                        }
+                                    }
+                                    .frame(height: 3)
                                 }
-                                .frame(height: 3)
                             }
                         }
                         .frame(maxWidth: .infinity, alignment: .leading)
@@ -1789,32 +1798,34 @@ private struct StatCardTileView: View {
                         let best = personalRecordEntries.map { $0.value }.max() ?? 1
                         VStack(alignment: .leading, spacing: 5) {
                             ForEach(Array(personalRecordEntries.prefix(10).enumerated()), id: \.offset) { index, entry in
-                                HStack(spacing: 6) {
-                                    Text("#\(index + 1)")
-                                        .font(.system(size: iPad ? 16 : 12, weight: .bold, design: .rounded))
-                                        .foregroundColor(index == 0 ? Color(red: 1, green: 0.8, blue: 0) : .gray)
-                                        .frame(width: iPad ? 36 : 24, alignment: .leading)
-                                    Text(entry.name)
-                                        .font(.system(size: iPad ? 16 : 12, weight: .semibold))
-                                        .foregroundColor(.primary)
-                                        .lineLimit(1)
-                                        .minimumScaleFactor(0.7)
-                                        .frame(maxWidth: .infinity, alignment: .leading)
-                                    Text(String(format: "%.0f", entry.value))
-                                        .font(.system(size: iPad ? 16 : 12, weight: .bold))
-                                        .foregroundColor(.primary)
-                                }
-                                GeometryReader { geo in
-                                    ZStack(alignment: .leading) {
-                                        RoundedRectangle(cornerRadius: 2)
-                                            .fill(Color.primary.opacity(0.08))
-                                            .frame(height: 3)
-                                        RoundedRectangle(cornerRadius: 2)
-                                            .fill(index == 0 ? Color(red: 1, green: 0.8, blue: 0) : Color.primary.opacity(0.35))
-                                            .frame(width: geo.size.width * CGFloat(entry.value / best), height: 3)
+                                VStack(alignment: .leading, spacing: 2) {
+                                    HStack(spacing: 6) {
+                                        Text("#\(index + 1)")
+                                            .font(.system(size: iPad ? 16 : 12, weight: .bold, design: .rounded))
+                                            .foregroundColor(index == 0 ? Color(red: 1, green: 0.8, blue: 0) : .gray)
+                                            .frame(width: iPad ? 36 : 24, alignment: .leading)
+                                        Text(entry.name)
+                                            .font(.system(size: iPad ? 16 : 12, weight: .semibold))
+                                            .foregroundColor(.primary)
+                                            .lineLimit(1)
+                                            .minimumScaleFactor(0.7)
+                                            .frame(maxWidth: .infinity, alignment: .leading)
+                                        Text(String(format: "%.0f", entry.value))
+                                            .font(.system(size: iPad ? 16 : 12, weight: .bold))
+                                            .foregroundColor(.primary)
                                     }
+                                    GeometryReader { geo in
+                                        ZStack(alignment: .leading) {
+                                            RoundedRectangle(cornerRadius: 2)
+                                                .fill(Color.primary.opacity(0.08))
+                                                .frame(height: 3)
+                                            RoundedRectangle(cornerRadius: 2)
+                                                .fill(index == 0 ? Color(red: 1, green: 0.8, blue: 0) : Color.primary.opacity(0.35))
+                                                .frame(width: geo.size.width * CGFloat(entry.value / best), height: 3)
+                                        }
+                                    }
+                                    .frame(height: 3)
                                 }
-                                .frame(height: 3)
                             }
                         }
                         .frame(maxWidth: .infinity, alignment: .leading)

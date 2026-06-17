@@ -116,7 +116,14 @@ private struct TimerModuleView: View {
                                             }
                                             .buttonStyle(.plain)
 
-                                            Divider().frame(height: 20)
+                                            Divider()
+                                                .frame(width: 1)
+                                                .frame(height: 20)
+                                                .overlay(
+                                                    Rectangle()
+                                                        .fill(Color(UIColor.separator))
+                                                        .frame(width: 1)
+                                                )
 
                                             Button(action: {
                                                 UIImpactFeedbackGenerator(style: .light).impactOccurred()

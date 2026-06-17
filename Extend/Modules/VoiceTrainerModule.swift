@@ -117,7 +117,14 @@ private struct VoiceTrainerModuleView: View {
                                         }
                                         .buttonStyle(.plain)
 
-                                        Divider().frame(height: 20)
+                                        Divider()
+                                            .frame(width: 1)
+                                            .frame(height: 20)
+                                            .overlay(
+                                                Rectangle()
+                                                    .fill(Color(UIColor.separator))
+                                                    .frame(width: 1)
+                                            )
 
                                         Button(action: {
                                             UIImpactFeedbackGenerator(style: .light).impactOccurred()
@@ -1578,9 +1585,14 @@ struct PlaybackScreen: View {
     @State private var pulseAnimation = false
     @State private var showStopConfirm = false
     @State private var showCompleteConfirm = false
+    @Environment(\.horizontalSizeClass) private var sizeClass
 
     private var sessionInProgress: Bool {
         state.isPlaying || state.isPaused
+    }
+    
+    private var isIPad: Bool {
+        sizeClass == .regular
     }
 
     var body: some View {
@@ -1600,15 +1612,15 @@ struct PlaybackScreen: View {
                         }
                     }) {
                         Image(systemName: "xmark")
-                            .font(.system(size: 20, weight: .semibold))
+                            .font(.system(size: isIPad ? 32 : 20, weight: .semibold))
                             .foregroundColor(.primary)
-                            .frame(width: 44, height: 44)
+                            .frame(width: isIPad ? 60 : 44, height: isIPad ? 60 : 44)
                     }
                     
                     Spacer()
                     
                     Text("Round \(state.currentRound)/\(numberOfRounds)")
-                        .font(.headline)
+                        .font(isIPad ? .title : .headline)
                         .foregroundColor(.primary)
                     
                     Spacer()
@@ -1622,9 +1634,9 @@ struct PlaybackScreen: View {
                         }
                     }) {
                         Image(systemName: state.isPlaying ? "pause.fill" : "play.fill")
-                            .font(.system(size: 20, weight: .semibold))
+                            .font(.system(size: isIPad ? 32 : 20, weight: .semibold))
                             .foregroundColor(.primary)
-                            .frame(width: 44, height: 44)
+                            .frame(width: isIPad ? 60 : 44, height: isIPad ? 60 : 44)
                     }
                 }
                 .padding(.horizontal, 20)
@@ -1636,14 +1648,15 @@ struct PlaybackScreen: View {
 
                     // Previous lines (most recent at bottom, closest to current line)
                     // Fixed height container to prevent current line box from moving
-                    VStack(alignment: .center, spacing: 4) {
+                    VStack(alignment: .center, spacing: isIPad ? 8 : 4) {
                         Spacer(minLength: 0)
                         if !state.lineHistory.isEmpty {
                             // Reverse the array so most recent (index 0) appears at bottom
                             ForEach(Array(state.lineHistory.prefix(5).enumerated().reversed()), id: \.offset) { index, line in
                                 // Most recent is index 0 (should be largest and closest to current)
-                                // Size gradually decreases: 0=18pt, 1=16pt, 2=14pt, 3=12pt, 4=10pt
-                                let fontSize: CGFloat = 18 - CGFloat(index * 2)
+                                // Size gradually decreases: 0=18pt, 1=16pt, 2=14pt, 3=12pt, 4=10pt (iPad: 1.6x larger)
+                                let baseFontSize: CGFloat = 18 - CGFloat(index * 2)
+                                let fontSize: CGFloat = isIPad ? baseFontSize * 1.6 : baseFontSize
                                 // Opacity gradually decreases: 0=0.9, 1=0.75, 2=0.6, 3=0.45, 4=0.3
                                 let opacity: Double = 0.9 - (Double(index) * 0.15)
                                 
@@ -1656,7 +1669,7 @@ struct PlaybackScreen: View {
                             }
                         }
                     }
-                    .frame(height: 120, alignment: .bottom)
+                    .frame(height: isIPad ? 200 : 120, alignment: .bottom)
                     .frame(maxWidth: .infinity)
                     .padding(.horizontal, 20)
                     .padding(.bottom, 0)
@@ -1666,7 +1679,7 @@ struct PlaybackScreen: View {
                         if !state.isPlaying && !state.isPaused && state.elapsedTime > 0 {
                             // Show Done! when workout is complete
                             Text("Done!")
-                                .font(.system(size: 48, weight: .bold))
+                                .font(.system(size: isIPad ? 76 : 48, weight: .bold))
                                 .foregroundColor(.green)
                                 .multilineTextAlignment(.center)
                                 .padding(16)
@@ -1674,7 +1687,7 @@ struct PlaybackScreen: View {
                             // Show Rest or Cool down label with pulsing animation
                             if state.currentRound < numberOfRounds {
                                 Text("Rest")
-                                    .font(.system(size: 48, weight: .bold))
+                                    .font(.system(size: isIPad ? 76 : 48, weight: .bold))
                                     .foregroundColor(.cyan)
                                     .multilineTextAlignment(.center)
                                     .padding(16)
@@ -1685,7 +1698,7 @@ struct PlaybackScreen: View {
                                     }
                             } else {
                                 Text("Cool down")
-                                    .font(.system(size: 48, weight: .bold))
+                                    .font(.system(size: isIPad ? 76 : 48, weight: .bold))
                                     .foregroundColor(.cyan)
                                     .multilineTextAlignment(.center)
                                     .padding(16)
@@ -1697,7 +1710,7 @@ struct PlaybackScreen: View {
                             }
                         } else if !state.currentLineText.isEmpty {
                             Text(state.currentLineText)
-                                .font(.system(size: 48, weight: .bold))
+                                .font(.system(size: isIPad ? 76 : 48, weight: .bold))
                                 .foregroundColor(.primary)
                                 .multilineTextAlignment(.center)
                                 .lineLimit(3)
@@ -1709,7 +1722,7 @@ struct PlaybackScreen: View {
                                 }
                         } else {
                             Text("Get Ready...")
-                                .font(.system(size: 48, weight: .bold))
+                                .font(.system(size: isIPad ? 76 : 48, weight: .bold))
                                 .foregroundColor(.secondary)
                                 .multilineTextAlignment(.center)
                                 .padding(16)
@@ -1719,20 +1732,21 @@ struct PlaybackScreen: View {
                         }
                     }
                     .frame(maxWidth: .infinity)
-                    .frame(minHeight: 140)
+                    .frame(minHeight: isIPad ? 220 : 140)
                     .background(Color.primary.opacity(0.08))
                     .cornerRadius(12)
                     .padding(.horizontal, 20)
                     .padding(.vertical, 4)
 
                     // Next items preview - fixed height container
-                    VStack(alignment: .center, spacing: 4) {
+                    VStack(alignment: .center, spacing: isIPad ? 8 : 4) {
                         if !state.nextLines.isEmpty {
                             ForEach(Array(state.nextLines.enumerated()), id: \.offset) { index, line in
-                                let fontSize: CGFloat = 16 - CGFloat(index * 2)
+                                let baseFontSize: CGFloat = 16 - CGFloat(index * 2)
+                                let fontSize: CGFloat = isIPad ? baseFontSize * 1.6 : baseFontSize
                                 let opacity = 0.8 - (Double(index) * 0.15)
                                 Text(line)
-                                    .font(.system(size: max(fontSize, 8)))
+                                    .font(.system(size: max(fontSize, isIPad ? 13 : 8)))
                                     .foregroundColor(.secondary)
                                     .opacity(opacity)
                                     .lineLimit(1)
@@ -1740,7 +1754,7 @@ struct PlaybackScreen: View {
                             }
                         }
                     }
-                    .frame(height: 100)
+                    .frame(height: isIPad ? 160 : 100)
                     .frame(maxWidth: .infinity)
                     .padding(.horizontal, 20)
                     .padding(.top, 0)
@@ -1749,15 +1763,15 @@ struct PlaybackScreen: View {
                     VStack(spacing: 2) {
                         if state.startingInCountdown > 0 {
                             Text("Starting in: \(state.startingInCountdown)s")
-                                .font(.system(size: 18, weight: .semibold))
+                                .font(.system(size: isIPad ? 28 : 18, weight: .semibold))
                                 .foregroundColor(.green)
                         } else if state.nextItemCountdown > 0 && state.currentRound < numberOfRounds {
                             Text("Next in: \(state.nextItemCountdown)s")
-                                .font(.system(size: 18, weight: .semibold))
+                                .font(.system(size: isIPad ? 28 : 18, weight: .semibold))
                                 .foregroundColor(.orange)
                         }
                     }
-                    .frame(height: 24)
+                    .frame(height: isIPad ? 36 : 24)
                     .padding(.top, 4)
 
                     Spacer()
@@ -1767,11 +1781,11 @@ struct PlaybackScreen: View {
                 VStack(spacing: 12) {
                     VStack(spacing: 2) {
                         Text(formatTime(state.elapsedTime))
-                            .font(.system(size: 42, weight: .bold, design: .rounded))
+                            .font(.system(size: isIPad ? 66 : 42, weight: .bold, design: .rounded))
                             .foregroundColor(.primary)
                             .monospacedDigit()
                         Text("Time Elapsed")
-                            .font(.caption2)
+                            .font(isIPad ? .callout : .caption2)
                             .foregroundColor(.secondary)
                     }
 
@@ -1779,11 +1793,11 @@ struct PlaybackScreen: View {
                         VStack(spacing: 2) {
                             let remainingTime = max(0, state.totalTime - state.elapsedTime)
                             Text(formatTime(remainingTime))
-                                .font(.system(size: 42, weight: .bold, design: .rounded))
+                                .font(.system(size: isIPad ? 66 : 42, weight: .bold, design: .rounded))
                                 .foregroundColor(.primary)
                                 .monospacedDigit()
                             Text("Time Remaining")
-                                .font(.caption2)
+                                .font(isIPad ? .callout : .caption2)
                                 .foregroundColor(.secondary)
                         }
                         .frame(maxWidth: .infinity)
@@ -1791,19 +1805,19 @@ struct PlaybackScreen: View {
                         VStack(spacing: 2) {
                             if state.restCountdown > 0 {
                                 Text(formatTime(state.restCountdown))
-                                    .font(.system(size: 42, weight: .bold, design: .rounded))
+                                    .font(.system(size: isIPad ? 66 : 42, weight: .bold, design: .rounded))
                                     .foregroundColor(.cyan)
                                     .monospacedDigit()
                                 Text("Rest Time")
-                                    .font(.caption2)
+                                    .font(isIPad ? .callout : .caption2)
                                     .foregroundColor(.cyan)
                             } else {
                                 Text(formatTime(state.roundTimeRemaining))
-                                    .font(.system(size: 42, weight: .bold, design: .rounded))
+                                    .font(.system(size: isIPad ? 66 : 42, weight: .bold, design: .rounded))
                                     .foregroundColor(.primary)
                                     .monospacedDigit()
                                 Text("Round Time")
-                                    .font(.caption2)
+                                    .font(isIPad ? .callout : .caption2)
                                     .foregroundColor(.secondary)
                             }
                         }
@@ -1821,11 +1835,11 @@ struct PlaybackScreen: View {
                     }
                 }) {
                     Text("Complete Session")
-                        .font(.headline)
+                        .font(isIPad ? .title3 : .headline)
                         .fontWeight(.semibold)
                         .foregroundColor(.primary)
                         .frame(maxWidth: .infinity)
-                        .frame(height: 56)
+                        .frame(height: isIPad ? 70 : 56)
                         .background(Color(UIColor.secondarySystemBackground))
                         .cornerRadius(12)
                         .overlay(

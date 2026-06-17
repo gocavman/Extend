@@ -102,7 +102,14 @@ private struct MuscleGroupsModuleView: View {
                                     }
                                     .buttonStyle(.plain)
 
-                                    Divider().frame(height: 18)
+                                    Divider()
+                                        .frame(width: 1)
+                                        .frame(height: 18)
+                                        .overlay(
+                                            Rectangle()
+                                                .fill(Color(UIColor.separator))
+                                                .frame(width: 1)
+                                        )
 
                                     Button(action: {
                                         UIImpactFeedbackGenerator(style: .light).impactOccurred()
