@@ -309,7 +309,7 @@ final class CloudKitSyncEngine {
             }
 
             applyPayload(data, for: key)
-            await notifyStateToReload(key: key)
+            notifyStateToReload(key: key)
 
         } catch let ckError as CKError where ckError.code == .unknownItem {
             // Record doesn't exist on server yet — seed it from local data

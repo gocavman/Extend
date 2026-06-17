@@ -252,7 +252,7 @@ private struct DashboardModuleView: View {
         let isIPad = sizeClass == .regular
         // favoriteDay: header(44) + 7 rows × 19pt each + bottom padding(12) ≈ 189
         // volumeThisWeek: header(44) + bars(107) + trend(20) + padding(16) ≈ 187
-        let tileHeight: CGFloat
+        let tileHeight: CGFloat?
         if isDoubleHeight {
             tileHeight = isIPad ? columnWidth * 1.3 + spacing : columnWidth * 2 + spacing
         } else if tile.statCardType == .favoriteDay {
@@ -262,7 +262,8 @@ private struct DashboardModuleView: View {
         } else if tile.statCardType == .waterIntake14Days {
             tileHeight = CGFloat(44 + 93 + 20 + 16) * (isIPad ? 1.6 : 1.0)
         } else if tile.statCardType == .workoutFrequency {
-            tileHeight = CGFloat(isIPad ? 130 : 110)
+            // Let it calculate height from content naturally
+            tileHeight = nil
         } else {
             tileHeight = columnWidth
         }
@@ -313,7 +314,7 @@ private struct DashboardModuleView: View {
                     waterUnit: waterState.unit,
                     waterStreak: statCard == .waterIntake14Days ? waterState.currentStreak : 0
                 )
-                .frame(width: tileWidth, height: dynamicEntryCount > 0 ? nil : tileHeight)
+                .frame(width: tileWidth, height: (dynamicEntryCount > 0 || tileHeight == nil) ? nil : tileHeight)
                 .rotationEffect(.degrees(tileRotations[tile.id] ?? 0))
                 .offset(
                     x: tileOffsets[tile.id]?.x ?? 0,
@@ -325,7 +326,7 @@ private struct DashboardModuleView: View {
                 .animation(.easeOut(duration: 2.5), value: tileOffsets[tile.id]?.y)
                 .animation(.easeOut(duration: 2.5), value: flyingTiles.contains(tile.id))
             } else {
-                interactiveTileView(tile: tile, width: tileWidth, height: tileHeight)
+                interactiveTileView(tile: tile, width: tileWidth, height: tileHeight ?? columnWidth)
             }
         }
     }
@@ -1712,10 +1713,12 @@ private struct StatCardTileView: View {
                 if statType == .workoutFrequency {
                     VStack(spacing: 6) {
                         WeekFrequencyView(days: frequencyDays)
+                            .frame(maxHeight: .infinity)
                         Text(frequencyRangeLabel)
                             .font(.system(size: iPad ? 16 : 10))
                             .foregroundColor(.gray)
                     }
+                    .frame(maxHeight: .infinity)
                 } else if statType == .oneRepMax {
                     if oneRMEntries.isEmpty {
                         VStack(spacing: 4) {
@@ -2034,6 +2037,7 @@ private struct WeekFrequencyView: View {
         HStack(spacing: iPad ? 8 : 4) {
             ForEach(days) { day in
                 VStack(spacing: iPad ? 8 : 4) {
+                    Spacer(minLength: 0)
                     Text(day.label)
                         .font(.system(size: iPad ? 14 : 9, weight: .medium))
                         .foregroundColor(.gray)
@@ -2047,14 +2051,15 @@ private struct WeekFrequencyView: View {
                             .stroke(Color.gray.opacity(0.55), lineWidth: 1.5)
                             .frame(width: iPad ? 22 : 14, height: iPad ? 22 : 14)
                     }
+                    Spacer(minLength: 0)
                 }
-                .frame(maxWidth: .infinity)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .padding(.vertical, 5)
                 .background(Color.gray.opacity(0.12))
                 .cornerRadius(iPad ? 10 : 6)
             }
         }
-        .frame(maxWidth: .infinity)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 }
 

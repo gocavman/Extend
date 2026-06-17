@@ -354,7 +354,7 @@ private struct WorkoutsModuleView: View {
                                 Text(workout.notes)
                                     .font(.caption)
                                     .foregroundColor(.secondary)
-                                    .lineLimit(2)
+                                    //.lineLimit(2)
                             }
 
                             // Info chips — full width, wrapping

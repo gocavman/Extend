@@ -870,7 +870,7 @@ private struct DayCell: View {
                 .padding(.bottom, 4)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
-            .frame(height: cellHeight)
+            .frame(height: cellHeight, alignment: .top)
             .background(backgroundColor)
             .cornerRadius(4)
             .overlay(
