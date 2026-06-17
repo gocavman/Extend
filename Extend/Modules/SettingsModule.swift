@@ -285,8 +285,8 @@ private struct SettingsModuleView: View {
                                 }
                                 Text({
                                     switch muscleGroupsState.selectedBodyOption {
-                                    case .male:   return "Option 1: Default anatomy images used. Custom overrides are supported."
-                                    case .female: return "Option 2: Default anatomy images used. Custom overrides are supported."
+                                    case .male:   return "Option 1: Default anatomy images used."
+                                    case .female: return "Option 2: Default anatomy images used."
                                     case .none:   return "None: Muscle images are hidden everywhere in the app."
                                     }
                                 }())
