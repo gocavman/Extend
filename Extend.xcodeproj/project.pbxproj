@@ -139,6 +139,7 @@
 		86F90FCB2FDBB804005A4181 /* Exceptions for "ExtendWatch Watch App" folder in "ExtendWatch Watch App" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
+				"ExtendWatch-Watch-App-Info.plist",
 				WatchComplicationBundle.swift,
 			);
 			target = 86F90F9E2FDBB67A005A4181 /* ExtendWatch Watch App */;
@@ -1123,9 +1124,11 @@
 				DEVELOPMENT_TEAM = 6CUXT7F93D;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "ExtendWatch-Watch-App-Info.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = ExtendWatch;
 				INFOPLIST_KEY_LSApplicationCategoryType = "";
 				INFOPLIST_KEY_NSHealthShareUsageDescription = "Extend uses HealthKit to show your daily steps and distance on the Watch complication.";
+				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "Extend saves your workout data to Apple Health from your Apple Watch.";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
 				INFOPLIST_KEY_WKCompanionAppBundleIdentifier = gocavman.Extend;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -1159,9 +1162,11 @@
 				DEVELOPMENT_TEAM = 6CUXT7F93D;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "ExtendWatch-Watch-App-Info.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = ExtendWatch;
 				INFOPLIST_KEY_LSApplicationCategoryType = "";
 				INFOPLIST_KEY_NSHealthShareUsageDescription = "Extend uses HealthKit to show your daily steps and distance on the Watch complication.";
+				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "Extend saves your workout data to Apple Health from your Apple Watch.";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
 				INFOPLIST_KEY_WKCompanionAppBundleIdentifier = gocavman.Extend;
 				LD_RUNPATH_SEARCH_PATHS = (

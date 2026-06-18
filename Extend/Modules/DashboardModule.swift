@@ -537,7 +537,8 @@ private struct DashboardModuleView: View {
             Image(systemName: "gearshape")
                 .font(.system(size: 18))
                 .foregroundColor(Color.primary.opacity(0.7))
-                .padding(10)
+                .frame(width: 44, height: 44)  // Increase tap target to 44x44 (Apple HIG minimum)
+                .contentShape(Rectangle())      // Make entire frame tappable
         }
         .buttonStyle(.plain)
         .padding(.trailing, 6)

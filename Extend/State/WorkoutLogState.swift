@@ -8,6 +8,8 @@
 import Foundation
 import Observation
 import HealthKit
+import StoreKit
+import UIKit
 
 private let defaults = UserDefaults(suiteName: "group.com.cavanmannenbach.extend") ?? .standard
 
@@ -42,6 +44,42 @@ public final class WorkoutLogState {
         if exportToHealthKit {
             Task {
                 await exportLogToHealthKit(log, activityTypeRaw: activityTypeRaw)
+            }
+        }
+        
+        // Request review after 10-20 completed workouts/sessions
+        requestReviewIfAppropriate()
+    }
+    
+    /// Requests an App Store review after the user has completed 10-20 workouts/sessions.
+    /// Apple limits how often the prompt appears (typically 3 times per year), so this is safe to call frequently.
+    private func requestReviewIfAppropriate() {
+        let completedCount = logs.count
+        let hasRequestedReview = defaults.bool(forKey: "hasRequestedAppReview")
+        
+        // Request review after 10-20 completed workouts (random threshold for variety)
+        let reviewThreshold = defaults.integer(forKey: "appReviewThreshold")
+        let threshold = reviewThreshold > 0 ? reviewThreshold : Int.random(in: 10...20)
+        
+        // Save threshold if not set yet
+        if reviewThreshold == 0 {
+            defaults.set(threshold, forKey: "appReviewThreshold")
+        }
+        
+        // Request review if we've hit the threshold and haven't requested before
+        if completedCount >= threshold && !hasRequestedReview {
+            // Request on main thread with the active window scene
+            DispatchQueue.main.async {
+                if let scene = UIApplication.shared.connectedScenes.first as? UIWindowScene {
+                    // Use iOS 18+ API
+                    if #available(iOS 18.0, *) {
+                        AppStore.requestReview(in: scene)
+                    } else {
+                        // Fallback for iOS 17 and earlier
+                        SKStoreReviewController.requestReview(in: scene)
+                    }
+                    defaults.set(true, forKey: "hasRequestedAppReview")
+                }
             }
         }
     }

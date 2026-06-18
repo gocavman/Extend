@@ -879,6 +879,10 @@ private struct SettingsModuleView: View {
         UserDefaults.standard.removeObject(forKey: "logShowRibbon")
         UserDefaults.standard.removeObject(forKey: "logListShowWeek")
 
+        // Reset App Store review request state
+        defaults.removeObject(forKey: "hasRequestedAppReview")
+        defaults.removeObject(forKey: "appReviewThreshold")
+
         // Reset theme to system default
         appColorScheme = "system"
 
