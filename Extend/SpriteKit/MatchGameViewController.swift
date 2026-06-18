@@ -1934,9 +1934,10 @@ class MatchGameViewController: UIViewController {
         guard let level = currentLevel else { return .zero }
         let cellWidth = gridContainer.bounds.width / CGFloat(level.gridWidth)
         let cellHeight = gridContainer.bounds.height / CGFloat(level.gridHeight)
+        // Account for grid stack offset so coordinates align with the actual visible grid
         return CGPoint(
-            x: CGFloat(col) * cellWidth + cellWidth / 2,
-            y: CGFloat(row) * cellHeight + cellHeight / 2
+            x: gridStackOffset.x + CGFloat(col) * cellWidth + cellWidth / 2,
+            y: gridStackOffset.y + CGFloat(row) * cellHeight + cellHeight / 2
         )
     }
 
@@ -3539,8 +3540,9 @@ class MatchGameViewController: UIViewController {
         
         let cellWidth = gridContainer.bounds.width / CGFloat(level.gridWidth)
         let cellHeight = gridContainer.bounds.height / CGFloat(level.gridHeight)
-        let centerX = CGFloat(column) * cellWidth + cellWidth / 2
-        let arrowCenterY = CGFloat(arrowRow) * cellHeight + cellHeight / 2
+        // Account for grid stack offset so flames align with the actual visible grid
+        let centerX = gridStackOffset.x + CGFloat(column) * cellWidth + cellWidth / 2
+        let arrowCenterY = gridStackOffset.y + CGFloat(arrowRow) * cellHeight + cellHeight / 2
         let beamWidth: CGFloat = cellWidth * 0.6
         
         // Create a glowing beam that expands upward and downward from the arrow
@@ -3698,12 +3700,13 @@ class MatchGameViewController: UIViewController {
         
         let cellWidth = gridContainer.bounds.width / CGFloat(level.gridWidth)
         let cellHeight = gridContainer.bounds.height / CGFloat(level.gridHeight)
-        let centerY = CGFloat(row) * cellHeight + cellHeight / 2
+        // Account for grid stack offset so flames align with the actual visible grid
+        let centerY = gridStackOffset.y + CGFloat(row) * cellHeight + cellHeight / 2
         let arrowCenterX: CGFloat
         if let col = arrowCol {
-            arrowCenterX = CGFloat(col) * cellWidth + cellWidth / 2
+            arrowCenterX = gridStackOffset.x + CGFloat(col) * cellWidth + cellWidth / 2
         } else {
-            arrowCenterX = gridContainer.bounds.width / 2
+            arrowCenterX = gridStackOffset.x + gridContainer.bounds.width / 2
         }
         let beamHeight: CGFloat = cellHeight * 0.6
         
@@ -4759,8 +4762,9 @@ class MatchGameViewController: UIViewController {
         
         let cellWidth = gridContainer.bounds.width / CGFloat(level.gridWidth)
         let cellHeight = gridContainer.bounds.height / CGFloat(level.gridHeight)
-        let originX = CGFloat(col) * cellWidth + cellWidth / 2
-        let originY = CGFloat(row) * cellHeight + cellHeight / 2
+        // Account for grid stack offset so lightning aligns with the actual visible grid
+        let originX = gridStackOffset.x + CGFloat(col) * cellWidth + cellWidth / 2
+        let originY = gridStackOffset.y + CGFloat(row) * cellHeight + cellHeight / 2
         
         // Main bolt along the arrow's direction (full row or full column)
         let mainStart: CGPoint
@@ -4797,7 +4801,8 @@ class MatchGameViewController: UIViewController {
             if isHorizontal {
                 // Main goes along the row; fork vertically at each column
                 for c in 0..<level.gridWidth {
-                    let forkX = CGFloat(c) * cellWidth + cellWidth / 2
+                    // Account for grid stack offset
+                    let forkX = self.gridStackOffset.x + CGFloat(c) * cellWidth + cellWidth / 2
                     let forkStart = CGPoint(x: forkX, y: originY)
                     let forkEndTop = CGPoint(x: forkX, y: -10)
                     let forkEndBottom = CGPoint(x: forkX, y: self.gridContainer.bounds.height + 10)
@@ -4827,7 +4832,8 @@ class MatchGameViewController: UIViewController {
             } else {
                 // Main goes along the column; fork horizontally at each row
                 for r in 0..<level.gridHeight {
-                    let forkY = CGFloat(r) * cellHeight + cellHeight / 2
+                    // Account for grid stack offset
+                    let forkY = self.gridStackOffset.y + CGFloat(r) * cellHeight + cellHeight / 2
                     let forkStart = CGPoint(x: originX, y: forkY)
                     let forkEndLeft = CGPoint(x: -10, y: forkY)
                     let forkEndRight = CGPoint(x: self.gridContainer.bounds.width + 10, y: forkY)
