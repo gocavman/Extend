@@ -242,6 +242,7 @@ private struct DashboardModuleView: View {
         let isDoubleHeight = tile.tileType == .statCard
             && tile.statCardType == .muscleGroupDistribution
         // Dynamic-height entries for PR and 1RM tiles
+        // PERFORMANCE FIX: Only calculate these for the specific tiles that need them
         let prEntries: [(name: String, value: Double)] = tile.statCardType == .personalRecord ? personalRecordEntries(for: tile) : []
         let rmEntries: [(name: String, value: Double)] = tile.statCardType == .oneRepMax ? oneRMEntries(for: tile) : []
         // PR, 1RM, and todaysPlan tiles use content-driven height (nil) so layout flows naturally
@@ -290,14 +291,15 @@ private struct DashboardModuleView: View {
                 .animation(.easeOut(duration: 2.5), value: tileOffsets[tile.id]?.y)
                 .animation(.easeOut(duration: 2.5), value: flyingTiles.contains(tile.id))
             } else if tile.tileType == .statCard, let statCard = tile.statCardType {
+                // PERFORMANCE FIX: Only calculate data for the specific stat type this tile needs
                 StatCardTileView(
                     title: tile.title,
                     icon: tile.icon,
                     value: statValue(for: statCard),
                     statType: statCard,
-                    frequencyDays: workoutFrequencyDays(),
-                    frequencyRangeLabel: workoutFrequencyRangeLabel(),
-                    muscleSegments: muscleDistributionSegments(),
+                    frequencyDays: statCard == .workoutFrequency ? workoutFrequencyDays() : [],
+                    frequencyRangeLabel: statCard == .workoutFrequency ? workoutFrequencyRangeLabel() : "",
+                    muscleSegments: statCard == .muscleGroupDistribution ? muscleDistributionSegments() : [],
                     accentPlacement: tile.accentPlacement,
                     accentColor: tile.accentColor,
                     tileTint: tile.tileTintColor,
@@ -2300,6 +2302,11 @@ private struct DayOfWeekBarChartView: View {
         let iPad = sizeClass == .regular
         let sorted = days.sorted { $0.count > $1.count }
         let maxCount = sorted.map { $0.count }.max() ?? 1
+        // Calculate the width needed for the largest count value
+        let maxCountWidth: CGFloat = {
+            let maxDigits = String(maxCount).count
+            return iPad ? CGFloat(max(28, maxDigits * 10)) : CGFloat(max(22, maxDigits * 7))
+        }()
 
         VStack(alignment: .leading, spacing: iPad ? 10 : 5) {
             ForEach(Array(sorted.enumerated()), id: \.offset) { idx, day in
@@ -2323,7 +2330,7 @@ private struct DayOfWeekBarChartView: View {
                     Text("\(day.count)")
                         .font(.system(size: iPad ? 15 : 9, weight: .bold))
                         .foregroundColor(idx == 0 ? .primary : .gray)
-                        .frame(width: iPad ? 28 : 18, alignment: .trailing)
+                        .frame(width: maxCountWidth, alignment: .trailing)
                 }
                 .frame(height: iPad ? 24 : 14)
             }

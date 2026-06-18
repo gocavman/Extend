@@ -533,6 +533,85 @@ private struct CalendarView: View {
         calendar.isDate(date, equalTo: currentMonth, toGranularity: .month)
     }
     
+    // PERFORMANCE FIX: Pre-compute all day data in one pass instead of filtering repeatedly per cell
+    private struct DayData {
+        let logs: [WorkoutLog]
+        let journalEntries: [JournalEntry]
+        let planName: String?
+        let waterOz: Double
+    }
+    
+    private func computeDayData(for days: [Date?]) -> [Date: DayData] {
+        var result: [Date: DayData] = [:]
+        
+        // Pre-compute startOfDay for all dates to avoid repeated calendar operations
+        let validDates = days.compactMap { $0 }
+        let dayStarts = Dictionary(uniqueKeysWithValues: validDates.map { date in
+            (date, calendar.startOfDay(for: date))
+        })
+        
+        // Group logs by day (single pass through logs)
+        var logsByDay: [Date: [WorkoutLog]] = [:]
+        if showWorkouts {
+            for log in logState.logs {
+                let dayStart = calendar.startOfDay(for: log.completedAt)
+                logsByDay[dayStart, default: []].append(log)
+            }
+        }
+        
+        // Group journals by day (single pass through journals)
+        var journalsByDay: [Date: [JournalEntry]] = [:]
+        if showJournals {
+            for entry in logState.journalEntries {
+                let dayStart = calendar.startOfDay(for: entry.date)
+                journalsByDay[dayStart, default: []].append(entry)
+            }
+        }
+        
+        // Pre-fetch water data (single pass through water logs)
+        var waterByDay: [Date: Double] = [:]
+        if showWater {
+            for date in validDates {
+                let dayStart = calendar.startOfDay(for: date)
+                waterByDay[dayStart] = WaterState.shared.totalOzForDate(date)
+            }
+        }
+        
+        // Build result dictionary
+        for date in validDates {
+            guard let dayStart = dayStarts[date] else { continue }
+            
+            let logs = logsByDay[dayStart] ?? []
+            let journals = journalsByDay[dayStart] ?? []
+            
+            // Compute plan name if needed
+            let planName: String? = {
+                guard showPlans, let pd = planState.planDay(for: date), let plan = planState.activePlan else { return nil }
+                let totalItems = pd.workoutIDs.count + pd.exerciseIDs.count
+                if totalItems == 1 {
+                    if let wid = pd.workoutIDs.first,
+                       let name = workoutsState.workouts.first(where: { $0.id == wid })?.name {
+                        return name
+                    }
+                    if let eid = pd.exerciseIDs.first,
+                       let name = exercisesState.exercises.first(where: { $0.id == eid })?.name {
+                        return name
+                    }
+                }
+                return plan.name
+            }()
+            
+            result[date] = DayData(
+                logs: logs.sorted { $0.completedAt > $1.completedAt },
+                journalEntries: journals.sorted { $0.date > $1.date },
+                planName: planName,
+                waterOz: waterByDay[dayStart] ?? 0
+            )
+        }
+        
+        return result
+    }
+    
     @Environment(\.horizontalSizeClass) private var sizeClass
 
     var body: some View {
@@ -549,34 +628,23 @@ private struct CalendarView: View {
             }
 
             // Days grid
+            // PERFORMANCE FIX: Pre-compute data for all visible days to avoid repeated filtering
+            let dayData = computeDayData(for: days)
+            
             LazyVGrid(columns: columns, spacing: 2) {
                 ForEach(days.indices, id: \.self) { index in
-                    if let date = days[index] {
+                    if let date = days[index], let data = dayData[date] {
                         DayCell(
                             date: date,
                             isSelected: hasSelectedDate && calendar.isDate(date, inSameDayAs: selectedDate),
                             isToday: calendar.isDateInToday(date),
                             isCurrentMonth: isCurrentMonth(date),
-                            workoutCount: showWorkouts ? logState.logsForDate(date).count : 0,
-                            logs: showWorkouts ? logState.logsForDate(date) : [],
-                            journalEntries: showJournals ? logState.journalEntriesForDate(date) : [],
-                            planName: {
-                                guard showPlans, let pd = planState.planDay(for: date), let plan = planState.activePlan else { return nil }
-                                let totalItems = pd.workoutIDs.count + pd.exerciseIDs.count
-                                if totalItems == 1 {
-                                    if let wid = pd.workoutIDs.first,
-                                       let name = workoutsState.workouts.first(where: { $0.id == wid })?.name {
-                                        return name
-                                    }
-                                    if let eid = pd.exerciseIDs.first,
-                                       let name = exercisesState.exercises.first(where: { $0.id == eid })?.name {
-                                        return name
-                                    }
-                                }
-                                return plan.name
-                            }(),
+                            workoutCount: showWorkouts ? data.logs.count : 0,
+                            logs: showWorkouts ? data.logs : [],
+                            journalEntries: showJournals ? data.journalEntries : [],
+                            planName: data.planName,
                             showWater: showWater,
-                            waterOz: showWater ? WaterState.shared.totalOzForDate(date) : 0,
+                            waterOz: showWater ? data.waterOz : 0,
                             cellHeight: cellHeight
                         ) {
                             selectedDate = date
