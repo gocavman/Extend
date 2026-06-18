@@ -160,7 +160,7 @@ struct WaterWidgetView: View {
     // MARK: Small
 
     private var smallView: some View {
-        VStack(spacing: 8) {
+        VStack(spacing: 6) {
             // Header
             HStack(spacing: 4) {
                 Image(systemName: "drop.fill")
@@ -182,14 +182,14 @@ struct WaterWidgetView: View {
 
                 VStack(spacing: 1) {
                     Text(percentText)
-                        .font(.system(size: 11, weight: .bold).monospacedDigit())
+                        .font(.system(size: 13, weight: .bold).monospacedDigit())
                         .foregroundColor(waterColor)
                     Text("\(displayAmount(entry.todayOz)) \(entry.unit)")
-                        .font(.system(size: 10, weight: .medium).monospacedDigit())
+                        .font(.system(size: 11, weight: .medium).monospacedDigit())
                         .foregroundColor(.primary)
                 }
             }
-            .frame(width: 60, height: 60)
+            .frame(width: 70, height: 70)
 
             // Quick-add buttons
             if #available(iOS 17.0, *) {
@@ -225,7 +225,7 @@ struct WaterWidgetView: View {
                     .foregroundColor(.secondary)
             }
         }
-        .padding(12)
+        .padding(8)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .containerBackground(.background, for: .widget)
     }

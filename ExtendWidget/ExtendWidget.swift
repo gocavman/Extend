@@ -94,8 +94,6 @@ struct TodaysPlanWidgetView: View {
                     .lineLimit(1)
             }
 
-            Spacer(minLength: 4)
-
             if entry.snapshot.isRestDay {
                 Text("Rest day")
                     .font(.caption2)
