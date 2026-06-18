@@ -1124,7 +1124,7 @@
 				DEVELOPMENT_TEAM = 6CUXT7F93D;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_FILE = "ExtendWatch-Watch-App-Info.plist";
+				INFOPLIST_FILE = "";
 				INFOPLIST_KEY_CFBundleDisplayName = ExtendWatch;
 				INFOPLIST_KEY_LSApplicationCategoryType = "";
 				INFOPLIST_KEY_NSHealthShareUsageDescription = "Extend uses HealthKit to show your daily steps and distance on the Watch complication.";
@@ -1162,7 +1162,7 @@
 				DEVELOPMENT_TEAM = 6CUXT7F93D;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_FILE = "ExtendWatch-Watch-App-Info.plist";
+				INFOPLIST_FILE = "";
 				INFOPLIST_KEY_CFBundleDisplayName = ExtendWatch;
 				INFOPLIST_KEY_LSApplicationCategoryType = "";
 				INFOPLIST_KEY_NSHealthShareUsageDescription = "Extend uses HealthKit to show your daily steps and distance on the Watch complication.";

@@ -55,8 +55,12 @@ public func writeWidgetSnapshot(
     if let encoded = try? JSONEncoder().encode(snapshot) {
         defaults.set(encoded, forKey: snapshotKey)
     }
-    // Tell WidgetKit to reload all timelines
+    // Tell WidgetKit to reload all timelines (iOS widgets + watchOS complications)
     WidgetCenter.shared.reloadAllTimelines()
+    #if os(iOS)
+    // Force the Watch to update by sending a WatchConnectivity message
+    WatchConnectivityReceiver.shared.sendComplicationRefresh()
+    #endif
 }
 
 // MARK: - Reading (widget calls this)
@@ -218,7 +222,12 @@ public func writeWatchComplicationSettings(_ settings: WatchComplicationUserSett
     if let encoded = try? JSONEncoder().encode(settings) {
         defaults.set(encoded, forKey: complicationSettingsKey)
     }
+    // Reload both iOS widgets AND watchOS complications
     WidgetCenter.shared.reloadAllTimelines()
+    #if os(iOS)
+    // Force the Watch to update by sending a WatchConnectivity message
+    WatchConnectivityReceiver.shared.sendComplicationRefresh()
+    #endif
 }
 
 public func readWatchComplicationSettings() -> WatchComplicationUserSettings {

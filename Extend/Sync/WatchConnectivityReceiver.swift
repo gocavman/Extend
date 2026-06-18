@@ -45,6 +45,18 @@ final class WatchConnectivityReceiver: NSObject {
             "multiday_data": data
         ])
     }
+
+    /// Force a complication refresh on the watch. Call this after updating
+    /// complication settings or when plan data changes.
+    func sendComplicationRefresh() {
+        guard WCSession.isSupported(),
+              WCSession.default.activationState == .activated,
+              WCSession.default.isPaired,
+              WCSession.default.isWatchAppInstalled else { return }
+        WCSession.default.transferUserInfo([
+            "type": "reload_complications"
+        ])
+    }
 }
 
 extension WatchConnectivityReceiver: WCSessionDelegate {

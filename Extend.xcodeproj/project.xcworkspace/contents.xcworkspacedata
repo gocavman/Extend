@@ -4,8 +4,10 @@
    <FileRef
       location = "self:">
    </FileRef>
-   <Group
-      location = "group:ExtendWidget"
-      name = "ExtendWidget">
-   </Group>
+   <FileRef
+      location = "group:ExtendWatch Watch AppExtendWatch-Watch-App-Info.plist">
+   </FileRef>
+   <FileRef
+      location = "group:ExtendWatch Watch AppExtendWatch-Watch-App-Info 2.plist">
+   </FileRef>
 </Workspace>

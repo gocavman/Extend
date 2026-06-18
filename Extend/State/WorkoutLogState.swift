@@ -90,6 +90,15 @@ public final class WorkoutLogState {
     public func exportPendingLogsToHealthKit() async {
         guard HealthKitState.shared.exportStrengthWorkouts else { return }
         guard HealthKitService.shared.isAvailable else { return }
+        
+        // Request authorization first
+        do {
+            try await HealthKitService.shared.requestAuthorization()
+        } catch {
+            print("❌ HealthKit authorization failed: \(error.localizedDescription)")
+            return
+        }
+        
         let pending = logs.filter { $0.healthKitUUID == nil }
         for log in pending {
             await exportLogToHealthKit(log, activityTypeRaw: log.healthKitActivityTypeRaw)
@@ -109,6 +118,9 @@ public final class WorkoutLogState {
         let activityType = HKWorkoutActivityTypeHelper.hkType(from: activityTypeRaw)
 
         do {
+            // Request authorization first (won't prompt again if already granted)
+            try await HealthKitService.shared.requestAuthorization()
+            
             if let hkUUID = try await HealthKitService.shared.exportStrengthWorkout(
                 startDate: startDate,
                 endDate: log.completedAt,
@@ -122,7 +134,8 @@ public final class WorkoutLogState {
                 }
             }
         } catch {
-            // Non-fatal: HealthKit export failure should not surface to the user
+            // Log the error for debugging (non-fatal: HealthKit export failure should not surface to the user)
+            print("❌ HealthKit export failed: \(error.localizedDescription)")
         }
     }
     

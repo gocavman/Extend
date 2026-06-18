@@ -66,6 +66,9 @@ extension WatchConnectivityBridge: WCSessionDelegate {
             DispatchQueue.main.async {
                 NotificationCenter.default.post(name: .watchPlanDataUpdated, object: nil)
             }
+        case "reload_complications":
+            // Force all watch complications to reload their timelines
+            WidgetCenter.shared.reloadAllTimelines()
         default:
             break
         }
