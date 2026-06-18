@@ -11,6 +11,7 @@ import SwiftUI
 
 struct WatchStepsView: View {
 
+    @Environment(\.scenePhase) private var scenePhase
     @State private var steps: Double = 0
     @State private var distanceKm: Double = 0
     @State private var settings: WatchStepsSettings = readWatchStepsSettings()
@@ -54,6 +55,12 @@ struct WatchStepsView: View {
         .navigationBarTitleDisplayMode(.inline)
         .onAppear { loadData(); startTimer() }
         .onDisappear { stopTimer() }
+        .onChange(of: scenePhase) { _, phase in
+            // .onAppear doesn't fire when the watch app returns from background,
+            // so HK values would otherwise stay frozen at last-foreground state
+            // (a yesterday-vs-today rollover problem).
+            if phase == .active { loadData() }
+        }
     }
 
     // MARK: - Ring column

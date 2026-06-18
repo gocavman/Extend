@@ -47,27 +47,47 @@ extension WatchConnectivityBridge: WCSessionDelegate {
 
     // Receive payloads pushed from the iPhone
     func session(_ session: WCSession, didReceiveUserInfo userInfo: [String: Any]) {
-        guard let type = userInfo["type"] as? String else { return }
+        handlePayload(userInfo)
+    }
+
+    // Receive the latest-state context pushed via updateApplicationContext.
+    func session(_ session: WCSession, didReceiveApplicationContext applicationContext: [String: Any]) {
+        handlePayload(applicationContext)
+    }
+
+    private func handlePayload(_ payload: [String: Any]) {
+        guard let type = payload["type"] as? String else { return }
         let defaults = UserDefaults(suiteName: appGroupID) ?? .standard
         switch type {
         case "water_update":
-            guard let todayOz = userInfo["today_oz"] as? Double,
-                  let goalOz  = userInfo["goal_oz"]   as? Double else { return }
+            guard let todayOz = payload["today_oz"] as? Double,
+                  let goalOz  = payload["goal_oz"]   as? Double else { return }
             defaults.set(todayOz, forKey: "water_today_oz")
+            // Stamp the day so readers can detect a stale value after midnight rollover.
+            let stampedDate = (payload["date"] as? Double).map { Date(timeIntervalSince1970: $0) }
+                ?? Calendar.current.startOfDay(for: Date())
+            defaults.set(stampedDate, forKey: "water_today_date")
             defaults.set(goalOz,  forKey: "water_goal_oz")
-            WidgetCenter.shared.reloadTimelines(ofKind: "ExtendWatch.Water")
+            WidgetCenter.shared.reloadAllTimelines()
             DispatchQueue.main.async {
                 NotificationCenter.default.post(name: .watchWaterDataUpdated, object: nil)
             }
         case "plan_update":
-            guard let data = userInfo["multiday_data"] as? Data else { return }
+            guard let data = payload["multiday_data"] as? Data else { return }
             defaults.set(data, forKey: "widget_plan_multiday")
-            WidgetCenter.shared.reloadTimelines(ofKind: "ExtendWatch.PlanRing")
+            WidgetCenter.shared.reloadAllTimelines()
             DispatchQueue.main.async {
                 NotificationCenter.default.post(name: .watchPlanDataUpdated, object: nil)
             }
+        case "complication_settings_update":
+            if let data = payload["settings_data"] as? Data {
+                defaults.set(data, forKey: "watch_complication_settings")
+            }
+            if let stepsData = payload["steps_settings_data"] as? Data {
+                defaults.set(stepsData, forKey: "watch_steps_settings")
+            }
+            WidgetCenter.shared.reloadAllTimelines()
         case "reload_complications":
-            // Force all watch complications to reload their timelines
             WidgetCenter.shared.reloadAllTimelines()
         default:
             break

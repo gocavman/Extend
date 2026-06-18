@@ -132,6 +132,9 @@ struct ExtendApp: App {
                 }
                 .onReceive(NotificationCenter.default.publisher(for: UIApplication.willEnterForegroundNotification)) { _ in
                     waterState.importPendingWidgetLogs()
+                    // Always refresh: after midnight rollover the cached widget total
+                    // is yesterday's value until we re-stamp it for "today".
+                    waterState.persistWidgetData()
                     trainingPlanState.refreshWidgetSnapshot()
                 }
                 .task {
@@ -141,8 +144,19 @@ struct ExtendApp: App {
                     // Import any water logs queued via widget quick-add buttons
                     waterState.importPendingWidgetLogs()
 
+                    // Force a fresh widget stamp on launch so day-rollover wipes
+                    // yesterday's cached value even when no logs are pending.
+                    waterState.persistWidgetData()
+
                     // Refresh widget snapshot so Today's Plan widget has current data on launch
                     trainingPlanState.refreshWidgetSnapshot()
+
+                    // Seed the watch with the latest complication/steps settings.
+                    // The App Group is per-device, so the watch needs an explicit copy.
+                    WatchConnectivityReceiver.shared.sendComplicationSettings(
+                        complicationSettings: readWatchComplicationSettings(),
+                        stepsSettings: readWatchStepsSettings()
+                    )
 
                     // Start CloudKit sync (registers subscriptions, pulls latest data)
                     await CloudKitSyncEngine.shared.start()

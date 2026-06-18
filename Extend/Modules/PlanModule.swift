@@ -440,7 +440,6 @@ private struct DayCard: View {
                                 Text(planDay.note)
                                     .font(.caption)
                                     .foregroundColor(.secondary)
-                                    .lineLimit(2)
                             }
                         }
                     }
@@ -615,7 +614,15 @@ private struct WeekSection: View {
                                         .font(.caption2).foregroundColor(.primary).lineLimit(2)
                                 }
                                 if !day.note.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                                    Text(day.note).font(.caption2).foregroundColor(.secondary).lineLimit(1)
+                                    HStack(spacing: 4) {
+                                        Image(systemName: "note.text")
+                                            .font(.caption2)
+                                            .foregroundColor(.secondary)
+                                        Text(day.note)
+                                            .font(.caption2)
+                                            .foregroundColor(.secondary)
+                                            .lineLimit(1)
+                                    }
                                 }
                             }
                         }
@@ -812,7 +819,7 @@ struct DayEditorSheet: View {
                 }
 
                 // Note section
-                Section("Note") {
+                Section("Notes") {
                     ZStack(alignment: .topLeading) {
                         TextEditor(text: $editedDay.note)
                             .font(.subheadline)
@@ -1278,6 +1285,7 @@ public struct TodaysPlanModule: AppModule {
 }
 
 struct TodaysPlanModuleView: View {
+    @Environment(\.dismiss) private var dismiss
     @Environment(TrainingPlanState.self) private var planState
     @Environment(WorkoutsState.self) private var workoutsState
     @Environment(ExercisesState.self) private var exercisesState
@@ -1286,6 +1294,9 @@ struct TodaysPlanModuleView: View {
     @Environment(ModuleState.self) private var moduleState
     @AppStorage("appColorScheme") private var appColorScheme: String = "system"
     private var preferredScheme: ColorScheme? { appColorScheme == "dark" ? .dark : appColorScheme == "light" ? .light : nil }
+
+    // Optional parameter to show "Done" button when presented as a sheet
+    var showDoneButton: Bool = false
 
     @State private var selectedDate: Date = Calendar.current.startOfDay(for: Date())
     @State private var startingWorkout: Workout? = nil
@@ -1319,9 +1330,14 @@ struct TodaysPlanModuleView: View {
             VStack(spacing: 0) {
                 // Custom header row (replaces NavigationStack title + toolbar)
                 HStack {
+                    if showDoneButton {
+                        Button("Done") { dismiss() }
+                            .foregroundColor(.primary)
+                        Spacer()
+                    }
                     Text("Today's Plan")
-                        .font(.title2)
-                        .fontWeight(.bold)
+                        .font(showDoneButton ? .headline : .title2)
+                        .fontWeight(showDoneButton ? .regular : .bold)
                     Spacer()
                     Button {
                         UIImpactFeedbackGenerator(style: .light).impactOccurred()
@@ -1359,6 +1375,10 @@ struct TodaysPlanModuleView: View {
                 .padding(.bottom, 8)
 
                 if let pd = planDay, !pd.isEmpty {
+                    let _ = print("DEBUG: planDay exists, isEmpty=\(pd.isEmpty)")
+                    let _ = print("DEBUG: note='\(pd.note)'")
+                    let _ = print("DEBUG: note trimmed='\(pd.note.trimmingCharacters(in: .whitespacesAndNewlines))'")
+                    let _ = print("DEBUG: note isEmpty after trim=\(pd.note.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)")
                     List {
                         let workouts = pd.workoutIDs.compactMap { id in workoutsState.workouts.first { $0.id == id } }
                         if !workouts.isEmpty {
@@ -1411,6 +1431,9 @@ struct TodaysPlanModuleView: View {
                             Section("Voice Activities") {
                                 ForEach(configs) { c in
                                     Button {
+                                        if showDoneButton {
+                                            dismiss()
+                                        }
                                         voiceTrainerState.pendingLaunchID = c.id
                                         moduleState.selectModule(ModuleIDs.voiceTrainer)
                                     } label: {
@@ -1433,6 +1456,9 @@ struct TodaysPlanModuleView: View {
                             Section("Timers") {
                                 ForEach(timerConfigs) { c in
                                     Button {
+                                        if showDoneButton {
+                                            dismiss()
+                                        }
                                         timerState.pendingLaunchID = c.id
                                         moduleState.selectModule(ModuleIDs.timer)
                                     } label: {
@@ -1447,6 +1473,15 @@ struct TodaysPlanModuleView: View {
                                         }
                                     }
                                 }
+                            }
+                        }
+
+                        // Notes section
+                        if !pd.note.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                            Section("Notes") {
+                                Text(pd.note)
+                                    .font(.body)
+                                    .foregroundColor(.primary)
                             }
                         }
                     }

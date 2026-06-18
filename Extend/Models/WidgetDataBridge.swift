@@ -131,6 +131,13 @@ public func writeWatchStepsSettings(_ settings: WatchStepsSettings) {
         defaults.set(encoded, forKey: stepsSettingsKey)
     }
     WidgetCenter.shared.reloadAllTimelines()
+    #if os(iOS)
+    // The App Group is per-device, so the watch needs an explicit copy.
+    WatchConnectivityReceiver.shared.sendComplicationSettings(
+        complicationSettings: readWatchComplicationSettings(),
+        stepsSettings: settings
+    )
+    #endif
 }
 
 public func readWatchStepsSettings() -> WatchStepsSettings {
@@ -222,11 +229,14 @@ public func writeWatchComplicationSettings(_ settings: WatchComplicationUserSett
     if let encoded = try? JSONEncoder().encode(settings) {
         defaults.set(encoded, forKey: complicationSettingsKey)
     }
-    // Reload both iOS widgets AND watchOS complications
     WidgetCenter.shared.reloadAllTimelines()
     #if os(iOS)
-    // Force the Watch to update by sending a WatchConnectivity message
-    WatchConnectivityReceiver.shared.sendComplicationRefresh()
+    // The App Group is per-device, so the watch needs an explicit copy of the
+    // appearance settings (the previous refresh-only ping did nothing).
+    WatchConnectivityReceiver.shared.sendComplicationSettings(
+        complicationSettings: settings,
+        stepsSettings: readWatchStepsSettings()
+    )
     #endif
 }
 
@@ -242,8 +252,11 @@ public func readWatchComplicationSettings() -> WatchComplicationUserSettings {
 // MARK: - Water data (widget + watch reads)
 
 /// Reads today's total water intake in oz from the App Group container.
+/// Returns 0 if the stored value is stale (last written before today's local midnight).
 public func readWaterTodayOz() -> Double {
     let defaults = UserDefaults(suiteName: appGroupID) ?? .standard
+    guard let stored = defaults.object(forKey: "water_today_date") as? Date,
+          Calendar.current.isDate(stored, inSameDayAs: Date()) else { return 0 }
     return defaults.double(forKey: waterTodayOzKey)
 }
 

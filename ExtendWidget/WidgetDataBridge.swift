@@ -49,6 +49,8 @@ public func readWidgetSnapshot() -> WidgetPlanSnapshot {
 
 public func readWaterTodayOz() -> Double {
     let defaults = UserDefaults(suiteName: appGroupID) ?? .standard
+    guard let stored = defaults.object(forKey: "water_today_date") as? Date,
+          Calendar.current.isDate(stored, inSameDayAs: Date()) else { return 0 }
     return defaults.double(forKey: waterTodayOzKey)
 }
 

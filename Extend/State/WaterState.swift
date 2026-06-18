@@ -198,12 +198,13 @@ public final class WaterState {
 
     /// Write today's totals + 7-day history to shared UserDefaults so the widget/watch can read them.
     public func persistWidgetData() {
-        defaults.set(todayOz, forKey: "water_today_oz")
-        defaults.set(dailyGoalOz, forKey: "water_goal_oz")
-
-        // Write 7-day totals (day 0 = 6 days ago, day 6 = today) for the bar chart widget.
         let cal = Calendar.current
         let today = cal.startOfDay(for: Date())
+        defaults.set(todayOz, forKey: "water_today_oz")
+        // Stamp the day so readers can detect a stale value after midnight rollover.
+        defaults.set(today, forKey: "water_today_date")
+        defaults.set(dailyGoalOz, forKey: "water_goal_oz")
+        defaults.set(unit.rawValue, forKey: "water_unit")
         var weekTotals: [[String: Double]] = []
         for daysAgo in stride(from: 6, through: 0, by: -1) {
             if let day = cal.date(byAdding: .day, value: -daysAgo, to: today) {

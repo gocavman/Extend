@@ -11,6 +11,7 @@ import WidgetKit
 
 struct WatchWaterView: View {
 
+    @Environment(\.scenePhase) private var scenePhase
     @State private var todayOz: Double = 0
     @State private var goalOz: Double = 64
     @State private var unit: String = "oz"
@@ -111,6 +112,11 @@ struct WatchWaterView: View {
         .padding(.top, 4)
         .onAppear { loadData(); startTimer() }
         .onDisappear { stopTimer() }
+        .onChange(of: scenePhase) { _, phase in
+            // Refresh on foreground so the day rolls over even when the watch
+            // app stayed alive in background across midnight.
+            if phase == .active { loadData() }
+        }
         .onReceive(NotificationCenter.default.publisher(for: .watchWaterDataUpdated)) { _ in
             loadData()
         }
@@ -205,8 +211,10 @@ struct WatchWaterView: View {
         let defaults = UserDefaults(suiteName: appGroupID) ?? .standard
         todayOz += oz
         defaults.set(todayOz, forKey: "water_today_oz")
+        // Stamp the day so readers know this value is for today.
+        defaults.set(Calendar.current.startOfDay(for: Date()), forKey: "water_today_date")
         appendPendingLog(oz: oz, defaults: defaults)
-        WidgetCenter.shared.reloadTimelines(ofKind: "ExtendWatch.Water")
+        WidgetCenter.shared.reloadAllTimelines()
         WatchConnectivityBridge.shared.sendWaterLog(oz: oz, date: Date())
     }
 
@@ -226,12 +234,13 @@ struct WatchWaterView: View {
 
     private func loadData() {
         isLoading = true
-        let defaults = UserDefaults(suiteName: appGroupID) ?? .standard
         goalOz = readWaterGoalOz()
         unit   = readWaterUnit()
         Task { @MainActor in
             let hkOz = await WatchHealthKit.shared.todayWaterOz()
-            todayOz = hkOz > 0 ? hkOz : (defaults.double(forKey: "water_today_oz"))
+            // readWaterTodayOz already returns 0 if the cached value is stale,
+            // so a stale carry-over from yesterday no longer leaks through.
+            todayOz = hkOz > 0 ? hkOz : readWaterTodayOz()
             isLoading = false
         }
     }

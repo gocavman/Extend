@@ -203,10 +203,10 @@ public final class HealthKitService {
         (durationSeconds / 60.0) * 5.0
     }
 
-    // MARK: - Import: Cardio Workouts
+    // MARK: - Import: Workouts
 
-    /// Fetch cardio workouts from Apple Health since a given date.
-    /// Returns workouts matching any of the enabled activity types.
+    /// Fetch workouts from Apple Health since a given date,
+    /// filtered to the user's enabled activity types.
     public func fetchCardioWorkouts(
         since startDate: Date,
         activityTypes: Set<HKWorkoutActivityType>
@@ -251,14 +251,13 @@ public final class HealthKitService {
     }
 
     private func displayName(for activityType: HKWorkoutActivityType) -> String {
-        switch activityType {
-        case .running:               return "Running"
-        case .cycling:               return "Cycling"
-        case .rowing:                return "Rowing"
-        case .walking:               return "Walking"
-        case .hiking:                return "Hiking"
-        default:                     return "Cardio Workout"
+        // Reuse the picker's label table so every supported HK activity type
+        // (Swimming, Mind and Body, Golf, …) imports under its proper name
+        // instead of falling through to a generic "Cardio Workout".
+        if let label = HKWorkoutActivityTypeHelper.label(for: activityType.rawValue) {
+            return label
         }
+        return "Workout"
     }
 
     // MARK: - Activity type helpers

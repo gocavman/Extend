@@ -106,10 +106,29 @@ struct WaterWidgetProvider: TimelineProvider {
     }
 
     func getTimeline(in context: Context, completion: @escaping (Timeline<WaterEntry>) -> Void) {
+        let now = Date()
+        let cal = Calendar.current
         let entry = makeEntry()
-        // Reload every hour; main app also forces a reload when water is logged
-        let nextUpdate = Calendar.current.date(byAdding: .hour, value: 1, to: Date()) ?? Date()
-        let timeline = Timeline(entries: [entry], policy: .after(nextUpdate))
+
+        // Insert a midnight entry that zeroes today's total so the widget rolls
+        // over correctly even if the app isn't opened before midnight.
+        var entries: [WaterEntry] = [entry]
+        if let nextMidnight = cal.nextDate(
+            after: now,
+            matching: DateComponents(hour: 0, minute: 0, second: 0),
+            matchingPolicy: .nextTime
+        ) {
+            entries.append(WaterEntry(
+                date: nextMidnight,
+                todayOz: 0,
+                goalOz: entry.goalOz,
+                unit: entry.unit,
+                weekTotals: entry.weekTotals
+            ))
+        }
+
+        let nextUpdate = cal.date(byAdding: .hour, value: 1, to: now) ?? now
+        let timeline = Timeline(entries: entries, policy: .after(nextUpdate))
         completion(timeline)
     }
 

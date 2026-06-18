@@ -119,28 +119,13 @@ private struct DashboardModuleView: View {
                 .environment(WorkoutLogState.shared)
         }
         .fullScreenCover(isPresented: $showingPlanLauncher) {
-            PlanDayLauncherSheet(
-                onLaunchWorkout: { workout in
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
-                        quickStartWorkout = workout
-                    }
-                },
-                onLaunchExercise: { exercise in
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
-                        quickStartWorkout = Workout(
-                            name: "\(exercise.name)",
-                            notes: "",
-                            items: [.exercise(WorkoutExercise(exerciseID: exercise.id))]
-                        )
-                    }
-                }
-            )
-            .environment(planState)
-            .environment(workoutsState)
-            .environment(exercisesState)
-            .environment(voiceTrainerState)
-            .environment(timerState)
-            .environment(state)
+            TodaysPlanModuleView(showDoneButton: true)
+                .environment(planState)
+                .environment(workoutsState)
+                .environment(exercisesState)
+                .environment(voiceTrainerState)
+                .environment(timerState)
+                .environment(state)
         }
         .fullScreenCover(isPresented: $showingSettings) {
             SettingsModule().sheetView
@@ -2718,6 +2703,19 @@ private struct TodaysPlanTileView: View {
                                         .font(.system(size: iPad ? 16 : 10))
                                         .foregroundColor(.green)
                                 }
+                            }
+                        }
+                        
+                        // Display note if present
+                        if !pd.note.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                            HStack(spacing: 4) {
+                                Image(systemName: "note.text")
+                                    .font(.system(size: iPad ? 16 : 10))
+                                    .foregroundColor(.secondary)
+                                Text(pd.note)
+                                    .font(.system(size: iPad ? 16 : 10))
+                                    .foregroundColor(.secondary)
+                                    //.lineLimit(2)
                             }
                         }
                     } else {

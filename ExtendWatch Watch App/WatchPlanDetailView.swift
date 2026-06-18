@@ -10,6 +10,7 @@ import SwiftUI
 
 struct WatchPlanDetailView: View {
 
+    @Environment(\.scenePhase) private var scenePhase
     // Offset from today: 0 = today, -1 = yesterday, +1 = tomorrow, etc.
     @State private var dayOffset: Int = 0
     @State private var refreshToken: UUID = UUID()
@@ -107,6 +108,12 @@ struct WatchPlanDetailView: View {
         }
         .onReceive(NotificationCenter.default.publisher(for: .watchPlanDataUpdated)) { _ in
             refreshToken = UUID()
+        }
+        .onChange(of: scenePhase) { _, phase in
+            // Re-read the multi-day snapshot when the app returns to foreground
+            // so a midnight rollover (or a sync that arrived while backgrounded)
+            // is reflected immediately.
+            if phase == .active { refreshToken = UUID() }
         }
     }
 

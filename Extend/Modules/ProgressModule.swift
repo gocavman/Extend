@@ -346,7 +346,7 @@ private struct ProgressModuleView: View {
 
                                     // Plan card — shown when this day has a planned workout
                                     if let pd = dayPlanDay, !pd.isEmpty {
-                                        PlanDayCard(planDay: pd, planName: planState.activePlan?.name ?? "")
+                                        PlanDayCard(planDay: pd, planName: planState.activePlan?.name ?? "", date: selectedDate)
                                             .padding(.horizontal, 16)
                                     }
 
@@ -386,7 +386,7 @@ private struct ProgressModuleView: View {
                                 VStack(spacing: 12) {
                                     // Plan card for this day (if any)
                                     if let pd = dayPlanDay, !pd.isEmpty {
-                                        PlanDayCard(planDay: pd, planName: planState.activePlan?.name ?? "")
+                                        PlanDayCard(planDay: pd, planName: planState.activePlan?.name ?? "", date: selectedDate)
                                             .padding(.horizontal, 16)
                                     }
 
@@ -670,9 +670,13 @@ private struct CalendarView: View {
 private struct PlanDayCard: View {
     @Environment(WorkoutsState.self) private var workoutsState
     @Environment(ExercisesState.self) private var exercisesState
+    @Environment(VoiceTrainerState.self) private var voiceTrainerState
+    @Environment(TimerState.self) private var timerState
+    @Environment(WorkoutLogState.self) private var logState
 
     let planDay: PlanDay
     let planName: String
+    var date: Date = Date()
 
     private var workouts: [Workout] {
         planDay.workoutIDs.compactMap { id in workoutsState.workouts.first { $0.id == id } }
@@ -680,6 +684,34 @@ private struct PlanDayCard: View {
 
     private var exercises: [Exercise] {
         planDay.exerciseIDs.compactMap { id in exercisesState.exercises.first { $0.id == id } }
+    }
+
+    private var voiceActivities: [VoiceTrainerConfig] {
+        planDay.voiceActivityIDs.compactMap { id in voiceTrainerState.savedConfigurations.first { $0.id == id } }
+    }
+
+    private var timers: [TimerConfig] {
+        planDay.timerIDs.compactMap { id in timerState.configs.first { $0.id == id } }
+    }
+
+    /// Names of logs completed on this date for checkmark display
+    private var completedLogNames: Set<String> {
+        let cal = Calendar.current
+        let logs = logState.logs.filter { cal.isDate($0.completedAt, inSameDayAs: date) }
+        return Set(logs.map { $0.workoutName })
+    }
+
+    private func isCompleted(workoutName name: String) -> Bool {
+        completedLogNames.contains(name)
+    }
+
+    private func isVoiceCompleted(_ config: VoiceTrainerConfig) -> Bool {
+        completedLogNames.contains("Trainer – \(config.name)")
+    }
+
+    private func isTimerCompleted(_ config: TimerConfig) -> Bool {
+        let displayName = config.name.isEmpty ? config.type.rawValue : config.name
+        return completedLogNames.contains("\(config.type.rawValue) – \(displayName)")
     }
 
     var body: some View {
@@ -710,19 +742,71 @@ private struct PlanDayCard: View {
                             Text(w.name)
                                 .font(.caption)
                                 .foregroundColor(.primary)
+                            if isCompleted(workoutName: w.name) {
+                                Image(systemName: "checkmark.circle.fill")
+                                    .font(.caption)
+                                    .foregroundColor(.green)
+                            }
+                            Spacer()
                         }
                     }
                 }
 
                 if !exercises.isEmpty {
-                    HStack(spacing: 6) {
-                        Image(systemName: "figure.strengthtraining.traditional")
-                            .font(.caption2)
-                            .foregroundColor(.secondary)
-                        Text(exercises.map { $0.name }.joined(separator: ", "))
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                            .lineLimit(2)
+                    ForEach(exercises) { ex in
+                        HStack(spacing: 6) {
+                            Image(systemName: "figure.strengthtraining.traditional")
+                                .font(.caption2)
+                                .foregroundColor(.secondary)
+                            Text(ex.name)
+                                .font(.caption)
+                                .foregroundColor(.primary)
+                            if isCompleted(workoutName: ex.name) {
+                                Image(systemName: "checkmark.circle.fill")
+                                    .font(.caption)
+                                    .foregroundColor(.green)
+                            }
+                            Spacer()
+                        }
+                    }
+                }
+
+                if !voiceActivities.isEmpty {
+                    ForEach(voiceActivities) { config in
+                        HStack(spacing: 6) {
+                            Image(systemName: "waveform")
+                                .font(.caption2)
+                                .foregroundColor(.secondary)
+                            Text(config.name)
+                                .font(.caption)
+                                .foregroundColor(.primary)
+                            if isVoiceCompleted(config) {
+                                Image(systemName: "checkmark.circle.fill")
+                                    .font(.caption)
+                                    .foregroundColor(.green)
+                            }
+                            Spacer()
+                        }
+                    }
+                }
+
+                if !timers.isEmpty {
+                    ForEach(timers) { config in
+                        let displayName = config.name.isEmpty ? config.type.rawValue : config.name
+                        HStack(spacing: 6) {
+                            Image(systemName: config.type.iconName)
+                                .font(.caption2)
+                                .foregroundColor(.secondary)
+                            Text(displayName)
+                                .font(.caption)
+                                .foregroundColor(.primary)
+                            if isTimerCompleted(config) {
+                                Image(systemName: "checkmark.circle.fill")
+                                    .font(.caption)
+                                    .foregroundColor(.green)
+                            }
+                            Spacer()
+                        }
                     }
                 }
 
@@ -734,7 +818,7 @@ private struct PlanDayCard: View {
                         Text(planDay.note)
                             .font(.caption)
                             .foregroundColor(.secondary)
-                            .lineLimit(2)
+                            //.lineLimit(2)
                     }
                 }
             }
@@ -1081,6 +1165,8 @@ private struct TimelineLogView: View {
     @Environment(TrainingPlanState.self) var planState
     @Environment(WorkoutsState.self) var workoutsState
     @Environment(ExercisesState.self) var exercisesState
+    @Environment(VoiceTrainerState.self) var voiceTrainerState
+    @Environment(TimerState.self) var timerState
     let logState: WorkoutLogState
     let month: Date
     let selectedDate: Date
@@ -1253,9 +1339,12 @@ private struct TimelineLogView: View {
                                     case .journal(let entry):
                                         JournalEntryCard(entry: entry) { onJournalTap?(entry) }
                                     case .plan(let pd, let planName):
-                                        PlanDayCard(planDay: pd, planName: planName)
+                                        PlanDayCard(planDay: pd, planName: planName, date: group.date)
                                             .environment(workoutsState)
                                             .environment(exercisesState)
+                                            .environment(voiceTrainerState)
+                                            .environment(timerState)
+                                            .environment(logState)
                                     case .water(let oz, let goal, let unit, let date):
                                         WaterDaySummaryRow(oz: oz, goal: goal, unit: unit) {
                                             onWaterTap?(date)
@@ -1453,7 +1542,7 @@ private struct JournalEntryCard: View {
                         Text(entry.body)
                             .font(.caption)
                             .foregroundColor(.secondary)
-                            .lineLimit(2)
+                            //.lineLimit(2)
                     }
                 }
                 .padding(12)
