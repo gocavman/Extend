@@ -393,43 +393,40 @@ private struct DayCard: View {
                             HStack(spacing: 6) {
                                 Image(systemName: "dumbbell.fill")
                                     .font(.caption)
-                                    .foregroundColor(.accentColor)
+                                    .foregroundColor(.primary)
                                 Text(w.name)
                                     .font(.subheadline)
                                     .fontWeight(.semibold)
                             }
                         }
-                        if !exercises.isEmpty {
+                        ForEach(exercises) { ex in
                             HStack(spacing: 6) {
                                 Image(systemName: "figure.strengthtraining.traditional")
                                     .font(.caption)
                                     .foregroundColor(.primary)
-                                Text(exercises.map { $0.name }.joined(separator: ", "))
+                                Text(ex.name)
                                     .font(.caption)
                                     .foregroundColor(.primary)
-                                    .lineLimit(2)
                             }
                         }
-                        if !voiceActivities.isEmpty {
+                        ForEach(voiceActivities) { va in
                             HStack(spacing: 6) {
                                 Image(systemName: "waveform")
                                     .font(.caption)
                                     .foregroundColor(.primary)
-                                Text(voiceActivities.map { $0.name }.joined(separator: ", "))
+                                Text(va.name)
                                     .font(.caption)
                                     .foregroundColor(.primary)
-                                    .lineLimit(2)
                             }
                         }
-                        if !timers.isEmpty {
+                        ForEach(timers) { t in
                             HStack(spacing: 6) {
                                 Image(systemName: "timer")
                                     .font(.caption)
                                     .foregroundColor(.primary)
-                                Text(timers.map { $0.name.isEmpty ? $0.type.rawValue : $0.name }.joined(separator: ", "))
+                                Text(t.name.isEmpty ? t.type.rawValue : t.name)
                                     .font(.caption)
                                     .foregroundColor(.primary)
-                                    .lineLimit(2)
                             }
                         }
                         if !planDay.note.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
