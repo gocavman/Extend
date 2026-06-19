@@ -6879,7 +6879,7 @@ class MatchGameViewController: UIViewController {
         guard let level = currentLevel else { return }
 
         // Determine tier from retry count
-        let tier = min(retryCount, 5)
+        let tier = min(retryCount, 7)
 
         struct HelpTier {
             let powerups: [PieceType]

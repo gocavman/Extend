@@ -114,8 +114,13 @@ public final class WorkoutLogState {
         guard log.healthKitUUID == nil else { return } // already exported
 
         let startDate = log.completedAt.addingTimeInterval(-log.duration)
-        let calories = HealthKitService.shared.estimatedCalories(durationSeconds: log.duration)
         let activityType = HKWorkoutActivityTypeHelper.hkType(from: activityTypeRaw)
+        let weight = HealthKitState.shared.userWeightKg
+        let calories = HealthKitService.shared.estimatedCalories(
+            durationSeconds: log.duration,
+            activityType: activityType,
+            bodyWeightKg: weight > 0 ? weight : nil
+        )
 
         do {
             // Request authorization first (won't prompt again if already granted)

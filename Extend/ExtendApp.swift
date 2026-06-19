@@ -151,12 +151,9 @@ struct ExtendApp: App {
                     // Refresh widget snapshot so Today's Plan widget has current data on launch
                     trainingPlanState.refreshWidgetSnapshot()
 
-                    // Seed the watch with the latest complication/steps settings.
-                    // The App Group is per-device, so the watch needs an explicit copy.
-                    WatchConnectivityReceiver.shared.sendComplicationSettings(
-                        complicationSettings: readWatchComplicationSettings(),
-                        stepsSettings: readWatchStepsSettings()
-                    )
+                    // Note: Watch complication settings are now managed directly on the Watch.
+                    // Both iPhone and Watch write to the same App Group UserDefaults, so no
+                    // WatchConnectivity sync is needed for settings.
 
                     // Start CloudKit sync (registers subscriptions, pulls latest data)
                     await CloudKitSyncEngine.shared.start()

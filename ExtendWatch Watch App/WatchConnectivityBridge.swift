@@ -12,10 +12,8 @@ import Foundation
 import WatchConnectivity
 import WidgetKit
 
-extension Notification.Name {
-    static let watchWaterDataUpdated = Notification.Name("watchWaterDataUpdated")
-    static let watchPlanDataUpdated  = Notification.Name("watchPlanDataUpdated")
-}
+// Note: Notification.Name extensions are now in ContentView.swift
+// to avoid duplicate definitions
 
 final class WatchConnectivityBridge: NSObject {
     static let shared = WatchConnectivityBridge()
@@ -79,15 +77,8 @@ extension WatchConnectivityBridge: WCSessionDelegate {
             DispatchQueue.main.async {
                 NotificationCenter.default.post(name: .watchPlanDataUpdated, object: nil)
             }
-        case "complication_settings_update":
-            if let data = payload["settings_data"] as? Data {
-                defaults.set(data, forKey: "watch_complication_settings")
-            }
-            if let stepsData = payload["steps_settings_data"] as? Data {
-                defaults.set(stepsData, forKey: "watch_steps_settings")
-            }
-            WidgetCenter.shared.reloadAllTimelines()
         case "reload_complications":
+            // Triggered when plan data changes on iPhone
             WidgetCenter.shared.reloadAllTimelines()
         default:
             break

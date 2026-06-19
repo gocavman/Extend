@@ -43,7 +43,7 @@
       },
       {
         "heading": "System Preferences",
-        "body": "• Theme — Light or Dark. (The Stick Figure Editor, Animation Studio, and Match Game always stay light regardless of this setting.)\n• Image Set — chooses the built-in anatomy images used in workout and muscle views — Option 1, Option 2, or None.\n• Weight Unit — lbs or kg. Affects all weight display and entry throughout the app — logs, stat cards, personal records.\n• Apple Health — Export: sends completed workout sessions to Apple Health. Import Activities: pulls workout data from Health into your Log. Sync Now: manually trigger a sync.\n• Apple Watch — set your daily step and distance goals shown on the watch.\n• Water — set your daily intake goal and preferred unit (oz, mL). Optionally export water logs to Apple Health or import from Apple Health.\n• Keep Screen On During Sessions — prevents the screen from locking during active timers, workouts, and voice trainer sessions. Uses more battery."
+        "body": "• Theme — Light or Dark. (The Stick Figure Editor, Animation Studio, and Match Game always stay light regardless of this setting.)\n• Image Set — chooses the built-in anatomy images used in workout and muscle views — Option 1, Option 2, or None.\n• Weight Unit — lbs or kg. Affects all weight display and entry throughout the app — logs, stat cards, personal records.\n• Apple Health — Export: sends completed workout sessions to Apple Health. Import Activities: pulls workout data from Health into your Log. Sync Now: manually trigger a sync.\n• Water — set your daily intake goal and preferred unit (oz, mL). Optionally export water logs to Apple Health or import from Apple Health.\n• Keep Screen On During Sessions — prevents the screen from locking during active timers, workouts, and voice trainer sessions. Uses more battery."
       },
       {
         "heading": "Data",
@@ -89,7 +89,7 @@
       },
       {
         "heading": "Steps & Distance",
-        "body": "Combines both into one complication — the ring tracks steps, with your current distance shown as a second line below. No icon is shown so the text has more room."
+        "body": "Combines both into one complication — the ring tracks steps, with your current distance shown as a second line below."
       },
       {
         "heading": "Water",

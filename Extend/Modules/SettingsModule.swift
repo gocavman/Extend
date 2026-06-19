@@ -64,14 +64,9 @@ private struct SettingsModuleView: View {
 
     @State private var showingResetAlert = false
     @State private var isSyncingHealthKit = false
-    @State private var isAppleWatchSectionExpanded = false
-    @State private var isComplicationSectionExpanded = false
-    @State private var complicationSettings: WatchComplicationUserSettings = readWatchComplicationSettings()
     @State private var isWaterSectionExpanded = false
     @State private var waterGoalText: String = ""
-    @State private var watchSettings: WatchStepsSettings = readWatchStepsSettings()
-    @State private var watchStepsGoalText: String = ""
-    @State private var watchDistanceGoalText: String = ""
+    @State private var userWeightText: String = ""
     @State private var isNavBarSectionExpanded = false
     @State private var isNavBarColorExpanded = false
     @State private var isDashboardSectionExpanded = false
@@ -316,6 +311,46 @@ private struct SettingsModuleView: View {
                                         .environment(healthKitState)
                                 }
 
+                                HStack {
+                                    Text("Body Weight")
+                                    Spacer()
+                                    TextField("Optional", text: $userWeightText)
+                                        .keyboardType(.decimalPad)
+                                        .multilineTextAlignment(.trailing)
+                                        .frame(width: 70)
+                                        .onChange(of: userWeightText) {
+                                            let v = Double(userWeightText) ?? 0
+                                            if v > 0 {
+                                                healthKitState.userWeightKg = healthKitState.userWeightUnit == "kg"
+                                                    ? v
+                                                    : v / 2.20462
+                                            } else {
+                                                healthKitState.userWeightKg = 0
+                                            }
+                                        }
+                                    Picker("", selection: Binding(
+                                        get: { healthKitState.userWeightUnit },
+                                        set: { newUnit in
+                                            let oldUnit = healthKitState.userWeightUnit
+                                            healthKitState.userWeightUnit = newUnit
+                                            if oldUnit != newUnit, let v = Double(userWeightText), v > 0 {
+                                                let converted = newUnit == "kg" ? v / 2.20462 : v * 2.20462
+                                                userWeightText = String(format: "%.1f", converted)
+                                            }
+                                        }
+                                    )) {
+                                        Text("lb").tag("lb")
+                                        Text("kg").tag("kg")
+                                    }
+                                    .pickerStyle(.menu)
+                                    .tint(.primary)
+                                    .labelsHidden()
+                                }
+
+                                Text("Used to tighten calorie estimates for exported workouts. Leave blank to use the default ~70 kg baseline.")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+
                                 if let lastDate = healthKitState.lastImportDate {
                                     HStack {
                                         Text("Last Synced")
@@ -345,88 +380,12 @@ private struct SettingsModuleView: View {
                                 }
                                 .disabled(isSyncingHealthKit || (!healthKitState.anyImportEnabled && !healthKitState.exportStrengthWorkouts))
                             }
-
-                            DisclosureGroup("Apple Watch", isExpanded: $isAppleWatchSectionExpanded) {
-                                HStack {
-                                    Text("Distance Unit")
-                                    Spacer()
-                                    Picker("", selection: $watchSettings.distanceUnit) {
-                                        ForEach(WatchDistanceUnit.allCases, id: \.self) { unit in
-                                            Text(unit.displayName).tag(unit)
-                                        }
-                                    }
-                                    .pickerStyle(.menu)
-                                    .tint(.primary)
-                                }
-
-                                HStack {
-                                    Text("Daily Steps Goal")
-                                    Spacer()
-                                    TextField("10000", text: $watchStepsGoalText)
-                                        .keyboardType(.numberPad)
-                                        .multilineTextAlignment(.trailing)
-                                        .frame(width: 90)
-                                        .onChange(of: watchStepsGoalText) {
-                                            if let v = Double(watchStepsGoalText), v > 0 {
-                                                watchSettings.stepsGoal = v
-                                                writeWatchStepsSettings(watchSettings)
-                                            }
-                                        }
-                                    Text("steps")
-                                        .foregroundColor(.secondary)
-                                        .font(.subheadline)
-                                }
-
-                                HStack {
-                                    Text("Daily Distance Goal")
-                                    Spacer()
-                                    TextField("8.0", text: $watchDistanceGoalText)
-                                        .keyboardType(.decimalPad)
-                                        .multilineTextAlignment(.trailing)
-                                        .frame(width: 70)
-                                        .onChange(of: watchDistanceGoalText) {
-                                            if let v = Double(watchDistanceGoalText), v > 0 {
-                                                watchSettings.distanceGoal = v
-                                                writeWatchStepsSettings(watchSettings)
-                                            }
-                                        }
-                                    Text(watchSettings.distanceUnit.rawValue)
-                                        .foregroundColor(.secondary)
-                                        .font(.subheadline)
-                                }
-
-                                Text("These goals are used by the Steps, Distance, and Steps & Distance complications on your Apple Watch. Add the complication you want directly from the watch face editor.")
-                                    .font(.caption)
-                                    .foregroundColor(.secondary)
-
-                                DisclosureGroup("Complication Appearance", isExpanded: $isComplicationSectionExpanded) {
-                                    complicationRow("Steps", icon: "figure.walk", appearance: $complicationSettings.stepsOnly)
-                                    Divider().padding(.vertical, 4)
-                                    complicationRow("Distance", icon: "location.fill", appearance: $complicationSettings.distanceOnly)
-                                    Divider().padding(.vertical, 4)
-                                    complicationRow("Steps & Distance", icon: "figure.walk.motion", appearance: $complicationSettings.stepsAndDistance)
-                                    Divider().padding(.vertical, 4)
-                                    complicationRow("Water", icon: "drop.fill", appearance: $complicationSettings.water)
-                                    Divider().padding(.vertical, 4)
-                                    complicationRow("Today's Plan", icon: "calendar.badge.checkmark", appearance: $complicationSettings.plan)
-                                }
-                                .onAppear {
-                                    complicationSettings = readWatchComplicationSettings()
-                                }
-                                .onChange(of: complicationSettings) {
-                                    writeWatchComplicationSettings(complicationSettings)
-                                }
-                            }
                             .onAppear {
-                                let s = readWatchStepsSettings()
-                                watchSettings = s
-                                watchStepsGoalText = String(Int(s.stepsGoal))
-                                let dGoal = s.distanceGoal
-                                watchDistanceGoalText = dGoal.truncatingRemainder(dividingBy: 1) == 0
-                                    ? String(Int(dGoal)) : String(format: "%.1f", dGoal)
-                            }
-                            .onChange(of: watchSettings.distanceUnit) {
-                                writeWatchStepsSettings(watchSettings)
+                                let kg = healthKitState.userWeightKg
+                                guard kg > 0 else { userWeightText = ""; return }
+                                let display = healthKitState.userWeightUnit == "kg" ? kg : kg * 2.20462
+                                userWeightText = display.truncatingRemainder(dividingBy: 1) == 0
+                                    ? String(Int(display)) : String(format: "%.1f", display)
                             }
 
                             DisclosureGroup("Water", isExpanded: $isWaterSectionExpanded) {
@@ -1053,95 +1012,6 @@ private struct SettingsModuleView: View {
         devToolsMessage = "Generated \(generated.count) workout logs + \(waterLogs.count) water entries."
     }
     #endif
-
-    // MARK: - Complication appearance helpers
-
-    private let watchFillShapes = [
-        "circle.fill", "peacesign", "seal.fill", "shield.fill",
-        "hexagon.fill", "octagon.fill", "triangle.fill", "diamond.fill",
-        "pentagon.fill", "square.fill", "rectangle.fill", "capsule.fill",
-        "oval.fill", "oval.portrait.fill", "rectangle.portrait.fill",
-        "button.roundedbottom.horizontal.fill", "button.roundedtop.horizontal.fill",
-        "button.angledtop.vertical.left.fill", "button.angledtop.vertical.right.fill",
-        "arrowshape.up.fill", "location.north.fill", "sun.max.fill"
-    ]
-
-    private func watchComplicationColor(_ preset: ComplicationColorPreset) -> Color {
-        switch preset {
-        case .orange: return .orange
-        case .blue:   return Color(red: 0.2, green: 0.55, blue: 1.0)
-        case .green:  return .green
-        case .red:    return .red
-        case .purple: return .purple
-        case .yellow: return .yellow
-        case .cyan:   return .cyan
-        case .pink:   return .pink
-        case .mint:   return .mint
-        case .indigo: return .indigo
-        }
-    }
-
-    @ViewBuilder
-    private func complicationRow(
-        _ title: String,
-        icon: String,
-        appearance: Binding<ComplicationAppearance>
-    ) -> some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Label(title, systemImage: icon)
-                .font(.subheadline.weight(.semibold))
-
-            // Color palette — 2 rows of 5
-            LazyVGrid(columns: Array(repeating: GridItem(.fixed(30)), count: 5), spacing: 6) {
-                ForEach(ComplicationColorPreset.allCases, id: \.self) { preset in
-                    Circle()
-                        .fill(watchComplicationColor(preset))
-                        .frame(width: 30, height: 30)
-                        .overlay(
-                            Circle()
-                                .strokeBorder(Color.primary, lineWidth: 2.5)
-                                .opacity(appearance.wrappedValue.colorPreset == preset ? 1 : 0)
-                        )
-                        .onTapGesture {
-                            appearance.colorPreset.wrappedValue = preset
-                        }
-                }
-            }
-
-            // Ring vs Fill style picker
-            Picker("Style", selection: appearance.style) {
-                Text("Ring").tag(ComplicationStyle.ring)
-                Text("Fill").tag(ComplicationStyle.fill)
-            }
-            .pickerStyle(.segmented)
-            .labelsHidden()
-
-            // Shape grid — visible only when Fill is selected
-            if appearance.wrappedValue.style == .fill {
-                LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 7), spacing: 6) {
-                    ForEach(watchFillShapes, id: \.self) { shape in
-                        let isSelected = appearance.wrappedValue.shape == shape
-                        let presetColor = watchComplicationColor(appearance.wrappedValue.colorPreset)
-                        Button {
-                            appearance.shape.wrappedValue = shape
-                        } label: {
-                            Image(systemName: shape)
-                                .font(.system(size: 18))
-                                .foregroundColor(isSelected ? presetColor : .secondary)
-                                .frame(width: 40, height: 40)
-                                .background(
-                                    RoundedRectangle(cornerRadius: 8)
-                                        .fill(isSelected ? presetColor.opacity(0.15) : Color.clear)
-                                )
-                        }
-                        .buttonStyle(.plain)
-                    }
-                }
-                .padding(.top, 2)
-            }
-        }
-        .padding(.vertical, 4)
-    }
 }
 
 // MARK: - Workout Export Sheet

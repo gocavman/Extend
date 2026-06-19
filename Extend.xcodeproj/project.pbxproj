@@ -147,8 +147,16 @@
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
 				Info.plist,
+				WatchExtensions.swift,
 			);
 			target = 86F90FD72FDBBE7C005A4181 /* ExtendWatchWidgetExtension */;
+		};
+		86FDA6012FE4D05000900320 /* Exceptions for "ExtendWatchWidget" folder in "ExtendWatch Watch App" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				WatchExtensions.swift,
+			);
+			target = 86F90F9E2FDBB67A005A4181 /* ExtendWatch Watch App */;
 		};
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
@@ -200,6 +208,7 @@
 		86F90FDB2FDBBE7C005A4181 /* ExtendWatchWidget */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
+				86FDA6012FE4D05000900320 /* Exceptions for "ExtendWatchWidget" folder in "ExtendWatch Watch App" target */,
 				86F90FEB2FDBBE7D005A4181 /* Exceptions for "ExtendWatchWidget" folder in "ExtendWatchWidgetExtension" target */,
 			);
 			path = ExtendWatchWidget;
@@ -734,7 +743,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = Extend/Extend.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1.02;
+				CURRENT_PROJECT_VERSION = 1.03;
 				DEAD_CODE_STRIPPING = YES;
 				DEVELOPMENT_TEAM = 6CUXT7F93D;
 				ENABLE_APP_SANDBOX = YES;
@@ -782,7 +791,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = Extend/Extend.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1.02;
+				CURRENT_PROJECT_VERSION = 1.03;
 				DEAD_CODE_STRIPPING = YES;
 				DEVELOPMENT_TEAM = 6CUXT7F93D;
 				ENABLE_APP_SANDBOX = YES;
@@ -1052,7 +1061,7 @@
 				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
 				CODE_SIGN_ENTITLEMENTS = ExtendWidgetExtension.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1.02;
+				CURRENT_PROJECT_VERSION = 1.03;
 				DEVELOPMENT_TEAM = 6CUXT7F93D;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = ExtendWidget/Info.plist;
@@ -1085,7 +1094,7 @@
 				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
 				CODE_SIGN_ENTITLEMENTS = ExtendWidgetExtension.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1.02;
+				CURRENT_PROJECT_VERSION = 1.03;
 				DEVELOPMENT_TEAM = 6CUXT7F93D;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = ExtendWidget/Info.plist;
@@ -1119,7 +1128,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = "ExtendWatch Watch App/ExtendWatch Watch App.entitlements";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1.02;
+				CURRENT_PROJECT_VERSION = 1.03;
 				DEVELOPMENT_TEAM = 6CUXT7F93D;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
@@ -1157,7 +1166,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = "ExtendWatch Watch App/ExtendWatch Watch App.entitlements";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1.02;
+				CURRENT_PROJECT_VERSION = 1.03;
 				DEVELOPMENT_TEAM = 6CUXT7F93D;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
@@ -1288,7 +1297,7 @@
 				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
 				CODE_SIGN_ENTITLEMENTS = ExtendWatchWidgetExtension.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1.02;
+				CURRENT_PROJECT_VERSION = 1.03;
 				DEVELOPMENT_TEAM = 6CUXT7F93D;
 				INFOPLIST_FILE = ExtendWatchWidget/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = ExtendWatchWidget;
@@ -1321,7 +1330,7 @@
 				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
 				CODE_SIGN_ENTITLEMENTS = ExtendWatchWidgetExtension.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1.02;
+				CURRENT_PROJECT_VERSION = 1.03;
 				DEVELOPMENT_TEAM = 6CUXT7F93D;
 				INFOPLIST_FILE = ExtendWatchWidget/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = ExtendWatchWidget;

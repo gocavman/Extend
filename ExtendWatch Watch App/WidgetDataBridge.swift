@@ -100,8 +100,72 @@ public func readWatchStepsSettings() -> WatchStepsSettings {
     return .default
 }
 
-// Complication appearance settings live in the widget extension target
-// (ExtendWatchWidget.swift) because only the complications consume them.
+public func writeWatchStepsSettings(_ settings: WatchStepsSettings) {
+    let defaults = UserDefaults(suiteName: appGroupID) ?? .standard
+    if let encoded = try? JSONEncoder().encode(settings) {
+        defaults.set(encoded, forKey: stepsSettingsKey)
+    }
+}
+
+// MARK: - Complication shape settings
+
+private let complicationShapeSettingsKey = "watch_complication_shapes"
+
+public struct WatchComplicationShapeSettings: Codable, Equatable {
+    public var stepsShape: String
+    public var distanceShape: String
+    public var stepsAndDistanceShape: String
+    public var waterShape: String
+    public var planShape: String
+
+    public var stepsColor: String
+    public var distanceColor: String
+    public var stepsAndDistanceColor: String
+    public var waterColor: String
+    public var planColor: String
+
+    public init(
+        stepsShape: String = "",
+        distanceShape: String = "",
+        stepsAndDistanceShape: String = "",
+        waterShape: String = "",
+        planShape: String = "",
+        stepsColor: String = "",
+        distanceColor: String = "",
+        stepsAndDistanceColor: String = "",
+        waterColor: String = "",
+        planColor: String = ""
+    ) {
+        self.stepsShape = stepsShape
+        self.distanceShape = distanceShape
+        self.stepsAndDistanceShape = stepsAndDistanceShape
+        self.waterShape = waterShape
+        self.planShape = planShape
+        self.stepsColor = stepsColor
+        self.distanceColor = distanceColor
+        self.stepsAndDistanceColor = stepsAndDistanceColor
+        self.waterColor = waterColor
+        self.planColor = planColor
+    }
+
+    public static let `default` = WatchComplicationShapeSettings()
+}
+
+public func readWatchComplicationShapeSettings() -> WatchComplicationShapeSettings {
+    let defaults = UserDefaults(suiteName: appGroupID) ?? .standard
+    if let data = defaults.data(forKey: complicationShapeSettingsKey),
+       let decoded = try? JSONDecoder().decode(WatchComplicationShapeSettings.self, from: data) {
+        return decoded
+    }
+    return .default
+}
+
+public func writeWatchComplicationShapeSettings(_ settings: WatchComplicationShapeSettings) {
+    let defaults = UserDefaults(suiteName: appGroupID) ?? .standard
+    if let encoded = try? JSONEncoder().encode(settings) {
+        defaults.set(encoded, forKey: complicationShapeSettingsKey)
+    }
+}
 
 // MARK: - Water reading
 

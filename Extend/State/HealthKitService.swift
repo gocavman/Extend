@@ -142,11 +142,18 @@ public final class HealthKitService {
     // MARK: - Types to read/write
 
     private var typesToShare: Set<HKSampleType> {
-        [HKObjectType.workoutType()]
+        [
+            HKObjectType.workoutType(),
+            HKQuantityType(.activeEnergyBurned)
+        ]
     }
 
     private var typesToRead: Set<HKObjectType> {
-        [HKObjectType.workoutType()]
+        [
+            HKObjectType.workoutType(),
+            HKQuantityType(.activeEnergyBurned),
+            HKQuantityType(.appleExerciseTime)
+        ]
     }
 
     // MARK: - Authorization
@@ -182,7 +189,10 @@ public final class HealthKitService {
             let energyType = HKQuantityType(.activeEnergyBurned)
             let quantity = HKQuantity(unit: .kilocalorie(), doubleValue: calories)
             let sample = HKQuantitySample(type: energyType, quantity: quantity, start: startDate, end: endDate)
-            try await builder.addSamples([sample])
+            // If the user hasn't granted active-energy share permission, the sample add
+            // can throw — but we still want the workout itself to save so it contributes
+            // to Exercise Minutes. Energy is best-effort.
+            try? await builder.addSamples([sample])
         }
 
         try await builder.endCollection(at: endDate)
@@ -198,9 +208,70 @@ public final class HealthKitService {
 
     // MARK: - Estimating calories
 
-    /// Very rough estimate: 5 kcal per minute for strength training.
-    public func estimatedCalories(durationSeconds: TimeInterval) -> Double {
-        (durationSeconds / 60.0) * 5.0
+    /// Rough kcal/min for an "average" ~70 kg adult, derived from MET values
+    /// (Compendium of Physical Activities). These are intentionally conservative —
+    /// Apple Health will still infer Exercise Minutes from workout duration even
+    /// if the energy estimate is low.
+    public func kcalPerMinute(for activityType: HKWorkoutActivityType) -> Double {
+        switch activityType {
+        // Low intensity / mind-body (~3 MET)
+        case .yoga, .pilates, .mindAndBody, .flexibility, .preparationAndRecovery, .cooldown, .taiChi:
+            return 3.0
+        // Walking (~4 MET)
+        case .walking, .wheelchairWalkPace:
+            return 4.0
+        // Strength training (~5 MET)
+        case .traditionalStrengthTraining, .functionalStrengthTraining, .coreTraining, .barre:
+            return 5.0
+        // Light-recreation sports (~5 MET)
+        case .dance, .socialDance, .fencing, .archery, .bowling, .equestrianSports, .fishing, .golf, .hunting:
+            return 5.0
+        // Team-recreation sports (~6 MET)
+        case .tableTennis, .badminton, .volleyball, .softball, .baseball, .cricket,
+             .americanFootball, .australianFootball, .rugby:
+            return 6.0
+        // Cross / cardio machines + outdoor activity (~7 MET)
+        case .crossTraining, .mixedCardio, .stairs, .stepTraining, .elliptical,
+             .hiking, .surfingSports, .waterSports, .waterFitness, .waterPolo,
+             .snowSports, .crossCountrySkiing, .downhillSkiing, .snowboarding, .skatingSports:
+            return 7.0
+        // Racquet sports (~7.5 MET)
+        case .tennis, .squash, .racquetball, .pickleball, .handball, .lacrosse, .hockey, .paddleSports:
+            return 7.5
+        // Field / mixed-intensity sports (~8 MET)
+        case .basketball, .soccer, .martialArts, .discSports, .trackAndField:
+            return 8.0
+        // Cycling, rowing (~8.5 MET)
+        case .cycling, .handCycling, .wheelchairRunPace, .rowing:
+            return 8.5
+        // Swimming (~9 MET)
+        case .swimming:
+            return 9.0
+        // High-intensity (~10 MET)
+        case .running, .kickboxing, .boxing, .wrestling, .stairClimbing, .climbing:
+            return 10.0
+        // Maximal-intensity (~11 MET)
+        case .highIntensityIntervalTraining, .jumpRope:
+            return 11.0
+        // Generic / other, plus any case we haven't categorized → conservative
+        default:
+            return 4.0
+        }
+    }
+
+    /// Estimate calories burned for a session of `durationSeconds` doing `activityType`.
+    /// `bodyWeightKg` scales the result against the 70 kg baseline used by `kcalPerMinute`.
+    /// If `bodyWeightKg` is nil or non-positive, the unscaled baseline estimate is returned.
+    public func estimatedCalories(
+        durationSeconds: TimeInterval,
+        activityType: HKWorkoutActivityType = .other,
+        bodyWeightKg: Double? = nil
+    ) -> Double {
+        let base = (durationSeconds / 60.0) * kcalPerMinute(for: activityType)
+        if let weight = bodyWeightKg, weight > 0 {
+            return base * (weight / 70.0)
+        }
+        return base
     }
 
     // MARK: - Import: Workouts

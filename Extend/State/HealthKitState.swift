@@ -22,6 +22,8 @@ public final class HealthKitState {
     private let importActivityTypesKey   = "hk_importActivityTypes"
     private let lastImportDateKey        = "hk_lastImportDate"
     private let authRequestedKey         = "hk_authRequested"
+    private let userWeightKgKey          = "hk_userWeightKg"
+    private let userWeightUnitKey        = "hk_userWeightUnit"
 
     // MARK: - Default imported activity types (raw UInt values)
     /// All activity types enabled by default.
@@ -59,6 +61,16 @@ public final class HealthKitState {
         didSet { hkDefaults.set(authorizationRequested, forKey: authRequestedKey) }
     }
 
+    /// User body weight in kilograms. 0 means "not set" (calorie estimate falls back to ~70kg baseline).
+    public var userWeightKg: Double {
+        didSet { hkDefaults.set(userWeightKg, forKey: userWeightKgKey) }
+    }
+
+    /// Display unit for the weight input UI ("kg" or "lb"). Storage is always kg.
+    public var userWeightUnit: String {
+        didSet { hkDefaults.set(userWeightUnit, forKey: userWeightUnitKey) }
+    }
+
     // MARK: - Init
 
     private init() {
@@ -83,6 +95,8 @@ public final class HealthKitState {
 
         lastImportDate         = hkDefaults.object(forKey: lastImportDateKey) as? Date
         authorizationRequested = hkDefaults.object(forKey: authRequestedKey)  as? Bool ?? false
+        userWeightKg           = hkDefaults.object(forKey: userWeightKgKey)   as? Double ?? 0
+        userWeightUnit         = hkDefaults.object(forKey: userWeightUnitKey) as? String ?? "lb"
     }
 
     // MARK: - Computed
@@ -113,5 +127,7 @@ public final class HealthKitState {
         importActivityTypes    = HealthKitState.defaultImportActivityTypes
         lastImportDate         = nil
         authorizationRequested = false
+        userWeightKg           = 0
+        userWeightUnit         = "lb"
     }
 }

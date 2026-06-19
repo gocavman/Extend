@@ -55,12 +55,11 @@ public func writeWidgetSnapshot(
     if let encoded = try? JSONEncoder().encode(snapshot) {
         defaults.set(encoded, forKey: snapshotKey)
     }
-    // Tell WidgetKit to reload all timelines (iOS widgets + watchOS complications)
+    // Tell WidgetKit to reload local (iOS) widget timelines. The Watch is updated
+    // separately by writeMultiDaySnapshots() / sendPlanUpdate() with real data —
+    // sending a parallel no-data refresh here just burns the complication budget
+    // before the actual data arrives.
     WidgetCenter.shared.reloadAllTimelines()
-    #if os(iOS)
-    // Force the Watch to update by sending a WatchConnectivity message
-    WatchConnectivityReceiver.shared.sendComplicationRefresh()
-    #endif
 }
 
 // MARK: - Reading (widget calls this)
@@ -131,13 +130,8 @@ public func writeWatchStepsSettings(_ settings: WatchStepsSettings) {
         defaults.set(encoded, forKey: stepsSettingsKey)
     }
     WidgetCenter.shared.reloadAllTimelines()
-    #if os(iOS)
-    // The App Group is per-device, so the watch needs an explicit copy.
-    WatchConnectivityReceiver.shared.sendComplicationSettings(
-        complicationSettings: readWatchComplicationSettings(),
-        stepsSettings: settings
-    )
-    #endif
+    // Settings are now managed directly on the Watch via WatchSettingsView.
+    // No WatchConnectivity sync needed since both devices write to the same App Group.
 }
 
 public func readWatchStepsSettings() -> WatchStepsSettings {
@@ -149,101 +143,69 @@ public func readWatchStepsSettings() -> WatchStepsSettings {
     return .default
 }
 
-// MARK: - Complication Appearance Settings
+// MARK: - Complication Appearance Settings (Simplified)
+//
+// Complications now use .widgetAccentable() to automatically adapt to the watch face COLOR.
+// Users can still choose SHAPES for filled complications, but colors are handled by watchOS.
+// This prevents white-on-white text issues and improves compatibility with different watch faces.
 
-/// Color preset options for Watch face complications.
-public enum ComplicationColorPreset: String, Codable, CaseIterable {
-    case orange = "orange"
-    case blue   = "blue"
-    case green  = "green"
-    case red    = "red"
-    case purple = "purple"
-    case yellow = "yellow"
-    case cyan   = "cyan"
-    case pink   = "pink"
-    case mint   = "mint"
-    case indigo = "indigo"
+/// Shape + color preferences for Watch face complications.
+/// Shape: empty string = ring, otherwise SF Symbol name.
+/// Color: empty string = watch-face accent (default), otherwise one of the named presets.
+public struct WatchComplicationShapeSettings: Codable, Equatable {
+    public var stepsShape: String
+    public var distanceShape: String
+    public var stepsAndDistanceShape: String
+    public var waterShape: String
+    public var planShape: String
 
-    public var displayName: String { rawValue.capitalized }
-}
-
-/// Whether a circular complication renders as a gauge ring or a rising shape fill.
-public enum ComplicationStyle: String, Codable, CaseIterable {
-    case ring = "ring"
-    case fill = "fill"
-}
-
-/// Appearance settings for a single complication.
-public struct ComplicationAppearance: Codable, Equatable {
-    public var colorPreset: ComplicationColorPreset
-    public var style: ComplicationStyle
-    /// SF Symbol name used as the fill mask when style == .fill.
-    public var shape: String
-
-    public init(colorPreset: ComplicationColorPreset, style: ComplicationStyle, shape: String) {
-        self.colorPreset = colorPreset
-        self.style = style
-        self.shape = shape
-    }
-
-    public static let defaultSteps = ComplicationAppearance(colorPreset: .orange, style: .ring, shape: "circle.fill")
-    public static let defaultWater = ComplicationAppearance(colorPreset: .blue,   style: .ring, shape: "circle.fill")
-    public static let defaultPlan  = ComplicationAppearance(colorPreset: .blue,   style: .ring, shape: "circle.fill")
-}
-
-/// Appearance settings for all five Watch complications.
-public struct WatchComplicationUserSettings: Codable, Equatable {
-    public var stepsOnly: ComplicationAppearance
-    public var distanceOnly: ComplicationAppearance
-    public var stepsAndDistance: ComplicationAppearance
-    public var water: ComplicationAppearance
-    public var plan: ComplicationAppearance
+    public var stepsColor: String
+    public var distanceColor: String
+    public var stepsAndDistanceColor: String
+    public var waterColor: String
+    public var planColor: String
 
     public init(
-        stepsOnly: ComplicationAppearance,
-        distanceOnly: ComplicationAppearance,
-        stepsAndDistance: ComplicationAppearance,
-        water: ComplicationAppearance,
-        plan: ComplicationAppearance
+        stepsShape: String = "",
+        distanceShape: String = "",
+        stepsAndDistanceShape: String = "",
+        waterShape: String = "",
+        planShape: String = "",
+        stepsColor: String = "",
+        distanceColor: String = "",
+        stepsAndDistanceColor: String = "",
+        waterColor: String = "",
+        planColor: String = ""
     ) {
-        self.stepsOnly = stepsOnly
-        self.distanceOnly = distanceOnly
-        self.stepsAndDistance = stepsAndDistance
-        self.water = water
-        self.plan = plan
+        self.stepsShape = stepsShape
+        self.distanceShape = distanceShape
+        self.stepsAndDistanceShape = stepsAndDistanceShape
+        self.waterShape = waterShape
+        self.planShape = planShape
+        self.stepsColor = stepsColor
+        self.distanceColor = distanceColor
+        self.stepsAndDistanceColor = stepsAndDistanceColor
+        self.waterColor = waterColor
+        self.planColor = planColor
     }
 
-    public static let `default` = WatchComplicationUserSettings(
-        stepsOnly:        .defaultSteps,
-        distanceOnly:     .defaultSteps,
-        stepsAndDistance: .defaultSteps,
-        water:            .defaultWater,
-        plan:             .defaultPlan
-    )
+    public static let `default` = WatchComplicationShapeSettings()
 }
 
-private let complicationSettingsKey = "watch_complication_settings"
+private let complicationShapeSettingsKey = "watch_complication_shapes"
 
-public func writeWatchComplicationSettings(_ settings: WatchComplicationUserSettings) {
+public func writeWatchComplicationShapeSettings(_ settings: WatchComplicationShapeSettings) {
     let defaults = UserDefaults(suiteName: appGroupID) ?? .standard
     if let encoded = try? JSONEncoder().encode(settings) {
-        defaults.set(encoded, forKey: complicationSettingsKey)
+        defaults.set(encoded, forKey: complicationShapeSettingsKey)
     }
     WidgetCenter.shared.reloadAllTimelines()
-    #if os(iOS)
-    // The App Group is per-device, so the watch needs an explicit copy of the
-    // appearance settings (the previous refresh-only ping did nothing).
-    WatchConnectivityReceiver.shared.sendComplicationSettings(
-        complicationSettings: settings,
-        stepsSettings: readWatchStepsSettings()
-    )
-    #endif
 }
 
-public func readWatchComplicationSettings() -> WatchComplicationUserSettings {
+public func readWatchComplicationShapeSettings() -> WatchComplicationShapeSettings {
     let defaults = UserDefaults(suiteName: appGroupID) ?? .standard
-    if let data = defaults.data(forKey: complicationSettingsKey),
-       let decoded = try? JSONDecoder().decode(WatchComplicationUserSettings.self, from: data) {
+    if let data = defaults.data(forKey: complicationShapeSettingsKey),
+       let decoded = try? JSONDecoder().decode(WatchComplicationShapeSettings.self, from: data) {
         return decoded
     }
     return .default

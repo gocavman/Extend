@@ -49,24 +49,6 @@ final class WatchConnectivityReceiver: NSObject {
         ])
     }
 
-    /// Push the complication appearance + steps/distance settings to the watch.
-    /// Uses updateApplicationContext for atomic latest-state delivery so a fast
-    /// burst of edits doesn't queue up redundant userInfo transfers.
-    func sendComplicationSettings(
-        complicationSettings: WatchComplicationUserSettings,
-        stepsSettings: WatchStepsSettings
-    ) {
-        guard canSendToWatch else { return }
-        var payload: [String: Any] = ["type": "complication_settings_update"]
-        if let settingsData = try? JSONEncoder().encode(complicationSettings) {
-            payload["settings_data"] = settingsData
-        }
-        if let stepsData = try? JSONEncoder().encode(stepsSettings) {
-            payload["steps_settings_data"] = stepsData
-        }
-        try? WCSession.default.updateApplicationContext(payload)
-    }
-
     /// Force a complication refresh on the watch. Call this when plan data changes
     /// but no other payload is needed.
     func sendComplicationRefresh() {
