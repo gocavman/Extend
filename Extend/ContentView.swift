@@ -7,6 +7,36 @@
 
 import SwiftUI
 import SwiftData
+import UIKit
+
+// MARK: - Keyboard-dismiss-on-tap
+
+/// Installs a window-level tap recognizer that calls `endEditing(true)` so any
+/// tap outside a text field dismisses the keyboard without blocking other UI.
+private struct KeyboardDismissOnTap: UIViewRepresentable {
+    func makeUIView(context: Context) -> UIView {
+        let view = UIView()
+        // Defer until the view is in the window hierarchy.
+        DispatchQueue.main.async {
+            guard let window = view.window else { return }
+            // Guard against double-install across re-renders.
+            if window.gestureRecognizers?.contains(where: { $0 is KeyboardDismissTapRecognizer }) == true { return }
+            let tap = KeyboardDismissTapRecognizer(target: window, action: #selector(UIView.endEditing(_:)))
+            tap.cancelsTouchesInView = false
+            tap.delegate = context.coordinator
+            window.addGestureRecognizer(tap)
+        }
+        return view
+    }
+    func updateUIView(_ uiView: UIView, context: Context) {}
+    func makeCoordinator() -> Coordinator { Coordinator() }
+    final class Coordinator: NSObject, UIGestureRecognizerDelegate {
+        func gestureRecognizer(_ g: UIGestureRecognizer, shouldRecognizeSimultaneouslyWith other: UIGestureRecognizer) -> Bool {
+            true
+        }
+    }
+}
+private final class KeyboardDismissTapRecognizer: UITapGestureRecognizer {}
 
 struct ContentView: View {
     @Environment(\.modelContext) private var modelContext
@@ -84,6 +114,7 @@ struct ContentView: View {
                     .transition(.scale(scale: 0.95).combined(with: .opacity))
             }
         }
+        .background(KeyboardDismissOnTap())
         // Resolve all tour anchors at the ZStack level — the common ancestor of all tagged views.
         // The GeometryProxy here shares the same coordinate space as the anchored views.
         .overlayPreferenceValue(TourAnchorKey.self) { anchors in

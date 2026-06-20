@@ -28,7 +28,7 @@ struct WatchWaterView: View {
     private let dropSize: CGFloat = 100
 
     var body: some View {
-        VStack(spacing: 8) {
+        VStack(spacing: 4) {
             // Droplet fill
             ZStack {
                 // Background (empty portion)
@@ -66,14 +66,16 @@ struct WatchWaterView: View {
                 } else {
                     VStack(spacing: 1) {
                         Text(percentText)
-                            .font(.system(size: 13, weight: .bold).monospacedDigit())
+                            .font(.system(size: 22, weight: .bold).monospacedDigit())
                             .foregroundColor(.white)
                             .shadow(color: .black.opacity(0.4), radius: 1, x: 0, y: 1)
                         Text("\(displayAmount(todayOz)) \(unit)")
-                            .font(.system(size: 11, weight: .medium).monospacedDigit())
-                            .foregroundColor(.white.opacity(0.9))
+                            .font(.system(size: 16, weight: .semibold).monospacedDigit())
+                            .foregroundColor(.white.opacity(0.95))
                             .shadow(color: .black.opacity(0.3), radius: 1, x: 0, y: 1)
                     }
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.7)
                     .offset(y: 8)
                 }
             }
@@ -108,8 +110,9 @@ struct WatchWaterView: View {
                 }
             }
         }
-        .padding(.horizontal, 8)
-        .padding(.top, 4)
+        .padding(.horizontal, 6)
+        .padding(.top, 0)
+        .padding(.bottom, 2)
         .onAppear { loadData(); startTimer() }
         .onDisappear { stopTimer() }
         .onChange(of: scenePhase) { _, phase in
@@ -118,7 +121,7 @@ struct WatchWaterView: View {
             if phase == .active { loadData() }
         }
         .onReceive(NotificationCenter.default.publisher(for: .watchWaterDataUpdated)) { _ in
-            loadData()
+            loadData(allowLower: false)
         }
         .sheet(isPresented: $showCustomEntry) {
             customEntrySheet
@@ -232,15 +235,22 @@ struct WatchWaterView: View {
         }
     }
 
-    private func loadData() {
+    /// `allowLower` is false when triggered by a passively-arriving iPhone
+    /// water_update. During rapid quick-adds the iPhone's in-flight value may
+    /// be behind the watch's optimistic total, and accepting it would revert
+    /// what the user just saw climb. Foreground/timer refreshes pass true so
+    /// genuine iPhone-side deletes still propagate.
+    private func loadData(allowLower: Bool = true) {
         isLoading = true
         goalOz = readWaterGoalOz()
         unit   = readWaterUnit()
         Task { @MainActor in
             let hkOz = await WatchHealthKit.shared.todayWaterOz()
-            // readWaterTodayOz already returns 0 if the cached value is stale,
-            // so a stale carry-over from yesterday no longer leaks through.
-            todayOz = hkOz > 0 ? hkOz : readWaterTodayOz()
+            // HK can lag behind a watch-side add until the iPhone re-exports
+            // the new log, so we take the larger of HK and the app-group cache.
+            // readWaterTodayOz returns 0 on stale carry-overs.
+            let newOz = max(hkOz, readWaterTodayOz())
+            todayOz = allowLower ? newOz : max(newOz, todayOz)
             isLoading = false
         }
     }

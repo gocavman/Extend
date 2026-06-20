@@ -139,6 +139,9 @@ public final class HealthKitService {
 
     private let store = HKHealthStore()
 
+    /// Active observer query for new HKWorkouts. Held to keep the subscription alive.
+    private var workoutObserverQuery: HKObserverQuery?
+
     // MARK: - Types to read/write
 
     private var typesToShare: Set<HKSampleType> {
@@ -166,6 +169,30 @@ public final class HealthKitService {
     public func requestAuthorization() async throws {
         guard isAvailable else { return }
         try await store.requestAuthorization(toShare: typesToShare, read: typesToRead)
+    }
+
+    // MARK: - Live Workout Observation
+
+    /// Starts an HKObserverQuery that fires whenever a new workout is added to Apple Health,
+    /// plus enables background delivery so the callback fires even when the app is
+    /// backgrounded. Safe to call multiple times — the query is registered only once.
+    public func startObservingNewWorkouts(onChange: @escaping @Sendable () -> Void) {
+        guard isAvailable else { return }
+        guard workoutObserverQuery == nil else { return }
+
+        let workoutType = HKObjectType.workoutType()
+        let query = HKObserverQuery(sampleType: workoutType, predicate: nil) { _, completionHandler, error in
+            if error == nil {
+                onChange()
+            }
+            completionHandler()
+        }
+        store.execute(query)
+        workoutObserverQuery = query
+
+        store.enableBackgroundDelivery(for: workoutType, frequency: .immediate) { _, _ in
+            // Best-effort: silent if the user denied background delivery permission.
+        }
     }
 
     // MARK: - Export: Strength Workout

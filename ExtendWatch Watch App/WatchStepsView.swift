@@ -3,7 +3,8 @@
 ////  ExtendWatch
 ////
 ////  Full-screen live steps/distance view inside the Watch app.
-////  Shows two rings side by side: orange for steps, cyan for distance.
+////  Shows one large nested ring: orange outer ring for steps, cyan inner ring
+////  for distance. Text in the middle reports both values.
 ////  Queries HealthKit on appear and on a 30-second timer for live updates.
 ////
 
@@ -18,39 +19,36 @@ struct WatchStepsView: View {
     @State private var isLoading = true
     @State private var refreshTimer: Timer? = nil
 
-    var body: some View {
-        ScrollView {
-            VStack(spacing: 8) {
-                if isLoading {
-                    ProgressView()
-                        .padding(.top, 24)
-                } else {
-                    HStack(alignment: .top, spacing: 8) {
-                        // Steps ring (orange)
-                        ringColumn(
-                            fraction: stepsFraction,
-                            color: .orange,
-                            icon: "figure.walk",
-                            valueText: stepsLabel(steps),
-                            unitText: "steps",
-                            goalText: "/ \(stepsLabel(settings.stepsGoal))"
-                        )
+    private let outerRingSize: CGFloat = 150
+    private let outerRingWidth: CGFloat = 10
+    private let innerRingSize: CGFloat = 112
+    private let innerRingWidth: CGFloat = 9
 
-                        // Distance ring (cyan)
-                        ringColumn(
-                            fraction: distanceFraction,
-                            color: .cyan,
-                            icon: "location.fill",
-                            valueText: String(format: "%.2f", displayDistance),
-                            unitText: settings.distanceUnit.rawValue,
-                            goalText: "/ \(String(format: "%.1f", settings.distanceGoal)) \(settings.distanceUnit.rawValue)"
-                        )
-                    }
-                    .padding(.horizontal, 4)
+    var body: some View {
+        VStack(spacing: 6) {
+            if isLoading {
+                ProgressView()
+                    .padding(.top, 24)
+            } else {
+                nestedRings
+
+                HStack(spacing: 6) {
+                    Text("/ \(stepsLabel(settings.stepsGoal))")
+                        .font(.system(size: 15, weight: .medium))
+                        .foregroundColor(.secondary)
+                    Text("•")
+                        .font(.system(size: 15))
+                        .foregroundColor(.secondary)
+                    Text("/ \(String(format: "%.1f", settings.distanceGoal)) \(settings.distanceUnit.rawValue)")
+                        .font(.system(size: 15, weight: .medium))
+                        .foregroundColor(.secondary)
                 }
+                .lineLimit(1)
+                .minimumScaleFactor(0.6)
+                .padding(.horizontal, 4)
             }
-            .padding(.vertical, 8)
         }
+        .padding(.vertical, 4)
         .navigationTitle("Steps")
         .navigationBarTitleDisplayMode(.inline)
         .onAppear { loadData(); startTimer() }
@@ -63,49 +61,51 @@ struct WatchStepsView: View {
         }
     }
 
-    // MARK: - Ring column
+    // MARK: - Nested rings
 
-    private func ringColumn(
-        fraction: Double,
-        color: Color,
-        icon: String,
-        valueText: String,
-        unitText: String,
-        goalText: String
-    ) -> some View {
-        VStack(spacing: 4) {
-            ZStack {
-                Circle()
-                    .stroke(color.opacity(0.2), lineWidth: 7)
-                Circle()
-                    .trim(from: 0, to: fraction)
-                    .stroke(
-                        fraction >= 1.0 ? Color.green : color,
-                        style: StrokeStyle(lineWidth: 7, lineCap: .round)
-                    )
-                    .rotationEffect(.degrees(-90))
-                    .animation(.easeOut(duration: 0.4), value: fraction)
+    private var stepsTint: Color { stepsFraction >= 1.0 ? .green : .orange }
+    private var distanceTint: Color { distanceFraction >= 1.0 ? .green : .cyan }
 
-                VStack(spacing: 1) {
-                    Image(systemName: icon)
-                        .font(.system(size: 11, weight: .semibold))
-                    Text(valueText)
-                        .font(.system(size: 13, weight: .bold).monospacedDigit())
-                    Text(unitText)
-                        .font(.system(size: 8))
-                        .foregroundColor(.secondary)
-                }
-                .foregroundColor(fraction >= 1.0 ? .green : color)
+    private var nestedRings: some View {
+        ZStack {
+            // Outer (steps) ring
+            Circle()
+                .stroke(Color.orange.opacity(0.2), lineWidth: outerRingWidth)
+                .frame(width: outerRingSize, height: outerRingSize)
+            Circle()
+                .trim(from: 0, to: stepsFraction)
+                .stroke(stepsTint, style: StrokeStyle(lineWidth: outerRingWidth, lineCap: .round))
+                .rotationEffect(.degrees(-90))
+                .frame(width: outerRingSize, height: outerRingSize)
+                .animation(.easeOut(duration: 0.4), value: stepsFraction)
+
+            // Inner (distance) ring
+            Circle()
+                .stroke(Color.cyan.opacity(0.2), lineWidth: innerRingWidth)
+                .frame(width: innerRingSize, height: innerRingSize)
+            Circle()
+                .trim(from: 0, to: distanceFraction)
+                .stroke(distanceTint, style: StrokeStyle(lineWidth: innerRingWidth, lineCap: .round))
+                .rotationEffect(.degrees(-90))
+                .frame(width: innerRingSize, height: innerRingSize)
+                .animation(.easeOut(duration: 0.4), value: distanceFraction)
+
+            // Centered readout — steps on top, distance below
+            VStack(spacing: 2) {
+                Text(stepsLabel(steps))
+                    .font(.system(size: 26, weight: .bold).monospacedDigit())
+                    .foregroundColor(stepsTint)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.7)
+                Text("\(String(format: "%.2f", displayDistance)) \(settings.distanceUnit.rawValue)")
+                    .font(.system(size: 16, weight: .semibold).monospacedDigit())
+                    .foregroundColor(distanceTint)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.7)
             }
-            .frame(width: 72, height: 72)
-
-            Text(goalText)
-                .font(.system(size: 9))
-                .foregroundColor(.secondary)
-                .lineLimit(1)
-                .minimumScaleFactor(0.7)
+            .frame(width: innerRingSize - 14)
         }
-        .frame(maxWidth: .infinity)
+        .frame(width: outerRingSize, height: outerRingSize)
     }
 
     // MARK: - Derived values

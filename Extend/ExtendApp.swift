@@ -136,6 +136,10 @@ struct ExtendApp: App {
                     // is yesterday's value until we re-stamp it for "today".
                     waterState.persistWidgetData()
                     trainingPlanState.refreshWidgetSnapshot()
+                    Task {
+                        await WorkoutLogState.shared.importFromHealthKit()
+                        await waterState.syncFromHealthKit()
+                    }
                 }
                 .task {
                     // Activate Watch ↔ iPhone sync
@@ -158,14 +162,25 @@ struct ExtendApp: App {
                     // Start CloudKit sync (registers subscriptions, pulls latest data)
                     await CloudKitSyncEngine.shared.start()
 
-                    // Request HealthKit auth on first launch if any sync is configured
-                    guard !healthKitState.authorizationRequested else { return }
-                    guard HealthKitService.shared.isAvailable else { return }
-                    do {
-                        try await HealthKitService.shared.requestAuthorization()
-                        healthKitState.authorizationRequested = true
-                    } catch {
-                        // Non-fatal: user may have declined; we'll check status before each operation
+                    // Request HealthKit auth on first launch if any sync is configured.
+                    // Skip the prompt if already done — but still proceed to the
+                    // import + observer setup below.
+                    if !healthKitState.authorizationRequested,
+                       HealthKitService.shared.isAvailable {
+                        do {
+                            try await HealthKitService.shared.requestAuthorization()
+                            healthKitState.authorizationRequested = true
+                        } catch {
+                            // Non-fatal: user may have declined; we'll check status before each operation
+                        }
+                    }
+
+                    // Pull any new HealthKit workouts/water that landed while we were closed,
+                    // and subscribe to live updates so future workouts import on arrival.
+                    await WorkoutLogState.shared.importFromHealthKit()
+                    await waterState.syncFromHealthKit()
+                    HealthKitService.shared.startObservingNewWorkouts {
+                        Task { await WorkoutLogState.shared.importFromHealthKit() }
                     }
                 }
         }

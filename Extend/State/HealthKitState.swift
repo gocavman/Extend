@@ -24,6 +24,7 @@ public final class HealthKitState {
     private let authRequestedKey         = "hk_authRequested"
     private let userWeightKgKey          = "hk_userWeightKg"
     private let userWeightUnitKey        = "hk_userWeightUnit"
+    private let useWatchSessionKey       = "hk_useWatchWorkoutSession"
 
     // MARK: - Default imported activity types (raw UInt values)
     /// All activity types enabled by default.
@@ -71,6 +72,14 @@ public final class HealthKitState {
         didSet { hkDefaults.set(userWeightUnit, forKey: userWeightUnitKey) }
     }
 
+    /// Route workouts through a live Apple Watch HKWorkoutSession when the
+    /// watch is reachable. Produces a single authoritative HKWorkout with real
+    /// heart rate / calories instead of an iPhone-side estimate plus a
+    /// potential duplicate from a native Watch session.
+    public var useWatchWorkoutSession: Bool {
+        didSet { hkDefaults.set(useWatchWorkoutSession, forKey: useWatchSessionKey) }
+    }
+
     // MARK: - Init
 
     private init() {
@@ -97,6 +106,7 @@ public final class HealthKitState {
         authorizationRequested = hkDefaults.object(forKey: authRequestedKey)  as? Bool ?? false
         userWeightKg           = hkDefaults.object(forKey: userWeightKgKey)   as? Double ?? 0
         userWeightUnit         = hkDefaults.object(forKey: userWeightUnitKey) as? String ?? "lb"
+        useWatchWorkoutSession = hkDefaults.object(forKey: useWatchSessionKey) as? Bool ?? true
     }
 
     // MARK: - Computed
@@ -129,5 +139,6 @@ public final class HealthKitState {
         authorizationRequested = false
         userWeightKg           = 0
         userWeightUnit         = "lb"
+        useWatchWorkoutSession = true
     }
 }

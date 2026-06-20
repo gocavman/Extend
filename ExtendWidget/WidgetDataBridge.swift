@@ -9,6 +9,7 @@ import Foundation
 
 private let appGroupID = "group.com.cavanmannenbach.extend"
 private let snapshotKey = "widget_plan_snapshot"
+private let multidayKey = "widget_plan_multiday"
 private let waterTodayOzKey = "water_today_oz"
 private let waterGoalOzKey = "water_goal_oz"
 private let waterUnitKey = "water_unit"
@@ -43,6 +44,17 @@ public func readWidgetSnapshot() -> WidgetPlanSnapshot {
         return decoded
     }
     return WidgetPlanSnapshot(planName: nil, date: Date(), items: [], isRestDay: true)
+}
+
+/// Pre-computed ±7-day snapshots used by the widget so entries that cross
+/// midnight automatically switch to the new day's plan.
+public func readMultiDaySnapshots() -> [WidgetPlanSnapshot] {
+    let defaults = UserDefaults(suiteName: appGroupID) ?? .standard
+    if let data = defaults.data(forKey: multidayKey),
+       let decoded = try? JSONDecoder().decode([WidgetPlanSnapshot].self, from: data) {
+        return decoded
+    }
+    return []
 }
 
 // MARK: - Water reading

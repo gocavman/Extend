@@ -2347,6 +2347,9 @@ public struct StartWorkoutView: View {
     @State private var exerciseData: [UUID: (sets: [WorkoutSet], notes: String, timerSeconds: Int, usedEquipmentIDs: Set<UUID>, phaseIndex: Int, phaseElapsed: Int, phaseTimerDone: Bool)] = [:]
     /// Wall-clock time when the workout session actually started (after warmup)
     @State private var sessionStartDate: Date? = nil
+    /// True once the iPhone-driven Watch HKWorkoutSession has been started, so
+    /// completion knows to end it and we don't double-export to HealthKit.
+    @State private var watchWorkoutStarted: Bool = false
     /// Records when the app went to background so elapsed time can be recovered on foreground
     @State private var backgroundedAt: Date? = nil
     @State private var showingHistory: Bool = false
@@ -2773,6 +2776,18 @@ public struct StartWorkoutView: View {
             loadItemData()
             if TimerState.shared.keepScreenOn {
                 UIApplication.shared.isIdleTimerDisabled = true
+            }
+            // Kick off an iPhone-driven Watch HKWorkoutSession (when enabled
+            // and a watch is reachable) so heart rate / calories get collected
+            // on the wrist instead of estimated on the phone.
+            if HealthKitState.shared.useWatchWorkoutSession {
+                Task {
+                    let ok = await WatchConnectivityReceiver.shared.startWatchWorkout(
+                        activityTypeRaw: workout.healthKitActivityType,
+                        name: workout.name
+                    )
+                    await MainActor.run { watchWorkoutStarted = ok }
+                }
             }
         }
         .onDisappear {
@@ -4182,11 +4197,27 @@ public struct StartWorkoutView: View {
             duration: totalDuration
         )
 
-        WorkoutLogState.shared.addLog(
-            workoutLog,
-            exportToHealthKit: HealthKitState.shared.exportStrengthWorkouts,
-            activityTypeRaw: workout.healthKitActivityType
-        )
+        // If we have an active Watch HKWorkoutSession, end it now and adopt
+        // the UUID it returns — that becomes the canonical HKWorkout in Apple
+        // Health, with real heart-rate-driven calories. Falling through to the
+        // iPhone estimate only if the watch couldn't end cleanly.
+        let needsWatchEnd = watchWorkoutStarted
+        let workoutHK = workout.healthKitActivityType
+        let exportEnabled = HealthKitState.shared.exportStrengthWorkouts
+        Task {
+            var watchUUID: UUID? = nil
+            if needsWatchEnd {
+                watchUUID = await WatchConnectivityReceiver.shared.endWatchWorkout()
+            }
+            await MainActor.run {
+                WorkoutLogState.shared.addLog(
+                    workoutLog,
+                    exportToHealthKit: exportEnabled,
+                    activityTypeRaw: workoutHK,
+                    existingHealthKitUUID: watchUUID
+                )
+            }
+        }
         moduleState.selectModule(ModuleIDs.progress)
         UIImpactFeedbackGenerator(style: .heavy).impactOccurred()
         dismiss()

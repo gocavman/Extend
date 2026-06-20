@@ -33,20 +33,29 @@ public final class WorkoutLogState {
     
     /// Add a new workout log and optionally export it to Apple Health.
     /// Pass `activityType` as the HKWorkoutActivityType raw value (nil → .other).
-    public func addLog(_ log: WorkoutLog, exportToHealthKit: Bool = false, activityTypeRaw: UInt? = nil) {
+    /// `existingHealthKitUUID` lets callers stamp the log with a HKWorkout UUID
+    /// produced elsewhere (e.g. by a live Apple Watch HKWorkoutSession) — when
+    /// set, the iPhone-side export is skipped so we don't create a duplicate.
+    public func addLog(_ log: WorkoutLog,
+                       exportToHealthKit: Bool = false,
+                       activityTypeRaw: UInt? = nil,
+                       existingHealthKitUUID: UUID? = nil) {
         var log = log
         log.healthKitActivityTypeRaw = activityTypeRaw
+        if let existingHealthKitUUID {
+            log.healthKitUUID = existingHealthKitUUID
+        }
         logs.append(log)
         saveLogs()
         // Refresh widget so completion checkboxes update immediately
         TrainingPlanState.shared.refreshWidgetSnapshot()
 
-        if exportToHealthKit {
+        if exportToHealthKit && existingHealthKitUUID == nil {
             Task {
                 await exportLogToHealthKit(log, activityTypeRaw: activityTypeRaw)
             }
         }
-        
+
         // Request review after 10-20 completed workouts/sessions
         requestReviewIfAppropriate()
     }
@@ -113,8 +122,19 @@ public final class WorkoutLogState {
         guard HealthKitService.shared.isAvailable else { return }
         guard log.healthKitUUID == nil else { return } // already exported
 
+        // Fall back to the contained exercise's HK type when the workout itself
+        // has none. Covers the common case where a Workout wraps a single exercise
+        // (e.g. "Toes to bar") that has its own HK activity type set in Exercises —
+        // without this it would export as .other.
+        let resolvedTypeRaw: UInt? = {
+            if let raw = activityTypeRaw { return raw }
+            let uniqueIDs = Set(log.exercises.map { $0.exerciseID })
+            guard uniqueIDs.count == 1, let exID = uniqueIDs.first else { return nil }
+            return ExercisesState.shared.exercises.first(where: { $0.id == exID })?.healthKitActivityType
+        }()
+
         let startDate = log.completedAt.addingTimeInterval(-log.duration)
-        let activityType = HKWorkoutActivityTypeHelper.hkType(from: activityTypeRaw)
+        let activityType = HKWorkoutActivityTypeHelper.hkType(from: resolvedTypeRaw)
         let weight = HealthKitState.shared.userWeightKg
         let calories = HealthKitService.shared.estimatedCalories(
             durationSeconds: log.duration,

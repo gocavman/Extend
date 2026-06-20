@@ -306,6 +306,15 @@ private struct SettingsModuleView: View {
                                     set: { healthKitState.exportStrengthWorkouts = $0 }
                                 ))
 
+                                Toggle("Use Apple Watch for Workouts", isOn: Binding(
+                                    get: { healthKitState.useWatchWorkoutSession },
+                                    set: { healthKitState.useWatchWorkoutSession = $0 }
+                                ))
+
+                                Text("When on, starting a workout on the phone runs a live session on your Watch for accurate heart-rate and calorie tracking. Falls back to an iPhone estimate when the Watch isn't reachable.")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+
                                 NavigationLink("Import Activities") {
                                     ImportActivitiesView()
                                         .environment(healthKitState)

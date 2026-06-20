@@ -34,21 +34,44 @@ struct TodaysPlanProvider: TimelineProvider {
     }
 
     func getTimeline(in context: Context, completion: @escaping (Timeline<TodaysPlanEntry>) -> Void) {
-        let snapshot = readWidgetSnapshot()
+        let todaySnapshot = readWidgetSnapshot()
+        let multiday = readMultiDaySnapshots()
         let now = Date()
-        // Generate one entry per hour for the next 12 hours so the widget
-        // stays current even if the app isn't open. The main app also calls
-        // WidgetCenter.shared.reloadAllTimelines() immediately whenever plan
-        // data changes, so edits show up right away regardless of this schedule.
+        let cal = Calendar.current
+
+        // Resolve the snapshot for any given calendar day so an entry that
+        // crosses midnight switches to the new day's plan automatically.
+        func snapshot(for date: Date) -> WidgetPlanSnapshot {
+            if let match = multiday.first(where: { cal.isDate($0.date, inSameDayAs: date) }) {
+                return match
+            }
+            if cal.isDate(date, inSameDayAs: Date()) { return todaySnapshot }
+            return WidgetPlanSnapshot(planName: todaySnapshot.planName, date: date, items: [], isRestDay: true)
+        }
+
+        // Hourly entries across the next 24 hours, each carrying its own day's
+        // snapshot. The main app also calls WidgetCenter.reloadAllTimelines()
+        // whenever plan data changes, so edits show up right away regardless.
         var entries: [TodaysPlanEntry] = []
-        for hour in 0..<12 {
-            if let date = Calendar.current.date(byAdding: .hour, value: hour, to: now) {
-                entries.append(TodaysPlanEntry(date: date, snapshot: snapshot))
+        for hour in 0..<24 {
+            if let date = cal.date(byAdding: .hour, value: hour, to: now) {
+                entries.append(TodaysPlanEntry(date: date, snapshot: snapshot(for: date)))
             }
         }
-        // After 12 hours, ask WidgetKit to reload (picks up any day rollover)
-        let timeline = Timeline(entries: entries, policy: .atEnd)
-        completion(timeline)
+        // Explicit midnight entry so the rollover lands exactly at 00:00.
+        if let nextMidnight = cal.nextDate(
+            after: now,
+            matching: DateComponents(hour: 0, minute: 0, second: 0),
+            matchingPolicy: .nextTime
+        ) {
+            entries.append(TodaysPlanEntry(date: nextMidnight, snapshot: snapshot(for: nextMidnight)))
+            entries.sort { $0.date < $1.date }
+        }
+
+        // Reload sooner than the full timeline expires so iPhone-side plan
+        // changes propagate within a couple hours even without an explicit push.
+        let refreshAt = cal.date(byAdding: .hour, value: 2, to: now) ?? now
+        completion(Timeline(entries: entries, policy: .after(refreshAt)))
     }
 }
 

@@ -14,6 +14,7 @@ struct WatchSettingsView: View {
 
     @State private var stepsSettings: WatchStepsSettings = readWatchStepsSettings()
     @State private var shapes: WatchComplicationShapeSettings = readWatchComplicationShapeSettings()
+    @State private var pages: WatchPageVisibility = readWatchPageVisibility()
     @State private var stepsGoalText: String = ""
     @State private var distanceGoalText: String = ""
 
@@ -36,6 +37,22 @@ struct WatchSettingsView: View {
         NavigationStack {
             List {
                 Section {
+                    Toggle("Today's Plan", isOn: $pages.showPlan)
+                        .onChange(of: pages.showPlan) { _, _ in savePages() }
+                    Toggle("Library", isOn: $pages.showLibrary)
+                        .onChange(of: pages.showLibrary) { _, _ in savePages() }
+                    Toggle("Steps & Distance", isOn: $pages.showSteps)
+                        .onChange(of: pages.showSteps) { _, _ in savePages() }
+                    Toggle("Water", isOn: $pages.showWater)
+                        .onChange(of: pages.showWater) { _, _ in savePages() }
+                } header: {
+                    Text("Pages")
+                } footer: {
+                    Text("Hidden pages won't appear when swiping. Settings is always shown.")
+                        .font(.caption2)
+                }
+
+                Section {
                     HStack {
                         Text("Steps")
                         Spacer()
@@ -53,20 +70,15 @@ struct WatchSettingsView: View {
                     HStack {
                         Text("Distance")
                         Spacer()
-                        HStack(spacing: 2) {
-                            TextField("8.0", text: $distanceGoalText)
-                                .multilineTextAlignment(.trailing)
-                                .onChange(of: distanceGoalText) { _, newValue in
-                                    if let v = Double(newValue), v > 0 {
-                                        stepsSettings.distanceGoal = v
-                                        saveSteps()
-                                    }
+                        TextField("8.0", text: $distanceGoalText)
+                            .multilineTextAlignment(.trailing)
+                            .onChange(of: distanceGoalText) { _, newValue in
+                                if let v = Double(newValue), v > 0 {
+                                    stepsSettings.distanceGoal = v
+                                    saveSteps()
                                 }
-                            Text(stepsSettings.distanceUnit.rawValue)
-                                .foregroundColor(.secondary)
-                                .font(.caption)
-                        }
-                        .frame(width: 80)
+                            }
+                            .frame(width: 80)
                     }
 
                     Picker("Unit", selection: $stepsSettings.distanceUnit) {
@@ -99,6 +111,19 @@ struct WatchSettingsView: View {
                     Text("Complication Color")
                 } footer: {
                     Text("\"Watch Face\" follows the watch face tint. Pick a specific color to override.")
+                        .font(.caption2)
+                }
+
+                Section {
+                    colorRow("Steps",            binding: $shapes.stepsTextColor)
+                    colorRow("Distance",         binding: $shapes.distanceTextColor)
+                    colorRow("Steps & Distance", binding: $shapes.stepsAndDistanceTextColor)
+                    colorRow("Water",            binding: $shapes.waterTextColor)
+                    colorRow("Today's Plan",     binding: $shapes.planTextColor)
+                } header: {
+                    Text("Complication Text Color")
+                } footer: {
+                    Text("Color of the value shown in the middle. \"Watch Face\" follows the shape color.")
                         .font(.caption2)
                 }
             }
@@ -155,6 +180,7 @@ struct WatchSettingsView: View {
     private func reloadFromStorage() {
         stepsSettings = readWatchStepsSettings()
         shapes = readWatchComplicationShapeSettings()
+        pages = readWatchPageVisibility()
         stepsGoalText = String(Int(stepsSettings.stepsGoal))
         let d = stepsSettings.distanceGoal
         distanceGoalText = d.truncatingRemainder(dividingBy: 1) == 0
@@ -170,6 +196,11 @@ struct WatchSettingsView: View {
     private func saveShapes() {
         writeWatchComplicationShapeSettings(shapes)
         WidgetCenter.shared.reloadAllTimelines()
+    }
+
+    private func savePages() {
+        writeWatchPageVisibility(pages)
+        NotificationCenter.default.post(name: .watchPageVisibilityChanged, object: nil)
     }
 }
 

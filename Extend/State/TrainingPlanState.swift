@@ -402,7 +402,11 @@ final class TrainingPlanState {
             items += pd.workoutIDs.compactMap { id in
                 workouts.first { $0.id == id }.map {
                     WidgetPlanItem(name: $0.name, icon: "dumbbell.fill",
-                                  isCompleted: completedNames.contains($0.name))
+                                  isCompleted: completedNames.contains($0.name),
+                                  hkActivityTypeRaw: $0.healthKitActivityType,
+                                  logName: $0.name,
+                                  kind: "workout",
+                                  sourceID: $0.id.uuidString)
                 }
             }
         }
@@ -412,7 +416,11 @@ final class TrainingPlanState {
             items += pd.exerciseIDs.compactMap { id in
                 exercises.first { $0.id == id }.map {
                     WidgetPlanItem(name: $0.name, icon: "figure.strengthtraining.traditional",
-                                  isCompleted: completedNames.contains($0.name))
+                                  isCompleted: completedNames.contains($0.name),
+                                  hkActivityTypeRaw: $0.healthKitActivityType,
+                                  logName: $0.name,
+                                  kind: "exercise",
+                                  sourceID: $0.id.uuidString)
                 }
             }
         }
@@ -422,7 +430,11 @@ final class TrainingPlanState {
             items += pd.voiceActivityIDs.compactMap { id in
                 configs.first { $0.id == id }.map {
                     WidgetPlanItem(name: $0.name, icon: "waveform",
-                                  isCompleted: completedNames.contains("Trainer – \($0.name)"))
+                                  isCompleted: completedNames.contains("Trainer – \($0.name)"),
+                                  hkActivityTypeRaw: $0.healthKitActivityType,
+                                  logName: "Trainer – \($0.name)",
+                                  kind: "voice",
+                                  sourceID: $0.id.uuidString)
                 }
             }
         }
@@ -433,7 +445,11 @@ final class TrainingPlanState {
                 configs.first { $0.id == id }.map { c in
                     let displayName = c.name.isEmpty ? c.type.rawValue : c.name
                     return WidgetPlanItem(name: displayName, icon: c.type.iconName,
-                                         isCompleted: completedNames.contains("\(c.type.rawValue) – \(displayName)"))
+                                         isCompleted: completedNames.contains("\(c.type.rawValue) – \(displayName)"),
+                                         hkActivityTypeRaw: c.healthKitActivityType,
+                                         logName: "\(c.type.rawValue) – \(displayName)",
+                                         kind: "timer",
+                                         sourceID: c.id.uuidString)
                 }
             }
         }
@@ -481,32 +497,96 @@ final class TrainingPlanState {
             items += pd.workoutIDs.compactMap { id in
                 workouts.first { $0.id == id }.map {
                     WidgetPlanItem(name: $0.name, icon: "dumbbell.fill",
-                                  isCompleted: completedNames.contains($0.name))
+                                  isCompleted: completedNames.contains($0.name),
+                                  hkActivityTypeRaw: $0.healthKitActivityType,
+                                  logName: $0.name,
+                                  kind: "workout",
+                                  sourceID: $0.id.uuidString)
                 }
             }
             items += pd.exerciseIDs.compactMap { id in
                 exercises.first { $0.id == id }.map {
                     WidgetPlanItem(name: $0.name, icon: "figure.strengthtraining.traditional",
-                                  isCompleted: completedNames.contains($0.name))
+                                  isCompleted: completedNames.contains($0.name),
+                                  hkActivityTypeRaw: $0.healthKitActivityType,
+                                  logName: $0.name,
+                                  kind: "exercise",
+                                  sourceID: $0.id.uuidString)
                 }
             }
             items += pd.voiceActivityIDs.compactMap { id in
                 voices.first { $0.id == id }.map {
                     WidgetPlanItem(name: $0.name, icon: "waveform",
-                                  isCompleted: completedNames.contains("Trainer – \($0.name)"))
+                                  isCompleted: completedNames.contains("Trainer – \($0.name)"),
+                                  hkActivityTypeRaw: $0.healthKitActivityType,
+                                  logName: "Trainer – \($0.name)",
+                                  kind: "voice",
+                                  sourceID: $0.id.uuidString)
                 }
             }
             items += pd.timerIDs.compactMap { id in
                 timers.first { $0.id == id }.map { c in
                     let displayName = c.name.isEmpty ? c.type.rawValue : c.name
                     return WidgetPlanItem(name: displayName, icon: c.type.iconName,
-                                         isCompleted: completedNames.contains("\(c.type.rawValue) – \(displayName)"))
+                                         isCompleted: completedNames.contains("\(c.type.rawValue) – \(displayName)"),
+                                         hkActivityTypeRaw: c.healthKitActivityType,
+                                         logName: "\(c.type.rawValue) – \(displayName)",
+                                         kind: "timer",
+                                         sourceID: c.id.uuidString)
                 }
             }
             snapshots.append(WidgetPlanSnapshot(planName: plan.name, date: date, items: items, isRestDay: false))
         }
         writeMultiDaySnapshots(snapshots)
         WatchConnectivityReceiver.shared.sendPlanUpdate(multidaySnapshots: snapshots)
+
+        // Project the same decoded data into a flat library snapshot the Watch
+        // can use to start any workout/exercise/timer/voice trainer — not just
+        // those in today's plan.
+        let exercisesByID = Dictionary(uniqueKeysWithValues: exercises.map { ($0.id, $0) })
+        let blueprints: [String: WatchWorkoutBlueprint] = Dictionary(
+            uniqueKeysWithValues: workouts.map { workout in
+                (workout.id.uuidString, Self.buildBlueprint(for: workout, exercisesByID: exercisesByID))
+            }
+        )
+        let library = WatchLibrarySnapshot(
+            workouts: workouts.map {
+                WatchLibraryItem(
+                    id: $0.id.uuidString, kind: "workout",
+                    name: $0.name, icon: "dumbbell.fill",
+                    hkActivityTypeRaw: $0.healthKitActivityType,
+                    logName: $0.name
+                )
+            },
+            exercises: exercises.map {
+                WatchLibraryItem(
+                    id: $0.id.uuidString, kind: "exercise",
+                    name: $0.name, icon: "figure.strengthtraining.traditional",
+                    hkActivityTypeRaw: $0.healthKitActivityType,
+                    logName: $0.name
+                )
+            },
+            timers: timers.map { c in
+                let displayName = c.name.isEmpty ? c.type.rawValue : c.name
+                return WatchLibraryItem(
+                    id: c.id.uuidString, kind: "timer",
+                    name: displayName, icon: c.type.iconName,
+                    hkActivityTypeRaw: c.healthKitActivityType,
+                    logName: "\(c.type.rawValue) – \(displayName)"
+                )
+            },
+            voiceTrainers: voices.map {
+                WatchLibraryItem(
+                    id: $0.id.uuidString, kind: "voice",
+                    name: $0.name, icon: "waveform",
+                    hkActivityTypeRaw: $0.healthKitActivityType,
+                    logName: "Trainer – \($0.name)"
+                )
+            },
+            workoutBlueprints: blueprints
+        )
+        writeWatchLibrarySnapshot(library)
+        WatchConnectivityReceiver.shared.sendLibraryUpdate(library)
     }
 
     private func saveActiveID() {
@@ -517,5 +597,193 @@ final class TrainingPlanState {
     /// Called by CloudKitSyncEngine after a remote pull updates UserDefaults.
     func reloadFromDefaults() {
         load()
+    }
+
+    // MARK: - Watch blueprint construction
+
+    /// Projects a Workout into a flat `WatchWorkoutBlueprint` the watch can run
+    /// without knowing about the full model graph. Loops and complexes are
+    /// pre-expanded into per-round exercise instances; timed-set targets carry
+    /// `timedSeconds`; loop timer modes (Tabata/EMOM/Interval) populate
+    /// `timedSeconds` (work) and `restSecondsAfter` (rest) so the watch chains
+    /// work→rest→next automatically. Explicit `.rest(RestItem)` items attach
+    /// their duration to the previous exercise's last set so the watch shows
+    /// a rest screen at the right point.
+    static func buildBlueprint(for workout: Workout,
+                               exercisesByID: [UUID: Exercise]) -> WatchWorkoutBlueprint {
+        var projection: [WatchBlueprintExercise] = []
+        let items = workout.items
+        var i = 0
+        while i < items.count {
+            switch items[i] {
+            case .rest(let r):
+                Self.attachRest(seconds: r.duration, to: &projection)
+                i += 1
+            case .exercise(let we):
+                if let loopID = we.loopID {
+                    let loop = workout.loops[loopID.uuidString]
+                    let rounds = max(loop?.rounds ?? 1, 1)
+                    let workOverride = (loop?.timerMode?.workSeconds ?? 0)
+                    let timerRest = (loop?.timerMode?.restSeconds ?? 0)
+                    // Collect all consecutive items (exercises + rests) sharing
+                    // this loopID — explicit in-loop rests get applied each round.
+                    let (loopItems, nextIndex) = Self.collectLoopItems(items: items, startIndex: i, loopID: loopID)
+                    i = nextIndex
+                    for r in 1...rounds {
+                        for loopItem in loopItems {
+                            switch loopItem {
+                            case .exercise(let we2):
+                                let ex = exercisesByID[we2.exerciseID]
+                                projection.append(WatchBlueprintExercise(
+                                    id: "\(we2.id.uuidString)-r\(r)",
+                                    exerciseID: we2.exerciseID.uuidString,
+                                    name: ex?.name ?? "Exercise",
+                                    icon: "figure.strengthtraining.traditional",
+                                    predefinedSets: Self.makeWatchPredefinedSets(
+                                        from: we2.predefinedSets,
+                                        timedOverrideSeconds: workOverride > 0 ? workOverride : nil,
+                                        loopRestSeconds: timerRest
+                                    ),
+                                    loopRound: r,
+                                    loopTotalRounds: rounds
+                                ))
+                            case .rest(let r):
+                                Self.attachRest(seconds: r.duration, to: &projection)
+                            }
+                        }
+                    }
+                } else if let complexID = we.complexID {
+                    let complex = workout.complexes[complexID.uuidString]
+                    let rounds = max(complex?.rounds ?? 1, 1)
+                    var complexExercises: [WorkoutExercise] = []
+                    while i < items.count {
+                        if case .exercise(let we2) = items[i], we2.complexID == complexID {
+                            complexExercises.append(we2)
+                            i += 1
+                        } else {
+                            break
+                        }
+                    }
+                    for r in 1...rounds {
+                        for we2 in complexExercises {
+                            let ex = exercisesByID[we2.exerciseID]
+                            projection.append(WatchBlueprintExercise(
+                                id: "\(we2.id.uuidString)-cr\(r)",
+                                exerciseID: we2.exerciseID.uuidString,
+                                name: ex?.name ?? "Exercise",
+                                icon: "figure.strengthtraining.traditional",
+                                predefinedSets: Self.makeWatchPredefinedSets(from: we2.predefinedSets),
+                                complexRound: r,
+                                complexTotalRounds: rounds
+                            ))
+                        }
+                    }
+                } else {
+                    let ex = exercisesByID[we.exerciseID]
+                    projection.append(WatchBlueprintExercise(
+                        id: we.id.uuidString,
+                        exerciseID: we.exerciseID.uuidString,
+                        name: ex?.name ?? "Exercise",
+                        icon: "figure.strengthtraining.traditional",
+                        predefinedSets: Self.makeWatchPredefinedSets(from: we.predefinedSets)
+                    ))
+                    i += 1
+                }
+            }
+        }
+        return WatchWorkoutBlueprint(
+            id: workout.id.uuidString,
+            name: workout.name,
+            hkActivityTypeRaw: workout.healthKitActivityType,
+            exercises: projection
+        )
+    }
+
+    /// Walks forward from `startIndex` collecting consecutive items (exercises
+    /// or rests) that belong to `loopID`. Stops at the first item that doesn't
+    /// belong. Returns the collected items + the index after the last consumed.
+    private static func collectLoopItems(items: [WorkoutItem],
+                                         startIndex: Int,
+                                         loopID: UUID) -> (loopItems: [WorkoutItem], endIndex: Int) {
+        var result: [WorkoutItem] = []
+        var i = startIndex
+        while i < items.count {
+            switch items[i] {
+            case .exercise(let we) where we.loopID == loopID:
+                result.append(items[i])
+                i += 1
+            case .rest(let r) where r.loopID == loopID:
+                result.append(items[i])
+                i += 1
+            default:
+                return (result, i)
+            }
+        }
+        return (result, i)
+    }
+
+    /// Modifies the last appended exercise's last predefined set to have at
+    /// least `seconds` of rest after. Picks max(existing, new) so a loop's
+    /// per-set timer rest is preserved even when a larger explicit rest also
+    /// applies to the same boundary.
+    private static func attachRest(seconds: Int, to projection: inout [WatchBlueprintExercise]) {
+        guard seconds > 0, !projection.isEmpty else { return }
+        let last = projection.removeLast()
+        guard !last.predefinedSets.isEmpty else {
+            projection.append(last)
+            return
+        }
+        var sets = last.predefinedSets
+        let lastSet = sets.removeLast()
+        sets.append(WatchPredefinedSet(
+            reps: lastSet.reps,
+            weight: lastSet.weight,
+            timedSeconds: lastSet.timedSeconds,
+            restSecondsAfter: max(lastSet.restSecondsAfter, seconds)
+        ))
+        projection.append(WatchBlueprintExercise(
+            id: last.id,
+            exerciseID: last.exerciseID,
+            name: last.name,
+            icon: last.icon,
+            predefinedSets: sets,
+            loopRound: last.loopRound,
+            loopTotalRounds: last.loopTotalRounds,
+            complexRound: last.complexRound,
+            complexTotalRounds: last.complexTotalRounds
+        ))
+    }
+
+    /// Converts iPhone `PredefinedSet`s into watch-side ones. When the loop
+    /// containing this exercise has a Tabata/EMOM/Interval timer mode,
+    /// `timedOverrideSeconds` is passed so every set runs the loop's work
+    /// duration as a countdown; `loopRestSeconds` populates the auto-rest
+    /// after each work set.
+    private static func makeWatchPredefinedSets(from sets: [PredefinedSet],
+                                                timedOverrideSeconds: Int? = nil,
+                                                loopRestSeconds: Int = 0) -> [WatchPredefinedSet] {
+        sets.map { ps in
+            if let override = timedOverrideSeconds, override > 0 {
+                return WatchPredefinedSet(
+                    reps: 0, weight: ps.weight,
+                    timedSeconds: override,
+                    restSecondsAfter: loopRestSeconds
+                )
+            }
+            switch ps.target {
+            case .reps(let n):
+                return WatchPredefinedSet(
+                    reps: n, weight: ps.weight,
+                    timedSeconds: 0,
+                    restSecondsAfter: loopRestSeconds
+                )
+            case .timed(let s):
+                return WatchPredefinedSet(
+                    reps: 0, weight: ps.weight,
+                    timedSeconds: s,
+                    restSecondsAfter: loopRestSeconds
+                )
+            }
+        }
     }
 }

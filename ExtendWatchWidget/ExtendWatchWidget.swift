@@ -32,6 +32,38 @@ struct WidgetPlanItem: Codable {
     let name: String
     let icon: String
     let isCompleted: Bool
+    // Newer iPhone snapshots include these — older ones don't, so default
+    // them on decode to keep complications working through the upgrade.
+    let hkActivityTypeRaw: UInt?
+    let logName: String?
+    let kind: String?
+    let sourceID: String?
+
+    private enum CodingKeys: String, CodingKey {
+        case name, icon, isCompleted, hkActivityTypeRaw, logName, kind, sourceID
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        name = try c.decode(String.self, forKey: .name)
+        icon = try c.decode(String.self, forKey: .icon)
+        isCompleted = (try? c.decodeIfPresent(Bool.self, forKey: .isCompleted)) ?? false
+        hkActivityTypeRaw = try? c.decodeIfPresent(UInt.self, forKey: .hkActivityTypeRaw)
+        logName = try? c.decodeIfPresent(String.self, forKey: .logName)
+        kind = try? c.decodeIfPresent(String.self, forKey: .kind)
+        sourceID = try? c.decodeIfPresent(String.self, forKey: .sourceID)
+    }
+
+    // Convenience init for the in-extension placeholder timeline entries.
+    init(name: String, icon: String, isCompleted: Bool) {
+        self.name = name
+        self.icon = icon
+        self.isCompleted = isCompleted
+        self.hkActivityTypeRaw = nil
+        self.logName = nil
+        self.kind = nil
+        self.sourceID = nil
+    }
 }
 
 struct WidgetPlanSnapshot: Codable {
@@ -66,6 +98,12 @@ struct WatchComplicationShapeSettings: Codable {
     var stepsAndDistanceColor: String = ""
     var waterColor: String = ""
     var planColor: String = ""
+
+    var stepsTextColor: String = ""
+    var distanceTextColor: String = ""
+    var stepsAndDistanceTextColor: String = ""
+    var waterTextColor: String = ""
+    var planTextColor: String = ""
 
     static let `default` = WatchComplicationShapeSettings(
         stepsShape: "", distanceShape: "", stepsAndDistanceShape: "", waterShape: "", planShape: ""
@@ -160,6 +198,8 @@ private func readWaterUnit() -> String {
 
 struct ComplicationFillShape: View {
     let fraction: Double
+    /// Stored as the ".fill" SF symbol name; we display its outline variant for the
+    /// visible border so the center stays empty enough to read text drawn on top.
     let shape: String
 
     /// Shapes whose bounding box reaches the corners get clipped by the
@@ -172,31 +212,48 @@ struct ComplicationFillShape: View {
         case "pentagon.fill": return 0.86
         case "octagon.fill":  return 0.93
         case "shield.fill":   return 0.90
-        case "heart.fill":    return 0.95
+        case "heart.fill":    return 0.82
+        case "star.fill":     return 0.78
+        case "diamond.fill":  return 0.92
+        case "seal.fill":     return 0.92
         default:              return 1.0
         }
     }
 
+    /// "heart.fill" → "heart". Used for the visible outline so text drawn on top
+    /// is legible inside the empty middle.
+    private var outlineSymbol: String {
+        shape.hasSuffix(".fill") ? String(shape.dropLast(5)) : shape
+    }
+
     var body: some View {
         ZStack {
-            // Background (empty portion)
-            Image(systemName: shape)
+            // Background: dim outline always visible (the unfilled portion).
+            Image(systemName: outlineSymbol)
                 .resizable()
                 .aspectRatio(contentMode: .fit)
-                .foregroundStyle(.secondary.opacity(0.3))
+                .foregroundStyle(.primary.opacity(0.3))
 
-            // Filled portion (adapts to watch face color)
+            // Foreground: bright outline + soft interior fill, masked to the
+            // current fill height so the silhouette brightens from the bottom
+            // up as the value approaches the goal.
             GeometryReader { geo in
-                let fillH = geo.size.height * CGFloat(min(fraction, 1.0))
-                Rectangle()
-                    .fill(.primary)
-                    .frame(height: max(0, fillH))
-                    .frame(maxHeight: .infinity, alignment: .bottom)
-            }
-            .mask {
-                Image(systemName: shape)
-                    .resizable()
-                    .aspectRatio(contentMode: .fit)
+                ZStack {
+                    Image(systemName: shape)
+                        .resizable()
+                        .aspectRatio(contentMode: .fit)
+                        .foregroundStyle(.primary.opacity(0.28))
+                    Image(systemName: outlineSymbol)
+                        .resizable()
+                        .aspectRatio(contentMode: .fit)
+                        .foregroundStyle(.primary)
+                }
+                .frame(width: geo.size.width, height: geo.size.height)
+                .mask(alignment: .bottom) {
+                    Rectangle()
+                        .frame(height: max(0, geo.size.height * CGFloat(min(fraction, 1.0))))
+                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
+                }
             }
         }
         .scaleEffect(fitScale)
@@ -211,6 +268,7 @@ struct WatchPlanEntry: TimelineEntry {
     let snapshot: WidgetPlanSnapshot
     let shape: String
     let color: String
+    let textColor: String
 }
 
 struct WatchPlanProvider: TimelineProvider {
@@ -227,7 +285,8 @@ struct WatchPlanProvider: TimelineProvider {
                 isRestDay: false
             ),
             shape: "",
-            color: ""
+            color: "",
+            textColor: ""
         )
     }
     func getSnapshot(in context: Context, completion: @escaping (WatchPlanEntry) -> Void) {
@@ -236,35 +295,52 @@ struct WatchPlanProvider: TimelineProvider {
             date: Date(),
             snapshot: readTodayPlanSnapshot(),
             shape: settings.planShape,
-            color: settings.planColor
+            color: settings.planColor,
+            textColor: settings.planTextColor
         ))
     }
     func getTimeline(in context: Context, completion: @escaping (Timeline<WatchPlanEntry>) -> Void) {
-        let snapshot = readTodayPlanSnapshot()
+        let todaySnapshot = readTodayPlanSnapshot()
+        let multiday = readMultiDaySnapshots()
         let settings = readWatchComplicationShapeSettings()
         let shape = settings.planShape
         let color = settings.planColor
+        let textColor = settings.planTextColor
         let now = Date()
         let cal = Calendar.current
 
-        var entries: [WatchPlanEntry] = []
-        for hour in 0..<12 {
-            if let d = cal.date(byAdding: .hour, value: hour, to: now) {
-                entries.append(WatchPlanEntry(date: d, snapshot: snapshot, shape: shape, color: color))
+        // Resolve the right snapshot for any given calendar day so entries
+        // that cross midnight automatically swap to the new day's plan.
+        func snapshot(for date: Date) -> WidgetPlanSnapshot {
+            if let match = multiday.first(where: { cal.isDate($0.date, inSameDayAs: date) }) {
+                return match
             }
+            if cal.isDate(date, inSameDayAs: Date()) { return todaySnapshot }
+            return WidgetPlanSnapshot(planName: todaySnapshot.planName, date: date, items: [], isRestDay: true)
         }
 
+        var entries: [WatchPlanEntry] = []
+        // Hourly entries across the next 24 hours — each picks its own day's snapshot.
+        for hour in 0..<24 {
+            if let d = cal.date(byAdding: .hour, value: hour, to: now) {
+                entries.append(WatchPlanEntry(date: d, snapshot: snapshot(for: d), shape: shape, color: color, textColor: textColor))
+            }
+        }
+        // Explicit midnight entry guarantees the rollover lands exactly at 00:00.
         if let nextMidnight = cal.nextDate(
             after: now,
             matching: DateComponents(hour: 0, minute: 0, second: 0),
             matchingPolicy: .nextTime
         ) {
-            let tomorrow = readMultiDaySnapshots().first { cal.isDate($0.date, inSameDayAs: nextMidnight) }
-                ?? WidgetPlanSnapshot(planName: snapshot.planName, date: nextMidnight, items: [], isRestDay: true)
-            entries.append(WatchPlanEntry(date: nextMidnight, snapshot: tomorrow, shape: shape, color: color))
+            entries.append(WatchPlanEntry(date: nextMidnight, snapshot: snapshot(for: nextMidnight), shape: shape, color: color, textColor: textColor))
+            entries.sort { $0.date < $1.date }
         }
 
-        completion(Timeline(entries: entries, policy: .atEnd))
+        // Reload aggressively so the watch picks up iPhone-side plan changes
+        // (e.g. logging a workout) quickly, even if an explicit push gets
+        // dropped or deferred by the complication budget.
+        let refreshAt = cal.date(byAdding: .minute, value: 30, to: now) ?? now
+        completion(Timeline(entries: entries, policy: .after(refreshAt)))
     }
 }
 
@@ -278,7 +354,8 @@ struct PlanComplicationView: View {
         if totalCount > 0 { return Double(completedCount) / Double(totalCount) }
         return entry.snapshot.isRestDay ? 1.0 : 0.0
     }
-    private var tint: Color? { complicationColor(entry.color) }
+    private var shapeTint: Color? { complicationColor(entry.color) }
+    private var textTint: Color? { complicationColor(entry.textColor) ?? shapeTint }
 
     var body: some View {
         Group {
@@ -295,19 +372,17 @@ struct PlanComplicationView: View {
         ZStack {
             if !entry.shape.isEmpty {
                 ComplicationFillShape(fraction: fraction, shape: entry.shape)
-                    .applyTint(tint)
+                    .applyTint(shapeTint)
             } else {
                 Gauge(value: fraction) { EmptyView() }
                     .gaugeStyle(.accessoryCircularCapacity)
-                    .applyTint(tint)
+                    .applyTint(shapeTint)
             }
 
-            if entry.shape.isEmpty {
-                Text(entry.snapshot.isRestDay ? "Rest" : "\(completedCount)/\(totalCount)")
-                    .font(.system(size: 15, weight: .bold).monospacedDigit())
-                    .lineLimit(1).minimumScaleFactor(0.6)
-                    .applyTint(tint)
-            }
+            Text(entry.snapshot.isRestDay ? "Rest" : "\(completedCount)/\(totalCount)")
+                .font(.system(size: 17, weight: .bold).monospacedDigit())
+                .lineLimit(1).minimumScaleFactor(0.6)
+                .applyTint(textTint)
         }
     }
 
@@ -315,18 +390,18 @@ struct PlanComplicationView: View {
         VStack(alignment: .leading, spacing: 2) {
             if let name = entry.snapshot.planName {
                 Text(name)
-                    .font(.caption2.weight(.medium))
+                    .font(.caption.weight(.medium))
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
             }
             if entry.snapshot.isRestDay {
-                Text("Rest Day").font(.body.weight(.semibold)).applyTint(tint)
+                Text("Rest Day").font(.title3.weight(.semibold)).applyTint(textTint)
             } else if totalCount > 0 {
                 Text("\(completedCount) of \(totalCount) done")
-                    .font(.body.weight(.semibold))
-                    .applyTint(tint)
+                    .font(.title3.weight(.semibold))
+                    .applyTint(textTint)
             } else {
-                Text("No activities").font(.body).foregroundStyle(.secondary)
+                Text("No activities").font(.title3).foregroundStyle(.secondary)
             }
         }
     }
@@ -353,11 +428,12 @@ struct WatchWaterEntry: TimelineEntry {
     let unit: String
     let shape: String
     let color: String
+    let textColor: String
 }
 
 struct WatchWaterProvider: TimelineProvider {
     func placeholder(in context: Context) -> WatchWaterEntry {
-        WatchWaterEntry(date: Date(), todayOz: 48, goalOz: 64, unit: "oz", shape: "", color: "")
+        WatchWaterEntry(date: Date(), todayOz: 48, goalOz: 64, unit: "oz", shape: "", color: "", textColor: "")
     }
     func getSnapshot(in context: Context, completion: @escaping (WatchWaterEntry) -> Void) {
         let settings = readWatchComplicationShapeSettings()
@@ -367,7 +443,8 @@ struct WatchWaterProvider: TimelineProvider {
             goalOz: readWaterGoalOz(),
             unit: readWaterUnit(),
             shape: settings.waterShape,
-            color: settings.waterColor
+            color: settings.waterColor,
+            textColor: settings.waterTextColor
         ))
     }
     func getTimeline(in context: Context, completion: @escaping (Timeline<WatchWaterEntry>) -> Void) {
@@ -376,6 +453,7 @@ struct WatchWaterProvider: TimelineProvider {
         let settings = readWatchComplicationShapeSettings()
         let shape = settings.waterShape
         let color = settings.waterColor
+        let textColor = settings.waterTextColor
 
         var entries: [WatchWaterEntry] = []
         for hour in 0..<6 {
@@ -386,7 +464,8 @@ struct WatchWaterProvider: TimelineProvider {
                     goalOz: readWaterGoalOz(),
                     unit: readWaterUnit(),
                     shape: shape,
-                    color: color
+                    color: color,
+                    textColor: textColor
                 ))
             }
         }
@@ -396,10 +475,13 @@ struct WatchWaterProvider: TimelineProvider {
             matching: DateComponents(hour: 0, minute: 0, second: 0),
             matchingPolicy: .nextTime
         ) {
-            entries.append(WatchWaterEntry(date: nextMidnight, todayOz: 0, goalOz: readWaterGoalOz(), unit: readWaterUnit(), shape: shape, color: color))
+            entries.append(WatchWaterEntry(date: nextMidnight, todayOz: 0, goalOz: readWaterGoalOz(), unit: readWaterUnit(), shape: shape, color: color, textColor: textColor))
         }
 
-        completion(Timeline(entries: entries, policy: .atEnd))
+        // Reload at least every 30 minutes so the watch isn't stuck on a stale value
+        // when iPhone-pushed updates fail to deliver.
+        let refreshAt = cal.date(byAdding: .minute, value: 30, to: now) ?? now
+        completion(Timeline(entries: entries, policy: .after(refreshAt)))
     }
 }
 
@@ -414,7 +496,8 @@ struct WaterComplicationView: View {
         }
         return entry.todayOz >= 10 ? String(format: "%.0f", entry.todayOz) : String(format: "%.1f", entry.todayOz)
     }
-    private var tint: Color? { complicationColor(entry.color) }
+    private var shapeTint: Color? { complicationColor(entry.color) }
+    private var textTint: Color? { complicationColor(entry.textColor) ?? shapeTint }
 
     var body: some View {
         Group {
@@ -431,23 +514,21 @@ struct WaterComplicationView: View {
         ZStack {
             if !entry.shape.isEmpty {
                 ComplicationFillShape(fraction: fraction, shape: entry.shape)
-                    .applyTint(tint)
+                    .applyTint(shapeTint)
             } else {
                 Gauge(value: fraction) { EmptyView() }
                     .gaugeStyle(.accessoryCircularCapacity)
-                    .applyTint(tint)
+                    .applyTint(shapeTint)
             }
 
-            if entry.shape.isEmpty {
-                VStack(spacing: 0) {
-                    Text(displayValue)
-                        .font(.system(size: 16, weight: .bold).monospacedDigit())
-                        .lineLimit(1).minimumScaleFactor(0.6)
-                        .applyTint(tint)
-                    Text(entry.unit)
-                        .font(.system(size: 9))
-                        .foregroundStyle(.secondary)
-                }
+            VStack(spacing: 0) {
+                Text(displayValue)
+                    .font(.system(size: 19, weight: .bold).monospacedDigit())
+                    .lineLimit(1).minimumScaleFactor(0.6)
+                    .applyTint(textTint)
+                Text(entry.unit)
+                    .font(.system(size: 10))
+                    .foregroundStyle(.secondary)
             }
         }
     }
@@ -455,13 +536,13 @@ struct WaterComplicationView: View {
     private var rectangularView: some View {
         VStack(alignment: .leading, spacing: 2) {
             Text("Water")
-                .font(.caption2.weight(.medium))
+                .font(.caption.weight(.medium))
                 .foregroundStyle(.secondary)
             Text("\(displayValue) \(entry.unit)")
-                .font(.title3.weight(.semibold).monospacedDigit())
-                .applyTint(tint)
+                .font(.title2.weight(.semibold).monospacedDigit())
+                .applyTint(textTint)
             Text("of \(Int(entry.goalOz)) \(entry.unit)")
-                .font(.caption2)
+                .font(.caption)
                 .foregroundStyle(.secondary)
         }
     }
@@ -490,6 +571,7 @@ struct WatchStepsEntry: TimelineEntry {
     let settings: WatchStepsSettings
     let shape: String
     let color: String
+    let textColor: String
     let mode: StepsDisplayMode
 }
 
@@ -512,35 +594,36 @@ class WatchStepsProvider: TimelineProvider {
     func placeholder(in context: Context) -> WatchStepsEntry {
         WatchStepsEntry(
             date: Date(), steps: 7342, distanceKm: 5.8,
-            settings: .default, shape: "", color: "", mode: mode
+            settings: .default, shape: "", color: "", textColor: "", mode: mode
         )
     }
 
-    private func shapeAndColor(for shapes: WatchComplicationShapeSettings) -> (shape: String, color: String) {
+    private func styles(for shapes: WatchComplicationShapeSettings) -> (shape: String, color: String, textColor: String) {
         switch mode {
-        case .stepsOnly:    return (shapes.stepsShape,            shapes.stepsColor)
-        case .distanceOnly: return (shapes.distanceShape,         shapes.distanceColor)
-        case .both:         return (shapes.stepsAndDistanceShape, shapes.stepsAndDistanceColor)
+        case .stepsOnly:    return (shapes.stepsShape,            shapes.stepsColor,            shapes.stepsTextColor)
+        case .distanceOnly: return (shapes.distanceShape,         shapes.distanceColor,         shapes.distanceTextColor)
+        case .both:         return (shapes.stepsAndDistanceShape, shapes.stepsAndDistanceColor, shapes.stepsAndDistanceTextColor)
         }
     }
 
     func getSnapshot(in context: Context, completion: @escaping (WatchStepsEntry) -> Void) {
         let cached = freshCachedSteps()
-        let sc = shapeAndColor(for: readWatchComplicationShapeSettings())
+        let s = styles(for: readWatchComplicationShapeSettings())
         completion(WatchStepsEntry(
             date: Date(),
             steps: cached.steps,
             distanceKm: cached.km,
             settings: readWatchStepsSettings(),
-            shape: sc.shape,
-            color: sc.color,
+            shape: s.shape,
+            color: s.color,
+            textColor: s.textColor,
             mode: mode
         ))
     }
 
     func getTimeline(in context: Context, completion: @escaping (Timeline<WatchStepsEntry>) -> Void) {
         let settings = readWatchStepsSettings()
-        let sc = shapeAndColor(for: readWatchComplicationShapeSettings())
+        let s = styles(for: readWatchComplicationShapeSettings())
 
         Task {
             let steps = await querySum(type: HKQuantityType(.stepCount), unit: .count())
@@ -556,7 +639,7 @@ class WatchStepsProvider: TimelineProvider {
             var entries: [WatchStepsEntry] = [
                 WatchStepsEntry(
                     date: now, steps: steps, distanceKm: km,
-                    settings: settings, shape: sc.shape, color: sc.color, mode: mode
+                    settings: settings, shape: s.shape, color: s.color, textColor: s.textColor, mode: mode
                 )
             ]
 
@@ -567,11 +650,12 @@ class WatchStepsProvider: TimelineProvider {
             ) {
                 entries.append(WatchStepsEntry(
                     date: nextMidnight, steps: 0, distanceKm: 0,
-                    settings: settings, shape: sc.shape, color: sc.color, mode: mode
+                    settings: settings, shape: s.shape, color: s.color, textColor: s.textColor, mode: mode
                 ))
             }
 
-            let next = cal.date(byAdding: .minute, value: 15, to: now) ?? now
+            // Reload every 10 minutes so live HK values and midnight rollover stay current.
+            let next = cal.date(byAdding: .minute, value: 10, to: now) ?? now
             completion(Timeline(entries: entries, policy: .after(next)))
         }
     }
@@ -602,7 +686,8 @@ struct StepsComplicationView: View {
     private var stepsFrac: Double { min(entry.steps / max(settings.stepsGoal, 1), 1.0) }
     private var distFrac: Double { min(displayDist / max(settings.distanceGoal, 0.001), 1.0) }
     private var ringFrac: Double { mode == .distanceOnly ? distFrac : stepsFrac }
-    private var tint: Color? { complicationColor(entry.color) }
+    private var shapeTint: Color? { complicationColor(entry.color) }
+    private var textTint: Color? { complicationColor(entry.textColor) ?? shapeTint }
 
     private func fmt(_ v: Double) -> String { v >= 1000 ? String(format: "%.1fk", v / 1000) : String(Int(v)) }
     private func fmtDist(_ v: Double) -> String { String(format: "%.1f", v) }
@@ -621,39 +706,37 @@ struct StepsComplicationView: View {
         ZStack {
             if !entry.shape.isEmpty {
                 ComplicationFillShape(fraction: ringFrac, shape: entry.shape)
-                    .applyTint(tint)
+                    .applyTint(shapeTint)
             } else {
                 Gauge(value: ringFrac) { EmptyView() }
                     .gaugeStyle(.accessoryCircularCapacity)
-                    .applyTint(tint)
+                    .applyTint(shapeTint)
             }
 
-            if entry.shape.isEmpty {
-                VStack(spacing: 0) {
-                    switch mode {
-                    case .stepsOnly:
-                        Text(fmt(entry.steps))
-                            .font(.system(size: 15, weight: .bold).monospacedDigit())
-                            .lineLimit(1).minimumScaleFactor(0.6)
-                            .applyTint(tint)
-                    case .distanceOnly:
-                        Text(fmtDist(displayDist))
-                            .font(.system(size: 15, weight: .bold).monospacedDigit())
-                            .lineLimit(1).minimumScaleFactor(0.6)
-                            .applyTint(tint)
-                        Text(settings.distanceUnit.rawValue)
-                            .font(.system(size: 8))
-                            .foregroundStyle(.secondary)
-                    case .both:
-                        Text(fmt(entry.steps))
-                            .font(.system(size: 12, weight: .bold).monospacedDigit())
-                            .lineLimit(1).minimumScaleFactor(0.6)
-                            .applyTint(tint)
-                        Text("\(fmtDist(displayDist))\(settings.distanceUnit.rawValue)")
-                            .font(.system(size: 10).monospacedDigit())
-                            .foregroundStyle(.secondary)
-                            .lineLimit(1).minimumScaleFactor(0.6)
-                    }
+            VStack(spacing: 0) {
+                switch mode {
+                case .stepsOnly:
+                    Text(fmt(entry.steps))
+                        .font(.system(size: 18, weight: .bold).monospacedDigit())
+                        .lineLimit(1).minimumScaleFactor(0.6)
+                        .applyTint(textTint)
+                case .distanceOnly:
+                    Text(fmtDist(displayDist))
+                        .font(.system(size: 18, weight: .bold).monospacedDigit())
+                        .lineLimit(1).minimumScaleFactor(0.6)
+                        .applyTint(textTint)
+                    Text(settings.distanceUnit.rawValue)
+                        .font(.system(size: 10))
+                        .foregroundStyle(.secondary)
+                case .both:
+                    Text(fmt(entry.steps))
+                        .font(.system(size: 14, weight: .bold).monospacedDigit())
+                        .lineLimit(1).minimumScaleFactor(0.6)
+                        .applyTint(textTint)
+                    Text("\(fmtDist(displayDist))\(settings.distanceUnit.rawValue)")
+                        .font(.system(size: 11).monospacedDigit())
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1).minimumScaleFactor(0.6)
                 }
             }
         }
@@ -665,51 +748,51 @@ struct StepsComplicationView: View {
             switch mode {
             case .stepsOnly:
                 HStack(spacing: 4) {
-                    Text("Steps").font(.system(size: 11, weight: .bold))
+                    Text("Steps").font(.system(size: 13, weight: .bold))
                     Spacer()
                     Text(fmt(entry.steps))
-                        .font(.system(size: 13, weight: .bold).monospacedDigit())
-                        .applyTint(tint)
+                        .font(.system(size: 17, weight: .bold).monospacedDigit())
+                        .applyTint(textTint)
                 }
                 Gauge(value: stepsFrac) { EmptyView() }
                     .gaugeStyle(.accessoryLinearCapacity)
-                    .applyTint(tint)
+                    .applyTint(shapeTint)
                 Text("Goal: \(fmt(settings.stepsGoal)) steps")
-                    .font(.system(size: 10))
+                    .font(.system(size: 12))
                     .foregroundStyle(.secondary)
 
             case .distanceOnly:
                 HStack(spacing: 4) {
-                    Text("Distance").font(.system(size: 11, weight: .bold))
+                    Text("Distance").font(.system(size: 13, weight: .bold))
                     Spacer()
                     Text("\(fmtDist(displayDist)) \(settings.distanceUnit.rawValue)")
-                        .font(.system(size: 13, weight: .bold).monospacedDigit())
-                        .applyTint(tint)
+                        .font(.system(size: 17, weight: .bold).monospacedDigit())
+                        .applyTint(textTint)
                 }
                 Gauge(value: distFrac) { EmptyView() }
                     .gaugeStyle(.accessoryLinearCapacity)
-                    .applyTint(tint)
+                    .applyTint(shapeTint)
                 Text("Goal: \(fmtDist(settings.distanceGoal)) \(settings.distanceUnit.rawValue)")
-                    .font(.system(size: 10))
+                    .font(.system(size: 12))
                     .foregroundStyle(.secondary)
 
             case .both:
                 HStack(spacing: 4) {
                     Text(fmt(entry.steps))
-                        .font(.system(size: 12, weight: .bold).monospacedDigit())
-                        .applyTint(tint)
+                        .font(.system(size: 15, weight: .bold).monospacedDigit())
+                        .applyTint(textTint)
                     Spacer()
                     Text("/ \(fmt(settings.stepsGoal))")
-                        .font(.system(size: 10))
+                        .font(.system(size: 12))
                         .foregroundStyle(.secondary)
                 }
                 HStack(spacing: 4) {
                     Text("\(fmtDist(displayDist)) \(settings.distanceUnit.rawValue)")
-                        .font(.system(size: 12).monospacedDigit())
-                        .applyTint(tint)
+                        .font(.system(size: 15).monospacedDigit())
+                        .applyTint(textTint)
                     Spacer()
                     Text("/ \(fmtDist(settings.distanceGoal))")
-                        .font(.system(size: 10))
+                        .font(.system(size: 12))
                         .foregroundStyle(.secondary)
                 }
             }

@@ -23,11 +23,50 @@ public struct WidgetPlanItem: Codable {
     public let name: String
     public let icon: String   // SF Symbol name
     public let isCompleted: Bool
+    /// HKWorkoutActivityType raw value the watch should use when starting a
+    /// live HKWorkoutSession from this item. nil → .other.
+    public let hkActivityTypeRaw: UInt?
+    /// Name to use when the Watch creates a WorkoutLog after finishing this
+    /// item. Distinct from `name` because completion-matching on iPhone uses
+    /// prefixed strings for voice trainers / timers ("Trainer – Foo",
+    /// "Tabata – 5×30"). When nil the receiver falls back to `name`.
+    public let logName: String?
+    /// "workout" | "exercise" | "voice" | "timer". nil for older snapshots.
+    public let kind: String?
+    /// UUID string of the underlying object. Lets the watch resolve a workout
+    /// blueprint by ID without walking the icon string.
+    public let sourceID: String?
 
-    public init(name: String, icon: String, isCompleted: Bool = false) {
+    public init(name: String,
+                icon: String,
+                isCompleted: Bool = false,
+                hkActivityTypeRaw: UInt? = nil,
+                logName: String? = nil,
+                kind: String? = nil,
+                sourceID: String? = nil) {
         self.name = name
         self.icon = icon
         self.isCompleted = isCompleted
+        self.hkActivityTypeRaw = hkActivityTypeRaw
+        self.logName = logName
+        self.kind = kind
+        self.sourceID = sourceID
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case name, icon, isCompleted, hkActivityTypeRaw, logName, kind, sourceID
+    }
+
+    // Tolerate older snapshots written before the new fields existed.
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        name = try c.decode(String.self, forKey: .name)
+        icon = try c.decode(String.self, forKey: .icon)
+        isCompleted = (try? c.decodeIfPresent(Bool.self, forKey: .isCompleted)) ?? false
+        hkActivityTypeRaw = try? c.decodeIfPresent(UInt.self, forKey: .hkActivityTypeRaw)
+        logName = try? c.decodeIfPresent(String.self, forKey: .logName)
+        kind = try? c.decodeIfPresent(String.self, forKey: .kind)
+        sourceID = try? c.decodeIfPresent(String.self, forKey: .sourceID)
     }
 }
 
@@ -209,6 +248,220 @@ public func readWatchComplicationShapeSettings() -> WatchComplicationShapeSettin
         return decoded
     }
     return .default
+}
+
+// MARK: - Watch Library
+
+private let watchLibraryKey = "watch_library"
+
+/// A startable item the Watch can launch as a live HKWorkoutSession without
+/// the iPhone having to be involved. Flat enough that the Watch doesn't need
+/// to know about the full Workout / Exercise / TimerConfig / VoiceTrainerConfig
+/// models — iPhone projects these every time the relevant collections change.
+public struct WatchLibraryItem: Codable, Identifiable, Hashable {
+    public let id: String       // stringified UUID — unique across kinds
+    public let kind: String     // "workout" | "exercise" | "timer" | "voice"
+    public let name: String
+    public let icon: String     // SF Symbol
+    public let hkActivityTypeRaw: UInt?
+    /// Name to use when the Watch creates a WorkoutLog after finishing.
+    /// Mirrors the convention in WidgetPlanItem so completion-matching on the
+    /// iPhone works regardless of which device started the session.
+    public let logName: String
+
+    public init(id: String, kind: String, name: String, icon: String,
+                hkActivityTypeRaw: UInt? = nil, logName: String) {
+        self.id = id
+        self.kind = kind
+        self.name = name
+        self.icon = icon
+        self.hkActivityTypeRaw = hkActivityTypeRaw
+        self.logName = logName
+    }
+}
+
+public struct WatchLibrarySnapshot: Codable, Hashable {
+    public let workouts: [WatchLibraryItem]
+    public let exercises: [WatchLibraryItem]
+    public let timers: [WatchLibraryItem]
+    public let voiceTrainers: [WatchLibraryItem]
+    /// Flattened "runner" view of each Workout, keyed by the workout's UUID
+    /// string. The Watch picks this up when the user taps a workout so it can
+    /// guide the user through each exercise + set without needing to decode
+    /// the full Workout model graph (loops, complexes, rests, etc.).
+    /// Empty for libraries pushed by older iPhones.
+    public let workoutBlueprints: [String: WatchWorkoutBlueprint]
+
+    public init(workouts: [WatchLibraryItem] = [],
+                exercises: [WatchLibraryItem] = [],
+                timers: [WatchLibraryItem] = [],
+                voiceTrainers: [WatchLibraryItem] = [],
+                workoutBlueprints: [String: WatchWorkoutBlueprint] = [:]) {
+        self.workouts = workouts
+        self.exercises = exercises
+        self.timers = timers
+        self.voiceTrainers = voiceTrainers
+        self.workoutBlueprints = workoutBlueprints
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case workouts, exercises, timers, voiceTrainers, workoutBlueprints
+    }
+
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        workouts = (try? c.decodeIfPresent([WatchLibraryItem].self, forKey: .workouts)) ?? []
+        exercises = (try? c.decodeIfPresent([WatchLibraryItem].self, forKey: .exercises)) ?? []
+        timers = (try? c.decodeIfPresent([WatchLibraryItem].self, forKey: .timers)) ?? []
+        voiceTrainers = (try? c.decodeIfPresent([WatchLibraryItem].self, forKey: .voiceTrainers)) ?? []
+        workoutBlueprints = (try? c.decodeIfPresent([String: WatchWorkoutBlueprint].self, forKey: .workoutBlueprints)) ?? [:]
+    }
+
+    public static let empty = WatchLibrarySnapshot()
+}
+
+/// Watch-friendly projection of a Workout — flat list of exercises with their
+/// predefined sets. The watch runs through these one set at a time, letting
+/// the user adjust reps + weight per set before logging it.
+public struct WatchWorkoutBlueprint: Codable, Hashable {
+    public let id: String
+    public let name: String
+    public let hkActivityTypeRaw: UInt?
+    public let exercises: [WatchBlueprintExercise]
+
+    public init(id: String, name: String, hkActivityTypeRaw: UInt?, exercises: [WatchBlueprintExercise]) {
+        self.id = id
+        self.name = name
+        self.hkActivityTypeRaw = hkActivityTypeRaw
+        self.exercises = exercises
+    }
+}
+
+public struct WatchBlueprintExercise: Codable, Hashable, Identifiable {
+    public let id: String              // WorkoutExercise.id (item ID, unique within a workout)
+    public let exerciseID: String      // Exercise.id — used by iPhone to rehydrate LoggedExercise.exerciseID
+    public let name: String
+    public let icon: String
+    public let predefinedSets: [WatchPredefinedSet]
+    /// 1-based round number when this entry is one cycle of a loop. nil when
+    /// this exercise is standalone. The iPhone pre-expands loops so the watch
+    /// just walks a flat list; this field drives the "Round N of M" subtitle.
+    public let loopRound: Int?
+    public let loopTotalRounds: Int?
+    /// 1-based round number when this entry is one cycle of a complex.
+    /// Drives the "Round N of M (Complex)" subtitle.
+    public let complexRound: Int?
+    public let complexTotalRounds: Int?
+
+    public init(id: String, exerciseID: String, name: String, icon: String,
+                predefinedSets: [WatchPredefinedSet],
+                loopRound: Int? = nil,
+                loopTotalRounds: Int? = nil,
+                complexRound: Int? = nil,
+                complexTotalRounds: Int? = nil) {
+        self.id = id
+        self.exerciseID = exerciseID
+        self.name = name
+        self.icon = icon
+        self.predefinedSets = predefinedSets
+        self.loopRound = loopRound
+        self.loopTotalRounds = loopTotalRounds
+        self.complexRound = complexRound
+        self.complexTotalRounds = complexTotalRounds
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case id, exerciseID, name, icon, predefinedSets, loopRound, loopTotalRounds, complexRound, complexTotalRounds
+    }
+
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = try c.decode(String.self, forKey: .id)
+        exerciseID = try c.decode(String.self, forKey: .exerciseID)
+        name = try c.decode(String.self, forKey: .name)
+        icon = try c.decode(String.self, forKey: .icon)
+        predefinedSets = (try? c.decodeIfPresent([WatchPredefinedSet].self, forKey: .predefinedSets)) ?? []
+        loopRound = try? c.decodeIfPresent(Int.self, forKey: .loopRound)
+        loopTotalRounds = try? c.decodeIfPresent(Int.self, forKey: .loopTotalRounds)
+        complexRound = try? c.decodeIfPresent(Int.self, forKey: .complexRound)
+        complexTotalRounds = try? c.decodeIfPresent(Int.self, forKey: .complexTotalRounds)
+    }
+}
+
+public struct WatchPredefinedSet: Codable, Hashable {
+    public let reps: Int
+    public let weight: Double
+    /// Duration (seconds) for a timed set. 0 → not timed (use reps). When > 0
+    /// the runner shows a countdown timer instead of a rep stepper.
+    public let timedSeconds: Int
+    /// Auto-rest after this set, in seconds. Populated by the iPhone from loop
+    /// timer modes (Tabata/Interval rest) and from explicit RestItem entries
+    /// between exercises. 0 → no automatic rest screen, move straight on.
+    public let restSecondsAfter: Int
+
+    public init(reps: Int, weight: Double, timedSeconds: Int = 0, restSecondsAfter: Int = 0) {
+        self.reps = reps
+        self.weight = weight
+        self.timedSeconds = timedSeconds
+        self.restSecondsAfter = restSecondsAfter
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case reps, weight, timedSeconds, restSecondsAfter
+    }
+
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        reps = try c.decode(Int.self, forKey: .reps)
+        weight = try c.decode(Double.self, forKey: .weight)
+        timedSeconds = (try? c.decodeIfPresent(Int.self, forKey: .timedSeconds)) ?? 0
+        restSecondsAfter = (try? c.decodeIfPresent(Int.self, forKey: .restSecondsAfter)) ?? 0
+    }
+}
+
+// MARK: - Watch → iPhone logged completion
+
+/// What the watch reports for each exercise when it finishes a workout
+/// blueprint. iPhone uses this to rebuild a full WorkoutLog + LoggedExercise
+/// graph and call WorkoutLogState.addLog.
+public struct WatchLoggedExercise: Codable, Hashable {
+    public let exerciseID: String
+    public let exerciseName: String
+    public let activeSeconds: Int
+    public let sets: [WatchLoggedSet]
+
+    public init(exerciseID: String, exerciseName: String, activeSeconds: Int, sets: [WatchLoggedSet]) {
+        self.exerciseID = exerciseID
+        self.exerciseName = exerciseName
+        self.activeSeconds = activeSeconds
+        self.sets = sets
+    }
+}
+
+public struct WatchLoggedSet: Codable, Hashable {
+    public let reps: Int
+    public let weight: Double
+
+    public init(reps: Int, weight: Double) {
+        self.reps = reps
+        self.weight = weight
+    }
+}
+
+public func writeWatchLibrarySnapshot(_ snapshot: WatchLibrarySnapshot) {
+    let defaults = UserDefaults(suiteName: appGroupID) ?? .standard
+    if let encoded = try? JSONEncoder().encode(snapshot) {
+        defaults.set(encoded, forKey: watchLibraryKey)
+    }
+}
+
+public func readWatchLibrarySnapshot() -> WatchLibrarySnapshot {
+    let defaults = UserDefaults(suiteName: appGroupID) ?? .standard
+    if let data = defaults.data(forKey: watchLibraryKey),
+       let decoded = try? JSONDecoder().decode(WatchLibrarySnapshot.self, from: data) {
+        return decoded
+    }
+    return .empty
 }
 
 // MARK: - Water data (widget + watch reads)
