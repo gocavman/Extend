@@ -134,18 +134,21 @@ extension WatchConnectivityBridge: WCSessionDelegate {
             defaults.set(effectiveOz, forKey: "water_today_oz")
             defaults.set(stampedDate, forKey: "water_today_date")
             defaults.set(goalOz,  forKey: "water_goal_oz")
-            WidgetCenter.shared.reloadAllTimelines()
             DispatchQueue.main.async {
+                WidgetCenter.shared.reloadAllTimelines()
                 NotificationCenter.default.post(name: .watchWaterDataUpdated, object: nil)
             }
         case "plan_update":
             guard let data = payload["multiday_data"] as? Data else { return }
             defaults.set(data, forKey: "widget_plan_multiday")
-            // Kind-specific reload is more reliable than reloadAllTimelines on watchOS,
-            // which the complication budget can defer or drop.
-            WidgetCenter.shared.reloadTimelines(ofKind: "PlanComplication")
-            WidgetCenter.shared.reloadAllTimelines()
+            // The widget extension lives in a separate process and reads from App
+            // Group UserDefaults — cross-process propagation via cfprefsd takes a
+            // few ms. Hop to the main queue so the write has settled before the
+            // timeline reload fires; otherwise the complication's getTimeline can
+            // re-read the previous snapshot and the ring/text stay stuck on the
+            // old value even though the watch app already shows the update.
             DispatchQueue.main.async {
+                WidgetCenter.shared.reloadTimelines(ofKind: "PlanComplication")
                 NotificationCenter.default.post(name: .watchPlanDataUpdated, object: nil)
             }
         case "library_update":
@@ -156,8 +159,9 @@ extension WatchConnectivityBridge: WCSessionDelegate {
             }
         case "reload_complications":
             // Triggered when plan data changes on iPhone
-            WidgetCenter.shared.reloadTimelines(ofKind: "PlanComplication")
-            WidgetCenter.shared.reloadAllTimelines()
+            DispatchQueue.main.async {
+                WidgetCenter.shared.reloadTimelines(ofKind: "PlanComplication")
+            }
         default:
             break
         }

@@ -17,6 +17,7 @@ private let unitKey     = "water_unit"
 private let exportHKKey = "water_export_healthkit"
 private let importHKKey = "water_import_healthkit"
 private let lastSyncKey = "water_last_hk_sync"
+private let authRequestedKey = "water_hk_auth_requested"
 
 @Observable
 public final class WaterState {
@@ -248,11 +249,30 @@ public final class WaterState {
 
     private let hkStore = HKHealthStore()
 
-    private func exportLog(_ log: WaterLog) async {
+    /// Requests HealthKit authorization for water once per install — both read and
+    /// write are bundled into a single prompt rather than asking for write at log
+    /// time and read at sync time. The persisted flag prevents the prompt from
+    /// re-appearing on every operation; the system's own bookkeeping suppresses
+    /// the picker after the first response, but in practice the previous
+    /// per-operation calls (separate write- and read-only requests on a fresh
+    /// HKHealthStore) kept re-prompting users.
+    private func ensureWaterAuthorization() async {
+        guard !defaults.bool(forKey: authRequestedKey) else { return }
         guard HKHealthStore.isHealthDataAvailable() else { return }
         let type = HKQuantityType(.dietaryWater)
-        // Request write permission
-        guard (try? await hkStore.requestAuthorization(toShare: [type], read: [])) != nil else { return }
+        do {
+            try await hkStore.requestAuthorization(toShare: [type], read: [type])
+            defaults.set(true, forKey: authRequestedKey)
+        } catch {
+            // Don't latch the flag if the system errored out — retry next time
+            // so the user gets a chance to grant access.
+        }
+    }
+
+    private func exportLog(_ log: WaterLog) async {
+        guard HKHealthStore.isHealthDataAvailable() else { return }
+        await ensureWaterAuthorization()
+        let type = HKQuantityType(.dietaryWater)
         let litres = log.amountOz * 0.0295735
         let qty = HKQuantity(unit: .liter(), doubleValue: litres)
         let sample = HKQuantitySample(type: type, quantity: qty, start: log.loggedAt, end: log.loggedAt)
@@ -268,8 +288,8 @@ public final class WaterState {
     @MainActor
     public func syncFromHealthKit() async {
         guard importFromHealthKit, HKHealthStore.isHealthDataAvailable() else { return }
+        await ensureWaterAuthorization()
         let type = HKQuantityType(.dietaryWater)
-        guard (try? await hkStore.requestAuthorization(toShare: [], read: [type])) != nil else { return }
 
         let cal = Calendar.current
         // Import last 30 days

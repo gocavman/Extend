@@ -1701,11 +1701,17 @@ private struct WorkoutLogCard: View {
     }
     
     private var durationString: String {
-        let minutes = Int(log.duration / 60)
+        let hours = Int(log.duration / 3600)
+        let minutes = Int(log.duration.truncatingRemainder(dividingBy: 3600) / 60)
         let seconds = Int(log.duration.truncatingRemainder(dividingBy: 60))
-        return "\(minutes)m \(seconds)s"
+
+        if hours > 0 {
+            return "\(hours)h \(minutes)m \(seconds)s"
+        } else {
+            return "\(minutes)m \(seconds)s"
+        }
     }
-    
+
     private func extractLinesCount(from notes: String) -> Int {
         // First try to find "Total Lines Read:" which explicitly states the count
         if let totalLinesRange = notes.range(of: "Total Lines Read: ") {
