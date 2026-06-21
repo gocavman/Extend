@@ -2,12 +2,15 @@
 ////  WatchLibraryView.swift
 ////  ExtendWatch
 ////
-////  Browse-everything entry point on the Watch. Lists the user's full
-////  library of workouts / exercises / timers / voice trainers — anything
-////  the iPhone has — and lets the user start a live HKWorkoutSession for
-////  any of them directly from the wrist. The session lifecycle (live UI +
-////  iPhone-side log delivery on Finish) reuses the same plumbing the
-////  plan view uses.
+////  Browse-everything entry point on the Watch. A small hub of category tiles
+////  (Recents, Favorites, Workouts, Exercises, Timers, Voice Trainers) keeps
+////  the first screen short on a 40-45mm display; each tile pushes a drill-down
+////  list of just that category. Drill-down lists reuse the same "Start a
+////  session" confirmation alert the previous combined list used.
+////
+////  Recents and Favorites are projected on the iPhone side
+////  (TrainingPlanState.refreshMultiDaySnapshots → WatchLibrarySnapshot.recents
+////  + WatchLibraryItem.isFavorite).
 ////
 
 import SwiftUI
@@ -18,29 +21,29 @@ struct WatchLibraryView: View {
     @State private var refreshToken: UUID = UUID()
     @State private var pendingStartItem: WatchLibraryItem? = nil
     @State private var isStarting: Bool = false
-    @State private var searchText: String = ""
 
     private var library: WatchLibrarySnapshot {
         _ = refreshToken
         return readWatchLibrarySnapshot()
     }
 
-    private func filtered(_ items: [WatchLibraryItem]) -> [WatchLibraryItem] {
-        guard !searchText.isEmpty else { return items }
-        return items.filter { $0.name.localizedCaseInsensitiveContains(searchText) }
+    private var favorites: [WatchLibraryItem] {
+        (library.workouts + library.exercises + library.timers + library.voiceTrainers)
+            .filter { $0.isFavorite }
+    }
+
+    private var isLibraryEmpty: Bool {
+        library.workouts.isEmpty && library.exercises.isEmpty
+            && library.timers.isEmpty && library.voiceTrainers.isEmpty
     }
 
     var body: some View {
         NavigationStack {
-            List {
-                if library.workouts.isEmpty && library.exercises.isEmpty
-                    && library.timers.isEmpty && library.voiceTrainers.isEmpty {
-                    emptyView
+            Group {
+                if isLibraryEmpty {
+                    emptyHubView
                 } else {
-                    section("Workouts", items: filtered(library.workouts))
-                    section("Exercises", items: filtered(library.exercises))
-                    section("Timers", items: filtered(library.timers))
-                    section("Voice Trainers", items: filtered(library.voiceTrainers))
+                    hubList
                 }
             }
             .navigationTitle("Library")
@@ -67,36 +70,77 @@ struct WatchLibraryView: View {
         }
     }
 
-    @ViewBuilder
-    private func section(_ title: String, items: [WatchLibraryItem]) -> some View {
-        if !items.isEmpty {
-            Section(title) {
-                ForEach(items) { item in
-                    Button {
-                        pendingStartItem = item
-                    } label: {
-                        HStack(spacing: 6) {
-                            Image(systemName: item.icon)
-                                .font(.system(size: 11))
-                                .foregroundColor(.secondary)
-                                .frame(width: 16)
-                            Text(item.name)
-                                .font(.system(size: 12))
-                                .lineLimit(2)
-                            Spacer()
-                            Image(systemName: "play.fill")
-                                .font(.system(size: 10))
-                                .foregroundColor(.green.opacity(0.8))
-                        }
-                        .contentShape(Rectangle())
-                    }
-                    .buttonStyle(.plain)
-                }
-            }
+    // MARK: - Hub
+
+    private var hubList: some View {
+        List {
+            hubTile(
+                title: "Recents",
+                icon: "clock.arrow.circlepath",
+                count: library.recents.count,
+                items: library.recents
+            )
+            hubTile(
+                title: "Favorites",
+                icon: "star.fill",
+                count: favorites.count,
+                items: favorites
+            )
+            hubTile(
+                title: "Workouts",
+                icon: "dumbbell.fill",
+                count: library.workouts.count,
+                items: library.workouts
+            )
+            hubTile(
+                title: "Exercises",
+                icon: "figure.strengthtraining.traditional",
+                count: library.exercises.count,
+                items: library.exercises
+            )
+            hubTile(
+                title: "Timers",
+                icon: "timer",
+                count: library.timers.count,
+                items: library.timers
+            )
+            hubTile(
+                title: "Voice Trainers",
+                icon: "waveform",
+                count: library.voiceTrainers.count,
+                items: library.voiceTrainers
+            )
         }
     }
 
-    private var emptyView: some View {
+    @ViewBuilder
+    private func hubTile(title: String, icon: String, count: Int, items: [WatchLibraryItem]) -> some View {
+        NavigationLink {
+            WatchLibraryCategoryView(
+                title: title,
+                items: items,
+                pendingStartItem: $pendingStartItem
+            )
+        } label: {
+            HStack(spacing: 8) {
+                Image(systemName: icon)
+                    .font(.system(size: 14))
+                    .foregroundColor(.secondary)
+                    .frame(width: 20)
+                Text(title)
+                    .font(.system(size: 14, weight: .medium))
+                Spacer()
+                Text("\(count)")
+                    .font(.system(size: 12, weight: .semibold).monospacedDigit())
+                    .foregroundColor(.secondary)
+            }
+            .contentShape(Rectangle())
+        }
+    }
+
+    // MARK: - Empty state
+
+    private var emptyHubView: some View {
         VStack(spacing: 6) {
             Spacer(minLength: 20)
             Image(systemName: "tray")
@@ -112,8 +156,9 @@ struct WatchLibraryView: View {
             Spacer(minLength: 20)
         }
         .frame(maxWidth: .infinity)
-        .listRowBackground(Color.clear)
     }
+
+    // MARK: - Start
 
     private func startSession(for item: WatchLibraryItem) {
         guard !isStarting else { return }
@@ -138,6 +183,64 @@ struct WatchLibraryView: View {
                 isStarting = false
             }
         }
+    }
+}
+
+// MARK: - Drill-down list
+
+/// Per-category list pushed from the hub. Knows only how to render rows and
+/// surface a tap up to the hub via `pendingStartItem` — the hub owns the
+/// confirmation alert + session start so navigation can stay shallow.
+private struct WatchLibraryCategoryView: View {
+    let title: String
+    let items: [WatchLibraryItem]
+    @Binding var pendingStartItem: WatchLibraryItem?
+
+    var body: some View {
+        Group {
+            if items.isEmpty {
+                emptyView
+            } else {
+                List {
+                    ForEach(items) { item in
+                        Button {
+                            pendingStartItem = item
+                        } label: {
+                            HStack(spacing: 6) {
+                                Image(systemName: item.icon)
+                                    .font(.system(size: 11))
+                                    .foregroundColor(.secondary)
+                                    .frame(width: 16)
+                                Text(item.name)
+                                    .font(.system(size: 12))
+                                    .lineLimit(2)
+                                Spacer()
+                                Image(systemName: "play.fill")
+                                    .font(.system(size: 10))
+                                    .foregroundColor(.green.opacity(0.8))
+                            }
+                            .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+            }
+        }
+        .navigationTitle(title)
+    }
+
+    private var emptyView: some View {
+        VStack(spacing: 6) {
+            Spacer(minLength: 20)
+            Image(systemName: "tray")
+                .font(.system(size: 22))
+                .foregroundColor(.secondary)
+            Text("Nothing here yet")
+                .font(.subheadline)
+                .foregroundColor(.secondary)
+            Spacer(minLength: 20)
+        }
+        .frame(maxWidth: .infinity)
     }
 }
 

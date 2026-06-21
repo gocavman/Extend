@@ -95,6 +95,9 @@ public final class ExercisesState {
             defaults.set(encoded, forKey: userDefaultsKey)
         }
         CloudKitSyncEngine.shared.push(.exercises)
+        // Keep the Watch Library snapshot in sync — adds/edits/deletes and
+        // favorite toggles all flow through here.
+        TrainingPlanState.shared.refreshWatchLibrary()
     }
 
     /// Called by CloudKitSyncEngine after a remote pull updates UserDefaults.

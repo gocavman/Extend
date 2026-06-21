@@ -373,6 +373,12 @@ final class TrainingPlanState {
 
     /// Resolves today's plan items into display names and writes the widget snapshot.
     func refreshWidgetSnapshot() {
+        // The Watch library/recents projection runs unconditionally — a user
+        // without an active plan still browses workouts/exercises/timers/voice
+        // trainers from the wrist, so the library snapshot must stay current
+        // even when the plan-specific paths short-circuit below.
+        refreshWatchLibrary()
+
         guard let plan = activePlan else {
             writeWidgetSnapshot(planName: nil, items: [])
             return
@@ -539,51 +545,101 @@ final class TrainingPlanState {
         }
         writeMultiDaySnapshots(snapshots)
         WatchConnectivityReceiver.shared.sendPlanUpdate(multidaySnapshots: snapshots)
+    }
 
-        // Project the same decoded data into a flat library snapshot the Watch
-        // can use to start any workout/exercise/timer/voice trainer — not just
-        // those in today's plan.
+    /// Projects the full library (workouts/exercises/timers/voice trainers) +
+    /// recents into a flat snapshot the Watch can browse without decoding the
+    /// full model graph. Independent of `activePlan` — runs even when the user
+    /// has no plan configured, because Library browsing on the wrist should
+    /// always work. Internal so the source state singletons (WorkoutsState,
+    /// ExercisesState, TimerState, VoiceTrainerState) can call it directly when
+    /// their data changes, without rebuilding today's plan snapshot too.
+    func refreshWatchLibrary() {
+        let wDefaults = UserDefaults(suiteName: "group.com.cavanmannenbach.extend") ?? .standard
+        let workouts  = (wDefaults.data(forKey: "workouts_data").flatMap  { try? JSONDecoder().decode([Workout].self,           from: $0) }) ?? []
+        let exercises = (wDefaults.data(forKey: "exercises_data").flatMap { try? JSONDecoder().decode([Exercise].self,          from: $0) }) ?? []
+        let voices    = (wDefaults.data(forKey: "VoiceTrainerConfigs").flatMap { try? JSONDecoder().decode([VoiceTrainerConfig].self, from: $0) }) ?? []
+        let timers    = (wDefaults.data(forKey: "timer_configs").flatMap  { try? JSONDecoder().decode([TimerConfig].self,        from: $0) }) ?? []
+        let logs      = (wDefaults.data(forKey: "workout_logs").flatMap   { try? JSONDecoder().decode([WorkoutLog].self,         from: $0) }) ?? []
+
+        // Workout favorites live in a separate Set<UUID> store, not the unused
+        // `Workout.isFavorite` field — match WorkoutsState.favoriteWorkoutIDs.
+        let workoutFavoriteIDs: Set<UUID> = {
+            guard let data = wDefaults.data(forKey: "workouts_favorites"),
+                  let ids = try? JSONDecoder().decode([UUID].self, from: data) else { return [] }
+            return Set(ids)
+        }()
+
         let exercisesByID = Dictionary(uniqueKeysWithValues: exercises.map { ($0.id, $0) })
         let blueprints: [String: WatchWorkoutBlueprint] = Dictionary(
             uniqueKeysWithValues: workouts.map { workout in
                 (workout.id.uuidString, Self.buildBlueprint(for: workout, exercisesByID: exercisesByID))
             }
         )
+        let workoutItems: [WatchLibraryItem] = workouts.map {
+            WatchLibraryItem(
+                id: $0.id.uuidString, kind: "workout",
+                name: $0.name, icon: "dumbbell.fill",
+                hkActivityTypeRaw: $0.healthKitActivityType,
+                logName: $0.name,
+                isFavorite: workoutFavoriteIDs.contains($0.id)
+            )
+        }
+        let exerciseItems: [WatchLibraryItem] = exercises.map {
+            WatchLibraryItem(
+                id: $0.id.uuidString, kind: "exercise",
+                name: $0.name, icon: "figure.strengthtraining.traditional",
+                hkActivityTypeRaw: $0.healthKitActivityType,
+                logName: $0.name,
+                isFavorite: $0.isFavorite
+            )
+        }
+        let timerItems: [WatchLibraryItem] = timers.map { c in
+            let displayName = c.name.isEmpty ? c.type.rawValue : c.name
+            return WatchLibraryItem(
+                id: c.id.uuidString, kind: "timer",
+                name: displayName, icon: c.type.iconName,
+                hkActivityTypeRaw: c.healthKitActivityType,
+                logName: "\(c.type.rawValue) – \(displayName)",
+                isFavorite: c.isFavorite
+            )
+        }
+        let voiceItems: [WatchLibraryItem] = voices.map {
+            WatchLibraryItem(
+                id: $0.id.uuidString, kind: "voice",
+                name: $0.name, icon: "waveform",
+                hkActivityTypeRaw: $0.healthKitActivityType,
+                logName: "Trainer – \($0.name)",
+                isFavorite: $0.isFavorite
+            )
+        }
+
+        // Build the Recents list by matching log names back to library items.
+        // Logs use the same `logName` convention the watch starts sessions with
+        // ("Trainer – X", "Tabata – Y", plain workout/exercise names), so we
+        // index every library item by logName and walk the logs newest-first.
+        let itemsByLogName = Dictionary(
+            (workoutItems + exerciseItems + timerItems + voiceItems)
+                .map { ($0.logName, $0) },
+            uniquingKeysWith: { first, _ in first }
+        )
+        var recents: [WatchLibraryItem] = []
+        var seenIDs = Set<String>()
+        for log in logs.sorted(by: { $0.completedAt > $1.completedAt }) {
+            guard let item = itemsByLogName[log.workoutName] else { continue }
+            guard !seenIDs.contains(item.id) else { continue }
+            seenIDs.insert(item.id)
+            recents.append(item)
+            if recents.count >= 8 { break }
+        }
+
         let library = WatchLibrarySnapshot(
-            workouts: workouts.map {
-                WatchLibraryItem(
-                    id: $0.id.uuidString, kind: "workout",
-                    name: $0.name, icon: "dumbbell.fill",
-                    hkActivityTypeRaw: $0.healthKitActivityType,
-                    logName: $0.name
-                )
-            },
-            exercises: exercises.map {
-                WatchLibraryItem(
-                    id: $0.id.uuidString, kind: "exercise",
-                    name: $0.name, icon: "figure.strengthtraining.traditional",
-                    hkActivityTypeRaw: $0.healthKitActivityType,
-                    logName: $0.name
-                )
-            },
-            timers: timers.map { c in
-                let displayName = c.name.isEmpty ? c.type.rawValue : c.name
-                return WatchLibraryItem(
-                    id: c.id.uuidString, kind: "timer",
-                    name: displayName, icon: c.type.iconName,
-                    hkActivityTypeRaw: c.healthKitActivityType,
-                    logName: "\(c.type.rawValue) – \(displayName)"
-                )
-            },
-            voiceTrainers: voices.map {
-                WatchLibraryItem(
-                    id: $0.id.uuidString, kind: "voice",
-                    name: $0.name, icon: "waveform",
-                    hkActivityTypeRaw: $0.healthKitActivityType,
-                    logName: "Trainer – \($0.name)"
-                )
-            },
-            workoutBlueprints: blueprints
+            workouts: workoutItems,
+            exercises: exerciseItems,
+            timers: timerItems,
+            voiceTrainers: voiceItems,
+            workoutBlueprints: blueprints,
+            recents: recents
         )
         writeWatchLibrarySnapshot(library)
         WatchConnectivityReceiver.shared.sendLibraryUpdate(library)

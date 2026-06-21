@@ -222,6 +222,9 @@ Left and Right Uppercuts
             defaults.set(encoded, forKey: "VoiceTrainerConfigs")
         }
         CloudKitSyncEngine.shared.push(.voiceTrainerConfigs)
+        // Keep the Watch Library snapshot in sync — adds/edits/deletes and
+        // favorite toggles all flow through here.
+        TrainingPlanState.shared.refreshWatchLibrary()
     }
     
     public func saveConfigurations() {

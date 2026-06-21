@@ -103,6 +103,9 @@ public final class TimerState {
             defaults.set(encoded, forKey: storageKey)
         }
         CloudKitSyncEngine.shared.push(.timerConfigs)
+        // Keep the Watch Library snapshot in sync — adds/edits/deletes and
+        // favorite toggles all flow through here.
+        TrainingPlanState.shared.refreshWatchLibrary()
     }
 
     private func loadConfigs() {

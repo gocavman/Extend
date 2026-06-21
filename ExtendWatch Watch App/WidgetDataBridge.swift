@@ -310,15 +310,35 @@ public struct WatchLibraryItem: Codable, Identifiable, Hashable {
     public let icon: String
     public let hkActivityTypeRaw: UInt?
     public let logName: String
+    /// User-favorited on the iPhone. Drives the Favorites tile in the Watch Library hub.
+    public let isFavorite: Bool
 
     public init(id: String, kind: String, name: String, icon: String,
-                hkActivityTypeRaw: UInt? = nil, logName: String) {
+                hkActivityTypeRaw: UInt? = nil, logName: String,
+                isFavorite: Bool = false) {
         self.id = id
         self.kind = kind
         self.name = name
         self.icon = icon
         self.hkActivityTypeRaw = hkActivityTypeRaw
         self.logName = logName
+        self.isFavorite = isFavorite
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case id, kind, name, icon, hkActivityTypeRaw, logName, isFavorite
+    }
+
+    // Tolerate older snapshots written before isFavorite existed.
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = try c.decode(String.self, forKey: .id)
+        kind = try c.decode(String.self, forKey: .kind)
+        name = try c.decode(String.self, forKey: .name)
+        icon = try c.decode(String.self, forKey: .icon)
+        hkActivityTypeRaw = try? c.decodeIfPresent(UInt.self, forKey: .hkActivityTypeRaw)
+        logName = try c.decode(String.self, forKey: .logName)
+        isFavorite = (try? c.decodeIfPresent(Bool.self, forKey: .isFavorite)) ?? false
     }
 }
 
@@ -330,21 +350,26 @@ public struct WatchLibrarySnapshot: Codable, Hashable {
     /// Flattened "runner" view of each Workout, keyed by the workout's UUID
     /// string. Empty for libraries pushed by older iPhones.
     public let workoutBlueprints: [String: WatchWorkoutBlueprint]
+    /// Most-recently-started library items, newest first, deduped. Projected
+    /// from WorkoutLogState on the iPhone.
+    public let recents: [WatchLibraryItem]
 
     public init(workouts: [WatchLibraryItem] = [],
                 exercises: [WatchLibraryItem] = [],
                 timers: [WatchLibraryItem] = [],
                 voiceTrainers: [WatchLibraryItem] = [],
-                workoutBlueprints: [String: WatchWorkoutBlueprint] = [:]) {
+                workoutBlueprints: [String: WatchWorkoutBlueprint] = [:],
+                recents: [WatchLibraryItem] = []) {
         self.workouts = workouts
         self.exercises = exercises
         self.timers = timers
         self.voiceTrainers = voiceTrainers
         self.workoutBlueprints = workoutBlueprints
+        self.recents = recents
     }
 
     private enum CodingKeys: String, CodingKey {
-        case workouts, exercises, timers, voiceTrainers, workoutBlueprints
+        case workouts, exercises, timers, voiceTrainers, workoutBlueprints, recents
     }
 
     public init(from decoder: Decoder) throws {
@@ -354,6 +379,7 @@ public struct WatchLibrarySnapshot: Codable, Hashable {
         timers = (try? c.decodeIfPresent([WatchLibraryItem].self, forKey: .timers)) ?? []
         voiceTrainers = (try? c.decodeIfPresent([WatchLibraryItem].self, forKey: .voiceTrainers)) ?? []
         workoutBlueprints = (try? c.decodeIfPresent([String: WatchWorkoutBlueprint].self, forKey: .workoutBlueprints)) ?? [:]
+        recents = (try? c.decodeIfPresent([WatchLibraryItem].self, forKey: .recents)) ?? []
     }
 
     public static let empty = WatchLibrarySnapshot()

@@ -437,6 +437,9 @@ public final class WorkoutsState {
             defaults.set(encoded, forKey: storageKey)
         }
         CloudKitSyncEngine.shared.push(.workouts)
+        // Keep the Watch Library snapshot in sync — adds/edits/deletes here
+        // change what the Library hub shows on the wrist.
+        TrainingPlanState.shared.refreshWatchLibrary()
     }
 
     private func saveFavorites() {
@@ -444,6 +447,7 @@ public final class WorkoutsState {
             defaults.set(encoded, forKey: favoritesKey)
         }
         CloudKitSyncEngine.shared.push(.workouts)
+        TrainingPlanState.shared.refreshWatchLibrary()
     }
 
     private func loadFavorites() {
