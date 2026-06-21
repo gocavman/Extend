@@ -115,7 +115,7 @@ struct WatchVoiceTrainerRunnerView: View {
             // Speak the countdown each second.
             if phase == .preStart, newValue > 0, newValue != lastSpokenCountdown, !isPaused {
                 lastSpokenCountdown = newValue
-                engine.speak("\(newValue)")
+                engine.speakNow("\(newValue)")
             }
             if phase == .preStart, newValue <= 0 {
                 beginRound(1)
@@ -173,7 +173,7 @@ struct WatchVoiceTrainerRunnerView: View {
                newValue <= config.restEndWarning,
                newValue != lastSpokenCountdown {
                 lastSpokenCountdown = newValue
-                engine.speak("\(newValue)")
+                engine.speakNow("\(newValue)")
             }
             if newValue <= 0 {
                 beginRound(round + 1)
@@ -274,12 +274,12 @@ struct WatchVoiceTrainerRunnerView: View {
         WKInterfaceDevice.current().play(.notification)
         if round >= config.numberOfRounds {
             phase = .completed
-            engine.speak("End of workout.")
+            engine.speakNow("End of workout.")
         } else if config.restLength > 0 {
             phase = .resting
             roundEndDate = Date().addingTimeInterval(TimeInterval(config.restLength))
             lastSpokenCountdown = -1
-            engine.speak("Rest.")
+            engine.speakNow("Rest.")
         } else {
             beginRound(round + 1)
         }
@@ -348,6 +348,7 @@ private final class VoicePlaybackEngine: NSObject {
     private var pendingNextLineWork: DispatchWorkItem? = nil
     private var isPaused: Bool = false
     private var onLineChange: ((String) -> Void)? = nil
+    private var hasPrimed: Bool = false
 
     override init() {
         super.init()
@@ -366,6 +367,22 @@ private final class VoicePlaybackEngine: NSObject {
             // Non-fatal — speech still attempts to play with whatever the
             // system default routes to.
         }
+        // Warm up the engine with an inaudible utterance. Without this the
+        // audio pipeline takes ~500-1500 ms to come online, during which
+        // every `speak(...)` queues up and then back-to-back fires when the
+        // engine catches up — the visible symptom was the first few seconds
+        // of a 10-second countdown being spoken in ~half-second bursts
+        // while the queue drained.
+        primeIfNeeded()
+    }
+
+    private func primeIfNeeded() {
+        guard !hasPrimed else { return }
+        hasPrimed = true
+        let warmup = AVSpeechUtterance(string: "ready")
+        warmup.volume = 0
+        warmup.rate = AVSpeechUtteranceMaximumSpeechRate
+        synth.speak(warmup)
     }
 
     func beginRound(lines: [String],
@@ -382,7 +399,10 @@ private final class VoicePlaybackEngine: NSObject {
         self.roundActive = true
         self.isPaused = false
         self.onLineChange = onLineChange
-        speak(announceRound)
+        // Interrupt any in-flight speech (typically the last countdown
+        // number still in the queue) so the round announcement plays
+        // immediately rather than waiting for the queue to drain.
+        speakNow(announceRound)
         // Queue the first real line right after the round announcement.
         scheduleNextLine(after: 1)
     }
@@ -413,6 +433,15 @@ private final class VoicePlaybackEngine: NSObject {
         u.rate = AVSpeechUtteranceDefaultSpeechRate
         u.pitchMultiplier = 1.0
         synth.speak(u)
+    }
+
+    /// Stop whatever's currently playing (or queued) before speaking. Use
+    /// for per-second countdowns and state-transition announcements where
+    /// each new utterance should immediately replace any older one — keeps
+    /// the synth queue at depth 1 so it can't catch up in a burst.
+    func speakNow(_ text: String) {
+        if synth.isSpeaking { synth.stopSpeaking(at: .immediate) }
+        speak(text)
     }
 
     func shutdown() {

@@ -89,7 +89,13 @@ struct WatchWorkoutRunnerView: View {
             .padding(.horizontal, 6)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
-        .onAppear { syncFromPredefined() }
+        .onAppear {
+            syncFromPredefined()
+            // Warm the audio engine immediately so the first audible speech
+            // (round announcement or countdown tail) doesn't queue behind a
+            // still-spinning pipeline and burst-play.
+            if speechEnabled { speech.prime() }
+        }
         .sheet(item: editingComplexBinding()) { editing in
             ComplexValueEditor(
                 exercise: editing,
@@ -650,7 +656,9 @@ struct WatchWorkoutRunnerView: View {
         complexPausedRemaining = nil
         lastSpokenSecond = -1
         WKInterfaceDevice.current().play(.start)
-        speak("Round \(manager.complexRound). Go.")
+        // Interrupt any tail-end countdown speech from the previous round
+        // so the new round's announcement plays immediately.
+        speech.speakNow("Round \(manager.complexRound). Go.")
     }
 
     private func pauseComplexRound() {
@@ -668,7 +676,13 @@ struct WatchWorkoutRunnerView: View {
     }
 
     private func handleComplexRoundExpiry() {
-        guard complexEndDate != nil else { return }
+        // TimelineView fires catch-up ticks when the watch screen wakes from
+        // Always-On / sleep — each tick whose `remaining <= 0` queues another
+        // async expiry. Guarding only on "endDate != nil" lets every one of
+        // those asyncs fire (because startComplexRound resets endDate to a
+        // fresh future value), so the runner skips ahead by several rounds
+        // back-to-back. Bail unless the deadline genuinely lapsed.
+        guard let endDate = complexEndDate, endDate <= Date() else { return }
         completeComplexRoundManually()
     }
 
@@ -682,9 +696,9 @@ struct WatchWorkoutRunnerView: View {
             // Past the complex — sync state for whatever the next item is.
             syncFromPredefined()
         } else if !wasLast {
-            // Auto-roll the next round so the user doesn't have to tap Start
-            // every minute. This matches the iPhone's auto-advance behavior.
-            speak("Round \(manager.complexRound).")
+            // Auto-roll the next round. Don't speak the round number here —
+            // startComplexRound speaks it once, so an extra utterance at this
+            // point doubles up the announcement.
             startComplexRound()
         }
     }
@@ -697,13 +711,16 @@ struct WatchWorkoutRunnerView: View {
     }
 
     /// Speaks single-second numbers during the last 5 seconds of any
-    /// countdown (timed set or complex round), once per second.
+    /// countdown (timed set or complex round), once per second. Uses
+    /// `speakNow` so each new number replaces the previous one in flight —
+    /// keeps the synth queue at depth 1 so a brief audio-engine hiccup
+    /// can't cause a burst.
     private func maybeSpeakTail(_ remaining: Int) {
         guard speechEnabled else { return }
         guard remaining > 0, remaining <= 5 else { return }
         guard remaining != lastSpokenSecond else { return }
         lastSpokenSecond = remaining
-        speech.speak("\(remaining)")
+        speech.speakNow("\(remaining)")
     }
 
     // MARK: - Util
@@ -814,17 +831,38 @@ private struct ComplexValueEditor: View {
 // MARK: - Speech box
 
 /// Tiny wrapper around AVSpeechSynthesizer so the view can hold a single
-/// instance through state and ARC keeps it alive between utterances. The
-/// synthesizer is lazily started on first speak() — silent during the
-/// session if speech is disabled in settings.
+/// instance through state and ARC keeps it alive between utterances.
+///
+/// `prime()` plays an inaudible warmup utterance so the audio engine is
+/// running by the time the first audible speech is requested — without it,
+/// rapid back-to-back countdown numbers queue up while the engine spins
+/// up and then fire in a burst. `speakNow` interrupts any in-flight or
+/// queued utterance so per-second countdowns always reflect the latest
+/// number instead of stacking.
 @MainActor
 private final class SpeechBox {
     private let synth = AVSpeechSynthesizer()
+    private var hasPrimed = false
+
+    func prime() {
+        guard !hasPrimed else { return }
+        hasPrimed = true
+        let warmup = AVSpeechUtterance(string: "ready")
+        warmup.volume = 0
+        warmup.rate = AVSpeechUtteranceMaximumSpeechRate
+        synth.speak(warmup)
+    }
 
     func speak(_ text: String) {
+        prime()
         let u = AVSpeechUtterance(string: text)
         u.rate = 0.5
         u.pitchMultiplier = 1.05
         synth.speak(u)
+    }
+
+    func speakNow(_ text: String) {
+        if synth.isSpeaking { synth.stopSpeaking(at: .immediate) }
+        speak(text)
     }
 }

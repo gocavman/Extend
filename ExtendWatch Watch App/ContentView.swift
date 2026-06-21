@@ -21,9 +21,6 @@ struct RootView: View {
     /// Watches for iPhone-driven workout sessions so the live UI can be
     /// presented over the regular pages while one is running.
     @State private var workoutManager = WatchWorkoutSessionManager.shared
-    /// Set when the user taps the system dismiss X on the live-workout cover,
-    /// or anywhere else that wants to confirm ending an in-progress session.
-    @State private var showEndConfirmation: Bool = false
 
     /// Changes whenever any visibility toggle flips. Used as the TabView's `id`
     /// so SwiftUI rebuilds the page container from scratch when pages are added
@@ -53,13 +50,24 @@ struct RootView: View {
         .id(visibilityKey)
         .onOpenURL { url in
             guard url.scheme == "extendwatch" else { return }
+            let target: String
             switch url.host {
-            case "plan"     where visibility.showPlan:    selectedTab = "plan"
-            case "library"  where visibility.showLibrary: selectedTab = "library"
-            case "steps"    where visibility.showSteps:   selectedTab = "steps"
-            case "water"    where visibility.showWater:   selectedTab = "water"
-            case "settings":                              selectedTab = "settings"
-            default:                                      selectedTab = "settings"
+            case "plan"     where visibility.showPlan:    target = "plan"
+            case "library"  where visibility.showLibrary: target = "library"
+            case "steps"    where visibility.showSteps:   target = "steps"
+            case "water"    where visibility.showWater:   target = "water"
+            case "settings":                              target = "settings"
+            default:                                      target = "settings"
+            }
+            // Snap straight to the target page instead of letting the page-
+            // style TabView slide between the previously-active tab and the
+            // complication's target. Without the animation suppression the
+            // swipe takes long enough that it reads as "wrong page, then
+            // pause, then right page" on cold launch.
+            var transaction = Transaction()
+            transaction.disablesAnimations = true
+            withTransaction(transaction) {
+                selectedTab = target
             }
         }
         .onReceive(NotificationCenter.default.publisher(for: .watchPageVisibilityChanged)) { _ in
@@ -76,60 +84,17 @@ struct RootView: View {
             // Reload complications so settings changes take effect
             WidgetCenter.shared.reloadAllTimelines()
         }
-        // Live workout overlay — covers the tabs while an iPhone-driven session
-        // is running so the user sees HR/calories/duration on the wrist. The
-        // system X in the top-left writes `false` back to this binding; we
-        // intercept that to surface a confirmation instead of either dismissing
-        // silently (the cover stays because isActive is still true) or ending
-        // the session by accident.
-        .fullScreenCover(isPresented: Binding(
-            get: { workoutManager.isActive },
-            set: { newValue in
-                if !newValue && workoutManager.isActive {
-                    showEndConfirmation = true
-                }
-            }
-        )) {
+        // Live workout overlay — covers the tabs while a session is running
+        // so the user sees HR/calories/duration on the wrist. The cover is
+        // marked non-dismissable on purpose: the system X tap on watchOS
+        // forcibly unmounts the cover even when the binding setter tries to
+        // veto, which orphans the HKWorkoutSession (it keeps running but the
+        // user has no UI to control it). Every active-workout view already
+        // provides an explicit Stop / Finish button — that's the supported
+        // way out, and it properly ends the session before dismissing.
+        .fullScreenCover(isPresented: .constant(workoutManager.isActive)) {
             WatchActiveWorkoutView(manager: workoutManager)
-        }
-        .confirmationDialog(
-            "End workout?",
-            isPresented: $showEndConfirmation,
-            titleVisibility: .visible
-        ) {
-            Button("End Workout", role: .destructive) {
-                endActiveWorkout()
-            }
-            Button("Continue", role: .cancel) {}
-        } message: {
-            Text("This will save what you've logged so far and stop the live session.")
-        }
-    }
-
-    /// Ends the active session and forwards the partial log to the iPhone so
-    /// the user keeps whatever they completed before tapping X.
-    private func endActiveWorkout() {
-        guard workoutManager.isActive else { return }
-        let logName = workoutManager.pendingLogName
-        let activityTypeRaw = workoutManager.activityTypeRaw
-        let start = workoutManager.startDate ?? Date()
-        let exercises = workoutManager.loggedExercisesForReport()
-        let isLocal = workoutManager.isLocallyStarted
-        Task {
-            let uuid = await workoutManager.end()
-            // Only locally-started sessions get forwarded — iPhone-driven ones
-            // are already known to iPhone, which builds its own log on end.
-            guard isLocal else { return }
-            let endDate = Date()
-            let duration = endDate.timeIntervalSince(start)
-            WatchConnectivityBridge.shared.sendCompletedLog(
-                name: logName,
-                completedAt: endDate,
-                duration: duration,
-                hkActivityTypeRaw: activityTypeRaw,
-                hkWorkoutUUID: uuid,
-                exercises: exercises.isEmpty ? nil : exercises
-            )
+                .interactiveDismissDisabled(true)
         }
     }
 
