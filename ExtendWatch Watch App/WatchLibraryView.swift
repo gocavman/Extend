@@ -163,12 +163,17 @@ struct WatchLibraryView: View {
     private func startSession(for item: WatchLibraryItem) {
         guard !isStarting else { return }
         isStarting = true
-        // Workouts get launched with their blueprint (set-by-set runner);
-        // every other kind starts a simple "duration-only" session.
+        // Workouts get the blueprint runner; voice trainers get their
+        // playback config; everything else is duration-only.
+        let snapshot = readWatchLibrarySnapshot()
         let blueprint: WatchWorkoutBlueprint? = {
             guard item.kind == "workout" else { return nil }
-            let bp = readWatchLibrarySnapshot().workoutBlueprints[item.id]
+            let bp = snapshot.workoutBlueprints[item.id]
             return (bp?.exercises.isEmpty == false) ? bp : nil
+        }()
+        let voiceConfig: WatchVoiceTrainerConfig? = {
+            guard item.kind == "voice" else { return nil }
+            return snapshot.voiceConfigs[item.id]
         }()
         Task {
             await WatchWorkoutSessionManager.shared.start(
@@ -176,7 +181,8 @@ struct WatchLibraryView: View {
                 name: item.name,
                 isLocal: true,
                 logName: item.logName,
-                blueprint: blueprint
+                blueprint: blueprint,
+                voiceConfig: voiceConfig
             )
             await MainActor.run {
                 pendingStartItem = nil

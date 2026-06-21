@@ -315,23 +315,30 @@ public struct WatchLibrarySnapshot: Codable, Hashable {
     /// projects this from WorkoutLogState.logs so the Watch's "Recents" tile
     /// reflects activity across both devices.
     public let recents: [WatchLibraryItem]
+    /// Voice trainer playback configs, keyed by the trainer's UUID string.
+    /// When the Watch starts a voice trainer it looks the config up here so
+    /// the wrist-side runner can speak lines, run round/rest timers, and
+    /// apply start/rest warnings without round-tripping to the iPhone.
+    public let voiceConfigs: [String: WatchVoiceTrainerConfig]
 
     public init(workouts: [WatchLibraryItem] = [],
                 exercises: [WatchLibraryItem] = [],
                 timers: [WatchLibraryItem] = [],
                 voiceTrainers: [WatchLibraryItem] = [],
                 workoutBlueprints: [String: WatchWorkoutBlueprint] = [:],
-                recents: [WatchLibraryItem] = []) {
+                recents: [WatchLibraryItem] = [],
+                voiceConfigs: [String: WatchVoiceTrainerConfig] = [:]) {
         self.workouts = workouts
         self.exercises = exercises
         self.timers = timers
         self.voiceTrainers = voiceTrainers
         self.workoutBlueprints = workoutBlueprints
         self.recents = recents
+        self.voiceConfigs = voiceConfigs
     }
 
     private enum CodingKeys: String, CodingKey {
-        case workouts, exercises, timers, voiceTrainers, workoutBlueprints, recents
+        case workouts, exercises, timers, voiceTrainers, workoutBlueprints, recents, voiceConfigs
     }
 
     public init(from decoder: Decoder) throws {
@@ -342,25 +349,183 @@ public struct WatchLibrarySnapshot: Codable, Hashable {
         voiceTrainers = (try? c.decodeIfPresent([WatchLibraryItem].self, forKey: .voiceTrainers)) ?? []
         workoutBlueprints = (try? c.decodeIfPresent([String: WatchWorkoutBlueprint].self, forKey: .workoutBlueprints)) ?? [:]
         recents = (try? c.decodeIfPresent([WatchLibraryItem].self, forKey: .recents)) ?? []
+        voiceConfigs = (try? c.decodeIfPresent([String: WatchVoiceTrainerConfig].self, forKey: .voiceConfigs)) ?? [:]
     }
 
     public static let empty = WatchLibrarySnapshot()
 }
 
-/// Watch-friendly projection of a Workout — flat list of exercises with their
-/// predefined sets. The watch runs through these one set at a time, letting
-/// the user adjust reps + weight per set before logging it.
+/// Watch-friendly projection of a VoiceTrainerConfig — just the fields the
+/// wrist-side playback engine needs. Lines are pre-split off the raw text on
+/// the iPhone so the watch doesn't need to redo it every round.
+public struct WatchVoiceTrainerConfig: Codable, Hashable {
+    public let id: String
+    public let name: String
+    /// Per-line strings, already trimmed and with empty lines removed.
+    public let lines: [String]
+    public let roundLength: Int
+    public let restLength: Int
+    public let delayBetweenLines: Int
+    public let numberOfRounds: Int
+    public let randomOrder: Bool
+    /// 1-30 seconds. 0 → no pre-workout countdown.
+    public let workoutStartWarning: Int
+    /// 1-30 seconds. 0 → no rest-end countdown.
+    public let restEndWarning: Int
+
+    public init(id: String, name: String, lines: [String],
+                roundLength: Int, restLength: Int, delayBetweenLines: Int,
+                numberOfRounds: Int, randomOrder: Bool,
+                workoutStartWarning: Int, restEndWarning: Int) {
+        self.id = id
+        self.name = name
+        self.lines = lines
+        self.roundLength = roundLength
+        self.restLength = restLength
+        self.delayBetweenLines = delayBetweenLines
+        self.numberOfRounds = numberOfRounds
+        self.randomOrder = randomOrder
+        self.workoutStartWarning = workoutStartWarning
+        self.restEndWarning = restEndWarning
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case id, name, lines, roundLength, restLength, delayBetweenLines,
+             numberOfRounds, randomOrder, workoutStartWarning, restEndWarning
+    }
+
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = try c.decode(String.self, forKey: .id)
+        name = try c.decode(String.self, forKey: .name)
+        lines = (try? c.decodeIfPresent([String].self, forKey: .lines)) ?? []
+        roundLength = (try? c.decodeIfPresent(Int.self, forKey: .roundLength)) ?? 60
+        restLength = (try? c.decodeIfPresent(Int.self, forKey: .restLength)) ?? 0
+        delayBetweenLines = (try? c.decodeIfPresent(Int.self, forKey: .delayBetweenLines)) ?? 0
+        numberOfRounds = (try? c.decodeIfPresent(Int.self, forKey: .numberOfRounds)) ?? 1
+        randomOrder = (try? c.decodeIfPresent(Bool.self, forKey: .randomOrder)) ?? false
+        workoutStartWarning = (try? c.decodeIfPresent(Int.self, forKey: .workoutStartWarning)) ?? 0
+        restEndWarning = (try? c.decodeIfPresent(Int.self, forKey: .restEndWarning)) ?? 0
+    }
+}
+
+/// Watch-friendly projection of a Workout — flat list of items the runner
+/// walks one at a time. Each item is either a single exercise (the runner
+/// logs sets one-by-one) or a complex round group (the runner shows all
+/// participating exercises on one screen with a shared countdown that
+/// auto-advances rounds).
+///
+/// `exercises` is preserved as the legacy field so older Watch builds (which
+/// only know how to walk a flat exercise list) keep working. New runners walk
+/// `items` when present, and `exercises` is filled with only the per-exercise
+/// items so the legacy decoder still surfaces something sensible.
 public struct WatchWorkoutBlueprint: Codable, Hashable {
     public let id: String
     public let name: String
     public let hkActivityTypeRaw: UInt?
     public let exercises: [WatchBlueprintExercise]
+    public let items: [WatchBlueprintItem]
 
-    public init(id: String, name: String, hkActivityTypeRaw: UInt?, exercises: [WatchBlueprintExercise]) {
+    public init(id: String, name: String, hkActivityTypeRaw: UInt?,
+                exercises: [WatchBlueprintExercise],
+                items: [WatchBlueprintItem]? = nil) {
         self.id = id
         self.name = name
         self.hkActivityTypeRaw = hkActivityTypeRaw
         self.exercises = exercises
+        // When the caller hands us nothing item-shaped, default to one item
+        // per exercise so any code reading `items` sees the same sequence.
+        self.items = items ?? exercises.map { .exercise($0) }
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case id, name, hkActivityTypeRaw, exercises, items
+    }
+
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = try c.decode(String.self, forKey: .id)
+        name = try c.decode(String.self, forKey: .name)
+        hkActivityTypeRaw = try? c.decodeIfPresent(UInt.self, forKey: .hkActivityTypeRaw)
+        exercises = (try? c.decodeIfPresent([WatchBlueprintExercise].self, forKey: .exercises)) ?? []
+        // Older snapshots (no `items` field) → synthesize one item per exercise
+        // so the new runner code can still walk them as a flat list.
+        if let decoded = try? c.decodeIfPresent([WatchBlueprintItem].self, forKey: .items) ?? nil {
+            items = decoded
+        } else {
+            items = exercises.map { .exercise($0) }
+        }
+    }
+}
+
+/// One step in a workout blueprint — either a single exercise (set-by-set
+/// runner) or a complex round group (single-screen, shared timer).
+public enum WatchBlueprintItem: Codable, Hashable {
+    case exercise(WatchBlueprintExercise)
+    case complex(WatchBlueprintComplex)
+
+    private enum CodingKeys: String, CodingKey { case kind, exercise, complex }
+    private enum Kind: String, Codable { case exercise, complex }
+
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        let kind = try c.decode(Kind.self, forKey: .kind)
+        switch kind {
+        case .exercise:
+            self = .exercise(try c.decode(WatchBlueprintExercise.self, forKey: .exercise))
+        case .complex:
+            self = .complex(try c.decode(WatchBlueprintComplex.self, forKey: .complex))
+        }
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        switch self {
+        case .exercise(let ex):
+            try c.encode(Kind.exercise, forKey: .kind)
+            try c.encode(ex, forKey: .exercise)
+        case .complex(let cx):
+            try c.encode(Kind.complex, forKey: .kind)
+            try c.encode(cx, forKey: .complex)
+        }
+    }
+}
+
+/// A complex shows all participating exercises simultaneously on one screen
+/// with a shared per-round countdown. The runner repeats the same exercise
+/// list `rounds` times, and the user can adjust the per-exercise reps/weight
+/// at any time during the round; when the countdown expires (or the user
+/// advances manually), the runner records one logged set per exercise using
+/// the values at that moment, then resets the countdown for the next round.
+public struct WatchBlueprintComplex: Codable, Hashable, Identifiable {
+    public let id: String
+    /// Display name from the parent workout — falls back to a generic label
+    /// when the user hasn't named the complex.
+    public let name: String
+    public let rounds: Int
+    public let intervalSeconds: Int
+    public let exercises: [WatchBlueprintExercise]
+
+    public init(id: String, name: String, rounds: Int, intervalSeconds: Int,
+                exercises: [WatchBlueprintExercise]) {
+        self.id = id
+        self.name = name
+        self.rounds = rounds
+        self.intervalSeconds = intervalSeconds
+        self.exercises = exercises
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case id, name, rounds, intervalSeconds, exercises
+    }
+
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = try c.decode(String.self, forKey: .id)
+        name = (try? c.decodeIfPresent(String.self, forKey: .name)) ?? "Complex"
+        rounds = (try? c.decodeIfPresent(Int.self, forKey: .rounds)) ?? 1
+        intervalSeconds = (try? c.decodeIfPresent(Int.self, forKey: .intervalSeconds)) ?? 60
+        exercises = (try? c.decodeIfPresent([WatchBlueprintExercise].self, forKey: .exercises)) ?? []
     }
 }
 

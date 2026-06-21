@@ -633,13 +633,40 @@ final class TrainingPlanState {
             if recents.count >= 8 { break }
         }
 
+        // Project voice trainer configs the watch needs to run lines on the
+        // wrist (text split into lines, round/rest/delay timings, warnings).
+        let voiceConfigs: [String: WatchVoiceTrainerConfig] = Dictionary(
+            uniqueKeysWithValues: voices.map { vc in
+                let lines = vc.text
+                    .split(separator: "\n")
+                    .map { String($0).trimmingCharacters(in: .whitespaces) }
+                    .filter { !$0.isEmpty }
+                return (
+                    vc.id.uuidString,
+                    WatchVoiceTrainerConfig(
+                        id: vc.id.uuidString,
+                        name: vc.name,
+                        lines: lines,
+                        roundLength: vc.roundLength,
+                        restLength: vc.restLength,
+                        delayBetweenLines: vc.delayBetweenLines,
+                        numberOfRounds: vc.numberOfRounds,
+                        randomOrder: vc.randomOrder,
+                        workoutStartWarning: vc.workoutStartWarning,
+                        restEndWarning: vc.restEndWarning
+                    )
+                )
+            }
+        )
+
         let library = WatchLibrarySnapshot(
             workouts: workoutItems,
             exercises: exerciseItems,
             timers: timerItems,
             voiceTrainers: voiceItems,
             workoutBlueprints: blueprints,
-            recents: recents
+            recents: recents,
+            voiceConfigs: voiceConfigs
         )
         writeWatchLibrarySnapshot(library)
         WatchConnectivityReceiver.shared.sendLibraryUpdate(library)
@@ -668,12 +695,15 @@ final class TrainingPlanState {
     static func buildBlueprint(for workout: Workout,
                                exercisesByID: [UUID: Exercise]) -> WatchWorkoutBlueprint {
         var projection: [WatchBlueprintExercise] = []
+        var walkItems: [WatchBlueprintItem] = []
         let items = workout.items
         var i = 0
         while i < items.count {
             switch items[i] {
             case .rest(let r):
                 Self.attachRest(seconds: r.duration, to: &projection)
+                // Rest doesn't get its own walk-item; its duration is absorbed
+                // into the prior item's last set via attachRest.
                 i += 1
             case .exercise(let we):
                 if let loopID = we.loopID {
@@ -690,7 +720,7 @@ final class TrainingPlanState {
                             switch loopItem {
                             case .exercise(let we2):
                                 let ex = exercisesByID[we2.exerciseID]
-                                projection.append(WatchBlueprintExercise(
+                                let entry = WatchBlueprintExercise(
                                     id: "\(we2.id.uuidString)-r\(r)",
                                     exerciseID: we2.exerciseID.uuidString,
                                     name: ex?.name ?? "Exercise",
@@ -702,15 +732,20 @@ final class TrainingPlanState {
                                     ),
                                     loopRound: r,
                                     loopTotalRounds: rounds
-                                ))
+                                )
+                                projection.append(entry)
+                                walkItems.append(.exercise(entry))
                             case .rest(let r):
                                 Self.attachRest(seconds: r.duration, to: &projection)
+                                // attachRest mutates the last walkItem-exercise too
+                                Self.attachRestToLastItem(seconds: r.duration, in: &walkItems)
                             }
                         }
                     }
                 } else if let complexID = we.complexID {
-                    let complex = workout.complexes[complexID.uuidString]
-                    let rounds = max(complex?.rounds ?? 1, 1)
+                    let complexCfg = workout.complexes[complexID.uuidString]
+                    let rounds = max(complexCfg?.rounds ?? 1, 1)
+                    let interval = max(complexCfg?.intervalSeconds ?? 60, 1)
                     var complexExercises: [WorkoutExercise] = []
                     while i < items.count {
                         if case .exercise(let we2) = items[i], we2.complexID == complexID {
@@ -720,6 +755,9 @@ final class TrainingPlanState {
                             break
                         }
                     }
+                    // Legacy `exercises` projection — keep the per-round
+                    // flat-expanded entries so older Watch builds still see
+                    // something walkable.
                     for r in 1...rounds {
                         for we2 in complexExercises {
                             let ex = exercisesByID[we2.exerciseID]
@@ -734,15 +772,37 @@ final class TrainingPlanState {
                             ))
                         }
                     }
+                    // New `items` projection — one `.complex` carrying every
+                    // exercise once + the round/interval config. New runners
+                    // use this to show all exercises on one screen.
+                    let complexExerciseEntries: [WatchBlueprintExercise] = complexExercises.map { we2 in
+                        let ex = exercisesByID[we2.exerciseID]
+                        return WatchBlueprintExercise(
+                            id: we2.id.uuidString,
+                            exerciseID: we2.exerciseID.uuidString,
+                            name: ex?.name ?? "Exercise",
+                            icon: "figure.strengthtraining.traditional",
+                            predefinedSets: Self.makeWatchPredefinedSets(from: we2.predefinedSets)
+                        )
+                    }
+                    walkItems.append(.complex(WatchBlueprintComplex(
+                        id: complexID.uuidString,
+                        name: workout.name,
+                        rounds: rounds,
+                        intervalSeconds: interval,
+                        exercises: complexExerciseEntries
+                    )))
                 } else {
                     let ex = exercisesByID[we.exerciseID]
-                    projection.append(WatchBlueprintExercise(
+                    let entry = WatchBlueprintExercise(
                         id: we.id.uuidString,
                         exerciseID: we.exerciseID.uuidString,
                         name: ex?.name ?? "Exercise",
                         icon: "figure.strengthtraining.traditional",
                         predefinedSets: Self.makeWatchPredefinedSets(from: we.predefinedSets)
-                    ))
+                    )
+                    projection.append(entry)
+                    walkItems.append(.exercise(entry))
                     i += 1
                 }
             }
@@ -751,8 +811,41 @@ final class TrainingPlanState {
             id: workout.id.uuidString,
             name: workout.name,
             hkActivityTypeRaw: workout.healthKitActivityType,
-            exercises: projection
+            exercises: projection,
+            items: walkItems
         )
+    }
+
+    /// Companion to `attachRest` — mirrors the rest onto the corresponding
+    /// `.exercise` entry inside `walkItems` so the new item-based runner sees
+    /// the same restSecondsAfter the old flat-list runner would.
+    private static func attachRestToLastItem(seconds: Int,
+                                             in items: inout [WatchBlueprintItem]) {
+        guard seconds > 0, !items.isEmpty else { return }
+        guard case .exercise(let ex) = items.removeLast() else { return }
+        guard !ex.predefinedSets.isEmpty else {
+            items.append(.exercise(ex))
+            return
+        }
+        var sets = ex.predefinedSets
+        let lastSet = sets.removeLast()
+        sets.append(WatchPredefinedSet(
+            reps: lastSet.reps,
+            weight: lastSet.weight,
+            timedSeconds: lastSet.timedSeconds,
+            restSecondsAfter: max(lastSet.restSecondsAfter, seconds)
+        ))
+        items.append(.exercise(WatchBlueprintExercise(
+            id: ex.id,
+            exerciseID: ex.exerciseID,
+            name: ex.name,
+            icon: ex.icon,
+            predefinedSets: sets,
+            loopRound: ex.loopRound,
+            loopTotalRounds: ex.loopTotalRounds,
+            complexRound: ex.complexRound,
+            complexTotalRounds: ex.complexTotalRounds
+        )))
     }
 
     /// Walks forward from `startIndex` collecting consecutive items (exercises

@@ -17,10 +17,13 @@ struct WatchActiveWorkoutView: View {
     @State private var isFinishing: Bool = false
 
     var body: some View {
-        // Multi-exercise blueprints get the runner UI; single-exercise /
-        // timer / voice trainer sessions get the simpler duration-only view.
+        // Multi-exercise blueprints get the set-by-set runner; voice trainers
+        // get the round-based playback runner; everything else falls back to
+        // the duration-only view.
         if manager.blueprint != nil {
             WatchWorkoutRunnerView(manager: manager)
+        } else if let voice = manager.voiceConfig {
+            WatchVoiceTrainerRunnerView(manager: manager, config: voice)
         } else {
             simpleView
         }

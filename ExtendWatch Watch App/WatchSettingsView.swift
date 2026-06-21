@@ -17,6 +17,8 @@ struct WatchSettingsView: View {
     @State private var pages: WatchPageVisibility = readWatchPageVisibility()
     @State private var stepsGoalText: String = ""
     @State private var distanceGoalText: String = ""
+    /// Voice countdown during workouts (read by WatchWorkoutRunnerView).
+    @AppStorage("watch_speech_enabled") private var speechEnabled: Bool = true
 
     private let shapeOptions: [(label: String, symbol: String)] = [
         ("Ring",     ""),
@@ -49,6 +51,15 @@ struct WatchSettingsView: View {
                     Text("Pages")
                 } footer: {
                     Text("Hidden pages won't appear when swiping. Settings is always shown.")
+                        .font(.caption2)
+                }
+
+                Section {
+                    Toggle("Voice Countdown", isOn: $speechEnabled)
+                } header: {
+                    Text("Workouts")
+                } footer: {
+                    Text("Speaks the last 5 seconds of timed sets and announces complex rounds.")
                         .font(.caption2)
                 }
 

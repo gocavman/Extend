@@ -44,13 +44,37 @@ final class WatchWorkoutSessionManager: NSObject {
     private(set) var startDate: Date?
     /// Loaded blueprint when the user started a multi-exercise workout. When
     /// set, the live UI switches into the set-by-set runner; nil means a
-    /// simple "duration only" session (single exercise, timer, voice trainer).
+    /// simple "duration only" session (single exercise, timer) or a voice
+    /// trainer (see `voiceConfig`).
     private(set) var blueprint: WatchWorkoutBlueprint? = nil
-    /// Index of the exercise currently being worked through (0-based).
-    private(set) var currentExerciseIndex: Int = 0
-    /// Sets the user has logged for each exercise in `blueprint.exercises`.
-    /// Index is parallel to blueprint.exercises.
-    private(set) var loggedSetsPerExercise: [[WatchLoggedSet]] = []
+    /// Loaded voice trainer config when the user started one from the wrist.
+    /// The live UI switches into the trainer runner (round-based line
+    /// speaking + rest countdown) when this is non-nil.
+    private(set) var voiceConfig: WatchVoiceTrainerConfig? = nil
+    /// Index of the item currently being worked through (0-based, walks
+    /// `blueprint.items`).
+    private(set) var currentItemIndex: Int = 0
+    /// Sets the user has logged for the currently-active non-complex item.
+    /// Cleared whenever we advance to a new item.
+    private(set) var currentItemSets: [WatchLoggedSet] = []
+    /// 1-based round counter while we're on a complex item.
+    private(set) var complexRound: Int = 1
+    /// User-editable reps + weight per exercise within the current complex,
+    /// keyed by the blueprint exercise UUID. Initialized from the predefined
+    /// set values when we enter the complex and carried across rounds.
+    private(set) var complexValues: [String: WatchLoggedSet] = [:]
+    /// Completed sets keyed by exercise UUID — accumulated across the whole
+    /// session so loggedExercisesForReport can roll them up at the end.
+    /// One entry per logged set; complex rounds emit one set per participating
+    /// exercise each round.
+    private var completedSetsByExerciseID: [String: [WatchLoggedSet]] = [:]
+    /// Parallel-ordered list of exercise UUIDs in the order they were first
+    /// completed, so the iPhone log preserves the workout's authoring order
+    /// rather than dictionary iteration order.
+    private var completedExerciseOrder: [String] = []
+    /// Display name + exerciseID metadata for each unique exercise touched,
+    /// used to assemble loggedExercisesForReport without re-walking items.
+    private var exerciseMetadata: [String: (name: String, exerciseID: String)] = [:]
 
     // MARK: - Private
 
@@ -103,7 +127,8 @@ final class WatchWorkoutSessionManager: NSObject {
                name: String,
                isLocal: Bool = false,
                logName: String? = nil,
-               blueprint: WatchWorkoutBlueprint? = nil) async -> Bool {
+               blueprint: WatchWorkoutBlueprint? = nil,
+               voiceConfig: WatchVoiceTrainerConfig? = nil) async -> Bool {
         guard HKHealthStore.isHealthDataAvailable() else { return false }
         guard !isActive else { return true }
 
@@ -133,11 +158,20 @@ final class WatchWorkoutSessionManager: NSObject {
             self.pendingLogName = logName ?? name
             self.isLocallyStarted = isLocal
             self.blueprint = blueprint
-            self.currentExerciseIndex = 0
-            self.loggedSetsPerExercise = Array(
-                repeating: [],
-                count: blueprint?.exercises.count ?? 0
-            )
+            self.voiceConfig = voiceConfig
+            self.currentItemIndex = 0
+            self.currentItemSets = []
+            self.complexRound = 1
+            self.complexValues = [:]
+            self.completedSetsByExerciseID = [:]
+            self.completedExerciseOrder = []
+            self.exerciseMetadata = [:]
+            // If we're starting on a complex item, seed the per-exercise
+            // editable values from each one's first predefined set.
+            if let blueprint, let first = blueprint.items.first,
+               case .complex(let cx) = first {
+                seedComplexValues(cx)
+            }
 
             let start = Date()
             session.startActivity(with: start)
@@ -186,27 +220,36 @@ final class WatchWorkoutSessionManager: NSObject {
 
     // MARK: - Runner controls (for blueprint-driven sessions)
 
-    /// Returns the exercise currently being worked through. nil when no
-    /// blueprint is loaded or when all exercises have been completed.
-    func currentExercise() -> WatchBlueprintExercise? {
+    /// The item currently being worked through (single exercise or complex).
+    /// Returns nil when the blueprint isn't loaded or every item is done.
+    func currentItem() -> WatchBlueprintItem? {
         guard let blueprint else { return nil }
-        guard currentExerciseIndex < blueprint.exercises.count else { return nil }
-        return blueprint.exercises[currentExerciseIndex]
+        guard currentItemIndex < blueprint.items.count else { return nil }
+        return blueprint.items[currentItemIndex]
     }
 
-    /// Number of sets the user has already logged for the current exercise.
-    func loggedSetCount() -> Int {
-        guard currentExerciseIndex < loggedSetsPerExercise.count else { return 0 }
-        return loggedSetsPerExercise[currentExerciseIndex].count
+    /// The active exercise when the current item is a single exercise.
+    /// nil when the item is a complex (use `currentComplex()` instead).
+    func currentExercise() -> WatchBlueprintExercise? {
+        guard case .exercise(let ex) = currentItem() else { return nil }
+        return ex
     }
 
-    /// Total planned sets for the current exercise (predefined count).
+    /// The active complex when the current item is a complex round group.
+    func currentComplex() -> WatchBlueprintComplex? {
+        guard case .complex(let cx) = currentItem() else { return nil }
+        return cx
+    }
+
+    /// Sets the user has already logged for the active non-complex item.
+    func loggedSetCount() -> Int { currentItemSets.count }
+
+    /// Planned set count for the active non-complex item.
     func plannedSetCount() -> Int {
         currentExercise()?.predefinedSets.count ?? 0
     }
 
-    /// Returns the predefined target for the next set on the current exercise
-    /// — used to pre-fill reps + weight before the user adjusts with Crown.
+    /// Predefined target for the next set on the active non-complex item.
     func nextPredefinedSet() -> WatchPredefinedSet? {
         guard let ex = currentExercise() else { return nil }
         let idx = loggedSetCount()
@@ -214,41 +257,101 @@ final class WatchWorkoutSessionManager: NSObject {
         return ex.predefinedSets[idx]
     }
 
-    /// Records a completed set for the current exercise. Caller advances to
-    /// the next exercise via `advanceToNextExercise()` when ready.
+    /// Records a completed set for the active non-complex item.
     func logSet(reps: Int, weight: Double) {
-        guard currentExerciseIndex < loggedSetsPerExercise.count else { return }
-        loggedSetsPerExercise[currentExerciseIndex].append(
-            WatchLoggedSet(reps: reps, weight: weight)
-        )
+        guard let ex = currentExercise() else { return }
+        let set = WatchLoggedSet(reps: reps, weight: weight)
+        currentItemSets.append(set)
+        recordCompletedSet(set, for: ex)
     }
 
-    /// Moves to the next exercise. Caller should check `isWorkoutComplete()`
-    /// after advancing.
-    func advanceToNextExercise() {
-        currentExerciseIndex += 1
+    /// Advances past the current item — used by the runner when the user taps
+    /// "Next" after finishing a single exercise. For complex items, callers
+    /// should drive `completeComplexRound()` instead and advance only after
+    /// the last round.
+    func advanceToNextItem() {
+        currentItemIndex += 1
+        currentItemSets = []
+        complexRound = 1
+        complexValues = [:]
+        // Seed values for a newly-entered complex item.
+        if case .complex(let cx) = currentItem() { seedComplexValues(cx) }
     }
 
-    /// True when every exercise in the blueprint has at least its planned set
-    /// count logged, or when the user has stepped past the last exercise.
+    /// Legacy shim — old callers expected this name. Forwards to the items
+    /// walker so existing controller code keeps compiling.
+    func advanceToNextExercise() { advanceToNextItem() }
+
     func isWorkoutComplete() -> Bool {
         guard let blueprint else { return false }
-        return currentExerciseIndex >= blueprint.exercises.count
+        return currentItemIndex >= blueprint.items.count
     }
 
-    /// Snapshot of everything logged so far, for shipping to the iPhone.
+    /// Aggregated per-exercise log of everything completed so far, preserving
+    /// the order each exercise was first touched.
     func loggedExercisesForReport() -> [WatchLoggedExercise] {
-        guard let blueprint else { return [] }
-        return blueprint.exercises.enumerated().compactMap { idx, ex in
-            let sets = idx < loggedSetsPerExercise.count ? loggedSetsPerExercise[idx] : []
-            guard !sets.isEmpty else { return nil }
+        completedExerciseOrder.compactMap { exID in
+            guard let sets = completedSetsByExerciseID[exID], !sets.isEmpty,
+                  let meta = exerciseMetadata[exID] else { return nil }
             return WatchLoggedExercise(
-                exerciseID: ex.exerciseID,
-                exerciseName: ex.name,
+                exerciseID: meta.exerciseID,
+                exerciseName: meta.name,
                 activeSeconds: 0,
                 sets: sets
             )
         }
+    }
+
+    // MARK: - Complex controls
+
+    /// Update the user-editable reps/weight for one exercise within the
+    /// current complex. Values persist across rounds until the user changes
+    /// them again.
+    func setComplexValue(forExerciseID id: String, reps: Int, weight: Double) {
+        guard case .complex = currentItem() else { return }
+        complexValues[id] = WatchLoggedSet(reps: reps, weight: weight)
+    }
+
+    /// Records one set per participating exercise using the current
+    /// `complexValues`, then either advances the round counter or moves past
+    /// the complex when the last round is done.
+    /// - Returns: true if the complex is fully complete (caller can advance UI
+    ///   accordingly), false if more rounds remain.
+    @discardableResult
+    func completeComplexRound() -> Bool {
+        guard let cx = currentComplex() else { return false }
+        for ex in cx.exercises {
+            let value = complexValues[ex.id]
+                ?? WatchLoggedSet(reps: ex.predefinedSets.first?.reps ?? 0,
+                                  weight: ex.predefinedSets.first?.weight ?? 0)
+            recordCompletedSet(value, for: ex)
+        }
+        if complexRound >= cx.rounds {
+            advanceToNextItem()
+            return true
+        }
+        complexRound += 1
+        return false
+    }
+
+    // MARK: - Private helpers
+
+    private func seedComplexValues(_ cx: WatchBlueprintComplex) {
+        for ex in cx.exercises {
+            let first = ex.predefinedSets.first
+            complexValues[ex.id] = WatchLoggedSet(
+                reps: first?.reps ?? 0,
+                weight: first?.weight ?? 0
+            )
+        }
+    }
+
+    private func recordCompletedSet(_ set: WatchLoggedSet, for ex: WatchBlueprintExercise) {
+        if exerciseMetadata[ex.exerciseID] == nil {
+            exerciseMetadata[ex.exerciseID] = (name: ex.name, exerciseID: ex.exerciseID)
+            completedExerciseOrder.append(ex.exerciseID)
+        }
+        completedSetsByExerciseID[ex.exerciseID, default: []].append(set)
     }
 
     private func clearState() {
@@ -264,8 +367,14 @@ final class WatchWorkoutSessionManager: NSObject {
         activityType = .other
         activityTypeRaw = nil
         blueprint = nil
-        currentExerciseIndex = 0
-        loggedSetsPerExercise = []
+        voiceConfig = nil
+        currentItemIndex = 0
+        currentItemSets = []
+        complexRound = 1
+        complexValues = [:]
+        completedSetsByExerciseID = [:]
+        completedExerciseOrder = []
+        exerciseMetadata = [:]
     }
 }
 
