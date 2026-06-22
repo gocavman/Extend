@@ -167,9 +167,14 @@ struct WatchLibraryView: View {
         // playback config; everything else is duration-only.
         let snapshot = readWatchLibrarySnapshot()
         let blueprint: WatchWorkoutBlueprint? = {
-            guard item.kind == "workout" else { return nil }
-            let bp = snapshot.workoutBlueprints[item.id]
-            return (bp?.exercises.isEmpty == false) ? bp : nil
+            if item.kind == "workout" {
+                let bp = snapshot.workoutBlueprints[item.id]
+                return (bp?.exercises.isEmpty == false) ? bp : nil
+            }
+            // Exercises route through the set-by-set runner via a synthetic
+            // single-exercise blueprint so the user gets wheel pickers for
+            // reps + weight instead of a duration-only screen.
+            return makeAdHocExerciseBlueprint(for: item)
         }()
         let voiceConfig: WatchVoiceTrainerConfig? = {
             guard item.kind == "voice" else { return nil }

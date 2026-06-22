@@ -142,12 +142,28 @@ struct WatchPlanDetailView: View {
     private func startSession(for item: WidgetPlanItem) {
         guard !isStarting else { return }
         isStarting = true
-        // Workout items hand off to the set-by-set runner; everything else
-        // (exercise/timer/voice) runs as a simple duration-only session.
+        // Workout items hand off to the set-by-set runner. Exercise items
+        // route through the same runner via a synthetic single-exercise
+        // blueprint so the user gets reps + weight wheel pickers instead of
+        // a duration-only screen. Timers and voice trainers stay simple
+        // (their config is loaded elsewhere).
         let blueprint: WatchWorkoutBlueprint? = {
-            guard item.kind == "workout", let id = item.sourceID else { return nil }
-            let bp = readWatchLibrarySnapshot().workoutBlueprints[id]
-            return (bp?.exercises.isEmpty == false) ? bp : nil
+            if item.kind == "workout", let id = item.sourceID {
+                let bp = readWatchLibrarySnapshot().workoutBlueprints[id]
+                return (bp?.exercises.isEmpty == false) ? bp : nil
+            }
+            if item.kind == "exercise", let id = item.sourceID {
+                let proxy = WatchLibraryItem(
+                    id: id,
+                    kind: "exercise",
+                    name: item.name,
+                    icon: item.icon,
+                    hkActivityTypeRaw: item.hkActivityTypeRaw,
+                    logName: item.logName ?? item.name
+                )
+                return makeAdHocExerciseBlueprint(for: proxy)
+            }
+            return nil
         }()
         Task {
             await WatchWorkoutSessionManager.shared.start(

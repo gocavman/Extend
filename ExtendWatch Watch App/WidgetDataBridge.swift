@@ -634,6 +634,28 @@ public struct WatchLoggedSet: Codable, Hashable {
     }
 }
 
+/// Builds a synthetic one-exercise blueprint for a library "exercise" item
+/// so it routes through the same set-by-set runner workouts use, getting
+/// reps + weight wheel pickers instead of the duration-only screen. The
+/// blueprint has no predefined sets — the runner detects that and lets the
+/// user log as many ad-hoc sets as they want, ending via Stop.
+public func makeAdHocExerciseBlueprint(for item: WatchLibraryItem) -> WatchWorkoutBlueprint? {
+    guard item.kind == "exercise" else { return nil }
+    let exercise = WatchBlueprintExercise(
+        id: UUID().uuidString,
+        exerciseID: item.id,
+        name: item.name,
+        icon: item.icon,
+        predefinedSets: []
+    )
+    return WatchWorkoutBlueprint(
+        id: item.id,
+        name: item.name,
+        hkActivityTypeRaw: item.hkActivityTypeRaw,
+        exercises: [exercise]
+    )
+}
+
 public func writeWatchLibrarySnapshot(_ snapshot: WatchLibrarySnapshot) {
     let defaults = UserDefaults(suiteName: appGroupID) ?? .standard
     if let encoded = try? JSONEncoder().encode(snapshot) {

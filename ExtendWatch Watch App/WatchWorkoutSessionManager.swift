@@ -218,6 +218,23 @@ final class WatchWorkoutSessionManager: NSObject {
         return uuid
     }
 
+    /// Cancels the live workout — stops the HKWorkoutSession and discards the
+    /// builder so no HKWorkout is written to Apple Health and no log is sent
+    /// back to the iPhone. Pair with the X-tap confirmation flow; the Stop /
+    /// Finish buttons stay on `end()`.
+    func cancel() async {
+        guard isActive, let session, let builder else { return }
+        let endDate = Date()
+        session.end()
+        do {
+            try await builder.endCollection(at: endDate)
+        } catch {
+            print("❌ Watch workout endCollection (cancel) failed: \(error.localizedDescription)")
+        }
+        builder.discardWorkout()
+        clearState()
+    }
+
     // MARK: - Runner controls (for blueprint-driven sessions)
 
     /// The item currently being worked through (single exercise or complex).

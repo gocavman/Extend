@@ -26,7 +26,7 @@ struct WatchVoiceTrainerRunnerView: View {
     @Bindable var manager: WatchWorkoutSessionManager
     let config: WatchVoiceTrainerConfig
 
-    @State private var phase: Phase = .preStart
+    @State private var phase: Phase = .preparing
     @State private var round: Int = 1
     @State private var roundEndDate: Date? = nil
     @State private var pausedRemaining: Int? = nil
@@ -38,6 +38,7 @@ struct WatchVoiceTrainerRunnerView: View {
     @State private var engine = VoicePlaybackEngine()
 
     private enum Phase: Equatable {
+        case preparing      // waiting for audio engine warmup to complete
         case preStart       // pre-workout countdown running
         case roundActive    // a round is in flight
         case resting        // rest between rounds
@@ -90,6 +91,8 @@ struct WatchVoiceTrainerRunnerView: View {
             return max(0, Int(ceil(endDate.timeIntervalSince(now))))
         }()
         switch phase {
+        case .preparing:
+            preparingBody
         case .preStart:
             preStartBody(remaining: remaining, isPaused: isPaused)
         case .roundActive:
@@ -99,6 +102,16 @@ struct WatchVoiceTrainerRunnerView: View {
         case .completed:
             completedBody
         }
+    }
+
+    private var preparingBody: some View {
+        VStack(spacing: 8) {
+            ProgressView()
+            Text("Preparing…")
+                .font(.system(size: 11, weight: .medium))
+                .foregroundColor(.secondary)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
     private func preStartBody(remaining: Int, isPaused: Bool) -> some View {
@@ -240,14 +253,25 @@ struct WatchVoiceTrainerRunnerView: View {
 
     private func startSessionIfNeeded() {
         guard roundEndDate == nil && pausedRemaining == nil else { return }
-        engine.configureAudioSession()
         round = 1
-        if config.workoutStartWarning > 0 {
-            phase = .preStart
-            roundEndDate = Date().addingTimeInterval(TimeInterval(config.workoutStartWarning))
-            lastSpokenCountdown = -1
-        } else {
-            beginRound(1)
+        phase = .preparing
+        // Kick the audio engine and wait for the silent warmup utterance to
+        // finish before starting the countdown — otherwise the first few
+        // seconds get queued behind a still-spinning audio pipeline and play
+        // back in a burst once it catches up (the visible symptom was a
+        // 10-second countdown that didn't speak until ~8 and then said
+        // "8 7 6" all at once before settling into a normal cadence).
+        engine.prepareForPlayback {
+            Task { @MainActor in
+                guard phase == .preparing else { return }
+                if config.workoutStartWarning > 0 {
+                    phase = .preStart
+                    roundEndDate = Date().addingTimeInterval(TimeInterval(config.workoutStartWarning))
+                    lastSpokenCountdown = -1
+                } else {
+                    beginRound(1)
+                }
+            }
         }
     }
 
@@ -349,16 +373,24 @@ private final class VoicePlaybackEngine: NSObject {
     private var isPaused: Bool = false
     private var onLineChange: ((String) -> Void)? = nil
     private var hasPrimed: Bool = false
+    private var isPrimed: Bool = false
+    /// Identity-compared in the delegate to know when the silent warmup
+    /// utterance has actually finished playing (vs. round/line utterances).
+    private var warmupUtterance: AVSpeechUtterance?
+    private var onPrimed: (() -> Void)?
 
     override init() {
         super.init()
         synth.delegate = self
     }
 
-    func configureAudioSession() {
-        // Mirror the iPhone — `.playback` so output routes to the watch
-        // speaker / paired Bluetooth, `.duckOthers` so spoken cues quiet any
-        // music briefly instead of stopping it outright.
+    /// Configures the audio session and runs an inaudible warmup utterance.
+    /// `completion` fires once the warmup is actually done playing — that's
+    /// the earliest point at which subsequent `speak(...)` calls can be
+    /// trusted to start on time instead of queueing behind a still-spinning
+    /// audio pipeline. A 2.5-second timeout falls through anyway so a
+    /// missing delegate callback (e.g. simulator quirks) can't hang the UI.
+    func prepareForPlayback(completion: @escaping () -> Void) {
         do {
             let session = AVAudioSession.sharedInstance()
             try session.setCategory(.playback, mode: .spokenAudio, options: [.duckOthers])
@@ -367,22 +399,29 @@ private final class VoicePlaybackEngine: NSObject {
             // Non-fatal — speech still attempts to play with whatever the
             // system default routes to.
         }
-        // Warm up the engine with an inaudible utterance. Without this the
-        // audio pipeline takes ~500-1500 ms to come online, during which
-        // every `speak(...)` queues up and then back-to-back fires when the
-        // engine catches up — the visible symptom was the first few seconds
-        // of a 10-second countdown being spoken in ~half-second bursts
-        // while the queue drained.
-        primeIfNeeded()
-    }
-
-    private func primeIfNeeded() {
-        guard !hasPrimed else { return }
-        hasPrimed = true
-        let warmup = AVSpeechUtterance(string: "ready")
-        warmup.volume = 0
-        warmup.rate = AVSpeechUtteranceMaximumSpeechRate
-        synth.speak(warmup)
+        if isPrimed {
+            completion()
+            return
+        }
+        onPrimed = completion
+        if !hasPrimed {
+            hasPrimed = true
+            let warmup = AVSpeechUtterance(string: "ready")
+            warmup.volume = 0
+            warmup.rate = AVSpeechUtteranceMaximumSpeechRate
+            warmupUtterance = warmup
+            synth.speak(warmup)
+        }
+        // Safety timeout in case didFinish never fires.
+        DispatchQueue.main.asyncAfter(deadline: .now() + .milliseconds(2500)) { [weak self] in
+            guard let self else { return }
+            guard !self.isPrimed else { return }
+            self.isPrimed = true
+            self.warmupUtterance = nil
+            let cb = self.onPrimed
+            self.onPrimed = nil
+            cb?()
+        }
     }
 
     func beginRound(lines: [String],
@@ -401,10 +440,11 @@ private final class VoicePlaybackEngine: NSObject {
         self.onLineChange = onLineChange
         // Interrupt any in-flight speech (typically the last countdown
         // number still in the queue) so the round announcement plays
-        // immediately rather than waiting for the queue to drain.
+        // immediately rather than waiting for the queue to drain. The
+        // delegate's didFinish will pick up after the announcement and
+        // schedule the first real line — scheduling one here too caused
+        // double-queueing where the first line played mid-announcement.
         speakNow(announceRound)
-        // Queue the first real line right after the round announcement.
-        scheduleNextLine(after: 1)
     }
 
     func endRound() {
@@ -484,8 +524,22 @@ private final class VoicePlaybackEngine: NSObject {
 extension VoicePlaybackEngine: AVSpeechSynthesizerDelegate {
     nonisolated func speechSynthesizer(_ synthesizer: AVSpeechSynthesizer,
                                        didFinish utterance: AVSpeechUtterance) {
+        // The utterance itself isn't Sendable, so pull out the volume on
+        // this thread — only the silent warmup is at volume 0, which lets
+        // the main-actor side distinguish it from real round/line speech.
+        let isWarmup = utterance.volume == 0
         Task { @MainActor [weak self] in
             guard let self else { return }
+            if isWarmup {
+                self.warmupUtterance = nil
+                if !self.isPrimed {
+                    self.isPrimed = true
+                    let cb = self.onPrimed
+                    self.onPrimed = nil
+                    cb?()
+                }
+                return
+            }
             guard self.roundActive, !self.isPaused else { return }
             // Schedule the next line after the configured inter-line delay.
             self.scheduleNextLine(after: max(0, self.delayBetweenLines))

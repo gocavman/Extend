@@ -378,6 +378,7 @@ final class TrainingPlanState {
         // trainers from the wrist, so the library snapshot must stay current
         // even when the plan-specific paths short-circuit below.
         refreshWatchLibrary()
+        refreshTodayLogCount()
 
         guard let plan = activePlan else {
             writeWidgetSnapshot(planName: nil, items: [])
@@ -545,6 +546,23 @@ final class TrainingPlanState {
         }
         writeMultiDaySnapshots(snapshots)
         WatchConnectivityReceiver.shared.sendPlanUpdate(multidaySnapshots: snapshots)
+    }
+
+    /// Writes today's total workout-log count into the App Group so the
+    /// Watch's Library complication can show "N done" without needing to
+    /// decode WorkoutLogs in the widget extension. Counts everything the
+    /// user logged today across all kinds — workouts, exercises, timers,
+    /// voice trainers — so the number can exceed the plan's planned-item
+    /// count when the user does extra activities.
+    func refreshTodayLogCount() {
+        let wDefaults = UserDefaults(suiteName: "group.com.cavanmannenbach.extend") ?? .standard
+        let logs = (wDefaults.data(forKey: "workout_logs").flatMap { try? JSONDecoder().decode([WorkoutLog].self, from: $0) }) ?? []
+        let cal = Calendar.current
+        let today = cal.startOfDay(for: Date())
+        let count = logs.reduce(into: 0) { acc, log in
+            if cal.isDate(log.completedAt, inSameDayAs: today) { acc += 1 }
+        }
+        writeTodayLogCount(count)
     }
 
     /// Projects the full library (workouts/exercises/timers/voice trainers) +

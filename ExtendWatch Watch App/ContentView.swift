@@ -16,11 +16,27 @@ extension Notification.Name {
 /// Root tab view. Pages are conditionally included based on user visibility settings;
 /// Settings is always present so a hidden page can be re-enabled.
 struct RootView: View {
+    @Environment(\.scenePhase) private var scenePhase
     @State private var selectedTab: String = "plan"
     @State private var visibility: WatchPageVisibility = readWatchPageVisibility()
     /// Watches for iPhone-driven workout sessions so the live UI can be
     /// presented over the regular pages while one is running.
     @State private var workoutManager = WatchWorkoutSessionManager.shared
+    /// True while the "Discard workout?" alert is up after the system X
+    /// dismissed the live cover. Lets us re-present the cover if the user
+    /// backs out, or actually cancel the session if they confirm.
+    @State private var showingCancelConfirmation: Bool = false
+    /// Flips true once we've either received a deep-link URL via .onOpenURL
+    /// or waited long enough to assume none is coming. Until then we render
+    /// a blank placeholder so cold-starts triggered by a complication tap
+    /// don't briefly flash the previously-active tab while the URL handler
+    /// is still in flight. Plain warm launches (icon tap, no URL) fall
+    /// through to the grace-period timeout below and render normally.
+    @State private var initialRouteResolved: Bool = false
+    /// Bumped every time we re-arm the placeholder gate on a resume. Used to
+    /// cancel any in-flight grace task from a prior cycle so a late timer
+    /// can't reveal the tabs before .onOpenURL lands for the current resume.
+    @State private var gateGeneration: Int = 0
 
     /// Changes whenever any visibility toggle flips. Used as the TabView's `id`
     /// so SwiftUI rebuilds the page container from scratch when pages are added
@@ -31,23 +47,40 @@ struct RootView: View {
     }
 
     var body: some View {
-        TabView(selection: $selectedTab) {
-            if visibility.showPlan {
-                WatchPlanDetailView().tag("plan")
+        Group {
+            if initialRouteResolved {
+                tabContent
+            } else {
+                // Black placeholder while waiting for the deep-link URL to
+                // arrive. Imperceptible on warm launches (the grace task
+                // flips this within ~250 ms even with no URL).
+                Color.black.ignoresSafeArea()
             }
-            if visibility.showLibrary {
-                WatchLibraryView().tag("library")
-            }
-            if visibility.showSteps {
-                WatchStepsView().tag("steps")
-            }
-            if visibility.showWater {
-                WatchWaterView().tag("water")
-            }
-            WatchSettingsView().tag("settings")
         }
-        .tabViewStyle(.page)
-        .id(visibilityKey)
+        .task {
+            // Cold-launch grace: if no URL arrives in the window, treat
+            // the launch as a plain icon tap and reveal the last tab.
+            await runGraceTimer(generation: gateGeneration)
+        }
+        .onChange(of: scenePhase) { _, phase in
+            // Warm resumes don't re-fire .task, so without this branch the
+            // gate would stay open from the previous launch and the user
+            // would see the last-active tab flash before .onOpenURL lands.
+            switch phase {
+            case .background, .inactive:
+                // Re-arm the gate on the way out so the next .active starts
+                // with the black placeholder, not the previously-shown tab.
+                initialRouteResolved = false
+                gateGeneration &+= 1
+            case .active:
+                // Kick off a fresh grace timer for this resume. If a deep
+                // link comes in first, .onOpenURL flips the gate early.
+                let gen = gateGeneration
+                Task { await runGraceTimer(generation: gen) }
+            @unknown default:
+                break
+            }
+        }
         .onOpenURL { url in
             guard url.scheme == "extendwatch" else { return }
             let target: String
@@ -61,13 +94,15 @@ struct RootView: View {
             }
             // Snap straight to the target page instead of letting the page-
             // style TabView slide between the previously-active tab and the
-            // complication's target. Without the animation suppression the
-            // swipe takes long enough that it reads as "wrong page, then
-            // pause, then right page" on cold launch.
+            // complication's target.
             var transaction = Transaction()
             transaction.disablesAnimations = true
             withTransaction(transaction) {
                 selectedTab = target
+                // Reveal the tabs only after the deep-link target is in
+                // place so the very first frame the user sees is the
+                // correct page, not the previously-selected one.
+                initialRouteResolved = true
             }
         }
         .onReceive(NotificationCenter.default.publisher(for: .watchPageVisibilityChanged)) { _ in
@@ -85,17 +120,67 @@ struct RootView: View {
             WidgetCenter.shared.reloadAllTimelines()
         }
         // Live workout overlay — covers the tabs while a session is running
-        // so the user sees HR/calories/duration on the wrist. The cover is
-        // marked non-dismissable on purpose: the system X tap on watchOS
-        // forcibly unmounts the cover even when the binding setter tries to
-        // veto, which orphans the HKWorkoutSession (it keeps running but the
-        // user has no UI to control it). Every active-workout view already
-        // provides an explicit Stop / Finish button — that's the supported
-        // way out, and it properly ends the session before dismissing.
-        .fullScreenCover(isPresented: .constant(workoutManager.isActive)) {
+        // so the user sees HR/calories/duration on the wrist. The system X
+        // (top-left dismiss) is treated as a *cancel* request: it forcibly
+        // unmounts the cover on watchOS, so we catch that in the binding's
+        // setter and surface a confirmation alert. Confirming discards the
+        // HKWorkout outright; backing out re-presents the cover. The Stop /
+        // Finish buttons inside the runners stay as the "save and log" path.
+        .fullScreenCover(isPresented: Binding(
+            get: { workoutManager.isActive && !showingCancelConfirmation },
+            set: { newValue in
+                if !newValue && workoutManager.isActive && !showingCancelConfirmation {
+                    showingCancelConfirmation = true
+                }
+            }
+        )) {
             WatchActiveWorkoutView(manager: workoutManager)
-                .interactiveDismissDisabled(true)
         }
+        .alert("Discard workout?", isPresented: $showingCancelConfirmation) {
+            Button("Discard", role: .destructive) {
+                Task { await workoutManager.cancel() }
+            }
+            Button("Keep going", role: .cancel) {
+                // Falling through here just dismisses the alert; the cover
+                // re-presents on the next render because the binding's `get`
+                // now returns true again (manager still active, flag clear).
+            }
+        } message: {
+            Text("This ends the session without saving a log.")
+        }
+    }
+
+    /// The actual TabView — extracted so the placeholder gate above can
+    /// withhold it for the first ~250 ms (or until the deep-link URL
+    /// arrives, whichever first).
+    @ViewBuilder
+    private var tabContent: some View {
+        TabView(selection: $selectedTab) {
+            if visibility.showPlan {
+                WatchPlanDetailView().tag("plan")
+            }
+            if visibility.showLibrary {
+                WatchLibraryView().tag("library")
+            }
+            if visibility.showSteps {
+                WatchStepsView().tag("steps")
+            }
+            if visibility.showWater {
+                WatchWaterView().tag("water")
+            }
+            WatchSettingsView().tag("settings")
+        }
+        .tabViewStyle(.page)
+        .id(visibilityKey)
+    }
+
+    /// Waits the grace window and reveals the tabs — unless the gate has
+    /// since been re-armed by another resume, in which case this stale
+    /// timer drops its result so the newer cycle owns the reveal.
+    private func runGraceTimer(generation: Int) async {
+        try? await Task.sleep(nanoseconds: 250_000_000)
+        guard generation == gateGeneration else { return }
+        initialRouteResolved = true
     }
 
     private func pageVisible(_ tag: String) -> Bool {
@@ -108,6 +193,7 @@ struct RootView: View {
         default:         return false
         }
     }
+
 }
 
 #Preview {

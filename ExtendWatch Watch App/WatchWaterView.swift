@@ -8,6 +8,7 @@
 
 import SwiftUI
 import WidgetKit
+import WatchKit
 
 struct WatchWaterView: View {
 
@@ -219,6 +220,7 @@ struct WatchWaterView: View {
         appendPendingLog(oz: oz, defaults: defaults)
         WidgetCenter.shared.reloadAllTimelines()
         WatchConnectivityBridge.shared.sendWaterLog(oz: oz, date: Date())
+        WKInterfaceDevice.current().play(fillFraction >= 1.0 ? .success : .click)
     }
 
     private func appendPendingLog(oz: Double, defaults: UserDefaults) {

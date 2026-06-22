@@ -419,6 +419,102 @@ struct PlanComplication: Widget {
     }
 }
 
+// MARK: - Library Complication
+
+/// Total number of activities (workouts + exercises + timers + voice
+/// trainers) the user has logged today. iPhone writes this on every plan /
+/// log refresh; the date stamp lets the widget zero out a stale value if
+/// yesterday's count survives into the next day without a refresh.
+private func readTodayLogCount() -> Int {
+    let date = sharedDefaults.object(forKey: "today_log_count_date") as? Date
+    guard let date, Calendar.current.isDate(date, inSameDayAs: Date()) else { return 0 }
+    return sharedDefaults.integer(forKey: "today_log_count")
+}
+
+struct WatchLibraryEntry: TimelineEntry {
+    let date: Date
+    let doneToday: Int
+}
+
+struct WatchLibraryProvider: TimelineProvider {
+    func placeholder(in context: Context) -> WatchLibraryEntry {
+        WatchLibraryEntry(date: Date(), doneToday: 3)
+    }
+    func getSnapshot(in context: Context, completion: @escaping (WatchLibraryEntry) -> Void) {
+        completion(WatchLibraryEntry(date: Date(), doneToday: readTodayLogCount()))
+    }
+    func getTimeline(in context: Context, completion: @escaping (Timeline<WatchLibraryEntry>) -> Void) {
+        let now = Date()
+        let cal = Calendar.current
+        var entries: [WatchLibraryEntry] = [
+            WatchLibraryEntry(date: now, doneToday: readTodayLogCount())
+        ]
+        // Snap the count back to zero exactly at midnight so the wrist
+        // doesn't show yesterday's total in the morning before iPhone
+        // pushes a fresh refresh.
+        if let nextMidnight = cal.nextDate(
+            after: now,
+            matching: DateComponents(hour: 0, minute: 0, second: 0),
+            matchingPolicy: .nextTime
+        ) {
+            entries.append(WatchLibraryEntry(date: nextMidnight, doneToday: 0))
+        }
+        let refreshAt = cal.date(byAdding: .minute, value: 30, to: now) ?? now
+        completion(Timeline(entries: entries, policy: .after(refreshAt)))
+    }
+}
+
+struct LibraryComplicationView: View {
+    var entry: WatchLibraryEntry
+    @Environment(\.widgetFamily) var family
+
+    var body: some View {
+        Group {
+            switch family {
+            case .accessoryRectangular: rectangularView.containerBackground(.background, for: .widget)
+            default: circularView.containerBackground(.background, for: .widget)
+            }
+        }
+        .widgetURL(URL(string: "extendwatch://library")!)
+    }
+
+    private var circularView: some View {
+        VStack(spacing: 0) {
+            Text("Extend")
+                .font(.system(size: 13, weight: .bold))
+                .lineLimit(1).minimumScaleFactor(0.7)
+                .widgetAccentable()
+            Text("\(entry.doneToday) done")
+                .font(.system(size: 11).monospacedDigit())
+                .foregroundStyle(.secondary)
+                .lineLimit(1).minimumScaleFactor(0.7)
+        }
+    }
+
+    private var rectangularView: some View {
+        VStack(alignment: .leading, spacing: 1) {
+            Text("Extend")
+                .font(.system(size: 15, weight: .bold))
+                .widgetAccentable()
+            Text("\(entry.doneToday) done today")
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+        }
+    }
+}
+
+struct LibraryComplication: Widget {
+    let kind = "ExtendWatch.Library"
+    var body: some WidgetConfiguration {
+        StaticConfiguration(kind: kind, provider: WatchLibraryProvider()) { entry in
+            LibraryComplicationView(entry: entry)
+        }
+        .configurationDisplayName("Extend")
+        .description("Shortcut to the Extend library with today's activity count")
+        .supportedFamilies([.accessoryCircular, .accessoryRectangular])
+    }
+}
+
 // MARK: - Water Complication
 
 struct WatchWaterEntry: TimelineEntry {
@@ -529,7 +625,15 @@ struct WaterComplicationView: View {
                 Text(entry.unit)
                     .font(.system(size: 10))
                     .foregroundStyle(.secondary)
+                    // Nudge the unit label up against the bottom of the value
+                    // — the bold 19pt digits leave a noticeable leading gap
+                    // below their baseline, which made the pair look bottom-
+                    // weighted inside the circular dial.
+                    .padding(.top, -4)
             }
+            // Slight downward nudge to keep the value+unit pair visually
+            // centered inside the gauge ring (the bold digits read high).
+            .offset(y: 1)
         }
     }
 
@@ -729,14 +833,19 @@ struct StepsComplicationView: View {
                         .font(.system(size: 10))
                         .foregroundStyle(.secondary)
                 case .both:
+                    // 13pt + 10pt (down from 14/11) leaves enough margin
+                    // that a 5-digit step value or 3-digit distance won't
+                    // butt up against the circular complication's edge ring.
+                    // The distance now uses the same tint as the step count
+                    // so the pair reads as one value, not value + label.
                     Text(fmt(entry.steps))
-                        .font(.system(size: 14, weight: .bold).monospacedDigit())
+                        .font(.system(size: 13, weight: .bold).monospacedDigit())
                         .lineLimit(1).minimumScaleFactor(0.6)
                         .applyTint(textTint)
                     Text("\(fmtDist(displayDist))\(settings.distanceUnit.rawValue)")
-                        .font(.system(size: 11).monospacedDigit())
-                        .foregroundStyle(.secondary)
+                        .font(.system(size: 10).monospacedDigit())
                         .lineLimit(1).minimumScaleFactor(0.6)
+                        .applyTint(textTint)
                 }
             }
         }

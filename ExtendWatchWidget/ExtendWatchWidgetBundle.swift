@@ -16,5 +16,6 @@ struct ExtendWatchWidgetBundle: WidgetBundle {
         DistanceComplication()
         StepsAndDistanceComplication()
         WaterComplication()
+        LibraryComplication()
     }
 }

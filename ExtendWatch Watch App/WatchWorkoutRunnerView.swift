@@ -51,9 +51,13 @@ struct WatchWorkoutRunnerView: View {
     @State private var editingComplexExerciseID: String? = nil
 
     /// True when the user has completed at least the planned sets for the
-    /// current exercise — UI swaps "Log Set" for "Next Exercise".
+    /// current exercise — UI swaps "Log Set" for "Next Exercise". For
+    /// ad-hoc exercises (no predefined sets) we never auto-advance; the
+    /// user finishes via the Stop button.
     private var isExerciseFinished: Bool {
-        manager.loggedSetCount() >= manager.plannedSetCount()
+        let planned = manager.plannedSetCount()
+        guard planned > 0 else { return false }
+        return manager.loggedSetCount() >= planned
     }
 
     private var isCurrentSetTimed: Bool {
@@ -144,9 +148,14 @@ struct WatchWorkoutRunnerView: View {
     private func exerciseBody(_ ex: WatchBlueprintExercise, now: Date) -> some View {
         let planned = manager.plannedSetCount()
         let logged = manager.loggedSetCount()
-        let setNumber = min(logged + 1, max(planned, 1))
+        let isAdHoc = planned == 0
+        let setNumber = logged + 1
         let predefined = manager.nextPredefinedSet()
-        let hasWeight = (predefined?.weight ?? 0) > 0
+        // Ad-hoc exercises (single-exercise sessions from the library) have
+        // no authored predefined sets, so default to showing both wheels —
+        // the user picks reps + weight per set, leaving weight at 0 for
+        // bodyweight work.
+        let hasWeight = (predefined?.weight ?? 0) > 0 || isAdHoc
 
         return VStack(spacing: 4) {
             VStack(spacing: 0) {
@@ -155,7 +164,11 @@ struct WatchWorkoutRunnerView: View {
                     .lineLimit(1)
                     .minimumScaleFactor(0.6)
                 HStack(spacing: 4) {
-                    Text("Set \(setNumber) of \(max(planned, 1))")
+                    if isAdHoc {
+                        Text("Set \(setNumber)")
+                    } else {
+                        Text("Set \(min(setNumber, max(planned, 1))) of \(max(planned, 1))")
+                    }
                     if let r = ex.loopRound, let total = ex.loopTotalRounds {
                         Text("•")
                         Text("Round \(r) of \(total)")

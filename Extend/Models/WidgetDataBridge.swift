@@ -17,6 +17,19 @@ private let stepsSettingsKey = "watch_steps_settings"
 private let waterTodayOzKey = "water_today_oz"
 private let waterGoalOzKey = "water_goal_oz"
 private let waterUnitKey = "water_unit"
+private let todayLogCountKey = "today_log_count"
+private let todayLogCountDateKey = "today_log_count_date"
+
+/// Writes the number of activities the user has logged today into the App
+/// Group so the Watch's Library complication can show "Extend — N done"
+/// without needing to decode the full log graph from the widget extension.
+/// `date` is stored alongside so a stale yesterday count zero's itself out
+/// after midnight even if no refresh fires on the new day.
+public func writeTodayLogCount(_ count: Int) {
+    let defaults = UserDefaults(suiteName: appGroupID) ?? .standard
+    defaults.set(count, forKey: todayLogCountKey)
+    defaults.set(Calendar.current.startOfDay(for: Date()), forKey: todayLogCountDateKey)
+}
 
 /// A single displayable item in today's plan.
 public struct WidgetPlanItem: Codable {
