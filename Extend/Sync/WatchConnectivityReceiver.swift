@@ -28,6 +28,22 @@ final class WatchConnectivityReceiver: NSObject {
         WCSession.default.isWatchAppInstalled
     }
 
+    /// Push today's total workout-log count to the watch so the Library
+    /// complication can show "Extend — N done". The App Group container is
+    /// device-local, so without this the watch widget would never see the
+    /// iPhone-side count update.
+    func sendTodayLogCountUpdate(count: Int) {
+        guard canSendToWatch else { return }
+        let payload: [String: Any] = [
+            "type": "today_log_count_update",
+            "count": count,
+            "date": Calendar.current.startOfDay(for: Date()).timeIntervalSince1970,
+            "sent_at": Date().timeIntervalSince1970
+        ]
+        try? WCSession.default.updateApplicationContext(payload)
+        WCSession.default.transferUserInfo(payload)
+    }
+
     /// Push the iPhone's current water totals to the watch display and complication.
     func sendWaterUpdate(todayOz: Double, goalOz: Double) {
         guard canSendToWatch else { return }

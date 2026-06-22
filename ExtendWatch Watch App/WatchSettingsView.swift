@@ -108,6 +108,7 @@ struct WatchSettingsView: View {
                     shapeRow("Steps & Distance", binding: $shapes.stepsAndDistanceShape)
                     shapeRow("Water",            binding: $shapes.waterShape)
                     shapeRow("Today's Plan",     binding: $shapes.planShape)
+                    shapeRow("Library",          binding: $shapes.libraryShape)
                 } header: {
                     Text("Complication Shape")
                 }
@@ -118,6 +119,7 @@ struct WatchSettingsView: View {
                     colorRow("Steps & Distance", binding: $shapes.stepsAndDistanceColor)
                     colorRow("Water",            binding: $shapes.waterColor)
                     colorRow("Today's Plan",     binding: $shapes.planColor)
+                    colorRow("Library",          binding: $shapes.libraryColor)
                 } header: {
                     Text("Complication Color")
                 } footer: {
@@ -131,6 +133,7 @@ struct WatchSettingsView: View {
                     colorRow("Steps & Distance", binding: $shapes.stepsAndDistanceTextColor)
                     colorRow("Water",            binding: $shapes.waterTextColor)
                     colorRow("Today's Plan",     binding: $shapes.planTextColor)
+                    colorRow("Library",          binding: $shapes.libraryTextColor)
                 } header: {
                     Text("Complication Text Color")
                 } footer: {

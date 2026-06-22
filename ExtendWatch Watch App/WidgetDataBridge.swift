@@ -155,18 +155,21 @@ public struct WatchComplicationShapeSettings: Codable, Equatable {
     public var stepsAndDistanceShape: String
     public var waterShape: String
     public var planShape: String
+    public var libraryShape: String
 
     public var stepsColor: String
     public var distanceColor: String
     public var stepsAndDistanceColor: String
     public var waterColor: String
     public var planColor: String
+    public var libraryColor: String
 
     public var stepsTextColor: String
     public var distanceTextColor: String
     public var stepsAndDistanceTextColor: String
     public var waterTextColor: String
     public var planTextColor: String
+    public var libraryTextColor: String
 
     public init(
         stepsShape: String = "",
@@ -174,36 +177,42 @@ public struct WatchComplicationShapeSettings: Codable, Equatable {
         stepsAndDistanceShape: String = "",
         waterShape: String = "",
         planShape: String = "",
+        libraryShape: String = "",
         stepsColor: String = "",
         distanceColor: String = "",
         stepsAndDistanceColor: String = "",
         waterColor: String = "",
         planColor: String = "",
+        libraryColor: String = "",
         stepsTextColor: String = "",
         distanceTextColor: String = "",
         stepsAndDistanceTextColor: String = "",
         waterTextColor: String = "",
-        planTextColor: String = ""
+        planTextColor: String = "",
+        libraryTextColor: String = ""
     ) {
         self.stepsShape = stepsShape
         self.distanceShape = distanceShape
         self.stepsAndDistanceShape = stepsAndDistanceShape
         self.waterShape = waterShape
         self.planShape = planShape
+        self.libraryShape = libraryShape
         self.stepsColor = stepsColor
         self.distanceColor = distanceColor
         self.stepsAndDistanceColor = stepsAndDistanceColor
         self.waterColor = waterColor
         self.planColor = planColor
+        self.libraryColor = libraryColor
         self.stepsTextColor = stepsTextColor
         self.distanceTextColor = distanceTextColor
         self.stepsAndDistanceTextColor = stepsAndDistanceTextColor
         self.waterTextColor = waterTextColor
         self.planTextColor = planTextColor
+        self.libraryTextColor = libraryTextColor
     }
 
-    // Custom decode that defaults missing text-color keys to "" so existing
-    // user settings (which only have shape colors) keep working.
+    // Custom decode that defaults missing keys to "" so existing user
+    // settings (which predate library / text-color fields) keep working.
     public init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         stepsShape = try c.decodeIfPresent(String.self, forKey: .stepsShape) ?? ""
@@ -211,22 +220,25 @@ public struct WatchComplicationShapeSettings: Codable, Equatable {
         stepsAndDistanceShape = try c.decodeIfPresent(String.self, forKey: .stepsAndDistanceShape) ?? ""
         waterShape = try c.decodeIfPresent(String.self, forKey: .waterShape) ?? ""
         planShape = try c.decodeIfPresent(String.self, forKey: .planShape) ?? ""
+        libraryShape = try c.decodeIfPresent(String.self, forKey: .libraryShape) ?? ""
         stepsColor = try c.decodeIfPresent(String.self, forKey: .stepsColor) ?? ""
         distanceColor = try c.decodeIfPresent(String.self, forKey: .distanceColor) ?? ""
         stepsAndDistanceColor = try c.decodeIfPresent(String.self, forKey: .stepsAndDistanceColor) ?? ""
         waterColor = try c.decodeIfPresent(String.self, forKey: .waterColor) ?? ""
         planColor = try c.decodeIfPresent(String.self, forKey: .planColor) ?? ""
+        libraryColor = try c.decodeIfPresent(String.self, forKey: .libraryColor) ?? ""
         stepsTextColor = try c.decodeIfPresent(String.self, forKey: .stepsTextColor) ?? ""
         distanceTextColor = try c.decodeIfPresent(String.self, forKey: .distanceTextColor) ?? ""
         stepsAndDistanceTextColor = try c.decodeIfPresent(String.self, forKey: .stepsAndDistanceTextColor) ?? ""
         waterTextColor = try c.decodeIfPresent(String.self, forKey: .waterTextColor) ?? ""
         planTextColor = try c.decodeIfPresent(String.self, forKey: .planTextColor) ?? ""
+        libraryTextColor = try c.decodeIfPresent(String.self, forKey: .libraryTextColor) ?? ""
     }
 
     private enum CodingKeys: String, CodingKey {
-        case stepsShape, distanceShape, stepsAndDistanceShape, waterShape, planShape
-        case stepsColor, distanceColor, stepsAndDistanceColor, waterColor, planColor
-        case stepsTextColor, distanceTextColor, stepsAndDistanceTextColor, waterTextColor, planTextColor
+        case stepsShape, distanceShape, stepsAndDistanceShape, waterShape, planShape, libraryShape
+        case stepsColor, distanceColor, stepsAndDistanceColor, waterColor, planColor, libraryColor
+        case stepsTextColor, distanceTextColor, stepsAndDistanceTextColor, waterTextColor, planTextColor, libraryTextColor
     }
 
     public static let `default` = WatchComplicationShapeSettings()

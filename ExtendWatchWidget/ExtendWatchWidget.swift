@@ -92,18 +92,21 @@ struct WatchComplicationShapeSettings: Codable {
     var stepsAndDistanceShape: String
     var waterShape: String
     var planShape: String
+    var libraryShape: String = ""
 
     var stepsColor: String = ""
     var distanceColor: String = ""
     var stepsAndDistanceColor: String = ""
     var waterColor: String = ""
     var planColor: String = ""
+    var libraryColor: String = ""
 
     var stepsTextColor: String = ""
     var distanceTextColor: String = ""
     var stepsAndDistanceTextColor: String = ""
     var waterTextColor: String = ""
     var planTextColor: String = ""
+    var libraryTextColor: String = ""
 
     static let `default` = WatchComplicationShapeSettings(
         stepsShape: "", distanceShape: "", stepsAndDistanceShape: "", waterShape: "", planShape: ""
@@ -434,20 +437,34 @@ private func readTodayLogCount() -> Int {
 struct WatchLibraryEntry: TimelineEntry {
     let date: Date
     let doneToday: Int
+    let shape: String
+    let color: String
+    let textColor: String
 }
 
 struct WatchLibraryProvider: TimelineProvider {
     func placeholder(in context: Context) -> WatchLibraryEntry {
-        WatchLibraryEntry(date: Date(), doneToday: 3)
+        WatchLibraryEntry(date: Date(), doneToday: 3, shape: "", color: "", textColor: "")
     }
     func getSnapshot(in context: Context, completion: @escaping (WatchLibraryEntry) -> Void) {
-        completion(WatchLibraryEntry(date: Date(), doneToday: readTodayLogCount()))
+        let settings = readWatchComplicationShapeSettings()
+        completion(WatchLibraryEntry(
+            date: Date(),
+            doneToday: readTodayLogCount(),
+            shape: settings.libraryShape,
+            color: settings.libraryColor,
+            textColor: settings.libraryTextColor
+        ))
     }
     func getTimeline(in context: Context, completion: @escaping (Timeline<WatchLibraryEntry>) -> Void) {
         let now = Date()
         let cal = Calendar.current
+        let settings = readWatchComplicationShapeSettings()
+        let shape = settings.libraryShape
+        let color = settings.libraryColor
+        let textColor = settings.libraryTextColor
         var entries: [WatchLibraryEntry] = [
-            WatchLibraryEntry(date: now, doneToday: readTodayLogCount())
+            WatchLibraryEntry(date: now, doneToday: readTodayLogCount(), shape: shape, color: color, textColor: textColor)
         ]
         // Snap the count back to zero exactly at midnight so the wrist
         // doesn't show yesterday's total in the morning before iPhone
@@ -457,7 +474,7 @@ struct WatchLibraryProvider: TimelineProvider {
             matching: DateComponents(hour: 0, minute: 0, second: 0),
             matchingPolicy: .nextTime
         ) {
-            entries.append(WatchLibraryEntry(date: nextMidnight, doneToday: 0))
+            entries.append(WatchLibraryEntry(date: nextMidnight, doneToday: 0, shape: shape, color: color, textColor: textColor))
         }
         let refreshAt = cal.date(byAdding: .minute, value: 30, to: now) ?? now
         completion(Timeline(entries: entries, policy: .after(refreshAt)))
@@ -467,6 +484,9 @@ struct WatchLibraryProvider: TimelineProvider {
 struct LibraryComplicationView: View {
     var entry: WatchLibraryEntry
     @Environment(\.widgetFamily) var family
+
+    private var shapeTint: Color? { complicationColor(entry.color) }
+    private var textTint: Color? { complicationColor(entry.textColor) ?? shapeTint }
 
     var body: some View {
         Group {
@@ -479,15 +499,25 @@ struct LibraryComplicationView: View {
     }
 
     private var circularView: some View {
-        VStack(spacing: 0) {
-            Text("Extend")
-                .font(.system(size: 13, weight: .bold))
-                .lineLimit(1).minimumScaleFactor(0.7)
-                .widgetAccentable()
-            Text("\(entry.doneToday) done")
-                .font(.system(size: 11).monospacedDigit())
-                .foregroundStyle(.secondary)
-                .lineLimit(1).minimumScaleFactor(0.7)
+        ZStack {
+            // Library has no natural progress metric, so the optional shape
+            // renders fully filled — purely decorative, matches the visual
+            // language of the other circular complications without inventing
+            // a fake daily target.
+            if !entry.shape.isEmpty {
+                ComplicationFillShape(fraction: 1.0, shape: entry.shape)
+                    .applyTint(shapeTint)
+            }
+            VStack(spacing: 0) {
+                Text("Extend")
+                    .font(.system(size: 13, weight: .bold))
+                    .lineLimit(1).minimumScaleFactor(0.7)
+                    .applyTint(textTint)
+                Text("\(entry.doneToday) done")
+                    .font(.system(size: 11).monospacedDigit())
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1).minimumScaleFactor(0.7)
+            }
         }
     }
 
@@ -495,7 +525,7 @@ struct LibraryComplicationView: View {
         VStack(alignment: .leading, spacing: 1) {
             Text("Extend")
                 .font(.system(size: 15, weight: .bold))
-                .widgetAccentable()
+                .applyTint(textTint)
             Text("\(entry.doneToday) done today")
                 .font(.caption2)
                 .foregroundStyle(.secondary)

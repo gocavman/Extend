@@ -563,6 +563,10 @@ final class TrainingPlanState {
             if cal.isDate(log.completedAt, inSameDayAs: today) { acc += 1 }
         }
         writeTodayLogCount(count)
+        // The watch widget extension reads from the watch device's App Group,
+        // not the iPhone's, so a local write isn't enough — push the value
+        // across so the Library complication can render it.
+        WatchConnectivityReceiver.shared.sendTodayLogCountUpdate(count: count)
     }
 
     /// Projects the full library (workouts/exercises/timers/voice trainers) +

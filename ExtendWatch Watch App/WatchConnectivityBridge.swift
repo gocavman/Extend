@@ -157,6 +157,15 @@ extension WatchConnectivityBridge: WCSessionDelegate {
             DispatchQueue.main.async {
                 NotificationCenter.default.post(name: .watchLibraryDataUpdated, object: nil)
             }
+        case "today_log_count_update":
+            guard let count = payload["count"] as? Int else { return }
+            let stampedDate = (payload["date"] as? Double).map { Date(timeIntervalSince1970: $0) }
+                ?? Calendar.current.startOfDay(for: Date())
+            defaults.set(count, forKey: "today_log_count")
+            defaults.set(stampedDate, forKey: "today_log_count_date")
+            DispatchQueue.main.async {
+                WidgetCenter.shared.reloadTimelines(ofKind: "ExtendWatch.Library")
+            }
         case "reload_complications":
             // Triggered when plan data changes on iPhone
             DispatchQueue.main.async {
