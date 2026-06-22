@@ -49,19 +49,31 @@ struct WatchWorkoutRunnerView: View {
     /// Identifier (complex exercise UUID) of the exercise the user is
     /// editing — drives the per-exercise picker sheet.
     @State private var editingComplexExerciseID: String? = nil
+    /// User-driven offset into the set list for the active single-exercise
+    /// item. nil = natural position (cursor follows loggedSetCount). When
+    /// non-nil, the runner is showing a previously-logged set for editing
+    /// (or peeking ahead at a future planned set).
+    @State private var setCursorOverride: Int? = nil
 
     /// True when the user has completed at least the planned sets for the
     /// current exercise — UI swaps "Log Set" for "Next Exercise". For
     /// ad-hoc exercises (no predefined sets) we never auto-advance; the
-    /// user finishes via the Stop button.
+    /// user finishes via the Stop button. Returns false while the user
+    /// is editing a previously-logged set so the primary button stays as
+    /// \"Update Set\" instead of jumping to the \"Next Exercise\" affordance.
     private var isExerciseFinished: Bool {
         let planned = manager.plannedSetCount()
         guard planned > 0 else { return false }
+        guard !isEditingPastSet else { return false }
         return manager.loggedSetCount() >= planned
     }
 
     private var isCurrentSetTimed: Bool {
-        (manager.nextPredefinedSet()?.timedSeconds ?? 0) > 0
+        // When the user is editing a previously-logged set, fall through to
+        // the rep wheels even if the original set was timed — the cursor's
+        // job is amending the recorded reps/weight, not re-running the timer.
+        guard !isEditingPastSet else { return false }
+        return (manager.nextPredefinedSet()?.timedSeconds ?? 0) > 0
     }
 
     private var isResting: Bool {
@@ -123,9 +135,13 @@ struct WatchWorkoutRunnerView: View {
         let m = (s % 3600) / 60
         let sec = s % 60
         return HStack(spacing: 6) {
+            // The system X close button overlays the top-left of the
+            // fullScreenCover — pad enough to clear it so the duration
+            // label isn't half-covered.
             Text(String(format: "%02d:%02d", m, sec))
                 .font(.system(size: 12, weight: .semibold).monospacedDigit())
                 .foregroundColor(.secondary)
+                .padding(.leading, 28)
             Spacer()
             if manager.heartRate > 0 {
                 Label("\(Int(manager.heartRate))", systemImage: "heart.fill")
@@ -149,13 +165,17 @@ struct WatchWorkoutRunnerView: View {
         let planned = manager.plannedSetCount()
         let logged = manager.loggedSetCount()
         let isAdHoc = planned == 0
-        let setNumber = logged + 1
+        let cursor = effectiveSetCursor
+        let setNumber = cursor + 1
         let predefined = manager.nextPredefinedSet()
         // Ad-hoc exercises (single-exercise sessions from the library) have
         // no authored predefined sets, so default to showing both wheels —
         // the user picks reps + weight per set, leaving weight at 0 for
         // bodyweight work.
         let hasWeight = (predefined?.weight ?? 0) > 0 || isAdHoc
+        // Chevrons make sense only on the rep-set body — rest + timed
+        // countdowns own the full screen with their own controls.
+        let showChevrons = !isResting && !isCurrentSetTimed
 
         return VStack(spacing: 4) {
             VStack(spacing: 0) {
@@ -163,7 +183,16 @@ struct WatchWorkoutRunnerView: View {
                     .font(.system(size: 17, weight: .semibold))
                     .lineLimit(1)
                     .minimumScaleFactor(0.75)
-                HStack(spacing: 4) {
+                HStack(spacing: 6) {
+                    if showChevrons {
+                        Button(action: goToPreviousSet) {
+                            Image(systemName: "chevron.left")
+                                .font(.system(size: 11, weight: .semibold))
+                        }
+                        .buttonStyle(.plain)
+                        .foregroundColor(cursor > 0 ? .blue : .gray.opacity(0.4))
+                        .disabled(cursor <= 0)
+                    }
                     if isAdHoc {
                         Text("Set \(setNumber)")
                     } else {
@@ -172,6 +201,15 @@ struct WatchWorkoutRunnerView: View {
                     if let r = ex.loopRound, let total = ex.loopTotalRounds {
                         Text("•")
                         Text("Round \(r) of \(total)")
+                    }
+                    if showChevrons {
+                        Button(action: goToNextSet) {
+                            Image(systemName: "chevron.right")
+                                .font(.system(size: 11, weight: .semibold))
+                        }
+                        .buttonStyle(.plain)
+                        .foregroundColor(canGoForward ? .blue : .gray.opacity(0.4))
+                        .disabled(!canGoForward)
                     }
                 }
                 .font(.system(size: 10))
@@ -186,6 +224,76 @@ struct WatchWorkoutRunnerView: View {
                 timedSetBody(now: now, predefined: predefined)
             } else {
                 repSetBody(hasWeight: hasWeight)
+            }
+        }
+        // When the manager's logged count changes (a new set committed),
+        // a stale override might point past the natural pending position —
+        // clear it so the cursor falls back to the natural cursor.
+        .onChange(of: logged) { _, _ in
+            if let override = setCursorOverride, override >= logged {
+                setCursorOverride = nil
+            }
+        }
+    }
+
+    // MARK: - Set cursor helpers
+
+    /// Effective set index being displayed/edited. Defaults to the natural
+    /// pending position (loggedSetCount) when no override is in place.
+    private var effectiveSetCursor: Int {
+        setCursorOverride ?? manager.loggedSetCount()
+    }
+
+    /// True when the cursor sits on a previously-logged set (vs. the
+    /// pending position) — drives \"Update Set\" vs. \"Log Set\".
+    private var isEditingPastSet: Bool {
+        effectiveSetCursor < manager.loggedSetCount()
+    }
+
+    /// Forward chevron only advances back toward — and never past — the
+    /// natural pending position. Peeking at unlogged future planned sets
+    /// would require seeding weights from the predefined plan, which gets
+    /// confusing once a user has edited their cursor; keep this scoped to
+    /// the navigation the user actually asked for.
+    private var canGoForward: Bool {
+        effectiveSetCursor < manager.loggedSetCount()
+    }
+
+    private func goToPreviousSet() {
+        let current = effectiveSetCursor
+        guard current > 0 else { return }
+        let target = current - 1
+        setCursorOverride = target
+        WKInterfaceDevice.current().play(.click)
+        if let logged = manager.loggedSetForCurrentItem(at: target) {
+            reps = logged.reps
+            weight = logged.weight
+        }
+    }
+
+    private func goToNextSet() {
+        let current = effectiveSetCursor
+        let logged = manager.loggedSetCount()
+        guard current < logged else { return }
+        let target = current + 1
+        WKInterfaceDevice.current().play(.click)
+        if target >= logged {
+            // Back to the natural pending position — clear the override
+            // and reseed wheels from the predefined plan if available.
+            setCursorOverride = nil
+            let predefined = manager.nextPredefinedSet()
+            let isAdHoc = manager.plannedSetCount() == 0
+            // Ad-hoc: leave wheels where they were so a continuing user
+            // doesn't have their picker yanked back to zero.
+            if !isAdHoc {
+                reps = predefined?.reps ?? 0
+                weight = predefined?.weight ?? 0
+            }
+        } else {
+            setCursorOverride = target
+            if let loggedSet = manager.loggedSetForCurrentItem(at: target) {
+                reps = loggedSet.reps
+                weight = loggedSet.weight
             }
         }
     }
@@ -266,7 +374,11 @@ struct WatchWorkoutRunnerView: View {
                     )
                 }
             }
-            controlRow(primaryLabel: "Log Set", primaryTint: .green, onPrimary: logSet)
+            controlRow(
+                primaryLabel: isEditingPastSet ? "Update Set" : "Log Set",
+                primaryTint: .green,
+                onPrimary: logSet
+            )
         }
     }
 
@@ -549,6 +661,16 @@ struct WatchWorkoutRunnerView: View {
     }
 
     private func logSet() {
+        if isEditingPastSet {
+            // Re-logging a previously-committed set — update in place and
+            // advance the cursor toward the pending position. Don't start
+            // a rest countdown or auto-advance the exercise; the user is
+            // amending history, not progressing the workout.
+            manager.updateLoggedSet(at: effectiveSetCursor, reps: reps, weight: weight)
+            WKInterfaceDevice.current().play(.success)
+            goToNextSet()
+            return
+        }
         let justLoggedRest = manager.nextPredefinedSet()?.restSecondsAfter ?? 0
         manager.logSet(reps: reps, weight: weight)
         if justLoggedRest > 0 {

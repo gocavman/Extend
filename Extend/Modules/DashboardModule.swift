@@ -310,6 +310,13 @@ private struct DashboardModuleView: View {
                     distanceUnit: distanceUnit
                 )
                 .frame(width: tileWidth, height: (dynamicEntryCount > 0 || tileHeight == nil) ? nil : tileHeight)
+                .contentShape(Rectangle())
+                .onTapGesture {
+                    if statCard == .waterIntake14Days {
+                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                        state.selectModule(ModuleIDs.water)
+                    }
+                }
                 .rotationEffect(.degrees(tileRotations[tile.id] ?? 0))
                 .offset(
                     x: tileOffsets[tile.id]?.x ?? 0,
@@ -1164,7 +1171,7 @@ private struct AddTileSheet: View {
         case .todaysPlan:
             return "calendar.badge.checkmark"
         case .waterIntake14Days:
-            return "drop.fill"
+            return "drop"
         case .topDurations:
             return "stopwatch"
         case .topDistances:

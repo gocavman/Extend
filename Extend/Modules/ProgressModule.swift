@@ -2930,7 +2930,7 @@ private struct CalendarFilterPopover: View {
             filterRow(label: "Plans", systemImage: "calendar.badge.checkmark",
                       color: Color(red: 1.0, green: 0.55, blue: 0.0), isOn: $showPlans)
             Divider().padding(.leading, 48)
-            filterRow(label: "Water", systemImage: "drop.fill",
+            filterRow(label: "Water", systemImage: "drop",
                       color: Color(red: 0.2, green: 0.55, blue: 1.0), isOn: $showWater)
 
             Divider()
@@ -2998,7 +2998,7 @@ private struct WaterDaySummaryRow: View {
                     .padding(.vertical, 2)
 
                 HStack(spacing: 10) {
-                    Image(systemName: "drop.fill")
+                    Image(systemName: "drop")
                         .foregroundColor(waterBlue)
                         .font(.system(size: 13, weight: .semibold))
                         .frame(width: 20)

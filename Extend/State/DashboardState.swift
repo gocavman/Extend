@@ -160,13 +160,19 @@ public final class DashboardState {
         tiles.append(graphCard(.personalRecord, icon: "medal"))
         order += 1
 
-        tiles.append(graphCard(.oneRepMax, icon: "trophy.fill"))
+        tiles.append(graphCard(.oneRepMax, icon: "trophy"))
+        order += 1
+        
+        tiles.append(graphCard(.waterIntake14Days, icon: "drop"))
+        order += 1
+        
+        tiles.append(graphCard(.topDurations, icon: "stopwatch"))
+        order += 1
+        
+        tiles.append(graphCard(.topDistances, icon: "ruler"))
         order += 1
 
         tiles.append(graphCard(.favoriteDay, icon: "calendar"))
-        order += 1
-
-        tiles.append(graphCard(.waterIntake14Days, icon: "drop.fill"))
         order += 1
 
         // Small tiles

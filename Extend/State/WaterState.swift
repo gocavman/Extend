@@ -273,8 +273,10 @@ public final class WaterState {
         guard HKHealthStore.isHealthDataAvailable() else { return }
         await ensureWaterAuthorization()
         let type = HKQuantityType(.dietaryWater)
-        let litres = log.amountOz * 0.0295735
-        let qty = HKQuantity(unit: .liter(), doubleValue: litres)
+        // Write the sample in fluid ounces directly so a later oz round-trip
+        // is lossless — going through liters with a truncated constant rounded
+        // 64 oz down to ~63.9999, which then displayed as 49 % instead of 50 %.
+        let qty = HKQuantity(unit: .fluidOunceUS(), doubleValue: log.amountOz)
         let sample = HKQuantitySample(type: type, quantity: qty, start: log.loggedAt, end: log.loggedAt)
         try? await hkStore.save(sample)
         // Tag the log with the HK UUID

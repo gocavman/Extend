@@ -455,7 +455,7 @@
     "id": "water",
     "category": "Modules",
     "title": "Water",
-    "icon": "drop.fill",
+    "icon": "drop",
     "summary": "Track daily water intake with goals, history, and Apple Health sync.",
     "keywords": ["water", "hydration", "drink", "intake", "goal", "oz", "ml", "liters", "fluid", "log", "history", "health", "apple health", "streak", "daily", "chart", "stat"],
     "sections": [

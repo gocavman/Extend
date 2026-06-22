@@ -252,7 +252,6 @@ public final class ExercisesState {
             exercise(name: "Hiking",                primaryMuscleGroupIDs: [heartID],                         secondaryMuscleGroupIDs: [quadsID, glutesID],           equipmentIDs: [noneID],                                                                     hkType: .hiking),
 
             // J
-            exercise(name: "Jogging",               primaryMuscleGroupIDs: [quadsID, hamstringsID, calvesID], secondaryMuscleGroupIDs: [heartID],                     equipmentIDs: [noneID, treadmillID],                                                        hkType: .running),
             exercise(name: "Jumping Jacks",         primaryMuscleGroupIDs: [quadsID, calvesID, deltsID],                                                              equipmentIDs: [noneID],                                                                     hkType: .highIntensityIntervalTraining),
             exercise(name: "Jump Rope",             primaryMuscleGroupIDs: [calvesID],                        secondaryMuscleGroupIDs: [heartID],                     equipmentIDs: [jumpRopeID],                                                                 hkType: .jumpRope),
 
@@ -330,7 +329,7 @@ public final class ExercisesState {
             exercise(name: "Turkish Get Ups",       primaryMuscleGroupIDs: [fullBodyID],                                                                              equipmentIDs: [kettlebellID, dumbbellID],                                                    hkType: .traditionalStrengthTraining),
 
             // W
-            exercise(name: "Walking",               primaryMuscleGroupIDs: [quadsID, hamstringsID],           secondaryMuscleGroupIDs: [calvesID, heartID],           equipmentIDs: [noneID],                                                                     hkType: .walking),
+            exercise(name: "Walking",               primaryMuscleGroupIDs: [quadsID, hamstringsID],           secondaryMuscleGroupIDs: [calvesID, heartID],           equipmentIDs: [noneID, treadmillID],         defaultEquipmentIDs: [noneID],                hkType: .walking),
 
             // Y
             exercise(name: "Yoga",                  primaryMuscleGroupIDs: [fullBodyID],                                                                              equipmentIDs: [noneID],                                                                     hkType: .yoga),

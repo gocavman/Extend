@@ -54,7 +54,7 @@ private struct WaterModuleView: View {
 
                         // Today summary
                         todaySummary
-
+                        
                         // Action buttons row
                         actionButtons
                     }
@@ -189,7 +189,7 @@ private struct WaterModuleView: View {
 
             // Percentage label
             VStack(spacing: 2) {
-                Text("\(Int(fillFraction * 100))%")
+                Text("\(Int((fillFraction * 100).rounded()))%")
                     .font(.system(size: 28, weight: .bold, design: .rounded))
                     .foregroundColor(.white)
                     .shadow(color: .black.opacity(0.3), radius: 2, x: 0, y: 1)

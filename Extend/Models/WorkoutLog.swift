@@ -34,6 +34,10 @@ public struct WorkoutLog: Identifiable, Codable, Hashable {
     public var secondaryMuscleGroupIDs: [UUID]
     /// Equipment used in this log (used for non-exercise-based logs like voiceTrainer)
     public var logEquipmentIDs: [UUID]
+    /// Indoor/outdoor flag carried over from Apple Health
+    /// (`HKMetadataKeyIndoorWorkout`). `true` = indoor, `false` = outdoor,
+    /// `nil` = the source workout didn't specify (or not imported from HK).
+    public var isIndoor: Bool?
 
     public init(
         id: UUID = UUID(),
@@ -48,7 +52,8 @@ public struct WorkoutLog: Identifiable, Codable, Hashable {
         healthKitActivityTypeRaw: UInt? = nil,
         primaryMuscleGroupIDs: [UUID] = [],
         secondaryMuscleGroupIDs: [UUID] = [],
-        logEquipmentIDs: [UUID] = []
+        logEquipmentIDs: [UUID] = [],
+        isIndoor: Bool? = nil
     ) {
         self.id = id
         self.workoutName = workoutName
@@ -63,6 +68,7 @@ public struct WorkoutLog: Identifiable, Codable, Hashable {
         self.primaryMuscleGroupIDs = primaryMuscleGroupIDs
         self.secondaryMuscleGroupIDs = secondaryMuscleGroupIDs
         self.logEquipmentIDs = logEquipmentIDs
+        self.isIndoor = isIndoor
     }
 
     public init(from decoder: Decoder) throws {
@@ -80,6 +86,7 @@ public struct WorkoutLog: Identifiable, Codable, Hashable {
         primaryMuscleGroupIDs = (try? c.decodeIfPresent([UUID].self, forKey: .primaryMuscleGroupIDs)) ?? []
         secondaryMuscleGroupIDs = (try? c.decodeIfPresent([UUID].self, forKey: .secondaryMuscleGroupIDs)) ?? []
         logEquipmentIDs = (try? c.decodeIfPresent([UUID].self, forKey: .logEquipmentIDs)) ?? []
+        isIndoor = try? c.decodeIfPresent(Bool.self, forKey: .isIndoor)
     }
 }
 

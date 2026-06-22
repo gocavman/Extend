@@ -1390,7 +1390,7 @@ private struct NavBarCustomizationView: View {
 
     var body: some View {
         List {
-            Section("Items (Max 10)") {
+            Section("Items") {
                 Text("Bottom navbar shows first 5 items. Top navbar shows any extras.")
                     .font(.caption)
                     .foregroundColor(.gray)
@@ -1431,7 +1431,7 @@ private struct NavBarCustomizationView: View {
                     }
                 }
 
-                if allSelected.count < 10 && availableCount > 0 {
+                if allSelected.count < 25 && availableCount > 0 {
                     Button(action: { showingAddPicker = true }) {
                         HStack {
                             Image(systemName: "plus.circle.fill")
@@ -1443,7 +1443,7 @@ private struct NavBarCustomizationView: View {
                     .fullScreenCover(isPresented: $showingAddPicker) {
                         ModulePickerView(
                             selectedModules: $allSelected,
-                            maxCount: 10,
+                            maxCount: 25,
                             onSave: { modules in
                                 allSelected = modules
                                 saveState()
@@ -1805,9 +1805,9 @@ private struct DashboardAddTileSheet: View {
         case .longestStreak: return "trophy"
         case .restDays: return "moon"
         case .personalRecord: return "medal"
-        case .oneRepMax: return "trophy.fill"
+        case .oneRepMax: return "trophy"
         case .todaysPlan: return "calendar.badge.checkmark"
-        case .waterIntake14Days: return "drop.fill"
+        case .waterIntake14Days: return "drop"
         case .topDurations: return "stopwatch"
         case .topDistances: return "ruler"
         }
@@ -1829,8 +1829,8 @@ private struct DashboardAddTileSheet: View {
         case .oneRepMax:               return "Leaderboard of your best estimated 1-rep maxes by exercise."
         case .todaysPlan:              return "Shows today's planned workouts, exercises, and voice activities."
         case .waterIntake14Days:       return "14-day daily water intake bar chart with streak."
-        case .topDurations:            return "Top 10 longest sessions across all activities."
-        case .topDistances:            return "Top 10 longest-distance sessions across all activities."
+        case .topDurations:            return "Top 5 longest sessions across all activities."
+        case .topDistances:            return "Top 5 longest-distance sessions across all activities."
         }
     }
 

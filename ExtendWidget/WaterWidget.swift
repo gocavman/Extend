@@ -335,7 +335,7 @@ struct WaterWidgetView: View {
     // MARK: Helpers
 
     private var percentText: String {
-        "\(Int(fillFraction * 100))%"
+        "\(Int((fillFraction * 100).rounded()))%"
     }
 
     private func displayAmount(_ oz: Double) -> String {

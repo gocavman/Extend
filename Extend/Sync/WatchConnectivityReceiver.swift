@@ -199,15 +199,26 @@ extension WatchConnectivityReceiver: WCSessionDelegate {
                   let watchExercises = try? JSONDecoder().decode([WatchLoggedExercise].self, from: data) else {
                 return []
             }
+            let library = ExercisesState.shared.exercises
             return watchExercises.enumerated().map { (idx, we) in
                 let exerciseID = UUID(uuidString: we.exerciseID) ?? UUID()
                 let sets = we.sets.map { LoggedSet(reps: $0.reps, weight: $0.weight) }
+                // The watch payload doesn't carry equipment; seed it from the
+                // phone-side library so the log matches what the user gets
+                // when starting the same exercise from the iPhone.
+                let usedEquipment: [UUID] = {
+                    guard let ex = library.first(where: { $0.id == exerciseID }) else { return [] }
+                    if !ex.defaultEquipmentIDs.isEmpty { return ex.defaultEquipmentIDs }
+                    if ex.equipmentIDs.count == 1 { return ex.equipmentIDs }
+                    return []
+                }()
                 return LoggedExercise(
                     exerciseID: exerciseID,
                     exerciseName: we.exerciseName,
                     sets: sets,
                     notes: "",
                     activeSeconds: we.activeSeconds,
+                    usedEquipmentIDs: usedEquipment,
                     orderIndex: idx
                 )
             }

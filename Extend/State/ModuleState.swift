@@ -170,7 +170,7 @@ public final class ModuleState {
 
     /// Update which modules show in top navbar
     public func setTopNavBarModules(_ modules: [UUID]) {
-        topNavBarModules = Array(modules.prefix(5))
+        topNavBarModules = Array(modules.prefix(25))
         saveNavBarPreferences()
     }
 

@@ -342,13 +342,28 @@ public final class HealthKitService {
     /// way show up in the Exercise/Muscle/Equipment history and graphs once the
     /// exercise has the appropriate links assigned.
     public func workoutLog(from hkWorkout: HKWorkout, exercise: Exercise) -> WorkoutLog {
+        let isIndoor = hkWorkout.metadata?[HKMetadataKeyIndoorWorkout] as? Bool
+        // Map Apple Health's indoor/outdoor flag to the matching equipment
+        // — Treadmill when indoor, None when outdoor — so imported runs and
+        // walks pick up the right equipment instead of the exercise's
+        // default. Falls back to the default when the metadata is absent
+        // or when the exercise doesn't list the preferred equipment.
+        let treadmillID = UUID(uuidString: "0000010A-0000-0000-0000-000000000000")!
+        let noneID = UUID(uuidString: "00000100-0000-0000-0000-000000000000")!
+        let resolvedEquipment: [UUID] = {
+            guard let isIndoor else { return exercise.defaultEquipmentIDs }
+            let preferred = isIndoor ? treadmillID : noneID
+            if exercise.equipmentIDs.contains(preferred) { return [preferred] }
+            return exercise.defaultEquipmentIDs
+        }()
+
         let logged = LoggedExercise(
             exerciseID: exercise.id,
             exerciseName: exercise.name,
             sets: [],
             notes: "",
             activeSeconds: Int(hkWorkout.duration),
-            usedEquipmentIDs: exercise.defaultEquipmentIDs,
+            usedEquipmentIDs: resolvedEquipment,
             distanceMeters: distanceMeters(for: hkWorkout)
         )
 
@@ -362,7 +377,8 @@ public final class HealthKitService {
             healthKitActivityTypeRaw: hkWorkout.workoutActivityType.rawValue,
             primaryMuscleGroupIDs: exercise.primaryMuscleGroupIDs,
             secondaryMuscleGroupIDs: exercise.secondaryMuscleGroupIDs,
-            logEquipmentIDs: exercise.defaultEquipmentIDs
+            logEquipmentIDs: resolvedEquipment,
+            isIndoor: isIndoor
         )
     }
 

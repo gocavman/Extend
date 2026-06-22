@@ -282,6 +282,34 @@ final class WatchWorkoutSessionManager: NSObject {
         recordCompletedSet(set, for: ex)
     }
 
+    /// Returns the previously-logged set at `index` within the active item,
+    /// or nil if out of range. Drives the prev/next chevron preview.
+    func loggedSetForCurrentItem(at index: Int) -> WatchLoggedSet? {
+        guard index >= 0, index < currentItemSets.count else { return nil }
+        return currentItemSets[index]
+    }
+
+    /// Replaces a previously-logged set at `index` within the active item.
+    /// Also rewrites the trailing-aligned entry in completedSetsByExerciseID
+    /// so the final report and per-exercise tracking stay consistent.
+    func updateLoggedSet(at index: Int, reps: Int, weight: Double) {
+        guard let ex = currentExercise() else { return }
+        guard index >= 0, index < currentItemSets.count else { return }
+        let updated = WatchLoggedSet(reps: reps, weight: weight)
+        currentItemSets[index] = updated
+        // The trailing currentItemSets.count entries in completedSetsByExerciseID
+        // line up 1:1 with currentItemSets — splice the matching entry.
+        let exID = ex.exerciseID
+        if var all = completedSetsByExerciseID[exID] {
+            let startOffset = all.count - currentItemSets.count
+            let targetIndex = startOffset + index
+            if targetIndex >= 0, targetIndex < all.count {
+                all[targetIndex] = updated
+                completedSetsByExerciseID[exID] = all
+            }
+        }
+    }
+
     /// Advances past the current item — used by the runner when the user taps
     /// "Next" after finishing a single exercise. For complex items, callers
     /// should drive `completeComplexRound()` instead and advance only after
