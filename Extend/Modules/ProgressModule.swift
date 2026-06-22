@@ -1691,6 +1691,7 @@ private struct JournalEntryEditorSheet: View {
 // MARK: - Log Card
 
 private struct WorkoutLogCard: View {
+    @AppStorage("distanceUnit") private var distanceUnit: String = "mi"
     let log: WorkoutLog
     let onTap: () -> Void
     
@@ -1710,6 +1711,13 @@ private struct WorkoutLogCard: View {
         } else {
             return "\(minutes)m \(seconds)s"
         }
+    }
+
+    /// Total distance across all exercises in this log, in meters. nil when no
+    /// exercise has a distance recorded (typical strength logs).
+    private var totalDistanceMeters: Double? {
+        let sum = log.exercises.reduce(0.0) { $0 + ($1.distanceMeters ?? 0) }
+        return sum > 0 ? sum : nil
     }
 
     private func extractLinesCount(from notes: String) -> Int {
@@ -1778,6 +1786,13 @@ private struct WorkoutLogCard: View {
                         Label(durationString, systemImage: "clock")
                             .font(.caption)
                             .foregroundColor(.gray)
+
+                        if let meters = totalDistanceMeters {
+                            Label(DistanceFormatter.format(meters: meters, unit: distanceUnit),
+                                  systemImage: "ruler")
+                                .font(.caption)
+                                .foregroundColor(.gray)
+                        }
                     }
                 }
                 .padding(12)
@@ -1793,6 +1808,7 @@ private struct WorkoutLogCard: View {
 
 private struct WorkoutLogDetailView: View {
     @AppStorage("weightUnit") private var weightUnit: String = "lbs"
+    @AppStorage("distanceUnit") private var distanceUnit: String = "mi"
     @Environment(\.dismiss) var dismiss
     @Environment(WorkoutLogState.self) var logState
     @Environment(ExercisesState.self) var exercisesState
@@ -2012,7 +2028,13 @@ private struct WorkoutLogDetailView: View {
             return "\(minutes)m \(seconds)s"
         }
     }
-    
+
+    /// Sum of every exercise's `distanceMeters` — drives the read-only label
+    /// at the top of the detail view.
+    private var totalDistanceMeters: Double {
+        log.exercises.reduce(0.0) { $0 + ($1.distanceMeters ?? 0) }
+    }
+
     var body: some View {
         NavigationStack {
             ScrollView {
@@ -2107,6 +2129,20 @@ private struct WorkoutLogDetailView: View {
                                     .font(.caption)
                                     .foregroundColor(.gray)
                             }
+                        }
+
+                        // Distance row — read-only summary that sums every
+                        // exercise's `distanceMeters`. Edits happen at the
+                        // exercise level (below the sets), so this top-line
+                        // value updates automatically as the user changes
+                        // individual exercises.
+                        if totalDistanceMeters > 0 {
+                            Label(
+                                "Distance: \(DistanceFormatter.format(meters: totalDistanceMeters, unit: distanceUnit))",
+                                systemImage: "ruler"
+                            )
+                            .font(.caption)
+                            .foregroundColor(.gray)
                         }
                     }
                     .padding(.horizontal, 16)
@@ -2301,9 +2337,6 @@ private struct WorkoutLogDetailView: View {
         let exercise = log.exercises[exIdx]
         VStack(alignment: .leading, spacing: 8) {
             HStack {
-                if isEditing {
-                    reorderButtons(pos: pos, total: total)
-                }
                 Text(exercise.exerciseName)
                     .font(.subheadline)
                     .fontWeight(.semibold)
@@ -2342,6 +2375,10 @@ private struct WorkoutLogDetailView: View {
                         Image(systemName: "plus.circle.fill").foregroundColor(.primary)
                     }
                     .buttonStyle(.plain)
+
+                    // Reorder up/down on the trailing edge so the exercise
+                    // name still sits flush with the set labels below it.
+                    reorderButtons(pos: pos, total: total)
                 }
             }
 
@@ -2409,6 +2446,41 @@ private struct WorkoutLogDetailView: View {
                 }
             }
 
+            // Per-exercise distance — edit field sits directly above the Notes
+            // editor in edit mode so all the cardio-relevant inputs cluster
+            // together after the sets.
+            if isEditing {
+                HStack(spacing: 6) {
+                    Image(systemName: "ruler")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                    Text("Distance")
+                        .font(.caption2)
+                        .fontWeight(.semibold)
+                        .foregroundColor(.gray)
+                    TextField("0", value: Binding(
+                        get: {
+                            let m = log.exercises[exIdx].distanceMeters ?? 0
+                            return DistanceFormatter.value(meters: m, unit: distanceUnit)
+                        },
+                        set: { newValue in
+                            log.exercises[exIdx].distanceMeters = newValue > 0
+                                ? DistanceFormatter.meters(from: newValue, unit: distanceUnit)
+                                : nil
+                        }
+                    ), format: .number)
+                        .keyboardType(.decimalPad)
+                        .font(.caption)
+                        .frame(width: 70)
+                        .textFieldStyle(.roundedBorder)
+                    Text(distanceUnit)
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                    Spacer()
+                }
+                .padding(.top, 4)
+            }
+
             if isEditing {
                 VStack(alignment: .leading, spacing: 2) {
                     Text("Notes").font(.caption2).fontWeight(.semibold).foregroundColor(.gray)
@@ -2438,6 +2510,22 @@ private struct WorkoutLogDetailView: View {
                 HStack(alignment: .top, spacing: 0) {
                     Text("Notes: ").font(.caption).fontWeight(.semibold).foregroundColor(.gray)
                     Text(exercise.notes).font(.caption).foregroundColor(.gray)
+                }
+                .padding(.top, 4)
+            }
+
+            // Per-exercise distance — read-only label that sits just above the
+            // Equipment section in view mode. Only renders when a distance is
+            // recorded for this specific exercise.
+            if !isEditing, let meters = exercise.distanceMeters, meters > 0 {
+                HStack(spacing: 6) {
+                    Image(systemName: "ruler")
+                        .font(.caption)
+                        .foregroundColor(.gray)
+                    Text("Distance: \(DistanceFormatter.format(meters: meters, unit: distanceUnit))")
+                        .font(.caption)
+                        .foregroundColor(.gray)
+                    Spacer()
                 }
                 .padding(.top, 4)
             }

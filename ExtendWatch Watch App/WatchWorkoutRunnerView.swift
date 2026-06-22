@@ -160,9 +160,9 @@ struct WatchWorkoutRunnerView: View {
         return VStack(spacing: 4) {
             VStack(spacing: 0) {
                 Text(ex.name)
-                    .font(.system(size: 13, weight: .semibold))
+                    .font(.system(size: 17, weight: .semibold))
                     .lineLimit(1)
-                    .minimumScaleFactor(0.6)
+                    .minimumScaleFactor(0.75)
                 HStack(spacing: 4) {
                     if isAdHoc {
                         Text("Set \(setNumber)")
@@ -648,13 +648,23 @@ struct WatchWorkoutRunnerView: View {
 
     private func prepareNextStep() {
         if manager.isWorkoutComplete() { return }
-        if manager.loggedSetCount() >= manager.plannedSetCount(),
+        let planned = manager.plannedSetCount()
+        let isAdHoc = planned == 0
+        // Ad-hoc exercises (no authored plan) stay on the current item so the
+        // user can keep logging sets until they tap Stop. Authored items
+        // auto-advance once the planned set count is fulfilled.
+        if !isAdHoc,
+           manager.loggedSetCount() >= planned,
            manager.currentExercise() != nil {
             manager.advanceToNextItem()
         }
         let next = manager.nextPredefinedSet()
-        reps = next?.reps ?? 0
-        weight = next?.weight ?? 0
+        // For ad-hoc, leave the wheels where the user last set them — they
+        // usually want the next set to start from the same reps/weight.
+        if !isAdHoc {
+            reps = next?.reps ?? 0
+            weight = next?.weight ?? 0
+        }
         timerDurationSeconds = next?.timedSeconds ?? 0
         if (next?.timedSeconds ?? 0) > 0 {
             startTimedSet()

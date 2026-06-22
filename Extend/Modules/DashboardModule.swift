@@ -38,6 +38,7 @@ private struct DashboardModuleView: View {
     let module: DashboardModule
 
     @AppStorage("weightUnit") private var weightUnit: String = "lbs"
+    @AppStorage("distanceUnit") private var distanceUnit: String = "mi"
     @Environment(DashboardState.self) var dashboardState
     @Environment(ModuleRegistry.self) var registry
     @Environment(ModuleState.self) var state
@@ -230,9 +231,13 @@ private struct DashboardModuleView: View {
         // PERFORMANCE FIX: Only calculate these for the specific tiles that need them
         let prEntries: [(name: String, value: Double)] = tile.statCardType == .personalRecord ? personalRecordEntries(for: tile) : []
         let rmEntries: [(name: String, value: Double)] = tile.statCardType == .oneRepMax ? oneRMEntries(for: tile) : []
-        // PR, 1RM, and todaysPlan tiles use content-driven height (nil) so layout flows naturally
+        let topDurationEntries: [(name: String, value: Double, date: Date)] = tile.statCardType == .topDurations ? topDurationEntries(for: tile) : []
+        let topDistanceEntries: [(name: String, value: Double, date: Date)] = tile.statCardType == .topDistances ? topDistanceEntries(for: tile) : []
+        // PR, 1RM, leaderboard, and todaysPlan tiles use content-driven height (nil) so layout flows naturally
         let dynamicEntryCount: Int = tile.statCardType == .personalRecord ? 1
             : tile.statCardType == .oneRepMax ? 1
+            : tile.statCardType == .topDurations ? 1
+            : tile.statCardType == .topDistances ? 1
             : tile.statCardType == .todaysPlan ? 1
             : 0
         let isIPad = sizeClass == .regular
@@ -299,7 +304,10 @@ private struct DashboardModuleView: View {
                     waterDailyTotals: statCard == .waterIntake14Days ? waterState.dailyTotals(days: 14) : [],
                     waterGoalOz: waterState.dailyGoalOz,
                     waterUnit: waterState.unit,
-                    waterStreak: statCard == .waterIntake14Days ? waterState.currentStreak : 0
+                    waterStreak: statCard == .waterIntake14Days ? waterState.currentStreak : 0,
+                    topDurationEntries: topDurationEntries,
+                    topDistanceEntries: topDistanceEntries,
+                    distanceUnit: distanceUnit
                 )
                 .frame(width: tileWidth, height: (dynamicEntryCount > 0 || tileHeight == nil) ? nil : tileHeight)
                 .rotationEffect(.degrees(tileRotations[tile.id] ?? 0))
@@ -673,6 +681,9 @@ private struct DashboardModuleView: View {
             let oz = waterState.todayOz
             let display = waterState.unit.fromOz(oz)
             return String(format: "%.0f %@", display, waterState.unit.rawValue)
+        case .topDurations, .topDistances:
+            // Value not shown as text; tile renders its own leaderboard list
+            return ""
         }
     }
 
@@ -735,6 +746,35 @@ private struct DashboardModuleView: View {
             return logState.topExercisesBy1RM(limit: 5)
                 .map { (name: $0.exerciseName, value: $0.estimated1RM) }
         }
+    }
+
+    /// Top 10 sessions by duration (seconds). Each row references the exact
+    /// LoggedExercise it came from, so a single exercise can appear multiple
+    /// times if multiple long sessions stand out.
+    private func topDurationEntries(for tile: DashboardTile) -> [(name: String, value: Double, date: Date)] {
+        let allowed: Set<UUID>? = tile.topDurationsExerciseIDs.flatMap { $0.isEmpty ? nil : Set($0) }
+        let rows: [(name: String, value: Double, date: Date)] = logState.logs.flatMap { log in
+            log.exercises.compactMap { ex -> (String, Double, Date)? in
+                guard ex.activeSeconds > 0 else { return nil }
+                if let allowed, !allowed.contains(ex.exerciseID) { return nil }
+                return (ex.exerciseName, Double(ex.activeSeconds), log.completedAt)
+            }.map { (name: $0.0, value: $0.1, date: $0.2) }
+        }
+        return Array(rows.sorted { $0.value > $1.value }.prefix(5))
+    }
+
+    /// Top 10 sessions by distance (meters). Filtered to the user-selected
+    /// activity set when configured.
+    private func topDistanceEntries(for tile: DashboardTile) -> [(name: String, value: Double, date: Date)] {
+        let allowed: Set<UUID>? = tile.topDistancesExerciseIDs.flatMap { $0.isEmpty ? nil : Set($0) }
+        let rows: [(name: String, value: Double, date: Date)] = logState.logs.flatMap { log in
+            log.exercises.compactMap { ex -> (String, Double, Date)? in
+                guard let meters = ex.distanceMeters, meters > 0 else { return nil }
+                if let allowed, !allowed.contains(ex.exerciseID) { return nil }
+                return (ex.exerciseName, meters, log.completedAt)
+            }.map { (name: $0.0, value: $0.1, date: $0.2) }
+        }
+        return Array(rows.sorted { $0.value > $1.value }.prefix(5))
     }
 
     private func workoutFrequencyDays() -> [WeekdayFrequency] {
@@ -1125,6 +1165,10 @@ private struct AddTileSheet: View {
             return "calendar.badge.checkmark"
         case .waterIntake14Days:
             return "drop.fill"
+        case .topDurations:
+            return "stopwatch"
+        case .topDistances:
+            return "ruler"
         }
     }
 
@@ -1274,7 +1318,7 @@ private struct AddTileSheet: View {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Add") {
                         for statCard in selectedStatCards {
-                            let size: TileSize = (statCard == .workoutFrequency || statCard == .muscleGroupDistribution || statCard == .oneRepMax || statCard == .personalRecord) ? .large : .small
+                            let size: TileSize = (statCard == .workoutFrequency || statCard == .muscleGroupDistribution || statCard == .oneRepMax || statCard == .personalRecord || statCard == .topDurations || statCard == .topDistances) ? .large : .small
                             let tile = DashboardTile(
                                 title: statCard.rawValue,
                                 icon: iconForStatCard(statCard),
@@ -1350,6 +1394,10 @@ private struct EditTileSheet: View {
     @State private var volumeWorkoutName: String? = nil
     /// For Volume tiles: nil = all exercises; non-nil = specific exercise ID
     @State private var volumeExerciseID: UUID? = nil
+    /// For Top Durations tile: nil = all activities; non-nil = restricted set
+    @State private var topDurationsExerciseIDs: [UUID]? = nil
+    /// For Top Distances tile: nil = all activities; non-nil = restricted set
+    @State private var topDistancesExerciseIDs: [UUID]? = nil
 
     let onSave: (DashboardTile) -> Void
 
@@ -1374,7 +1422,8 @@ private struct EditTileSheet: View {
                 || statCard == .waterIntake14Days {
                 return [.large]
             }
-            if statCard == .oneRepMax || statCard == .personalRecord {
+            if statCard == .oneRepMax || statCard == .personalRecord
+                || statCard == .topDurations || statCard == .topDistances {
                 return [.large]
             }
         }
@@ -1594,6 +1643,21 @@ private struct EditTileSheet: View {
                     }
                 }
 
+                // Top Durations / Top Distances: activity filter — single `if`
+                // (instead of two) keeps the Form's ViewBuilder statement count
+                // under the threshold SwiftUI handles most reliably.
+                if tile.statCardType == .topDurations || tile.statCardType == .topDistances {
+                    activityFilterSection(
+                        title: "Activities",
+                        footerOn: "Showing top sessions across selected activities only.",
+                        footerOff: "Showing top sessions across all activities. Select to restrict.",
+                        eligiblePredicate: anyLoggedExercisePredicate,
+                        selection: tile.statCardType == .topDurations
+                            ? $topDurationsExerciseIDs
+                            : $topDistancesExerciseIDs
+                    )
+                }
+
                 Section("Icon") {
                     LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible()), GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
                         ForEach(icons, id: \.self) { icon in
@@ -1619,11 +1683,17 @@ private struct EditTileSheet: View {
             .onAppear {
                 title = tile.title
                 selectedIcon = tile.icon
-                selectedSize = tile.size
+                // Clamp to a permitted size for the tile type — fixes early
+                // Top Durations/Distances tiles that were saved at .small
+                // before the size rules included them.
+                let allowed = availableSizes()
+                selectedSize = allowed.contains(tile.size) ? tile.size : (allowed.first ?? tile.size)
                 oneRMExerciseIDs = tile.oneRMExerciseIDs
                 personalRecordExerciseIDs = tile.personalRecordExerciseIDs
                 volumeWorkoutName = tile.volumeWorkoutName
                 volumeExerciseID = tile.volumeExerciseID
+                topDurationsExerciseIDs = tile.topDurationsExerciseIDs
+                topDistancesExerciseIDs = tile.topDistancesExerciseIDs
             }
             #if os(iOS)
             .toolbar {
@@ -1637,6 +1707,8 @@ private struct EditTileSheet: View {
                         updatedTile.personalRecordExerciseIDs = personalRecordExerciseIDs
                         updatedTile.volumeWorkoutName = volumeWorkoutName
                         updatedTile.volumeExerciseID = volumeExerciseID
+                        updatedTile.topDurationsExerciseIDs = topDurationsExerciseIDs
+                        updatedTile.topDistancesExerciseIDs = topDistancesExerciseIDs
                         onSave(updatedTile)
                         dismiss()
                     }
@@ -1650,6 +1722,68 @@ private struct EditTileSheet: View {
                 }
             }
             #endif
+        }
+    }
+
+    /// Predicate: exercise has appeared in at least one logged workout. Used
+    /// by the Top Durations / Top Distances filters so both lists stay in sync
+    /// regardless of which metric (duration vs. distance) is recorded.
+    private var anyLoggedExercisePredicate: (Exercise) -> Bool {
+        let loggedIDs = Set(logState.logs.flatMap { $0.exercises }.map { $0.exerciseID })
+        return { ex in loggedIDs.contains(ex.id) }
+    }
+
+    /// Shared activity-filter section used by the Top Durations / Top Distances
+    /// tiles. Eligibility is decided per-tile via `eligiblePredicate` (e.g. has
+    /// a logged duration vs. has a logged distance).
+    @ViewBuilder
+    private func activityFilterSection(
+        title: String,
+        footerOn: String,
+        footerOff: String,
+        eligiblePredicate: (Exercise) -> Bool,
+        selection: Binding<[UUID]?>
+    ) -> some View {
+        Section {
+            let eligible = exercisesState.exercises
+                .filter(eligiblePredicate)
+                .sorted { $0.name < $1.name }
+            if eligible.isEmpty {
+                Text("No eligible activities yet — complete a session first.")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            } else {
+                let selected = selection.wrappedValue ?? []
+                ForEach(eligible) { exercise in
+                    Button(action: {
+                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                        var ids = selection.wrappedValue ?? []
+                        if ids.contains(exercise.id) {
+                            ids.removeAll { $0 == exercise.id }
+                        } else {
+                            ids.append(exercise.id)
+                        }
+                        selection.wrappedValue = ids.isEmpty ? nil : ids
+                    }) {
+                        HStack {
+                            Text(exercise.name)
+                                .foregroundColor(.primary)
+                            Spacer()
+                            if selected.contains(exercise.id) {
+                                Image(systemName: "checkmark.circle.fill")
+                                    .foregroundColor(.accentColor)
+                            }
+                        }
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+        } header: {
+            Text(title)
+        } footer: {
+            Text(selection.wrappedValue == nil ? footerOff : footerOn)
+                .font(.caption)
         }
     }
 }
@@ -1679,6 +1813,9 @@ private struct StatCardTileView: View {
     var waterGoalOz: Double = 64
     var waterUnit: WaterUnit = .oz
     var waterStreak: Int = 0
+    var topDurationEntries: [(name: String, value: Double, date: Date)] = []
+    var topDistanceEntries: [(name: String, value: Double, date: Date)] = []
+    var distanceUnit: String = "mi"
 
     @Environment(\.horizontalSizeClass) private var sizeClass
     private var iPad: Bool { sizeClass == .regular }
@@ -1934,6 +2071,66 @@ private struct StatCardTileView: View {
                         DayOfWeekBarChartView(days: dayOfWeekCounts)
                             .frame(maxWidth: .infinity, maxHeight: .infinity)
                     }
+                } else if statType == .topDurations || statType == .topDistances {
+                    let entries = statType == .topDurations ? topDurationEntries : topDistanceEntries
+                    if entries.isEmpty {
+                        VStack(spacing: 4) {
+                            Spacer()
+                            Image(systemName: statType == .topDurations ? "stopwatch" : "ruler")
+                                .font(.system(size: iPad ? 35 : 22, weight: .light))
+                                .foregroundColor(.gray)
+                            Text(statType == .topDurations
+                                 ? "Log durations to see\nyour top sessions"
+                                 : "Log distances to see\nyour top sessions")
+                                .font(.system(size: iPad ? 16 : 10))
+                                .foregroundColor(.gray)
+                                .multilineTextAlignment(.center)
+                            Spacer()
+                        }
+                        .frame(maxWidth: .infinity)
+                    } else {
+                        let best = entries.map { $0.value }.max() ?? 1
+                        VStack(alignment: .leading, spacing: 5) {
+                            ForEach(Array(entries.prefix(10).enumerated()), id: \.offset) { index, entry in
+                                VStack(alignment: .leading, spacing: 2) {
+                                    HStack(spacing: 6) {
+                                        Text("#\(index + 1)")
+                                            .font(.system(size: iPad ? 16 : 12, weight: .bold, design: .rounded))
+                                            .foregroundColor(index == 0 ? .yellow : .gray)
+                                            .frame(width: iPad ? 36 : 24, alignment: .leading)
+                                        VStack(alignment: .leading, spacing: 1) {
+                                            Text(entry.name)
+                                                .font(.system(size: iPad ? 16 : 12, weight: .semibold))
+                                                .foregroundColor(.primary)
+                                                .lineLimit(1)
+                                                .minimumScaleFactor(0.7)
+                                            Text(entry.date, format: .dateTime.month(.abbreviated).day().year(.twoDigits))
+                                                .font(.system(size: iPad ? 12 : 9))
+                                                .foregroundColor(.gray)
+                                        }
+                                        .frame(maxWidth: .infinity, alignment: .leading)
+                                        Text(statType == .topDurations
+                                             ? formatTopDuration(seconds: entry.value)
+                                             : DistanceFormatter.format(meters: entry.value, unit: distanceUnit))
+                                            .font(.system(size: iPad ? 16 : 12, weight: .bold))
+                                            .foregroundColor(.primary)
+                                    }
+                                    GeometryReader { geo in
+                                        ZStack(alignment: .leading) {
+                                            RoundedRectangle(cornerRadius: 2)
+                                                .fill(Color.primary.opacity(0.08))
+                                                .frame(height: 3)
+                                            RoundedRectangle(cornerRadius: 2)
+                                                .fill(index == 0 ? Color.yellow : Color.primary.opacity(0.35))
+                                                .frame(width: geo.size.width * CGFloat(best > 0 ? entry.value / best : 0), height: 3)
+                                        }
+                                    }
+                                    .frame(height: 3)
+                                }
+                            }
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    }
                 } else {
                     let isNumeric = statType == .totalWorkouts || statType == .dayStreaks
                         || statType == .totalTime
@@ -1983,6 +2180,18 @@ private struct StatCardTileView: View {
                 AccentBarView(placement: accentPlacement, color: accentColor)
             }
         }
+    }
+
+    /// "1:23:45" / "12:34" / "45s" — compact duration formatting for the
+    /// leaderboard value column.
+    private func formatTopDuration(seconds: Double) -> String {
+        let total = Int(seconds)
+        let h = total / 3600
+        let m = (total % 3600) / 60
+        let s = total % 60
+        if h > 0 { return String(format: "%d:%02d:%02d", h, m, s) }
+        if m > 0 { return String(format: "%d:%02d", m, s) }
+        return "\(s)s"
     }
 }
 

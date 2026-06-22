@@ -766,7 +766,8 @@ public final class WorkoutLogState {
             var addedAny = false
             for hkWorkout in hkWorkouts {
                 guard !existingUUIDs.contains(hkWorkout.uuid) else { continue }
-                let newLog = HealthKitService.shared.workoutLog(from: hkWorkout)
+                let exercise = resolveOrCreateExercise(for: hkWorkout)
+                let newLog = HealthKitService.shared.workoutLog(from: hkWorkout, exercise: exercise)
                 logs.append(newLog)
                 addedAny = true
             }
@@ -782,5 +783,31 @@ public final class WorkoutLogState {
         } catch {
             // Non-fatal: import failure is silent
         }
+    }
+
+    /// Finds an existing `Exercise` for the imported HK workout, or creates one
+    /// in the user's library so the imported log can show up in
+    /// Exercise/Muscle/Equipment history & charts. Match order:
+    ///   1) Exercise already tagged with this HKWorkoutActivityType
+    ///   2) Exercise whose name matches the HK activity label (case-insensitive)
+    ///   3) Auto-create a bare Exercise (no muscles/equipment) tagged with the type
+    @MainActor
+    private func resolveOrCreateExercise(for hkWorkout: HKWorkout) -> Exercise {
+        let exercisesState = ExercisesState.shared
+        let rawType = hkWorkout.workoutActivityType.rawValue
+        let label = HealthKitService.shared.activityDisplayName(for: hkWorkout.workoutActivityType)
+
+        if let match = exercisesState.exercises.first(where: { $0.healthKitActivityType == rawType }) {
+            return match
+        }
+        if let match = exercisesState.exercises.first(where: { $0.name.caseInsensitiveCompare(label) == .orderedSame }) {
+            return match
+        }
+        let created = Exercise(
+            name: label,
+            healthKitActivityType: rawType
+        )
+        exercisesState.addExercise(created)
+        return created
     }
 }

@@ -336,16 +336,59 @@ public final class HealthKitService {
 
     // MARK: - Convert HKWorkout to WorkoutLog
 
-    public func workoutLog(from hkWorkout: HKWorkout) -> WorkoutLog {
-        let activityName = displayName(for: hkWorkout.workoutActivityType)
+    /// Builds a `WorkoutLog` with a single `LoggedExercise` tied to `exercise`,
+    /// carrying the workout's duration (in `activeSeconds`) and total distance
+    /// (in meters, when Apple Health provides it). Cardio entries imported this
+    /// way show up in the Exercise/Muscle/Equipment history and graphs once the
+    /// exercise has the appropriate links assigned.
+    public func workoutLog(from hkWorkout: HKWorkout, exercise: Exercise) -> WorkoutLog {
+        let logged = LoggedExercise(
+            exerciseID: exercise.id,
+            exerciseName: exercise.name,
+            sets: [],
+            notes: "",
+            activeSeconds: Int(hkWorkout.duration),
+            usedEquipmentIDs: exercise.defaultEquipmentIDs,
+            distanceMeters: distanceMeters(for: hkWorkout)
+        )
+
         return WorkoutLog(
-            workoutName: activityName,
+            workoutName: exercise.name,
             completedAt: hkWorkout.endDate,
-            exercises: [],
+            exercises: [logged],
             notes: "Imported from Apple Health",
             duration: hkWorkout.duration,
-            healthKitUUID: hkWorkout.uuid
+            healthKitUUID: hkWorkout.uuid,
+            healthKitActivityTypeRaw: hkWorkout.workoutActivityType.rawValue,
+            primaryMuscleGroupIDs: exercise.primaryMuscleGroupIDs,
+            secondaryMuscleGroupIDs: exercise.secondaryMuscleGroupIDs,
+            logEquipmentIDs: exercise.defaultEquipmentIDs
         )
+    }
+
+    /// Pulls total distance (meters) off an `HKWorkout` by checking each known
+    /// distance quantity type in turn. `nil` if Apple Health didn't record a
+    /// distance for this workout (typical for strength sessions, yoga, etc.).
+    private func distanceMeters(for hkWorkout: HKWorkout) -> Double? {
+        let ids: [HKQuantityTypeIdentifier] = [
+            .distanceWalkingRunning,
+            .distanceCycling,
+            .distanceSwimming
+        ]
+        for id in ids {
+            if let stats = hkWorkout.statistics(for: HKQuantityType(id)),
+               let qty = stats.sumQuantity() {
+                let meters = qty.doubleValue(for: .meter())
+                if meters > 0 { return meters }
+            }
+        }
+        return nil
+    }
+
+    /// Human-readable label for the activity type — exposed so the import path
+    /// can also use it when creating a new `Exercise` from an unrecognized type.
+    public func activityDisplayName(for activityType: HKWorkoutActivityType) -> String {
+        displayName(for: activityType)
     }
 
     private func displayName(for activityType: HKWorkoutActivityType) -> String {

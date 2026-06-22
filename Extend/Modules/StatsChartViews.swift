@@ -38,6 +38,7 @@ struct ExerciseStatsView: View {
     let exercise: Exercise
 
     @AppStorage("weightUnit") private var weightUnit: String = "lbs"
+    @AppStorage("distanceUnit") private var distanceUnit: String = "mi"
     @Environment(WorkoutLogState.self) var logState
     @Environment(\.dismiss) private var dismiss
     @State private var timeRange: StatsTimeRange = .oneMonth
@@ -59,6 +60,8 @@ struct ExerciseStatsView: View {
         let totalVolume: Double
         let totalReps: Int
         let estimated1RM: Double   // 0 if no qualifying sets
+        let durationMinutes: Double // 0 if no duration
+        let distanceMeters: Double  // 0 if no distance
     }
 
     private static func epley(weight: Double, reps: Int) -> Double {
@@ -70,7 +73,10 @@ struct ExerciseStatsView: View {
         filteredLogs.compactMap { log in
             guard let loggedEx = log.exercises.first(where: { $0.exerciseID == exercise.id }) else { return nil }
             let sets = loggedEx.sets
-            guard !sets.isEmpty else { return nil }
+            let durationMinutes = Double(loggedEx.activeSeconds) / 60.0
+            let distance = loggedEx.distanceMeters ?? 0
+            // Include cardio-style sessions (no sets) so duration/distance charts render
+            guard !sets.isEmpty || loggedEx.activeSeconds > 0 || distance > 0 else { return nil }
             let maxWeight = sets.map { $0.weight }.max() ?? 0
             let totalVolume = sets.reduce(0.0) { $0 + ($1.weight * Double($1.reps)) }
             let totalReps = sets.reduce(0) { $0 + $1.reps }
@@ -78,7 +84,15 @@ struct ExerciseStatsView: View {
                 let v = Self.epley(weight: s.weight, reps: s.reps)
                 return v > 0 ? v : nil
             }.max() ?? 0
-            return SessionPoint(date: log.completedAt, maxWeight: maxWeight, totalVolume: totalVolume, totalReps: totalReps, estimated1RM: best1RM)
+            return SessionPoint(
+                date: log.completedAt,
+                maxWeight: maxWeight,
+                totalVolume: totalVolume,
+                totalReps: totalReps,
+                estimated1RM: best1RM,
+                durationMinutes: durationMinutes,
+                distanceMeters: distance
+            )
         }
     }
 
@@ -127,6 +141,27 @@ struct ExerciseStatsView: View {
                             points: sessionPoints.compactMap { $0.estimated1RM > 0 ? ($0.date, $0.estimated1RM) : nil },
                             color: Color(red: 0.6, green: 0.2, blue: 0.8)
                         )
+
+                        // Cardio cards: only render when the exercise has duration/distance data
+                        if sessionPoints.contains(where: { $0.durationMinutes > 0 }) {
+                            statsCard(
+                                title: "Duration",
+                                unit: "min",
+                                points: sessionPoints.map { ($0.date, $0.durationMinutes) },
+                                color: Color(red: 0.95, green: 0.55, blue: 0.15)
+                            )
+                        }
+
+                        if sessionPoints.contains(where: { $0.distanceMeters > 0 }) {
+                            statsCard(
+                                title: "Distance",
+                                unit: distanceUnit,
+                                points: sessionPoints.map {
+                                    ($0.date, DistanceFormatter.value(meters: $0.distanceMeters, unit: distanceUnit))
+                                },
+                                color: Color(red: 0.1, green: 0.55, blue: 0.85)
+                            )
+                        }
                     }
                 }
             }
@@ -252,6 +287,7 @@ struct MuscleStatsView: View {
     let muscleGroup: MuscleGroup
 
     @AppStorage("weightUnit") private var weightUnit: String = "lbs"
+    @AppStorage("distanceUnit") private var distanceUnit: String = "mi"
     @Environment(WorkoutLogState.self) var logState
     @Environment(ExercisesState.self) var exercisesState
     @Environment(\.dismiss) private var dismiss
@@ -272,6 +308,8 @@ struct MuscleStatsView: View {
         let weekStart: Date
         let sessions: Int
         let totalVolume: Double
+        let totalDurationMinutes: Double
+        let totalDistanceMeters: Double
     }
 
     private var weekBuckets: [WeekBucket] {
@@ -295,6 +333,8 @@ struct MuscleStatsView: View {
         let calendar = Calendar(identifier: .gregorian)
         var byWeekSessions: [Date: Set<Date>] = [:]
         var byWeekVolume: [Date: Double] = [:]
+        var byWeekDuration: [Date: Double] = [:]
+        var byWeekDistance: [Date: Double] = [:]
         for log in relevantLogs {
             let weekday = calendar.component(.weekday, from: log.completedAt)
             let daysToMonday = (weekday == 1) ? -6 : -(weekday - 2)
@@ -302,18 +342,26 @@ struct MuscleStatsView: View {
             let day = calendar.startOfDay(for: log.completedAt)
             byWeekSessions[monday, default: []].insert(day)
 
-            let volume = log.exercises
-                .filter { ids.contains($0.exerciseID) }
+            let targeted = log.exercises.filter { ids.contains($0.exerciseID) }
+            let volume = targeted
                 .flatMap { $0.sets }
                 .reduce(0.0) { $0 + ($1.weight * Double($1.reps)) }
             byWeekVolume[monday, default: 0] += volume
+
+            // Sum cardio metrics only from the muscle-targeting exercises in this log
+            let durationSec = targeted.reduce(0) { $0 + $1.activeSeconds }
+            byWeekDuration[monday, default: 0] += Double(durationSec) / 60.0
+            let distance = targeted.reduce(0.0) { $0 + ($1.distanceMeters ?? 0) }
+            byWeekDistance[monday, default: 0] += distance
         }
 
         return byWeekSessions.keys.sorted().map { monday in
             WeekBucket(
                 weekStart: monday,
                 sessions: byWeekSessions[monday]?.count ?? 0,
-                totalVolume: byWeekVolume[monday] ?? 0
+                totalVolume: byWeekVolume[monday] ?? 0,
+                totalDurationMinutes: byWeekDuration[monday] ?? 0,
+                totalDistanceMeters: byWeekDistance[monday] ?? 0
             )
         }
     }
@@ -349,6 +397,26 @@ struct MuscleStatsView: View {
                             points: weekBuckets.map { ($0.weekStart, $0.totalVolume) },
                             color: Color(red: 0.2, green: 0.65, blue: 0.4)
                         )
+
+                        if weekBuckets.contains(where: { $0.totalDurationMinutes > 0 }) {
+                            muscleStatsCard(
+                                title: "Total Duration",
+                                unit: "min",
+                                points: weekBuckets.map { ($0.weekStart, $0.totalDurationMinutes) },
+                                color: Color(red: 0.95, green: 0.55, blue: 0.15)
+                            )
+                        }
+
+                        if weekBuckets.contains(where: { $0.totalDistanceMeters > 0 }) {
+                            muscleStatsCard(
+                                title: "Total Distance",
+                                unit: distanceUnit,
+                                points: weekBuckets.map {
+                                    ($0.weekStart, DistanceFormatter.value(meters: $0.totalDistanceMeters, unit: distanceUnit))
+                                },
+                                color: Color(red: 0.1, green: 0.55, blue: 0.85)
+                            )
+                        }
                     }
                 }
             }
@@ -753,6 +821,7 @@ struct EquipmentStatsView: View {
     let equipment: Equipment
 
     @AppStorage("weightUnit") private var weightUnit: String = "lbs"
+    @AppStorage("distanceUnit") private var distanceUnit: String = "mi"
     @Environment(WorkoutLogState.self) var logState
     @Environment(ExercisesState.self) var exercisesState
     @Environment(\.dismiss) private var dismiss
@@ -785,6 +854,8 @@ struct EquipmentStatsView: View {
         let weekStart: Date
         var sessions: Int
         var totalVolume: Double
+        var totalDurationMinutes: Double
+        var totalDistanceMeters: Double
     }
 
     private var weekBuckets: [WeekBucket] {
@@ -793,15 +864,25 @@ struct EquipmentStatsView: View {
         var dict: [Date: WeekBucket] = [:]
         for log in filteredLogs {
             let start = cal.dateInterval(of: .weekOfYear, for: log.completedAt)?.start ?? log.completedAt
-            let volume = log.exercises
-                .filter { linkedExerciseIDs.contains($0.exerciseID) }
+            let linked = log.exercises.filter { linkedExerciseIDs.contains($0.exerciseID) }
+            let volume = linked
                 .flatMap { $0.sets }
                 .reduce(0.0) { $0 + Double($1.reps) * $1.weight }
+            let durationMin = Double(linked.reduce(0) { $0 + $1.activeSeconds }) / 60.0
+            let distanceM = linked.reduce(0.0) { $0 + ($1.distanceMeters ?? 0) }
             if dict[start] != nil {
                 dict[start]!.sessions += 1
                 dict[start]!.totalVolume += volume
+                dict[start]!.totalDurationMinutes += durationMin
+                dict[start]!.totalDistanceMeters += distanceM
             } else {
-                dict[start] = WeekBucket(weekStart: start, sessions: 1, totalVolume: volume)
+                dict[start] = WeekBucket(
+                    weekStart: start,
+                    sessions: 1,
+                    totalVolume: volume,
+                    totalDurationMinutes: durationMin,
+                    totalDistanceMeters: distanceM
+                )
             }
         }
         return dict.values.sorted { $0.weekStart < $1.weekStart }
@@ -836,6 +917,26 @@ struct EquipmentStatsView: View {
                                 points: weekBuckets.map { ($0.weekStart, $0.totalVolume) },
                                 color: Color(red: 0.2, green: 0.65, blue: 0.4)
                             )
+
+                            if weekBuckets.contains(where: { $0.totalDurationMinutes > 0 }) {
+                                equipmentStatsCard(
+                                    title: "Total Duration",
+                                    unit: "min",
+                                    points: weekBuckets.map { ($0.weekStart, $0.totalDurationMinutes) },
+                                    color: Color(red: 0.95, green: 0.55, blue: 0.15)
+                                )
+                            }
+
+                            if weekBuckets.contains(where: { $0.totalDistanceMeters > 0 }) {
+                                equipmentStatsCard(
+                                    title: "Total Distance",
+                                    unit: distanceUnit,
+                                    points: weekBuckets.map {
+                                        ($0.weekStart, DistanceFormatter.value(meters: $0.totalDistanceMeters, unit: distanceUnit))
+                                    },
+                                    color: Color(red: 0.1, green: 0.55, blue: 0.85)
+                                )
+                            }
                         }
                     }
 

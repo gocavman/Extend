@@ -187,15 +187,15 @@ private struct WorkoutsModuleView: View {
                     .font(.title2)
                     .fontWeight(.bold)
                 Spacer()
-                if planState.activePlan != nil {
-                    Button(action: {
-                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                        showingPlanLauncher = true
-                    }) {
-                        Image(systemName: "calendar.badge.checkmark")
-                            .foregroundColor(planState.planDay(for: Date()) != nil ? .accentColor : .primary)
-                    }
-                }
+//                if planState.activePlan != nil {
+//                    Button(action: {
+//                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+//                        showingPlanLauncher = true
+//                    }) {
+//                        Image(systemName: "calendar.badge.checkmark")
+//                            .foregroundColor(planState.planDay(for: Date()) != nil ? .accentColor : .primary)
+//                    }
+//                }
                 Button(action: {
                     UIImpactFeedbackGenerator(style: .light).impactOccurred()
                     showingAdd = true
@@ -5229,19 +5229,23 @@ extension Array {
 
 struct ExerciseHistorySheet: View {
     @AppStorage("weightUnit") private var weightUnit: String = "lbs"
+    @AppStorage("distanceUnit") private var distanceUnit: String = "mi"
     @Environment(\.dismiss) var dismiss
 
     let exercise: Exercise
     let logState: WorkoutLogState
     @State private var timeRange: StatsTimeRange = .oneMonth
 
-    private var history: [(date: Date, sets: [LoggedSet], notes: String, activeSeconds: Int)] {
+    private var history: [(date: Date, sets: [LoggedSet], notes: String, activeSeconds: Int, distanceMeters: Double?)] {
         let start = timeRange.startDate
         return logState.sortedLogs.compactMap { log in
             guard log.completedAt >= start,
-                  let ex = log.exercises.first(where: { $0.exerciseID == exercise.id }),
-                  !ex.sets.isEmpty else { return nil }
-            return (date: log.completedAt, sets: ex.sets, notes: ex.notes, activeSeconds: ex.activeSeconds)
+                  let ex = log.exercises.first(where: { $0.exerciseID == exercise.id }) else { return nil }
+            // Show the entry if it has either sets logged OR duration/distance
+            // (cardio-style entries imported from Apple Health have no sets).
+            let hasCardioData = ex.activeSeconds > 0 || (ex.distanceMeters ?? 0) > 0
+            guard !ex.sets.isEmpty || hasCardioData else { return nil }
+            return (date: log.completedAt, sets: ex.sets, notes: ex.notes, activeSeconds: ex.activeSeconds, distanceMeters: ex.distanceMeters)
         }
     }
 
@@ -5323,31 +5327,50 @@ struct ExerciseHistorySheet: View {
                                     }
                                 }
 
-                                let hasTimed = entry.sets.contains { $0.timedSeconds > 0 }
-                                VStack(spacing: 4) {
-                                    HStack {
-                                        Text("Set").font(.caption2).foregroundColor(.secondary).frame(maxWidth: .infinity, alignment: .leading)
-                                        Text("Reps").font(.caption2).foregroundColor(.secondary).frame(maxWidth: .infinity, alignment: .center)
-                                        if hasTimed {
-                                            Text("Time").font(.caption2).foregroundColor(.secondary).frame(width: 64, alignment: .center)
+                                if entry.sets.isEmpty {
+                                    // Cardio-style row: duration + distance summary
+                                    HStack(spacing: 12) {
+                                        if entry.activeSeconds > 0 {
+                                            Label(formatHistoryTime(entry.activeSeconds), systemImage: "clock")
+                                                .font(.caption)
                                         }
-                                        Text("Weight").font(.caption2).foregroundColor(.secondary).frame(maxWidth: .infinity, alignment: .trailing)
+                                        if let meters = entry.distanceMeters, meters > 0 {
+                                            Label(DistanceFormatter.format(meters: meters, unit: distanceUnit),
+                                                  systemImage: "ruler")
+                                                .font(.caption)
+                                        }
+                                        Spacer()
                                     }
-                                    ForEach(Array(entry.sets.groupedRuns().enumerated()), id: \.offset) { _, run in
+                                    .padding(8)
+                                    .background(Color(uiColor: .systemGray6))
+                                    .cornerRadius(6)
+                                } else {
+                                    let hasTimed = entry.sets.contains { $0.timedSeconds > 0 }
+                                    VStack(spacing: 4) {
                                         HStack {
-                                            Text(run.label).font(.caption).fontWeight(.semibold).frame(maxWidth: .infinity, alignment: .leading)
-                                            Text("\(run.set.reps)").font(.caption).frame(maxWidth: .infinity, alignment: .center)
+                                            Text("Set").font(.caption2).foregroundColor(.secondary).frame(maxWidth: .infinity, alignment: .leading)
+                                            Text("Reps").font(.caption2).foregroundColor(.secondary).frame(maxWidth: .infinity, alignment: .center)
                                             if hasTimed {
-                                                Text(run.set.timedSeconds > 0 ? formatHistoryTime(run.set.timedSeconds) : "—")
-                                                    .font(.caption).foregroundColor(.secondary).frame(width: 64, alignment: .center)
+                                                Text("Time").font(.caption2).foregroundColor(.secondary).frame(width: 64, alignment: .center)
                                             }
-                                            Text(run.set.weight == 0 ? "—" : String(format: "%.1f \(weightUnit)", run.set.weight)).font(.caption).frame(maxWidth: .infinity, alignment: .trailing)
+                                            Text("Weight").font(.caption2).foregroundColor(.secondary).frame(maxWidth: .infinity, alignment: .trailing)
+                                        }
+                                        ForEach(Array(entry.sets.groupedRuns().enumerated()), id: \.offset) { _, run in
+                                            HStack {
+                                                Text(run.label).font(.caption).fontWeight(.semibold).frame(maxWidth: .infinity, alignment: .leading)
+                                                Text("\(run.set.reps)").font(.caption).frame(maxWidth: .infinity, alignment: .center)
+                                                if hasTimed {
+                                                    Text(run.set.timedSeconds > 0 ? formatHistoryTime(run.set.timedSeconds) : "—")
+                                                        .font(.caption).foregroundColor(.secondary).frame(width: 64, alignment: .center)
+                                                }
+                                                Text(run.set.weight == 0 ? "—" : String(format: "%.1f \(weightUnit)", run.set.weight)).font(.caption).frame(maxWidth: .infinity, alignment: .trailing)
+                                            }
                                         }
                                     }
+                                    .padding(8)
+                                    .background(Color(uiColor: .systemGray6))
+                                    .cornerRadius(6)
                                 }
-                                .padding(8)
-                                .background(Color(uiColor: .systemGray6))
-                                .cornerRadius(6)
 
                                 if !entry.notes.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                                     Text("Notes: \(entry.notes)")

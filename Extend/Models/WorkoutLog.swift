@@ -100,6 +100,8 @@ public struct LoggedExercise: Identifiable, Codable, Hashable {
     public var loopID: UUID?
     /// Complex group ID — exercises sharing the same non-nil complexID were in a complex
     public var complexID: UUID?
+    /// Total distance covered for cardio-style entries (meters). nil for strength logs.
+    public var distanceMeters: Double?
 
     public init(
         id: UUID = UUID(),
@@ -111,7 +113,8 @@ public struct LoggedExercise: Identifiable, Codable, Hashable {
         usedEquipmentIDs: [UUID] = [],
         orderIndex: Int = 0,
         loopID: UUID? = nil,
-        complexID: UUID? = nil
+        complexID: UUID? = nil,
+        distanceMeters: Double? = nil
     ) {
         self.id = id
         self.exerciseID = exerciseID
@@ -123,6 +126,7 @@ public struct LoggedExercise: Identifiable, Codable, Hashable {
         self.orderIndex = orderIndex
         self.loopID = loopID
         self.complexID = complexID
+        self.distanceMeters = distanceMeters
     }
 
     public init(from decoder: Decoder) throws {
@@ -137,6 +141,7 @@ public struct LoggedExercise: Identifiable, Codable, Hashable {
         orderIndex = (try? c.decodeIfPresent(Int.self, forKey: .orderIndex)) ?? 0
         loopID = try? c.decodeIfPresent(UUID.self, forKey: .loopID)
         complexID = try? c.decodeIfPresent(UUID.self, forKey: .complexID)
+        distanceMeters = try? c.decodeIfPresent(Double.self, forKey: .distanceMeters)
     }
 }
 
@@ -223,6 +228,35 @@ public struct LoggedRest: Identifiable, Codable, Hashable {
         configuredDuration = try c.decode(Int.self, forKey: .configuredDuration)
         actualDuration = try c.decode(Int.self, forKey: .actualDuration)
         orderIndex = (try? c.decodeIfPresent(Int.self, forKey: .orderIndex)) ?? 0
+    }
+}
+
+// MARK: - Distance Formatting
+
+/// Convert meters → display value in the user's preferred unit ("mi" or "km").
+public enum DistanceFormatter {
+    /// Convert meters to the value in `unit` ("mi" or "km").
+    public static func value(meters: Double, unit: String) -> Double {
+        switch unit {
+        case "km": return meters / 1000.0
+        case "mi": return meters / 1609.344
+        default:   return meters / 1609.344
+        }
+    }
+
+    /// Convert a display value back to meters given `unit`.
+    public static func meters(from value: Double, unit: String) -> Double {
+        switch unit {
+        case "km": return value * 1000.0
+        case "mi": return value * 1609.344
+        default:   return value * 1609.344
+        }
+    }
+
+    /// Human-friendly "2.45 mi" style formatting.
+    public static func format(meters: Double, unit: String) -> String {
+        let v = value(meters: meters, unit: unit)
+        return String(format: "%.2f %@", v, unit)
     }
 }
 

@@ -51,6 +51,7 @@ private struct SettingsModuleView: View {
     @Environment(TrainingPlanState.self) var planState
 
     @AppStorage("weightUnit") private var weightUnit: String = "lbs"
+    @AppStorage("distanceUnit") private var distanceUnit: String = "mi"
     @AppStorage("appColorScheme") private var appColorScheme: String = "system"
     @AppStorage("keepScreenOnDuringSession") private var keepScreenOnDuringSession: Bool = true
 
@@ -295,6 +296,17 @@ private struct SettingsModuleView: View {
                                 Picker("", selection: $weightUnit) {
                                     Text("lbs").tag("lbs")
                                     Text("kg").tag("kg")
+                                }
+                                .pickerStyle(.segmented)
+                                .frame(width: 120)
+                            }
+
+                            HStack {
+                                Text("Distance Unit")
+                                Spacer()
+                                Picker("", selection: $distanceUnit) {
+                                    Text("mi").tag("mi")
+                                    Text("km").tag("km")
                                 }
                                 .pickerStyle(.segmented)
                                 .frame(width: 120)
@@ -1767,8 +1779,9 @@ private struct DashboardAddTileSheet: View {
             .sorted { $0.displayName.localizedCaseInsensitiveCompare($1.displayName) == .orderedAscending }
     }
 
-    // PR, 1RM, and Volume can be added multiple times (they're customizable per-tile)
-    private let multipleAllowed: Set<StatCardType> = [.personalRecord, .oneRepMax, .volumeThisWeek]
+    // PR, 1RM, Volume, and Top leaderboards can be added multiple times
+    // (they're customizable per-tile via activity/exercise filters).
+    private let multipleAllowed: Set<StatCardType> = [.personalRecord, .oneRepMax, .volumeThisWeek, .topDurations, .topDistances]
 
     private var statCardOptions: [StatCardType] {
         let used = Set(dashboardState.tiles.compactMap { $0.statCardType })
@@ -1795,6 +1808,8 @@ private struct DashboardAddTileSheet: View {
         case .oneRepMax: return "trophy.fill"
         case .todaysPlan: return "calendar.badge.checkmark"
         case .waterIntake14Days: return "drop.fill"
+        case .topDurations: return "stopwatch"
+        case .topDistances: return "ruler"
         }
     }
 
@@ -1814,6 +1829,8 @@ private struct DashboardAddTileSheet: View {
         case .oneRepMax:               return "Leaderboard of your best estimated 1-rep maxes by exercise."
         case .todaysPlan:              return "Shows today's planned workouts, exercises, and voice activities."
         case .waterIntake14Days:       return "14-day daily water intake bar chart with streak."
+        case .topDurations:            return "Top 10 longest sessions across all activities."
+        case .topDistances:            return "Top 10 longest-distance sessions across all activities."
         }
     }
 
@@ -2165,6 +2182,7 @@ private struct DashboardAddTileSheet: View {
                                 || statCard == .oneRepMax || statCard == .personalRecord
                                 || statCard == .volumeThisWeek || statCard == .favoriteDay
                                 || statCard == .todaysPlan
+                                || statCard == .topDurations || statCard == .topDistances
                             let tile = DashboardTile(
                                 title: statCard.rawValue,
                                 icon: iconForStatCard(statCard),
@@ -2295,6 +2313,10 @@ private struct DashboardEditTileSheet: View {
     @State private var volumeWorkoutName: String? = nil
     /// For Volume tiles: nil = all exercises
     @State private var volumeExerciseID: UUID? = nil
+    /// For Top Durations tile: nil = all activities
+    @State private var topDurationsExerciseIDs: [UUID]? = nil
+    /// For Top Distances tile: nil = all activities
+    @State private var topDistancesExerciseIDs: [UUID]? = nil
 
     let onSave: (DashboardTile) -> Void
 
@@ -2318,6 +2340,9 @@ private struct DashboardEditTileSheet: View {
             }
             if statCard == .oneRepMax || statCard == .personalRecord || statCard == .todaysPlan {
                 return [.medium, .large]
+            }
+            if statCard == .topDurations || statCard == .topDistances {
+                return [.large]
             }
         }
         return TileSize.allCases
@@ -2543,6 +2568,21 @@ private struct DashboardEditTileSheet: View {
                     }
                 }
 
+                // Top Durations / Top Distances: activity filter — single `if`
+                // (instead of two) so the Form's ViewBuilder stays under the
+                // 10-statement count, which SwiftUI handles most reliably.
+                if tile.statCardType == .topDurations || tile.statCardType == .topDistances {
+                    settingsActivityFilterSection(
+                        title: "Activities",
+                        footerOn: "Showing top sessions across selected activities only.",
+                        footerOff: "Showing top sessions across all activities. Select to restrict.",
+                        eligiblePredicate: anyLoggedExercisePredicate,
+                        selection: tile.statCardType == .topDurations
+                            ? $topDurationsExerciseIDs
+                            : $topDistancesExerciseIDs
+                    )
+                }
+
                 Section("Accent") {
                     Picker("Placement", selection: $accentPlacement) {
                         ForEach(AccentPlacement.allCases, id: \.self) { p in
@@ -2587,7 +2627,12 @@ private struct DashboardEditTileSheet: View {
             .onAppear {
                 title = tile.title
                 selectedIcon = tile.icon
-                selectedSize = tile.size
+                // Clamp to a permitted size — when a tile was saved with a
+                // size that's no longer valid for its type (e.g. an early
+                // Top Durations tile created at .small before the size rules
+                // included it), fall back to the first allowed option.
+                let allowed = availableSizes()
+                selectedSize = allowed.contains(tile.size) ? tile.size : (allowed.first ?? tile.size)
                 selectedBlankAction = tile.blankAction ?? .animation1
                 accentPlacement = tile.accentPlacement
                 accentColor = tile.accentColor
@@ -2597,6 +2642,8 @@ private struct DashboardEditTileSheet: View {
                 personalRecordExerciseIDs = tile.personalRecordExerciseIDs
                 volumeWorkoutName = tile.volumeWorkoutName
                 volumeExerciseID = tile.volumeExerciseID
+                topDurationsExerciseIDs = tile.topDurationsExerciseIDs
+                topDistancesExerciseIDs = tile.topDistancesExerciseIDs
             }
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
@@ -2617,6 +2664,8 @@ private struct DashboardEditTileSheet: View {
                         updatedTile.personalRecordExerciseIDs = personalRecordExerciseIDs
                         updatedTile.volumeWorkoutName = volumeWorkoutName
                         updatedTile.volumeExerciseID = volumeExerciseID
+                        updatedTile.topDurationsExerciseIDs = topDurationsExerciseIDs
+                        updatedTile.topDistancesExerciseIDs = topDistancesExerciseIDs
                         onSave(updatedTile)
                         dismiss()
                     }
@@ -2624,6 +2673,67 @@ private struct DashboardEditTileSheet: View {
                     .fontWeight(.semibold)
                 }
             }
+        }
+    }
+
+    /// Predicate: exercise has appeared in at least one logged workout. Used
+    /// by the Top Durations / Top Distances filters so both lists stay in sync
+    /// regardless of which metric (duration vs. distance) is recorded.
+    private var anyLoggedExercisePredicate: (Exercise) -> Bool {
+        let loggedIDs = Set(logState.logs.flatMap { $0.exercises }.map { $0.exerciseID })
+        return { ex in loggedIDs.contains(ex.id) }
+    }
+
+    /// Activity-filter section shared by the Top Durations / Top Distances
+    /// tiles in the Settings-side editor.
+    @ViewBuilder
+    private func settingsActivityFilterSection(
+        title: String,
+        footerOn: String,
+        footerOff: String,
+        eligiblePredicate: (Exercise) -> Bool,
+        selection: Binding<[UUID]?>
+    ) -> some View {
+        Section {
+            let eligible = exercisesState.exercises
+                .filter(eligiblePredicate)
+                .sorted { $0.name < $1.name }
+            if eligible.isEmpty {
+                Text("No eligible activities yet — complete a session first.")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            } else {
+                let selected = selection.wrappedValue ?? []
+                ForEach(eligible) { exercise in
+                    Button(action: {
+                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                        var ids = selection.wrappedValue ?? []
+                        if ids.contains(exercise.id) {
+                            ids.removeAll { $0 == exercise.id }
+                        } else {
+                            ids.append(exercise.id)
+                        }
+                        selection.wrappedValue = ids.isEmpty ? nil : ids
+                    }) {
+                        HStack {
+                            Text(exercise.name)
+                                .foregroundColor(.primary)
+                            Spacer()
+                            if selected.contains(exercise.id) {
+                                Image(systemName: "checkmark")
+                                    .foregroundColor(.accentColor)
+                            }
+                        }
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+        } header: {
+            Text(title)
+        } footer: {
+            Text(selection.wrappedValue == nil ? footerOff : footerOn)
+                .font(.caption)
         }
     }
 }

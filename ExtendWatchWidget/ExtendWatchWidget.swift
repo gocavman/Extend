@@ -620,7 +620,7 @@ struct WaterComplicationView: View {
         if entry.unit == "mL" {
             return String(format: "%.0f", entry.todayOz * 29.5735)
         }
-        return entry.todayOz >= 10 ? String(format: "%.0f", entry.todayOz) : String(format: "%.1f", entry.todayOz)
+        return entry.todayOz >= 10 ? String(format: "%.0f", entry.todayOz) : String(format: "%.0f", entry.todayOz)
     }
     private var shapeTint: Color? { complicationColor(entry.color) }
     private var textTint: Color? { complicationColor(entry.textColor) ?? shapeTint }

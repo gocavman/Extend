@@ -41,6 +41,11 @@ public struct DashboardTile: Identifiable, Hashable, Codable {
     /// Volume This Week tile: optional exercise ID filter (nil = all exercises)
     public var volumeExerciseID: UUID?
 
+    /// Top Durations tile: user-selected exercise IDs to include (nil = all activities)
+    public var topDurationsExerciseIDs: [UUID]?
+    /// Top Distances tile: user-selected exercise IDs to include (nil = all activities)
+    public var topDistancesExerciseIDs: [UUID]?
+
     public init(
         id: UUID = UUID(),
         title: String,
@@ -59,7 +64,9 @@ public struct DashboardTile: Identifiable, Hashable, Codable {
         oneRMExerciseIDs: [UUID]? = nil,
         personalRecordExerciseIDs: [UUID]? = nil,
         volumeWorkoutName: String? = nil,
-        volumeExerciseID: UUID? = nil
+        volumeExerciseID: UUID? = nil,
+        topDurationsExerciseIDs: [UUID]? = nil,
+        topDistancesExerciseIDs: [UUID]? = nil
     ) {
         self.id = id
         self.title = title
@@ -79,6 +86,8 @@ public struct DashboardTile: Identifiable, Hashable, Codable {
         self.personalRecordExerciseIDs = personalRecordExerciseIDs
         self.volumeWorkoutName = volumeWorkoutName
         self.volumeExerciseID = volumeExerciseID
+        self.topDurationsExerciseIDs = topDurationsExerciseIDs
+        self.topDistancesExerciseIDs = topDistancesExerciseIDs
     }
 
     public func hash(into hasher: inout Hasher) {
@@ -150,6 +159,8 @@ public enum StatCardType: String, Codable, CaseIterable {
     case oneRepMax = "1RM Leaderboard"
     case todaysPlan = "Today's Plan"
     case waterIntake14Days = "Water Intake (14 Days)"
+    case topDurations = "Top Durations"
+    case topDistances = "Top Distances"
 }
 
 /// Tile sizes for the dashboard grid
