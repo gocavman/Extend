@@ -700,6 +700,10 @@ public final class WorkoutLogState {
     /// Called by CloudKitSyncEngine after a remote pull updates UserDefaults.
     public func reloadFromDefaults() {
         loadLogs()
+        // A CloudKit pull can bring in logs from another device — refresh the
+        // widget/complication snapshots so today's count and plan completion
+        // markers reflect the new data on the wrist as well.
+        TrainingPlanState.shared.refreshWidgetSnapshot()
     }
 
     private func saveJournalEntries() {
@@ -769,6 +773,10 @@ public final class WorkoutLogState {
 
             if addedAny {
                 saveLogs()
+                // Newly-imported logs need to flow through to the widget so
+                // the wrist Library complication's "N done" count reflects
+                // cardio sessions pulled in from Apple Health.
+                TrainingPlanState.shared.refreshWidgetSnapshot()
             }
             hkState.lastImportDate = Date()
         } catch {

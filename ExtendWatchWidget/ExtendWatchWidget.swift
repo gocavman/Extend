@@ -515,8 +515,8 @@ struct LibraryComplicationView: View {
                     .applyTint(textTint)
                 Text("\(entry.doneToday) done")
                     .font(.system(size: 11).monospacedDigit())
-                    .foregroundStyle(.secondary)
                     .lineLimit(1).minimumScaleFactor(0.7)
+                    .applyTint(textTint)
             }
         }
     }
@@ -528,7 +528,7 @@ struct LibraryComplicationView: View {
                 .applyTint(textTint)
             Text("\(entry.doneToday) done today")
                 .font(.caption2)
-                .foregroundStyle(.secondary)
+                .applyTint(textTint)
         }
     }
 }
