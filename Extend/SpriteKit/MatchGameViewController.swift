@@ -3565,14 +3565,14 @@ class MatchGameViewController: UIViewController {
             completion()
             return
         }
-        
+
         let cellWidth = gridContainer.bounds.width / CGFloat(level.gridWidth)
         let cellHeight = gridContainer.bounds.height / CGFloat(level.gridHeight)
         // Account for grid stack offset so flames align with the actual visible grid
         let centerX = gridStackOffset.x + CGFloat(column) * cellWidth + cellWidth / 2
         let arrowCenterY = gridStackOffset.y + CGFloat(arrowRow) * cellHeight + cellHeight / 2
         let beamWidth: CGFloat = cellWidth * 0.6
-        
+
         // Create a glowing beam that expands upward and downward from the arrow
         let beamUp = UIView()
         beamUp.backgroundColor = UIColor.orange
@@ -3581,7 +3581,7 @@ class MatchGameViewController: UIViewController {
         // Start as zero-height at arrow center
         beamUp.frame = CGRect(x: centerX - beamWidth / 2, y: arrowCenterY, width: beamWidth, height: 0)
         gridContainer.addSubview(beamUp)
-        
+
         // Add inner glow
         let glowUp = UIView()
         glowUp.backgroundColor = UIColor.yellow.withAlphaComponent(0.7)
@@ -3589,24 +3589,51 @@ class MatchGameViewController: UIViewController {
         glowUp.frame = CGRect(x: (beamWidth - beamWidth * 0.3) / 2, y: 0, width: beamWidth * 0.3, height: 0)
         glowUp.autoresizingMask = [.flexibleWidth, .flexibleHeight]
         beamUp.addSubview(glowUp)
-        
+
         let beamDown = UIView()
         beamDown.backgroundColor = UIColor.orange
         beamDown.layer.cornerRadius = beamWidth / 2
         beamDown.alpha = 0.9
         beamDown.frame = CGRect(x: centerX - beamWidth / 2, y: arrowCenterY, width: beamWidth, height: 0)
         gridContainer.addSubview(beamDown)
-        
+
         let glowDown = UIView()
         glowDown.backgroundColor = UIColor.yellow.withAlphaComponent(0.7)
         glowDown.layer.cornerRadius = beamWidth * 0.3 / 2
         glowDown.frame = CGRect(x: (beamWidth - beamWidth * 0.3) / 2, y: 0, width: beamWidth * 0.3, height: 0)
         glowDown.autoresizingMask = [.flexibleWidth, .flexibleHeight]
         beamDown.addSubview(glowDown)
-        
+
         let topEdge: CGFloat = -20
         let bottomEdge = gridContainer.bounds.height + 20
-        
+
+        // --- Lightning enhancement ---
+        // Jagged white-cyan bolt that races along the same path as the beam, plus
+        // a spark burst at every cell the beam touches.  Makes the arrow read as
+        // electric, matching the energy of bomb / rocket / ball powerups.
+        let jagAmount = max(cellWidth * 0.18, 3)
+        let lightningUp = buildLightningBolt(
+            from: CGPoint(x: centerX, y: arrowCenterY),
+            to:   CGPoint(x: centerX, y: topEdge),
+            jagSegmentLength: 7, jagAmount: jagAmount, lineWidth: 2.5, color: .cyan
+        )
+        let lightningDown = buildLightningBolt(
+            from: CGPoint(x: centerX, y: arrowCenterY),
+            to:   CGPoint(x: centerX, y: bottomEdge),
+            jagSegmentLength: 7, jagAmount: jagAmount, lineWidth: 2.5, color: .cyan
+        )
+        animateLineClearLightning(bolts: [lightningUp, lightningDown], drawDuration: 0.25)
+
+        emitLineClearSparks(
+            alongAxisVertical: true,
+            fixed: centerX,
+            range: rows,
+            cellWidth: cellWidth,
+            cellHeight: cellHeight,
+            origin: arrowCenterY,
+            travelDuration: 0.25
+        )
+
         var animationsComplete = 0
         let checkDone = {
             animationsComplete += 1
@@ -3614,7 +3641,7 @@ class MatchGameViewController: UIViewController {
                 completion()
             }
         }
-        
+
         // Expand beams outward
         UIView.animate(withDuration: 0.25, delay: 0, options: .curveEaseOut, animations: {
             // Beam going up: top edge to arrow center
@@ -3629,7 +3656,7 @@ class MatchGameViewController: UIViewController {
                 checkDone()
             })
         })
-        
+
         UIView.animate(withDuration: 0.25, delay: 0, options: .curveEaseOut, animations: {
             // Beam going down: arrow center to bottom edge
             beamDown.frame = CGRect(x: centerX - beamWidth / 2, y: arrowCenterY, width: beamWidth, height: bottomEdge - arrowCenterY)
@@ -3641,6 +3668,127 @@ class MatchGameViewController: UIViewController {
                 beamDown.removeFromSuperview()
                 checkDone()
             })
+        })
+    }
+
+    /// Strokes a set of pre-built lightning bolts at the same pace as the
+    /// arrow's flame beam, then fades them out.  Used by row / column clears.
+    private func animateLineClearLightning(bolts: [CAShapeLayer], drawDuration: TimeInterval) {
+        for bolt in bolts {
+            gridContainer.layer.addSublayer(bolt)
+            bolt.strokeEnd = 0
+            let grow = CABasicAnimation(keyPath: "strokeEnd")
+            grow.fromValue = 0
+            grow.toValue = 1
+            grow.duration = drawDuration
+            grow.timingFunction = CAMediaTimingFunction(name: .easeOut)
+            grow.fillMode = .forwards
+            grow.isRemovedOnCompletion = false
+            bolt.add(grow, forKey: "drawLine")
+        }
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + drawDuration) {
+            for bolt in bolts {
+                let fade = CABasicAnimation(keyPath: "opacity")
+                fade.fromValue = 1.0
+                fade.toValue = 0.0
+                fade.duration = 0.2
+                fade.fillMode = .forwards
+                fade.isRemovedOnCompletion = false
+                bolt.add(fade, forKey: "fadeLine")
+            }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.22) {
+                for bolt in bolts { bolt.removeFromSuperlayer() }
+            }
+        }
+    }
+
+    /// Emits a quick spark burst + white flash at every cell along an arrow's
+    /// row or column, staggered so they pop as the beam reaches each cell.
+    /// `fixed` is the column-x for vertical lines or the row-y for horizontal lines.
+    /// `origin` is the arrow's center along the travel axis.
+    private func emitLineClearSparks(alongAxisVertical: Bool,
+                                     fixed: CGFloat,
+                                     range: Range<Int>,
+                                     cellWidth: CGFloat,
+                                     cellHeight: CGFloat,
+                                     origin: CGFloat,
+                                     travelDuration: TimeInterval) {
+        let cellSize = min(cellWidth, cellHeight)
+        var maxDistance: CGFloat = 1
+        var cellCenters: [CGPoint] = []
+        for idx in range {
+            let center: CGPoint
+            if alongAxisVertical {
+                let y = gridStackOffset.y + CGFloat(idx) * cellHeight + cellHeight / 2
+                center = CGPoint(x: fixed, y: y)
+                maxDistance = max(maxDistance, abs(y - origin))
+            } else {
+                let x = gridStackOffset.x + CGFloat(idx) * cellWidth + cellWidth / 2
+                center = CGPoint(x: x, y: fixed)
+                maxDistance = max(maxDistance, abs(x - origin))
+            }
+            cellCenters.append(center)
+        }
+
+        for center in cellCenters {
+            let distance = alongAxisVertical ? abs(center.y - origin) : abs(center.x - origin)
+            let delay = TimeInterval(distance / maxDistance) * travelDuration
+            DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [weak self] in
+                self?.emitSparkBurst(at: center, cellSize: cellSize)
+            }
+        }
+    }
+
+    /// Small radial spark burst plus a quick white flash — the per-cell impact
+    /// punctuation used by line clears.
+    private func emitSparkBurst(at point: CGPoint, cellSize: CGFloat) {
+        let sparkCount = 6
+        let palette: [UIColor] = [
+            .white,
+            .cyan,
+            UIColor(red: 1, green: 0.95, blue: 0.6, alpha: 1),
+            UIColor(red: 0.7, green: 0.95, blue: 1, alpha: 1)
+        ]
+        for i in 0..<sparkCount {
+            let angle = (CGFloat.pi * 2 / CGFloat(sparkCount)) * CGFloat(i) + CGFloat.random(in: -0.35...0.35)
+            let distance = CGFloat.random(in: cellSize * 0.30 ... cellSize * 0.60)
+            let spark = UIView()
+            let sz = CGFloat.random(in: 3...5)
+            spark.frame = CGRect(x: point.x - sz / 2, y: point.y - sz / 2, width: sz, height: sz)
+            spark.layer.cornerRadius = sz / 2
+            spark.backgroundColor = palette[i % palette.count]
+            spark.layer.shadowColor = UIColor.cyan.cgColor
+            spark.layer.shadowRadius = 3
+            spark.layer.shadowOpacity = 0.8
+            spark.layer.shadowOffset = .zero
+            spark.alpha = 1
+            gridContainer.addSubview(spark)
+
+            let dx = cos(angle) * distance
+            let dy = sin(angle) * distance
+            UIView.animate(withDuration: 0.32, delay: 0, options: .curveEaseOut, animations: {
+                spark.center = CGPoint(x: point.x + dx, y: point.y + dy)
+                spark.transform = CGAffineTransform(scaleX: 0.3, y: 0.3)
+                spark.alpha = 0
+            }, completion: { _ in
+                spark.removeFromSuperview()
+            })
+        }
+
+        // Brief flash centered on the cell
+        let flash = UIView()
+        let flashSize = cellSize * 0.55
+        flash.frame = CGRect(x: point.x - flashSize / 2, y: point.y - flashSize / 2,
+                             width: flashSize, height: flashSize)
+        flash.layer.cornerRadius = flashSize / 2
+        flash.backgroundColor = UIColor.white.withAlphaComponent(0.75)
+        gridContainer.addSubview(flash)
+        UIView.animate(withDuration: 0.20, animations: {
+            flash.transform = CGAffineTransform(scaleX: 1.9, y: 1.9)
+            flash.alpha = 0
+        }, completion: { _ in
+            flash.removeFromSuperview()
         })
     }
     
@@ -3725,7 +3873,7 @@ class MatchGameViewController: UIViewController {
             completion()
             return
         }
-        
+
         let cellWidth = gridContainer.bounds.width / CGFloat(level.gridWidth)
         let cellHeight = gridContainer.bounds.height / CGFloat(level.gridHeight)
         // Account for grid stack offset so flames align with the actual visible grid
@@ -3737,7 +3885,7 @@ class MatchGameViewController: UIViewController {
             arrowCenterX = gridStackOffset.x + gridContainer.bounds.width / 2
         }
         let beamHeight: CGFloat = cellHeight * 0.6
-        
+
         // Create beams shooting left and right
         let beamLeft = UIView()
         beamLeft.backgroundColor = UIColor.orange
@@ -3745,31 +3893,55 @@ class MatchGameViewController: UIViewController {
         beamLeft.alpha = 0.9
         beamLeft.frame = CGRect(x: arrowCenterX, y: centerY - beamHeight / 2, width: 0, height: beamHeight)
         gridContainer.addSubview(beamLeft)
-        
+
         let glowLeft = UIView()
         glowLeft.backgroundColor = UIColor.yellow.withAlphaComponent(0.7)
         glowLeft.layer.cornerRadius = beamHeight * 0.3 / 2
         glowLeft.frame = CGRect(x: 0, y: (beamHeight - beamHeight * 0.3) / 2, width: 0, height: beamHeight * 0.3)
         glowLeft.autoresizingMask = [.flexibleWidth, .flexibleHeight]
         beamLeft.addSubview(glowLeft)
-        
+
         let beamRight = UIView()
         beamRight.backgroundColor = UIColor.orange
         beamRight.layer.cornerRadius = beamHeight / 2
         beamRight.alpha = 0.9
         beamRight.frame = CGRect(x: arrowCenterX, y: centerY - beamHeight / 2, width: 0, height: beamHeight)
         gridContainer.addSubview(beamRight)
-        
+
         let glowRight = UIView()
         glowRight.backgroundColor = UIColor.yellow.withAlphaComponent(0.7)
         glowRight.layer.cornerRadius = beamHeight * 0.3 / 2
         glowRight.frame = CGRect(x: 0, y: (beamHeight - beamHeight * 0.3) / 2, width: 0, height: beamHeight * 0.3)
         glowRight.autoresizingMask = [.flexibleWidth, .flexibleHeight]
         beamRight.addSubview(glowRight)
-        
+
         let leftEdge: CGFloat = -20
         let rightEdge = gridContainer.bounds.width + 20
-        
+
+        // --- Lightning enhancement: jagged bolts left + right, sparks at each cell ---
+        let jagAmount = max(cellHeight * 0.18, 3)
+        let lightningLeft = buildLightningBolt(
+            from: CGPoint(x: arrowCenterX, y: centerY),
+            to:   CGPoint(x: leftEdge,    y: centerY),
+            jagSegmentLength: 7, jagAmount: jagAmount, lineWidth: 2.5, color: .cyan
+        )
+        let lightningRight = buildLightningBolt(
+            from: CGPoint(x: arrowCenterX, y: centerY),
+            to:   CGPoint(x: rightEdge,   y: centerY),
+            jagSegmentLength: 7, jagAmount: jagAmount, lineWidth: 2.5, color: .cyan
+        )
+        animateLineClearLightning(bolts: [lightningLeft, lightningRight], drawDuration: 0.25)
+
+        emitLineClearSparks(
+            alongAxisVertical: false,
+            fixed: centerY,
+            range: columns,
+            cellWidth: cellWidth,
+            cellHeight: cellHeight,
+            origin: arrowCenterX,
+            travelDuration: 0.25
+        )
+
         var animationsComplete = 0
         let checkDone = {
             animationsComplete += 1
@@ -3777,7 +3949,7 @@ class MatchGameViewController: UIViewController {
                 completion()
             }
         }
-        
+
         // Expand beams outward
         UIView.animate(withDuration: 0.25, delay: 0, options: .curveEaseOut, animations: {
             beamLeft.frame = CGRect(x: leftEdge, y: centerY - beamHeight / 2, width: arrowCenterX - leftEdge, height: beamHeight)
@@ -3789,7 +3961,7 @@ class MatchGameViewController: UIViewController {
                 checkDone()
             })
         })
-        
+
         UIView.animate(withDuration: 0.25, delay: 0, options: .curveEaseOut, animations: {
             beamRight.frame = CGRect(x: arrowCenterX, y: centerY - beamHeight / 2, width: rightEdge - arrowCenterX, height: beamHeight)
         }, completion: { _ in
@@ -5198,14 +5370,13 @@ class MatchGameViewController: UIViewController {
             isAnimating = false
             return
         }
-        
-        // First, check if there are any valid moves available
-        if !hasValidMoves() {
-            print("🔄 No valid moves available - triggering shuffle")
-            shuffleGrid()
-            return
-        }
-        
+
+        // NOTE: We deliberately do NOT check hasValidMoves() here.  Doing it before
+        // running match detection meant a swap that just formed a 2x2 (bomb) — but
+        // no further 3-in-a-row swap — would shuffle before the bomb spawn could
+        // be processed.  The deadlock check now runs in evaluateBoardForDeadlock(),
+        // invoked once the board has fully settled in the "no match found" branch.
+
         // Check if a power-up was involved in the swap - if so, activate it immediately
         if let ((r1, c1), (r2, c2)) = lastSwappedPositions {
             // Bounds check - grid may have been resized by level transition
@@ -5888,7 +6059,7 @@ class MatchGameViewController: UIViewController {
                 print("⚠️ Invalid move - reverting swap from (\(r1),\(c1)) and (\(r2),\(c2))")
                 lastSwappedPositions = nil
                 swappedButtons = nil
-                
+
                 // Animate revert - pieces slide back with 0.5 second animation
                 UIView.animate(withDuration: 0.5, delay: 0, options: .curveEaseInOut, animations: {
                     button1.transform = .identity
@@ -5898,26 +6069,88 @@ class MatchGameViewController: UIViewController {
                     let temp = self.gameGrid[r1][c1]
                     self.gameGrid[r1][c1] = self.gameGrid[r2][c2]
                     self.gameGrid[r2][c2] = temp
-                    
+
                     // Update positions
                     self.gameGrid[r1][c1]?.row = r1
                     self.gameGrid[r1][c1]?.col = c1
                     self.gameGrid[r2][c2]?.row = r2
                     self.gameGrid[r2][c2]?.col = c2
-                    
+
                     // No move refund needed - we never decremented for invalid moves
                     self.currentSwapInvolvesAPowerup = false
-                    
+
                     self.updateGridDisplay()
                     self.updateUI()
                     self.isAnimating = false
                     self.checkGameOver()  // Check for game over after revert completes
+                    self.evaluateBoardForDeadlock()
                 })
             } else {
                 isAnimating = false
                 // Check for game over after invalid move revert completes
                 checkGameOver()
+                evaluateBoardForDeadlock()
             }
+        }
+    }
+
+    /// Runs once the board has settled with no pending matches.  If the player
+    /// has no possible swap that creates a match (3+, 2x2, L, T) we either:
+    ///   • shake any existing powerups as a hint (the player can tap them), or
+    ///   • shuffle the grid when there are no powerups to fall back on.
+    private func evaluateBoardForDeadlock() {
+        guard currentLevel != nil else { return }
+        guard !levelCompletionTriggered else { return }
+        guard !isAnimating else { return }
+        guard lastSwappedPositions == nil else { return }
+
+        if hasValidMoves() { return }
+
+        let powerupPositions = findExistingPowerupPositions()
+        if !powerupPositions.isEmpty {
+            print("💡 No valid swap moves but powerups present - shaking as hint")
+            shakePowerupHints(positions: powerupPositions)
+            return
+        }
+
+        print("🔄 No valid moves available - triggering shuffle")
+        shuffleGrid()
+    }
+
+    /// Returns the (row, col) positions of every powerup tile currently on the board.
+    private func findExistingPowerupPositions() -> [(row: Int, col: Int)] {
+        guard let level = currentLevel else { return [] }
+        var positions: [(row: Int, col: Int)] = []
+        for row in 0..<level.gridHeight {
+            for col in 0..<level.gridWidth {
+                guard gridShapeMap[row][col] else { continue }
+                if let piece = gameGrid[row][col], piece.type != .normal {
+                    positions.append((row: row, col: col))
+                }
+            }
+        }
+        return positions
+    }
+
+    /// Pronounced shake + pulse used to draw attention to existing powerups when
+    /// the board has no other valid moves.
+    private func shakePowerupHints(positions: [(row: Int, col: Int)]) {
+        for (row, col) in positions {
+            guard let button = gridButtons[row][col] else { continue }
+
+            // Stronger horizontal shake than the standard tile shake
+            let shake = CAKeyframeAnimation(keyPath: "transform.translation.x")
+            shake.timingFunction = CAMediaTimingFunction(name: .linear)
+            shake.duration = 0.55
+            shake.values = [-7, 7, -6, 6, -5, 5, -3, 3, 0]
+            button.layer.add(shake, forKey: "powerupHintShake")
+
+            // Brief scale pop so the icon really catches the eye
+            let pop = CAKeyframeAnimation(keyPath: "transform.scale")
+            pop.values = [1.0, 1.18, 0.95, 1.1, 1.0]
+            pop.keyTimes = [0, 0.25, 0.5, 0.75, 1.0]
+            pop.duration = 0.55
+            button.layer.add(pop, forKey: "powerupHintPop")
         }
     }
     
@@ -6515,36 +6748,54 @@ class MatchGameViewController: UIViewController {
         let temp = gameGrid[r1][c1]
         gameGrid[r1][c1] = gameGrid[r2][c2]
         gameGrid[r2][c2] = temp
-        
-        // Check for matches
-        var hasMatch = false
-        
-        // Check horizontal matches around r1, c1
-        if hasMatchesAtPosition(r1, c1) {
-            hasMatch = true
-        }
-        
-        // Check vertical matches around r1, c1
-        if !hasMatch && hasMatchesAtPosition(r1, c1) {
-            hasMatch = true
-        }
-        
-        // Check horizontal matches around r2, c2
-        if !hasMatch && hasMatchesAtPosition(r2, c2) {
-            hasMatch = true
-        }
-        
-        // Check vertical matches around r2, c2
-        if !hasMatch && hasMatchesAtPosition(r2, c2) {
-            hasMatch = true
-        }
-        
+
+        // hasMatchesAtPosition covers 3+ horizontal/vertical at either swapped tile,
+        // which implicitly covers L-shape and T-shape patterns (they all require a
+        // 3-in-a-row).  has2x2AtPosition adds the bomb-creating 2x2 case that the
+        // 3-in-a-row scan misses.
+        let hasMatch =
+            hasMatchesAtPosition(r1, c1) ||
+            hasMatchesAtPosition(r2, c2) ||
+            has2x2AtPosition(r1, c1) ||
+            has2x2AtPosition(r2, c2)
+
         // Swap back
         let temp2 = gameGrid[r1][c1]
         gameGrid[r1][c1] = gameGrid[r2][c2]
         gameGrid[r2][c2] = temp2
-        
+
         return hasMatch
+    }
+
+    /// Returns true if the tile at (row, col) is part of any 2x2 of matching normal tiles.
+    private func has2x2AtPosition(_ row: Int, _ col: Int) -> Bool {
+        guard let level = currentLevel else { return false }
+        guard let piece = gameGrid[row][col], piece.type == .normal else { return false }
+
+        for dr in 0...1 {
+            for dc in 0...1 {
+                let topRow = row - dr
+                let leftCol = col - dc
+                guard topRow >= 0 && topRow + 1 < level.gridHeight &&
+                      leftCol >= 0 && leftCol + 1 < level.gridWidth else { continue }
+                guard gridShapeMap[topRow][leftCol] && gridShapeMap[topRow][leftCol + 1] &&
+                      gridShapeMap[topRow + 1][leftCol] && gridShapeMap[topRow + 1][leftCol + 1] else { continue }
+
+                var allMatch = true
+                for r in topRow...topRow + 1 {
+                    for c in leftCol...leftCol + 1 {
+                        if r == row && c == col { continue }
+                        guard let p = gameGrid[r][c], p.type == .normal, piece.matches(p) else {
+                            allMatch = false
+                            break
+                        }
+                    }
+                    if !allMatch { break }
+                }
+                if allMatch { return true }
+            }
+        }
+        return false
     }
     
     private func hasMatchesAtPosition(_ row: Int, _ col: Int) -> Bool {

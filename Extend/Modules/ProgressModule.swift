@@ -433,10 +433,14 @@ private struct ProgressModuleView: View {
                 // Pull-to-refresh forces an immediate HealthKit pull so users
                 // can recover when the live observer query lags (Apple
                 // Watch-recorded walks can sit in HK for a few minutes before
-                // the observer fires). Also re-pulls water for symmetry.
+                // the observer fires). Also re-pulls water for symmetry, and
+                // re-pushes the plan / library / log-count snapshots to the
+                // watch so this gesture covers both "pull new data in" and
+                // "shove latest state out to the wrist".
                 UIImpactFeedbackGenerator(style: .light).impactOccurred()
                 await logState.importFromHealthKit()
                 await waterState.syncFromHealthKit()
+                planState.refreshWidgetSnapshot()
             }
         }
         .fullScreenCover(item: $selectedLog) { log in

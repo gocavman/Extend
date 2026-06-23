@@ -93,6 +93,15 @@ struct PlanModuleView: View {
             }
             .padding(16)
         }
+        .refreshable {
+            // Force-push today's plan / library / log-count to the watch.
+            // WCSession's transferUserInfo can sit in the system queue and
+            // complications honor a strict refresh budget, so a freshly
+            // added plan can lag on the wrist by minutes. This rebuilds
+            // the widget snapshot and re-sends every payload immediately.
+            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+            planState.refreshWidgetSnapshot()
+        }
     }
 
     private func planRow(plan: TrainingPlan) -> some View {
@@ -296,6 +305,10 @@ private struct WeekView: View {
             }
             .padding(16)
         }
+        .refreshable {
+            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+            planState.refreshWidgetSnapshot()
+        }
         .fullScreenCover(item: $editingDay) { day in
             DayEditorSheet(
                 day: day,
@@ -491,6 +504,10 @@ private struct FullProgramView: View {
                 }
             }
             .padding(16)
+        }
+        .refreshable {
+            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+            planState.refreshWidgetSnapshot()
         }
         .fullScreenCover(item: $editingDay) { day in
             DayEditorSheet(
