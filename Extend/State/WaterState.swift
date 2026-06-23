@@ -241,6 +241,14 @@ public final class WaterState {
 
     public func resetAll() {
         logs = []
+        // Match fresh-install defaults: HK sync off, auth flag cleared so the
+        // next opt-in re-prompts. Without this, "Reset App" left the toggles
+        // wherever the user last had them, surprising users who expected a
+        // clean slate.
+        exportToHealthKit = false
+        importFromHealthKit = false
+        lastHealthKitSync = nil
+        defaults.removeObject(forKey: authRequestedKey)
         saveLogs()
         persistWidgetData()
     }

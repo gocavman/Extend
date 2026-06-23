@@ -2926,6 +2926,7 @@ class MatchGameViewController: UIViewController {
         } else if type1 == .bomb {
             let impact = UIImpactFeedbackGenerator(style: .medium)
             impact.impactOccurred()
+            var bombArea: Set<String> = []
             for dr in -1...1 {
                 for dc in -1...1 {
                     let nr = r2 + dr
@@ -2933,6 +2934,7 @@ class MatchGameViewController: UIViewController {
                     if nr >= 0 && nr < level.gridHeight && nc >= 0 && nc < level.gridWidth &&
                        gridShapeMap[nr][nc] && gameGrid[nr][nc] != nil {
                         clearedTiles.insert("\(nr),\(nc)")
+                        bombArea.insert("\(nr),\(nc)")
                         // Don't add the bomb itself to cascading (it's at r2,c2)
                         if !(nr == r2 && nc == c2), let piece = gameGrid[nr][nc], piece.type != .normal {
                             cascadingPowerups.append((row: nr, col: nc, type: piece.type))
@@ -2940,6 +2942,11 @@ class MatchGameViewController: UIViewController {
                     }
                 }
             }
+            // Match the tap-activated bomb's visual punch: lightning ring around
+            // the blast zone + scale-pop on each tile. Data clearing still flows
+            // through finalizePowerupCombo below — these are visual-only.
+            drawLightningRingAroundTiles(bombArea)
+            animateBombTilePop(tiles: bombArea)
         } else if type1 == .flame {
             let impact = UIImpactFeedbackGenerator(style: .heavy)
             impact.impactOccurred()
@@ -3034,6 +3041,7 @@ class MatchGameViewController: UIViewController {
         } else if type2 == .bomb {
             let impact = UIImpactFeedbackGenerator(style: .medium)
             impact.impactOccurred()
+            var bombArea: Set<String> = []
             for dr in -1...1 {
                 for dc in -1...1 {
                     let nr = r1 + dr
@@ -3041,6 +3049,7 @@ class MatchGameViewController: UIViewController {
                     if nr >= 0 && nr < level.gridHeight && nc >= 0 && nc < level.gridWidth &&
                        gridShapeMap[nr][nc] && gameGrid[nr][nc] != nil {
                         clearedTiles.insert("\(nr),\(nc)")
+                        bombArea.insert("\(nr),\(nc)")
                         // Don't add the bomb itself to cascading (it's at r1,c1)
                         if !(nr == r1 && nc == c1), let piece = gameGrid[nr][nc], piece.type != .normal {
                             cascadingPowerups.append((row: nr, col: nc, type: piece.type))
@@ -3048,6 +3057,9 @@ class MatchGameViewController: UIViewController {
                     }
                 }
             }
+            // See type1 branch — same visual treatment for the mirrored case.
+            drawLightningRingAroundTiles(bombArea)
+            animateBombTilePop(tiles: bombArea)
         } else if type2 == .flame {
             let impact = UIImpactFeedbackGenerator(style: .heavy)
             impact.impactOccurred()
@@ -3832,8 +3844,14 @@ class MatchGameViewController: UIViewController {
             }
         }
         
-        // Shoot a flame line at each target tile
+        // Shoot a flame line at each target tile + zap the tile with a
+        // lightning ring so the player can see exactly which cells are about
+        // to be removed (otherwise the flame burst alone can get lost when
+        // many tiles light up simultaneously).
         let flameSize = max(16, min(colWidth, rowHeight) * 0.55)
+        for posString in targetTiles {
+            drawLightningRingAroundTiles([posString], color: .systemOrange)
+        }
         for (targetX, targetY) in targetPositions {
             let flameLabel = UILabel()
             flameLabel.text = "🔥"
@@ -4854,6 +4872,36 @@ class MatchGameViewController: UIViewController {
             DispatchQueue.main.asyncAfter(deadline: .now() + fadeDuration) {
                 bolt.removeFromSuperlayer()
             }
+        }
+    }
+
+    /// Visual-only scale-pop on the given tiles — mirrors what
+    /// `animateBombExplosion` does for tap-activated bombs. Used by the swap
+    /// path so a swapped bomb gets the same kinetic feedback as a tapped one;
+    /// data clearing is handled separately by `finalizePowerupCombo`.
+    private func animateBombTilePop(tiles: Set<String>) {
+        for key in tiles {
+            let parts = key.split(separator: ",")
+            guard parts.count == 2,
+                  let row = Int(parts[0]),
+                  let col = Int(parts[1]),
+                  row >= 0, row < gridButtons.count,
+                  col >= 0, col < gridButtons[row].count,
+                  let button = gridButtons[row][col] else { continue }
+            let scale = CAKeyframeAnimation(keyPath: "transform.scale")
+            scale.values = [1.0, 1.3, 0.85]
+            scale.keyTimes = [0, 0.45, 1.0]
+            scale.timingFunctions = [
+                CAMediaTimingFunction(name: .easeOut),
+                CAMediaTimingFunction(name: .easeIn)
+            ]
+            scale.duration = 0.27
+            // Don't latch the shrink — finalizePowerupCombo's poof-and-clear
+            // pass owns the final cleanup, and any lingering scale would clash
+            // with the gravity transform that drops fresh tiles in.
+            scale.fillMode = .forwards
+            scale.isRemovedOnCompletion = true
+            button.layer.add(scale, forKey: "bombSwapPop")
         }
     }
 

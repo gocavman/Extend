@@ -359,6 +359,12 @@ struct PlanComplicationView: View {
     }
     private var shapeTint: Color? { complicationColor(entry.color) }
     private var textTint: Color? { complicationColor(entry.textColor) ?? shapeTint }
+    /// Show a checkmark under the label on rest days and once every planned
+    /// activity for the day is logged. Both states represent "done for the
+    /// day" and should read identically at a glance.
+    private var showCheckmark: Bool {
+        entry.snapshot.isRestDay || (totalCount > 0 && completedCount >= totalCount)
+    }
 
     var body: some View {
         Group {
@@ -382,10 +388,19 @@ struct PlanComplicationView: View {
                     .applyTint(shapeTint)
             }
 
-            Text(entry.snapshot.isRestDay ? "Rest" : "\(completedCount)/\(totalCount)")
-                .font(.system(size: 17, weight: .bold).monospacedDigit())
-                .lineLimit(1).minimumScaleFactor(0.6)
-                .applyTint(textTint)
+            VStack(spacing: 0) {
+                // Shrink the label a touch when the checkmark is shown so the
+                // stacked pair doesn't crowd the gauge ring.
+                Text(entry.snapshot.isRestDay ? "Rest" : "\(completedCount)/\(totalCount)")
+                    .font(.system(size: showCheckmark ? 15 : 17, weight: .bold).monospacedDigit())
+                    .lineLimit(1).minimumScaleFactor(0.6)
+                    .applyTint(textTint)
+                if showCheckmark {
+                    Image(systemName: "checkmark")
+                        .font(.system(size: 10, weight: .bold))
+                        .applyTint(textTint)
+                }
+            }
         }
     }
 
@@ -823,8 +838,18 @@ struct StepsComplicationView: View {
     private var shapeTint: Color? { complicationColor(entry.color) }
     private var textTint: Color? { complicationColor(entry.textColor) ?? shapeTint }
 
-    private func fmt(_ v: Double) -> String { v >= 1000 ? String(format: "%.1fk", v / 1000) : String(Int(v)) }
-    private func fmtDist(_ v: Double) -> String { String(format: "%.1f", v) }
+    // Truncate (don't round) to one decimal so a value like 4.88 displays
+    // as "4.8" rather than "4.9" — otherwise the complication can briefly
+    // imply the goal was hit a step or two before it actually was.
+    private func fmt(_ v: Double) -> String {
+        if v >= 1000 {
+            return String(format: "%.1fk", floor(v / 100) / 10)
+        }
+        return String(Int(v))
+    }
+    private func fmtDist(_ v: Double) -> String {
+        String(format: "%.1f", floor(v * 10) / 10)
+    }
 
     var body: some View {
         Group {

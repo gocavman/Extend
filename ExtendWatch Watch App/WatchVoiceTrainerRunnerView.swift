@@ -267,7 +267,12 @@ struct WatchVoiceTrainerRunnerView: View {
                 if config.workoutStartWarning > 0 {
                     phase = .preStart
                     roundEndDate = Date().addingTimeInterval(TimeInterval(config.workoutStartWarning))
-                    lastSpokenCountdown = -1
+                    // Speak the initial value here — `.onChange(of:)` only
+                    // fires on subsequent changes, so without this the first
+                    // number heard would be one less than the configured
+                    // warning (e.g. "9" instead of "10").
+                    lastSpokenCountdown = config.workoutStartWarning
+                    engine.speakNow("\(config.workoutStartWarning)")
                 } else {
                     beginRound(1)
                 }
@@ -371,6 +376,11 @@ private final class VoicePlaybackEngine: NSObject {
     private var roundActive: Bool = false
     private var pendingNextLineWork: DispatchWorkItem? = nil
     private var isPaused: Bool = false
+    /// True between the round-start announcement and the first real line.
+    /// The delegate uses this to schedule the first line immediately after
+    /// the announcement instead of waiting `delayBetweenLines` (that delay
+    /// is for the gap *between* lines, not announcement→first-line).
+    private var firstLinePending: Bool = false
     private var onLineChange: ((String) -> Void)? = nil
     private var hasPrimed: Bool = false
     private var isPrimed: Bool = false
@@ -438,6 +448,7 @@ private final class VoicePlaybackEngine: NSObject {
         self.roundActive = true
         self.isPaused = false
         self.onLineChange = onLineChange
+        self.firstLinePending = true
         // Interrupt any in-flight speech (typically the last countdown
         // number still in the queue) so the round announcement plays
         // immediately rather than waiting for the queue to drain. The
@@ -541,8 +552,16 @@ extension VoicePlaybackEngine: AVSpeechSynthesizerDelegate {
                 return
             }
             guard self.roundActive, !self.isPaused else { return }
-            // Schedule the next line after the configured inter-line delay.
-            self.scheduleNextLine(after: max(0, self.delayBetweenLines))
+            // The first line after the round announcement plays with no
+            // delay; subsequent lines wait `delayBetweenLines` seconds.
+            let delay: Int
+            if self.firstLinePending {
+                self.firstLinePending = false
+                delay = 0
+            } else {
+                delay = max(0, self.delayBetweenLines)
+            }
+            self.scheduleNextLine(after: delay)
         }
     }
 }

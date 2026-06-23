@@ -134,26 +134,37 @@ struct WatchWorkoutRunnerView: View {
         let s = Int(now.timeIntervalSince(start))
         let m = (s % 3600) / 60
         let sec = s % 60
-        return HStack(spacing: 6) {
-            // The system X close button overlays the top-left of the
-            // fullScreenCover — pad enough to clear it so the duration
-            // label isn't half-covered.
-            Text(String(format: "%02d:%02d", m, sec))
-                .font(.system(size: 12, weight: .semibold).monospacedDigit())
-                .foregroundColor(.secondary)
-                .padding(.leading, 28)
-            Spacer()
-            if manager.heartRate > 0 {
-                Label("\(Int(manager.heartRate))", systemImage: "heart.fill")
-                    .font(.system(size: 11, weight: .semibold))
-                    .foregroundColor(.red)
-                    .labelStyle(.titleAndIcon)
+        // The system close button overlays the top-left of the
+        // fullScreenCover, so reserve a fixed gutter on the leading side
+        // (mirrored on the trailing side for visual balance) and center the
+        // duration in what's left. Heart-rate / calorie labels live on a
+        // second row beneath so nothing crowds the duration.
+        return VStack(spacing: 2) {
+            HStack(spacing: 0) {
+                Color.clear.frame(width: 44, height: 1)
+                Spacer(minLength: 0)
+                Text(String(format: "%02d:%02d", m, sec))
+                    .font(.system(size: 13, weight: .semibold).monospacedDigit())
+                    .foregroundColor(.secondary)
+                    .lineLimit(1)
+                Spacer(minLength: 0)
+                Color.clear.frame(width: 44, height: 1)
             }
-            if manager.activeEnergyKcal > 0 {
-                Label("\(Int(manager.activeEnergyKcal))", systemImage: "flame.fill")
-                    .font(.system(size: 11, weight: .semibold))
-                    .foregroundColor(.orange)
-                    .labelStyle(.titleAndIcon)
+            if manager.heartRate > 0 || manager.activeEnergyKcal > 0 {
+                HStack(spacing: 10) {
+                    if manager.heartRate > 0 {
+                        Label("\(Int(manager.heartRate))", systemImage: "heart.fill")
+                            .font(.system(size: 11, weight: .semibold))
+                            .foregroundColor(.red)
+                            .labelStyle(.titleAndIcon)
+                    }
+                    if manager.activeEnergyKcal > 0 {
+                        Label("\(Int(manager.activeEnergyKcal))", systemImage: "flame.fill")
+                            .font(.system(size: 11, weight: .semibold))
+                            .foregroundColor(.orange)
+                            .labelStyle(.titleAndIcon)
+                    }
+                }
             }
         }
         .padding(.top, 2)
