@@ -681,6 +681,30 @@ final class TrainingPlanState {
             }
         )
 
+        // Project timer configs so the Watch's wrist-side runner can drive
+        // phase-by-phase progression (warmup, work/rest rounds, AMRAP,
+        // ladder, cooldown) instead of just counting up from zero.
+        let timerConfigs: [String: WatchTimerConfig] = Dictionary(
+            uniqueKeysWithValues: timers.map { tc in
+                (
+                    tc.id.uuidString,
+                    WatchTimerConfig(
+                        id: tc.id.uuidString,
+                        name: tc.name,
+                        type: tc.type.rawValue,
+                        direction: tc.direction.rawValue,
+                        duration: tc.duration,
+                        restDuration: tc.restDuration,
+                        rounds: tc.rounds,
+                        warmupDuration: tc.warmupDuration,
+                        cooldownDuration: tc.cooldownDuration,
+                        ladderStep: tc.ladderStep,
+                        ladderPeakRounds: tc.ladderPeakRounds
+                    )
+                )
+            }
+        )
+
         let library = WatchLibrarySnapshot(
             workouts: workoutItems,
             exercises: exerciseItems,
@@ -688,7 +712,8 @@ final class TrainingPlanState {
             voiceTrainers: voiceItems,
             workoutBlueprints: blueprints,
             recents: recents,
-            voiceConfigs: voiceConfigs
+            voiceConfigs: voiceConfigs,
+            timerConfigs: timerConfigs
         )
         writeWatchLibrarySnapshot(library)
         WatchConnectivityReceiver.shared.sendLibraryUpdate(library)

@@ -164,21 +164,26 @@ struct WatchLibraryView: View {
         guard !isStarting else { return }
         isStarting = true
         // Workouts get the blueprint runner; voice trainers get their
-        // playback config; everything else is duration-only.
+        // playback config; timers get their phase-driven runner; everything
+        // else (single exercise) falls back to the set-by-set runner via a
+        // synthetic single-exercise blueprint so the user gets wheel pickers
+        // for reps + weight instead of a duration-only screen.
         let snapshot = readWatchLibrarySnapshot()
         let blueprint: WatchWorkoutBlueprint? = {
             if item.kind == "workout" {
                 let bp = snapshot.workoutBlueprints[item.id]
                 return (bp?.exercises.isEmpty == false) ? bp : nil
             }
-            // Exercises route through the set-by-set runner via a synthetic
-            // single-exercise blueprint so the user gets wheel pickers for
-            // reps + weight instead of a duration-only screen.
+            if item.kind == "timer" || item.kind == "voice" { return nil }
             return makeAdHocExerciseBlueprint(for: item)
         }()
         let voiceConfig: WatchVoiceTrainerConfig? = {
             guard item.kind == "voice" else { return nil }
             return snapshot.voiceConfigs[item.id]
+        }()
+        let timerConfig: WatchTimerConfig? = {
+            guard item.kind == "timer" else { return nil }
+            return snapshot.timerConfigs[item.id]
         }()
         Task {
             await WatchWorkoutSessionManager.shared.start(
@@ -187,7 +192,8 @@ struct WatchLibraryView: View {
                 isLocal: true,
                 logName: item.logName,
                 blueprint: blueprint,
-                voiceConfig: voiceConfig
+                voiceConfig: voiceConfig,
+                timerConfig: timerConfig
             )
             await MainActor.run {
                 pendingStartItem = nil

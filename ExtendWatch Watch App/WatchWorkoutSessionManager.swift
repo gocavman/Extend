@@ -51,6 +51,10 @@ final class WatchWorkoutSessionManager: NSObject {
     /// The live UI switches into the trainer runner (round-based line
     /// speaking + rest countdown) when this is non-nil.
     private(set) var voiceConfig: WatchVoiceTrainerConfig? = nil
+    /// Loaded timer config when the user started a timer from the wrist.
+    /// The live UI switches into the timer runner (phase progression,
+    /// count-up/down, AMRAP rounds, warmup/cooldown) when this is non-nil.
+    private(set) var timerConfig: WatchTimerConfig? = nil
     /// Index of the item currently being worked through (0-based, walks
     /// `blueprint.items`).
     private(set) var currentItemIndex: Int = 0
@@ -128,7 +132,8 @@ final class WatchWorkoutSessionManager: NSObject {
                isLocal: Bool = false,
                logName: String? = nil,
                blueprint: WatchWorkoutBlueprint? = nil,
-               voiceConfig: WatchVoiceTrainerConfig? = nil) async -> Bool {
+               voiceConfig: WatchVoiceTrainerConfig? = nil,
+               timerConfig: WatchTimerConfig? = nil) async -> Bool {
         guard HKHealthStore.isHealthDataAvailable() else { return false }
         guard !isActive else { return true }
 
@@ -159,6 +164,7 @@ final class WatchWorkoutSessionManager: NSObject {
             self.isLocallyStarted = isLocal
             self.blueprint = blueprint
             self.voiceConfig = voiceConfig
+            self.timerConfig = timerConfig
             self.currentItemIndex = 0
             self.currentItemSets = []
             self.complexRound = 1
@@ -413,6 +419,7 @@ final class WatchWorkoutSessionManager: NSObject {
         activityTypeRaw = nil
         blueprint = nil
         voiceConfig = nil
+        timerConfig = nil
         currentItemIndex = 0
         currentItemSets = []
         complexRound = 1

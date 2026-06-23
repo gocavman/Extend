@@ -333,6 +333,11 @@ public struct WatchLibrarySnapshot: Codable, Hashable {
     /// the wrist-side runner can speak lines, run round/rest timers, and
     /// apply start/rest warnings without round-tripping to the iPhone.
     public let voiceConfigs: [String: WatchVoiceTrainerConfig]
+    /// Timer configurations keyed by the timer's UUID string. When the Watch
+    /// starts a timer it looks the config up here so the wrist-side runner
+    /// can drive phase-by-phase progression (warmup, work/rest rounds,
+    /// AMRAP, ladder, cooldown) instead of just counting up from zero.
+    public let timerConfigs: [String: WatchTimerConfig]
 
     public init(workouts: [WatchLibraryItem] = [],
                 exercises: [WatchLibraryItem] = [],
@@ -340,7 +345,8 @@ public struct WatchLibrarySnapshot: Codable, Hashable {
                 voiceTrainers: [WatchLibraryItem] = [],
                 workoutBlueprints: [String: WatchWorkoutBlueprint] = [:],
                 recents: [WatchLibraryItem] = [],
-                voiceConfigs: [String: WatchVoiceTrainerConfig] = [:]) {
+                voiceConfigs: [String: WatchVoiceTrainerConfig] = [:],
+                timerConfigs: [String: WatchTimerConfig] = [:]) {
         self.workouts = workouts
         self.exercises = exercises
         self.timers = timers
@@ -348,10 +354,11 @@ public struct WatchLibrarySnapshot: Codable, Hashable {
         self.workoutBlueprints = workoutBlueprints
         self.recents = recents
         self.voiceConfigs = voiceConfigs
+        self.timerConfigs = timerConfigs
     }
 
     private enum CodingKeys: String, CodingKey {
-        case workouts, exercises, timers, voiceTrainers, workoutBlueprints, recents, voiceConfigs
+        case workouts, exercises, timers, voiceTrainers, workoutBlueprints, recents, voiceConfigs, timerConfigs
     }
 
     public init(from decoder: Decoder) throws {
@@ -363,9 +370,69 @@ public struct WatchLibrarySnapshot: Codable, Hashable {
         workoutBlueprints = (try? c.decodeIfPresent([String: WatchWorkoutBlueprint].self, forKey: .workoutBlueprints)) ?? [:]
         recents = (try? c.decodeIfPresent([WatchLibraryItem].self, forKey: .recents)) ?? []
         voiceConfigs = (try? c.decodeIfPresent([String: WatchVoiceTrainerConfig].self, forKey: .voiceConfigs)) ?? [:]
+        timerConfigs = (try? c.decodeIfPresent([String: WatchTimerConfig].self, forKey: .timerConfigs)) ?? [:]
     }
 
     public static let empty = WatchLibrarySnapshot()
+}
+
+/// Watch-friendly projection of a TimerConfig — just the fields the wrist-side
+/// runner needs to build its phase list. Mirrors `TimerConfig` but flattens
+/// the `TimerType` / `TimerDirection` enums to raw strings so older Watch
+/// builds that don't know about new types still decode safely.
+public struct WatchTimerConfig: Codable, Hashable {
+    public let id: String
+    public let name: String
+    /// Raw rawValue of TimerType — "Standard", "Interval", "Tabata", "EMOM",
+    /// "AMRAP", "Ladder".
+    public let type: String
+    /// Raw rawValue of TimerDirection — "Count Down" or "Count Up". Only
+    /// honored by the Standard and AMRAP types on the runner side.
+    public let direction: String
+    public let duration: Int          // main / work duration in seconds
+    public let restDuration: Int      // rest duration in seconds
+    public let rounds: Int            // number of rounds
+    public let warmupDuration: Int    // seconds
+    public let cooldownDuration: Int  // seconds
+    public let ladderStep: Int        // seconds per ladder step
+    public let ladderPeakRounds: Int  // peak steps before coming back down
+
+    public init(id: String, name: String, type: String, direction: String,
+                duration: Int, restDuration: Int, rounds: Int,
+                warmupDuration: Int, cooldownDuration: Int,
+                ladderStep: Int, ladderPeakRounds: Int) {
+        self.id = id
+        self.name = name
+        self.type = type
+        self.direction = direction
+        self.duration = duration
+        self.restDuration = restDuration
+        self.rounds = rounds
+        self.warmupDuration = warmupDuration
+        self.cooldownDuration = cooldownDuration
+        self.ladderStep = ladderStep
+        self.ladderPeakRounds = ladderPeakRounds
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case id, name, type, direction, duration, restDuration, rounds,
+             warmupDuration, cooldownDuration, ladderStep, ladderPeakRounds
+    }
+
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = try c.decode(String.self, forKey: .id)
+        name = (try? c.decodeIfPresent(String.self, forKey: .name)) ?? ""
+        type = (try? c.decodeIfPresent(String.self, forKey: .type)) ?? "Standard"
+        direction = (try? c.decodeIfPresent(String.self, forKey: .direction)) ?? "Count Down"
+        duration = (try? c.decodeIfPresent(Int.self, forKey: .duration)) ?? 300
+        restDuration = (try? c.decodeIfPresent(Int.self, forKey: .restDuration)) ?? 0
+        rounds = (try? c.decodeIfPresent(Int.self, forKey: .rounds)) ?? 1
+        warmupDuration = (try? c.decodeIfPresent(Int.self, forKey: .warmupDuration)) ?? 0
+        cooldownDuration = (try? c.decodeIfPresent(Int.self, forKey: .cooldownDuration)) ?? 0
+        ladderStep = (try? c.decodeIfPresent(Int.self, forKey: .ladderStep)) ?? 10
+        ladderPeakRounds = (try? c.decodeIfPresent(Int.self, forKey: .ladderPeakRounds)) ?? 5
+    }
 }
 
 /// Watch-friendly projection of a VoiceTrainerConfig — just the fields the

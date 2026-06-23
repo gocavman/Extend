@@ -191,6 +191,12 @@ extension WatchConnectivityReceiver: WCSessionDelegate {
         let completedAt = Date(timeIntervalSince1970: completedAtTs)
         let activityTypeRaw = payload["activity_type_raw"] as? UInt
         let hkUUID: UUID? = (payload["hk_workout_uuid"] as? String).flatMap { UUID(uuidString: $0) }
+        let extraNotes = (payload["notes"] as? String) ?? ""
+        let logType: WorkoutLogType = {
+            guard let raw = payload["log_type"] as? String,
+                  let parsed = WorkoutLogType(rawValue: raw) else { return .workout }
+            return parsed
+        }()
 
         // Decode the optional exercises blob — watch sends this only for
         // blueprint-driven workouts. Falls back to a "duration-only" log.
@@ -225,11 +231,16 @@ extension WatchConnectivityReceiver: WCSessionDelegate {
         }()
 
         DispatchQueue.main.async {
+            let notes: String = {
+                let base = "Started on Apple Watch"
+                return extraNotes.isEmpty ? base : "\(base)\n\(extraNotes)"
+            }()
             let log = WorkoutLog(
                 workoutName: name,
                 completedAt: completedAt,
+                logType: logType,
                 exercises: loggedExercises,
-                notes: "Started on Apple Watch",
+                notes: notes,
                 duration: duration
             )
             // Pass exportToHealthKit: true so the iPhone still records it when

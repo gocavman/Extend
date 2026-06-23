@@ -144,12 +144,12 @@ struct WatchPlanDetailView: View {
         isStarting = true
         // Workout items hand off to the set-by-set runner. Exercise items
         // route through the same runner via a synthetic single-exercise
-        // blueprint so the user gets reps + weight wheel pickers instead of
-        // a duration-only screen. Timers and voice trainers stay simple
-        // (their config is loaded elsewhere).
+        // blueprint. Timers and voice trainers each get their own runner
+        // sourced from the library snapshot's config dictionaries.
+        let snapshot = readWatchLibrarySnapshot()
         let blueprint: WatchWorkoutBlueprint? = {
             if item.kind == "workout", let id = item.sourceID {
-                let bp = readWatchLibrarySnapshot().workoutBlueprints[id]
+                let bp = snapshot.workoutBlueprints[id]
                 return (bp?.exercises.isEmpty == false) ? bp : nil
             }
             if item.kind == "exercise", let id = item.sourceID {
@@ -165,13 +165,23 @@ struct WatchPlanDetailView: View {
             }
             return nil
         }()
+        let voiceConfig: WatchVoiceTrainerConfig? = {
+            guard item.kind == "voice", let id = item.sourceID else { return nil }
+            return snapshot.voiceConfigs[id]
+        }()
+        let timerConfig: WatchTimerConfig? = {
+            guard item.kind == "timer", let id = item.sourceID else { return nil }
+            return snapshot.timerConfigs[id]
+        }()
         Task {
             await WatchWorkoutSessionManager.shared.start(
                 activityTypeRaw: item.hkActivityTypeRaw,
                 name: item.name,
                 isLocal: true,
                 logName: item.logName,
-                blueprint: blueprint
+                blueprint: blueprint,
+                voiceConfig: voiceConfig,
+                timerConfig: timerConfig
             )
             await MainActor.run {
                 pendingStartItem = nil

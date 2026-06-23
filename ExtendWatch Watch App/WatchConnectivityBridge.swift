@@ -44,12 +44,18 @@ final class WatchConnectivityBridge: NSObject {
     /// iPhone stamps that on the log and skips its own export to avoid duplicates.
     /// `exercises` carries per-set detail when the user ran a blueprint-driven
     /// workout; nil/empty for simple sessions (single exercise, timer, voice).
+    /// `notes` is appended to the WorkoutLog's notes field — used by the timer
+    /// runner to record AMRAP rounds completed, phase breakdown, etc.
+    /// `logType` is the rawValue of WorkoutLogType ("workout" / "timer" /
+    /// "voiceTrainer"); falls back to "workout" on the iPhone side when missing.
     func sendCompletedLog(name: String,
                           completedAt: Date,
                           duration: TimeInterval,
                           hkActivityTypeRaw: UInt?,
                           hkWorkoutUUID: UUID?,
-                          exercises: [WatchLoggedExercise]? = nil) {
+                          exercises: [WatchLoggedExercise]? = nil,
+                          notes: String? = nil,
+                          logType: String? = nil) {
         guard WCSession.isSupported(),
               WCSession.default.activationState == .activated else { return }
         var payload: [String: Any] = [
@@ -64,6 +70,8 @@ final class WatchConnectivityBridge: NSObject {
            let data = try? JSONEncoder().encode(exercises) {
             payload["exercises_data"] = data
         }
+        if let notes, !notes.isEmpty { payload["notes"] = notes }
+        if let logType, !logType.isEmpty { payload["log_type"] = logType }
         WCSession.default.transferUserInfo(payload)
     }
 }

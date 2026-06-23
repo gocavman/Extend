@@ -2301,6 +2301,11 @@ class MatchGameViewController: UIViewController {
             excludePositions: [(row: r1, col: c1), (row: r2, col: c2)]
         )
 
+        // Unique cross-combo flourish: a pulsing electric shockwave at the swap
+        // point with radial lightning forks that crack outward in every direction.
+        // Played *before* the four flame beams launch so it reads as the trigger.
+        animateCrossArrowShockwave(centerRow: r2, centerCol: c2)
+
         // Fire flame animations for both rows and both columns
         shootFlamesHorizontally(row: r1, arrowCol: c1, columns: 0..<level.gridWidth) {}
         shootFlamesHorizontally(row: r2, arrowCol: c2, columns: 0..<level.gridWidth) {}
@@ -2312,6 +2317,99 @@ class MatchGameViewController: UIViewController {
             cascadingPowerups: cascadingPowerups,
             decrementMoves: true
         )
+    }
+
+    /// Cross-arrow (horizontal + vertical swap) signature flourish:
+    ///   • two expanding white-cyan rings that pulse outward from the swap point
+    ///   • a ring of short radial lightning forks zapping outward
+    ///   • a bright central flash
+    /// Unique enough that the player can tell this combo apart from a flat
+    /// "double cross" of two cross arrows.
+    private func animateCrossArrowShockwave(centerRow: Int, centerCol: Int) {
+        guard let level = currentLevel else { return }
+        let cellWidth  = gridContainer.bounds.width  / CGFloat(level.gridWidth)
+        let cellHeight = gridContainer.bounds.height / CGFloat(level.gridHeight)
+        let ox = CGFloat(centerCol) * cellWidth + cellWidth / 2
+        let oy = CGFloat(centerRow) * cellHeight + cellHeight / 2
+        let cellSize = min(cellWidth, cellHeight)
+
+        // Two concentric expanding rings — staggered so it reads as a shockwave pulse
+        for (idx, delay) in [0.0, 0.08].enumerated() {
+            let ring = CAShapeLayer()
+            let initialRadius = cellSize * 0.4
+            ring.path = UIBezierPath(arcCenter: CGPoint(x: ox, y: oy),
+                                     radius: initialRadius,
+                                     startAngle: 0, endAngle: .pi * 2,
+                                     clockwise: true).cgPath
+            ring.strokeColor = (idx == 0 ? UIColor.white : UIColor.cyan).cgColor
+            ring.fillColor = nil
+            ring.lineWidth = idx == 0 ? 3.0 : 2.0
+            ring.shadowColor = UIColor.cyan.cgColor
+            ring.shadowRadius = 8
+            ring.shadowOpacity = 1.0
+            ring.shadowOffset = .zero
+            gridContainer.layer.addSublayer(ring)
+
+            let targetRadius = cellSize * (idx == 0 ? 3.5 : 4.5)
+            DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
+                let expanded = UIBezierPath(arcCenter: CGPoint(x: ox, y: oy),
+                                            radius: targetRadius,
+                                            startAngle: 0, endAngle: .pi * 2,
+                                            clockwise: true).cgPath
+                let pathAnim = CABasicAnimation(keyPath: "path")
+                pathAnim.fromValue = ring.path
+                pathAnim.toValue = expanded
+                pathAnim.duration = 0.45
+                pathAnim.timingFunction = CAMediaTimingFunction(name: .easeOut)
+                pathAnim.fillMode = .forwards
+                pathAnim.isRemovedOnCompletion = false
+
+                let fade = CABasicAnimation(keyPath: "opacity")
+                fade.fromValue = 1.0
+                fade.toValue = 0.0
+                fade.duration = 0.45
+                fade.timingFunction = CAMediaTimingFunction(name: .easeIn)
+                fade.fillMode = .forwards
+                fade.isRemovedOnCompletion = false
+
+                ring.add(pathAnim, forKey: "ringPath")
+                ring.add(fade, forKey: "ringFade")
+
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                    ring.removeFromSuperlayer()
+                }
+            }
+        }
+
+        // Radial lightning forks — short jagged bolts shooting out in 12 directions
+        let forkCount = 12
+        let forkLength = cellSize * 2.4
+        let jagAmount = max(cellSize * 0.18, 3)
+        for i in 0..<forkCount {
+            let angle = (CGFloat.pi * 2 / CGFloat(forkCount)) * CGFloat(i) + CGFloat.random(in: -0.15...0.15)
+            let length = forkLength * CGFloat.random(in: 0.75...1.15)
+            let endX = ox + cos(angle) * length
+            let endY = oy + sin(angle) * length
+            let bolt = buildLightningBolt(
+                from: CGPoint(x: ox, y: oy),
+                to:   CGPoint(x: endX, y: endY),
+                jagSegmentLength: 6, jagAmount: jagAmount, lineWidth: 2.0, color: .cyan
+            )
+            animateLineClearLightning(bolts: [bolt], drawDuration: 0.22)
+        }
+
+        // Bright central flash to anchor the moment
+        let flash = UIView()
+        let flashSize = cellSize * 1.4
+        flash.frame = CGRect(x: ox - flashSize / 2, y: oy - flashSize / 2,
+                             width: flashSize, height: flashSize)
+        flash.layer.cornerRadius = flashSize / 2
+        flash.backgroundColor = UIColor.white.withAlphaComponent(0.9)
+        gridContainer.addSubview(flash)
+        UIView.animate(withDuration: 0.3, animations: {
+            flash.transform = CGAffineTransform(scaleX: 2.4, y: 2.4)
+            flash.alpha = 0
+        }, completion: { _ in flash.removeFromSuperview() })
     }
 
     /// Bomb + Arrow: Clear 3 full rows (if horizontal) or 3 full columns (if vertical) centered on the bomb location.
@@ -3740,6 +3838,31 @@ class MatchGameViewController: UIViewController {
         }
     }
 
+    /// Short jagged lightning bolts that crackle outward in random directions
+    /// from a point.  Used by ball bounce impacts so every landing pops with
+    /// a tiny electrical burst.
+    private func emitLightningStarburst(at point: CGPoint, cellSize: CGFloat,
+                                        boltCount: Int = 4,
+                                        color: UIColor = .cyan) {
+        let boltLength = cellSize * 0.95
+        let jagAmount = max(cellSize * 0.10, 2)
+        for _ in 0..<boltCount {
+            let angle = CGFloat.random(in: 0...(.pi * 2))
+            let length = boltLength * CGFloat.random(in: 0.55...1.15)
+            let endX = point.x + cos(angle) * length
+            let endY = point.y + sin(angle) * length
+            let bolt = buildLightningBolt(
+                from: point,
+                to:   CGPoint(x: endX, y: endY),
+                jagSegmentLength: 5,
+                jagAmount: jagAmount,
+                lineWidth: 1.8,
+                color: color
+            )
+            animateLineClearLightning(bolts: [bolt], drawDuration: 0.18)
+        }
+    }
+
     /// Small radial spark burst plus a quick white flash — the per-cell impact
     /// punctuation used by line clears.
     private func emitSparkBurst(at point: CGPoint, cellSize: CGFloat) {
@@ -3809,6 +3932,54 @@ class MatchGameViewController: UIViewController {
         let beamWidth: CGFloat = cellWidth * 0.18
         let animDuration: CFTimeInterval = 0.3
         var doneCount = 0
+
+        // --- Lightning enhancement: jagged white-cyan bolt riding each diagonal ---
+        // The bolt is laid along the same path as the flame beam, so the diagonal
+        // shape is preserved while the X reads as crackling electricity.
+        let cellSize = min(cellWidth, cellHeight)
+        let jagAmount = max(cellSize * 0.20, 3)
+        for dir in directions {
+            let endX = ox + dir.dx * farDist / sqrt(2)
+            let endY = oy + dir.dy * farDist / sqrt(2)
+            let bolt = buildLightningBolt(
+                from: CGPoint(x: ox, y: oy),
+                to:   CGPoint(x: endX, y: endY),
+                jagSegmentLength: 8, jagAmount: jagAmount, lineWidth: 2.5, color: .cyan
+            )
+            animateLineClearLightning(bolts: [bolt], drawDuration: animDuration)
+        }
+
+        // Sparks along each diagonal at every cell-spaced step along the way
+        let maxSteps = Int(ceil(farDist / cellSize))
+        for dir in directions {
+            for step in 1...maxSteps {
+                let fraction = CGFloat(step) / CGFloat(maxSteps)
+                let pt = CGPoint(
+                    x: ox + dir.dx * farDist / sqrt(2) * fraction,
+                    y: oy + dir.dy * farDist / sqrt(2) * fraction
+                )
+                // Stop emitting once we leave the grid bounds — those sparks add no value
+                if pt.x < -10 || pt.x > gridContainer.bounds.width + 10 ||
+                   pt.y < -10 || pt.y > gridContainer.bounds.height + 10 { break }
+                let delay = TimeInterval(fraction) * animDuration
+                DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [weak self] in
+                    self?.emitSparkBurst(at: pt, cellSize: cellSize)
+                }
+            }
+        }
+
+        // Big white flash at the X's origin — sells the "crack!" moment.
+        let centerFlash = UIView()
+        let flashSize = cellSize * 1.6
+        centerFlash.frame = CGRect(x: ox - flashSize / 2, y: oy - flashSize / 2,
+                                   width: flashSize, height: flashSize)
+        centerFlash.layer.cornerRadius = flashSize / 2
+        centerFlash.backgroundColor = UIColor.white.withAlphaComponent(0.85)
+        gridContainer.addSubview(centerFlash)
+        UIView.animate(withDuration: 0.32, animations: {
+            centerFlash.transform = CGAffineTransform(scaleX: 2.2, y: 2.2)
+            centerFlash.alpha = 0
+        }, completion: { _ in centerFlash.removeFromSuperview() })
 
         for dir in directions {
             let endX = ox + dir.dx * farDist / sqrt(2)
@@ -4408,6 +4579,7 @@ class MatchGameViewController: UIViewController {
             var newCascades = cascadingPowerups
 
             // --- Impact: clear tile(s) and collect cascades ---
+            let impactCellSize = min(colWidth, rowHeight)
             if bombExplosionRadius > 0 {
                 var explosionButtons: [UIButton] = []
                 for dr in -bombExplosionRadius...bombExplosionRadius {
@@ -4423,7 +4595,7 @@ class MatchGameViewController: UIViewController {
                     }
                 }
                 // Flash
-                let flashSize = min(colWidth, rowHeight) * CGFloat(bombExplosionRadius * 2 + 1) * 1.1
+                let flashSize = impactCellSize * CGFloat(bombExplosionRadius * 2 + 1) * 1.1
                 let flash = UIView(frame: CGRect(x: targetX - flashSize/2, y: targetY - flashSize/2, width: flashSize, height: flashSize))
                 flash.backgroundColor = UIColor.orange.withAlphaComponent(0.85)
                 flash.layer.cornerRadius = flashSize / 2
@@ -4434,6 +4606,11 @@ class MatchGameViewController: UIViewController {
                     btn.layer.add(s, forKey: "pop")
                 }
                 UIImpactFeedbackGenerator(style: .heavy).impactOccurred()
+                // Big landing pop → big lightning burst with a few extra bolts.
+                self.emitLightningStarburst(at: CGPoint(x: targetX, y: targetY),
+                                            cellSize: impactCellSize * 1.4,
+                                            boltCount: 6)
+                self.emitSparkBurst(at: CGPoint(x: targetX, y: targetY), cellSize: impactCellSize)
                 // (gravity fires after ball departs — see below)
             } else if self.gameGrid[target.row][target.col] != nil {
                 if let p = self.gameGrid[target.row][target.col] {
@@ -4445,13 +4622,18 @@ class MatchGameViewController: UIViewController {
                     btn.setTitle("", for: .normal); btn.setImage(nil, for: .normal); btn.backgroundColor = .clear
                 }
                 // Small orange flash
-                let flashSize = min(colWidth, rowHeight) * 0.85
+                let flashSize = impactCellSize * 0.85
                 let flash = UIView(frame: CGRect(x: targetX - flashSize/2, y: targetY - flashSize/2, width: flashSize, height: flashSize))
                 flash.backgroundColor = UIColor.orange.withAlphaComponent(0.35)
                 flash.layer.cornerRadius = flashSize / 2
                 self.gridContainer.addSubview(flash)
                 UIView.animate(withDuration: 0.6, animations: { flash.transform = CGAffineTransform(scaleX: 1.5, y: 1.5); flash.alpha = 0 }) { _ in flash.removeFromSuperview() }
                 UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                // Per-bounce electric crackle — short jagged bolts shoot out randomly.
+                self.emitLightningStarburst(at: CGPoint(x: targetX, y: targetY),
+                                            cellSize: impactCellSize,
+                                            boltCount: 4)
+                self.emitSparkBurst(at: CGPoint(x: targetX, y: targetY), cellSize: impactCellSize)
                 // (gravity fires after ball departs — see below)
             }
 
@@ -4682,6 +4864,11 @@ class MatchGameViewController: UIViewController {
                 }
                 let impact = UIImpactFeedbackGenerator(style: .heavy)
                 impact.impactOccurred()
+                let impactCellSize = min(colWidth, rowHeight)
+                self.emitLightningStarburst(at: CGPoint(x: targetX, y: targetY),
+                                            cellSize: impactCellSize * 1.4,
+                                            boltCount: 6)
+                self.emitSparkBurst(at: CGPoint(x: targetX, y: targetY), cellSize: impactCellSize)
             } else if self.gameGrid[target.row][target.col] != nil {
                 let _ = self.hitTile(row: target.row, col: target.col)
 
@@ -4691,7 +4878,7 @@ class MatchGameViewController: UIViewController {
                     button.setImage(nil, for: .normal)
                     button.backgroundColor = .clear
                 }
-                
+
                 // Small orange impact flash on the single tile
                 let flashSize = min(colWidth, rowHeight) * 0.85
                 let flashView = UIView()
@@ -4704,10 +4891,15 @@ class MatchGameViewController: UIViewController {
                     flashView.transform = CGAffineTransform(scaleX: 1.5, y: 1.5)
                     flashView.alpha = 0
                 }) { _ in flashView.removeFromSuperview() }
-                
+
                 // Haptic feedback
                 let impact = UIImpactFeedbackGenerator(style: .light)
                 impact.impactOccurred()
+                let impactCellSize = min(colWidth, rowHeight)
+                self.emitLightningStarburst(at: CGPoint(x: targetX, y: targetY),
+                                            cellSize: impactCellSize,
+                                            boltCount: 4)
+                self.emitSparkBurst(at: CGPoint(x: targetX, y: targetY), cellSize: impactCellSize)
             }
             
             // Brief pause then bounce to next target
