@@ -9,6 +9,10 @@
 ////
 
 import SwiftUI
+import WidgetKit
+
+private let appGroupID = "group.com.cavanmannenbach.extend"
+private var sharedDefaults: UserDefaults { UserDefaults(suiteName: appGroupID) ?? .standard }
 
 struct WatchStepsView: View {
 
@@ -136,6 +140,27 @@ struct WatchStepsView: View {
             distanceKm  = await WatchHealthKit.shared.todayDistanceKm()
             settings    = readWatchStepsSettings()
             isLoading   = false
+            // The complication's own timeline only reloads every 10 minutes, so
+            // it can show a value the user already sees as out-of-date in this
+            // view. Push the freshest values into the shared cache and kick the
+            // complications to redraw so the watch face stays in sync.
+            pushFreshValuesToComplications(steps: steps, distanceKm: distanceKm)
+        }
+    }
+
+    private func pushFreshValuesToComplications(steps: Double, distanceKm: Double) {
+        let d = sharedDefaults
+        let prevSteps = d.double(forKey: "cached_steps")
+        let prevKm    = d.double(forKey: "cached_distance_km")
+        d.set(steps, forKey: "cached_steps")
+        d.set(distanceKm, forKey: "cached_distance_km")
+        d.set(Calendar.current.startOfDay(for: Date()), forKey: "steps_cache_date")
+        // Only nudge the widget pipeline when something actually changed —
+        // avoids burning the watch's tight widget-reload budget on no-ops.
+        if abs(steps - prevSteps) >= 1 || abs(distanceKm - prevKm) >= 0.005 {
+            WidgetCenter.shared.reloadTimelines(ofKind: "ExtendWatch.StepsRing")
+            WidgetCenter.shared.reloadTimelines(ofKind: "ExtendWatch.DistanceRing")
+            WidgetCenter.shared.reloadTimelines(ofKind: "ExtendWatch.StepsAndDistance")
         }
     }
 

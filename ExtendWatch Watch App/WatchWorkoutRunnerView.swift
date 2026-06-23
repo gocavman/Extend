@@ -183,39 +183,45 @@ struct WatchWorkoutRunnerView: View {
                     .font(.system(size: 17, weight: .semibold))
                     .lineLimit(1)
                     .minimumScaleFactor(0.75)
-                HStack(spacing: 6) {
+                HStack(spacing: 8) {
                     if showChevrons {
                         Button(action: goToPreviousSet) {
                             Image(systemName: "chevron.left")
-                                .font(.system(size: 11, weight: .semibold))
+                                .font(.system(size: 26, weight: .bold))
+                                .frame(maxWidth: .infinity, minHeight: 32)
+                                .contentShape(Rectangle())
                         }
                         .buttonStyle(.plain)
                         .foregroundColor(cursor > 0 ? .blue : .gray.opacity(0.4))
                         .disabled(cursor <= 0)
                     }
-                    if isAdHoc {
-                        Text("Set \(setNumber)")
-                    } else {
-                        Text("Set \(min(setNumber, max(planned, 1))) of \(max(planned, 1))")
+                    VStack(spacing: 0) {
+                        if isAdHoc {
+                            Text("Set \(setNumber)")
+                        } else {
+                            Text("Set \(min(setNumber, max(planned, 1))) of \(max(planned, 1))")
+                        }
+                        if let r = ex.loopRound, let total = ex.loopTotalRounds {
+                            Text("Round \(r) of \(total)")
+                        }
                     }
-                    if let r = ex.loopRound, let total = ex.loopTotalRounds {
-                        Text("•")
-                        Text("Round \(r) of \(total)")
-                    }
+                    .font(.system(size: 10))
+                    .foregroundColor(.secondary)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.7)
+                    .layoutPriority(1)
                     if showChevrons {
                         Button(action: goToNextSet) {
                             Image(systemName: "chevron.right")
-                                .font(.system(size: 11, weight: .semibold))
+                                .font(.system(size: 26, weight: .bold))
+                                .frame(maxWidth: .infinity, minHeight: 32)
+                                .contentShape(Rectangle())
                         }
                         .buttonStyle(.plain)
                         .foregroundColor(canGoForward ? .blue : .gray.opacity(0.4))
                         .disabled(!canGoForward)
                     }
                 }
-                .font(.system(size: 10))
-                .foregroundColor(.secondary)
-                .lineLimit(1)
-                .minimumScaleFactor(0.7)
             }
 
             if isResting {

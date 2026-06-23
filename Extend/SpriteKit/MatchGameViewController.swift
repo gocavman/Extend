@@ -1843,12 +1843,12 @@ class MatchGameViewController: UIViewController {
             }
         }
         
-        // 4 in a line → arrow
+        // 4 in a line → perpendicular line-clear arrow
         if hCount >= 4 {
-            return .horizontalArrow
+            return .verticalArrow
         }
         if vCount >= 4 {
-            return .verticalArrow
+            return .horizontalArrow
         }
         
         // Check 2x2 bomb: see if this position is part of a 2x2 of matching tiles
@@ -1881,7 +1881,7 @@ class MatchGameViewController: UIViewController {
     
     /// Bomb explosion visual: pulses affected tiles outward then clears them, with a brief screen shake.
     private func animateBombExplosion(centerRow: Int, centerCol: Int, affectedButtons: [UIButton], completion: @escaping () -> Void) {
-        guard currentLevel != nil else { completion(); return }
+        guard let level = currentLevel else { completion(); return }
         
         // Screen shake on gridContainer
         let shakeAnim = CAKeyframeAnimation(keyPath: "transform.translation.x")
@@ -1889,6 +1889,19 @@ class MatchGameViewController: UIViewController {
         shakeAnim.duration = 0.35
         shakeAnim.values = [-6, 6, -5, 5, -3, 3, 0]
         gridContainer.layer.add(shakeAnim, forKey: "bombShake")
+
+        // Electric ring around the 3x3 blast zone — clipped to grid bounds.
+        var ringTiles: Set<String> = []
+        for dr in -1...1 {
+            for dc in -1...1 {
+                let r = centerRow + dr
+                let c = centerCol + dc
+                if r >= 0 && r < level.gridHeight && c >= 0 && c < level.gridWidth {
+                    ringTiles.insert("\(r),\(c)")
+                }
+            }
+        }
+        drawLightningRingAroundTiles(ringTiles)
         
         // Pulse each affected button using CAAnimations (not UIView.animate with transform)
         // so that scale effects don't conflict with gravity's use of button.transform
@@ -2210,6 +2223,9 @@ class MatchGameViewController: UIViewController {
             in: clearedTiles,
             excludePositions: [(row: r1, col: c1), (row: r2, col: c2)]
         )
+
+        // Lightning ring around the 5×5 blast zone — same effect as solo bomb, bigger area.
+        drawLightningRingAroundTiles(clearedTiles)
 
         finalizePowerupCombo(
             clearedTiles: clearedTiles,
@@ -4139,6 +4155,26 @@ class MatchGameViewController: UIViewController {
                 }
             }
             if found { break }
+
+            // Fallback: the immediate ±1 window can come up empty if the row has
+            // gridShape gaps or transient nils from an in-flight cascade —
+            // without this the ball gives up and flies off-screen. Scan the
+            // whole row for the closest live tile to nextCol.
+            var bestCol = -1
+            var bestDist = Int.max
+            for c in 0..<level.gridWidth where gridShapeMap[r][c] && gameGrid[r][c] != nil {
+                let d = abs(c - nextCol)
+                if d < bestDist {
+                    bestDist = d
+                    bestCol = c
+                }
+            }
+            if bestCol >= 0 {
+                nextTarget = (row: r, col: bestCol)
+                nextDir = bestCol > nextCol ? 1 : (bestCol < nextCol ? -1 : -bounceDir)
+                nextCol = bestCol
+                break
+            }
         }
 
         guard let target = nextTarget else {
@@ -4712,6 +4748,115 @@ class MatchGameViewController: UIViewController {
         return total
     }
     
+    /// Draws a jagged electric "lightning ring" around the bounding rect of a set of tiles.
+    /// The bolt strokes in quickly, then fades. Used by bomb-style area effects to make the blast
+    /// zone visually pop (reuses the cyan glow from rocket combos).
+    private func drawLightningRingAroundTiles(_ tiles: Set<String>,
+                                              color: UIColor = .cyan,
+                                              lineWidth: CGFloat = 2.5,
+                                              strokeDuration: TimeInterval = 0.18,
+                                              holdDuration: TimeInterval = 0.05,
+                                              fadeDuration: TimeInterval = 0.25) {
+        guard let level = currentLevel else { return }
+        guard !tiles.isEmpty else { return }
+        let cellW = gridContainer.bounds.width / CGFloat(level.gridWidth)
+        let cellH = gridContainer.bounds.height / CGFloat(level.gridHeight)
+
+        var minR = Int.max, maxR = Int.min, minC = Int.max, maxC = Int.min
+        for key in tiles {
+            let parts = key.split(separator: ",")
+            guard parts.count == 2, let r = Int(parts[0]), let c = Int(parts[1]) else { continue }
+            if r < minR { minR = r }
+            if r > maxR { maxR = r }
+            if c < minC { minC = c }
+            if c > maxC { maxC = c }
+        }
+        guard minR != Int.max else { return }
+
+        let rect = CGRect(
+            x: gridStackOffset.x + CGFloat(minC) * cellW,
+            y: gridStackOffset.y + CGFloat(minR) * cellH,
+            width: CGFloat(maxC - minC + 1) * cellW,
+            height: CGFloat(maxR - minR + 1) * cellH
+        )
+        // Pull the bolt just inside the tile edges so it reads as "wrapping" them.
+        let trimmed = rect.insetBy(dx: 2, dy: 2)
+        guard trimmed.width > 0 && trimmed.height > 0 else { return }
+
+        let path = UIBezierPath()
+        let jagSeg: CGFloat = 6
+        let jagAmount: CGFloat = 3
+        let corners: [CGPoint] = [
+            CGPoint(x: trimmed.minX, y: trimmed.minY),
+            CGPoint(x: trimmed.maxX, y: trimmed.minY),
+            CGPoint(x: trimmed.maxX, y: trimmed.maxY),
+            CGPoint(x: trimmed.minX, y: trimmed.maxY),
+            CGPoint(x: trimmed.minX, y: trimmed.minY),
+        ]
+        for i in 0..<(corners.count - 1) {
+            let a = corners[i]
+            let b = corners[i + 1]
+            let dist = hypot(b.x - a.x, b.y - a.y)
+            let segs = max(Int(dist / jagSeg), 2)
+            let dx = (b.x - a.x) / max(dist, 1)
+            let dy = (b.y - a.y) / max(dist, 1)
+            let perpX = -dy
+            let perpY = dx
+            for s in 0...segs {
+                let frac = CGFloat(s) / CGFloat(segs)
+                var p = CGPoint(x: a.x + (b.x - a.x) * frac,
+                                y: a.y + (b.y - a.y) * frac)
+                if s > 0 && s < segs {
+                    let jag = CGFloat.random(in: -jagAmount...jagAmount)
+                    p.x += perpX * jag
+                    p.y += perpY * jag
+                }
+                if i == 0 && s == 0 {
+                    path.move(to: p)
+                } else {
+                    path.addLine(to: p)
+                }
+            }
+        }
+
+        let bolt = CAShapeLayer()
+        bolt.path = path.cgPath
+        bolt.strokeColor = UIColor.white.cgColor
+        bolt.lineWidth = lineWidth
+        bolt.fillColor = nil
+        bolt.lineCap = .round
+        bolt.lineJoin = .round
+        bolt.shadowColor = color.cgColor
+        bolt.shadowRadius = 8
+        bolt.shadowOpacity = 1.0
+        bolt.shadowOffset = .zero
+        gridContainer.layer.addSublayer(bolt)
+
+        bolt.strokeEnd = 0
+        let stroke = CABasicAnimation(keyPath: "strokeEnd")
+        stroke.fromValue = 0
+        stroke.toValue = 1
+        stroke.duration = strokeDuration
+        stroke.timingFunction = CAMediaTimingFunction(name: .easeOut)
+        stroke.fillMode = .forwards
+        stroke.isRemovedOnCompletion = false
+        bolt.add(stroke, forKey: "ringStroke")
+
+        let fadeStart = strokeDuration + holdDuration
+        DispatchQueue.main.asyncAfter(deadline: .now() + fadeStart) {
+            let fade = CABasicAnimation(keyPath: "opacity")
+            fade.fromValue = 1
+            fade.toValue = 0
+            fade.duration = fadeDuration
+            fade.fillMode = .forwards
+            fade.isRemovedOnCompletion = false
+            bolt.add(fade, forKey: "ringFade")
+            DispatchQueue.main.asyncAfter(deadline: .now() + fadeDuration) {
+                bolt.removeFromSuperlayer()
+            }
+        }
+    }
+
     /// Builds a jagged lightning bolt CAShapeLayer between two points.
     private func buildLightningBolt(from start: CGPoint, to end: CGPoint, jagSegmentLength: CGFloat = 8, jagAmount: CGFloat = 4, lineWidth: CGFloat = 2.0, color: UIColor = .cyan) -> CAShapeLayer {
         let path = UIBezierPath()
@@ -5234,7 +5379,7 @@ class MatchGameViewController: UIViewController {
                             matchesToRemove.insert("\(row),\(i)")
                         }
                     } else if matchCount >= 4 {
-                        // 4+ match: create horizontal arrow
+                        // 4+ horizontal match → vertical line-clear arrow
                         // Try to place at swapped position if it's in the match
                         var arrowCol = col + matchCount / 2  // Default: middle
                         
@@ -5247,7 +5392,7 @@ class MatchGameViewController: UIViewController {
                             }
                         }
                         
-                        powerUpsToCreate.append((row: row, col: arrowCol, type: .horizontalArrow))
+                        powerUpsToCreate.append((row: row, col: arrowCol, type: .verticalArrow))
                         
                         // Mark all pieces for removal using loop indices, not piece positions
                         for i in col..<col + matchCount {
@@ -5294,7 +5439,7 @@ class MatchGameViewController: UIViewController {
                             matchesToRemove.insert("\(i),\(col)")
                         }
                     } else if matchCount >= 4 {
-                        // 4+ match: create vertical arrow
+                        // 4+ vertical match → horizontal line-clear arrow
                         // Try to place at swapped position if it's in the match
                         var arrowRow = row - matchCount / 2  // Default: middle
                         
@@ -5307,7 +5452,7 @@ class MatchGameViewController: UIViewController {
                             }
                         }
                         
-                        powerUpsToCreate.append((row: arrowRow, col: col, type: .verticalArrow))
+                        powerUpsToCreate.append((row: arrowRow, col: col, type: .horizontalArrow))
                         
                         // Mark all pieces for removal using loop indices
                         for i in (row - matchCount + 1)...row {
@@ -5666,6 +5811,28 @@ class MatchGameViewController: UIViewController {
                 pendingCascades = []
                 activateCascadingPowerups(toProcess)
                 return
+            }
+
+            // Defensive settle pass: heavy cascades (multiple powerups, ball / rocket
+            // bounces) occasionally land with one or two active cells still empty in
+            // gameGrid — the user has to make another move before they refill. If we
+            // detect any such gap, run a full gravity which will refill and re-enter
+            // checkForMatches via its completion. We must NOT re-run during a swap
+            // revert (lastSwappedPositions != nil) because gravity would clobber the
+            // pending revert animation.
+            if let level = currentLevel, lastSwappedPositions == nil {
+                var hasGap = false
+                outer: for r in 0..<level.gridHeight {
+                    for c in 0..<level.gridWidth where gridShapeMap[r][c] && gameGrid[r][c] == nil {
+                        hasGap = true
+                        break outer
+                    }
+                }
+                if hasGap {
+                    print("⚠️ Detected unfilled cells after cascade settle — running recovery gravity")
+                    applyGravity()
+                    return
+                }
             }
 
             // Revert the swap if one was made
@@ -6603,6 +6770,9 @@ class MatchGameViewController: UIViewController {
         defaults.set(score, forKey: "matchGameScore_\(currentLevelId)")
         defaults.set(unlockedLevels, forKey: "matchGameUnlockedLevels")
         defaults.set(totalElapsed, forKey: "matchGameTotalTime")
+        // Persist progressive-help tier so escalation continues across exits
+        defaults.set(retryCount, forKey: "matchGameRetryCount")
+        defaults.set(retryLevelId, forKey: "matchGameRetryLevelId")
         // Save mid-level grid state
         saveMidLevelState()
         print("💾 Game state saved: Level \(currentLevelId), Score \(score), TotalTime \(Int(totalElapsed))s")
@@ -6621,6 +6791,12 @@ class MatchGameViewController: UIViewController {
         }
         // Restore total elapsed time
         totalElapsed = defaults.double(forKey: "matchGameTotalTime")
+        // Restore progressive-help tier (only meaningful if it matches the level we're about to play).
+        // Use a sentinel default of -1 so a fresh install doesn't accidentally inherit level 0 retries.
+        if defaults.object(forKey: "matchGameRetryLevelId") != nil {
+            retryLevelId = defaults.integer(forKey: "matchGameRetryLevelId")
+            retryCount = defaults.integer(forKey: "matchGameRetryCount")
+        }
     }
     
     // MARK: - Session / Total Timer
@@ -6853,6 +7029,9 @@ class MatchGameViewController: UIViewController {
                     self.retryCount = 0
                 }
                 self.retryCount += 1
+                // Persist immediately so an exit/force-quit between retries
+                // keeps the escalation rather than restarting at tier 1.
+                self.saveGameState()
 
                 // Restart the level, then drop in progressive bonus help
                 self.score = 0

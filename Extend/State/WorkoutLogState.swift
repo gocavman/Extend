@@ -788,20 +788,31 @@ public final class WorkoutLogState {
     /// Finds an existing `Exercise` for the imported HK workout, or creates one
     /// in the user's library so the imported log can show up in
     /// Exercise/Muscle/Equipment history & charts. Match order:
-    ///   1) Exercise already tagged with this HKWorkoutActivityType
-    ///   2) Exercise whose name matches the HK activity label (case-insensitive)
-    ///   3) Auto-create a bare Exercise (no muscles/equipment) tagged with the type
+    ///   1) Exercise whose name matches the HK activity label (case-insensitive).
+    ///      Strongest signal — a generic Apple Health workout like
+    ///      "Strength Training (Traditional)" should land on the exercise
+    ///      *named* that, not on whatever specific exercise happens to share
+    ///      its activity type tag.
+    ///   2) A *single* exercise tagged with this HKWorkoutActivityType — i.e.
+    ///      the user has clearly mapped this type to one specific exercise.
+    ///      Multiple tagged matches are ambiguous (Apple's category types like
+    ///      `traditionalStrengthTraining` apply to dozens of default exercises),
+    ///      so we fall through to auto-create instead of picking the first
+    ///      alphabetically.
+    ///   3) Auto-create a bare Exercise (no muscles/equipment) tagged with the
+    ///      type — becomes the catch-all the *next* import will name-match on.
     @MainActor
     private func resolveOrCreateExercise(for hkWorkout: HKWorkout) -> Exercise {
         let exercisesState = ExercisesState.shared
         let rawType = hkWorkout.workoutActivityType.rawValue
         let label = HealthKitService.shared.activityDisplayName(for: hkWorkout.workoutActivityType)
 
-        if let match = exercisesState.exercises.first(where: { $0.healthKitActivityType == rawType }) {
-            return match
-        }
         if let match = exercisesState.exercises.first(where: { $0.name.caseInsensitiveCompare(label) == .orderedSame }) {
             return match
+        }
+        let taggedMatches = exercisesState.exercises.filter { $0.healthKitActivityType == rawType }
+        if taggedMatches.count == 1 {
+            return taggedMatches[0]
         }
         let created = Exercise(
             name: label,
