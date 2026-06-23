@@ -1794,16 +1794,11 @@ private struct DashboardAddTileSheet: View {
 
     private func iconForStatCard(_ statCard: StatCardType) -> String {
         switch statCard {
-        case .totalWorkouts: return "list.bullet"
-        case .dayStreaks: return "flame"
-        case .totalTime: return "clock"
         case .favoriteExercise: return "star"
         case .favoriteDay: return "calendar"
         case .workoutFrequency: return "chart.bar"
         case .muscleGroupDistribution: return "chart.pie"
         case .volumeThisWeek: return "scalemass"
-        case .longestStreak: return "trophy"
-        case .restDays: return "moon"
         case .personalRecord: return "medal"
         case .oneRepMax: return "trophy"
         case .todaysPlan: return "calendar.badge.checkmark"
@@ -1815,16 +1810,11 @@ private struct DashboardAddTileSheet: View {
 
     private func descriptionForStatCard(_ statCard: StatCardType) -> String {
         switch statCard {
-        case .totalWorkouts:           return "Cumulative count of all completed workouts."
-        case .dayStreaks:               return "Your current consecutive active days streak."
-        case .totalTime:               return "Total time logged across all workouts."
-        case .favoriteExercise:        return "The exercise you perform most frequently."
-        case .favoriteDay:             return "The day of the week you work out most often."
-        case .workoutFrequency:        return "Bar chart of workout activity over the last 14 days."
+        case .favoriteExercise:        return "Top 5 exercises you perform most often."
+        case .favoriteDay:             return "Bar chart of workouts logged per day of the week."
+        case .workoutFrequency:        return "14-day workout activity dots, plus longest + current streak."
         case .muscleGroupDistribution: return "Pie chart of muscle groups trained in the last 7 days."
         case .volumeThisWeek:          return "Total sets × reps × weight logged this week."
-        case .longestStreak:           return "Your all-time best consecutive workout streak."
-        case .restDays:                return "Days with no workout logged in the last 14 days."
         case .personalRecord:          return "Your heaviest single set weight ever logged."
         case .oneRepMax:               return "Leaderboard of your best estimated 1-rep maxes by exercise."
         case .todaysPlan:              return "Shows today's planned workouts, exercises, and voice activities."

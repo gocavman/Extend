@@ -17,6 +17,9 @@ public struct DashboardTile: Identifiable, Hashable, Codable {
     public var order: Int
     public var targetModuleID: UUID?
     public var tileType: TileType
+    /// Identifies which stat the card renders. Optional so we can tolerate
+    /// saved tiles referencing stat types that have since been removed —
+    /// DashboardState filters those orphaned tiles out at load time.
     public var statCardType: StatCardType?
     public var size: TileSize
     public var blankAction: BlankTileAction?
@@ -97,6 +100,48 @@ public struct DashboardTile: Identifiable, Hashable, Codable {
     public static func == (lhs: DashboardTile, rhs: DashboardTile) -> Bool {
         lhs.id == rhs.id
     }
+
+    // MARK: - Codable
+
+    private enum CodingKeys: String, CodingKey {
+        case id, title, icon, order, targetModuleID, tileType, statCardType,
+             size, blankAction, accentPlacement, accentColorHex, tileTintHex,
+             shortcutType, shortcutItemID, oneRMExerciseIDs,
+             personalRecordExerciseIDs, volumeWorkoutName, volumeExerciseID,
+             topDurationsExerciseIDs, topDistancesExerciseIDs
+    }
+
+    /// Tolerant decoder: unknown / removed `statCardType` rawValues decode
+    /// to nil instead of failing the whole tile, so saved dashboards
+    /// referencing retired stat types still load (DashboardState filters the
+    /// orphan stat-card tiles out after decoding).
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = try c.decode(UUID.self, forKey: .id)
+        title = try c.decode(String.self, forKey: .title)
+        icon = try c.decode(String.self, forKey: .icon)
+        order = try c.decode(Int.self, forKey: .order)
+        targetModuleID = try c.decodeIfPresent(UUID.self, forKey: .targetModuleID)
+        tileType = (try? c.decodeIfPresent(TileType.self, forKey: .tileType)) ?? .statCard
+        if let raw = try? c.decodeIfPresent(String.self, forKey: .statCardType) {
+            statCardType = StatCardType(rawValue: raw)
+        } else {
+            statCardType = nil
+        }
+        size = (try? c.decodeIfPresent(TileSize.self, forKey: .size)) ?? .small
+        blankAction = try? c.decodeIfPresent(BlankTileAction.self, forKey: .blankAction)
+        accentPlacement = (try? c.decodeIfPresent(AccentPlacement.self, forKey: .accentPlacement)) ?? .none
+        accentColorHex = (try? c.decodeIfPresent(String.self, forKey: .accentColorHex)) ?? "#CCCCCC"
+        tileTintHex = try? c.decodeIfPresent(String.self, forKey: .tileTintHex)
+        shortcutType = try? c.decodeIfPresent(ShortcutType.self, forKey: .shortcutType)
+        shortcutItemID = try? c.decodeIfPresent(UUID.self, forKey: .shortcutItemID)
+        oneRMExerciseIDs = try? c.decodeIfPresent([UUID].self, forKey: .oneRMExerciseIDs)
+        personalRecordExerciseIDs = try? c.decodeIfPresent([UUID].self, forKey: .personalRecordExerciseIDs)
+        volumeWorkoutName = try? c.decodeIfPresent(String.self, forKey: .volumeWorkoutName)
+        volumeExerciseID = try? c.decodeIfPresent(UUID.self, forKey: .volumeExerciseID)
+        topDurationsExerciseIDs = try? c.decodeIfPresent([UUID].self, forKey: .topDurationsExerciseIDs)
+        topDistancesExerciseIDs = try? c.decodeIfPresent([UUID].self, forKey: .topDistancesExerciseIDs)
+    }
 }
 
 // MARK: - Color Helpers
@@ -145,16 +190,11 @@ public enum TileType: String, Codable, CaseIterable {
 
 /// Types of stat cards available
 public enum StatCardType: String, Codable, CaseIterable {
-    case totalWorkouts = "Total Workouts"
-    case dayStreaks = "Day Streaks"
-    case totalTime = "Total Time"
     case favoriteExercise = "Favorite Exercise"
     case favoriteDay = "Favorite Day"
-    case workoutFrequency = "Workout Frequency (14 days)"
+    case workoutFrequency = "Workout Frequency"
     case muscleGroupDistribution = "Muscle Group Distribution (7 days)"
     case volumeThisWeek = "Volume This Week"
-    case longestStreak = "Longest Streak"
-    case restDays = "Rest Days (14 days)"
     case personalRecord = "Personal Record"
     case oneRepMax = "1RM Leaderboard"
     case todaysPlan = "Today's Plan"

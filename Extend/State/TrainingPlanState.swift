@@ -461,7 +461,7 @@ final class TrainingPlanState {
             }
         }
 
-        writeWidgetSnapshot(planName: plan.name, items: items)
+        writeWidgetSnapshot(planName: plan.name, items: items, note: pd.note)
 
         // Also write a ±7-day window so the Watch app can browse nearby days.
         refreshMultiDaySnapshots()
@@ -491,8 +491,11 @@ final class TrainingPlanState {
             guard plan.isActive(on: date) else { continue }
             let pd = plan.planDay(for: date)
 
+            let trimmedNote = pd.note.trimmingCharacters(in: .whitespacesAndNewlines)
             if pd.isEmpty {
-                snapshots.append(WidgetPlanSnapshot(planName: plan.name, date: date, items: [], isRestDay: true))
+                // PlanDay.isEmpty checks items AND note, so this branch only
+                // runs when there is truly nothing scheduled.
+                snapshots.append(WidgetPlanSnapshot(planName: plan.name, date: date, items: [], isRestDay: true, note: nil))
                 continue
             }
 
@@ -542,7 +545,7 @@ final class TrainingPlanState {
                                          sourceID: c.id.uuidString)
                 }
             }
-            snapshots.append(WidgetPlanSnapshot(planName: plan.name, date: date, items: items, isRestDay: false))
+            snapshots.append(WidgetPlanSnapshot(planName: plan.name, date: date, items: items, isRestDay: false, note: trimmedNote.isEmpty ? nil : trimmedNote))
         }
         writeMultiDaySnapshots(snapshots)
         WatchConnectivityReceiver.shared.sendPlanUpdate(multidaySnapshots: snapshots)

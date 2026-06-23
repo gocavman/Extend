@@ -229,8 +229,8 @@ private struct DashboardModuleView: View {
             && tile.statCardType == .muscleGroupDistribution
         // Dynamic-height entries for PR and 1RM tiles
         // PERFORMANCE FIX: Only calculate these for the specific tiles that need them
-        let prEntries: [(name: String, value: Double)] = tile.statCardType == .personalRecord ? personalRecordEntries(for: tile) : []
-        let rmEntries: [(name: String, value: Double)] = tile.statCardType == .oneRepMax ? oneRMEntries(for: tile) : []
+        let prEntries: [(name: String, value: Double, date: Date?)] = tile.statCardType == .personalRecord ? personalRecordEntries(for: tile) : []
+        let rmEntries: [(name: String, value: Double, date: Date?)] = tile.statCardType == .oneRepMax ? oneRMEntries(for: tile) : []
         let topDurationEntries: [(name: String, value: Double, date: Date)] = tile.statCardType == .topDurations ? topDurationEntries(for: tile) : []
         let topDistanceEntries: [(name: String, value: Double, date: Date)] = tile.statCardType == .topDistances ? topDistanceEntries(for: tile) : []
         // PR, 1RM, leaderboard, and todaysPlan tiles use content-driven height (nil) so layout flows naturally
@@ -242,12 +242,16 @@ private struct DashboardModuleView: View {
             : 0
         let isIPad = sizeClass == .regular
         // favoriteDay: header(44) + 7 rows × 19pt each + bottom padding(12) ≈ 189
+        // favoriteExercise: header + up-to-5 leaderboard rows — same shape, but
+        // capped at 5 so there's no empty space below the last row.
         // volumeThisWeek: header(44) + bars(107) + trend(20) + padding(16) ≈ 187
         let tileHeight: CGFloat?
         if isDoubleHeight {
             tileHeight = isIPad ? columnWidth * 1.3 + spacing : columnWidth * 2 + spacing
         } else if tile.statCardType == .favoriteDay {
             tileHeight = CGFloat(44 + 7 * 19 + 12) * (isIPad ? 1.6 : 1.0)
+        } else if tile.statCardType == .favoriteExercise {
+            tileHeight = CGFloat(44 + 5 * 19 + 12) * (isIPad ? 1.6 : 1.0)
         } else if tile.statCardType == .volumeThisWeek {
             tileHeight = CGFloat(44 + 107 + 20 + 16) * (isIPad ? 1.6 : 1.0)
         } else if tile.statCardType == .waterIntake14Days {
@@ -301,10 +305,13 @@ private struct DashboardModuleView: View {
                     personalRecordEntries: prEntries,
                     volumeWeeks: statCard == .volumeThisWeek ? logState.volumeByWeek(weeks: 7, workoutName: tile.volumeWorkoutName, exerciseID: tile.volumeExerciseID) : [],
                     dayOfWeekCounts: statCard == .favoriteDay ? logState.workoutCountByDayOfWeek : [],
+                    favoriteExerciseEntries: statCard == .favoriteExercise ? topFavoriteExerciseEntries() : [],
                     waterDailyTotals: statCard == .waterIntake14Days ? waterState.dailyTotals(days: 14) : [],
                     waterGoalOz: waterState.dailyGoalOz,
                     waterUnit: waterState.unit,
                     waterStreak: statCard == .waterIntake14Days ? waterState.currentStreak : 0,
+                    longestStreak: statCard == .workoutFrequency ? logState.longestStreak : 0,
+                    currentStreak: statCard == .workoutFrequency ? logState.currentStreak : 0,
                     topDurationEntries: topDurationEntries,
                     topDistanceEntries: topDistanceEntries,
                     distanceUnit: distanceUnit
@@ -640,26 +647,12 @@ private struct DashboardModuleView: View {
     
     private func statValue(for stat: StatCardType) -> String {
         switch stat {
-        case .totalWorkouts:
-            return "\(logState.totalWorkouts)"
-        case .dayStreaks:
-            return "\(logState.currentStreak)"
-        case .totalTime:
-            let totalSeconds = Int(logState.totalTime)
-            let hours = totalSeconds / 3600
-            let minutes = (totalSeconds % 3600) / 60
-            if hours > 0 {
-                return "\(hours)h \(minutes)m"
-            }
-            return "\(minutes)m"
-        case .favoriteExercise:
-            return logState.favoriteExercise ?? "—"
-        case .favoriteDay:
-            return logState.favoriteDay ?? "—"
+        case .favoriteExercise, .favoriteDay:
+            // Both render their own leaderboard list — no text value needed.
+            return ""
         case .workoutFrequency:
-            let frequency = logState.workoutFrequency(days: 14)
-            let total = frequency.values.reduce(0, +)
-            return "\(total) / 14d"
+            // Card renders its own dot grid + streak rows.
+            return ""
         case .muscleGroupDistribution:
             let segments = muscleDistributionSegments()
             return segments.first?.label ?? "—"
@@ -669,10 +662,6 @@ private struct DashboardModuleView: View {
                 return String(format: "%.1fk", v / 1000)
             }
             return String(format: "%.0f", v)
-        case .longestStreak:
-            return "\(logState.longestStreak)"
-        case .restDays:
-            return "\(logState.restDaysLast14)"
         case .personalRecord:
             if let pr = logState.personalRecord {
                 return String(format: "%.0f \(weightUnit)", pr.weight)
@@ -697,14 +686,6 @@ private struct DashboardModuleView: View {
     /// Returns an optional trend arrow (↑ / ↓) and color for stats that support comparison
     private func trendInfo(for stat: StatCardType) -> (symbol: String, color: Color)? {
         switch stat {
-        case .totalWorkouts:
-            let this = logState.workoutsThisWeek
-            let last = logState.workoutsLastWeek
-            if last == 0 { return nil }
-            return this > last ? ("↑", .green) : this < last ? ("↓", .red) : nil
-        case .dayStreaks:
-            // Show up arrow if current streak > 0, no comparison available without history
-            return logState.currentStreak > 0 ? ("↑", .green) : nil
         case .volumeThisWeek:
             let this = logState.volumeThisWeek
             let last = logState.volumeLastWeek
@@ -720,39 +701,81 @@ private struct DashboardModuleView: View {
         }
     }
 
-    private func personalRecordEntries(for tile: DashboardTile) -> [(name: String, value: Double)] {
-        if let ids = tile.personalRecordExerciseIDs, !ids.isEmpty {
-            return ids.compactMap { id in
-                guard let weight = logState.bestWeight(exerciseID: id) else { return nil }
-                let name = logState.logs
-                    .flatMap { $0.exercises }
-                    .first(where: { $0.exerciseID == id })?.exerciseName ?? "Unknown"
-                return (name: name, value: weight)
+    private func personalRecordEntries(for tile: DashboardTile) -> [(name: String, value: Double, date: Date?)] {
+        let exerciseIDs: [UUID] = {
+            if let ids = tile.personalRecordExerciseIDs, !ids.isEmpty { return ids }
+            return logState.topExercisesByWeight(limit: 5).map { $0.exerciseID }
+        }()
+        let rows: [(name: String, value: Double, date: Date?)] = exerciseIDs.compactMap { id in
+            // Walk every log and find the single set with the heaviest weight
+            // for this exercise, plus the log it came from (to surface its date
+            // alongside the value — matches the Top Durations row layout).
+            var best: (name: String, value: Double, date: Date)? = nil
+            for log in logState.logs {
+                for ex in log.exercises where ex.exerciseID == id {
+                    for s in ex.sets where s.weight > 0 {
+                        if best == nil || s.weight > best!.value {
+                            best = (ex.exerciseName, s.weight, log.completedAt)
+                        }
+                    }
+                }
             }
-            .sorted { $0.value > $1.value }
-        } else {
-            return logState.topExercisesByWeight(limit: 5)
-                .map { (name: $0.exerciseName, value: $0.weight) }
+            guard let b = best else { return nil }
+            return (name: b.name, value: b.value, date: b.date)
         }
+        return rows.sorted { $0.value > $1.value }
     }
 
-    private func oneRMEntries(for tile: DashboardTile) -> [(name: String, value: Double)] {
-        if let ids = tile.oneRMExerciseIDs, !ids.isEmpty {
-            // User-selected exercises
-            return ids.compactMap { id in
-                guard let value = logState.bestEstimated1RM(exerciseID: id) else { return nil }
-                // Find display name from any log
-                let name = logState.logs
-                    .flatMap { $0.exercises }
-                    .first(where: { $0.exerciseID == id })?.exerciseName ?? "Unknown"
-                return (name: name, value: value)
+    private func oneRMEntries(for tile: DashboardTile) -> [(name: String, value: Double, date: Date?)] {
+        let exerciseIDs: [UUID] = {
+            if let ids = tile.oneRMExerciseIDs, !ids.isEmpty { return ids }
+            return logState.topExercisesBy1RM(limit: 5).map { $0.exerciseID }
+        }()
+        let rows: [(name: String, value: Double, date: Date?)] = exerciseIDs.compactMap { id in
+            // Walk every log and find the set with the highest Epley-estimated
+            // 1RM for this exercise, plus the log date.
+            var best: (name: String, value: Double, date: Date)? = nil
+            for log in logState.logs {
+                for ex in log.exercises where ex.exerciseID == id {
+                    for s in ex.sets {
+                        let v = Self.epley(weight: s.weight, reps: s.reps)
+                        guard v > 0 else { continue }
+                        if best == nil || v > best!.value {
+                            best = (ex.exerciseName, v, log.completedAt)
+                        }
+                    }
+                }
             }
-            .sorted { $0.value > $1.value }
-        } else {
-            // Auto top-5 by best 1RM
-            return logState.topExercisesBy1RM(limit: 5)
-                .map { (name: $0.exerciseName, value: $0.estimated1RM) }
+            guard let b = best else { return nil }
+            return (name: b.name, value: b.value, date: b.date)
         }
+        return rows.sorted { $0.value > $1.value }
+    }
+
+    /// Local copy of WorkoutLogState's Epley formula so the dashboard can
+    /// rank sets by estimated 1RM without exposing the helper publicly.
+    private static func epley(weight: Double, reps: Int) -> Double {
+        guard weight > 0, reps > 0 else { return 0 }
+        return weight * (1.0 + Double(reps) / 30.0)
+    }
+
+    /// Top-5 exercises by how often they appear in logs (one count per
+    /// LoggedExercise instance, matching the legacy `favoriteExercise`
+    /// scalar). Sorted by count desc, ties broken alphabetically for stable
+    /// ordering across re-renders.
+    private func topFavoriteExerciseEntries() -> [(name: String, count: Int)] {
+        var counts: [String: Int] = [:]
+        for log in logState.logs {
+            for ex in log.exercises {
+                counts[ex.exerciseName, default: 0] += 1
+            }
+        }
+        return counts
+            .sorted { lhs, rhs in
+                lhs.value != rhs.value ? lhs.value > rhs.value : lhs.key < rhs.key
+            }
+            .prefix(5)
+            .map { (name: $0.key, count: $0.value) }
     }
 
     /// Top 10 sessions by duration (seconds). Each row references the exact
@@ -1144,12 +1167,6 @@ private struct AddTileSheet: View {
 
     private func iconForStatCard(_ statCard: StatCardType) -> String {
         switch statCard {
-        case .totalWorkouts:
-            return "list.bullet"
-        case .dayStreaks:
-            return "flame"
-        case .totalTime:
-            return "clock"
         case .favoriteExercise:
             return "star"
         case .favoriteDay:
@@ -1160,10 +1177,6 @@ private struct AddTileSheet: View {
             return "chart.pie"
         case .volumeThisWeek:
             return "scalemass"
-        case .longestStreak:
-            return "trophy"
-        case .restDays:
-            return "moon"
         case .personalRecord:
             return "medal"
         case .oneRepMax:
@@ -1325,7 +1338,7 @@ private struct AddTileSheet: View {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Add") {
                         for statCard in selectedStatCards {
-                            let size: TileSize = (statCard == .workoutFrequency || statCard == .muscleGroupDistribution || statCard == .oneRepMax || statCard == .personalRecord || statCard == .topDurations || statCard == .topDistances) ? .large : .small
+                            let size: TileSize = (statCard == .workoutFrequency || statCard == .muscleGroupDistribution || statCard == .oneRepMax || statCard == .personalRecord || statCard == .topDurations || statCard == .topDistances || statCard == .favoriteDay || statCard == .favoriteExercise || statCard == .volumeThisWeek || statCard == .waterIntake14Days || statCard == .todaysPlan) ? .large : .small
                             let tile = DashboardTile(
                                 title: statCard.rawValue,
                                 icon: iconForStatCard(statCard),
@@ -1426,6 +1439,7 @@ private struct EditTileSheet: View {
         if tile.tileType == .statCard, let statCard = tile.statCardType {
             if statCard == .workoutFrequency || statCard == .muscleGroupDistribution
                 || statCard == .volumeThisWeek || statCard == .favoriteDay
+                || statCard == .favoriteExercise
                 || statCard == .waterIntake14Days {
                 return [.large]
             }
@@ -1812,14 +1826,21 @@ private struct StatCardTileView: View {
     var borderColor: Color? = nil
     let trend: (symbol: String, color: Color)?
     let personalRecordLabel: String?   // exercise name for PR card (legacy single-value path)
-    var oneRMEntries: [(name: String, value: Double)] = []
-    var personalRecordEntries: [(name: String, value: Double)] = []
+    var oneRMEntries: [(name: String, value: Double, date: Date?)] = []
+    var personalRecordEntries: [(name: String, value: Double, date: Date?)] = []
     var volumeWeeks: [(label: String, volume: Double)] = []
     var dayOfWeekCounts: [(label: String, count: Int)] = []
+    /// Top-5 exercises by appearance count, used by the Favorite Exercise
+    /// leaderboard tile.
+    var favoriteExerciseEntries: [(name: String, count: Int)] = []
     var waterDailyTotals: [(date: Date, oz: Double)] = []
     var waterGoalOz: Double = 64
     var waterUnit: WaterUnit = .oz
     var waterStreak: Int = 0
+    /// Longest / current workout streaks, surfaced under the Workout
+    /// Frequency dot grid in place of the retired streak stat cards.
+    var longestStreak: Int = 0
+    var currentStreak: Int = 0
     var topDurationEntries: [(name: String, value: Double, date: Date)] = []
     var topDistanceEntries: [(name: String, value: Double, date: Date)] = []
     var distanceUnit: String = "mi"
@@ -1843,7 +1864,15 @@ private struct StatCardTileView: View {
                         .foregroundColor(.primary)
                         .multilineTextAlignment(.leading)
                         .fixedSize(horizontal: false, vertical: true)
-                        .frame(maxWidth: .infinity, alignment: .leading)
+                    // Tap-hint glyph for stat cards that route the user into
+                    // a module on tap (currently water — others render purely
+                    // informational data and shouldn't suggest interactivity).
+                    if statType == .waterIntake14Days {
+                        Image(systemName: "chevron.right")
+                            .font(.system(size: iPad ? 13 : 9, weight: .semibold))
+                            .foregroundColor(.secondary)
+                    }
+                    Spacer(minLength: 0)
                 }
 
                 Spacer().frame(height: 4)
@@ -1856,6 +1885,17 @@ private struct StatCardTileView: View {
                         Text(frequencyRangeLabel)
                             .font(.system(size: iPad ? 16 : 10))
                             .foregroundColor(.gray)
+
+                        // Streak row — Longest on the left half, Current on
+                        // the right half. Keeps the trio (dots + range +
+                        // streaks) compact instead of stacking two label/value
+                        // rows underneath.
+                        HStack(spacing: 8) {
+                            streakHalf(label: "Longest Streak", value: longestStreak)
+                            streakHalf(label: "Current Streak", value: currentStreak)
+                        }
+                        .padding(.top, 4)
+                        .frame(maxWidth: .infinity)
                     }
                     .frame(maxHeight: .infinity)
                 } else if statType == .oneRepMax {
@@ -1883,13 +1923,20 @@ private struct StatCardTileView: View {
                                             .font(.system(size: iPad ? 16 : 12, weight: .bold, design: .rounded))
                                             .foregroundColor(index == 0 ? .yellow : .gray)
                                             .frame(width: iPad ? 36 : 24, alignment: .leading)
-                                        // Exercise name
-                                        Text(entry.name)
-                                            .font(.system(size: iPad ? 16 : 12, weight: .semibold))
-                                            .foregroundColor(.primary)
-                                            .lineLimit(1)
-                                            .minimumScaleFactor(0.7)
-                                            .frame(maxWidth: .infinity, alignment: .leading)
+                                        // Exercise name + date stamp (mirrors the Top Durations row layout)
+                                        VStack(alignment: .leading, spacing: 1) {
+                                            Text(entry.name)
+                                                .font(.system(size: iPad ? 16 : 12, weight: .semibold))
+                                                .foregroundColor(.primary)
+                                                .lineLimit(1)
+                                                .minimumScaleFactor(0.7)
+                                            if let date = entry.date {
+                                                Text(date, format: .dateTime.month(.abbreviated).day().year(.twoDigits))
+                                                    .font(.system(size: iPad ? 12 : 9))
+                                                    .foregroundColor(.gray)
+                                            }
+                                        }
+                                        .frame(maxWidth: .infinity, alignment: .leading)
                                         // 1RM value
                                         Text(String(format: "%.0f", entry.value))
                                             .font(.system(size: iPad ? 16 : 12, weight: .bold))
@@ -1936,12 +1983,20 @@ private struct StatCardTileView: View {
                                             .font(.system(size: iPad ? 16 : 12, weight: .bold, design: .rounded))
                                             .foregroundColor(index == 0 ? Color(red: 1, green: 0.8, blue: 0) : .gray)
                                             .frame(width: iPad ? 36 : 24, alignment: .leading)
-                                        Text(entry.name)
-                                            .font(.system(size: iPad ? 16 : 12, weight: .semibold))
-                                            .foregroundColor(.primary)
-                                            .lineLimit(1)
-                                            .minimumScaleFactor(0.7)
-                                            .frame(maxWidth: .infinity, alignment: .leading)
+                                        // Exercise name + date stamp (mirrors the Top Durations row layout)
+                                        VStack(alignment: .leading, spacing: 1) {
+                                            Text(entry.name)
+                                                .font(.system(size: iPad ? 16 : 12, weight: .semibold))
+                                                .foregroundColor(.primary)
+                                                .lineLimit(1)
+                                                .minimumScaleFactor(0.7)
+                                            if let date = entry.date {
+                                                Text(date, format: .dateTime.month(.abbreviated).day().year(.twoDigits))
+                                                    .font(.system(size: iPad ? 12 : 9))
+                                                    .foregroundColor(.gray)
+                                            }
+                                        }
+                                        .frame(maxWidth: .infinity, alignment: .leading)
                                         Text(String(format: "%.0f", entry.value))
                                             .font(.system(size: iPad ? 16 : 12, weight: .bold))
                                             .foregroundColor(.primary)
@@ -2078,6 +2133,29 @@ private struct StatCardTileView: View {
                         DayOfWeekBarChartView(days: dayOfWeekCounts)
                             .frame(maxWidth: .infinity, maxHeight: .infinity)
                     }
+                } else if statType == .favoriteExercise {
+                    if favoriteExerciseEntries.isEmpty {
+                        VStack(spacing: 4) {
+                            Spacer()
+                            Image(systemName: "star")
+                                .font(.system(size: iPad ? 35 : 22, weight: .light))
+                                .foregroundColor(.gray)
+                            Text("No exercises logged yet")
+                                .font(.system(size: iPad ? 16 : 10))
+                                .foregroundColor(.gray)
+                            Spacer()
+                        }
+                        .frame(maxWidth: .infinity)
+                    } else {
+                        // Anchor the chart to the top so the (up to) 5 rows
+                        // sit just under the header instead of expanding to
+                        // fill the 7-row tile height with row gaps.
+                        VStack(spacing: 0) {
+                            FavoriteExerciseBarChartView(entries: favoriteExerciseEntries)
+                            Spacer(minLength: 0)
+                        }
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    }
                 } else if statType == .topDurations || statType == .topDistances {
                     let entries = statType == .topDurations ? topDurationEntries : topDistanceEntries
                     if entries.isEmpty {
@@ -2139,9 +2217,11 @@ private struct StatCardTileView: View {
                         .frame(maxWidth: .infinity, alignment: .leading)
                     }
                 } else {
-                    let isNumeric = statType == .totalWorkouts || statType == .dayStreaks
-                        || statType == .totalTime
-                        || statType == .longestStreak || statType == .restDays
+                    // The big-number variant only renders for the volume +
+                    // PR fallback paths now; everything else has its own
+                    // dedicated chart/list above. Keep design-default (not
+                    // .rounded) so the volume value matches earlier UI.
+                    let isNumeric = false
                     VStack(spacing: 4) {
                         Spacer(minLength: 0)
                         Text(value)
@@ -2187,6 +2267,25 @@ private struct StatCardTileView: View {
                 AccentBarView(placement: accentPlacement, color: accentColor)
             }
         }
+    }
+
+    /// One half of the streak row under the Workout Frequency dot grid —
+    /// label and value side-by-side. Two of these share the row so Longest
+    /// Streak sits on the leading half and Current Streak on the trailing
+    /// half, each as a tight label/value pair.
+    @ViewBuilder
+    private func streakHalf(label: String, value: Int) -> some View {
+        HStack(spacing: 4) {
+            Text(label)
+                .font(.system(size: iPad ? 16 : 10))
+                .foregroundColor(.gray)
+                .lineLimit(1)
+                .minimumScaleFactor(0.7)
+            Text("\(value)")
+                .font(.system(size: iPad ? 16 : 10, weight: .semibold))
+                .foregroundColor(.primary)
+        }
+        .frame(maxWidth: .infinity)
     }
 
     /// "1:23:45" / "12:34" / "45s" — compact duration formatting for the
@@ -2503,20 +2602,23 @@ private struct DayOfWeekBarChartView: View {
         let iPad = sizeClass == .regular
         let sorted = days.sorted { $0.count > $1.count }
         let maxCount = sorted.map { $0.count }.max() ?? 1
-        // Calculate the width needed for the largest count value
+        // Calculate the width needed for the largest count value. Bumped to
+        // match the Top Durations text size (12pt phone / 16pt iPad).
         let maxCountWidth: CGFloat = {
             let maxDigits = String(maxCount).count
-            return iPad ? CGFloat(max(28, maxDigits * 10)) : CGFloat(max(22, maxDigits * 7))
+            return iPad ? CGFloat(max(32, maxDigits * 11)) : CGFloat(max(26, maxDigits * 8))
         }()
 
         VStack(alignment: .leading, spacing: iPad ? 10 : 5) {
             ForEach(Array(sorted.enumerated()), id: \.offset) { idx, day in
                 let fraction = maxCount > 0 ? CGFloat(day.count) / CGFloat(maxCount) : 0
                 HStack(spacing: iPad ? 10 : 6) {
+                    // Day label + value sized to match the Top Durations
+                    // leaderboard rows (16/12) so the tiles read consistently.
                     Text(String(day.label.prefix(3)))
-                        .font(.system(size: iPad ? 15 : 9, weight: idx == 0 ? .bold : .semibold))
+                        .font(.system(size: iPad ? 16 : 12, weight: idx == 0 ? .bold : .semibold))
                         .foregroundColor(idx == 0 ? .primary : .gray)
-                        .frame(width: iPad ? 42 : 26, alignment: .leading)
+                        .frame(width: iPad ? 46 : 30, alignment: .leading)
                     GeometryReader { barGeo in
                         ZStack(alignment: .leading) {
                             RoundedRectangle(cornerRadius: 2)
@@ -2529,9 +2631,70 @@ private struct DayOfWeekBarChartView: View {
                     }
                     .frame(height: iPad ? 18 : 10)
                     Text("\(day.count)")
-                        .font(.system(size: iPad ? 15 : 9, weight: .bold))
+                        .font(.system(size: iPad ? 16 : 12, weight: .bold))
                         .foregroundColor(idx == 0 ? .primary : .gray)
                         .frame(width: maxCountWidth, alignment: .trailing)
+                }
+                .frame(height: iPad ? 24 : 14)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+}
+
+// MARK: - Favorite Exercise Bar Chart (horizontal)
+
+/// Top-5 exercises ranked by appearance count. Uses `Grid` so the name
+/// column auto-sizes to the widest entry — every bar starts at the same x,
+/// stretches across the rest of the row, and the count column right-aligns.
+/// Reads identically to `DayOfWeekBarChartView` at the same font scale
+/// (16pt iPad / 12pt phone), matching the Top Durations leaderboard rows.
+private struct FavoriteExerciseBarChartView: View {
+    let entries: [(name: String, count: Int)]
+
+    @Environment(\.horizontalSizeClass) private var sizeClass
+
+    var body: some View {
+        let iPad = sizeClass == .regular
+        let sorted = entries.sorted { $0.count > $1.count }
+        let maxCount = sorted.map { $0.count }.max() ?? 1
+        let maxCountWidth: CGFloat = {
+            let maxDigits = String(maxCount).count
+            return iPad ? CGFloat(max(32, maxDigits * 11)) : CGFloat(max(26, maxDigits * 8))
+        }()
+
+        Grid(alignment: .leading,
+             horizontalSpacing: iPad ? 10 : 6,
+             verticalSpacing: iPad ? 10 : 5) {
+            ForEach(Array(sorted.enumerated()), id: \.offset) { idx, entry in
+                let fraction = maxCount > 0 ? CGFloat(entry.count) / CGFloat(maxCount) : 0
+                GridRow {
+                    Text(entry.name)
+                        .font(.system(size: iPad ? 16 : 12, weight: idx == 0 ? .bold : .semibold))
+                        .foregroundColor(idx == 0 ? .primary : .gray)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.7)
+                        .gridColumnAlignment(.leading)
+                    // Bar column fills the rest of the row — every bar
+                    // starts at the right edge of the (auto-sized) name
+                    // column, so they line up across rows.
+                    GeometryReader { barGeo in
+                        ZStack(alignment: .leading) {
+                            RoundedRectangle(cornerRadius: 2)
+                                .fill(Color.primary.opacity(0.08))
+                                .frame(height: iPad ? 18 : 10)
+                            RoundedRectangle(cornerRadius: 2)
+                                .fill(idx == 0 ? Color.primary : Color.primary.opacity(0.3))
+                                .frame(width: barGeo.size.width * fraction, height: iPad ? 18 : 10)
+                        }
+                    }
+                    .frame(maxWidth: .infinity)
+                    .frame(height: iPad ? 18 : 10)
+                    Text("\(entry.count)")
+                        .font(.system(size: iPad ? 16 : 12, weight: .bold))
+                        .foregroundColor(idx == 0 ? .primary : .gray)
+                        .frame(width: maxCountWidth, alignment: .trailing)
+                        .gridColumnAlignment(.trailing)
                 }
                 .frame(height: iPad ? 24 : 14)
             }
@@ -2898,7 +3061,12 @@ private struct TodaysPlanTileView: View {
                         Text("Today's Plan")
                             .font(.system(size: iPad ? 17 : 11, weight: .bold))
                             .foregroundColor(.primary)
-                            .frame(maxWidth: .infinity, alignment: .leading)
+                        // Tap-hint glyph so the user knows the tile launches
+                        // the plan, not just a static summary.
+                        Image(systemName: "chevron.right")
+                            .font(.system(size: iPad ? 13 : 9, weight: .semibold))
+                            .foregroundColor(.secondary)
+                        Spacer(minLength: 0)
                     }
 
                     Spacer().frame(height: 2)

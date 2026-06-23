@@ -122,6 +122,7 @@ struct WatchTimerRunnerView: View {
                 .font(.system(size: 11, weight: .semibold))
                 .foregroundColor(.secondary)
                 .lineLimit(1)
+                .minimumScaleFactor(0.7)
             Spacer()
             if manager.heartRate > 0 {
                 Label("\(Int(manager.heartRate))", systemImage: "heart.fill")
@@ -130,6 +131,10 @@ struct WatchTimerRunnerView: View {
                     .labelStyle(.titleAndIcon)
             }
         }
+        // The fullScreenCover host puts a system X dismiss button in the
+        // top-left corner; without this inset the runner's title sits
+        // directly under it.
+        .padding(.leading, 32)
         .padding(.top, 2)
     }
 

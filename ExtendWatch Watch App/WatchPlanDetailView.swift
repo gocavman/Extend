@@ -103,10 +103,18 @@ struct WatchPlanDetailView: View {
 
                 // Plan items list
                 if let snap = currentSnapshot {
-                    if snap.isRestDay || snap.items.isEmpty {
+                    let trimmedNote = snap.note?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+                    let hasNote = !trimmedNote.isEmpty
+                    if snap.isRestDay {
+                        restDayView
+                    } else if snap.items.isEmpty && hasNote {
+                        // A note-only day: surface the note instead of "Rest Day".
+                        notesOnlyView(trimmedNote)
+                    } else if snap.items.isEmpty {
+                        // Defensive: not flagged rest, no items, no note — treat as rest.
                         restDayView
                     } else {
-                        planItemsList(snap.items)
+                        planItemsList(snap.items, note: hasNote ? trimmedNote : nil)
                     }
                 } else {
                     noPlanView
@@ -206,6 +214,31 @@ struct WatchPlanDetailView: View {
         .frame(maxWidth: .infinity)
     }
 
+    /// Days with only a note attached (no activities scheduled) get a
+    /// note-text glyph + scrollable note body, so the wrist still surfaces
+    /// the day's intent instead of pretending the day was a rest.
+    private func notesOnlyView(_ note: String) -> some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 6) {
+                HStack(spacing: 6) {
+                    Image(systemName: "note.text")
+                        .font(.system(size: 14))
+                        .foregroundColor(.secondary)
+                    Text("Note")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundColor(.secondary)
+                    Spacer()
+                }
+                .padding(.top, 6)
+                Text(note)
+                    .font(.system(size: 13))
+                    .foregroundColor(.primary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            .padding(.horizontal, 6)
+        }
+    }
+
     private var noPlanView: some View {
         VStack(spacing: 6) {
             Spacer()
@@ -220,7 +253,7 @@ struct WatchPlanDetailView: View {
         .frame(maxWidth: .infinity)
     }
 
-    private func planItemsList(_ items: [WidgetPlanItem]) -> some View {
+    private func planItemsList(_ items: [WidgetPlanItem], note: String? = nil) -> some View {
         let completed = items.filter { $0.isCompleted }.count
         return ScrollView {
             VStack(alignment: .leading, spacing: 2) {
@@ -272,6 +305,22 @@ struct WatchPlanDetailView: View {
                     }
                     .buttonStyle(.plain)
                     .disabled(dayOffset != 0)
+                }
+
+                // Note (when the user attached one alongside scheduled items)
+                // sits beneath the list so the actionable items stay at the
+                // top — the note is supporting context, not a launch target.
+                if let note {
+                    HStack(alignment: .top, spacing: 4) {
+                        Image(systemName: "note.text")
+                            .font(.system(size: 10))
+                            .foregroundColor(.secondary)
+                        Text(note)
+                            .font(.system(size: 10))
+                            .foregroundColor(.secondary)
+                    }
+                    .padding(.horizontal, 4)
+                    .padding(.top, 6)
                 }
             }
         }

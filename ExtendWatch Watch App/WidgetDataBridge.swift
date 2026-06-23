@@ -76,6 +76,19 @@ public struct WidgetPlanSnapshot: Codable {
     public let date: Date
     public let items: [WidgetPlanItem]
     public let isRestDay: Bool
+    /// Free-text note attached to this day. nil/empty means the user didn't
+    /// add anything. A note-only day is not a rest day on the wrist — the
+    /// runner surfaces the note instead.
+    public let note: String?
+
+    public init(planName: String?, date: Date, items: [WidgetPlanItem],
+                isRestDay: Bool, note: String? = nil) {
+        self.planName = planName
+        self.date = date
+        self.items = items
+        self.isRestDay = isRestDay
+        self.note = note
+    }
 }
 
 // MARK: - Reading

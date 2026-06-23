@@ -77,7 +77,18 @@ public final class DashboardState {
     private func loadTiles() {
         if let data = defaults.data(forKey: tilesKey),
            let decoded = try? JSONDecoder().decode([DashboardTile].self, from: data) {
-            tiles = decoded
+            // Drop orphan stat-card tiles whose statCardType decoded to nil —
+            // these reference enum cases that have since been removed (e.g.
+            // Total Workouts, Day Streaks, Total Time, Longest Streak, Rest
+            // Days). The DashboardTile decoder tolerates the missing case
+            // for forward-compat; this filter keeps the dashboard clean.
+            tiles = decoded.filter { tile in
+                tile.tileType != .statCard || tile.statCardType != nil
+            }
+            // Persist the cleaned list so the next load skips the filter.
+            if tiles.count != decoded.count {
+                saveTiles()
+            }
         } else {
             tiles = createDefaultTiles()
             saveTiles()
@@ -106,20 +117,6 @@ public final class DashboardState {
     private func createDefaultTiles() -> [DashboardTile] {
         var order = 0
         var tiles: [DashboardTile] = []
-
-        // Helper: create a small stat card with the default left-gray accent
-        func statCard(_ type: StatCardType, icon: String, size: TileSize = .small) -> DashboardTile {
-            DashboardTile(
-                title: type.rawValue,
-                icon: icon,
-                order: order,
-                tileType: .statCard,
-                statCardType: type,
-                size: size,
-                accentPlacement: .top,
-                accentColorHex: "#CCCCCC"
-            )
-        }
 
         // Helper: create a graph/large stat card without any accent bar
         func graphCard(_ type: StatCardType, icon: String) -> DashboardTile {
@@ -172,26 +169,12 @@ public final class DashboardState {
         tiles.append(graphCard(.topDistances, icon: "ruler"))
         order += 1
 
+        // Favorite Exercise → leaderboard tile, placed directly above
+        // Favorite Day so the two "what do I do most" cards sit together.
+        tiles.append(graphCard(.favoriteExercise, icon: "star"))
+        order += 1
+
         tiles.append(graphCard(.favoriteDay, icon: "calendar"))
-        order += 1
-
-        // Small tiles
-        tiles.append(statCard(.totalWorkouts, icon: "list.bullet"))
-        order += 1
-
-        tiles.append(statCard(.dayStreaks, icon: "flame"))
-        order += 1
-
-        tiles.append(statCard(.totalTime, icon: "clock"))
-        order += 1
-
-        tiles.append(statCard(.longestStreak, icon: "trophy"))
-        order += 1
-
-        tiles.append(statCard(.favoriteExercise, icon: "star"))
-        order += 1
-
-        tiles.append(statCard(.restDays, icon: "moon"))
         order += 1
 
         return tiles

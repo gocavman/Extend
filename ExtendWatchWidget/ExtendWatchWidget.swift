@@ -71,6 +71,18 @@ struct WidgetPlanSnapshot: Codable {
     let date: Date
     let items: [WidgetPlanItem]
     let isRestDay: Bool
+    /// Free-text note attached to this day. Note-only days surface the note
+    /// on the complication instead of "Rest" / "0/0".
+    let note: String?
+
+    init(planName: String?, date: Date, items: [WidgetPlanItem],
+         isRestDay: Bool, note: String? = nil) {
+        self.planName = planName
+        self.date = date
+        self.items = items
+        self.isRestDay = isRestDay
+        self.note = note
+    }
 }
 
 enum WatchDistanceUnit: String, Codable, CaseIterable {
@@ -353,9 +365,22 @@ struct PlanComplicationView: View {
 
     private var completedCount: Int { entry.snapshot.items.filter { $0.isCompleted }.count }
     private var totalCount: Int { entry.snapshot.items.count }
+    /// Trimmed note attached to today's plan, or nil if there isn't one.
+    private var trimmedNote: String? {
+        guard let raw = entry.snapshot.note?.trimmingCharacters(in: .whitespacesAndNewlines),
+              !raw.isEmpty else { return nil }
+        return raw
+    }
+    /// True when the day has no scheduled items but the user attached a note.
+    /// Surfaces as a note glyph instead of "0/0" on the complication.
+    private var isNoteOnlyDay: Bool {
+        !entry.snapshot.isRestDay && totalCount == 0 && trimmedNote != nil
+    }
     private var fraction: Double {
         if totalCount > 0 { return Double(completedCount) / Double(totalCount) }
-        return entry.snapshot.isRestDay ? 1.0 : 0.0
+        // Filled ring for both rest days and note-only days — neither has any
+        // scheduled work to progress through, so the ring shouldn't sit empty.
+        return (entry.snapshot.isRestDay || isNoteOnlyDay) ? 1.0 : 0.0
     }
     private var shapeTint: Color? { complicationColor(entry.color) }
     private var textTint: Color? { complicationColor(entry.textColor) ?? shapeTint }
@@ -388,17 +413,26 @@ struct PlanComplicationView: View {
                     .applyTint(shapeTint)
             }
 
-            VStack(spacing: 0) {
-                // Shrink the label a touch when the checkmark is shown so the
-                // stacked pair doesn't crowd the gauge ring.
-                Text(entry.snapshot.isRestDay ? "Rest" : "\(completedCount)/\(totalCount)")
-                    .font(.system(size: showCheckmark ? 15 : 17, weight: .bold).monospacedDigit())
-                    .lineLimit(1).minimumScaleFactor(0.6)
+            if isNoteOnlyDay {
+                // Note-only days: render the SF Symbol for "note" so the
+                // user knows to tap through and read it rather than seeing a
+                // bare "0/0" that suggests nothing's scheduled.
+                Image(systemName: "note.text")
+                    .font(.system(size: 17, weight: .bold))
                     .applyTint(textTint)
-                if showCheckmark {
-                    Image(systemName: "checkmark")
-                        .font(.system(size: 10, weight: .bold))
+            } else {
+                VStack(spacing: 0) {
+                    // Shrink the label a touch when the checkmark is shown so the
+                    // stacked pair doesn't crowd the gauge ring.
+                    Text(entry.snapshot.isRestDay ? "Rest" : "\(completedCount)/\(totalCount)")
+                        .font(.system(size: showCheckmark ? 15 : 17, weight: .bold).monospacedDigit())
+                        .lineLimit(1).minimumScaleFactor(0.6)
                         .applyTint(textTint)
+                    if showCheckmark {
+                        Image(systemName: "checkmark")
+                            .font(.system(size: 10, weight: .bold))
+                            .applyTint(textTint)
+                    }
                 }
             }
         }
@@ -414,6 +448,16 @@ struct PlanComplicationView: View {
             }
             if entry.snapshot.isRestDay {
                 Text("Rest Day").font(.title3.weight(.semibold)).applyTint(textTint)
+            } else if isNoteOnlyDay, let note = trimmedNote {
+                HStack(spacing: 4) {
+                    Image(systemName: "note.text")
+                        .font(.caption)
+                        .applyTint(textTint)
+                    Text(note)
+                        .font(.callout.weight(.medium))
+                        .applyTint(textTint)
+                        .lineLimit(2)
+                }
             } else if totalCount > 0 {
                 Text("\(completedCount) of \(totalCount) done")
                     .font(.title3.weight(.semibold))

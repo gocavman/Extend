@@ -127,7 +127,10 @@ struct WatchStepsView: View {
     }
 
     private func stepsLabel(_ v: Double) -> String {
-        if v >= 1000 { return String(format: "%.1fk", v / 1000) }
+        // Truncate (not round) when collapsing into the "k" form so 9,961
+        // doesn't display as "10.0k" when the user hasn't actually hit the
+        // 10k milestone yet. Matches the watch complication's behavior.
+        if v >= 1000 { return String(format: "%.1fk", floor(v / 100) / 10) }
         return String(Int(v))
     }
 

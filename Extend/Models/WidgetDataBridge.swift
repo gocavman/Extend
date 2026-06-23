@@ -89,19 +89,37 @@ public struct WidgetPlanSnapshot: Codable {
     public let date: Date
     public let items: [WidgetPlanItem]
     public let isRestDay: Bool
+    /// Free-text note attached to this day. nil/empty means the user didn't
+    /// add anything. A note-only day (no items, note present) is *not* a rest
+    /// day — the watch surfaces the note instead.
+    public let note: String?
+
+    public init(planName: String?, date: Date, items: [WidgetPlanItem],
+                isRestDay: Bool, note: String? = nil) {
+        self.planName = planName
+        self.date = date
+        self.items = items
+        self.isRestDay = isRestDay
+        self.note = note
+    }
 }
 
 // MARK: - Writing (main app calls this)
 
 public func writeWidgetSnapshot(
     planName: String?,
-    items: [WidgetPlanItem]
+    items: [WidgetPlanItem],
+    note: String? = nil
 ) {
+    let trimmedNote = (note ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
     let snapshot = WidgetPlanSnapshot(
         planName: planName,
         date: Calendar.current.startOfDay(for: Date()),
         items: items,
-        isRestDay: items.isEmpty
+        // A day with only a note is *not* a rest day — the wrist surfaces the
+        // note. True rest = nothing scheduled and nothing written down.
+        isRestDay: items.isEmpty && trimmedNote.isEmpty,
+        note: trimmedNote.isEmpty ? nil : trimmedNote
     )
     let defaults = UserDefaults(suiteName: appGroupID) ?? .standard
     if let encoded = try? JSONEncoder().encode(snapshot) {
