@@ -751,7 +751,19 @@ public final class WorkoutLogState {
         guard hkState.anyImportEnabled else { return }
         guard HealthKitService.shared.isAvailable else { return }
 
-        let since = hkState.lastImportDate ?? Calendar.current.date(byAdding: .year, value: -1, to: Date()) ?? Date()
+        // Back the cutoff off by 24h whenever we have a `lastImportDate`.
+        // The HK predicate is `.strictStartDate`, so a workout whose start
+        // sits *before* `lastImportDate` is permanently excluded — even if
+        // it ended (or was ingested) afterwards. That happens routinely
+        // when an earlier import ran mid-walk and stamped `lastImportDate`
+        // partway through the session. The 24h overshoot picks those up,
+        // and dedup on `healthKitUUID` below prevents duplicates.
+        let since: Date = {
+            if let last = hkState.lastImportDate {
+                return Calendar.current.date(byAdding: .hour, value: -24, to: last) ?? last
+            }
+            return Calendar.current.date(byAdding: .year, value: -1, to: Date()) ?? Date()
+        }()
         let activityTypes = HealthKitService.shared.enabledActivityTypes(state: hkState)
 
         do {

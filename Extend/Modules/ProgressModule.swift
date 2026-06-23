@@ -429,6 +429,15 @@ private struct ProgressModuleView: View {
                 }
                 .padding(.vertical, 16)
             }
+            .refreshable {
+                // Pull-to-refresh forces an immediate HealthKit pull so users
+                // can recover when the live observer query lags (Apple
+                // Watch-recorded walks can sit in HK for a few minutes before
+                // the observer fires). Also re-pulls water for symmetry.
+                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                await logState.importFromHealthKit()
+                await waterState.syncFromHealthKit()
+            }
         }
         .fullScreenCover(item: $selectedLog) { log in
             WorkoutLogDetailView(log: log)
