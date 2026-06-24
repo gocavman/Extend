@@ -498,8 +498,8 @@
     "keywords": ["game", "match", "puzzle", "level", "powerup", "stick figure", "animator", "pose", "frame", "animation", "gif", "export", "skeleton", "canvas", "editor", "mini game", "1000 levels", "fun"],
     "sections": [
       {
-        "heading": "Workout Match - mini game",
-        "body": "A match-3 puzzle game with 1000 levels.\n\nSwap adjacent tiles to match 3 or more of the same type. Larger matches earn powerups. If you get stuck, a tile will visibly shake as a hint. If you can't beat a level first try, no worries — the next attempt(s) will have more moves available.\n\nYour level saves automatically. Add the Workout Match tile to your Dashboard to see your current level at a glance."
+        "heading": "Match 3 - mini game",
+        "body": "A match-3 puzzle game with 1000 levels.\n\nSwap adjacent tiles to match 3 or more of the same type. Larger matches earn powerups. If you get stuck, a tile will visibly shake as a hint. If you can't beat a level first try, no worries — the next attempt(s) will have more moves available.\n\nYour level saves automatically. Add the Match 3 tile to your Dashboard to see your current level at a glance."
       },
       {
         "heading": "Stick Figure Animator",

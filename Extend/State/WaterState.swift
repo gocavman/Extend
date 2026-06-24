@@ -134,6 +134,52 @@ public final class WaterState {
         }
     }
 
+    /// Returns (weekStart, totalOz) for the weeks covering the past `days` days,
+    /// oldest first. The earliest bucket is the week containing the start-of-range
+    /// day; the most recent is the week containing today. Each `oz` is the sum
+    /// of all logs within that week (including days before/after the requested
+    /// range — buckets are whole weeks so the last bar is a partial-to-date sum).
+    public func weeklyTotals(days: Int) -> [(date: Date, oz: Double)] {
+        let cal = Calendar.current
+        let today = cal.startOfDay(for: Date())
+        guard let rangeStart = cal.date(byAdding: .day, value: -(max(days, 1) - 1), to: today) else { return [] }
+        let firstWeekStart = cal.dateInterval(of: .weekOfYear, for: rangeStart)?.start ?? rangeStart
+        let todayWeekStart = cal.dateInterval(of: .weekOfYear, for: today)?.start ?? today
+        var result: [(date: Date, oz: Double)] = []
+        var weekStart = firstWeekStart
+        while weekStart <= todayWeekStart {
+            guard let nextWeek = cal.date(byAdding: .weekOfYear, value: 1, to: weekStart) else { break }
+            let oz = logs
+                .filter { $0.loggedAt >= weekStart && $0.loggedAt < nextWeek }
+                .reduce(0.0) { $0 + $1.amountOz }
+            result.append((date: weekStart, oz: oz))
+            weekStart = nextWeek
+        }
+        return result
+    }
+
+    /// Returns (monthStart, totalOz) for the months covering the past `days`
+    /// days, oldest first. Same partial-current-bucket semantics as
+    /// `weeklyTotals`.
+    public func monthlyTotals(days: Int) -> [(date: Date, oz: Double)] {
+        let cal = Calendar.current
+        let today = cal.startOfDay(for: Date())
+        guard let rangeStart = cal.date(byAdding: .day, value: -(max(days, 1) - 1), to: today) else { return [] }
+        let firstMonthStart = cal.date(from: cal.dateComponents([.year, .month], from: rangeStart)) ?? rangeStart
+        let todayMonthStart = cal.date(from: cal.dateComponents([.year, .month], from: today)) ?? today
+        var result: [(date: Date, oz: Double)] = []
+        var monthStart = firstMonthStart
+        while monthStart <= todayMonthStart {
+            guard let nextMonth = cal.date(byAdding: .month, value: 1, to: monthStart) else { break }
+            let oz = logs
+                .filter { $0.loggedAt >= monthStart && $0.loggedAt < nextMonth }
+                .reduce(0.0) { $0 + $1.amountOz }
+            result.append((date: monthStart, oz: oz))
+            monthStart = nextMonth
+        }
+        return result
+    }
+
     /// Consecutive days (ending today) where the goal was met.
     public var currentStreak: Int {
         let cal = Calendar.current

@@ -89,6 +89,7 @@ class MatchGameViewController: UIViewController {
     private var gridStackOffset: CGPoint = .zero
     private let gridStackView = UIStackView()
     private let exitButton = UIButton()
+    private let helpButton = UIButton()
     private let levelLabel = UILabel()
     private let levelNameLabel = UILabel()  // NEW: Display level name
     private let levelSelectorButton = UIButton()  // NEW: Level selector dropdown
@@ -165,6 +166,14 @@ class MatchGameViewController: UIViewController {
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
         startSessionTimer()
+    }
+
+    override func viewDidAppear(_ animated: Bool) {
+        super.viewDidAppear(animated)
+        // First-launch welcome modal — shown once, then suppressed via UserDefaults flag.
+        if !defaults.bool(forKey: "matchGameHasSeenWelcome") {
+            showWelcomeModal()
+        }
     }
 
     override func viewDidLayoutSubviews() {
@@ -365,7 +374,21 @@ class MatchGameViewController: UIViewController {
             exitButton.widthAnchor.constraint(equalToConstant: 40),
             exitButton.heightAnchor.constraint(equalToConstant: 40)
         ])
-        
+
+        // Help Button (questionmark.circle, next to exit) — re-opens the welcome / how-to modal.
+        let helpConfig = UIImage.SymbolConfiguration(pointSize: 22, weight: .regular)
+        helpButton.setImage(UIImage(systemName: "questionmark.circle", withConfiguration: helpConfig), for: .normal)
+        helpButton.tintColor = .white
+        helpButton.addTarget(self, action: #selector(showWelcomeModal), for: .touchUpInside)
+        headerView.addSubview(helpButton)
+        helpButton.translatesAutoresizingMaskIntoConstraints = false
+        NSLayoutConstraint.activate([
+            helpButton.topAnchor.constraint(equalTo: headerView.topAnchor, constant: 12),
+            helpButton.leadingAnchor.constraint(equalTo: exitButton.trailingAnchor, constant: 8),
+            helpButton.widthAnchor.constraint(equalToConstant: 32),
+            helpButton.heightAnchor.constraint(equalToConstant: 32)
+        ])
+
         // Level Name Label (centered, above level selector)
         levelNameLabel.font = UIFont.systemFont(ofSize: 16, weight: .semibold)
         levelNameLabel.textColor = .white
@@ -377,7 +400,7 @@ class MatchGameViewController: UIViewController {
         NSLayoutConstraint.activate([
             levelNameLabel.topAnchor.constraint(equalTo: headerView.topAnchor, constant: 10),
             levelNameLabel.centerXAnchor.constraint(equalTo: headerView.centerXAnchor),
-            levelNameLabel.leadingAnchor.constraint(greaterThanOrEqualTo: headerView.leadingAnchor, constant: 60),
+            levelNameLabel.leadingAnchor.constraint(greaterThanOrEqualTo: headerView.leadingAnchor, constant: 100),
             levelNameLabel.trailingAnchor.constraint(lessThanOrEqualTo: headerView.trailingAnchor, constant: -60)
         ])
 
@@ -739,12 +762,19 @@ class MatchGameViewController: UIViewController {
             // Show completion animation
             showLevelCompleteAnimation {
                 // After animation, load next level
-                self.clearMidLevelState(levelId: level.id)  // level done — wipe snapshot
+                self.clearMidLevelState(levelId: level.id)        // level done — wipe snapshot
+                // Also clear the next level's snapshot so we always start it fresh on advance.
+                // Prevents stale corrupted snapshots from a prior buggy save (or from a
+                // pre-existing partial run) from carrying old movesRemaining / armorGrid into
+                // the freshly-started next level.
+                self.clearMidLevelState(levelId: nextLevelId)
                 self.currentLevelId = nextLevelId
                 self.levelSelectorButton.setTitle("Level \(nextLevelId) ▼", for: .normal)
                 self.score = 0
-                self.saveGameState()  // Save the new level and unlocked status
+                // startLevel MUST run before saveGameState — otherwise saveMidLevelState
+                // would persist the just-completed level's gameGrid under the new level's key.
                 self.startLevel(nextLevelId)
+                self.saveGameState()
                 self.isAnimating = false
             }
         } else {
@@ -965,7 +995,165 @@ class MatchGameViewController: UIViewController {
             })
         }, for: .touchUpInside)
     }
-    
+
+    // MARK: - Welcome / How-To Modal
+
+    @objc private func showWelcomeModal() {
+        // Avoid stacking duplicates if the user taps the help button twice quickly
+        if view.subviews.contains(where: { $0.accessibilityIdentifier == "matchGameWelcomeModal" }) { return }
+
+        let backdrop = UIView()
+        backdrop.accessibilityIdentifier = "matchGameWelcomeModal"
+        backdrop.backgroundColor = UIColor.black.withAlphaComponent(0.55)
+        backdrop.translatesAutoresizingMaskIntoConstraints = false
+        view.addSubview(backdrop)
+        NSLayoutConstraint.activate([
+            backdrop.topAnchor.constraint(equalTo: view.topAnchor),
+            backdrop.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            backdrop.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            backdrop.bottomAnchor.constraint(equalTo: view.bottomAnchor)
+        ])
+
+        let card = UIView()
+        card.backgroundColor = UIColor(white: 0.98, alpha: 1)
+        card.layer.cornerRadius = 16
+        card.translatesAutoresizingMaskIntoConstraints = false
+        backdrop.addSubview(card)
+        NSLayoutConstraint.activate([
+            card.centerXAnchor.constraint(equalTo: backdrop.centerXAnchor),
+            card.centerYAnchor.constraint(equalTo: backdrop.centerYAnchor),
+            card.leadingAnchor.constraint(equalTo: backdrop.leadingAnchor, constant: 24),
+            card.trailingAnchor.constraint(equalTo: backdrop.trailingAnchor, constant: -24)
+        ])
+
+        // Close button (X) top-left of card
+        let closeButton = UIButton(type: .system)
+        closeButton.setTitle("✕", for: .normal)
+        closeButton.titleLabel?.font = UIFont.systemFont(ofSize: 22, weight: .bold)
+        closeButton.setTitleColor(.darkGray, for: .normal)
+        closeButton.translatesAutoresizingMaskIntoConstraints = false
+        card.addSubview(closeButton)
+
+        let titleLabel = UILabel()
+        titleLabel.text = "Welcome to Match 3"
+        titleLabel.font = UIFont.systemFont(ofSize: 22, weight: .bold)
+        titleLabel.textColor = .black
+        titleLabel.textAlignment = .center
+        titleLabel.translatesAutoresizingMaskIntoConstraints = false
+        card.addSubview(titleLabel)
+
+        let bodyLabel = UILabel()
+        bodyLabel.text = "Swap adjacent tiles to match 3 or more of the same kind. Score points to clear the target, break shields where present, and conquer 1000 levels. Bigger matches and special shapes drop powerup tiles — combine them for chain reactions."
+        bodyLabel.font = UIFont.systemFont(ofSize: 14, weight: .regular)
+        bodyLabel.textColor = .darkGray
+        bodyLabel.numberOfLines = 0
+        bodyLabel.translatesAutoresizingMaskIntoConstraints = false
+        card.addSubview(bodyLabel)
+
+        let combosHeader = UILabel()
+        combosHeader.text = "Powerup Combos"
+        combosHeader.font = UIFont.systemFont(ofSize: 15, weight: .semibold)
+        combosHeader.textColor = .black
+        combosHeader.translatesAutoresizingMaskIntoConstraints = false
+        card.addSubview(combosHeader)
+
+        // Compact combo list: emoji + match pattern → outcome
+        let combos: [(String, String)] = [
+            ("↕️", "Match 4 in a row → clears the column"),
+            ("↔️", "Match 4 in a column → clears the row"),
+            ("💣", "2×2 square → 3×3 explosion"),
+            ("🌟", "L-shape (5 tiles) → star power"),
+            ("⚽", "T-shape (5 tiles) → bouncing ball clears tiles"),
+            ("🔥", "Match 5+ in a line → flame burns all one type of tile"),
+            ("✨", "Swap 2 powerups → experience MORE power")
+        ]
+        let combosStack = UIStackView()
+        combosStack.axis = .vertical
+        combosStack.spacing = 6
+        combosStack.alignment = .fill
+        combosStack.translatesAutoresizingMaskIntoConstraints = false
+        card.addSubview(combosStack)
+
+        for (emoji, desc) in combos {
+            let row = UIStackView()
+            row.axis = .horizontal
+            row.spacing = 10
+            row.alignment = .center
+
+            let iconLabel = UILabel()
+            iconLabel.text = emoji
+            iconLabel.font = UIFont.systemFont(ofSize: 22)
+            iconLabel.textAlignment = .center
+            iconLabel.widthAnchor.constraint(equalToConstant: 30).isActive = true
+
+            let descLabel = UILabel()
+            descLabel.text = desc
+            descLabel.font = UIFont.systemFont(ofSize: 13, weight: .regular)
+            descLabel.textColor = .darkGray
+            descLabel.numberOfLines = 0
+
+            row.addArrangedSubview(iconLabel)
+            row.addArrangedSubview(descLabel)
+            combosStack.addArrangedSubview(row)
+        }
+
+        let dismissButton = UIButton(type: .system)
+        dismissButton.setTitle("Got it!", for: .normal)
+        dismissButton.titleLabel?.font = UIFont.systemFont(ofSize: 17, weight: .semibold)
+        dismissButton.setTitleColor(.white, for: .normal)
+        dismissButton.backgroundColor = accentColor
+        dismissButton.layer.cornerRadius = 10
+        dismissButton.translatesAutoresizingMaskIntoConstraints = false
+        card.addSubview(dismissButton)
+
+        NSLayoutConstraint.activate([
+            closeButton.topAnchor.constraint(equalTo: card.topAnchor, constant: 8),
+            closeButton.leadingAnchor.constraint(equalTo: card.leadingAnchor, constant: 8),
+            closeButton.widthAnchor.constraint(equalToConstant: 36),
+            closeButton.heightAnchor.constraint(equalToConstant: 36),
+
+            titleLabel.topAnchor.constraint(equalTo: card.topAnchor, constant: 18),
+            titleLabel.leadingAnchor.constraint(equalTo: card.leadingAnchor, constant: 50),
+            titleLabel.trailingAnchor.constraint(equalTo: card.trailingAnchor, constant: -18),
+
+            bodyLabel.topAnchor.constraint(equalTo: titleLabel.bottomAnchor, constant: 12),
+            bodyLabel.leadingAnchor.constraint(equalTo: card.leadingAnchor, constant: 18),
+            bodyLabel.trailingAnchor.constraint(equalTo: card.trailingAnchor, constant: -18),
+
+            combosHeader.topAnchor.constraint(equalTo: bodyLabel.bottomAnchor, constant: 16),
+            combosHeader.leadingAnchor.constraint(equalTo: card.leadingAnchor, constant: 18),
+            combosHeader.trailingAnchor.constraint(equalTo: card.trailingAnchor, constant: -18),
+
+            combosStack.topAnchor.constraint(equalTo: combosHeader.bottomAnchor, constant: 8),
+            combosStack.leadingAnchor.constraint(equalTo: card.leadingAnchor, constant: 18),
+            combosStack.trailingAnchor.constraint(equalTo: card.trailingAnchor, constant: -18),
+
+            dismissButton.topAnchor.constraint(equalTo: combosStack.bottomAnchor, constant: 18),
+            dismissButton.leadingAnchor.constraint(equalTo: card.leadingAnchor, constant: 18),
+            dismissButton.trailingAnchor.constraint(equalTo: card.trailingAnchor, constant: -18),
+            dismissButton.heightAnchor.constraint(equalToConstant: 46),
+            dismissButton.bottomAnchor.constraint(equalTo: card.bottomAnchor, constant: -16)
+        ])
+
+        backdrop.alpha = 0
+        card.transform = CGAffineTransform(scaleX: 0.92, y: 0.92)
+        UIView.animate(withDuration: 0.22, animations: {
+            backdrop.alpha = 1
+            card.transform = .identity
+        })
+
+        let dismissAction = UIAction { [weak backdrop] _ in
+            UIView.animate(withDuration: 0.18, animations: {
+                backdrop?.alpha = 0
+            }, completion: { _ in
+                backdrop?.removeFromSuperview()
+            })
+            defaults.set(true, forKey: "matchGameHasSeenWelcome")
+        }
+        closeButton.addAction(dismissAction, for: .touchUpInside)
+        dismissButton.addAction(dismissAction, for: .touchUpInside)
+    }
+
     private func renderGrid() {
         guard let level = currentLevel else { return }
         
@@ -4601,9 +4789,18 @@ class MatchGameViewController: UIViewController {
                 flash.layer.cornerRadius = flashSize / 2
                 self.gridContainer.addSubview(flash)
                 UIView.animate(withDuration: 0.25, animations: { flash.transform = CGAffineTransform(scaleX: 1.4, y: 1.4); flash.alpha = 0 }) { _ in flash.removeFromSuperview() }
+                let popDuration: TimeInterval = 0.22
                 for btn in explosionButtons {
-                    let s = CAKeyframeAnimation(keyPath: "transform.scale"); s.values = [1.0,1.25,0.1]; s.keyTimes = [0,0.4,1]; s.duration = 0.22; s.fillMode = .forwards; s.isRemovedOnCompletion = false
+                    let s = CAKeyframeAnimation(keyPath: "transform.scale"); s.values = [1.0,1.25,0.1]; s.keyTimes = [0,0.4,1]; s.duration = popDuration; s.fillMode = .forwards; s.isRemovedOnCompletion = false
                     btn.layer.add(s, forKey: "pop")
+                }
+                // Remove the frozen .forwards animation after it finishes so a refilled
+                // tile (from applyColumnGravityData) renders at full scale instead of 0.1.
+                DispatchQueue.main.asyncAfter(deadline: .now() + popDuration + 0.05) {
+                    for btn in explosionButtons {
+                        btn.layer.removeAnimation(forKey: "pop")
+                        btn.layer.opacity = 1.0
+                    }
                 }
                 UIImpactFeedbackGenerator(style: .heavy).impactOccurred()
                 // Big landing pop → big lightning burst with a few extra bolts.

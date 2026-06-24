@@ -92,7 +92,9 @@ struct ExtendApp: App {
                 ModuleIDs.generate,
                 ModuleIDs.timer,
                 ModuleIDs.muscles,
-                ModuleIDs.equipment
+                ModuleIDs.equipment,
+                ModuleIDs.water,
+                ModuleIDs.matchGame
             ])
         }
 

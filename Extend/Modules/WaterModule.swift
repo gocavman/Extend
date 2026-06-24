@@ -12,7 +12,7 @@ import SwiftUI
 public struct WaterModule: AppModule {
     public let id: UUID = ModuleIDs.water
     public let displayName: String = "Water"
-    public let iconName: String = "drop.fill"
+    public let iconName: String = "drop"
     public let description: String = "Track daily water intake"
 
     public var order: Int = 5
@@ -54,13 +54,15 @@ private struct WaterModuleView: View {
 
                         // Today summary
                         todaySummary
-                        
-                        // Action buttons row
-                        actionButtons
                     }
                     .padding(.horizontal, 16)
                     .padding(.vertical, 12)
                 }
+
+                // Pinned to the bottom
+                actionButtons
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 12)
             }
             .navigationDestination(isPresented: $showHistory) {
                 WaterHistorySheet()
@@ -615,8 +617,31 @@ struct WaterDailyBarChartCard: View {
     private var iPad: Bool { sizeClass == .regular }
 
     var body: some View {
-        let totals = waterState.dailyTotals(days: days)
-        let maxOz = max(totals.map { $0.oz }.max() ?? waterState.dailyGoalOz, waterState.dailyGoalOz)
+        // Bucket by day for short ranges, week for medium, month for long —
+        // keeps bar count low enough that HStack spacing can't collapse all
+        // bars to 0 width on a phone screen.
+        let period: WaterPeriod = {
+            if days <= 31 { return .day }
+            if days <= 180 { return .week }
+            return .month
+        }()
+        let totals: [(date: Date, oz: Double)] = {
+            switch period {
+            case .day:   return waterState.dailyTotals(days: days)
+            case .week:  return waterState.weeklyTotals(days: days)
+            case .month: return waterState.monthlyTotals(days: days)
+            }
+        }()
+        // Per-bucket goal: a week's bar should compare against a week's worth
+        // of daily goal, a month's bar against ~30 daily goals.
+        let bucketGoal: Double = {
+            switch period {
+            case .day:   return waterState.dailyGoalOz
+            case .week:  return waterState.dailyGoalOz * 7
+            case .month: return waterState.dailyGoalOz * 30
+            }
+        }()
+        let maxOz = max(totals.map { $0.oz }.max() ?? bucketGoal, bucketGoal)
         let streak = waterState.currentStreak
 
         VStack(alignment: .leading, spacing: 8) {
@@ -633,9 +658,10 @@ struct WaterDailyBarChartCard: View {
             // Bars
             WaterBarChartView(
                 totals: totals,
-                goalOz: waterState.dailyGoalOz,
+                goalOz: bucketGoal,
                 maxOz: maxOz,
-                unit: waterState.unit
+                unit: waterState.unit,
+                period: period
             )
 
             // Streak footer
@@ -664,6 +690,10 @@ struct WaterBarChartView: View {
     let goalOz: Double
     let maxOz: Double
     let unit: WaterUnit
+    /// Determines axis-label and tooltip formatting and which bucket is
+    /// highlighted as "current". Defaults to `.day` for callers (e.g. the
+    /// dashboard tile) that always show daily data.
+    var period: WaterPeriod = .day
 
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.horizontalSizeClass) private var sizeClass
@@ -671,17 +701,41 @@ struct WaterBarChartView: View {
 
     @State private var selectedIndex: Int? = nil
 
-    private static let dayFormatter: DateFormatter = {
+    private var dayFormatter: DateFormatter {
         let f = DateFormatter()
-        f.dateFormat = "M/d"
+        switch period {
+        case .day, .week: f.dateFormat = "M/d"
+        case .month:      f.dateFormat = "MMM"
+        }
         return f
-    }()
+    }
 
-    private static let tooltipFormatter: DateFormatter = {
+    private var tooltipFormatter: DateFormatter {
         let f = DateFormatter()
-        f.dateFormat = "MMM d"
+        switch period {
+        case .day:   f.dateFormat = "MMM d"
+        case .week:  f.dateFormat = "'Wk of' MMM d"
+        case .month: f.dateFormat = "MMM yyyy"
+        }
         return f
-    }()
+    }
+
+    private func isCurrent(_ date: Date) -> Bool {
+        let cal = Calendar.current
+        switch period {
+        case .day:   return cal.isDateInToday(date)
+        case .week:  return cal.isDate(date, equalTo: Date(), toGranularity: .weekOfYear)
+        case .month: return cal.isDate(date, equalTo: Date(), toGranularity: .month)
+        }
+    }
+
+    private var currentLabel: String {
+        switch period {
+        case .day:   return "Today"
+        case .week:  return "This Wk"
+        case .month: return "This Mo"
+        }
+    }
 
     var body: some View {
         let barAreaH: CGFloat = iPad ? 140 : 80
@@ -703,7 +757,7 @@ struct WaterBarChartView: View {
                             let fraction = fractions[idx]
                             let barH = item.oz > 0 ? max(iPad ? 22 : 14, barAreaH * CGFloat(fraction)) : 0
                             let metGoal = item.oz >= goalOz
-                            let isToday = Calendar.current.isDateInToday(item.date)
+                            let isToday = isCurrent(item.date)
                             let isSelected = selectedIndex == idx
                             let hasSelection = selectedIndex != nil
                             let barOpacity: Double = hasSelection ? (isSelected ? 1.0 : 0.3) : 1.0
@@ -740,7 +794,7 @@ struct WaterBarChartView: View {
 
                                 // Date label — show every other for dense charts
                                 if totals.count <= 14 || idx % 2 == 0 {
-                                    Text(isToday ? "Today" : Self.dayFormatter.string(from: item.date))
+                                    Text(isToday ? currentLabel : dayFormatter.string(from: item.date))
                                         .font(.system(size: iPad ? 11 : 7, weight: isSelected ? .bold : .regular))
                                         .foregroundColor(isSelected || isToday ? waterBlue : .gray)
                                         .lineLimit(1)
@@ -821,9 +875,9 @@ struct WaterBarChartView: View {
                         let valueText = item.oz > 0
                             ? String(format: "%.0f", display) + " \(unit.displayName)"
                             : "No data"
-                        let dateText = Calendar.current.isDateInToday(item.date)
-                            ? "Today"
-                            : Self.tooltipFormatter.string(from: item.date)
+                        let dateText = isCurrent(item.date)
+                            ? currentLabel
+                            : tooltipFormatter.string(from: item.date)
 
                         VStack(spacing: 2) {
                             Text(valueText)
@@ -880,6 +934,11 @@ private struct WaterTrendLine: View {
     let labelH: CGFloat
 
     var body: some View {
+        // Let the canvas render `overflow` points above its layout bounds
+        // so the topmost dot + 4pt glow stroke can extend above the bar
+        // ceiling without being clipped — bars stay at full barAreaH, the
+        // trend dot still sits on top of each bar.
+        let overflow: CGFloat = 8
         Canvas { ctx, size in
             let baseline: CGFloat = size.height - labelH - 3
             let allXs: [CGFloat] = fractions.indices.map { i in
@@ -922,8 +981,20 @@ private struct WaterTrendLine: View {
                          with: .color(.white))
             }
         }
+        .padding(.top, -overflow)
         .allowsHitTesting(false)
     }
+}
+
+// MARK: - Bucket period for time-series aggregation
+
+/// Granularity used by `WaterBarChartView` for axis labels, tooltips, and the
+/// "current bucket" highlight. The chart still receives `(date, oz)` tuples;
+/// this only affects how each tuple is presented.
+enum WaterPeriod {
+    case day
+    case week
+    case month
 }
 
 // MARK: - Time range enum

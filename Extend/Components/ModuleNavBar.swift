@@ -51,6 +51,17 @@ public struct ModuleNavBar: View {
                     // they fit; scrolls normally when they overflow.
                     .frame(minWidth: geo.size.width)
                 }
+                .mask(
+                    LinearGradient(
+                        stops: [
+                            .init(color: .black, location: 0.0),
+                            .init(color: .black, location: 0.89),
+                            .init(color: .clear, location: 1.0),
+                        ],
+                        startPoint: .leading,
+                        endPoint: .trailing
+                    )
+                )
             }
             .frame(height: sizeClass == .regular ? 74 : 60)
             .background(navBarBackground)

@@ -1256,7 +1256,7 @@ private struct AddTileSheet: View {
                         }
                     )) {
                         VStack(alignment: .leading, spacing: 2) {
-                            Text("Workout Match")
+                            Text("Match 3")
                             Text("1000 levels of match-3. Collect powerups and level up.")
                                 .font(.caption)
                                 .foregroundColor(.secondary)
@@ -1892,7 +1892,7 @@ private struct StatCardTileView: View {
                         // rows underneath.
                         HStack(spacing: 8) {
                             streakHalf(label: "Longest Streak", value: longestStreak)
-                            streakHalf(label: "Current Streak", value: currentStreak)
+                            streakHalf(label: "Current Streak", value: currentStreak, systemIcon: "flame.fill")
                         }
                         .padding(.top, 4)
                         .frame(maxWidth: .infinity)
@@ -2274,8 +2274,13 @@ private struct StatCardTileView: View {
     /// Streak sits on the leading half and Current Streak on the trailing
     /// half, each as a tight label/value pair.
     @ViewBuilder
-    private func streakHalf(label: String, value: Int) -> some View {
+    private func streakHalf(label: String, value: Int, systemIcon: String? = nil) -> some View {
         HStack(spacing: 4) {
+            if let icon = systemIcon {
+                            Image(systemName: icon)
+                                .font(.system(size: iPad ? 13 : 9, weight: .bold))
+                                .foregroundColor(.orange)
+                        }
             Text(label)
                 .font(.system(size: iPad ? 16 : 10))
                 .foregroundColor(.gray)
@@ -2387,6 +2392,11 @@ private struct VolumeTrendLine: View {
     let labelH: CGFloat
 
     var body: some View {
+        // Let the canvas render `overflow` points above its layout bounds
+        // so the topmost dot + 4pt glow stroke can extend above the bar
+        // ceiling without being clipped — bars stay at full barAreaH, the
+        // trend dot still sits on top of each bar.
+        let overflow: CGFloat = 8
         Canvas { ctx, size in
             let baseline: CGFloat = size.height - labelH - 3
             let allXs: [CGFloat] = fractions.indices.map { i in
@@ -2427,6 +2437,7 @@ private struct VolumeTrendLine: View {
                          with: .color(.white))
             }
         }
+        .padding(.top, -overflow)
         .allowsHitTesting(false)
     }
 }
@@ -2693,7 +2704,9 @@ private struct FavoriteExerciseBarChartView: View {
                     Text("\(entry.count)")
                         .font(.system(size: iPad ? 16 : 12, weight: .bold))
                         .foregroundColor(idx == 0 ? .primary : .gray)
-                        .frame(width: maxCountWidth, alignment: .trailing)
+                        .lineLimit(1)
+                        .fixedSize(horizontal: true, vertical: false)
+                        .frame(minWidth: maxCountWidth, alignment: .trailing)
                         .gridColumnAlignment(.trailing)
                 }
                 .frame(height: iPad ? 24 : 14)

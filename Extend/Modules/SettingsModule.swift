@@ -797,7 +797,6 @@ private struct SettingsModuleView: View {
 
     private func resetApp() {
         // Reset to default navbar configuration using ModuleIDs (UUID-based identification)
-        // Order: Dashboard, Workout, Generate, Settings, Log, Timer, Exercises, Muscles, Equipment
 
         let bottomModules: [UUID] = [
             ModuleIDs.dashboard,
@@ -812,7 +811,9 @@ private struct SettingsModuleView: View {
             ModuleIDs.generate,
             ModuleIDs.timer,
             ModuleIDs.muscles,
-            ModuleIDs.equipment
+            ModuleIDs.equipment,
+            ModuleIDs.water,
+            ModuleIDs.matchGame
         ]
 
         moduleState.setBottomNavBarModules(bottomModules)
@@ -1909,11 +1910,11 @@ private struct DashboardAddTileSheet: View {
 
                 Section("Mini Games") {
                     let buddyModule = registry.registeredModules.first(where: { $0.displayName == "Workout Buddy" })
-                    let matchModule = registry.registeredModules.first(where: { $0.displayName == "Workout Match" })
+                    let matchModule = registry.registeredModules.first(where: { $0.displayName == "Match 3" })
                     let buddyAdded = buddyModule.map { existingTileModuleIDs.contains($0.id) } ?? true
                     let matchAdded = matchModule.map { existingTileModuleIDs.contains($0.id) } ?? true
                     let buddyVisible = !buddyAdded && (!isSearching || "Workout Buddy".localizedCaseInsensitiveContains(searchText))
-                    let matchVisible = !matchAdded && (!isSearching || "Workout Match".localizedCaseInsensitiveContains(searchText))
+                    let matchVisible = !matchAdded && (!isSearching || "Match 3".localizedCaseInsensitiveContains(searchText))
 
                     if !buddyVisible && !matchVisible {
                         Text(isSearching ? "No mini games match your search" : "All mini games are already added")
@@ -2325,7 +2326,8 @@ private struct DashboardEditTileSheet: View {
         if tile.tileType == .graph { return [.large] }
         if tile.tileType == .statCard, let statCard = tile.statCardType {
             if statCard == .workoutFrequency || statCard == .muscleGroupDistribution
-                || statCard == .volumeThisWeek || statCard == .favoriteDay {
+                || statCard == .volumeThisWeek || statCard == .favoriteDay
+                || statCard == .favoriteExercise {
                 return [.large]
             }
             if statCard == .oneRepMax || statCard == .personalRecord || statCard == .todaysPlan {

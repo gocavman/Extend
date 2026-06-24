@@ -10,8 +10,8 @@ import UIKit
 
 public struct MatchGameModule: AppModule {
     public let id: UUID = ModuleIDs.matchGame
-    public let displayName: String = "Workout Match"
-    public let iconName: String = "gamecontroller.fill"
+    public let displayName: String = "Match 3"
+    public let iconName: String = "gamecontroller"
     public let description: String = "1000 levels of match 3. Collect powerups and level up."
 
     public var order: Int = 0
