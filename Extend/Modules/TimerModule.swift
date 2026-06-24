@@ -716,6 +716,11 @@ struct ActiveTimerView: View {
     @State private var amrapRounds = 0
     @State private var showingCancelConfirm = false
     @State private var showingEarlyCompleteConfirm = false
+    /// True when the mirror-coordinator successfully started a wrist
+    /// HKWorkoutSession for this timer. Lets `saveToLog` adopt the wrist
+    /// UUID + skip the iPhone export, and `.onDisappear` knows whether to
+    /// cancel the mirror when the user backs out without saving.
+    @State private var watchWorkoutStarted: Bool = false
 
     private var currentPhase: TimerPhase? {
         guard phaseIndex < phases.count else { return nil }
@@ -929,10 +934,31 @@ struct ActiveTimerView: View {
             if TimerState.shared.keepScreenOn {
                 UIApplication.shared.isIdleTimerDisabled = true
             }
+            // Mirror the timer to an Apple Watch HKWorkoutSession so heart
+            // rate and calories are collected on the wrist while the phone
+            // drives phase progression + haptics.
+            if HealthKitState.shared.useWatchWorkoutSession {
+                let timerName = config.name.isEmpty ? config.type.rawValue : config.name
+                Task {
+                    let ok = await MirroredWorkoutCoordinator.shared.requestStart(
+                        activityTypeRaw: config.healthKitActivityType,
+                        name: "\(config.type.rawValue) – \(timerName)"
+                    )
+                    await MainActor.run { watchWorkoutStarted = ok }
+                }
+            }
         }
         .onDisappear {
             timerTask?.cancel()
             UIApplication.shared.isIdleTimerDisabled = false
+            // If the runner is being dismissed without `saveToLog` having
+            // already torn the mirror down, treat it as a cancel so the
+            // wrist session doesn't continue collecting data orphaned from
+            // any iPhone log.
+            if watchWorkoutStarted {
+                watchWorkoutStarted = false
+                Task { await MirroredWorkoutCoordinator.shared.requestCancel() }
+            }
         }
         } // NavigationStack
     }
@@ -1093,11 +1119,26 @@ struct ActiveTimerView: View {
             notes: buildLogNotes(),
             duration: TimeInterval(totalElapsed)
         )
-        WorkoutLogState.shared.addLog(
-            log,
-            exportToHealthKit: HealthKitState.shared.exportStrengthWorkouts,
-            activityTypeRaw: config.healthKitActivityType
-        )
+        // End the wrist mirror first and adopt the UUID so the iPhone
+        // log dedupes against the watch-side HKWorkout in Apple Health.
+        let needsWatchEnd = watchWorkoutStarted
+        let exportEnabled = HealthKitState.shared.exportStrengthWorkouts
+        let activityTypeRaw = config.healthKitActivityType
+        watchWorkoutStarted = false   // disarm .onDisappear's cancel path
+        Task {
+            var watchUUID: UUID? = nil
+            if needsWatchEnd {
+                watchUUID = await MirroredWorkoutCoordinator.shared.requestEnd()
+            }
+            await MainActor.run {
+                WorkoutLogState.shared.addLog(
+                    log,
+                    exportToHealthKit: exportEnabled,
+                    activityTypeRaw: activityTypeRaw,
+                    existingHealthKitUUID: watchUUID
+                )
+            }
+        }
         ModuleState.shared.selectModule(ModuleIDs.progress)
         dismiss()
     }

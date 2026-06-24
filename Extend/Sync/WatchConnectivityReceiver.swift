@@ -103,54 +103,12 @@ final class WatchConnectivityReceiver: NSObject {
         ])
     }
 
-    // MARK: - Live workout session bridging
-
-    /// True when the watch is paired, app installed, and currently reachable
-    /// (i.e. an interactive `sendMessage` will succeed). Required for the live
-    /// workout session bridge to do anything.
-    var isWatchReachable: Bool {
-        canSendToWatch && WCSession.default.isReachable
-    }
-
-    /// Asks the watch to begin an HKWorkoutSession for the given activity type.
-    /// Returns true when the watch confirms the session started. Falls back to
-    /// false on any error (unreachable, no app installed, HK auth missing).
-    func startWatchWorkout(activityTypeRaw: UInt?, name: String) async -> Bool {
-        guard isWatchReachable else { return false }
-        let payload: [String: Any] = [
-            "type": "start_workout",
-            "activity_type_raw": activityTypeRaw ?? 0,
-            "name": name
-        ]
-        return await withCheckedContinuation { (cont: CheckedContinuation<Bool, Never>) in
-            WCSession.default.sendMessage(payload, replyHandler: { reply in
-                cont.resume(returning: (reply["ok"] as? Bool) ?? false)
-            }, errorHandler: { _ in
-                cont.resume(returning: false)
-            })
-        }
-    }
-
-    /// Asks the watch to end the in-flight session and return the saved
-    /// HKWorkout's UUID — caller stamps that UUID on the iPhone WorkoutLog
-    /// so we end up with exactly one HKWorkout in Apple Health.
-    func endWatchWorkout() async -> UUID? {
-        guard isWatchReachable else { return nil }
-        let payload: [String: Any] = ["type": "end_workout"]
-        return await withCheckedContinuation { (cont: CheckedContinuation<UUID?, Never>) in
-            WCSession.default.sendMessage(payload, replyHandler: { reply in
-                guard (reply["ok"] as? Bool) == true,
-                      let uuidString = reply["workout_uuid"] as? String,
-                      let uuid = UUID(uuidString: uuidString) else {
-                    cont.resume(returning: nil)
-                    return
-                }
-                cont.resume(returning: uuid)
-            }, errorHandler: { _ in
-                cont.resume(returning: nil)
-            })
-        }
-    }
+    // Phone-driven live workout sessions are owned by MirroredWorkoutCoordinator,
+    // which wakes the watch app via `HKHealthStore.startWatchApp(toHandle:)`
+    // and rides the system mirroring channel. The watch-initiated path
+    // (logging completed on the wrist) still flows through this receiver
+    // via `transferUserInfo` so logs land even when the watch was out of
+    // range during the workout.
 }
 
 extension WatchConnectivityReceiver: WCSessionDelegate {

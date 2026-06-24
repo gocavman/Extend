@@ -744,6 +744,71 @@ public func makeAdHocExerciseBlueprint(for item: WatchLibraryItem) -> WatchWorko
     )
 }
 
+// MARK: - Mirrored workout session messaging
+
+/// Wire format for the bidirectional control channel between a phone-driven
+/// HKWorkoutSession and the mirrored watch session
+/// (`HKWorkoutSession.sendToRemoteWorkoutSession`).
+///
+/// `HKWorkoutConfiguration` only carries activity + location type, so the
+/// phone uses `.name(...)` to seed the human-readable session name on the
+/// wrist once the mirror is established. End/cancel are phone → watch
+/// control signals; `endAck` is the watch's reply carrying the saved
+/// HKWorkout UUID so the iPhone WorkoutLog can adopt it (and skip its own
+/// HealthKit export to avoid duplicates).
+public enum MirroredSessionMessage: Codable, Hashable {
+    case name(String, activityTypeRaw: UInt?)
+    case end
+    case cancel
+    case endAck(workoutUUID: String?)
+
+    private enum Kind: String, Codable { case name, end, cancel, endAck }
+    private enum CodingKeys: String, CodingKey { case kind, name, activityTypeRaw, workoutUUID }
+
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        let kind = try c.decode(Kind.self, forKey: .kind)
+        switch kind {
+        case .name:
+            let n = try c.decode(String.self, forKey: .name)
+            let raw = try c.decodeIfPresent(UInt.self, forKey: .activityTypeRaw)
+            self = .name(n, activityTypeRaw: raw)
+        case .end:
+            self = .end
+        case .cancel:
+            self = .cancel
+        case .endAck:
+            let uuid = try c.decodeIfPresent(String.self, forKey: .workoutUUID)
+            self = .endAck(workoutUUID: uuid)
+        }
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        switch self {
+        case .name(let n, let raw):
+            try c.encode(Kind.name, forKey: .kind)
+            try c.encode(n, forKey: .name)
+            try c.encodeIfPresent(raw, forKey: .activityTypeRaw)
+        case .end:
+            try c.encode(Kind.end, forKey: .kind)
+        case .cancel:
+            try c.encode(Kind.cancel, forKey: .kind)
+        case .endAck(let uuid):
+            try c.encode(Kind.endAck, forKey: .kind)
+            try c.encodeIfPresent(uuid, forKey: .workoutUUID)
+        }
+    }
+
+    public func encoded() -> Data? {
+        try? JSONEncoder().encode(self)
+    }
+
+    public static func decode(_ data: Data) -> MirroredSessionMessage? {
+        try? JSONDecoder().decode(MirroredSessionMessage.self, from: data)
+    }
+}
+
 public func writeWatchLibrarySnapshot(_ snapshot: WatchLibrarySnapshot) {
     let defaults = UserDefaults(suiteName: appGroupID) ?? .standard
     if let encoded = try? JSONEncoder().encode(snapshot) {

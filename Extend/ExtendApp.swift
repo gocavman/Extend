@@ -56,8 +56,15 @@ struct ExtendApp: App {
     let trainingPlanState = TrainingPlanState.shared
     let waterState = WaterState.shared
     let watchReceiver = WatchConnectivityReceiver.shared
+    let mirroredWorkoutCoordinator = MirroredWorkoutCoordinator.shared
 
     init() {
+        // Hook the HKHealthStore's mirror-start handler as early as possible.
+        // Apple docs: "assign this property as soon as your app launches" so
+        // the system can deliver a reconnecting mirror (after a transient
+        // link drop mid-workout) even before SwiftUI renders the first body.
+        MirroredWorkoutCoordinator.shared.registerMirrorHandler()
+
         // Register all modules synchronously before the first render so the
         // registry is never empty when ContentView draws its first frame.
         let registry = ModuleRegistry.shared

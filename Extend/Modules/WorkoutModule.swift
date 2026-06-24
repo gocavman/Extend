@@ -2778,11 +2778,14 @@ public struct StartWorkoutView: View {
                 UIApplication.shared.isIdleTimerDisabled = true
             }
             // Kick off an iPhone-driven Watch HKWorkoutSession (when enabled
-            // and a watch is reachable) so heart rate / calories get collected
-            // on the wrist instead of estimated on the phone.
+            // and a watch is paired) so heart rate / calories get collected
+            // on the wrist instead of estimated on the phone. Uses the
+            // system mirror channel: the OS launches the watch app and the
+            // watch mirrors its primary session back, so reachability isn't
+            // a prerequisite.
             if HealthKitState.shared.useWatchWorkoutSession {
                 Task {
-                    let ok = await WatchConnectivityReceiver.shared.startWatchWorkout(
+                    let ok = await MirroredWorkoutCoordinator.shared.requestStart(
                         activityTypeRaw: workout.healthKitActivityType,
                         name: workout.name
                     )
@@ -4207,7 +4210,7 @@ public struct StartWorkoutView: View {
         Task {
             var watchUUID: UUID? = nil
             if needsWatchEnd {
-                watchUUID = await WatchConnectivityReceiver.shared.endWatchWorkout()
+                watchUUID = await MirroredWorkoutCoordinator.shared.requestEnd()
             }
             await MainActor.run {
                 WorkoutLogState.shared.addLog(

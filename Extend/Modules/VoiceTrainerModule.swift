@@ -751,6 +751,10 @@ struct VoiceTrainerPlaybackView: View {
     @State private var playbackState = VoiceTrainerState()
     @State private var voiceManager: VoiceManager?
     @State private var updateTimer: Timer?
+    /// True when the mirror-coordinator successfully started a wrist HKWorkout
+    /// session for this trainer. Drives whether finishing should adopt the
+    /// returned HKWorkout UUID and skip the iPhone's own HK export.
+    @State private var watchWorkoutStarted: Bool = false
 
     var body: some View {
         PlaybackScreen(
@@ -760,6 +764,7 @@ struct VoiceTrainerPlaybackView: View {
             onResume: { resumePlayback() },
             onStop: {
                 resetPlayback()
+                Task { await MirroredWorkoutCoordinator.shared.requestCancel() }
                 dismiss()
             },
             onComplete: {
@@ -800,6 +805,19 @@ struct VoiceTrainerPlaybackView: View {
             restEndWarning: config.restEndWarning
         )
         voiceManager?.startPlayback(config: pbConfig, state: playbackState)
+
+        // Mirror the trainer to an Apple Watch HKWorkoutSession so we
+        // collect real heart rate / calories on the wrist while audio
+        // cues + logging stay on the iPhone.
+        if HealthKitState.shared.useWatchWorkoutSession {
+            Task {
+                let ok = await MirroredWorkoutCoordinator.shared.requestStart(
+                    activityTypeRaw: config.healthKitActivityType,
+                    name: "Trainer – \(config.name)"
+                )
+                await MainActor.run { watchWorkoutStarted = ok }
+            }
+        }
     }
 
     private func pausePlayback() {
@@ -879,12 +897,29 @@ Total Lines Read: \(playbackState.linesSpoken)
             secondaryMuscleGroupIDs: config.secondaryMuscleGroupIDs,
             logEquipmentIDs: config.equipmentIDs
         )
-        logState.addLog(
-            workoutLog,
-            exportToHealthKit: HealthKitState.shared.exportStrengthWorkouts,
-            activityTypeRaw: config.healthKitActivityType
-        )
+        // End the wrist HKWorkoutSession if we started one — the returned
+        // UUID becomes the canonical HKWorkout in Apple Health, with real
+        // heart-rate-driven calories. Falls through to iPhone-side export
+        // only when no watch session was running.
+        let needsWatchEnd = watchWorkoutStarted
+        let exportEnabled = HealthKitState.shared.exportStrengthWorkouts
+        let activityTypeRaw = config.healthKitActivityType
+        Task {
+            var watchUUID: UUID? = nil
+            if needsWatchEnd {
+                watchUUID = await MirroredWorkoutCoordinator.shared.requestEnd()
+            }
+            await MainActor.run {
+                logState.addLog(
+                    workoutLog,
+                    exportToHealthKit: exportEnabled,
+                    activityTypeRaw: activityTypeRaw,
+                    existingHealthKitUUID: watchUUID
+                )
+            }
+        }
         resetPlayback()
+        watchWorkoutStarted = false
         ModuleState.shared.selectedModuleID = ModuleIDs.progress
     }
 

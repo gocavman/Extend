@@ -90,37 +90,10 @@ extension WatchConnectivityBridge: WCSessionDelegate {
         handlePayload(applicationContext)
     }
 
-    // Real-time, reply-expected messages. Used by the iPhone to start/end a
-    // live HKWorkoutSession on the watch — that way the watch collects real
-    // heart rate / calories while the iPhone drives the workout flow.
-    func session(_ session: WCSession,
-                 didReceiveMessage message: [String : Any],
-                 replyHandler: @escaping ([String : Any]) -> Void) {
-        guard let type = message["type"] as? String else {
-            replyHandler(["ok": false])
-            return
-        }
-        switch type {
-        case "start_workout":
-            let raw = message["activity_type_raw"] as? UInt
-            let name = (message["name"] as? String) ?? "Workout"
-            Task { @MainActor in
-                let ok = await WatchWorkoutSessionManager.shared.start(activityTypeRaw: raw, name: name)
-                replyHandler(["ok": ok])
-            }
-        case "end_workout":
-            Task { @MainActor in
-                let uuid = await WatchWorkoutSessionManager.shared.end()
-                if let uuid {
-                    replyHandler(["ok": true, "workout_uuid": uuid.uuidString])
-                } else {
-                    replyHandler(["ok": false])
-                }
-            }
-        default:
-            replyHandler(["ok": false])
-        }
-    }
+    // Phone-driven live workout sessions are no longer routed through WC
+    // sendMessage — they ride the HKWorkoutSession mirror channel kicked
+    // off by HKHealthStore.startWatchApp(toHandle:) on the iPhone, which
+    // calls into ExtendWatchAppDelegate.handle(_:).
 
     private func handlePayload(_ payload: [String: Any]) {
         guard let type = payload["type"] as? String else { return }

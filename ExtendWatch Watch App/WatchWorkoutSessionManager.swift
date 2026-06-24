@@ -27,6 +27,12 @@ final class WatchWorkoutSessionManager: NSObject {
     /// the paired iPhone). Local sessions get a Finish button; remote ones
     /// are ended by the iPhone.
     private(set) var isLocallyStarted: Bool = false
+    /// True while the wrist primary session is mirroring back to the
+    /// iPhone — set by both `start(...)` (best-effort for watch-initiated
+    /// sessions when the phone is reachable) and `startMirrored(config:)`
+    /// (always, for phone-driven sessions). Drives whether `end()` needs to
+    /// also `stopMirroringToCompanionDevice()`.
+    private(set) var isMirroringToPhone: Bool = false
     /// Display name shown on the live UI.
     private(set) var displayName: String = ""
     /// Name used when forwarding the completed log back to the iPhone — set
@@ -187,6 +193,17 @@ final class WatchWorkoutSessionManager: NSObject {
             self.heartRate = 0
             self.activeEnergyKcal = 0
             self.isActive = true
+
+            // Best-effort: mirror the watch-initiated session back to the
+            // iPhone so the phone-side coordinator can show a live HR HUD.
+            // Failure here (phone unreachable, app not installed) is fine —
+            // we still run standalone on the wrist.
+            do {
+                try await session.startMirroringToCompanionDevice()
+                self.isMirroringToPhone = true
+            } catch {
+                self.isMirroringToPhone = false
+            }
             return true
         } catch {
             print("❌ Watch workout session start failed: \(error.localizedDescription)")
@@ -195,12 +212,149 @@ final class WatchWorkoutSessionManager: NSObject {
         }
     }
 
+    /// Phone-driven entry point. Called from the watch app's
+    /// `WKApplicationDelegate.handle(_:)` after the iPhone wakes us via
+    /// `HKHealthStore.startWatchApp(toHandle:)`. Spins up the primary
+    /// HKWorkoutSession, immediately starts mirroring it back so the iPhone
+    /// becomes the mirrored counterpart and starts receiving live HR
+    /// samples, then waits for the phone to send the session name across
+    /// the remote data channel for the wrist HUD.
+    @discardableResult
+    func startMirrored(config: HKWorkoutConfiguration) async -> Bool {
+        guard HKHealthStore.isHealthDataAvailable() else { return false }
+        guard !isActive else { return true }
+
+        await requestAuthorization()
+
+        let activity = config.activityType
+        let rawType: UInt? = activity == .other ? nil : activity.rawValue
+
+        do {
+            let session = try HKWorkoutSession(healthStore: store, configuration: config)
+            let builder = session.associatedWorkoutBuilder()
+            builder.dataSource = HKLiveWorkoutDataSource(healthStore: store, workoutConfiguration: config)
+            session.delegate = self
+            builder.delegate = self
+
+            self.session = session
+            self.builder = builder
+            self.activityType = activity
+            self.activityTypeRaw = rawType
+            // The phone will overwrite this momentarily via a
+            // `MirroredSessionMessage.name(...)` payload — until then,
+            // fall back to a sensible default so the HUD isn't blank.
+            self.displayName = "Workout"
+            self.pendingLogName = "Workout"
+            self.isLocallyStarted = false
+            self.blueprint = nil
+            self.voiceConfig = nil
+            self.timerConfig = nil
+            self.currentItemIndex = 0
+            self.currentItemSets = []
+            self.complexRound = 1
+            self.complexValues = [:]
+            self.completedSetsByExerciseID = [:]
+            self.completedExerciseOrder = []
+            self.exerciseMetadata = [:]
+
+            // Start mirroring BEFORE starting the activity so the phone-side
+            // mirror handler fires while the session is still preparing —
+            // that way the phone joins as a mirrored client cleanly.
+            try await session.startMirroringToCompanionDevice()
+            self.isMirroringToPhone = true
+
+            let start = Date()
+            session.startActivity(with: start)
+            try await builder.beginCollection(at: start)
+
+            self.startDate = start
+            self.heartRate = 0
+            self.activeEnergyKcal = 0
+            self.isActive = true
+            return true
+        } catch {
+            print("❌ Mirrored workout start failed: \(error.localizedDescription)")
+            clearState()
+            return false
+        }
+    }
+
+    /// Apply the phone's display-name handshake to a mirrored session.
+    /// Called when the iPhone's `MirroredSessionMessage.name(...)` arrives
+    /// over the remote data channel.
+    func applyMirroredName(_ name: String, activityTypeRaw: UInt?) {
+        guard isActive, !isLocallyStarted else { return }
+        self.displayName = name
+        self.pendingLogName = name
+        if let raw = activityTypeRaw {
+            self.activityTypeRaw = raw
+            self.activityType = HKWorkoutActivityType(rawValue: raw) ?? .other
+        }
+    }
+
+    /// Ends the live session in response to a phone-driven `MirroredSession
+    /// Message.end`. Persists the HKWorkout, sends `endAck` back so the
+    /// iPhone WorkoutLog can adopt the UUID, then stops mirroring.
+    func endFromRemote() async {
+        guard isActive, let session, let builder else { return }
+
+        let endDate = Date()
+        session.end()
+        do {
+            try await builder.endCollection(at: endDate)
+        } catch {
+            print("❌ Watch workout endCollection failed: \(error.localizedDescription)")
+        }
+        let uuid: UUID? = await withCheckedContinuation { (cont: CheckedContinuation<UUID?, Never>) in
+            builder.finishWorkout { workout, _ in
+                cont.resume(returning: workout?.uuid)
+            }
+        }
+
+        let ack = MirroredSessionMessage.endAck(workoutUUID: uuid?.uuidString)
+        if let data = ack.encoded() {
+            do {
+                try await session.sendToRemoteWorkoutSession(data: data)
+            } catch {
+                print("⚠️ Watch workout endAck failed: \(error.localizedDescription)")
+            }
+        }
+        if isMirroringToPhone {
+            do { try await session.stopMirroringToCompanionDevice() } catch {
+                print("⚠️ Watch workout stopMirroring failed: \(error.localizedDescription)")
+            }
+        }
+        clearState()
+    }
+
+    /// Discards the live session in response to a phone-driven `Mirrored
+    /// SessionMessage.cancel`. No HKWorkout is written, no log is sent
+    /// back, and the mirror is torn down.
+    func cancelFromRemote() async {
+        guard isActive, let session, let builder else { return }
+        let endDate = Date()
+        session.end()
+        do {
+            try await builder.endCollection(at: endDate)
+        } catch {
+            print("❌ Watch workout endCollection (cancel) failed: \(error.localizedDescription)")
+        }
+        builder.discardWorkout()
+        if isMirroringToPhone {
+            do { try await session.stopMirroringToCompanionDevice() } catch {
+                print("⚠️ Watch workout stopMirroring (cancel) failed: \(error.localizedDescription)")
+            }
+        }
+        clearState()
+    }
+
     /// Ends the live workout session and returns the saved HKWorkout's UUID
     /// (nil on failure). The caller should send this UUID back to the iPhone
     /// so its WorkoutLog can be tagged for dedup.
     func end() async -> UUID? {
         guard isActive, let session, let builder else { return nil }
 
+        let wasMirroring = isMirroringToPhone
         let endDate = Date()
         session.end()
         do {
@@ -220,6 +374,15 @@ final class WatchWorkoutSessionManager: NSObject {
             }
         }
 
+        // Tear down the mirror — for watch-initiated sessions that
+        // opportunistically mirrored to the iPhone, this lets the
+        // phone-side coordinator clear its HUD.
+        if wasMirroring {
+            do { try await session.stopMirroringToCompanionDevice() } catch {
+                print("⚠️ Watch workout stopMirroring (local end) failed: \(error.localizedDescription)")
+            }
+        }
+
         clearState()
         return uuid
     }
@@ -230,6 +393,7 @@ final class WatchWorkoutSessionManager: NSObject {
     /// Finish buttons stay on `end()`.
     func cancel() async {
         guard isActive, let session, let builder else { return }
+        let wasMirroring = isMirroringToPhone
         let endDate = Date()
         session.end()
         do {
@@ -238,6 +402,11 @@ final class WatchWorkoutSessionManager: NSObject {
             print("❌ Watch workout endCollection (cancel) failed: \(error.localizedDescription)")
         }
         builder.discardWorkout()
+        if wasMirroring {
+            do { try await session.stopMirroringToCompanionDevice() } catch {
+                print("⚠️ Watch workout stopMirroring (cancel) failed: \(error.localizedDescription)")
+            }
+        }
         clearState()
     }
 
@@ -410,6 +579,7 @@ final class WatchWorkoutSessionManager: NSObject {
         builder = nil
         isActive = false
         isLocallyStarted = false
+        isMirroringToPhone = false
         startDate = nil
         heartRate = 0
         activeEnergyKcal = 0
@@ -444,6 +614,48 @@ extension WatchWorkoutSessionManager: HKWorkoutSessionDelegate {
             self.endContinuation?.resume(returning: nil)
             self.endContinuation = nil
             self.clearState()
+        }
+    }
+
+    nonisolated func workoutSession(_ workoutSession: HKWorkoutSession,
+                                    didReceiveDataFromRemoteWorkoutSession data: [Data]) {
+        // HealthKit batches incoming payloads when the watch app is
+        // suspended — walk in arrival order so a queued "cancel" still
+        // wins over an earlier "end" from the same batch.
+        Task { @MainActor in
+            for blob in data {
+                guard let message = MirroredSessionMessage.decode(blob) else { continue }
+                await self.handleRemote(message)
+            }
+        }
+    }
+
+    nonisolated func workoutSession(_ workoutSession: HKWorkoutSession,
+                                    didDisconnectFromRemoteDeviceWithError error: (any Error)?) {
+        // Phone-driven session lost its mirror partner. The wrist session
+        // can continue running locally (no log will sync back), but for the
+        // mirrored-flow we treat this as the end and tear down the wrist
+        // UI so the user isn't stranded on the cover.
+        Task { @MainActor in
+            if !self.isLocallyStarted {
+                await self.cancelFromRemote()
+            }
+        }
+    }
+
+    @MainActor
+    private func handleRemote(_ message: MirroredSessionMessage) async {
+        switch message {
+        case .name(let n, let raw):
+            applyMirroredName(n, activityTypeRaw: raw)
+        case .end:
+            await endFromRemote()
+        case .cancel:
+            await cancelFromRemote()
+        case .endAck:
+            // Watch never receives this — it's the watch's reply to a
+            // phone-driven end. Safe to ignore on the watch side.
+            break
         }
     }
 }
