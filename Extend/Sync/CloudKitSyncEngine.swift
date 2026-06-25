@@ -150,7 +150,13 @@ final class CloudKitSyncEngine {
 
     // MARK: - Public API
 
-    /// Call once on app launch. Checks account status, registers subscriptions, pulls all data.
+    /// Call once on app launch and on every foreground transition. Checks
+    /// account status, then pulls all data. We don't use CKQuerySubscriptions
+    /// for cross-device sync because they require queryable indexes per record
+    /// type that don't reliably propagate from Dev → Prod, and even when they
+    /// do, query subscriptions are the most-restricted subscription kind in
+    /// production. Pull-on-foreground is good enough for a personal app where
+    /// you re-open it on each device anyway.
     /// Retries the account-status check a few times when the initial call
     /// returns `.couldNotDetermine` — on a fresh install the system can need
     /// a moment to resolve the iCloud account before CloudKit is ready, and
@@ -172,7 +178,6 @@ final class CloudKitSyncEngine {
 
         guard accountStatus == .available else { return }
 
-        await registerSubscriptionsIfNeeded()
         await pullAll()
     }
 
@@ -200,28 +205,6 @@ final class CloudKitSyncEngine {
     func pushUIPreferences() {
         guard defaults.object(forKey: "ck_sync_ui_prefs") as? Bool ?? true else { return }
         push(.uiPreferences)
-    }
-
-    /// Called from AppDelegate when a silent push arrives.
-    func handleRemoteNotification(_ userInfo: [AnyHashable: Any]) {
-        guard accountStatus == .available else { return }
-        let notification = CKNotification(fromRemoteNotificationDictionary: userInfo)
-        guard let queryNotification = notification as? CKQueryNotification,
-              let recordID = queryNotification.recordID
-        else {
-            // Unknown notification — pull everything to be safe
-            Task { await pullAll() }
-            return
-        }
-
-        // Find the matching SyncKey by record name
-        if let key = SyncKey.allCases.first(where: { $0.recordName == recordID.recordName }) {
-            Task { await pullRecord(for: key) }
-        } else if recordID.recordName.hasPrefix("exercise_image_") {
-            Task { await pullAllImages() }
-        } else if recordID.recordName.hasPrefix("muscle_image_") {
-            Task { await pullAllImages() }
-        }
     }
 
     /// Push a custom image (exercise or muscle group) to CloudKit.
@@ -334,64 +317,6 @@ final class CloudKitSyncEngine {
             await pushRecord(for: key)
         } catch {
             syncError = error.localizedDescription
-        }
-    }
-
-    // MARK: - Subscriptions
-
-    private func registerSubscriptionsIfNeeded() async {
-        let flagKey = "ck_subscriptions_registered_v1"
-        guard !defaults.bool(forKey: flagKey) else { return }
-
-        var allSucceeded = true
-        for key in SyncKey.allCases {
-            let subscriptionID = "sub_\(key.rawValue)"
-            let predicate = NSPredicate(value: true)
-            let subscription = CKQuerySubscription(
-                recordType: key.recordType,
-                predicate: predicate,
-                subscriptionID: subscriptionID,
-                options: [.firesOnRecordCreation, .firesOnRecordUpdate, .firesOnRecordDeletion]
-            )
-            let info = CKSubscription.NotificationInfo()
-            info.shouldSendContentAvailable = true  // silent push
-            subscription.notificationInfo = info
-
-            do {
-                try await privateDB.save(subscription)
-            } catch let ckError as CKError where ckError.code == .serverRejectedRequest {
-                // Subscription already exists — that's fine
-            } catch {
-                allSucceeded = false
-                syncError = error.localizedDescription
-            }
-        }
-
-        // Also subscribe to image record types
-        for imageType in ["ExerciseImages", "MuscleImages"] {
-            let subscriptionID = "sub_images_\(imageType.lowercased())"
-            let predicate = NSPredicate(value: true)
-            let subscription = CKQuerySubscription(
-                recordType: imageType,
-                predicate: predicate,
-                subscriptionID: subscriptionID,
-                options: [.firesOnRecordCreation, .firesOnRecordUpdate]
-            )
-            let info = CKSubscription.NotificationInfo()
-            info.shouldSendContentAvailable = true
-            subscription.notificationInfo = info
-            do {
-                try await privateDB.save(subscription)
-            } catch let ckError as CKError where ckError.code == .serverRejectedRequest {
-                // Already registered
-                _ = ckError
-            } catch {
-                allSucceeded = false
-            }
-        }
-
-        if allSucceeded {
-            defaults.set(true, forKey: flagKey)
         }
     }
 

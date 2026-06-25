@@ -9,24 +9,9 @@ import SwiftUI
 import SwiftData
 import HealthKit
 import WidgetKit
-import CloudKit
-
-// MARK: - AppDelegate (handles silent push notifications from CloudKit)
-
-class AppDelegate: NSObject, UIApplicationDelegate {
-    func application(
-        _ application: UIApplication,
-        didReceiveRemoteNotification userInfo: [AnyHashable: Any],
-        fetchCompletionHandler completionHandler: @escaping (UIBackgroundFetchResult) -> Void
-    ) {
-        CloudKitSyncEngine.shared.handleRemoteNotification(userInfo)
-        completionHandler(.newData)
-    }
-}
 
 @main
 struct ExtendApp: App {
-    @UIApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
     let syncEngine = CloudKitSyncEngine.shared
     var sharedModelContainer: ModelContainer = {
         let schema = Schema([
@@ -149,6 +134,10 @@ struct ExtendApp: App {
                     Task {
                         await WorkoutLogState.shared.importFromHealthKit()
                         await waterState.syncFromHealthKit()
+                        // Pull any CloudKit changes made on other devices since
+                        // we backgrounded. We don't use CK subscriptions, so this
+                        // foreground pull is how cross-device sync stays current.
+                        await CloudKitSyncEngine.shared.forceSync()
                     }
                 }
                 .task {
@@ -169,7 +158,9 @@ struct ExtendApp: App {
                     // Both iPhone and Watch write to the same App Group UserDefaults, so no
                     // WatchConnectivity sync is needed for settings.
 
-                    // Start CloudKit sync (registers subscriptions, pulls latest data)
+                    // Start CloudKit sync (pulls latest data on cold launch;
+                    // foreground transitions trigger forceSync via the
+                    // willEnterForeground handler above).
                     await CloudKitSyncEngine.shared.start()
 
                     // Request HealthKit auth on first launch if any sync is configured.
