@@ -70,7 +70,7 @@ public final class MirroredWorkoutCoordinator: NSObject {
     /// call repeatedly — the handler is idempotent.
     public func registerMirrorHandler() {
         guard HKHealthStore.isHealthDataAvailable() else {
-            MirrorDiagnostics.shared.log("HealthKit not available — handler not registered")
+            MirrorDiagnostics.log("HealthKit not available — handler not registered")
             return
         }
         store.workoutSessionMirroringStartHandler = { [weak self] mirroredSession in
@@ -78,11 +78,11 @@ public final class MirroredWorkoutCoordinator: NSObject {
             // hop to MainActor before touching the diagnostics buffer or
             // adopting the session.
             Task { @MainActor [weak self] in
-                MirrorDiagnostics.shared.log("mirror-start handler fired — adopting session")
+                MirrorDiagnostics.log("mirror-start handler fired — adopting session")
                 self?.adoptMirroredSession(mirroredSession)
             }
         }
-        MirrorDiagnostics.shared.log("handler registered on HKHealthStore")
+        MirrorDiagnostics.log("handler registered on HKHealthStore")
     }
 
     /// Asks for the HK types the iPhone side needs to fully process a
@@ -106,7 +106,7 @@ public final class MirroredWorkoutCoordinator: NSObject {
             try await store.requestAuthorization(toShare: share, read: read)
             return true
         } catch {
-            MirrorDiagnostics.shared.log("HK auth request failed: \(error.localizedDescription)")
+            MirrorDiagnostics.log("HK auth request failed: \(error.localizedDescription)")
             return false
         }
     }
@@ -135,25 +135,25 @@ public final class MirroredWorkoutCoordinator: NSObject {
     /// auth missing, mirror handshake timed out).
     public func requestStart(activityTypeRaw: UInt?, name: String) async -> Bool {
         guard HKHealthStore.isHealthDataAvailable() else {
-            MirrorDiagnostics.shared.log("requestStart: HealthKit unavailable")
+            MirrorDiagnostics.log("requestStart: HealthKit unavailable")
             return false
         }
         let wcState = WCSession.default
-        MirrorDiagnostics.shared.log("requestStart: name=\(name) activity=\(activityTypeRaw ?? 0) " +
+        MirrorDiagnostics.log("requestStart: name=\(name) activity=\(activityTypeRaw ?? 0) " +
               "wcSupported=\(WCSession.isSupported()) " +
               "activation=\(wcState.activationState.rawValue) " +
               "paired=\(wcState.isPaired) " +
               "installed=\(wcState.isWatchAppInstalled) " +
               "reachable=\(wcState.isReachable)")
         guard isWatchAvailable else {
-            MirrorDiagnostics.shared.log("requestStart: watch not available — aborting")
+            MirrorDiagnostics.log("requestStart: watch not available — aborting")
             return false
         }
 
         // If there's already an active mirrored session, refuse rather than
         // overlapping. Callers should `requestEnd` first.
         guard !isMirroring, session == nil else {
-            MirrorDiagnostics.shared.log("requestStart: already mirroring — aborting")
+            MirrorDiagnostics.log("requestStart: already mirroring — aborting")
             return false
         }
 
@@ -164,7 +164,7 @@ public final class MirroredWorkoutCoordinator: NSObject {
         // remembers the choice afterwards.
         let authorized = await requestAuthorization()
         guard authorized else {
-            MirrorDiagnostics.shared.log("requestStart: HK authorization failed — aborting")
+            MirrorDiagnostics.log("requestStart: HK authorization failed — aborting")
             return false
         }
 
@@ -179,11 +179,11 @@ public final class MirroredWorkoutCoordinator: NSObject {
             startContinuation = cont
             Task {
                 do {
-                    MirrorDiagnostics.shared.log("calling startWatchApp(toHandle:)…")
+                    MirrorDiagnostics.log("calling startWatchApp(toHandle:)…")
                     try await store.startWatchApp(toHandle: config)
-                    MirrorDiagnostics.shared.log("startWatchApp returned — waiting for mirror handler")
+                    MirrorDiagnostics.log("startWatchApp returned — waiting for mirror handler")
                 } catch {
-                    MirrorDiagnostics.shared.log("startWatchApp failed: \(error.localizedDescription)")
+                    MirrorDiagnostics.log("startWatchApp failed: \(error.localizedDescription)")
                     await MainActor.run {
                         self.startContinuation?.resume(returning: false)
                         self.startContinuation = nil
@@ -196,7 +196,7 @@ public final class MirroredWorkoutCoordinator: NSObject {
             Task { @MainActor in
                 try? await Task.sleep(nanoseconds: 15_000_000_000)
                 if let pending = self.startContinuation {
-                    MirrorDiagnostics.shared.log("timed out waiting for mirror handler (15s)")
+                    MirrorDiagnostics.log("timed out waiting for mirror handler (15s)")
                     self.startContinuation = nil
                     pending.resume(returning: false)
                 }
@@ -204,10 +204,10 @@ public final class MirroredWorkoutCoordinator: NSObject {
         }
 
         guard connected, let session else {
-            MirrorDiagnostics.shared.log("requestStart: did not connect")
+            MirrorDiagnostics.log("requestStart: did not connect")
             return false
         }
-        MirrorDiagnostics.shared.log("mirror established — sending name handshake")
+        MirrorDiagnostics.log("mirror established — sending name handshake")
         // Seed the wrist HUD with a human-readable name once the channel
         // is live. Fire-and-forget — failure here just leaves the watch
         // showing the activity type's default label.

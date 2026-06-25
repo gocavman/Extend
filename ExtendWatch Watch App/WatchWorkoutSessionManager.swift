@@ -221,13 +221,13 @@ final class WatchWorkoutSessionManager: NSObject {
     /// the remote data channel for the wrist HUD.
     @discardableResult
     func startMirrored(config: HKWorkoutConfiguration) async -> Bool {
-        MirrorDiagnostics.shared.log("startMirrored called — activity=\(config.activityType.rawValue) isActive=\(isActive)")
+        MirrorDiagnostics.log("startMirrored called — activity=\(config.activityType.rawValue) isActive=\(isActive)")
         guard HKHealthStore.isHealthDataAvailable() else {
-            MirrorDiagnostics.shared.log("startMirrored: HealthKit unavailable")
+            MirrorDiagnostics.log("startMirrored: HealthKit unavailable")
             return false
         }
         guard !isActive else {
-            MirrorDiagnostics.shared.log("startMirrored: already active — returning")
+            MirrorDiagnostics.log("startMirrored: already active — returning")
             return true
         }
 
@@ -269,7 +269,7 @@ final class WatchWorkoutSessionManager: NSObject {
             // that way the phone joins as a mirrored client cleanly.
             try await session.startMirroringToCompanionDevice()
             self.isMirroringToPhone = true
-            MirrorDiagnostics.shared.log("startMirroringToCompanionDevice ok")
+            MirrorDiagnostics.log("startMirroringToCompanionDevice ok")
 
             let start = Date()
             session.startActivity(with: start)
@@ -279,10 +279,10 @@ final class WatchWorkoutSessionManager: NSObject {
             self.heartRate = 0
             self.activeEnergyKcal = 0
             self.isActive = true
-            MirrorDiagnostics.shared.log("startMirrored: session active and mirroring")
+            MirrorDiagnostics.log("startMirrored: session active and mirroring")
             return true
         } catch {
-            MirrorDiagnostics.shared.log("Mirrored workout start failed: \(error.localizedDescription)")
+            MirrorDiagnostics.log("Mirrored workout start failed: \(error.localizedDescription)")
             clearState()
             return false
         }

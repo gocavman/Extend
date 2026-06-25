@@ -9,6 +9,7 @@ import SwiftUI
 import UniformTypeIdentifiers
 import UIKit
 import PhotosUI
+import CloudKit
 
 private let defaults = UserDefaults(suiteName: "group.com.cavanmannenbach.extend") ?? .standard
 
@@ -76,6 +77,11 @@ private struct SettingsModuleView: View {
     @State private var isAppleHealthSectionExpanded = false
     @State private var isWorkoutsSectionExpanded = false
     @State private var isICloudSectionExpanded = false
+    /// CloudKit sync diagnostics — bound here so the iCloud section can
+    /// surface account status, last-sync date, errors, and a manual
+    /// re-sync button without having to thread an environment value
+    /// through.
+    @State private var syncEngine = CloudKitSyncEngine.shared
     @State private var isSystemSectionExpanded = false
     @State private var isAboutSectionExpanded = false
     @State private var showingExportSheet = false
@@ -238,6 +244,60 @@ private struct SettingsModuleView: View {
                         }
 
                         DisclosureGroup("iCloud Sync", isExpanded: $isICloudSectionExpanded) {
+                            HStack {
+                                Text("Account")
+                                Spacer()
+                                Text(accountStatusLabel(syncEngine.accountStatus))
+                                    .foregroundColor(accountStatusColor(syncEngine.accountStatus))
+                            }
+
+                            HStack {
+                                Text("Last Sync")
+                                Spacer()
+                                if let date = syncEngine.lastSyncDate {
+                                    Text(lastSyncLabel(date))
+                                        .foregroundColor(.secondary)
+                                } else {
+                                    Text("Never")
+                                        .foregroundColor(.secondary)
+                                }
+                            }
+
+                            if let err = syncEngine.syncError {
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text("Last Error")
+                                        .foregroundColor(.red)
+                                    Text(err)
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                        .textSelection(.enabled)
+                                }
+                            }
+
+                            Button {
+                                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                                Task { await syncEngine.forceSync() }
+                            } label: {
+                                HStack {
+                                    if syncEngine.isSyncing {
+                                        ProgressView()
+                                            .scaleEffect(0.8)
+                                            .padding(.trailing, 4)
+                                        Text("Syncing…")
+                                    } else {
+                                        Image(systemName: "arrow.triangle.2.circlepath.icloud")
+                                        Text("Sync Now")
+                                    }
+                                }
+                                .frame(maxWidth: .infinity)
+                            }
+                            .buttonStyle(.bordered)
+                            .disabled(syncEngine.isSyncing)
+
+                            Text("Pulls the latest workouts, logs, exercises, and settings from your iCloud account. Use this if a reinstall didn't restore your data.")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+
                             Toggle(isOn: Binding(
                                 get: { moduleState.syncUIPreferences },
                                 set: { moduleState.syncUIPreferences = $0 }
@@ -797,6 +857,34 @@ private struct SettingsModuleView: View {
             }
         }
         .preferredColorScheme(preferredScheme)
+    }
+
+    // MARK: - iCloud Sync labels
+
+    private func accountStatusLabel(_ status: CKAccountStatus) -> String {
+        switch status {
+        case .available:         return "Available"
+        case .noAccount:         return "Not Signed In"
+        case .restricted:        return "Restricted"
+        case .couldNotDetermine: return "Checking…"
+        case .temporarilyUnavailable: return "Temporarily Unavailable"
+        @unknown default:        return "Unknown"
+        }
+    }
+
+    private func accountStatusColor(_ status: CKAccountStatus) -> Color {
+        switch status {
+        case .available:         return .green
+        case .noAccount, .restricted: return .red
+        case .couldNotDetermine, .temporarilyUnavailable: return .orange
+        @unknown default:        return .secondary
+        }
+    }
+
+    private func lastSyncLabel(_ date: Date) -> String {
+        let formatter = RelativeDateTimeFormatter()
+        formatter.unitsStyle = .abbreviated
+        return formatter.localizedString(for: date, relativeTo: Date())
     }
 
     private func resetApp() {

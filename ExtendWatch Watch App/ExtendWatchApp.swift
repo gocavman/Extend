@@ -29,16 +29,21 @@ struct ExtendWatch_Watch_AppApp: App {
 /// payload over `sendToRemoteWorkoutSession`.
 final class ExtendWatchAppDelegate: NSObject, WKApplicationDelegate {
     func applicationDidFinishLaunching() {
-        Task { @MainActor in
-            MirrorDiagnostics.shared.log("watch app launched (delegate alive)")
-        }
+        // Synchronous log — MirrorDiagnostics.log is nonisolated so the
+        // entry lands in the ring buffer before any further work.
+        MirrorDiagnostics.log("watch app launched (delegate alive)")
     }
 
     func handle(_ workoutConfiguration: HKWorkoutConfiguration) {
+        // Log SYNCHRONOUSLY first. A background-launched watch app gets a
+        // very narrow execution window before the system can suspend it;
+        // wrapping this in a Task was eating the log entry entirely, which
+        // is why the wrist Mirror Log appeared empty even when iOS
+        // confirmed `startWatchApp(toHandle:)` returned successfully.
+        MirrorDiagnostics.log("handle(_:) fired — activity=\(workoutConfiguration.activityType.rawValue)")
         Task { @MainActor in
-            MirrorDiagnostics.shared.log("handle(_:) fired — activity=\(workoutConfiguration.activityType.rawValue)")
             let ok = await WatchWorkoutSessionManager.shared.startMirrored(config: workoutConfiguration)
-            MirrorDiagnostics.shared.log("startMirrored returned ok=\(ok)")
+            MirrorDiagnostics.log("startMirrored returned ok=\(ok)")
         }
     }
 }

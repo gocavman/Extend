@@ -151,19 +151,37 @@ final class CloudKitSyncEngine {
     // MARK: - Public API
 
     /// Call once on app launch. Checks account status, registers subscriptions, pulls all data.
+    /// Retries the account-status check a few times when the initial call
+    /// returns `.couldNotDetermine` — on a fresh install the system can need
+    /// a moment to resolve the iCloud account before CloudKit is ready, and
+    /// `.CKAccountChanged` doesn't fire in that case (it only fires when the
+    /// signed-in account actually changes), so without the retry the engine
+    /// silently sits out the whole launch.
     func start() async {
-        do {
-            accountStatus = try await container.accountStatus()
-        } catch {
-            accountStatus = .couldNotDetermine
-            syncError = error.localizedDescription
-            return
+        for attempt in 0..<5 {
+            do {
+                accountStatus = try await container.accountStatus()
+                syncError = nil
+            } catch {
+                accountStatus = .couldNotDetermine
+                syncError = error.localizedDescription
+            }
+            if accountStatus != .couldNotDetermine { break }
+            try? await Task.sleep(for: .seconds(1 << attempt))   // 1s, 2s, 4s, 8s, 16s
         }
 
         guard accountStatus == .available else { return }
 
         await registerSubscriptionsIfNeeded()
         await pullAll()
+    }
+
+    /// Manual re-sync entry point for the user (Settings → "Sync Now").
+    /// Re-checks the iCloud account first in case it became available since
+    /// the last attempt, then triggers a full pull. Safe to call repeatedly;
+    /// `isSyncing` gates the UI's spinner.
+    func forceSync() async {
+        await start()
     }
 
     /// Debounced push — waits 2 seconds after the last call before writing to CloudKit.
