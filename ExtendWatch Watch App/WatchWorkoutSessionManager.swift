@@ -221,8 +221,15 @@ final class WatchWorkoutSessionManager: NSObject {
     /// the remote data channel for the wrist HUD.
     @discardableResult
     func startMirrored(config: HKWorkoutConfiguration) async -> Bool {
-        guard HKHealthStore.isHealthDataAvailable() else { return false }
-        guard !isActive else { return true }
+        MirrorDiagnostics.shared.log("startMirrored called — activity=\(config.activityType.rawValue) isActive=\(isActive)")
+        guard HKHealthStore.isHealthDataAvailable() else {
+            MirrorDiagnostics.shared.log("startMirrored: HealthKit unavailable")
+            return false
+        }
+        guard !isActive else {
+            MirrorDiagnostics.shared.log("startMirrored: already active — returning")
+            return true
+        }
 
         await requestAuthorization()
 
@@ -262,6 +269,7 @@ final class WatchWorkoutSessionManager: NSObject {
             // that way the phone joins as a mirrored client cleanly.
             try await session.startMirroringToCompanionDevice()
             self.isMirroringToPhone = true
+            MirrorDiagnostics.shared.log("startMirroringToCompanionDevice ok")
 
             let start = Date()
             session.startActivity(with: start)
@@ -271,9 +279,10 @@ final class WatchWorkoutSessionManager: NSObject {
             self.heartRate = 0
             self.activeEnergyKcal = 0
             self.isActive = true
+            MirrorDiagnostics.shared.log("startMirrored: session active and mirroring")
             return true
         } catch {
-            print("❌ Mirrored workout start failed: \(error.localizedDescription)")
+            MirrorDiagnostics.shared.log("Mirrored workout start failed: \(error.localizedDescription)")
             clearState()
             return false
         }

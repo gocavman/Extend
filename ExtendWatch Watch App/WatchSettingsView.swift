@@ -140,10 +140,35 @@ struct WatchSettingsView: View {
                     Text("Color of the value shown in the middle. \"Watch Face\" follows the shape color.")
                         .font(.caption2)
                 }
+
+                Section {
+                    NavigationLink("Mirror Log") { MirrorLogView() }
+                    HStack {
+                        Text("Version")
+                        Spacer()
+                        Text(versionLabel())
+                            .foregroundColor(.secondary)
+                            .font(.system(size: 11).monospacedDigit())
+                    }
+                } header: {
+                    Text("Diagnostics")
+                } footer: {
+                    Text("Confirm this matches the iPhone build before debugging a mirrored workout handshake.")
+                        .font(.caption2)
+                }
             }
             .navigationTitle("Settings")
         }
         .onAppear { reloadFromStorage() }
+    }
+
+    /// "v1.2.3 (45)" pulled from the bundle so the user can confirm the
+    /// wrist app and the phone app are on the same build before diagnosing.
+    private func versionLabel() -> String {
+        let info = Bundle.main.infoDictionary
+        let short = info?["CFBundleShortVersionString"] as? String ?? "—"
+        let build = info?["CFBundleVersion"] as? String ?? "—"
+        return "v\(short) (\(build))"
     }
 
     private let colorOptions: [(label: String, key: String, color: Color?)] = [

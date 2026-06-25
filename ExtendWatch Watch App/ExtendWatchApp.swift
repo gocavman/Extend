@@ -28,9 +28,17 @@ struct ExtendWatch_Watch_AppApp: App {
 /// name arrives moments later as a `MirroredSessionMessage.name(...)`
 /// payload over `sendToRemoteWorkoutSession`.
 final class ExtendWatchAppDelegate: NSObject, WKApplicationDelegate {
+    func applicationDidFinishLaunching() {
+        Task { @MainActor in
+            MirrorDiagnostics.shared.log("watch app launched (delegate alive)")
+        }
+    }
+
     func handle(_ workoutConfiguration: HKWorkoutConfiguration) {
         Task { @MainActor in
-            await WatchWorkoutSessionManager.shared.startMirrored(config: workoutConfiguration)
+            MirrorDiagnostics.shared.log("handle(_:) fired — activity=\(workoutConfiguration.activityType.rawValue)")
+            let ok = await WatchWorkoutSessionManager.shared.startMirrored(config: workoutConfiguration)
+            MirrorDiagnostics.shared.log("startMirrored returned ok=\(ok)")
         }
     }
 }

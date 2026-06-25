@@ -327,6 +327,10 @@ private struct SettingsModuleView: View {
                                     .font(.caption)
                                     .foregroundColor(.secondary)
 
+                                NavigationLink("Mirror Log") {
+                                    MirrorLogView()
+                                }
+
                                 NavigationLink("Import Activities") {
                                     ImportActivitiesView()
                                         .environment(healthKitState)
