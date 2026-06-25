@@ -278,7 +278,7 @@ public final class ExercisesState {
             exercise(name: "Muscle Ups",            primaryMuscleGroupIDs: [latsID, tricepsID, pecsID],       secondaryMuscleGroupIDs: [bicepsID, deltsID],           equipmentIDs: [pullupBarID, ringsID],             defaultEquipmentIDs: [pullupBarID],            hkType: .traditionalStrengthTraining),
 
             // O
-            exercise(id: UUID(uuidString: "82527C8B-1AAF-4702-90DF-F8897614A106")!, name: "Overhead Press",        primaryMuscleGroupIDs: [deltsID, tricepsID],              secondaryMuscleGroupIDs: [upperBackID, absID],          equipmentIDs: [barbellID, dumbbellID, kettlebellID],                                         hkType: .traditionalStrengthTraining),
+            exercise(id: UUID(uuidString: "82527C8B-1AAF-4702-90DF-F8897614A106")!, name: "Shoulder Press",        primaryMuscleGroupIDs: [deltsID, tricepsID],              secondaryMuscleGroupIDs: [upperBackID, absID],          equipmentIDs: [barbellID, dumbbellID, kettlebellID],                                         hkType: .traditionalStrengthTraining),
 
             // P
             exercise(name: "Pistol Squat",          primaryMuscleGroupIDs: [quadsID, glutesID],               secondaryMuscleGroupIDs: [hamstringsID, calvesID, absID],equipmentIDs: [noneID],                                                                     hkType: .traditionalStrengthTraining),

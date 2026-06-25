@@ -1801,6 +1801,13 @@ class MatchGameViewController: UIViewController {
     private func activatePowerUps(_ r1: Int, _ c1: Int, _ r2: Int, _ c2: Int, type1: PieceType, type2: PieceType) {
         guard currentLevel != nil else { return }
 
+        // The combo handlers below don't route through checkForMatches, so the
+        // pending-swap marker stays set unless we clear it here.  Leaving it set
+        // disables checkForMatches's defensive gap-fill pass (it bails out when
+        // a swap is mid-flight), which is what causes the "column not refilled
+        // until next move" symptom on ball+arrow style combos.
+        lastSwappedPositions = nil
+
         let bothArePowerups = type1 != .normal && type2 != .normal
 
         if bothArePowerups {
@@ -1836,6 +1843,12 @@ class MatchGameViewController: UIViewController {
                 handleFlamePowerupCombo(r1: r1, c1: c1, r2: r2, c2: c2, otherType: type2)
             case (_, .flame):
                 handleFlamePowerupCombo(r1: r1, c1: c1, r2: r2, c2: c2, otherType: type1)
+
+            // --- Ball + rocket (star): Ball traces a thick lightning circle,
+            //     then leads into the regular bouncing-ball clear from the top.
+            //     This MUST come before the catch-all (.rocket, _) below.
+            case (.ball, .rocket), (.rocket, .ball):
+                handleBallRocketCombo(r1: r1, c1: c1, r2: r2, c2: c2)
 
             // --- Rocket + any other powerup ---
             case (.rocket, _):
@@ -2455,32 +2468,43 @@ class MatchGameViewController: UIViewController {
     }
 
     /// Cross arrows (horizontal + vertical): Clear 2 rows + 2 columns forming a cross pattern.
-    /// Clears row at r1 AND row at r2, plus column at c1 AND column at c2.
+    /// Because the two pieces are adjacent, r1==r2 OR c1==c2, so we expand the
+    /// cross by one row and one column to guarantee 2 distinct rows AND 2
+    /// distinct columns are always cleared.
     private func handleCrossArrowCombo(r1: Int, c1: Int, r2: Int, c2: Int) {
         guard let level = currentLevel else { return }
 
         let impact = UIImpactFeedbackGenerator(style: .heavy)
         impact.impactOccurred()
 
-        var clearedTiles: Set<String> = []
+        // Pick a second row and column that are distinct from r2/c2 and in-bounds.
+        let secondRow: Int = {
+            if r1 != r2 { return r1 }
+            return r2 + 1 < level.gridHeight ? r2 + 1 : max(0, r2 - 1)
+        }()
+        let secondCol: Int = {
+            if c1 != c2 { return c1 }
+            return c2 + 1 < level.gridWidth ? c2 + 1 : max(0, c2 - 1)
+        }()
 
-        // Clear both rows (r1 and r2)
-        for col in 0..<level.gridWidth {
-            if gridShapeMap[r1][col] && gameGrid[r1][col] != nil {
-                clearedTiles.insert("\(r1),\(col)")
-            }
-            if gridShapeMap[r2][col] && gameGrid[r2][col] != nil {
-                clearedTiles.insert("\(r2),\(col)")
+        let rowsToClear = [r2, secondRow]
+        let colsToClear = [c2, secondCol]
+
+        var clearedTiles: Set<String> = []
+        for row in rowsToClear {
+            for col in 0..<level.gridWidth {
+                if row >= 0 && row < level.gridHeight,
+                   gridShapeMap[row][col] && gameGrid[row][col] != nil {
+                    clearedTiles.insert("\(row),\(col)")
+                }
             }
         }
-
-        // Clear both columns (c1 and c2)
-        for row in 0..<level.gridHeight {
-            if gridShapeMap[row][c1] && gameGrid[row][c1] != nil {
-                clearedTiles.insert("\(row),\(c1)")
-            }
-            if gridShapeMap[row][c2] && gameGrid[row][c2] != nil {
-                clearedTiles.insert("\(row),\(c2)")
+        for col in colsToClear {
+            for row in 0..<level.gridHeight {
+                if col >= 0 && col < level.gridWidth,
+                   gridShapeMap[row][col] && gameGrid[row][col] != nil {
+                    clearedTiles.insert("\(row),\(col)")
+                }
             }
         }
 
@@ -2495,10 +2519,12 @@ class MatchGameViewController: UIViewController {
         animateCrossArrowShockwave(centerRow: r2, centerCol: c2)
 
         // Fire flame animations for both rows and both columns
-        shootFlamesHorizontally(row: r1, arrowCol: c1, columns: 0..<level.gridWidth) {}
-        shootFlamesHorizontally(row: r2, arrowCol: c2, columns: 0..<level.gridWidth) {}
-        shootFlamesVertically(column: c1, arrowRow: r1, rows: 0..<level.gridHeight) {}
-        shootFlamesVertically(column: c2, arrowRow: r2, rows: 0..<level.gridHeight) {}
+        for row in rowsToClear {
+            shootFlamesHorizontally(row: row, arrowCol: c2, columns: 0..<level.gridWidth) {}
+        }
+        for col in colsToClear {
+            shootFlamesVertically(column: col, arrowRow: r2, rows: 0..<level.gridHeight) {}
+        }
 
         finalizePowerupCombo(
             clearedTiles: clearedTiles,
@@ -2753,6 +2779,8 @@ class MatchGameViewController: UIViewController {
 
     /// Ball + Arrow combo: Fire the arrow first (clear row or column), then animate the bouncing ball.
     /// Both effects originate from r2,c2 (the combined swap position in a powerup+powerup swap).
+    /// Distinct flourish: a mini "ball comet" rockets along the arrow's path,
+    /// leaving a lightning trail, before the main bouncing ball flies up.
     private func handleBallArrowCombo(r1: Int, c1: Int, r2: Int, c2: Int, isHorizontal: Bool) {
         guard let level = currentLevel else { return }
 
@@ -2786,6 +2814,20 @@ class MatchGameViewController: UIViewController {
             shootFlamesVertically(column: c2, arrowRow: r2, rows: 0..<level.gridHeight) {}
         }
 
+        // Distinct ball+arrow flourish: shoot mini ball comets along the arrow's
+        // path so the player sees the ball "powering" the line clear.  This is
+        // visual only — it sits on top of the flame beams.
+        let ballEmojiForCombo: String = {
+            if let ballPiece = gameGrid[r1][c1], ballPiece.type == .ball {
+                return GamePiece.ballEmojis[ballPiece.ballEmojiIndex]
+            }
+            if let ballPiece = gameGrid[r2][c2], ballPiece.type == .ball {
+                return GamePiece.ballEmojis[ballPiece.ballEmojiIndex]
+            }
+            return GamePiece.ballEmojis.randomElement() ?? "⚽"
+        }()
+        animateBallArrowComet(centerRow: r2, centerCol: c2, isHorizontal: isHorizontal, ballEmoji: ballEmojiForCombo)
+
         // Collect cascading powerups from the arrow's cleared tiles (not the ball position)
         let arrowCascades = collectCascadingPowerups(
             in: arrowClearedTiles,
@@ -2811,6 +2853,228 @@ class MatchGameViewController: UIViewController {
                 self?.levelFailed()
             }
         }
+    }
+
+    /// Two ball "comets" launching from the arrow position outward along the
+    /// arrow's axis, leaving a thick electric trail.  Visual only — the arrow's
+    /// flame beam and the main bouncing-ball animation own the actual tile clearing.
+    private func animateBallArrowComet(centerRow: Int, centerCol: Int, isHorizontal: Bool, ballEmoji: String) {
+        guard let level = currentLevel else { return }
+        let cellWidth  = gridContainer.bounds.width  / CGFloat(level.gridWidth)
+        let cellHeight = gridContainer.bounds.height / CGFloat(level.gridHeight)
+        let cellSize = min(cellWidth, cellHeight)
+        let ox = CGFloat(centerCol) * cellWidth  + cellWidth  / 2
+        let oy = CGFloat(centerRow) * cellHeight + cellHeight / 2
+
+        let directions: [CGPoint]
+        if isHorizontal {
+            directions = [CGPoint(x: -1, y: 0), CGPoint(x: 1, y: 0)]
+        } else {
+            directions = [CGPoint(x: 0, y: -1), CGPoint(x: 0, y: 1)]
+        }
+
+        for dir in directions {
+            let endX = ox + dir.x * (gridContainer.bounds.width + cellSize * 2)
+            let endY = oy + dir.y * (gridContainer.bounds.height + cellSize * 2)
+
+            // The comet itself — a small ball emoji that flies outward.
+            let comet = UILabel()
+            comet.text = ballEmoji
+            comet.font = UIFont.systemFont(ofSize: cellSize * 0.55)
+            comet.textAlignment = .center
+            comet.sizeToFit()
+            comet.center = CGPoint(x: ox, y: oy)
+            gridContainer.addSubview(comet)
+
+            // Thick lightning trail along the comet's path.
+            let trail = buildLightningBolt(
+                from: CGPoint(x: ox, y: oy),
+                to:   CGPoint(x: endX, y: endY),
+                jagSegmentLength: 6,
+                jagAmount: cellSize * 0.12,
+                lineWidth: cellSize * 0.22,
+                color: .cyan
+            )
+            gridContainer.layer.addSublayer(trail)
+            trail.strokeEnd = 0
+            let drawAnim = CABasicAnimation(keyPath: "strokeEnd")
+            drawAnim.fromValue = 0
+            drawAnim.toValue = 1
+            drawAnim.duration = 0.32
+            drawAnim.timingFunction = CAMediaTimingFunction(name: .easeOut)
+            drawAnim.fillMode = .forwards
+            drawAnim.isRemovedOnCompletion = false
+            trail.add(drawAnim, forKey: "trailDraw")
+
+            UIView.animate(withDuration: 0.32, delay: 0, options: .curveEaseIn, animations: {
+                comet.center = CGPoint(x: endX, y: endY)
+                comet.transform = CGAffineTransform(scaleX: 0.7, y: 0.7).rotated(by: .pi)
+                comet.alpha = 0
+            }, completion: { _ in
+                comet.removeFromSuperview()
+            })
+
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.32) {
+                let fade = CABasicAnimation(keyPath: "opacity")
+                fade.fromValue = 1.0
+                fade.toValue = 0.0
+                fade.duration = 0.22
+                fade.fillMode = .forwards
+                fade.isRemovedOnCompletion = false
+                trail.add(fade, forKey: "trailFade")
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
+                    trail.removeFromSuperlayer()
+                }
+            }
+        }
+    }
+
+    /// Ball + Rocket (star) combo: The ball leads a thick lightning circle drawn
+    /// around the swap point (like the rocket's star, but circular and ball-led),
+    /// then continues with the standard bouncing-ball clear from the top.
+    private func handleBallRocketCombo(r1: Int, c1: Int, r2: Int, c2: Int) {
+        let impact = UIImpactFeedbackGenerator(style: .heavy)
+        impact.impactOccurred()
+
+        if let (button1, button2) = swappedButtons {
+            button1.transform = .identity
+            button2.transform = .identity
+            self.swappedButtons = nil
+        }
+
+        // Grab the ball's emoji (or pick one) for the lead-in animation.
+        let ballEmoji: String = {
+            if let p = gameGrid[r2][c2], p.type == .ball {
+                return GamePiece.ballEmojis[p.ballEmojiIndex]
+            }
+            if let p = gameGrid[r1][c1], p.type == .ball {
+                return GamePiece.ballEmojis[p.ballEmojiIndex]
+            }
+            return GamePiece.ballEmojis.randomElement() ?? "⚽"
+        }()
+
+        updateGridDisplay()
+        movesRemaining -= 1
+        updateUI()
+
+        // Phase 1: ball traces a thick lightning circle around the swap point.
+        animateBallLedLightningCircle(centerRow: r2, centerCol: c2, ballEmoji: ballEmoji) { [weak self] in
+            guard let self = self else { return }
+            // Phase 2: continue with the normal bouncing-ball clear, which
+            // already includes the "fly up, then bounce row by row" choreography.
+            self.animateBouncingBall(fromRow: r2, fromCol: c2) { [weak self] in
+                self?.isAnimating = false
+                if self?.movesRemaining ?? 0 <= 0 {
+                    self?.levelFailed()
+                }
+            }
+        }
+    }
+
+    /// Phase 1 of Ball + Rocket: the ball travels along a circle around the
+    /// swap point, leaving a thick lightning trail (cylinder roughly the
+    /// width of the ball) drawn behind it.  Calls `completion` once the ball
+    /// returns to its starting position so Phase 2 (the bouncing ball clear)
+    /// can take over.
+    private func animateBallLedLightningCircle(centerRow: Int, centerCol: Int, ballEmoji: String, completion: @escaping () -> Void) {
+        guard let level = currentLevel else { completion(); return }
+        let cellWidth  = gridContainer.bounds.width  / CGFloat(level.gridWidth)
+        let cellHeight = gridContainer.bounds.height / CGFloat(level.gridHeight)
+        let cellSize = min(cellWidth, cellHeight)
+        let ox = CGFloat(centerCol) * cellWidth  + cellWidth  / 2
+        let oy = CGFloat(centerRow) * cellHeight + cellHeight / 2
+
+        // Radius sized to a healthy chunk of the grid so the circle reads as the
+        // signature flourish of this combo.
+        let radius = min(gridContainer.bounds.width, gridContainer.bounds.height) * 0.32
+        let ballSize = cellSize * 0.95
+
+        // Hide the static powerup at (centerRow, centerCol) for the duration so it
+        // doesn't sit awkwardly behind the moving ball.
+        let staticButton = gridButtons[centerRow][centerCol]
+        let savedAlpha = staticButton?.alpha ?? 1.0
+        staticButton?.alpha = 0
+
+        // Moving ball label.
+        let ball = UILabel()
+        ball.text = ballEmoji
+        ball.font = UIFont.systemFont(ofSize: ballSize)
+        ball.textAlignment = .center
+        ball.frame = CGRect(x: 0, y: 0, width: ballSize, height: ballSize)
+        ball.center = CGPoint(x: ox + radius, y: oy)
+        gridContainer.addSubview(ball)
+        activeAnimationViews.insert(ObjectIdentifier(ball))
+
+        // Build the thick lightning circle: same diameter as the ball trail,
+        // drawn as a CAShapeLayer along the circular path.  The line width
+        // matches the ball so the trail reads as "the ball itself painted
+        // the circle in lightning."
+        let circlePath = UIBezierPath(arcCenter: CGPoint(x: ox, y: oy),
+                                      radius: radius,
+                                      startAngle: 0,
+                                      endAngle: .pi * 2,
+                                      clockwise: true)
+        let trail = CAShapeLayer()
+        trail.path = circlePath.cgPath
+        trail.strokeColor = UIColor.white.cgColor
+        trail.fillColor = nil
+        trail.lineWidth = ballSize * 0.85
+        trail.lineCap = .round
+        trail.shadowColor = UIColor.cyan.cgColor
+        trail.shadowRadius = 10
+        trail.shadowOpacity = 1.0
+        trail.shadowOffset = .zero
+        trail.opacity = 0.85
+        trail.strokeEnd = 0
+        gridContainer.layer.insertSublayer(trail, below: ball.layer)
+
+        // Animate the ball around the circle and the trail's strokeEnd in lockstep
+        // so the trail appears to grow with the ball's motion.
+        let circleDuration: TimeInterval = 0.7
+
+        let strokeAnim = CABasicAnimation(keyPath: "strokeEnd")
+        strokeAnim.fromValue = 0
+        strokeAnim.toValue = 1
+        strokeAnim.duration = circleDuration
+        strokeAnim.timingFunction = CAMediaTimingFunction(name: .linear)
+        strokeAnim.fillMode = .forwards
+        strokeAnim.isRemovedOnCompletion = false
+        trail.add(strokeAnim, forKey: "drawCircle")
+
+        // Position keyframe animation for the ball along the same path.
+        let posAnim = CAKeyframeAnimation(keyPath: "position")
+        posAnim.path = circlePath.cgPath
+        posAnim.duration = circleDuration
+        posAnim.calculationMode = .paced
+        posAnim.rotationMode = .rotateAuto
+        posAnim.fillMode = .forwards
+        posAnim.isRemovedOnCompletion = false
+
+        CATransaction.begin()
+        CATransaction.setCompletionBlock { [weak self] in
+            ball.layer.removeAllAnimations()
+            ball.removeFromSuperview()
+            self?.activeAnimationViews.remove(ObjectIdentifier(ball))
+
+            // Fade the trail out as Phase 2 takes over.
+            let fade = CABasicAnimation(keyPath: "opacity")
+            fade.fromValue = trail.opacity
+            fade.toValue = 0.0
+            fade.duration = 0.25
+            fade.fillMode = .forwards
+            fade.isRemovedOnCompletion = false
+            trail.add(fade, forKey: "trailFade")
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.28) {
+                trail.removeFromSuperlayer()
+            }
+
+            // Restore the static button (the bouncing-ball phase will clear it).
+            staticButton?.alpha = savedAlpha
+
+            completion()
+        }
+        ball.layer.add(posAnim, forKey: "ballCircle")
+        CATransaction.commit()
     }
 
     /// Ball + Bomb combo: "Cannonball" — the ball bounces through the grid, triggering a 3x3 bomb
@@ -2955,6 +3219,10 @@ class MatchGameViewController: UIViewController {
             clearedTiles.insert("\(r1),\(c1)")
         }
 
+        // Fancy flourish: a big expanding fire ring at the overlap point that
+        // visually "ignites" the combo before the powerup copies fly out.
+        animateFlameComboBurst(centerRow: r2, centerCol: c2)
+
         // Animate powerup copies flying from the overlap point to each target
         shootPowerupCopiesToTiles(fromRow: r2, fromCol: c2, powerupType: otherType, targetTiles: targetTiles) { [weak self] in
             guard let self = self else { return }
@@ -2981,6 +3249,12 @@ class MatchGameViewController: UIViewController {
 
             self.updateGridDisplay()
             self.updateUI()
+
+            // Each landed powerup gets a fiery halo right before it activates —
+            // sells the "ignition" of the spawned powerup.
+            for pos in spawnPositions {
+                self.animateFlameComboBurst(centerRow: pos.row, centerCol: pos.col)
+            }
 
             // Activate all spawned powerups as cascading
             if !cascadingPowerups.isEmpty {
@@ -3239,17 +3513,15 @@ class MatchGameViewController: UIViewController {
             // Add the flame powerup itself to be cleared
             clearedTiles.insert("\(r2),\(c2)")
             flameSource = (row: r2, col: c2)
-            // Clear all pieces matching the color of the piece that was swapped with the flame
-            // The swapped piece (type2) is now at (r1,c1)
+            // Clear all NORMAL pieces matching the color of the piece that was swapped
+            // with the flame. Filtering to .normal ensures other powerups (including
+            // other flames) are never collateral-cleared by this scan.
             if let swappedPiece = gameGrid[r1][c1], swappedPiece.type == .normal {
                 for row in 0..<level.gridHeight {
                     for col in 0..<level.gridWidth {
-                        if gridShapeMap[row][col], let piece = gameGrid[row][col] {
+                        if gridShapeMap[row][col], let piece = gameGrid[row][col], piece.type == .normal {
                             if piece.itemId == swappedPiece.itemId && piece.colorIndex == swappedPiece.colorIndex {
                                 clearedTiles.insert("\(row),\(col)")
-                                if piece.type != .normal {
-                                    cascadingPowerups.append((row: row, col: col, type: piece.type))
-                                }
                             }
                         }
                     }
@@ -3352,17 +3624,15 @@ class MatchGameViewController: UIViewController {
             // Add the flame powerup itself to be cleared
             clearedTiles.insert("\(r1),\(c1)")
             flameSource = (row: r1, col: c1)
-            // Clear all pieces matching the color of the piece that was swapped with the flame
-            // The swapped piece (type1) is now at (r2,c2)
+            // Clear all NORMAL pieces matching the color of the piece that was swapped
+            // with the flame. Filtering to .normal ensures other powerups (including
+            // other flames) are never collateral-cleared by this scan.
             if let swappedPiece = gameGrid[r2][c2], swappedPiece.type == .normal {
                 for row in 0..<level.gridHeight {
                     for col in 0..<level.gridWidth {
-                        if gridShapeMap[row][col], let piece = gameGrid[row][col] {
+                        if gridShapeMap[row][col], let piece = gameGrid[row][col], piece.type == .normal {
                             if piece.itemId == swappedPiece.itemId && piece.colorIndex == swappedPiece.colorIndex {
                                 clearedTiles.insert("\(row),\(col)")
-                                if piece.type != .normal {
-                                    cascadingPowerups.append((row: row, col: col, type: piece.type))
-                                }
                             }
                         }
                     }
@@ -4103,6 +4373,167 @@ class MatchGameViewController: UIViewController {
         })
     }
     
+    /// Fancy fiery flourish for flame+powerup combos: an expanding orange
+    /// shockwave ring plus radial flame embers shooting outward.  Drawn at the
+    /// overlap point of the flame and at each spawned powerup so the player
+    /// reads the chain as "the flame ignites them."
+    private func animateFlameComboBurst(centerRow: Int, centerCol: Int) {
+        guard let level = currentLevel else { return }
+        let cellWidth  = gridContainer.bounds.width  / CGFloat(level.gridWidth)
+        let cellHeight = gridContainer.bounds.height / CGFloat(level.gridHeight)
+        let ox = CGFloat(centerCol) * cellWidth  + cellWidth  / 2
+        let oy = CGFloat(centerRow) * cellHeight + cellHeight / 2
+        let cellSize = min(cellWidth, cellHeight)
+
+        // Expanding orange ring (fire shockwave)
+        let ring = CAShapeLayer()
+        let startRadius = cellSize * 0.25
+        let endRadius   = cellSize * 1.6
+        ring.path = UIBezierPath(arcCenter: CGPoint(x: ox, y: oy),
+                                 radius: startRadius,
+                                 startAngle: 0, endAngle: .pi * 2,
+                                 clockwise: true).cgPath
+        ring.strokeColor = UIColor.orange.cgColor
+        ring.fillColor = nil
+        ring.lineWidth = 3.5
+        ring.shadowColor = UIColor.systemYellow.cgColor
+        ring.shadowRadius = 8
+        ring.shadowOpacity = 1.0
+        ring.shadowOffset = .zero
+        gridContainer.layer.addSublayer(ring)
+
+        let expanded = UIBezierPath(arcCenter: CGPoint(x: ox, y: oy),
+                                    radius: endRadius,
+                                    startAngle: 0, endAngle: .pi * 2,
+                                    clockwise: true).cgPath
+        let pathAnim = CABasicAnimation(keyPath: "path")
+        pathAnim.fromValue = ring.path
+        pathAnim.toValue = expanded
+        pathAnim.duration = 0.4
+        pathAnim.timingFunction = CAMediaTimingFunction(name: .easeOut)
+        pathAnim.fillMode = .forwards
+        pathAnim.isRemovedOnCompletion = false
+
+        let fade = CABasicAnimation(keyPath: "opacity")
+        fade.fromValue = 1.0
+        fade.toValue = 0.0
+        fade.duration = 0.4
+        fade.timingFunction = CAMediaTimingFunction(name: .easeIn)
+        fade.fillMode = .forwards
+        fade.isRemovedOnCompletion = false
+
+        ring.add(pathAnim, forKey: "ringPath")
+        ring.add(fade, forKey: "ringFade")
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.45) {
+            ring.removeFromSuperlayer()
+        }
+
+        // Radial flame embers — small orange dots shooting outward
+        let emberCount = 10
+        for i in 0..<emberCount {
+            let angle = (CGFloat.pi * 2 / CGFloat(emberCount)) * CGFloat(i) + CGFloat.random(in: -0.2...0.2)
+            let distance = cellSize * CGFloat.random(in: 0.9...1.6)
+            let endX = ox + cos(angle) * distance
+            let endY = oy + sin(angle) * distance
+            let emberSize = cellSize * 0.18
+            let ember = UIView(frame: CGRect(x: ox - emberSize / 2,
+                                             y: oy - emberSize / 2,
+                                             width: emberSize, height: emberSize))
+            ember.backgroundColor = UIColor.orange
+            ember.layer.cornerRadius = emberSize / 2
+            ember.layer.shadowColor = UIColor.systemYellow.cgColor
+            ember.layer.shadowRadius = 4
+            ember.layer.shadowOpacity = 0.9
+            ember.layer.shadowOffset = .zero
+            gridContainer.addSubview(ember)
+            UIView.animate(withDuration: 0.45, delay: 0, options: .curveEaseOut, animations: {
+                ember.center = CGPoint(x: endX, y: endY)
+                ember.transform = CGAffineTransform(scaleX: 0.4, y: 0.4)
+                ember.alpha = 0
+            }, completion: { _ in
+                ember.removeFromSuperview()
+            })
+        }
+
+        // Bright central flash
+        let flash = UIView()
+        let flashSize = cellSize * 1.0
+        flash.frame = CGRect(x: ox - flashSize / 2, y: oy - flashSize / 2,
+                             width: flashSize, height: flashSize)
+        flash.backgroundColor = UIColor.systemYellow.withAlphaComponent(0.9)
+        flash.layer.cornerRadius = flashSize / 2
+        gridContainer.addSubview(flash)
+        UIView.animate(withDuration: 0.3, animations: {
+            flash.transform = CGAffineTransform(scaleX: 2.0, y: 2.0)
+            flash.alpha = 0
+        }, completion: { _ in flash.removeFromSuperview() })
+    }
+
+    /// Builds a looping "loop-de-loop" spiral path from a starting point heading
+    /// outward in a direction.  The pencil-without-lifting style: the path
+    /// traces several connected circular loops along the diagonal, each loop
+    /// slightly offset and growing as the spiral progresses outward.
+    private func buildSpiralLoopBolt(from origin: CGPoint,
+                                     angle: CGFloat,
+                                     length: CGFloat,
+                                     loops: Int,
+                                     baseRadius: CGFloat,
+                                     lineWidth: CGFloat,
+                                     color: UIColor) -> CAShapeLayer {
+        let path = UIBezierPath()
+        path.move(to: origin)
+
+        let dx = cos(angle)
+        let dy = sin(angle)
+        let perpX = -dy
+        let perpY = dx
+
+        let stepLen = length / CGFloat(loops)
+        let pointsPerLoop = 28  // smoothness of each circle
+        var currentCenter = origin
+
+        for loopIdx in 0..<loops {
+            // Each loop grows a touch larger so the spiral reads as expanding
+            let radius = baseRadius * (1.0 + CGFloat(loopIdx) * 0.18)
+            // Center of this loop sits one step along the main axis, offset perpendicular
+            // so the path enters the loop tangentially.
+            let centerX = currentCenter.x + dx * stepLen + perpX * radius
+            let centerY = currentCenter.y + dy * stepLen + perpY * radius
+
+            // Start angle on this loop so we begin near currentCenter
+            let startAngle = atan2(currentCenter.y - centerY, currentCenter.x - centerX)
+            for p in 1...pointsPerLoop {
+                let t = CGFloat(p) / CGFloat(pointsPerLoop)
+                let a = startAngle + t * (2 * .pi)
+                let px = centerX + cos(a) * radius
+                let py = centerY + sin(a) * radius
+                path.addLine(to: CGPoint(x: px, y: py))
+            }
+            // Land back near the start of the loop, then continue outward.
+            currentCenter = CGPoint(x: centerX + cos(startAngle) * radius,
+                                    y: centerY + sin(startAngle) * radius)
+            // Bridge outward to the next loop's starting point.
+            let bridgeX = currentCenter.x + dx * stepLen * 0.25
+            let bridgeY = currentCenter.y + dy * stepLen * 0.25
+            path.addLine(to: CGPoint(x: bridgeX, y: bridgeY))
+            currentCenter = CGPoint(x: bridgeX, y: bridgeY)
+        }
+
+        let layer = CAShapeLayer()
+        layer.path = path.cgPath
+        layer.strokeColor = UIColor.white.cgColor
+        layer.lineWidth = lineWidth
+        layer.fillColor = nil
+        layer.lineCap = .round
+        layer.lineJoin = .round
+        layer.shadowColor = color.cgColor
+        layer.shadowRadius = 6
+        layer.shadowOpacity = 1.0
+        layer.shadowOffset = .zero
+        return layer
+    }
+
     /// Shoots four diagonal beams from (centerRow, centerCol), forming an "X" pattern.
     /// Uses CAShapeLayer strokeEnd animation — same visual language as the row/column beams.
     private func shootFlamesDiagonally(centerRow: Int, centerCol: Int, completion: @escaping () -> Void) {
@@ -4135,6 +4566,50 @@ class MatchGameViewController: UIViewController {
                 jagSegmentLength: 8, jagAmount: jagAmount, lineWidth: 2.5, color: .cyan
             )
             animateLineClearLightning(bolts: [bolt], drawDuration: animDuration)
+        }
+
+        // --- Loop-de-loop spiral lightning along each diagonal ---
+        // Drawn "without lifting the pencil": a chain of connected circles
+        // spiraling outward along the diagonal direction.  This sits on top
+        // of the jagged bolt and the flame beam so the diagonal reads as a
+        // crackling, looping arc instead of a straight line.
+        let spiralLength  = max(gridContainer.bounds.width, gridContainer.bounds.height) * 0.95
+        let spiralLoops   = 4
+        let spiralRadius  = cellSize * 0.55
+        for dir in directions {
+            let diagAngle = atan2(dir.dy, dir.dx)
+            let spiral = buildSpiralLoopBolt(
+                from: CGPoint(x: ox, y: oy),
+                angle: diagAngle,
+                length: spiralLength,
+                loops: spiralLoops,
+                baseRadius: spiralRadius,
+                lineWidth: 2.0,
+                color: .cyan
+            )
+            gridContainer.layer.addSublayer(spiral)
+            spiral.strokeEnd = 0
+            let drawAnim = CABasicAnimation(keyPath: "strokeEnd")
+            drawAnim.fromValue = 0
+            drawAnim.toValue = 1
+            drawAnim.duration = animDuration + 0.15
+            drawAnim.timingFunction = CAMediaTimingFunction(name: .easeOut)
+            drawAnim.fillMode = .forwards
+            drawAnim.isRemovedOnCompletion = false
+            spiral.add(drawAnim, forKey: "spiralDraw")
+
+            DispatchQueue.main.asyncAfter(deadline: .now() + animDuration + 0.15) {
+                let fade = CABasicAnimation(keyPath: "opacity")
+                fade.fromValue = 1.0
+                fade.toValue = 0.0
+                fade.duration = 0.25
+                fade.fillMode = .forwards
+                fade.isRemovedOnCompletion = false
+                spiral.add(fade, forKey: "spiralFade")
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.28) {
+                    spiral.removeFromSuperlayer()
+                }
+            }
         }
 
         // Sparks along each diagonal at every cell-spaced step along the way
@@ -4560,10 +5035,13 @@ class MatchGameViewController: UIViewController {
         let topY: CGFloat = -ballSize
         let centerX = gridWidth / 2
         
-        // Dynamic bounce state — calculated fresh at each step from live gameGrid
+        // Dynamic bounce state — calculated fresh at each step from live gameGrid.
+        // bouncesLeft is sized to the grid so the ball can reach every row,
+        // including the bottom one (fixed cap of 8 used to clip tall grids
+        // and leave the bottom 1-2 rows untouched).
         let currentCol = Int.random(in: 0..<level.gridWidth)
         let bounceDir  = Bool.random() ? 1 : -1
-        let bouncesLeft = 8
+        let bouncesLeft = max(level.gridHeight + 2, 8)
 
         // Phase 1: Animate ball flying up (no trail during this phase)
         UIView.animate(withDuration: 0.5, delay: 0, options: .curveEaseOut, animations: {
@@ -5680,13 +6158,21 @@ class MatchGameViewController: UIViewController {
         for (index, pos) in strikePositions.enumerated() {
             let targetX = CGFloat(pos.col) * cellWidth + cellWidth / 2
             let targetY = CGFloat(pos.row) * cellHeight + cellHeight / 2
-            
-            // Lightning starts from a random x along the top edge
-            let startX = targetX + CGFloat.random(in: -30...30)
-            let start = CGPoint(x: startX, y: -10)
-            let end = CGPoint(x: targetX, y: targetY)
-            
-            let bolt = buildLightningBolt(from: start, to: end, jagSegmentLength: 10, jagAmount: 6, lineWidth: 2.5, color: .cyan)
+
+            // Lightning starts well above the grid (≈4 cell heights) and continues
+            // past the strike point so the bolts read as longer, more dramatic streaks.
+            let startX = targetX + CGFloat.random(in: -40...40)
+            let startY = -cellHeight * 4.0
+            let extension_ = cellHeight * 1.5
+            let dx = targetX - startX
+            let dy = targetY - startY
+            let mag = max(hypot(dx, dy), 1)
+            let endX = targetX + dx / mag * extension_
+            let endY = targetY + dy / mag * extension_
+            let start = CGPoint(x: startX, y: startY)
+            let end = CGPoint(x: endX, y: endY)
+
+            let bolt = buildLightningBolt(from: start, to: end, jagSegmentLength: 12, jagAmount: 7, lineWidth: 2.8, color: .cyan)
             gridContainer.layer.addSublayer(bolt)
             allBolts.append(bolt)
             
@@ -6483,10 +6969,10 @@ class MatchGameViewController: UIViewController {
         }
     }
 
-    /// Runs once the board has settled with no pending matches.  If the player
-    /// has no possible swap that creates a match (3+, 2x2, L, T) we either:
-    ///   • shake any existing powerups as a hint (the player can tap them), or
-    ///   • shuffle the grid when there are no powerups to fall back on.
+    /// Runs once the board has settled with no pending matches.  When the
+    /// player has no possible swap that creates a match (3+, 2x2, L, T) we
+    /// shuffle the grid so they get fresh match opportunities.  Existing
+    /// powerups survive the shuffle, so they remain usable afterwards.
     private func evaluateBoardForDeadlock() {
         guard currentLevel != nil else { return }
         guard !levelCompletionTriggered else { return }
@@ -6494,13 +6980,6 @@ class MatchGameViewController: UIViewController {
         guard lastSwappedPositions == nil else { return }
 
         if hasValidMoves() { return }
-
-        let powerupPositions = findExistingPowerupPositions()
-        if !powerupPositions.isEmpty {
-            print("💡 No valid swap moves but powerups present - shaking as hint")
-            shakePowerupHints(positions: powerupPositions)
-            return
-        }
 
         print("🔄 No valid moves available - triggering shuffle")
         shuffleGrid()
@@ -8129,17 +8608,21 @@ class MatchGameViewController: UIViewController {
             }
         }
         
-        // If no match-creating swap found, just pulse a random tile
-        let validTiles = (0..<level.gridHeight).flatMap { row in
-            (0..<level.gridWidth).compactMap { col -> (Int, Int)? in
-                gridShapeMap[row][col] && gridButtons[row][col] != nil ? (row, col) : nil
-            }
+        // No match-creating swap found.  Don't pulse a random tile (it would
+        // mislead the player into thinking that tile makes a match).  Instead,
+        // pulse any existing powerups so the player knows they can use them,
+        // and fall through to evaluateBoardForDeadlock which will shuffle if
+        // there are no usable moves at all.
+        let powerupPositions = findExistingPowerupPositions()
+        if let powerup = powerupPositions.randomElement(),
+           let button = gridButtons[powerup.row][powerup.col] {
+            hintingTile = (powerup.row, powerup.col)
+            pulseButton(button)
+            return
         }
-        
-        if let randomTile = validTiles.randomElement() {
-            hintingTile = randomTile
-            pulseButton(gridButtons[randomTile.0][randomTile.1]!)
-        }
+
+        // Nothing useful to highlight — kick off a shuffle.
+        evaluateBoardForDeadlock()
     }
     
     private func hasCascadingMatches() -> Bool {
