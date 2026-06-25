@@ -764,7 +764,10 @@ struct VoiceTrainerPlaybackView: View {
             onResume: { resumePlayback() },
             onStop: {
                 resetPlayback()
-                Task { await MirroredWorkoutCoordinator.shared.requestCancel() }
+                if watchWorkoutStarted {
+                    watchWorkoutStarted = false
+                    Task { await MirroredWorkoutCoordinator.shared.requestCancel() }
+                }
                 dismiss()
             },
             onComplete: {
@@ -775,6 +778,16 @@ struct VoiceTrainerPlaybackView: View {
             formatTime: formatTime
         )
         .onAppear { play() }
+        .onDisappear {
+            // Catches all the dismiss paths that don't go through onStop /
+            // onComplete (swipe-down, navigation pop, scene change, etc.).
+            // Both terminal paths flip the flag false first, so this only
+            // fires when the user genuinely abandoned the session.
+            if watchWorkoutStarted {
+                watchWorkoutStarted = false
+                Task { await MirroredWorkoutCoordinator.shared.requestCancel() }
+            }
+        }
     }
 
     private func play() {

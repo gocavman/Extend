@@ -905,7 +905,8 @@ private struct SettingsModuleView: View {
             ModuleIDs.muscles,
             ModuleIDs.equipment,
             ModuleIDs.water,
-            ModuleIDs.matchGame
+            ModuleIDs.matchGame,
+            ModuleIDs.settings
         ]
 
         moduleState.setBottomNavBarModules(bottomModules)

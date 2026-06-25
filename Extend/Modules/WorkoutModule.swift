@@ -2797,6 +2797,14 @@ public struct StartWorkoutView: View {
             cancelPhaseTimer()
             cancelAllSetTimers()
             UIApplication.shared.isIdleTimerDisabled = false
+            // If the runner is dismissed without the save path having
+            // disarmed this flag, the user backed out (back button, swipe
+            // away, etc.) without finishing. Treat as a cancel so the
+            // wrist session doesn't keep running orphaned from any log.
+            if watchWorkoutStarted {
+                watchWorkoutStarted = false
+                Task { await MirroredWorkoutCoordinator.shared.requestCancel() }
+            }
         }
         // SwiftUI manages this task's lifecycle: starts when isTimerRunning becomes true,
         // cancels automatically when it becomes false or the view disappears.
@@ -4207,6 +4215,7 @@ public struct StartWorkoutView: View {
         let needsWatchEnd = watchWorkoutStarted
         let workoutHK = workout.healthKitActivityType
         let exportEnabled = HealthKitState.shared.exportStrengthWorkouts
+        watchWorkoutStarted = false   // disarm .onDisappear's cancel path
         Task {
             var watchUUID: UUID? = nil
             if needsWatchEnd {

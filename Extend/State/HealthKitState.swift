@@ -83,7 +83,11 @@ public final class HealthKitState {
     // MARK: - Init
 
     private init() {
-        exportStrengthWorkouts = hkDefaults.object(forKey: exportStrengthKey) as? Bool ?? false
+        // Default-ON for fresh installs so granting Health permission at
+        // first launch immediately produces useful behavior — workouts get
+        // exported, no second Settings trip required. Existing users with
+        // a stored value (true or false) are unaffected.
+        exportStrengthWorkouts = hkDefaults.object(forKey: exportStrengthKey) as? Bool ?? true
 
         if let stored = hkDefaults.object(forKey: "hk_importActivityTypes") as? [UInt] {
             importActivityTypes = Set(stored)

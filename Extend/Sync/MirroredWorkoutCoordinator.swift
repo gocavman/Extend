@@ -85,25 +85,14 @@ public final class MirroredWorkoutCoordinator: NSObject {
         MirrorDiagnostics.log("handler registered on HKHealthStore")
     }
 
-    /// Asks for the HK types the iPhone side needs to fully process a
-    /// mirrored session. Without share access to workout type the wake
-    /// call (`startWatchApp(toHandle:)`) is rejected silently; without
-    /// read access to heart rate + active energy the mirrored builder
-    /// still connects but never delivers samples to our delegate. Safe to
-    /// call repeatedly — iOS won't re-prompt for already-decided types.
+    /// Defers to the app-wide `HealthKitService` auth gate so we only ever
+    /// surface a single consolidated Health permission sheet to the user.
+    /// The gate includes workout, active energy, exercise time, heart rate,
+    /// and water types — the full union that any feature in the app needs.
     private func requestAuthorization() async -> Bool {
         guard HKHealthStore.isHealthDataAvailable() else { return false }
-        let share: Set<HKSampleType> = [
-            HKObjectType.workoutType(),
-            HKQuantityType(.activeEnergyBurned)
-        ]
-        let read: Set<HKObjectType> = [
-            HKObjectType.workoutType(),
-            HKQuantityType(.heartRate),
-            HKQuantityType(.activeEnergyBurned)
-        ]
         do {
-            try await store.requestAuthorization(toShare: share, read: read)
+            try await HealthKitService.shared.requestAuthorization()
             return true
         } catch {
             MirrorDiagnostics.log("HK auth request failed: \(error.localizedDescription)")

@@ -69,8 +69,12 @@ public final class WaterState {
         self.defaults = ud
         self.dailyGoalOz  = ud.object(forKey: goalKey) as? Double ?? 64.0
         self.unit         = WaterUnit(rawValue: ud.string(forKey: unitKey) ?? "") ?? .oz
-        self.exportToHealthKit  = ud.object(forKey: exportHKKey) as? Bool ?? false
-        self.importFromHealthKit = ud.object(forKey: importHKKey) as? Bool ?? false
+        // Default-ON for fresh installs — granting Health permission at
+        // launch then immediately bidirectionally syncs water without the
+        // user needing to flip two Settings toggles. Stored prefs (true or
+        // false) are honored for existing users.
+        self.exportToHealthKit   = ud.object(forKey: exportHKKey) as? Bool ?? true
+        self.importFromHealthKit = ud.object(forKey: importHKKey) as? Bool ?? true
         self.lastHealthKitSync = ud.object(forKey: lastSyncKey) as? Date
         loadLogs()
         importPendingWidgetLogs()
@@ -303,19 +307,15 @@ public final class WaterState {
 
     private let hkStore = HKHealthStore()
 
-    /// Requests HealthKit authorization for water once per install — both read and
-    /// write are bundled into a single prompt rather than asking for write at log
-    /// time and read at sync time. The persisted flag prevents the prompt from
-    /// re-appearing on every operation; the system's own bookkeeping suppresses
-    /// the picker after the first response, but in practice the previous
-    /// per-operation calls (separate write- and read-only requests on a fresh
-    /// HKHealthStore) kept re-prompting users.
+    /// Defers to the app-wide `HealthKitService` auth gate so the water
+    /// types ride along with the single consolidated Health permission
+    /// sheet shown at first launch instead of triggering a second sheet
+    /// when the user first taps Sync. Idempotent.
     private func ensureWaterAuthorization() async {
         guard !defaults.bool(forKey: authRequestedKey) else { return }
         guard HKHealthStore.isHealthDataAvailable() else { return }
-        let type = HKQuantityType(.dietaryWater)
         do {
-            try await hkStore.requestAuthorization(toShare: [type], read: [type])
+            try await HealthKitService.shared.requestAuthorization()
             defaults.set(true, forKey: authRequestedKey)
         } catch {
             // Don't latch the flag if the system errored out — retry next time

@@ -143,11 +143,20 @@ public final class HealthKitService {
     private var workoutObserverQuery: HKObserverQuery?
 
     // MARK: - Types to read/write
+    //
+    // This service is the single iOS-side Apple Health auth gate. The union
+    // below covers every HK type any feature in the app uses — workouts +
+    // active energy for strength logging, exercise time + heart rate for
+    // mirrored sessions, dietary water for the Water module. Combining them
+    // into one `requestAuthorization` call means the system shows ONE Health
+    // permission sheet (with paginated Write / Read pages internally)
+    // instead of one per subsystem.
 
     private var typesToShare: Set<HKSampleType> {
         [
             HKObjectType.workoutType(),
-            HKQuantityType(.activeEnergyBurned)
+            HKQuantityType(.activeEnergyBurned),
+            HKQuantityType(.dietaryWater)
         ]
     }
 
@@ -155,7 +164,9 @@ public final class HealthKitService {
         [
             HKObjectType.workoutType(),
             HKQuantityType(.activeEnergyBurned),
-            HKQuantityType(.appleExerciseTime)
+            HKQuantityType(.appleExerciseTime),
+            HKQuantityType(.heartRate),
+            HKQuantityType(.dietaryWater)
         ]
     }
 
@@ -165,7 +176,10 @@ public final class HealthKitService {
         HKHealthStore.isHealthDataAvailable()
     }
 
-    /// Request HealthKit authorization. Calls the completion block on the main actor.
+    /// Single source of truth for HealthKit authorization on iOS. Idempotent
+    /// — iOS won't re-prompt for any types the user has already decided, so
+    /// every call site can request the full union without worrying about
+    /// duplicating the system sheet.
     public func requestAuthorization() async throws {
         guard isAvailable else { return }
         try await store.requestAuthorization(toShare: typesToShare, read: typesToRead)

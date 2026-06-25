@@ -179,21 +179,21 @@ public final class WorkoutsState {
                 id: UUID(uuidString: "B6648804-9BC7-4D6F-8138-761F17073753")!,
                 exerciseID: cleanID,
                 complexID: dblComplexID,
-                predefinedSets: (0..<30).map { _ in reps(2, weight: 40) },
+                predefinedSets: (0..<30).map { _ in reps(2, weight: 80) },
                 defaultEquipmentIDs: [kettlebell]
             )),
             .exercise(WorkoutExercise(
                 id: UUID(uuidString: "F1000001-0000-0000-0000-000000000001")!,
                 exerciseID: pressID,
                 complexID: dblComplexID,
-                predefinedSets: (0..<30).map { _ in reps(1, weight: 40) },
+                predefinedSets: (0..<30).map { _ in reps(1, weight: 80) },
                 defaultEquipmentIDs: [kettlebell]
             )),
             .exercise(WorkoutExercise(
                 id: UUID(uuidString: "F1000001-0000-0000-0000-000000000002")!,
                 exerciseID: squatID,
                 complexID: dblComplexID,
-                predefinedSets: (0..<30).map { _ in reps(3, weight: 40) },
+                predefinedSets: (0..<30).map { _ in reps(3, weight: 80) },
                 defaultEquipmentIDs: [kettlebell]
             )),
         ]
@@ -226,21 +226,21 @@ public final class WorkoutsState {
                 id: UUID(uuidString: "F1000002-0000-0000-0000-000000000001")!,
                 exerciseID: cleanID,
                 complexID: sglComplexID,
-                predefinedSets: (0..<30).map { _ in reps(2, weight: 40) },
+                predefinedSets: (0..<30).map { _ in reps(4, weight: 50) },
                 defaultEquipmentIDs: [kettlebell]
             )),
             .exercise(WorkoutExercise(
                 id: UUID(uuidString: "F1000002-0000-0000-0000-000000000002")!,
                 exerciseID: pressID,
                 complexID: sglComplexID,
-                predefinedSets: (0..<30).map { _ in reps(2, weight: 40) },
+                predefinedSets: (0..<30).map { _ in reps(4, weight: 50) },
                 defaultEquipmentIDs: [kettlebell]
             )),
             .exercise(WorkoutExercise(
                 id: UUID(uuidString: "F1000002-0000-0000-0000-000000000003")!,
                 exerciseID: squatID,
                 complexID: sglComplexID,
-                predefinedSets: (0..<30).map { _ in reps(2, weight: 40) },
+                predefinedSets: (0..<30).map { _ in reps(4, weight: 50) },
                 defaultEquipmentIDs: [kettlebell]
             )),
         ]

@@ -101,7 +101,8 @@ struct ExtendApp: App {
                 ModuleIDs.muscles,
                 ModuleIDs.equipment,
                 ModuleIDs.water,
-                ModuleIDs.matchGame
+                ModuleIDs.matchGame,
+                ModuleIDs.settings
             ])
         }
 

@@ -19,17 +19,44 @@ final class WatchHealthKit {
 
     private let store = HKHealthStore()
 
-    private let stepType     = HKQuantityType(.stepCount)
-    private let distanceType = HKQuantityType(.distanceWalkingRunning)
-    private let waterType    = HKQuantityType(.dietaryWater)
+    private let stepType        = HKQuantityType(.stepCount)
+    private let distanceType    = HKQuantityType(.distanceWalkingRunning)
+    private let waterType       = HKQuantityType(.dietaryWater)
+    private let workoutType     = HKObjectType.workoutType()
+    private let activeEnergyType = HKQuantityType(.activeEnergyBurned)
+    private let heartRateType   = HKQuantityType(.heartRate)
 
     // MARK: - Authorization
+    //
+    // Single watch-side Apple Health auth gate. Bundles read + share for
+    // every type any feature on the wrist needs: step count + distance for
+    // the Steps page, water for the Water page (read + write), and
+    // workout / active energy / heart rate for both watch-initiated
+    // HKWorkoutSessions and phone-driven mirrored sessions. Combining them
+    // into one `requestAuthorization` call keeps the system to a single
+    // permission sheet (with paginated Write / Read pages) instead of one
+    // per subsystem.
 
-    /// Requests HealthKit read access. Call once on app launch.
+    /// Requests HealthKit access for the union of everything the watch app
+    /// uses. Call once on app launch — iOS won't re-prompt for types the
+    /// user has already decided.
     func requestAuthorization() async {
         guard HKHealthStore.isHealthDataAvailable() else { return }
-        let types: Set<HKObjectType> = [stepType, distanceType, waterType]
-        try? await store.requestAuthorization(toShare: [], read: types)
+        let share: Set<HKSampleType> = [
+            workoutType,
+            activeEnergyType,
+            heartRateType,
+            waterType
+        ]
+        let read: Set<HKObjectType> = [
+            stepType,
+            distanceType,
+            waterType,
+            workoutType,
+            activeEnergyType,
+            heartRateType
+        ]
+        try? await store.requestAuthorization(toShare: share, read: read)
     }
 
     // MARK: - Queries

@@ -100,23 +100,11 @@ final class WatchWorkoutSessionManager: NSObject {
 
     // MARK: - Authorization
 
-    /// Requests live-workout HK permissions on top of the watch app's existing
-    /// step/distance/water reads. Safe to call repeatedly — iOS won't re-prompt
-    /// for types already decided.
+    /// Defers to the app-wide `WatchHealthKit` auth gate so all HK types
+    /// the wrist needs are bundled into a single consolidated permission
+    /// sheet at first launch. Safe to call repeatedly.
     func requestAuthorization() async {
-        guard HKHealthStore.isHealthDataAvailable() else { return }
-        let share: Set<HKSampleType> = [
-            HKObjectType.workoutType(),
-            HKQuantityType(.activeEnergyBurned),
-            HKQuantityType(.heartRate)
-        ]
-        let read: Set<HKObjectType> = [
-            HKObjectType.workoutType(),
-            HKQuantityType(.activeEnergyBurned),
-            HKQuantityType(.heartRate),
-            HKQuantityType(.distanceWalkingRunning)
-        ]
-        try? await store.requestAuthorization(toShare: share, read: read)
+        await WatchHealthKit.shared.requestAuthorization()
     }
 
     // MARK: - Start / end
