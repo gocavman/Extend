@@ -761,57 +761,6 @@ private struct WorkoutEditor: View {
                     if !notes.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                         Toggle("Show notes during workout", isOn: $showNotes)
                     }
-
-                    // Warmup + Cooldown side by side
-                    HStack(spacing: 0) {
-                        VStack(spacing: 2) {
-                            Text("Warmup")
-                                .font(.subheadline)
-                                .frame(maxWidth: .infinity)
-                            HStack(spacing: 0) {
-                                Picker("", selection: Binding(
-                                    get: { warmupSeconds / 60 },
-                                    set: { warmupSeconds = $0 * 60 + (warmupSeconds % 60) }
-                                )) {
-                                    ForEach(0..<60) { m in Text("\(m) min").tag(m) }
-                                }
-                                .pickerStyle(.wheel).frame(maxWidth: .infinity).clipped()
-                                Picker("", selection: Binding(
-                                    get: { (warmupSeconds % 60) / 5 },
-                                    set: { warmupSeconds = (warmupSeconds / 60) * 60 + $0 * 5 }
-                                )) {
-                                    ForEach(0..<12) { i in Text("\(i * 5) sec").tag(i) }
-                                }
-                                .pickerStyle(.wheel).frame(maxWidth: .infinity).clipped()
-                            }
-                        }
-
-                        Divider()
-
-                        VStack(spacing: 2) {
-                            Text("Cooldown")
-                                .font(.subheadline)
-                                .frame(maxWidth: .infinity)
-                            HStack(spacing: 0) {
-                                Picker("", selection: Binding(
-                                    get: { cooldownSeconds / 60 },
-                                    set: { cooldownSeconds = $0 * 60 + (cooldownSeconds % 60) }
-                                )) {
-                                    ForEach(0..<60) { m in Text("\(m) min").tag(m) }
-                                }
-                                .pickerStyle(.wheel).frame(maxWidth: .infinity).clipped()
-                                Picker("", selection: Binding(
-                                    get: { (cooldownSeconds % 60) / 5 },
-                                    set: { cooldownSeconds = (cooldownSeconds / 60) * 60 + $0 * 5 }
-                                )) {
-                                    ForEach(0..<12) { i in Text("\(i * 5) sec").tag(i) }
-                                }
-                                .pickerStyle(.wheel).frame(maxWidth: .infinity).clipped()
-                            }
-                        }
-                    }
-                    .frame(height: 110)
-
                 }
 
                 Section {
@@ -878,6 +827,57 @@ private struct WorkoutEditor: View {
                         .foregroundColor(.secondary)
                     }
                     .textCase(nil)
+                }
+
+                Section("Warmup & Cooldown") {
+                    HStack(spacing: 0) {
+                        VStack(spacing: 2) {
+                            Text("Warmup")
+                                .font(.subheadline)
+                                .frame(maxWidth: .infinity)
+                            HStack(spacing: 0) {
+                                Picker("", selection: Binding(
+                                    get: { warmupSeconds / 60 },
+                                    set: { warmupSeconds = $0 * 60 + (warmupSeconds % 60) }
+                                )) {
+                                    ForEach(0..<60) { m in Text("\(m) min").tag(m) }
+                                }
+                                .pickerStyle(.wheel).frame(maxWidth: .infinity).clipped()
+                                Picker("", selection: Binding(
+                                    get: { (warmupSeconds % 60) / 5 },
+                                    set: { warmupSeconds = (warmupSeconds / 60) * 60 + $0 * 5 }
+                                )) {
+                                    ForEach(0..<12) { i in Text("\(i * 5) sec").tag(i) }
+                                }
+                                .pickerStyle(.wheel).frame(maxWidth: .infinity).clipped()
+                            }
+                        }
+
+                        Divider()
+
+                        VStack(spacing: 2) {
+                            Text("Cooldown")
+                                .font(.subheadline)
+                                .frame(maxWidth: .infinity)
+                            HStack(spacing: 0) {
+                                Picker("", selection: Binding(
+                                    get: { cooldownSeconds / 60 },
+                                    set: { cooldownSeconds = $0 * 60 + (cooldownSeconds % 60) }
+                                )) {
+                                    ForEach(0..<60) { m in Text("\(m) min").tag(m) }
+                                }
+                                .pickerStyle(.wheel).frame(maxWidth: .infinity).clipped()
+                                Picker("", selection: Binding(
+                                    get: { (cooldownSeconds % 60) / 5 },
+                                    set: { cooldownSeconds = (cooldownSeconds / 60) * 60 + $0 * 5 }
+                                )) {
+                                    ForEach(0..<12) { i in Text("\(i * 5) sec").tag(i) }
+                                }
+                                .pickerStyle(.wheel).frame(maxWidth: .infinity).clipped()
+                            }
+                        }
+                    }
+                    .frame(height: 110)
                 }
 
                 if HealthKitState.shared.exportStrengthWorkouts {

@@ -34,14 +34,24 @@ public final class WaterState {
 
     public var dailyGoalOz: Double {
         didSet {
+            guard dailyGoalOz != oldValue else { return }
             defaults.set(dailyGoalOz, forKey: goalKey)
             persistWidgetData()
+            // Goal lives inside the WaterLogs CloudKit record alongside the
+            // logs themselves, so we have to push it on change. Without this,
+            // the next foreground pull (or any other forceSync) re-applies
+            // the older server value and the user sees their new goal revert.
+            CloudKitSyncEngine.shared.push(.waterLogs)
         }
     }
 
     public var unit: WaterUnit {
         didSet {
+            guard unit != oldValue else { return }
             defaults.set(unit.rawValue, forKey: unitKey)
+            // Same reasoning as dailyGoalOz — unit is part of the synced
+            // WaterPayload, so a change has to be pushed to avoid revert.
+            CloudKitSyncEngine.shared.push(.waterLogs)
         }
     }
 

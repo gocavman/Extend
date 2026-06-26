@@ -404,14 +404,15 @@ private struct SettingsModuleView: View {
                                         .multilineTextAlignment(.trailing)
                                         .frame(width: 70)
                                         .onChange(of: userWeightText) {
-                                            let v = Double(userWeightText) ?? 0
-                                            if v > 0 {
-                                                healthKitState.userWeightKg = healthKitState.userWeightUnit == "kg"
-                                                    ? v
-                                                    : v / 2.20462
-                                            } else {
-                                                healthKitState.userWeightKg = 0
-                                            }
+                                            // Only persist when the user has typed a usable number.
+                                            // Falling through to `kg = 0` on empty text used to
+                                            // wipe the saved weight any time the field reset to ""
+                                            // (e.g. after the view was rebuilt from a module
+                                            // switch), making the value look like it never saved.
+                                            guard let v = Double(userWeightText), v > 0 else { return }
+                                            healthKitState.userWeightKg = healthKitState.userWeightUnit == "kg"
+                                                ? v
+                                                : v / 2.20462
                                         }
                                     Picker("", selection: Binding(
                                         get: { healthKitState.userWeightUnit },
