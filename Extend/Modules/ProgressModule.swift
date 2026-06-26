@@ -175,7 +175,7 @@ private struct ProgressModuleView: View {
                 }) {
                     Image(systemName: "calendar.badge.checkmark")
                         .frame(width: 22, height: 22, alignment: .center)
-                        .foregroundColor(planState.activePlan != nil ? Color(red: 1.0, green: 0.55, blue: 0.0) : .primary)
+                        .foregroundColor(!planState.activePlans.isEmpty ? Color(red: 1.0, green: 0.55, blue: 0.0) : .primary)
                 }
 
                 // Activity ribbon toggle
@@ -346,7 +346,7 @@ private struct ProgressModuleView: View {
 
                                     // Plan card — shown when this day has a planned workout
                                     if let pd = dayPlanDay, !pd.isEmpty {
-                                        PlanDayCard(planDay: pd, planName: planState.activePlan?.name ?? "", date: selectedDate)
+                                        PlanDayCard(planDay: pd, planName: planState.planDays(for: selectedDate).map { $0.plan.name }.joined(separator: " + "), date: selectedDate)
                                             .padding(.horizontal, 16)
                                     }
 
@@ -386,7 +386,7 @@ private struct ProgressModuleView: View {
                                 VStack(spacing: 12) {
                                     // Plan card for this day (if any)
                                     if let pd = dayPlanDay, !pd.isEmpty {
-                                        PlanDayCard(planDay: pd, planName: planState.activePlan?.name ?? "", date: selectedDate)
+                                        PlanDayCard(planDay: pd, planName: planState.planDays(for: selectedDate).map { $0.plan.name }.joined(separator: " + "), date: selectedDate)
                                             .padding(.horizontal, 16)
                                     }
 
@@ -599,7 +599,9 @@ private struct CalendarView: View {
             
             // Compute plan name if needed
             let planName: String? = {
-                guard showPlans, let pd = planState.planDay(for: date), let plan = planState.activePlan else { return nil }
+                guard showPlans, let pd = planState.planDay(for: date) else { return nil }
+                let perPlan = planState.planDays(for: date)
+                guard !perPlan.isEmpty else { return nil }
                 let totalItems = pd.workoutIDs.count + pd.exerciseIDs.count
                 if totalItems == 1 {
                     if let wid = pd.workoutIDs.first,
@@ -611,7 +613,10 @@ private struct CalendarView: View {
                         return name
                     }
                 }
-                return plan.name
+                // Multiple active plans contributing to the same day get
+                // their names joined so the calendar row can attribute
+                // every item back to the right plan.
+                return perPlan.map { $0.plan.name }.joined(separator: " + ")
             }()
             
             result[date] = DayData(
@@ -1244,20 +1249,20 @@ private struct TimelineLogView: View {
             }
         }
 
-        // Add plan days into the dict (only non-empty days within scope)
-        if showPlans {
-            if let activePlan = planState.activePlan, let planName = planState.activePlan?.name {
-                var current = start
-                while current < end {
-                    let day = calendar.startOfDay(for: current)
-                    if planState.planDay(for: day) != nil {
-                        let pd = activePlan.planDay(for: day)
-                        if !pd.isEmpty {
-                            dayItems[day, default: []].append(.plan(pd, planName: planName))
-                        }
-                    }
-                    current = calendar.date(byAdding: .day, value: 1, to: current) ?? end
+        // Add plan days into the dict (only non-empty days within scope).
+        // Multi-active: emit one merged plan row per day with combined
+        // items, attributed to whichever active plans contributed.
+        if showPlans, !planState.activePlans.isEmpty {
+            var current = start
+            while current < end {
+                let day = calendar.startOfDay(for: current)
+                if let pd = planState.planDay(for: day), !pd.isEmpty {
+                    let combinedName = planState.planDays(for: day)
+                        .map { $0.plan.name }
+                        .joined(separator: " + ")
+                    dayItems[day, default: []].append(.plan(pd, planName: combinedName))
                 }
+                current = calendar.date(byAdding: .day, value: 1, to: current) ?? end
             }
         }
 
@@ -2481,7 +2486,7 @@ private struct WorkoutLogDetailView: View {
                                 ? DistanceFormatter.meters(from: newValue, unit: distanceUnit)
                                 : nil
                         }
-                    ), format: .number)
+                    ), format: .number.precision(.fractionLength(0...2)))
                         .keyboardType(.decimalPad)
                         .font(.caption)
                         .frame(width: 70)

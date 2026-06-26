@@ -26,10 +26,13 @@ struct WaterPayload: Codable {
     var unit: WaterUnit
 }
 
-/// Bundles training plans + active plan ID for atomic sync.
+/// Bundles training plans + active plan IDs for atomic sync.
+/// `activePlanID` (legacy single-id) is preserved for older app versions
+/// that only know about one active plan; new builds prefer `activePlanIDs`.
 struct TrainingPlanPayload: Codable {
     var plans: [TrainingPlan]
     var activePlanID: UUID?
+    var activePlanIDs: [UUID]?
 }
 
 /// Bundles all ModuleState UI preference fields for atomic sync.
@@ -442,7 +445,14 @@ final class CloudKitSyncEngine {
             guard let plans = try? JSONDecoder().decode([TrainingPlan].self, from: plansData) else { return nil }
             let activeIDStr = defaults.string(forKey: "training_active_plan_id")
             let activeID = activeIDStr.flatMap { UUID(uuidString: $0) }
-            let payload = TrainingPlanPayload(plans: plans, activePlanID: activeID)
+            let activeIDs: [UUID] = {
+                guard let data = defaults.data(forKey: "training_active_plan_ids"),
+                      let strs = try? JSONDecoder().decode([String].self, from: data) else { return [] }
+                return strs.compactMap { UUID(uuidString: $0) }
+            }()
+            let payload = TrainingPlanPayload(plans: plans,
+                                              activePlanID: activeID,
+                                              activePlanIDs: activeIDs.isEmpty ? nil : activeIDs)
             return try? encoder.encode(payload)
 
         case .dashboardTiles:
@@ -537,10 +547,17 @@ final class CloudKitSyncEngine {
             if let encoded = try? JSONEncoder().encode(payload.plans) {
                 defaults.set(encoded, forKey: "training_plans_data")
             }
-            if let id = payload.activePlanID {
+            // Prefer the new multi-active list; fall back to the legacy
+            // single id so syncs from older app versions still land.
+            let mergedIDs: [UUID] = payload.activePlanIDs ?? payload.activePlanID.map { [$0] } ?? []
+            if let encoded = try? JSONEncoder().encode(mergedIDs.map { $0.uuidString }) {
+                defaults.set(encoded, forKey: "training_active_plan_ids")
+            }
+            if let id = mergedIDs.first {
                 defaults.set(id.uuidString, forKey: "training_active_plan_id")
             } else {
                 defaults.removeObject(forKey: "training_active_plan_id")
+                defaults.removeObject(forKey: "training_active_plan_ids")
             }
 
         case .dashboardTiles:

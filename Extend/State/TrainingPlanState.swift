@@ -22,11 +22,19 @@ final class TrainingPlanState {
     static let shared = TrainingPlanState()
 
     var plans: [TrainingPlan] = []
-    var activePlanID: UUID? = nil
+    /// The set of plans currently considered "active". Today's items, the
+    /// dashboard tile, and the watch complication aggregate across every
+    /// entry here so the user can run e.g. a Running plan and a Lifting plan
+    /// in parallel.
+    var activePlanIDs: Set<UUID> = []
 
     private let defaults = UserDefaults(suiteName: "group.com.cavanmannenbach.extend") ?? .standard
     private let plansKey = "training_plans_data"
+    /// Legacy single-active-plan key — read at startup and migrated into
+    /// `activePlanIDsKey`. New writes never touch this key.
     private let activeKey = "training_active_plan_id"
+    /// New multi-active-plan key. Stores a JSON-encoded array of UUID strings.
+    private let activePlanIDsKey = "training_active_plan_ids"
 
     init() {
         load()
@@ -34,29 +42,77 @@ final class TrainingPlanState {
 
     // MARK: - Computed
 
+    /// All plans currently active (sorted by name for stable ordering when
+    /// joined into UI strings).
+    var activePlans: [TrainingPlan] {
+        plans.filter { activePlanIDs.contains($0.id) }
+             .sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
+    }
+
+    /// First active plan — kept for backwards-compatible call sites that still
+    /// read a single representative plan (e.g. "No active plan" empty states).
     var activePlan: TrainingPlan? {
-        get { plans.first { $0.id == activePlanID } }
+        activePlans.first
     }
 
-    /// Returns the PlanDay for today from the active plan, or nil if no active plan.
+    /// Convenience for legacy reads of the old single-active key.
+    var activePlanID: UUID? { activePlans.first?.id }
+
+    /// Returns the PlanDay for today aggregated across every active plan,
+    /// or nil if no plans are active or none has anything scheduled today.
     func todayPlanDay() -> PlanDay? {
-        activePlan?.planDay(for: Date())
+        planDay(for: Date())
     }
 
-    /// Returns the PlanDay for a given date from the active plan,
-    /// but only if the date falls within the plan's active date range.
+    /// Returns a synthetic merged PlanDay aggregating items across every
+    /// active plan that's in-range on `date`. Allows call sites that
+    /// previously read a single PlanDay to transparently see items from all
+    /// active plans without changing shape. If the same exercise is on
+    /// multiple plans for the day it is counted twice — by design, two
+    /// plans each prescribing the same activity is two activities to do.
     func planDay(for date: Date) -> PlanDay? {
-        guard let plan = activePlan else { return nil }
-        guard plan.isActive(on: date) else { return nil }
-        let day = plan.planDay(for: date)
-        return day.isEmpty ? nil : day
+        let per = planDays(for: date)
+        guard !per.isEmpty else { return nil }
+        var workoutIDs: [UUID] = []
+        var exerciseIDs: [UUID] = []
+        var voiceActivityIDs: [UUID] = []
+        var timerIDs: [UUID] = []
+        var noteFragments: [String] = []
+        for (_, day) in per {
+            workoutIDs += day.workoutIDs
+            exerciseIDs += day.exerciseIDs
+            voiceActivityIDs += day.voiceActivityIDs
+            timerIDs += day.timerIDs
+            let trimmed = day.note.trimmingCharacters(in: .whitespacesAndNewlines)
+            if !trimmed.isEmpty { noteFragments.append(trimmed) }
+        }
+        let merged = PlanDay(
+            dayOfWeek: Calendar.current.component(.weekday, from: date) - 1,
+            workoutIDs: workoutIDs,
+            exerciseIDs: exerciseIDs,
+            voiceActivityIDs: voiceActivityIDs,
+            timerIDs: timerIDs,
+            note: noteFragments.joined(separator: "\n\n")
+        )
+        return merged.isEmpty ? nil : merged
+    }
+
+    /// Returns the per-plan breakdown for `date` — used by UI that wants to
+    /// group items by plan (e.g. "From Running plan: …", "From Lifting plan: …").
+    /// Skips plans that aren't in-range on `date` and days with no content.
+    func planDays(for date: Date) -> [(plan: TrainingPlan, day: PlanDay)] {
+        activePlans.compactMap { plan in
+            guard plan.isActive(on: date) else { return nil }
+            let day = plan.planDay(for: date)
+            return day.isEmpty ? nil : (plan, day)
+        }
     }
 
     // MARK: - Mutations
 
     func addPlan(_ plan: TrainingPlan) {
         plans.append(plan)
-        if activePlanID == nil { activePlanID = plan.id }
+        if activePlanIDs.isEmpty { activePlanIDs = [plan.id] }
         save()
     }
 
@@ -69,21 +125,51 @@ final class TrainingPlanState {
 
     func removePlan(id: UUID) {
         plans.removeAll { $0.id == id }
-        if activePlanID == id { activePlanID = plans.first?.id }
+        if activePlanIDs.remove(id) != nil, activePlanIDs.isEmpty, let fallback = plans.first {
+            activePlanIDs = [fallback.id]
+        }
         save()
     }
 
+    /// Legacy single-selection setter — replaces the whole active set with
+    /// the supplied id (or clears it). Existing call sites that previously
+    /// "activated one plan" preserve their original behavior.
     func setActive(id: UUID?) {
-        activePlanID = id
+        if let id { activePlanIDs = [id] } else { activePlanIDs = [] }
         saveActiveID()
         refreshWidgetSnapshot()
     }
 
+    /// Multi-active setter — replaces the whole active set with the supplied
+    /// ids.
+    func setActive(ids: Set<UUID>) {
+        activePlanIDs = ids
+        saveActiveID()
+        refreshWidgetSnapshot()
+    }
+
+    /// Flips a single plan's active state without touching the others — used
+    /// by the multi-toggle UI in Plan module.
+    func toggleActive(id: UUID) {
+        if activePlanIDs.contains(id) {
+            activePlanIDs.remove(id)
+        } else {
+            activePlanIDs.insert(id)
+        }
+        saveActiveID()
+        refreshWidgetSnapshot()
+    }
+
+    func isActive(planID: UUID) -> Bool {
+        activePlanIDs.contains(planID)
+    }
+
     func resetPlans() {
         plans = []
-        activePlanID = nil
+        activePlanIDs = []
         defaults.removeObject(forKey: plansKey)
         defaults.removeObject(forKey: activeKey)
+        defaults.removeObject(forKey: activePlanIDsKey)
     }
 
     // MARK: - Export / Import
@@ -356,9 +442,16 @@ final class TrainingPlanState {
            let decoded = try? JSONDecoder().decode([TrainingPlan].self, from: data) {
             plans = decoded
         }
-        if let uuidString = defaults.string(forKey: activeKey),
-           let uuid = UUID(uuidString: uuidString) {
-            activePlanID = uuid
+        // Prefer the new multi-active key; migrate the legacy single-id key
+        // forward if it's the only one present.
+        if let data = defaults.data(forKey: activePlanIDsKey),
+           let decoded = try? JSONDecoder().decode([String].self, from: data) {
+            activePlanIDs = Set(decoded.compactMap { UUID(uuidString: $0) })
+        } else if let uuidString = defaults.string(forKey: activeKey),
+                  let uuid = UUID(uuidString: uuidString) {
+            activePlanIDs = [uuid]
+            // Persist forward so subsequent loads use the new key.
+            saveActiveID()
         }
     }
 
@@ -380,16 +473,18 @@ final class TrainingPlanState {
         refreshWatchLibrary()
         refreshTodayLogCount()
 
-        guard let plan = activePlan else {
+        let active = activePlans
+        guard !active.isEmpty else {
             writeWidgetSnapshot(planName: nil, items: [])
             // Clear the watch's multi-day window too so a deleted/deactivated
             // plan doesn't keep showing on the wrist.
             refreshMultiDaySnapshots()
             return
         }
+        let combinedPlanName = active.map { $0.name }.joined(separator: " + ")
         let pd = planDay(for: Date())
         guard let pd else {
-            writeWidgetSnapshot(planName: plan.name, items: [])
+            writeWidgetSnapshot(planName: combinedPlanName, items: [])
             // Today not in the plan's window (or a rest day) — still push the
             // ±7-day window so the Watch can show upcoming/past days, otherwise
             // adding a plan whose start date isn't today would never reach the
@@ -469,7 +564,7 @@ final class TrainingPlanState {
             }
         }
 
-        writeWidgetSnapshot(planName: plan.name, items: items, note: pd.note)
+        writeWidgetSnapshot(planName: combinedPlanName, items: items, note: pd.note)
 
         // Also write a ±7-day window so the Watch app can browse nearby days.
         refreshMultiDaySnapshots()
@@ -478,7 +573,8 @@ final class TrainingPlanState {
     /// Builds plan snapshots for today ±7 days and writes them to the App Group
     /// under the "widget_plan_multiday" key for the Watch app's day-browsing view.
     private func refreshMultiDaySnapshots() {
-        guard let plan = activePlan else {
+        let active = activePlans
+        guard !active.isEmpty else {
             writeMultiDaySnapshots([])
             // Clear the watch too — without this, deactivating a plan leaves
             // stale snapshots on the wrist.
@@ -499,14 +595,32 @@ final class TrainingPlanState {
         var snapshots: [WidgetPlanSnapshot] = []
         for offset in -7...7 {
             guard let date = cal.date(byAdding: .day, value: offset, to: today) else { continue }
-            guard plan.isActive(on: date) else { continue }
-            let pd = plan.planDay(for: date)
+            // Aggregate every active plan whose date range includes `date`.
+            // Two plans both scheduling the same activity intentionally count
+            // as two — the user committed to both prescriptions.
+            let perPlan = active.filter { $0.isActive(on: date) }
+            guard !perPlan.isEmpty else { continue }
+            let combinedName = perPlan.map { $0.name }.joined(separator: " + ")
 
-            let trimmedNote = pd.note.trimmingCharacters(in: .whitespacesAndNewlines)
-            if pd.isEmpty {
-                // PlanDay.isEmpty checks items AND note, so this branch only
-                // runs when there is truly nothing scheduled.
-                snapshots.append(WidgetPlanSnapshot(planName: plan.name, date: date, items: [], isRestDay: true, note: nil))
+            var workoutIDs: [UUID] = []
+            var exerciseIDs: [UUID] = []
+            var voiceActivityIDs: [UUID] = []
+            var timerIDs: [UUID] = []
+            var noteFragments: [String] = []
+            for plan in perPlan {
+                let pd = plan.planDay(for: date)
+                workoutIDs += pd.workoutIDs
+                exerciseIDs += pd.exerciseIDs
+                voiceActivityIDs += pd.voiceActivityIDs
+                timerIDs += pd.timerIDs
+                let trimmed = pd.note.trimmingCharacters(in: .whitespacesAndNewlines)
+                if !trimmed.isEmpty { noteFragments.append(trimmed) }
+            }
+
+            let isEmpty = workoutIDs.isEmpty && exerciseIDs.isEmpty &&
+                voiceActivityIDs.isEmpty && timerIDs.isEmpty && noteFragments.isEmpty
+            if isEmpty {
+                snapshots.append(WidgetPlanSnapshot(planName: combinedName, date: date, items: [], isRestDay: true, note: nil))
                 continue
             }
 
@@ -515,7 +629,7 @@ final class TrainingPlanState {
             let completedNames = Set(dayLogs.map { $0.workoutName })
 
             var items: [WidgetPlanItem] = []
-            items += pd.workoutIDs.compactMap { id in
+            items += workoutIDs.compactMap { id in
                 workouts.first { $0.id == id }.map {
                     WidgetPlanItem(name: $0.name, icon: "dumbbell.fill",
                                   isCompleted: completedNames.contains($0.name),
@@ -525,7 +639,7 @@ final class TrainingPlanState {
                                   sourceID: $0.id.uuidString)
                 }
             }
-            items += pd.exerciseIDs.compactMap { id in
+            items += exerciseIDs.compactMap { id in
                 exercises.first { $0.id == id }.map {
                     WidgetPlanItem(name: $0.name, icon: "figure.strengthtraining.traditional",
                                   isCompleted: completedNames.contains($0.name),
@@ -535,7 +649,7 @@ final class TrainingPlanState {
                                   sourceID: $0.id.uuidString)
                 }
             }
-            items += pd.voiceActivityIDs.compactMap { id in
+            items += voiceActivityIDs.compactMap { id in
                 voices.first { $0.id == id }.map {
                     WidgetPlanItem(name: $0.name, icon: "waveform",
                                   isCompleted: completedNames.contains("Trainer – \($0.name)"),
@@ -545,7 +659,7 @@ final class TrainingPlanState {
                                   sourceID: $0.id.uuidString)
                 }
             }
-            items += pd.timerIDs.compactMap { id in
+            items += timerIDs.compactMap { id in
                 timers.first { $0.id == id }.map { c in
                     let displayName = c.name.isEmpty ? c.type.rawValue : c.name
                     return WidgetPlanItem(name: displayName, icon: c.type.iconName,
@@ -556,7 +670,8 @@ final class TrainingPlanState {
                                          sourceID: c.id.uuidString)
                 }
             }
-            snapshots.append(WidgetPlanSnapshot(planName: plan.name, date: date, items: items, isRestDay: false, note: trimmedNote.isEmpty ? nil : trimmedNote))
+            let combinedNote = noteFragments.joined(separator: "\n\n")
+            snapshots.append(WidgetPlanSnapshot(planName: combinedName, date: date, items: items, isRestDay: false, note: combinedNote.isEmpty ? nil : combinedNote))
         }
         writeMultiDaySnapshots(snapshots)
         WatchConnectivityReceiver.shared.sendPlanUpdate(multidaySnapshots: snapshots)
@@ -734,7 +849,14 @@ final class TrainingPlanState {
     }
 
     private func saveActiveID() {
-        defaults.set(activePlanID?.uuidString, forKey: activeKey)
+        // Write the new multi-active set as a JSON-encoded array; also write
+        // the first id to the legacy single-key so older builds reading
+        // shared defaults still see *something* reasonable.
+        let stringIDs = activePlanIDs.map { $0.uuidString }
+        if let encoded = try? JSONEncoder().encode(stringIDs) {
+            defaults.set(encoded, forKey: activePlanIDsKey)
+        }
+        defaults.set(activePlans.first?.id.uuidString, forKey: activeKey)
         CloudKitSyncEngine.shared.push(.trainingPlans)
     }
 

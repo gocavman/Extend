@@ -3019,6 +3019,32 @@ class MatchGameViewController: UIViewController {
         }
         let startPoint = tips[order[0]]
 
+        // Collect grid cells crossed by the 5 star lines so the combo
+        // actually clears what the giant star is drawn over. Without this the
+        // bouncing-ball phase only clears whatever rows it happens to land on.
+        var crossedTileSet: Set<String> = []
+        var sampPrev = tips[order[0]]
+        for idx in 1..<order.count {
+            let pt = tips[order[idx]]
+            let dist = hypot(pt.x - sampPrev.x, pt.y - sampPrev.y)
+            let steps = max(Int(dist / 4), 5)
+            for s in 0...steps {
+                let t = CGFloat(s) / CGFloat(steps)
+                let sx = sampPrev.x + (pt.x - sampPrev.x) * t
+                let sy = sampPrev.y + (pt.y - sampPrev.y) * t
+                let col = Int(sx / cellWidth)
+                let row = Int(sy / cellHeight)
+                if row >= 0 && row < level.gridHeight && col >= 0 && col < level.gridWidth &&
+                   gridShapeMap[row][col] && gameGrid[row][col] != nil {
+                    crossedTileSet.insert("\(row),\(col)")
+                }
+            }
+            sampPrev = pt
+        }
+        // The bouncing-ball phase clears the swap origin itself, so let it
+        // own that tile.
+        crossedTileSet.remove("\(centerRow),\(centerCol)")
+
         // Hide the static powerup at (centerRow, centerCol) for the duration so it
         // doesn't sit awkwardly behind the moving ball.
         let staticButton = gridButtons[centerRow][centerCol]
@@ -3054,9 +3080,49 @@ class MatchGameViewController: UIViewController {
         trail.strokeEnd = 0
         gridContainer.layer.insertSublayer(trail, below: ball.layer)
 
-        // Animate the ball around the star and the trail's strokeEnd in lockstep
-        // so the trail appears to grow with the ball's motion.
-        let starDuration: TimeInterval = 0.9
+        // Inner lightning bolt: a thin jagged streak that zig-zags between the
+        // inside edges of the thick trail (and through its middle). Stays
+        // within the trail's width so it reads as energy bouncing inside.
+        let innerPath = UIBezierPath()
+        innerPath.move(to: startPoint)
+        let jagScale = ballSize * 0.32  // < half of trail.lineWidth so it stays in bounds
+        var innerPrev = startPoint
+        for idx in 1..<order.count {
+            let pt = tips[order[idx]]
+            let dx = pt.x - innerPrev.x
+            let dy = pt.y - innerPrev.y
+            let mag = max(hypot(dx, dy), 1)
+            let perpX = -dy / mag
+            let perpY =  dx / mag
+            let jagSteps = 10
+            for s in 1...jagSteps {
+                let t = CGFloat(s) / CGFloat(jagSteps)
+                let px = innerPrev.x + dx * t
+                let py = innerPrev.y + dy * t
+                // Alternate sign for a regular bouncing zigzag; final point
+                // lands cleanly on the tip so consecutive arms connect.
+                let jag: CGFloat = s < jagSteps ? (s % 2 == 0 ? jagScale : -jagScale) : 0
+                innerPath.addLine(to: CGPoint(x: px + perpX * jag, y: py + perpY * jag))
+            }
+            innerPrev = pt
+        }
+        let innerBolt = CAShapeLayer()
+        innerBolt.path = innerPath.cgPath
+        innerBolt.strokeColor = UIColor.white.cgColor
+        innerBolt.fillColor = nil
+        innerBolt.lineWidth = 2.5
+        innerBolt.lineCap = .round
+        innerBolt.lineJoin = .round
+        innerBolt.shadowColor = UIColor.cyan.cgColor
+        innerBolt.shadowRadius = 5
+        innerBolt.shadowOpacity = 1.0
+        innerBolt.shadowOffset = .zero
+        innerBolt.strokeEnd = 0
+        gridContainer.layer.insertSublayer(innerBolt, below: ball.layer)
+
+        // Speed: match the standalone star powerup's brisk draw rather than
+        // the slower pace the combo had before.
+        let starDuration: TimeInterval = 0.65
 
         let strokeAnim = CABasicAnimation(keyPath: "strokeEnd")
         strokeAnim.fromValue = 0
@@ -3066,6 +3132,15 @@ class MatchGameViewController: UIViewController {
         strokeAnim.fillMode = .forwards
         strokeAnim.isRemovedOnCompletion = false
         trail.add(strokeAnim, forKey: "drawStar")
+
+        let innerStrokeAnim = CABasicAnimation(keyPath: "strokeEnd")
+        innerStrokeAnim.fromValue = 0
+        innerStrokeAnim.toValue = 1
+        innerStrokeAnim.duration = starDuration
+        innerStrokeAnim.timingFunction = CAMediaTimingFunction(name: .linear)
+        innerStrokeAnim.fillMode = .forwards
+        innerStrokeAnim.isRemovedOnCompletion = false
+        innerBolt.add(innerStrokeAnim, forKey: "drawInnerStar")
 
         // Position keyframe animation for the ball along the same star path.
         let posAnim = CAKeyframeAnimation(keyPath: "position")
@@ -3090,12 +3165,36 @@ class MatchGameViewController: UIViewController {
             fade.fillMode = .forwards
             fade.isRemovedOnCompletion = false
             trail.add(fade, forKey: "trailFade")
+
+            let innerFade = CABasicAnimation(keyPath: "opacity")
+            innerFade.fromValue = 1.0
+            innerFade.toValue = 0.0
+            innerFade.duration = 0.25
+            innerFade.fillMode = .forwards
+            innerFade.isRemovedOnCompletion = false
+            innerBolt.add(innerFade, forKey: "innerBoltFade")
+
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.28) {
                 trail.removeFromSuperlayer()
+                innerBolt.removeFromSuperlayer()
             }
 
             // Restore the static button (the bouncing-ball phase will clear it).
             staticButton?.alpha = savedAlpha
+
+            // Clear the tiles the star was drawn across before Phase 2 starts,
+            // so the bouncing-ball phase doesn't re-do work but the user sees
+            // the star's path actually wipe tiles.
+            if let strongSelf = self {
+                for posString in crossedTileSet {
+                    let parts = posString.split(separator: ",").compactMap { Int($0) }
+                    if parts.count == 2 {
+                        _ = strongSelf.hitTile(row: parts[0], col: parts[1])
+                    }
+                }
+                strongSelf.updateGridDisplay()
+                strongSelf.updateUI()
+            }
 
             completion()
         }

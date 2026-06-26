@@ -41,8 +41,14 @@ struct PlanModuleView: View {
                     if item.plan != nil {
                         planState.updatePlan(saved)
                     } else {
+                        // addPlan auto-activates the first plan when nothing
+                        // else is active; for new plans created while others
+                        // are already active, opt them in too so the user
+                        // immediately sees the new plan's items roll up.
                         planState.addPlan(saved)
-                        planState.setActive(id: saved.id)
+                        if !planState.isActive(planID: saved.id) {
+                            planState.toggleActive(id: saved.id)
+                        }
                     }
                 },
                 onDelete: item.plan != nil ? { id in
@@ -105,7 +111,9 @@ struct PlanModuleView: View {
     }
 
     private func planRow(plan: TrainingPlan) -> some View {
-        let isActive = planState.activePlanID == plan.id
+        // Multi-active: each plan independently toggles in/out of the active
+        // set so users can run e.g. Running + Lifting plans in parallel.
+        let isActive = planState.isActive(planID: plan.id)
         return HStack {
             // Tappable area — pushes to plan days view
             Button {
@@ -129,10 +137,10 @@ struct PlanModuleView: View {
 
             // Trailing action buttons
             HStack(spacing: 8) {
-                // Activate / Active badge
+                // Activate / Active badge — toggles this plan's membership in
+                // the active set without disturbing the others.
                 Button {
-                    let newID: UUID? = isActive ? nil : plan.id
-                    planState.setActive(id: newID)
+                    planState.toggleActive(id: plan.id)
                 } label: {
                     Text(isActive ? "Active" : "Activate")
                         .font(.caption)
@@ -1508,7 +1516,7 @@ struct TodaysPlanModuleView: View {
                         Image(systemName: "calendar.badge.checkmark")
                             .font(.largeTitle)
                             .foregroundColor(.secondary)
-                        Text(planState.activePlan == nil ? "No active plan" : "Rest day")
+                        Text(planState.activePlans.isEmpty ? "No active plan" : "Rest day")
                             .foregroundColor(.secondary)
                     }
                     Spacer()

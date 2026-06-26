@@ -357,18 +357,23 @@ public final class HealthKitService {
     /// exercise has the appropriate links assigned.
     public func workoutLog(from hkWorkout: HKWorkout, exercise: Exercise) -> WorkoutLog {
         let isIndoor = hkWorkout.metadata?[HKMetadataKeyIndoorWorkout] as? Bool
-        // Map Apple Health's indoor/outdoor flag to the matching equipment
-        // — Treadmill when indoor, None when outdoor — so imported runs and
-        // walks pick up the right equipment instead of the exercise's
-        // default. Falls back to the default when the metadata is absent
-        // or when the exercise doesn't list the preferred equipment.
+        // Always start from the exercise's `defaultEquipmentIDs` so any gear
+        // the user has chosen as the default (e.g. a specific pair of shoes
+        // for Running) lands on every imported log — that's what powers the
+        // per-equipment mileage stats. Then, if Apple Health labeled the
+        // workout indoor/outdoor and the exercise actually lists the
+        // matching location-specific equipment (Treadmill / None), add it
+        // alongside the defaults instead of replacing them.
         let treadmillID = UUID(uuidString: "0000010A-0000-0000-0000-000000000000")!
         let noneID = UUID(uuidString: "00000100-0000-0000-0000-000000000000")!
         let resolvedEquipment: [UUID] = {
-            guard let isIndoor else { return exercise.defaultEquipmentIDs }
-            let preferred = isIndoor ? treadmillID : noneID
-            if exercise.equipmentIDs.contains(preferred) { return [preferred] }
-            return exercise.defaultEquipmentIDs
+            var ids = exercise.defaultEquipmentIDs
+            guard let isIndoor else { return ids }
+            let locationID = isIndoor ? treadmillID : noneID
+            if exercise.equipmentIDs.contains(locationID), !ids.contains(locationID) {
+                ids.append(locationID)
+            }
+            return ids
         }()
 
         let logged = LoggedExercise(
