@@ -180,332 +180,334 @@ private struct WorkoutsModuleView: View {
     }
 
     var body: some View {
-        VStack(spacing: 0) {
-            // Header with title and add button
-            HStack {
-                Text("Workout")
-                    .font(.title2)
-                    .fontWeight(.bold)
-                Spacer()
-//                if planState.activePlan != nil {
-//                    Button(action: {
-//                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
-//                        showingPlanLauncher = true
-//                    }) {
-//                        Image(systemName: "calendar.badge.checkmark")
-//                            .foregroundColor(planState.planDay(for: Date()) != nil ? .accentColor : .primary)
-//                    }
-//                }
-                Button(action: {
-                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                    showingAdd = true
-                }) {
-                    Image(systemName: "plus")
-                        .foregroundColor(.primary)
+        NavigationStack{
+            VStack(spacing: 0) {
+                // Header with title and add button
+                HStack {
+                    Text("Workout")
+                        .font(.title2)
+                        .fontWeight(.bold)
+                    Spacer()
+                    //                if planState.activePlan != nil {
+                    //                    Button(action: {
+                    //                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                    //                        showingPlanLauncher = true
+                    //                    }) {
+                    //                        Image(systemName: "calendar.badge.checkmark")
+                    //                            .foregroundColor(planState.planDay(for: Date()) != nil ? .accentColor : .primary)
+                    //                    }
+                    //                }
+                    Button(action: {
+                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                        showingAdd = true
+                    }) {
+                        Image(systemName: "plus")
+                            .foregroundColor(.primary)
+                    }
                 }
-            }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 12)
-
-            List {
-                // Favorites tiles
-                if !state.favoriteWorkouts.isEmpty {
-                    Section {
-                        LazyVGrid(columns: [GridItem(.adaptive(minimum: 100), spacing: 10)], spacing: 10) {
-                            ForEach(state.favoriteWorkouts) { workout in
-                                VStack(spacing: 0) {
-                                    // Top: launch
-                                    Button(action: {
-                                        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-                                        startingWorkout = workout
-                                    }) {
-                                        VStack(spacing: 5) {
-                                            Image(systemName: "dumbbell.fill")
-                                                .font(.system(size: 18))
-                                                .foregroundColor(.primary)
-                                            Text(workout.name)
-                                                .font(.caption)
-                                                .fontWeight(.semibold)
-                                                .foregroundColor(.primary)
-                                                .lineLimit(2)
-                                                .multilineTextAlignment(.center)
+                .padding(.horizontal, 16)
+                .padding(.vertical, 12)
+                
+                List {
+                    // Favorites tiles
+                    if !state.favoriteWorkouts.isEmpty {
+                        Section {
+                            LazyVGrid(columns: [GridItem(.adaptive(minimum: 100), spacing: 10)], spacing: 10) {
+                                ForEach(state.favoriteWorkouts) { workout in
+                                    VStack(spacing: 0) {
+                                        // Top: launch
+                                        Button(action: {
+                                            UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                                            startingWorkout = workout
+                                        }) {
+                                            VStack(spacing: 5) {
+                                                Image(systemName: "dumbbell.fill")
+                                                    .font(.system(size: 18))
+                                                    .foregroundColor(.primary)
+                                                Text(workout.name)
+                                                    .font(.caption)
+                                                    .fontWeight(.semibold)
+                                                    .foregroundColor(.primary)
+                                                    .lineLimit(2)
+                                                    .multilineTextAlignment(.center)
+                                            }
+                                            .frame(maxWidth: .infinity)
+                                            .frame(height: 58)
                                         }
-                                        .frame(maxWidth: .infinity)
-                                        .frame(height: 58)
+                                        .buttonStyle(.plain)
+                                        
+                                        Divider()
+                                        
+                                        // Bottom: chart | history
+                                        HStack(spacing: 0) {
+                                            Button(action: {
+                                                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                                                statsWorkout = workout
+                                            }) {
+                                                Image(systemName: "chart.bar.fill")
+                                                    .font(.system(size: 13))
+                                                    .foregroundColor(.secondary)
+                                                    .frame(maxWidth: .infinity)
+                                                    .frame(height: 32)
+                                            }
+                                            .buttonStyle(.plain)
+                                            
+                                            Divider().frame(height: 20)
+                                            
+                                            Button(action: {
+                                                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                                                historyWorkout = workout
+                                            }) {
+                                                Image(systemName: "clock.arrow.trianglehead.counterclockwise.rotate.90")
+                                                    .font(.system(size: 13))
+                                                    .foregroundColor(.secondary)
+                                                    .frame(maxWidth: .infinity)
+                                                    .frame(height: 32)
+                                            }
+                                            .buttonStyle(.plain)
+                                        }
+                                    }
+                                    .background(Color(UIColor.secondarySystemBackground))
+                                    .cornerRadius(10)
+                                }
+                            }
+                            .padding(.vertical, 4)
+                        }
+                        .listRowInsets(EdgeInsets(top: 4, leading: 16, bottom: 4, trailing: 16))
+                    }
+                    
+                    SearchField(text: $searchText, placeholder: "Search workouts...")
+                    
+                    if filteredWorkouts.isEmpty {
+                        Text("No workouts found")
+                            .font(.subheadline)
+                            .foregroundColor(.gray)
+                            .frame(maxWidth: .infinity, alignment: .center)
+                            .padding(.vertical, 20)
+                    } else {
+                        ForEach(filteredWorkouts) { workout in
+                            VStack(alignment: .leading, spacing: 4) {
+                                // Top row: play icon, name, action buttons
+                                HStack(spacing: 12) {
+                                    Image(systemName: "play.circle.fill")
+                                        .foregroundColor(.primary)
+                                        .font(.system(size: 20))
+                                    
+                                    Text(workout.name)
+                                        .font(.subheadline)
+                                        .fontWeight(.semibold)
+                                        .foregroundColor(.primary)
+                                        .frame(maxWidth: .infinity, alignment: .leading)
+                                    
+                                    // Star / Favorite button
+                                    Button(action: {
+                                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                                        state.toggleFavorite(id: workout.id)
+                                    }) {
+                                        Image(systemName: state.isFavorite(workout.id) ? "star.fill" : "star")
+                                            .foregroundColor(state.isFavorite(workout.id) ? .yellow : .gray)
                                     }
                                     .buttonStyle(.plain)
-
-                                    Divider()
-
-                                    // Bottom: chart | history
-                                    HStack(spacing: 0) {
-                                        Button(action: {
-                                            UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                                            statsWorkout = workout
-                                        }) {
-                                            Image(systemName: "chart.bar.fill")
-                                                .font(.system(size: 13))
-                                                .foregroundColor(.secondary)
-                                                .frame(maxWidth: .infinity)
-                                                .frame(height: 32)
+                                    
+                                    // History button
+                                    Button(action: {
+                                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                                        historyWorkout = workout
+                                    }) {
+                                        Image(systemName: "clock.arrow.circlepath")
+                                            .foregroundColor(.primary)
+                                    }
+                                    .buttonStyle(.plain)
+                                    
+                                    // Stats button
+                                    Button(action: {
+                                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                                        statsWorkout = workout
+                                    }) {
+                                        Image(systemName: "chart.bar")
+                                            .foregroundColor(.primary)
+                                    }
+                                    .buttonStyle(.plain)
+                                    
+                                    // Clone button
+                                    Button(action: {
+                                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                                        state.cloneWorkout(workout)
+                                    }) {
+                                        Image(systemName: "doc.on.doc")
+                                            .foregroundColor(.primary)
+                                    }
+                                    .buttonStyle(.plain)
+                                    
+                                    // Edit button
+                                    Button(action: {
+                                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                                        editingWorkout = workout
+                                    }) {
+                                        Image(systemName: "pencil")
+                                            .foregroundColor(.primary)
+                                    }
+                                    .buttonStyle(.plain)
+                                }
+                                
+                                // Notes line (only shown when non-empty)
+                                if !workout.notes.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                                    Text(workout.notes)
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                    //.lineLimit(2)
+                                }
+                                
+                                // Info chips — full width, wrapping
+                                let exerciseItems = workout.exerciseItems
+                                let totalSets = exerciseItems.reduce(0) { $0 + $1.predefinedSets.count }
+                                // Collect unique non-none timer mode names from all loops
+                                let timerModeNames: [String] = {
+                                    var seen = Set<String>()
+                                    var names: [String] = []
+                                    for lid in workout.orderedLoopIDs {
+                                        if let mode = workout.loops[lid.uuidString]?.timerMode,
+                                           case .none = mode { continue }
+                                        if let name = workout.loops[lid.uuidString]?.timerMode?.displayName,
+                                           seen.insert(name).inserted {
+                                            names.append(name)
                                         }
-                                        .buttonStyle(.plain)
-
-                                        Divider().frame(height: 20)
-
-                                        Button(action: {
-                                            UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                                            historyWorkout = workout
-                                        }) {
-                                            Image(systemName: "clock.arrow.trianglehead.counterclockwise.rotate.90")
-                                                .font(.system(size: 13))
-                                                .foregroundColor(.secondary)
-                                                .frame(maxWidth: .infinity)
-                                                .frame(height: 32)
+                                    }
+                                    return names
+                                }()
+                                // Count how many loops are supersets (2 exercises) vs circuits (3+)
+                                let loopMemberCounts: [UUID: Int] = workout.orderedLoopIDs.reduce(into: [:]) { counts, lid in
+                                    counts[lid] = exerciseItems.filter { $0.loopID == lid }.count
+                                }
+                                let supersetCount = loopMemberCounts.values.filter { $0 == 2 }.count
+                                let circuitCount  = loopMemberCounts.values.filter { $0 >= 3 }.count
+                                // Count complexes (groups of 2+ exercises with a shared complexID)
+                                let complexMemberCounts: [UUID: Int] = workout.orderedComplexIDs.reduce(into: [:]) { counts, cid in
+                                    counts[cid] = exerciseItems.filter { $0.complexID == cid }.count
+                                }
+                                let complexCount = complexMemberCounts.values.filter { $0 >= 2 }.count
+                                let hasChips = !exerciseItems.isEmpty || supersetCount > 0 || circuitCount > 0 || complexCount > 0 || totalSets > 0 || !timerModeNames.isEmpty || workout.warmupSeconds > 0 || workout.cooldownSeconds > 0
+                                
+                                if hasChips {
+                                    FlowLayout(spacing: 5) {
+                                        if !exerciseItems.isEmpty {
+                                            WorkoutInfoChip(label: "\(exerciseItems.count) exercise\(exerciseItems.count == 1 ? "" : "s")", icon: "dumbbell")
                                         }
-                                        .buttonStyle(.plain)
+                                        //                                    if totalSets > 0 {
+                                        //                                        WorkoutInfoChip(label: "\(totalSets) set\(totalSets == 1 ? "" : "s")", icon: "list.number")
+                                        //                                    }
+                                        ForEach(timerModeNames, id: \.self) { name in
+                                            WorkoutInfoChip(label: name, icon: "timer")
+                                        }
+                                        if supersetCount > 0 {
+                                            WorkoutInfoChip(label: "\(supersetCount) superset\(supersetCount == 1 ? "" : "s")", icon: "arrow.2.circlepath")
+                                        }
+                                        if circuitCount > 0 {
+                                            WorkoutInfoChip(label: "\(circuitCount) circuit\(circuitCount == 1 ? "" : "s")", icon: "arrow.2.circlepath")
+                                        }
+                                        if complexCount > 0 {
+                                            WorkoutInfoChip(label: "\(complexCount) complex\(complexCount == 1 ? "" : "es")", icon: "square.stack.3d.up")
+                                        }
+                                        //                                    if workout.warmupSeconds > 0 {
+                                        //                                        WorkoutInfoChip(label: "Warmup", icon: "flame")
+                                        //                                    }
+                                        //                                    if workout.cooldownSeconds > 0 {
+                                        //                                        WorkoutInfoChip(label: "Cooldown", icon: "snowflake")
+                                        //                                    }
                                     }
                                 }
-                                .background(Color(UIColor.secondarySystemBackground))
-                                .cornerRadius(10)
                             }
-                        }
-                        .padding(.vertical, 4)
-                    }
-                    .listRowInsets(EdgeInsets(top: 4, leading: 16, bottom: 4, trailing: 16))
-                }
-
-                SearchField(text: $searchText, placeholder: "Search workouts...")
-
-                if filteredWorkouts.isEmpty {
-                    Text("No workouts found")
-                        .font(.subheadline)
-                        .foregroundColor(.gray)
-                        .frame(maxWidth: .infinity, alignment: .center)
-                        .padding(.vertical, 20)
-                } else {
-                    ForEach(filteredWorkouts) { workout in
-                        VStack(alignment: .leading, spacing: 4) {
-                            // Top row: play icon, name, action buttons
-                            HStack(spacing: 12) {
-                                Image(systemName: "play.circle.fill")
-                                    .foregroundColor(.primary)
-                                    .font(.system(size: 20))
-
-                                Text(workout.name)
-                                    .font(.subheadline)
-                                    .fontWeight(.semibold)
-                                    .foregroundColor(.primary)
-                                    .frame(maxWidth: .infinity, alignment: .leading)
-
-                                // Star / Favorite button
-                                Button(action: {
-                                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                                    state.toggleFavorite(id: workout.id)
-                                }) {
-                                    Image(systemName: state.isFavorite(workout.id) ? "star.fill" : "star")
-                                        .foregroundColor(state.isFavorite(workout.id) ? .yellow : .gray)
-                                }
-                                .buttonStyle(.plain)
-
-                                // History button
-                                Button(action: {
-                                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                                    historyWorkout = workout
-                                }) {
-                                    Image(systemName: "clock.arrow.circlepath")
-                                        .foregroundColor(.primary)
-                                }
-                                .buttonStyle(.plain)
-
-                                // Stats button
-                                Button(action: {
-                                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                                    statsWorkout = workout
-                                }) {
-                                    Image(systemName: "chart.bar")
-                                        .foregroundColor(.primary)
-                                }
-                                .buttonStyle(.plain)
-
-                                // Clone button
-                                Button(action: {
-                                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                                    state.cloneWorkout(workout)
-                                }) {
-                                    Image(systemName: "doc.on.doc")
-                                        .foregroundColor(.primary)
-                                }
-                                .buttonStyle(.plain)
-
-                                // Edit button
-                                Button(action: {
+                            .padding(.vertical, 6)
+                            .contentShape(Rectangle())
+                            .onTapGesture {
+                                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                                startingWorkout = workout
+                            }
+                            .swipeActions(edge: .leading, allowsFullSwipe: false) {
+                                Button {
                                     UIImpactFeedbackGenerator(style: .light).impactOccurred()
                                     editingWorkout = workout
-                                }) {
-                                    Image(systemName: "pencil")
-                                        .foregroundColor(.primary)
+                                } label: {
+                                    Label("Edit", systemImage: "pencil")
                                 }
-                                .buttonStyle(.plain)
+                                .tint(.primary)
                             }
-
-                            // Notes line (only shown when non-empty)
-                            if !workout.notes.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                                Text(workout.notes)
-                                    .font(.caption)
-                                    .foregroundColor(.secondary)
-                                    //.lineLimit(2)
-                            }
-
-                            // Info chips — full width, wrapping
-                            let exerciseItems = workout.exerciseItems
-                            let totalSets = exerciseItems.reduce(0) { $0 + $1.predefinedSets.count }
-                            // Collect unique non-none timer mode names from all loops
-                            let timerModeNames: [String] = {
-                                var seen = Set<String>()
-                                var names: [String] = []
-                                for lid in workout.orderedLoopIDs {
-                                    if let mode = workout.loops[lid.uuidString]?.timerMode,
-                                       case .none = mode { continue }
-                                    if let name = workout.loops[lid.uuidString]?.timerMode?.displayName,
-                                       seen.insert(name).inserted {
-                                        names.append(name)
-                                    }
+                            .swipeActions {
+                                Button(role: .destructive) {
+                                    UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                                    deletingWorkout = workout
+                                } label: {
+                                    Label("Delete", systemImage: "trash")
                                 }
-                                return names
-                            }()
-                            // Count how many loops are supersets (2 exercises) vs circuits (3+)
-                            let loopMemberCounts: [UUID: Int] = workout.orderedLoopIDs.reduce(into: [:]) { counts, lid in
-                                counts[lid] = exerciseItems.filter { $0.loopID == lid }.count
-                            }
-                            let supersetCount = loopMemberCounts.values.filter { $0 == 2 }.count
-                            let circuitCount  = loopMemberCounts.values.filter { $0 >= 3 }.count
-                            // Count complexes (groups of 2+ exercises with a shared complexID)
-                            let complexMemberCounts: [UUID: Int] = workout.orderedComplexIDs.reduce(into: [:]) { counts, cid in
-                                counts[cid] = exerciseItems.filter { $0.complexID == cid }.count
-                            }
-                            let complexCount = complexMemberCounts.values.filter { $0 >= 2 }.count
-                            let hasChips = !exerciseItems.isEmpty || supersetCount > 0 || circuitCount > 0 || complexCount > 0 || totalSets > 0 || !timerModeNames.isEmpty || workout.warmupSeconds > 0 || workout.cooldownSeconds > 0
-
-                            if hasChips {
-                                FlowLayout(spacing: 5) {
-                                    if !exerciseItems.isEmpty {
-                                        WorkoutInfoChip(label: "\(exerciseItems.count) exercise\(exerciseItems.count == 1 ? "" : "s")", icon: "dumbbell")
-                                    }
-                                    if totalSets > 0 {
-                                        WorkoutInfoChip(label: "\(totalSets) set\(totalSets == 1 ? "" : "s")", icon: "list.number")
-                                    }
-                                    ForEach(timerModeNames, id: \.self) { name in
-                                        WorkoutInfoChip(label: name, icon: "timer")
-                                    }
-                                    if supersetCount > 0 {
-                                        WorkoutInfoChip(label: "\(supersetCount) superset\(supersetCount == 1 ? "" : "s")", icon: "arrow.2.circlepath")
-                                    }
-                                    if circuitCount > 0 {
-                                        WorkoutInfoChip(label: "\(circuitCount) circuit\(circuitCount == 1 ? "" : "s")", icon: "arrow.2.circlepath")
-                                    }
-                                    if complexCount > 0 {
-                                        WorkoutInfoChip(label: "\(complexCount) complex\(complexCount == 1 ? "" : "es")", icon: "square.stack.3d.up")
-                                    }
-                                    if workout.warmupSeconds > 0 {
-                                        WorkoutInfoChip(label: "Warmup", icon: "flame")
-                                    }
-                                    if workout.cooldownSeconds > 0 {
-                                        WorkoutInfoChip(label: "Cooldown", icon: "snowflake")
-                                    }
-                                }
-                            }
-                        }
-                        .padding(.vertical, 6)
-                        .contentShape(Rectangle())
-                        .onTapGesture {
-                            UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                            startingWorkout = workout
-                        }
-                        .swipeActions(edge: .leading, allowsFullSwipe: false) {
-                            Button {
-                                UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                                editingWorkout = workout
-                            } label: {
-                                Label("Edit", systemImage: "pencil")
-                            }
-                            .tint(.primary)
-                        }
-                        .swipeActions {
-                            Button(role: .destructive) {
-                                UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-                                deletingWorkout = workout
-                            } label: {
-                                Label("Delete", systemImage: "trash")
                             }
                         }
                     }
                 }
-            }
-            .listStyle(.plain)
-            .fullScreenCover(isPresented: $showingAdd) {
-                WorkoutEditor(title: "Add Workout") { workout in
-                    state.addWorkout(workout)
-                }
-                .environment(exercisesState)
-            }
-            .fullScreenCover(item: $editingWorkout) { workout in
-                WorkoutEditor(title: "Edit Workout", initialWorkout: workout) { updated in
-                    state.updateWorkout(updated)
-                } onDelete: {
-                    state.removeWorkout(id: workout.id)
-                }
-                .environment(exercisesState)
-            }
-            .fullScreenCover(item: $startingWorkout) { workout in
-                StartWorkoutView(workout: workout)
+                .listStyle(.plain)
+                .fullScreenCover(isPresented: $showingAdd) {
+                    WorkoutEditor(title: "Add Workout") { workout in
+                        state.addWorkout(workout)
+                    }
                     .environment(exercisesState)
-                    .environment(MuscleGroupsState.shared)
-                    .environment(EquipmentState.shared)
-                    .environment(WorkoutLogState.shared)
-            }
-            .fullScreenCover(item: $historyWorkout) { workout in
-                WorkoutHistorySheet(workout: workout, logState: WorkoutLogState.shared)
-            }
-            .fullScreenCover(item: $statsWorkout) { workout in
-                WorkoutStatsView(workout: workout)
-                    .environment(WorkoutLogState.shared)
-            }
-            .alert("Delete Workout?", isPresented: .constant(deletingWorkout != nil)) {
-                Button("Cancel", role: .cancel) {
-                    deletingWorkout = nil
                 }
-                Button("Delete", role: .destructive) {
-                    if let workout = deletingWorkout {
+                .fullScreenCover(item: $editingWorkout) { workout in
+                    WorkoutEditor(title: "Edit Workout", initialWorkout: workout) { updated in
+                        state.updateWorkout(updated)
+                    } onDelete: {
                         state.removeWorkout(id: workout.id)
+                    }
+                    .environment(exercisesState)
+                }
+                .fullScreenCover(item: $startingWorkout) { workout in
+                    StartWorkoutView(workout: workout)
+                        .environment(exercisesState)
+                        .environment(MuscleGroupsState.shared)
+                        .environment(EquipmentState.shared)
+                        .environment(WorkoutLogState.shared)
+                }
+                .fullScreenCover(item: $historyWorkout) { workout in
+                    WorkoutHistorySheet(workout: workout, logState: WorkoutLogState.shared)
+                }
+                .fullScreenCover(item: $statsWorkout) { workout in
+                    WorkoutStatsView(workout: workout)
+                        .environment(WorkoutLogState.shared)
+                }
+                .alert("Delete Workout?", isPresented: .constant(deletingWorkout != nil)) {
+                    Button("Cancel", role: .cancel) {
                         deletingWorkout = nil
                     }
+                    Button("Delete", role: .destructive) {
+                        if let workout = deletingWorkout {
+                            state.removeWorkout(id: workout.id)
+                            deletingWorkout = nil
+                        }
+                    }
+                } message: {
+                    Text("This will permanently delete the workout.")
                 }
-            } message: {
-                Text("This will permanently delete the workout.")
-            }
-            .onAppear {
-                launchPendingWorkoutIfNeeded()
-                openPendingStatsIfNeeded()
-                openPendingHistoryIfNeeded()
-            }
-            .onChange(of: state.pendingLaunchID) { _, _ in
-                launchPendingWorkoutIfNeeded()
-            }
-            .onChange(of: state.pendingStatsID) { _, _ in
-                openPendingStatsIfNeeded()
-            }
-            .onChange(of: state.pendingHistoryID) { _, _ in
-                openPendingHistoryIfNeeded()
-            }
-            .fullScreenCover(isPresented: $showingPlanLauncher) {
-                TodaysPlanModuleView(showDoneButton: true)
-                    .environment(planState)
-                    .environment(state)
-                    .environment(exercisesState)
-                    .environment(voiceTrainerState)
-                    .environment(timerState)
-                    .environment(moduleState)
+                .onAppear {
+                    launchPendingWorkoutIfNeeded()
+                    openPendingStatsIfNeeded()
+                    openPendingHistoryIfNeeded()
+                }
+                .onChange(of: state.pendingLaunchID) { _, _ in
+                    launchPendingWorkoutIfNeeded()
+                }
+                .onChange(of: state.pendingStatsID) { _, _ in
+                    openPendingStatsIfNeeded()
+                }
+                .onChange(of: state.pendingHistoryID) { _, _ in
+                    openPendingHistoryIfNeeded()
+                }
+                .fullScreenCover(isPresented: $showingPlanLauncher) {
+                    TodaysPlanModuleView(showDoneButton: true)
+                        .environment(planState)
+                        .environment(state)
+                        .environment(exercisesState)
+                        .environment(voiceTrainerState)
+                        .environment(timerState)
+                        .environment(moduleState)
+                }
             }
         }
     }
@@ -1400,7 +1402,7 @@ private struct SetsEditorSheet: View {
                     .lineLimit(1)
                 Spacer()
                 HStack(spacing: 16) {
-                    if let n = complexRounds, sets.count < n {
+                    if let n = complexRounds, sets.count < n, n > 1 {
                         Button("Fill (×\(n))") {
                             let template = defaultTarget(after: sets)
                             let templateWeight = sets.last?.weight ?? 0
@@ -1432,40 +1434,51 @@ private struct SetsEditorSheet: View {
             .background(Color(UIColor.systemBackground))
             .overlay(alignment: .bottom) { Divider() }
 
-            List {
-                // ── Equipment section ──────────────────────────────────────
-                if !availableEquipment.isEmpty {
-                    Section("Equipment") {
-                        // Chip-style flow layout matching the live workout UI
-                        FlowLayout(spacing: 8) {
-                            ForEach(availableEquipment) { item in
-                                let selected = selectedEquipmentIDs.contains(item.id)
-                                Button {
-                                    if selected { selectedEquipmentIDs.remove(item.id) }
-                                    else        { selectedEquipmentIDs.insert(item.id) }
-                                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                                } label: {
-                                    HStack(spacing: 4) {
-                                        Image(systemName: selected ? "checkmark.circle.fill" : "circle")
-                                            .font(.system(size: 11))
-                                            .foregroundColor(selected ? Color(UIColor.systemBackground) : .primary)
-                                        Text(item.name)
-                                            .font(.caption)
-                                            .foregroundColor(selected ? Color(UIColor.systemBackground) : .primary)
-                                            .fixedSize()
-                                    }
-                                    .padding(.horizontal, 10)
-                                    .padding(.vertical, 5)
-                                    .background(selected ? Color.primary : Color.primary.opacity(0.1))
-                                    .cornerRadius(12)
-                                }
-                                .buttonStyle(.plain)
-                            }
-                        }
-                        .padding(.vertical, 4)
-                    }
-                }
+            // ── Equipment section (outside the List so editMode doesn't swallow taps) ──
+            if !availableEquipment.isEmpty {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Equipment")
+                        .font(.headline)
+                        .foregroundColor(.secondary)
+                        .padding(.leading, 32)
 
+                    FlowLayout(spacing: 8) {
+                        ForEach(availableEquipment) { item in
+                            let selected = selectedEquipmentIDs.contains(item.id)
+                            Button {
+                                if selected { selectedEquipmentIDs.remove(item.id) }
+                                else        { selectedEquipmentIDs.insert(item.id) }
+                                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                            } label: {
+                                HStack(spacing: 4) {
+                                    Image(systemName: selected ? "checkmark.circle.fill" : "circle")
+                                        .font(.system(size: 11))
+                                        .foregroundColor(selected ? Color(UIColor.systemBackground) : .primary)
+                                    Text(item.name)
+                                        .font(.caption)
+                                        .foregroundColor(selected ? Color(UIColor.systemBackground) : .primary)
+                                        .fixedSize()
+                                }
+                                .padding(.horizontal, 10)
+                                .padding(.vertical, 5)
+                                .background(selected ? Color.primary : Color.primary.opacity(0.1))
+                                .cornerRadius(12)
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 8)
+                    .background(Color(UIColor.secondarySystemGroupedBackground))
+                    .clipShape(RoundedRectangle(cornerRadius: 10))
+                    .padding(.horizontal, 16)
+                }
+                .padding(.top, 12)
+                .padding(.bottom, 4)
+            }
+
+            List {
                 // ── Sets section ───────────────────────────────────────────
                 Section("Sets") {
                     if sets.isEmpty {
@@ -1552,7 +1565,7 @@ private struct SetEditorRow: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: 6) {
             // Set label + type toggle
             HStack {
                 Text("Set \(setNumber)")
@@ -1605,7 +1618,7 @@ private struct SetEditorRow: View {
                     .frame(maxWidth: .infinity)
                     .clipped()
                 }
-                .frame(height: 120)
+                .frame(height: 96)
             } else {
                 // Reps (left) + Weight (right) side-by-side wheels
                 HStack(spacing: 0) {
@@ -1637,10 +1650,10 @@ private struct SetEditorRow: View {
                     .frame(maxWidth: .infinity)
                     .clipped()
                 }
-                .frame(height: 120)
+                .frame(height: 96)
             }
         }
-        .padding(.vertical, 4)
+        .padding(.vertical, 2)
     }
 }
 

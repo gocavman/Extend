@@ -55,198 +55,200 @@ private struct VoiceTrainerModuleView: View {
     }
 
     var body: some View {
-        VStack(spacing: 0) {
-            // Header
-            HStack {
-                Text("Trainer")
-                    .font(.title2)
-                    .fontWeight(.bold)
-                Spacer()
-                Button(action: {
-                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                    showingAdd = true
-                }) {
-                    Image(systemName: "plus")
-                        .foregroundColor(.primary)
+        NavigationStack {
+            VStack(spacing: 0) {
+                // Header
+                HStack {
+                    Text("Trainer")
+                        .font(.title2)
+                        .fontWeight(.bold)
+                    Spacer()
+                    Button(action: {
+                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                        showingAdd = true
+                    }) {
+                        Image(systemName: "plus")
+                            .foregroundColor(.primary)
+                    }
                 }
-            }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 12)
-
-            List {
-                // Favorites tiles
-                if !state.favoriteConfigs.isEmpty {
-                    Section {
-                        LazyVGrid(columns: [GridItem(.adaptive(minimum: 100), spacing: 10)], spacing: 10) {
-                            ForEach(state.favoriteConfigs) { config in
-                                VStack(spacing: 0) {
-                                    // Top: launch
-                                    Button(action: {
-                                        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-                                        play(config)
-                                    }) {
-                                        VStack(spacing: 5) {
-                                            Image(systemName: "speaker.wave.2.fill")
-                                                .font(.system(size: 18))
-                                                .foregroundColor(.primary)
-                                            Text(config.name)
-                                                .font(.caption)
-                                                .fontWeight(.semibold)
-                                                .foregroundColor(.primary)
-                                                .lineLimit(2)
-                                                .multilineTextAlignment(.center)
-                                        }
-                                        .frame(maxWidth: .infinity)
-                                        .frame(height: 58)
-                                    }
-                                    .buttonStyle(.plain)
-
-                                    Divider()
-
-                                    // Bottom: chart | history
-                                    HStack(spacing: 0) {
+                .padding(.horizontal, 16)
+                .padding(.vertical, 12)
+                
+                List {
+                    // Favorites tiles
+                    if !state.favoriteConfigs.isEmpty {
+                        Section {
+                            LazyVGrid(columns: [GridItem(.adaptive(minimum: 100), spacing: 10)], spacing: 10) {
+                                ForEach(state.favoriteConfigs) { config in
+                                    VStack(spacing: 0) {
+                                        // Top: launch
                                         Button(action: {
-                                            UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                                            statsConfig = config
+                                            UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                                            play(config)
                                         }) {
-                                            Image(systemName: "chart.bar.fill")
-                                                .font(.system(size: 13))
-                                                .foregroundColor(.secondary)
-                                                .frame(maxWidth: .infinity)
-                                                .frame(height: 32)
+                                            VStack(spacing: 5) {
+                                                Image(systemName: "speaker.wave.2.fill")
+                                                    .font(.system(size: 18))
+                                                    .foregroundColor(.primary)
+                                                Text(config.name)
+                                                    .font(.caption)
+                                                    .fontWeight(.semibold)
+                                                    .foregroundColor(.primary)
+                                                    .lineLimit(2)
+                                                    .multilineTextAlignment(.center)
+                                            }
+                                            .frame(maxWidth: .infinity)
+                                            .frame(height: 58)
                                         }
                                         .buttonStyle(.plain)
-
+                                        
                                         Divider()
-                                            .frame(width: 1)
-                                            .frame(height: 20)
-                                            .overlay(
-                                                Rectangle()
-                                                    .fill(Color(UIColor.separator))
-                                                    .frame(width: 1)
-                                            )
-
-                                        Button(action: {
-                                            UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                                            historyConfig = config
-                                        }) {
-                                            Image(systemName: "clock.arrow.trianglehead.counterclockwise.rotate.90")
-                                                .font(.system(size: 13))
-                                                .foregroundColor(.secondary)
-                                                .frame(maxWidth: .infinity)
-                                                .frame(height: 32)
+                                        
+                                        // Bottom: chart | history
+                                        HStack(spacing: 0) {
+                                            Button(action: {
+                                                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                                                statsConfig = config
+                                            }) {
+                                                Image(systemName: "chart.bar.fill")
+                                                    .font(.system(size: 13))
+                                                    .foregroundColor(.secondary)
+                                                    .frame(maxWidth: .infinity)
+                                                    .frame(height: 32)
+                                            }
+                                            .buttonStyle(.plain)
+                                            
+                                            Divider()
+                                                .frame(width: 1)
+                                                .frame(height: 20)
+                                                .overlay(
+                                                    Rectangle()
+                                                        .fill(Color(UIColor.separator))
+                                                        .frame(width: 1)
+                                                )
+                                            
+                                            Button(action: {
+                                                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                                                historyConfig = config
+                                            }) {
+                                                Image(systemName: "clock.arrow.trianglehead.counterclockwise.rotate.90")
+                                                    .font(.system(size: 13))
+                                                    .foregroundColor(.secondary)
+                                                    .frame(maxWidth: .infinity)
+                                                    .frame(height: 32)
+                                            }
+                                            .buttonStyle(.plain)
                                         }
-                                        .buttonStyle(.plain)
                                     }
+                                    .background(Color(UIColor.secondarySystemBackground))
+                                    .cornerRadius(10)
                                 }
-                                .background(Color(UIColor.secondarySystemBackground))
-                                .cornerRadius(10)
                             }
+                            .padding(.vertical, 4)
                         }
-                        .padding(.vertical, 4)
+                        .listRowInsets(EdgeInsets(top: 4, leading: 16, bottom: 4, trailing: 16))
                     }
-                    .listRowInsets(EdgeInsets(top: 4, leading: 16, bottom: 4, trailing: 16))
-                }
-
-                SearchField(text: $searchText, placeholder: "Search trainers...")
-
-                if filteredConfigs.isEmpty {
-                    Text(state.savedConfigurations.isEmpty ? "No trainers yet" : "No trainers found")
-                        .font(.subheadline)
-                        .foregroundColor(.gray)
-                        .frame(maxWidth: .infinity, alignment: .center)
-                        .padding(.vertical, 20)
-                } else {
-                    ForEach(filteredConfigs) { config in
-                        VoiceTrainerListRow(
-                            config: config,
-                            onPlay: {
-                                UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                                play(config)
-                            },
-                            onStar: {
-                                UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                                state.toggleFavorite(id: config.id)
-                            },
-                            onClone: {
-                                UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                                state.cloneConfiguration(config)
-                            },
-                            onEdit: {
-                                UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                                editingConfig = config
-                            },
-                            onHistory: { historyConfig = config },
-                            onStats: { statsConfig = config }
-                        )
-                        .swipeActions(edge: .leading, allowsFullSwipe: false) {
-                            Button {
-                                UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                                editingConfig = config
-                            } label: {
-                                Label("Edit", systemImage: "pencil")
+                    
+                    SearchField(text: $searchText, placeholder: "Search trainers...")
+                    
+                    if filteredConfigs.isEmpty {
+                        Text(state.savedConfigurations.isEmpty ? "No trainers yet" : "No trainers found")
+                            .font(.subheadline)
+                            .foregroundColor(.gray)
+                            .frame(maxWidth: .infinity, alignment: .center)
+                            .padding(.vertical, 20)
+                    } else {
+                        ForEach(filteredConfigs) { config in
+                            VoiceTrainerListRow(
+                                config: config,
+                                onPlay: {
+                                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                                    play(config)
+                                },
+                                onStar: {
+                                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                                    state.toggleFavorite(id: config.id)
+                                },
+                                onClone: {
+                                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                                    state.cloneConfiguration(config)
+                                },
+                                onEdit: {
+                                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                                    editingConfig = config
+                                },
+                                onHistory: { historyConfig = config },
+                                onStats: { statsConfig = config }
+                            )
+                            .swipeActions(edge: .leading, allowsFullSwipe: false) {
+                                Button {
+                                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                                    editingConfig = config
+                                } label: {
+                                    Label("Edit", systemImage: "pencil")
+                                }
+                                .tint(.primary)
                             }
-                            .tint(.primary)
-                        }
-                        .swipeActions {
-                            Button(role: .destructive) {
-                                UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-                                deletingConfig = config
-                            } label: {
-                                Label("Delete", systemImage: "trash")
+                            .swipeActions {
+                                Button(role: .destructive) {
+                                    UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                                    deletingConfig = config
+                                } label: {
+                                    Label("Delete", systemImage: "trash")
+                                }
                             }
                         }
                     }
                 }
+                .listStyle(.plain)
             }
-            .listStyle(.plain)
-        }
-        .fullScreenCover(isPresented: $showingAdd) {
-            VoiceTrainerEditorView(title: "New Trainer") { newConfig in
-                state.saveConfiguration(name: newConfig.name, config: newConfig)
-            }
-        }
-        .fullScreenCover(item: $editingConfig) { config in
-            VoiceTrainerEditorView(title: "Edit Trainer", initialConfig: config) { updated in
-                state.updateConfiguration(updated)
-            } onDelete: {
-                state.deleteConfiguration(config)
-            }
-        }
-        .fullScreenCover(item: $activeConfig) { config in
-            VoiceTrainerPlaybackView(config: config, logState: logState)
-        }
-        .fullScreenCover(item: $historyConfig) { config in
-            VoiceTrainerHistorySheet(config: config, logState: WorkoutLogState.shared)
-        }
-        .fullScreenCover(item: $statsConfig) { config in
-            VoiceTrainerStatsView(config: config)
-                .environment(WorkoutLogState.shared)
-        }
-        .alert("Delete Trainer?", isPresented: .constant(deletingConfig != nil)) {
-            Button("Cancel", role: .cancel) { deletingConfig = nil }
-            Button("Delete", role: .destructive) {
-                if let c = deletingConfig {
-                    state.deleteConfiguration(c)
-                    deletingConfig = nil
+            .fullScreenCover(isPresented: $showingAdd) {
+                VoiceTrainerEditorView(title: "New Trainer") { newConfig in
+                    state.saveConfiguration(name: newConfig.name, config: newConfig)
                 }
             }
-        } message: {
-            Text("This will permanently delete the trainer configuration.")
-        }
-        .onAppear {
-            launchPendingTrainerIfNeeded()
-            openPendingVoiceStatsIfNeeded()
-            openPendingVoiceHistoryIfNeeded()
-        }
-        .onChange(of: state.pendingLaunchID) { _, _ in
-            launchPendingTrainerIfNeeded()
-        }
-        .onChange(of: state.pendingStatsID) { _, _ in
-            openPendingVoiceStatsIfNeeded()
-        }
-        .onChange(of: state.pendingHistoryID) { _, _ in
-            openPendingVoiceHistoryIfNeeded()
+            .fullScreenCover(item: $editingConfig) { config in
+                VoiceTrainerEditorView(title: "Edit Trainer", initialConfig: config) { updated in
+                    state.updateConfiguration(updated)
+                } onDelete: {
+                    state.deleteConfiguration(config)
+                }
+            }
+            .fullScreenCover(item: $activeConfig) { config in
+                VoiceTrainerPlaybackView(config: config, logState: logState)
+            }
+            .fullScreenCover(item: $historyConfig) { config in
+                VoiceTrainerHistorySheet(config: config, logState: WorkoutLogState.shared)
+            }
+            .fullScreenCover(item: $statsConfig) { config in
+                VoiceTrainerStatsView(config: config)
+                    .environment(WorkoutLogState.shared)
+            }
+            .alert("Delete Trainer?", isPresented: .constant(deletingConfig != nil)) {
+                Button("Cancel", role: .cancel) { deletingConfig = nil }
+                Button("Delete", role: .destructive) {
+                    if let c = deletingConfig {
+                        state.deleteConfiguration(c)
+                        deletingConfig = nil
+                    }
+                }
+            } message: {
+                Text("This will permanently delete the trainer configuration.")
+            }
+            .onAppear {
+                launchPendingTrainerIfNeeded()
+                openPendingVoiceStatsIfNeeded()
+                openPendingVoiceHistoryIfNeeded()
+            }
+            .onChange(of: state.pendingLaunchID) { _, _ in
+                launchPendingTrainerIfNeeded()
+            }
+            .onChange(of: state.pendingStatsID) { _, _ in
+                openPendingVoiceStatsIfNeeded()
+            }
+            .onChange(of: state.pendingHistoryID) { _, _ in
+                openPendingVoiceHistoryIfNeeded()
+            }
         }
     }
 
