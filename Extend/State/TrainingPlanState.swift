@@ -382,11 +382,19 @@ final class TrainingPlanState {
 
         guard let plan = activePlan else {
             writeWidgetSnapshot(planName: nil, items: [])
+            // Clear the watch's multi-day window too so a deleted/deactivated
+            // plan doesn't keep showing on the wrist.
+            refreshMultiDaySnapshots()
             return
         }
         let pd = planDay(for: Date())
         guard let pd else {
             writeWidgetSnapshot(planName: plan.name, items: [])
+            // Today not in the plan's window (or a rest day) — still push the
+            // ±7-day window so the Watch can show upcoming/past days, otherwise
+            // adding a plan whose start date isn't today would never reach the
+            // watch.
+            refreshMultiDaySnapshots()
             return
         }
         let wDefaults = UserDefaults(suiteName: "group.com.cavanmannenbach.extend") ?? .standard
@@ -472,6 +480,9 @@ final class TrainingPlanState {
     private func refreshMultiDaySnapshots() {
         guard let plan = activePlan else {
             writeMultiDaySnapshots([])
+            // Clear the watch too — without this, deactivating a plan leaves
+            // stale snapshots on the wrist.
+            WatchConnectivityReceiver.shared.sendPlanUpdate(multidaySnapshots: [])
             return
         }
         let cal = Calendar.current

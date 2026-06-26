@@ -30,6 +30,11 @@ struct WatchLibraryView: View {
     private var favorites: [WatchLibraryItem] {
         (library.workouts + library.exercises + library.timers + library.voiceTrainers)
             .filter { $0.isFavorite }
+            .sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
+    }
+
+    private func sortedByName(_ items: [WatchLibraryItem]) -> [WatchLibraryItem] {
+        items.sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
     }
 
     private var isLibraryEmpty: Bool {
@@ -90,25 +95,25 @@ struct WatchLibraryView: View {
                 title: "Workouts",
                 icon: "dumbbell.fill",
                 count: library.workouts.count,
-                items: library.workouts
+                items: sortedByName(library.workouts)
             )
             hubTile(
                 title: "Exercises",
                 icon: "figure.strengthtraining.traditional",
                 count: library.exercises.count,
-                items: library.exercises
+                items: sortedByName(library.exercises)
             )
             hubTile(
                 title: "Timers",
                 icon: "timer",
                 count: library.timers.count,
-                items: library.timers
+                items: sortedByName(library.timers)
             )
             hubTile(
                 title: "Voice Trainers",
                 icon: "waveform",
                 count: library.voiceTrainers.count,
-                items: library.voiceTrainers
+                items: sortedByName(library.voiceTrainers)
             )
         }
     }

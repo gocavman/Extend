@@ -205,8 +205,8 @@ public final class WorkoutsState {
             healthKitActivityType: 73,
             loops: [:],
             complexes: [dblComplexID.uuidString: dblComplex],
-            warmupSeconds: 15,
-            cooldownSeconds: 15,
+            warmupSeconds: 10,
+            cooldownSeconds: 10,
             showNotes: false
         )
 
@@ -249,11 +249,11 @@ public final class WorkoutsState {
             name: "ABC - Single Kettlebell",
             notes: "1. Left arm clean & press \n2. Right arm clean & press immediately going to: \n3. 2 squats with kb on right. \n4. Switch arms",
             items: sglItems,
-            healthKitActivityType: nil,
+            healthKitActivityType: 73,
             loops: [:],
             complexes: [sglComplexID.uuidString: sglComplex],
-            warmupSeconds: 15,
-            cooldownSeconds: 15,
+            warmupSeconds: 10,
+            cooldownSeconds: 10,
             showNotes: true
         )
 

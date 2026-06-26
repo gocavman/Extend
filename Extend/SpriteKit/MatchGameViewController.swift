@@ -1282,8 +1282,11 @@ class MatchGameViewController: UIViewController {
             }
         }
         
-        // Add blank tile overlays FIRST (lower z-order) — dark covers over inactive cells
-        // so pieces sliding through during gravity animations are hidden behind them.
+        // Blank tile overlays — dark covers over inactive cells. Inserted BELOW
+        // the grid stack in z-order so that pieces sliding through during
+        // gravity animations pass *in front of* the overlays (the previous
+        // behavior hid the falling tile behind the overlay, which made
+        // refills look like they appeared out of nowhere).
         blankTileOverlays.forEach { $0.removeFromSuperview() }
         blankTileOverlays.removeAll()
         for row in 0..<level.gridHeight {
@@ -1297,7 +1300,7 @@ class MatchGameViewController: UIViewController {
                 overlay.backgroundColor = darkBg
                 overlay.isUserInteractionEnabled = false
                 overlay.translatesAutoresizingMaskIntoConstraints = false
-                gridContainer.addSubview(overlay)
+                gridContainer.insertSubview(overlay, belowSubview: gridStackView)
                 NSLayoutConstraint.activate([
                     overlay.topAnchor.constraint(equalTo: button.topAnchor, constant: -1),
                     overlay.bottomAnchor.constraint(equalTo: button.bottomAnchor, constant: 1),
@@ -2971,11 +2974,12 @@ class MatchGameViewController: UIViewController {
         }
     }
 
-    /// Phase 1 of Ball + Rocket: the ball travels along a circle around the
-    /// swap point, leaving a thick lightning trail (cylinder roughly the
-    /// width of the ball) drawn behind it.  Calls `completion` once the ball
-    /// returns to its starting position so Phase 2 (the bouncing ball clear)
-    /// can take over.
+    /// Phase 1 of Ball + Rocket: the ball travels along a 5-pointed star path
+    /// around the swap point, leaving a thick lightning trail drawn behind it.
+    /// The star is sized noticeably larger than the static star (rocket)
+    /// powerup so the combo reads as "the ball drew a bigger star". Calls
+    /// `completion` once the ball returns to its starting position so Phase 2
+    /// (the bouncing ball clear) can take over.
     private func animateBallLedLightningCircle(centerRow: Int, centerCol: Int, ballEmoji: String, completion: @escaping () -> Void) {
         guard let level = currentLevel else { completion(); return }
         let cellWidth  = gridContainer.bounds.width  / CGFloat(level.gridWidth)
@@ -2984,10 +2988,27 @@ class MatchGameViewController: UIViewController {
         let ox = CGFloat(centerCol) * cellWidth  + cellWidth  / 2
         let oy = CGFloat(centerRow) * cellHeight + cellHeight / 2
 
-        // Radius sized to a healthy chunk of the grid so the circle reads as the
-        // signature flourish of this combo.
-        let radius = min(gridContainer.bounds.width, gridContainer.bounds.height) * 0.32
+        // Star is deliberately larger than the static star powerup (which fits
+        // in a single tile) so the combo signature reads as a giant star.
+        let outerRadius = min(gridContainer.bounds.width, gridContainer.bounds.height) * 0.38
+        let innerRadius = outerRadius * 0.45
         let ballSize = cellSize * 0.95
+
+        // Build a 5-pointed star path. Start at the top point so the ball
+        // begins where it'll naturally read as "the pencil tip" of the star.
+        let starPath = UIBezierPath()
+        let points = 5
+        let angleStep = CGFloat.pi / CGFloat(points)
+        let startAngle: CGFloat = -.pi / 2  // top
+        for i in 0..<(points * 2) {
+            let r = (i % 2 == 0) ? outerRadius : innerRadius
+            let a = startAngle + CGFloat(i) * angleStep
+            let p = CGPoint(x: ox + cos(a) * r, y: oy + sin(a) * r)
+            if i == 0 { starPath.move(to: p) } else { starPath.addLine(to: p) }
+        }
+        starPath.close()
+        let startPoint = CGPoint(x: ox + cos(startAngle) * outerRadius,
+                                 y: oy + sin(startAngle) * outerRadius)
 
         // Hide the static powerup at (centerRow, centerCol) for the duration so it
         // doesn't sit awkwardly behind the moving ball.
@@ -2995,31 +3016,27 @@ class MatchGameViewController: UIViewController {
         let savedAlpha = staticButton?.alpha ?? 1.0
         staticButton?.alpha = 0
 
-        // Moving ball label.
+        // Moving ball label — starts at the first star point so it visually
+        // "draws" the star from that anchor.
         let ball = UILabel()
         ball.text = ballEmoji
         ball.font = UIFont.systemFont(ofSize: ballSize)
         ball.textAlignment = .center
         ball.frame = CGRect(x: 0, y: 0, width: ballSize, height: ballSize)
-        ball.center = CGPoint(x: ox + radius, y: oy)
+        ball.center = startPoint
         gridContainer.addSubview(ball)
         activeAnimationViews.insert(ObjectIdentifier(ball))
 
-        // Build the thick lightning circle: same diameter as the ball trail,
-        // drawn as a CAShapeLayer along the circular path.  The line width
-        // matches the ball so the trail reads as "the ball itself painted
-        // the circle in lightning."
-        let circlePath = UIBezierPath(arcCenter: CGPoint(x: ox, y: oy),
-                                      radius: radius,
-                                      startAngle: 0,
-                                      endAngle: .pi * 2,
-                                      clockwise: true)
+        // Build the thick lightning star: drawn as a CAShapeLayer along the
+        // star path. Line width matches the ball so the trail reads as "the
+        // ball itself painted the star in lightning."
         let trail = CAShapeLayer()
-        trail.path = circlePath.cgPath
+        trail.path = starPath.cgPath
         trail.strokeColor = UIColor.white.cgColor
         trail.fillColor = nil
         trail.lineWidth = ballSize * 0.85
         trail.lineCap = .round
+        trail.lineJoin = .round
         trail.shadowColor = UIColor.cyan.cgColor
         trail.shadowRadius = 10
         trail.shadowOpacity = 1.0
@@ -3028,23 +3045,23 @@ class MatchGameViewController: UIViewController {
         trail.strokeEnd = 0
         gridContainer.layer.insertSublayer(trail, below: ball.layer)
 
-        // Animate the ball around the circle and the trail's strokeEnd in lockstep
+        // Animate the ball around the star and the trail's strokeEnd in lockstep
         // so the trail appears to grow with the ball's motion.
-        let circleDuration: TimeInterval = 0.7
+        let starDuration: TimeInterval = 0.9
 
         let strokeAnim = CABasicAnimation(keyPath: "strokeEnd")
         strokeAnim.fromValue = 0
         strokeAnim.toValue = 1
-        strokeAnim.duration = circleDuration
+        strokeAnim.duration = starDuration
         strokeAnim.timingFunction = CAMediaTimingFunction(name: .linear)
         strokeAnim.fillMode = .forwards
         strokeAnim.isRemovedOnCompletion = false
-        trail.add(strokeAnim, forKey: "drawCircle")
+        trail.add(strokeAnim, forKey: "drawStar")
 
-        // Position keyframe animation for the ball along the same path.
+        // Position keyframe animation for the ball along the same star path.
         let posAnim = CAKeyframeAnimation(keyPath: "position")
-        posAnim.path = circlePath.cgPath
-        posAnim.duration = circleDuration
+        posAnim.path = starPath.cgPath
+        posAnim.duration = starDuration
         posAnim.calculationMode = .paced
         posAnim.rotationMode = .rotateAuto
         posAnim.fillMode = .forwards
@@ -3073,7 +3090,7 @@ class MatchGameViewController: UIViewController {
 
             completion()
         }
-        ball.layer.add(posAnim, forKey: "ballCircle")
+        ball.layer.add(posAnim, forKey: "ballStar")
         CATransaction.commit()
     }
 
@@ -4549,7 +4566,10 @@ class MatchGameViewController: UIViewController {
         let directions: [(dx: CGFloat, dy: CGFloat)] = [(-1, -1), (1, -1), (-1, 1), (1, 1)]
 
         let beamWidth: CGFloat = cellWidth * 0.18
-        let animDuration: CFTimeInterval = 0.3
+        // Slowed from 0.3s so the diagonal "X" sweep reads clearly — at the old
+        // speed the four beams finished before the player could parse the
+        // direction of the flourish.
+        let animDuration: CFTimeInterval = 0.7
         var doneCount = 0
 
         // --- Lightning enhancement: jagged white-cyan bolt riding each diagonal ---
@@ -7909,20 +7929,53 @@ class MatchGameViewController: UIViewController {
     private func selectLevel(_ levelId: Int) {
         // Save current level state
         saveGameState()
-        
+
+        // Kill any in-flight animations + transient gameplay state so they
+        // can't fire callbacks against the new level's grid. Without this,
+        // an animation completion block from the previous level can plant
+        // a powerup at a coordinate on the new level's gameGrid, which then
+        // gets persisted by the next saveMidLevelState() — exactly the
+        // "powerups + partial shapes from previous levels" bug.
+        idleTimer?.invalidate()
+        idleTimer = nil
+        hintingTile = nil
+        isAnimating = false
+        isAnimatingDrop = false
+        isApplyingGravity = false
+        pendingCascades.removeAll()
+        cascadeDepth = 0
+        movedPieces.removeAll()
+        fallDistances.removeAll()
+        newPieces.removeAll()
+        activeAnimationViews.removeAll()
+        dragStartPiece = nil
+        dragTargetPiece = nil
+        selectedPiece = nil
+        lastSwappedPositions = nil
+        swappedButtons = nil
+        currentSwapInvolvesAPowerup = false
+        levelCompletionTriggered = false
+
         // Change level
         currentLevelId = levelId
         score = 0
-        
-        // Clear old grid (subviews AND any leftover animation sublayers)
+
+        // Clear old grid (subviews AND any leftover animation sublayers).
         gridContainer.subviews.forEach { $0.removeFromSuperview() }
         gridContainer.layer.sublayers?.removeAll(where: { $0 is CAShapeLayer })
         gridStackView.removeFromSuperview()
         gridStackView.arrangedSubviews.forEach { $0.removeFromSuperview() }
-        
+        // The button refs in gridButtons now point to removed-from-superview
+        // views; clear them so renderGrid rebuilds cleanly without any chance
+        // of an old button being touched by a stray completion handler.
+        gridButtons = []
+        armorOverlays = []
+        armorBorderViews = []
+        blankTileOverlays.removeAll()
+
         // Start new level
         startLevel(levelId)
-        
+
         // Update button text
         levelSelectorButton.setTitle("Level \(levelId) ▼", for: .normal)
     }

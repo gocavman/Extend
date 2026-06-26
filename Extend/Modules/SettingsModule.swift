@@ -243,74 +243,6 @@ private struct SettingsModuleView: View {
                             }
                         }
 
-                        DisclosureGroup("iCloud Sync", isExpanded: $isICloudSectionExpanded) {
-                            HStack {
-                                Text("Account")
-                                Spacer()
-                                Text(accountStatusLabel(syncEngine.accountStatus))
-                                    .foregroundColor(accountStatusColor(syncEngine.accountStatus))
-                            }
-
-                            HStack {
-                                Text("Last Sync")
-                                Spacer()
-                                if let date = syncEngine.lastSyncDate {
-                                    Text(lastSyncLabel(date))
-                                        .foregroundColor(.secondary)
-                                } else {
-                                    Text("Never")
-                                        .foregroundColor(.secondary)
-                                }
-                            }
-
-                            if let err = syncEngine.syncError {
-                                VStack(alignment: .leading, spacing: 2) {
-                                    Text("Last Error")
-                                        .foregroundColor(.red)
-                                    Text(err)
-                                        .font(.caption)
-                                        .foregroundColor(.secondary)
-                                        .textSelection(.enabled)
-                                }
-                            }
-
-                            Button {
-                                UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                                Task { await syncEngine.forceSync() }
-                            } label: {
-                                HStack {
-                                    if syncEngine.isSyncing {
-                                        ProgressView()
-                                            .scaleEffect(0.8)
-                                            .padding(.trailing, 4)
-                                        Text("Syncing…")
-                                    } else {
-                                        Image(systemName: "arrow.triangle.2.circlepath.icloud")
-                                        Text("Sync Now")
-                                    }
-                                }
-                                .frame(maxWidth: .infinity)
-                            }
-                            .buttonStyle(.bordered)
-                            .disabled(syncEngine.isSyncing)
-
-                            Text("Pulls the latest workouts, logs, exercises, and settings from your iCloud account. Use this if a reinstall didn't restore your data.")
-                                .font(.caption)
-                                .foregroundColor(.secondary)
-
-                            Toggle(isOn: Binding(
-                                get: { moduleState.syncUIPreferences },
-                                set: { moduleState.syncUIPreferences = $0 }
-                            )) {
-                                VStack(alignment: .leading, spacing: 2) {
-                                    Text("Sync Appearance Settings")
-                                    Text("Sync nav bar and dashboard colors across your devices.")
-                                        .font(.caption)
-                                        .foregroundColor(.secondary)
-                                }
-                            }
-                        }
-
                         DisclosureGroup("System Preferences", isExpanded: $isSystemSectionExpanded) {
                             HStack {
                                 Text("Theme")
@@ -370,6 +302,74 @@ private struct SettingsModuleView: View {
                                 }
                                 .pickerStyle(.segmented)
                                 .frame(width: 120)
+                            }
+
+                            DisclosureGroup("iCloud Sync", isExpanded: $isICloudSectionExpanded) {
+                                HStack {
+                                    Text("Account")
+                                    Spacer()
+                                    Text(accountStatusLabel(syncEngine.accountStatus))
+                                        .foregroundColor(accountStatusColor(syncEngine.accountStatus))
+                                }
+
+                                HStack {
+                                    Text("Last Sync")
+                                    Spacer()
+                                    if let date = syncEngine.lastSyncDate {
+                                        Text(lastSyncLabel(date))
+                                            .foregroundColor(.secondary)
+                                    } else {
+                                        Text("Never")
+                                            .foregroundColor(.secondary)
+                                    }
+                                }
+
+                                if let err = syncEngine.syncError {
+                                    VStack(alignment: .leading, spacing: 2) {
+                                        Text("Last Error")
+                                            .foregroundColor(.red)
+                                        Text(err)
+                                            .font(.caption)
+                                            .foregroundColor(.secondary)
+                                            .textSelection(.enabled)
+                                    }
+                                }
+
+                                Button {
+                                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                                    Task { await syncEngine.forceSync() }
+                                } label: {
+                                    HStack {
+                                        if syncEngine.isSyncing {
+                                            ProgressView()
+                                                .scaleEffect(0.8)
+                                                .padding(.trailing, 4)
+                                            Text("Syncing…")
+                                        } else {
+                                            Image(systemName: "arrow.triangle.2.circlepath.icloud")
+                                            Text("Sync Now")
+                                        }
+                                    }
+                                    .frame(maxWidth: .infinity)
+                                }
+                                .buttonStyle(.bordered)
+                                .disabled(syncEngine.isSyncing)
+
+                                Text("Pulls the latest workouts, logs, exercises, and settings from your iCloud account. Use this if a reinstall didn't restore your data.")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+
+                                Toggle(isOn: Binding(
+                                    get: { moduleState.syncUIPreferences },
+                                    set: { moduleState.syncUIPreferences = $0 }
+                                )) {
+                                    VStack(alignment: .leading, spacing: 2) {
+                                        Text("Sync Appearance Settings")
+                                        Text("Sync nav bar and dashboard colors across your devices.")
+                                            .font(.caption)
+                                            .foregroundColor(.secondary)
+                                    }
+                                }
                             }
 
                             DisclosureGroup("Apple Health", isExpanded: $isAppleHealthSectionExpanded) {
