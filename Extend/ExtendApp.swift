@@ -9,6 +9,7 @@ import SwiftUI
 import SwiftData
 import HealthKit
 import WidgetKit
+import AVFoundation
 
 @main
 struct ExtendApp: App {
@@ -49,6 +50,20 @@ struct ExtendApp: App {
         // the system can deliver a reconnecting mirror (after a transient
         // link drop mid-workout) even before SwiftUI renders the first body.
         MirroredWorkoutCoordinator.shared.registerMirrorHandler()
+
+        // Route all spoken cues (workout countdowns, complex callouts, voice
+        // trainer prompts) through a `.playback` audio session so they play
+        // through the ring/silent switch — workout audio is task-critical,
+        // matching the UX of Voice Memos / podcast apps. `.duckOthers` lowers
+        // any background music while we speak. We don't `setActive(true)`
+        // here so we don't interrupt an in-progress music session at launch;
+        // AVSpeechSynthesizer activates the session per-utterance on its own.
+        do {
+            let session = AVAudioSession.sharedInstance()
+            try session.setCategory(.playback, mode: .spokenAudio, options: [.duckOthers])
+        } catch {
+            // Non-fatal — speech will still work, just silenced by silent switch.
+        }
 
         // Register all modules synchronously before the first render so the
         // registry is never empty when ContentView draws its first frame.

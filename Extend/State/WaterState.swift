@@ -78,6 +78,11 @@ public final class WaterState {
         self.lastHealthKitSync = ud.object(forKey: lastSyncKey) as? Date
         loadLogs()
         importPendingWidgetLogs()
+        // Seed App Group widget keys immediately so the iPhone water widget
+        // and the watch complication can render correct values without
+        // waiting for the first mutation. Also stamps today's date so stale
+        // pre-rollover totals are detected as such by readers.
+        persistWidgetData()
     }
 
     // MARK: - CRUD

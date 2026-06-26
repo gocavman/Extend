@@ -333,7 +333,13 @@ class MatchGameViewController: UIViewController {
         super.viewWillDisappear(animated)
         pauseSessionTimer()
     }
-    
+
+    deinit {
+        NotificationCenter.default.removeObserver(self,
+            name: NSUbiquitousKeyValueStore.didChangeExternallyNotification,
+            object: NSUbiquitousKeyValueStore.default)
+    }
+
     // MARK: - Setup
     
     private func setupUI() {
@@ -2991,24 +2997,27 @@ class MatchGameViewController: UIViewController {
         // Star is deliberately larger than the static star powerup (which fits
         // in a single tile) so the combo signature reads as a giant star.
         let outerRadius = min(gridContainer.bounds.width, gridContainer.bounds.height) * 0.38
-        let innerRadius = outerRadius * 0.45
         let ballSize = cellSize * 0.95
 
-        // Build a 5-pointed star path. Start at the top point so the ball
-        // begins where it'll naturally read as "the pencil tip" of the star.
-        let starPath = UIBezierPath()
-        let points = 5
-        let angleStep = CGFloat.pi / CGFloat(points)
+        // Build a 5-pointed star drawn "without lifting the pencil" — one
+        // continuous stroke that visits the 5 outer tips in the classic
+        // pentagram order [0, 2, 4, 1, 3, 0]. Each line crosses through the
+        // middle, instead of tracing the spiky outline of the star shape.
         let startAngle: CGFloat = -.pi / 2  // top
-        for i in 0..<(points * 2) {
-            let r = (i % 2 == 0) ? outerRadius : innerRadius
+        let angleStep = (2 * CGFloat.pi) / 5
+        var tips: [CGPoint] = []
+        for i in 0..<5 {
             let a = startAngle + CGFloat(i) * angleStep
-            let p = CGPoint(x: ox + cos(a) * r, y: oy + sin(a) * r)
-            if i == 0 { starPath.move(to: p) } else { starPath.addLine(to: p) }
+            tips.append(CGPoint(x: ox + cos(a) * outerRadius,
+                                y: oy + sin(a) * outerRadius))
         }
-        starPath.close()
-        let startPoint = CGPoint(x: ox + cos(startAngle) * outerRadius,
-                                 y: oy + sin(startAngle) * outerRadius)
+        let order = [0, 2, 4, 1, 3, 0]
+        let starPath = UIBezierPath()
+        starPath.move(to: tips[order[0]])
+        for idx in 1..<order.count {
+            starPath.addLine(to: tips[order[idx]])
+        }
+        let startPoint = tips[order[0]]
 
         // Hide the static powerup at (centerRow, centerCol) for the duration so it
         // doesn't sit awkwardly behind the moving ball.
@@ -3993,22 +4002,22 @@ class MatchGameViewController: UIViewController {
         }
 
         // Animate — no completion handler needed; ball manages final state
-        let fallSpeed: CGFloat = 800
+        let fallSpeed: CGFloat = 900
         var maxEnd: Double = 0
         // Sort within each column: bottom rows first (largest row index first)
         let sorted = toAnimate.sorted { $0.row > $1.row }
         for piece in sorted {
             guard let button = gridButtons[piece.row][piece.col] else { continue }
             let dist = max(piece.distance, 1)
-            let duration = max(0.08, min(0.45, Double(cellHeight * CGFloat(dist)) / Double(fallSpeed)))
+            let duration = max(0.08, min(0.30, Double(cellHeight * CGFloat(dist)) / Double(fallSpeed)))
             UIView.animate(withDuration: duration, delay: 0, options: [.curveEaseIn]) {
                 button.transform = .identity
             } completion: { _ in
                 guard button.transform == .identity else { return }
-                UIView.animate(withDuration: 0.07) {
+                UIView.animate(withDuration: 0.05) {
                     button.transform = CGAffineTransform(scaleX: 1.18, y: 0.65)
                 } completion: { _ in
-                    UIView.animate(withDuration: 0.09) { button.transform = .identity }
+                    UIView.animate(withDuration: 0.07) { button.transform = .identity }
                 }
             }
             maxEnd = max(maxEnd, duration)
@@ -7335,9 +7344,12 @@ class MatchGameViewController: UIViewController {
         }
 
         let cellHeight = gridContainer.bounds.height / CGFloat(level.gridHeight)
-        let fallSpeed: CGFloat = 600   // pixels per second
-        let minDuration: TimeInterval = 0.25
-        let maxDuration: TimeInterval = 0.45
+        // Snappier feel: faster gravity + tighter clamp. Same fallSpeed for every
+        // piece + duration proportional to distance means lower-row pieces always
+        // land before upper-row ones (no overtaking).
+        let fallSpeed: CGFloat = 900   // pixels per second
+        let minDuration: TimeInterval = 0.16
+        let maxDuration: TimeInterval = 0.30
 
         var maxEndTime: TimeInterval = 0
 
@@ -7365,10 +7377,10 @@ class MatchGameViewController: UIViewController {
                     completion: { _ in
                         guard distance > 0 else { return }
                         // Squash-on-land: briefly squish flat then snap back
-                        UIView.animate(withDuration: 0.07, delay: 0, options: [.curveEaseOut]) {
+                        UIView.animate(withDuration: 0.05, delay: 0, options: [.curveEaseOut]) {
                             button.transform = CGAffineTransform(scaleX: 1.18, y: 0.65)
                         } completion: { _ in
-                            UIView.animate(withDuration: 0.09, delay: 0, options: [.curveEaseInOut]) {
+                            UIView.animate(withDuration: 0.07, delay: 0, options: [.curveEaseInOut]) {
                                 button.transform = .identity
                             }
                         }
@@ -7378,7 +7390,7 @@ class MatchGameViewController: UIViewController {
         }
 
         // Wait for fall + squash to finish before triggering next action
-        let completionDelay = max(maxEndTime + 0.22, 0.2)
+        let completionDelay = max(maxEndTime + 0.10, 0.14)
         DispatchQueue.main.asyncAfter(deadline: .now() + completionDelay) {
             completion()
         }
@@ -7995,10 +8007,17 @@ class MatchGameViewController: UIViewController {
         defaults.set(retryLevelId, forKey: "matchGameRetryLevelId")
         // Save mid-level grid state
         saveMidLevelState()
+        // Mirror progress (not mid-level grid) to iCloud KVS so reinstalls restore it.
+        pushProgressToCloud()
         print("💾 Game state saved: Level \(currentLevelId), Score \(score), TotalTime \(Int(totalElapsed))s")
     }
-    
+
     private func loadSavedState() {
+        // Pull cloud progress first and reconcile with local UserDefaults using a
+        // max-merge for level/time and a union for unlocked levels. Cloud writes
+        // back the merged values so both sides converge.
+        mergeCloudProgressIntoDefaults()
+
         let savedLevel = defaults.integer(forKey: "matchGameCurrentLevel")
         if savedLevel > 0 {
             currentLevelId = savedLevel
@@ -8016,6 +8035,110 @@ class MatchGameViewController: UIViewController {
         if defaults.object(forKey: "matchGameRetryLevelId") != nil {
             retryLevelId = defaults.integer(forKey: "matchGameRetryLevelId")
             retryCount = defaults.integer(forKey: "matchGameRetryCount")
+        }
+
+        // Watch for changes pushed from another device while the game is open
+        // (e.g. user unlocks a level on iPad while iPhone is on the level map).
+        NotificationCenter.default.removeObserver(self,
+            name: NSUbiquitousKeyValueStore.didChangeExternallyNotification,
+            object: NSUbiquitousKeyValueStore.default)
+        NotificationCenter.default.addObserver(self,
+            selector: #selector(cloudProgressChangedExternally(_:)),
+            name: NSUbiquitousKeyValueStore.didChangeExternallyNotification,
+            object: NSUbiquitousKeyValueStore.default)
+    }
+
+    // MARK: - iCloud Key-Value Progress Sync
+    //
+    // Mirrors the small bits of match-game progress (current level, unlocked
+    // levels, per-level best score, total play time) to NSUbiquitousKeyValueStore
+    // so they survive delete/reinstall and follow the user across devices.
+    // Mid-level grid snapshots are intentionally NOT synced — they're volatile
+    // and device-local feels right (you don't resume a half-finished board on
+    // another device).
+
+    private static let kvsCurrentLevel    = "matchGame_currentLevel"
+    private static let kvsUnlockedLevels  = "matchGame_unlockedLevels"
+    private static let kvsTotalTime       = "matchGame_totalTime"
+    private static let kvsScorePrefix     = "matchGame_score_"
+
+    private func pushProgressToCloud() {
+        let kvs = NSUbiquitousKeyValueStore.default
+
+        // Use max-merge for level and time so we never regress a value already
+        // higher in the cloud (e.g. another device pushed first).
+        let cloudLevel = Int(kvs.longLong(forKey: Self.kvsCurrentLevel))
+        kvs.set(Int64(max(cloudLevel, currentLevelId)), forKey: Self.kvsCurrentLevel)
+
+        let cloudTime = kvs.double(forKey: Self.kvsTotalTime)
+        kvs.set(max(cloudTime, totalElapsed), forKey: Self.kvsTotalTime)
+
+        // Unlocked levels: union with whatever the cloud has.
+        let cloudUnlocked = (kvs.array(forKey: Self.kvsUnlockedLevels) as? [Int]) ?? []
+        let merged = Array(Set(cloudUnlocked).union(unlockedLevels)).sorted()
+        kvs.set(merged, forKey: Self.kvsUnlockedLevels)
+
+        // Best score for the current level: max-merge.
+        let scoreKey = Self.kvsScorePrefix + String(currentLevelId)
+        let cloudScore = Int(kvs.longLong(forKey: scoreKey))
+        kvs.set(Int64(max(cloudScore, score)), forKey: scoreKey)
+
+        kvs.synchronize()
+    }
+
+    /// Pulls cloud progress, merges (max for scalars, union for unlocked list),
+    /// and writes the merged result back into UserDefaults so the rest of the
+    /// code path is unchanged.
+    private func mergeCloudProgressIntoDefaults() {
+        let kvs = NSUbiquitousKeyValueStore.default
+        // First sync down whatever the system has cached locally for the iCloud
+        // account. This is a no-op if iCloud isn't available.
+        kvs.synchronize()
+
+        // Current level
+        let cloudLevel = Int(kvs.longLong(forKey: Self.kvsCurrentLevel))
+        let localLevel = defaults.integer(forKey: "matchGameCurrentLevel")
+        let mergedLevel = max(cloudLevel, localLevel)
+        if mergedLevel > 0 {
+            defaults.set(mergedLevel, forKey: "matchGameCurrentLevel")
+        }
+
+        // Total play time
+        let cloudTime = kvs.double(forKey: Self.kvsTotalTime)
+        let localTime = defaults.double(forKey: "matchGameTotalTime")
+        let mergedTime = max(cloudTime, localTime)
+        if mergedTime > 0 {
+            defaults.set(mergedTime, forKey: "matchGameTotalTime")
+        }
+
+        // Unlocked levels (union)
+        let cloudUnlocked = (kvs.array(forKey: Self.kvsUnlockedLevels) as? [Int]) ?? []
+        let localUnlocked = (defaults.array(forKey: "matchGameUnlockedLevels") as? [Int]) ?? [1]
+        let mergedUnlocked = Array(Set(cloudUnlocked).union(localUnlocked)).sorted()
+        if !mergedUnlocked.isEmpty {
+            defaults.set(mergedUnlocked, forKey: "matchGameUnlockedLevels")
+        }
+
+        // Per-level best scores: only restore the score for the level we're
+        // about to play (others get loaded lazily if/when the user navigates).
+        // Use the to-be-loaded current level id, which is mergedLevel above.
+        let lvlForScore = mergedLevel > 0 ? mergedLevel : 1
+        let scoreKey = Self.kvsScorePrefix + String(lvlForScore)
+        let cloudScore = Int(kvs.longLong(forKey: scoreKey))
+        let localScore = defaults.integer(forKey: "matchGameScore_\(lvlForScore)")
+        let mergedScore = max(cloudScore, localScore)
+        if mergedScore > 0 {
+            defaults.set(mergedScore, forKey: "matchGameScore_\(lvlForScore)")
+        }
+    }
+
+    @objc private func cloudProgressChangedExternally(_ note: Notification) {
+        // Re-merge and refresh the in-memory unlocked levels list so the level
+        // selector reflects newly unlocked levels from another device. Don't
+        // touch the actively-played level/score mid-game.
+        mergeCloudProgressIntoDefaults()
+        if let saved = defaults.array(forKey: "matchGameUnlockedLevels") as? [Int] {
+            unlockedLevels = saved
         }
     }
     

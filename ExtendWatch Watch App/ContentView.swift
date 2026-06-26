@@ -116,6 +116,12 @@ struct RootView: View {
             WatchConnectivityBridge.shared.activate()
             await WatchHealthKit.shared.requestAuthorization()
             await WatchWorkoutSessionManager.shared.requestAuthorization()
+            // Seed the water complication from HealthKit before the timeline
+            // reload below. After a reinstall the App Group is empty, and the
+            // iPhone's WC push can be dropped if it runs before the watch app
+            // reports itself as installed — without this fallback the
+            // complication renders 0 until the user logs more water.
+            await seedWaterComplicationFromHealthKit()
             // Reload complications so settings changes take effect
             WidgetCenter.shared.reloadAllTimelines()
         }
@@ -181,6 +187,19 @@ struct RootView: View {
         try? await Task.sleep(nanoseconds: 250_000_000)
         guard generation == gateGeneration else { return }
         initialRouteResolved = true
+    }
+
+    /// Reads today's water from HealthKit and writes it into the shared App
+    /// Group so the WaterComplication's TimelineProvider has something to
+    /// render. Idempotent — takes the max of HK and the stored value so a
+    /// fresh in-flight watch-side optimistic total isn't reverted.
+    private func seedWaterComplicationFromHealthKit() async {
+        let hkOz = await WatchHealthKit.shared.todayWaterOz()
+        guard hkOz > 0 else { return }
+        let defaults = UserDefaults(suiteName: "group.com.cavanmannenbach.extend") ?? .standard
+        let current = defaults.double(forKey: "water_today_oz")
+        defaults.set(max(hkOz, current), forKey: "water_today_oz")
+        defaults.set(Calendar.current.startOfDay(for: Date()), forKey: "water_today_date")
     }
 
     private func pageVisible(_ tag: String) -> Bool {

@@ -21,6 +21,8 @@ final class WatchConnectivityReceiver: NSObject {
     }
 
     /// True only when there's an active, paired watch with the watch app installed.
+    /// Used to gate `transferUserInfo` — those messages queue indefinitely in
+    /// the iPhone's outbox, so we skip them if there's clearly no recipient.
     private var canSendToWatch: Bool {
         WCSession.isSupported() &&
         WCSession.default.activationState == .activated &&
@@ -28,25 +30,41 @@ final class WatchConnectivityReceiver: NSObject {
         WCSession.default.isWatchAppInstalled
     }
 
+    /// Looser gate used for `updateApplicationContext`. After a fresh watch
+    /// install the system can briefly report `isWatchAppInstalled == false`
+    /// even though the watch is paired and the app will become installed
+    /// shortly. Application context is persistent and replaces any previous
+    /// payload, so it's safe to set it whenever the session is paired and
+    /// activated — the watch will receive it on its next activation. Without
+    /// this, the CloudKit-driven water push on iPhone cold-launch was
+    /// silently dropped, leaving the complication stuck on stale data.
+    private var canUpdateContext: Bool {
+        WCSession.isSupported() &&
+        WCSession.default.activationState == .activated &&
+        WCSession.default.isPaired
+    }
+
     /// Push today's total workout-log count to the watch so the Library
     /// complication can show "Extend — N done". The App Group container is
     /// device-local, so without this the watch widget would never see the
     /// iPhone-side count update.
     func sendTodayLogCountUpdate(count: Int) {
-        guard canSendToWatch else { return }
         let payload: [String: Any] = [
             "type": "today_log_count_update",
             "count": count,
             "date": Calendar.current.startOfDay(for: Date()).timeIntervalSince1970,
             "sent_at": Date().timeIntervalSince1970
         ]
-        try? WCSession.default.updateApplicationContext(payload)
-        WCSession.default.transferUserInfo(payload)
+        if canUpdateContext {
+            try? WCSession.default.updateApplicationContext(payload)
+        }
+        if canSendToWatch {
+            WCSession.default.transferUserInfo(payload)
+        }
     }
 
     /// Push the iPhone's current water totals to the watch display and complication.
     func sendWaterUpdate(todayOz: Double, goalOz: Double) {
-        guard canSendToWatch else { return }
         let payload: [String: Any] = [
             "type": "water_update",
             "today_oz": todayOz,
@@ -54,8 +72,12 @@ final class WatchConnectivityReceiver: NSObject {
             "date": Calendar.current.startOfDay(for: Date()).timeIntervalSince1970,
             "sent_at": Date().timeIntervalSince1970
         ]
-        try? WCSession.default.updateApplicationContext(payload)
-        WCSession.default.transferUserInfo(payload)
+        if canUpdateContext {
+            try? WCSession.default.updateApplicationContext(payload)
+        }
+        if canSendToWatch {
+            WCSession.default.transferUserInfo(payload)
+        }
     }
 
     /// Push the ±7-day plan snapshots to the watch so WatchPlanDetailView and the
@@ -66,15 +88,18 @@ final class WatchConnectivityReceiver: NSObject {
     /// path, complication refreshes can be deferred for minutes by the watchOS
     /// complication budget.
     func sendPlanUpdate(multidaySnapshots: [WidgetPlanSnapshot]) {
-        guard canSendToWatch else { return }
         guard let data = try? JSONEncoder().encode(multidaySnapshots) else { return }
         let payload: [String: Any] = [
             "type": "plan_update",
             "multiday_data": data,
             "sent_at": Date().timeIntervalSince1970
         ]
-        try? WCSession.default.updateApplicationContext(payload)
-        WCSession.default.transferUserInfo(payload)
+        if canUpdateContext {
+            try? WCSession.default.updateApplicationContext(payload)
+        }
+        if canSendToWatch {
+            WCSession.default.transferUserInfo(payload)
+        }
     }
 
     /// Pushes the watch's full startable library (all workouts/exercises/
@@ -83,15 +108,18 @@ final class WatchConnectivityReceiver: NSObject {
     /// Uses `updateApplicationContext` for immediate latest-state delivery,
     /// plus `transferUserInfo` for guaranteed eventual delivery.
     func sendLibraryUpdate(_ snapshot: WatchLibrarySnapshot) {
-        guard canSendToWatch else { return }
         guard let data = try? JSONEncoder().encode(snapshot) else { return }
         let payload: [String: Any] = [
             "type": "library_update",
             "library_data": data,
             "sent_at": Date().timeIntervalSince1970
         ]
-        try? WCSession.default.updateApplicationContext(payload)
-        WCSession.default.transferUserInfo(payload)
+        if canUpdateContext {
+            try? WCSession.default.updateApplicationContext(payload)
+        }
+        if canSendToWatch {
+            WCSession.default.transferUserInfo(payload)
+        }
     }
 
     /// Force a complication refresh on the watch. Call this when plan data changes
@@ -112,11 +140,41 @@ final class WatchConnectivityReceiver: NSObject {
 }
 
 extension WatchConnectivityReceiver: WCSessionDelegate {
-    func session(_ session: WCSession, activationDidCompleteWith activationState: WCSessionActivationState, error: Error?) {}
+    func session(_ session: WCSession, activationDidCompleteWith activationState: WCSessionActivationState, error: Error?) {
+        // Re-push current water totals as soon as the session activates.
+        // After a fresh reinstall the iPhone's CloudKit-driven water push can
+        // run before the watch app reports itself as installed; this catches
+        // that case (and any other time we missed a push while inactive).
+        guard activationState == .activated else { return }
+        rePushLatestStateToWatch()
+    }
     func sessionDidBecomeInactive(_ session: WCSession) {}
     func sessionDidDeactivate(_ session: WCSession) {
         // Re-activate when the user switches Apple Watch models
         WCSession.default.activate()
+    }
+
+    func sessionReachabilityDidChange(_ session: WCSession) {
+        // The watch just came in range / woke up — re-push so a previously
+        // dropped water update lands now that the channel is open.
+        guard session.isReachable else { return }
+        rePushLatestStateToWatch()
+    }
+
+    func sessionWatchStateDidChange(_ session: WCSession) {
+        // Fires when isPaired / isWatchAppInstalled flip. Right after a
+        // fresh watch install this transitions from false → true; that's
+        // exactly when we need to re-deliver the water snapshot.
+        guard session.isPaired, session.isWatchAppInstalled else { return }
+        rePushLatestStateToWatch()
+    }
+
+    private func rePushLatestStateToWatch() {
+        DispatchQueue.main.async {
+            let oz = WaterState.shared.todayOz
+            let goal = WaterState.shared.dailyGoalOz
+            self.sendWaterUpdate(todayOz: oz, goalOz: goal)
+        }
     }
 
     // Receive water logs and watch-initiated workout logs.
