@@ -45,6 +45,24 @@ public final class WorkoutLogState {
         if let existingHealthKitUUID {
             log.healthKitUUID = existingHealthKitUUID
         }
+        // Backfill an active-calorie estimate when the source didn't provide one
+        // (phone-only workouts; no Apple Watch session). The Progress UI surfaces
+        // log.activeCalories, so populating it here avoids "0 cal" cards for
+        // workouts that never went through the HealthKit export path.
+        if log.activeCalories == nil, log.duration > 0 {
+            let resolvedRaw = log.healthKitActivityTypeRaw ?? {
+                let uniqueIDs = Set(log.exercises.map { $0.exerciseID })
+                guard uniqueIDs.count == 1, let exID = uniqueIDs.first else { return nil }
+                return ExercisesState.shared.exercises.first(where: { $0.id == exID })?.healthKitActivityType
+            }()
+            let activityType = HKWorkoutActivityTypeHelper.hkType(from: resolvedRaw)
+            let weightKg = HealthKitState.shared.userWeightKg
+            log.activeCalories = HealthKitService.shared.estimatedCalories(
+                durationSeconds: log.duration,
+                activityType: activityType,
+                bodyWeightKg: weightKg > 0 ? weightKg : nil
+            )
+        }
         logs.append(log)
         saveLogs()
         // Refresh widget so completion checkboxes update immediately
@@ -136,20 +154,28 @@ public final class WorkoutLogState {
         let startDate = log.completedAt.addingTimeInterval(-log.duration)
         let activityType = HKWorkoutActivityTypeHelper.hkType(from: resolvedTypeRaw)
         let weight = HealthKitState.shared.userWeightKg
-        let calories = HealthKitService.shared.estimatedCalories(
+        // Prefer the watch-measured value (set by WatchConnectivityReceiver for any
+        // workout that ran a live HKWorkoutSession on the watch). Fall back to a MET
+        // estimate. Basal is always estimated so Apple Health can show Total > Active.
+        let activeKcal = log.activeCalories ?? HealthKitService.shared.estimatedCalories(
             durationSeconds: log.duration,
             activityType: activityType,
+            bodyWeightKg: weight > 0 ? weight : nil
+        )
+        let basalKcal = HealthKitService.shared.estimatedBasalCalories(
+            durationSeconds: log.duration,
             bodyWeightKg: weight > 0 ? weight : nil
         )
 
         do {
             // Request authorization first (won't prompt again if already granted)
             try await HealthKitService.shared.requestAuthorization()
-            
+
             if let hkUUID = try await HealthKitService.shared.exportStrengthWorkout(
                 startDate: startDate,
                 endDate: log.completedAt,
-                totalEnergyBurned: calories,
+                activeEnergyKcal: activeKcal,
+                basalEnergyKcal: basalKcal,
                 activityType: activityType
             ) {
                 // Persist the HKWorkout UUID back to the log

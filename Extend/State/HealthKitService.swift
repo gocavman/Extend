@@ -156,6 +156,7 @@ public final class HealthKitService {
         [
             HKObjectType.workoutType(),
             HKQuantityType(.activeEnergyBurned),
+            HKQuantityType(.basalEnergyBurned),
             HKQuantityType(.dietaryWater)
         ]
     }
@@ -164,6 +165,7 @@ public final class HealthKitService {
         [
             HKObjectType.workoutType(),
             HKQuantityType(.activeEnergyBurned),
+            HKQuantityType(.basalEnergyBurned),
             HKQuantityType(.appleExerciseTime),
             HKQuantityType(.heartRate),
             HKQuantityType(.dietaryWater)
@@ -211,13 +213,18 @@ public final class HealthKitService {
 
     // MARK: - Export: Strength Workout
 
-    /// Saves a completed workout to Apple Health.
+    /// Saves a completed workout to Apple Health. The active-energy and basal-energy
+    /// values are written as separate `HKQuantitySample`s so Apple Health can compute
+    /// "Total" as their sum — writing only `activeEnergyBurned` causes Health to
+    /// display Active and Total identically. Pass the watch-measured active value
+    /// when available; the caller is responsible for choosing the source.
     /// Returns the UUID of the created HKWorkout, or nil on failure.
     @discardableResult
     public func exportStrengthWorkout(
         startDate: Date,
         endDate: Date,
-        totalEnergyBurned: Double? = nil,
+        activeEnergyKcal: Double? = nil,
+        basalEnergyKcal: Double? = nil,
         activityType: HKWorkoutActivityType = .other
     ) async throws -> UUID? {
         guard isAvailable else { return nil }
@@ -226,14 +233,20 @@ public final class HealthKitService {
 
         try await builder.beginCollection(at: startDate)
 
-        if let calories = totalEnergyBurned, calories > 0 {
-            let energyType = HKQuantityType(.activeEnergyBurned)
-            let quantity = HKQuantity(unit: .kilocalorie(), doubleValue: calories)
-            let sample = HKQuantitySample(type: energyType, quantity: quantity, start: startDate, end: endDate)
-            // If the user hasn't granted active-energy share permission, the sample add
-            // can throw — but we still want the workout itself to save so it contributes
-            // to Exercise Minutes. Energy is best-effort.
-            try? await builder.addSamples([sample])
+        // Energy samples are best-effort — if the user hasn't granted share permission
+        // for either type, the add can throw but we still want the workout itself to
+        // save so it contributes to Exercise Minutes.
+        var samples: [HKQuantitySample] = []
+        if let active = activeEnergyKcal, active > 0 {
+            let quantity = HKQuantity(unit: .kilocalorie(), doubleValue: active)
+            samples.append(HKQuantitySample(type: HKQuantityType(.activeEnergyBurned), quantity: quantity, start: startDate, end: endDate))
+        }
+        if let basal = basalEnergyKcal, basal > 0 {
+            let quantity = HKQuantity(unit: .kilocalorie(), doubleValue: basal)
+            samples.append(HKQuantitySample(type: HKQuantityType(.basalEnergyBurned), quantity: quantity, start: startDate, end: endDate))
+        }
+        if !samples.isEmpty {
+            try? await builder.addSamples(samples)
         }
 
         try await builder.endCollection(at: endDate)
@@ -313,6 +326,19 @@ public final class HealthKitService {
             return base * (weight / 70.0)
         }
         return base
+    }
+
+    /// Rough resting (basal) calorie burn for `durationSeconds`. Uses ≈1 kcal/kg/hour,
+    /// a common approximation of average adult BMR (≈70 kcal/h for a 70 kg adult).
+    /// When `bodyWeightKg` is nil or non-positive, falls back to the 70 kg baseline.
+    /// Written as a separate `.basalEnergyBurned` sample during workout export so
+    /// Apple Health doesn't display "Total = Active" for the session.
+    public func estimatedBasalCalories(
+        durationSeconds: TimeInterval,
+        bodyWeightKg: Double? = nil
+    ) -> Double {
+        let weight = (bodyWeightKg ?? 0) > 0 ? (bodyWeightKg ?? 70) : 70
+        return weight * (durationSeconds / 3600.0)
     }
 
     // MARK: - Import: Workouts

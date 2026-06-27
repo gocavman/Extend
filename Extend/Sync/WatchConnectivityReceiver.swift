@@ -213,6 +213,9 @@ extension WatchConnectivityReceiver: WCSessionDelegate {
                   let parsed = WorkoutLogType(rawValue: raw) else { return .workout }
             return parsed
         }()
+        // Watch-measured active kcal from HKLiveWorkoutDataSource. Phone falls back
+        // to a MET estimate inside WorkoutLogState.addLog when this is nil.
+        let activeCalories: Double? = (payload["active_calories"] as? Double).flatMap { $0 > 0 ? $0 : nil }
 
         // Decode the optional exercises blob — watch sends this only for
         // blueprint-driven workouts. Falls back to a "duration-only" log.
@@ -257,7 +260,8 @@ extension WatchConnectivityReceiver: WCSessionDelegate {
                 logType: logType,
                 exercises: loggedExercises,
                 notes: notes,
-                duration: duration
+                duration: duration,
+                activeCalories: activeCalories
             )
             // Pass exportToHealthKit: true so the iPhone still records it when
             // the watch couldn't produce a UUID (HK auth missing, session

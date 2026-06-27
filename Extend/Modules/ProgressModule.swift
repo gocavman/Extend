@@ -1811,6 +1811,12 @@ private struct WorkoutLogCard: View {
                                 .font(.caption)
                                 .foregroundColor(.gray)
                         }
+
+                        if let kcal = log.activeCalories, kcal > 0 {
+                            Label("\(Int(kcal.rounded())) cal", systemImage: "flame.fill")
+                                .font(.caption)
+                                .foregroundColor(.gray)
+                        }
                     }
                 }
                 .padding(12)
@@ -2158,6 +2164,15 @@ private struct WorkoutLogDetailView: View {
                             Label(
                                 "Distance: \(DistanceFormatter.format(meters: totalDistanceMeters, unit: distanceUnit))",
                                 systemImage: "ruler"
+                            )
+                            .font(.caption)
+                            .foregroundColor(.gray)
+                        }
+
+                        if let kcal = log.activeCalories, kcal > 0 {
+                            Label(
+                                "Active Calories: \(Int(kcal.rounded())) cal",
+                                systemImage: "flame.fill"
                             )
                             .font(.caption)
                             .foregroundColor(.gray)

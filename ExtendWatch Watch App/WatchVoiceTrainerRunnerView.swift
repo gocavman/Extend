@@ -337,6 +337,7 @@ struct WatchVoiceTrainerRunnerView: View {
         let logName = manager.pendingLogName
         let activityTypeRaw = manager.activityTypeRaw
         let start = manager.startDate ?? Date()
+        let activeCalories = manager.activeEnergyKcal
         Task {
             let uuid = await manager.end()
             let endDate = Date()
@@ -346,7 +347,8 @@ struct WatchVoiceTrainerRunnerView: View {
                 completedAt: endDate,
                 duration: duration,
                 hkActivityTypeRaw: activityTypeRaw,
-                hkWorkoutUUID: uuid
+                hkWorkoutUUID: uuid,
+                activeCalories: activeCalories > 0 ? activeCalories : nil
             )
             await MainActor.run { isFinishing = false }
         }

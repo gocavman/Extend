@@ -38,6 +38,11 @@ public struct WorkoutLog: Identifiable, Codable, Hashable {
     /// (`HKMetadataKeyIndoorWorkout`). `true` = indoor, `false` = outdoor,
     /// `nil` = the source workout didn't specify (or not imported from HK).
     public var isIndoor: Bool?
+    /// Kilocalories burned during the active portion of the workout. Prefer the
+    /// Apple Watch's `HKLiveWorkoutDataSource` measurement when the workout came
+    /// from a watch session; otherwise this is a MET-based estimate filled in at
+    /// log time so the Progress UI can surface a calorie figure.
+    public var activeCalories: Double?
 
     public init(
         id: UUID = UUID(),
@@ -53,7 +58,8 @@ public struct WorkoutLog: Identifiable, Codable, Hashable {
         primaryMuscleGroupIDs: [UUID] = [],
         secondaryMuscleGroupIDs: [UUID] = [],
         logEquipmentIDs: [UUID] = [],
-        isIndoor: Bool? = nil
+        isIndoor: Bool? = nil,
+        activeCalories: Double? = nil
     ) {
         self.id = id
         self.workoutName = workoutName
@@ -69,6 +75,7 @@ public struct WorkoutLog: Identifiable, Codable, Hashable {
         self.secondaryMuscleGroupIDs = secondaryMuscleGroupIDs
         self.logEquipmentIDs = logEquipmentIDs
         self.isIndoor = isIndoor
+        self.activeCalories = activeCalories
     }
 
     public init(from decoder: Decoder) throws {
@@ -87,6 +94,7 @@ public struct WorkoutLog: Identifiable, Codable, Hashable {
         secondaryMuscleGroupIDs = (try? c.decodeIfPresent([UUID].self, forKey: .secondaryMuscleGroupIDs)) ?? []
         logEquipmentIDs = (try? c.decodeIfPresent([UUID].self, forKey: .logEquipmentIDs)) ?? []
         isIndoor = try? c.decodeIfPresent(Bool.self, forKey: .isIndoor)
+        activeCalories = try? c.decodeIfPresent(Double.self, forKey: .activeCalories)
     }
 }
 

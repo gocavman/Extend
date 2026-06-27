@@ -402,6 +402,7 @@ struct WatchTimerRunnerView: View {
         let activityTypeRaw = manager.activityTypeRaw
         let start = manager.startDate ?? Date()
         let notes = buildNotes()
+        let activeCalories = manager.activeEnergyKcal
         Task {
             let uuid = await manager.end()
             let endDate = Date()
@@ -413,7 +414,8 @@ struct WatchTimerRunnerView: View {
                 hkActivityTypeRaw: activityTypeRaw,
                 hkWorkoutUUID: uuid,
                 notes: notes,
-                logType: "timer"
+                logType: "timer",
+                activeCalories: activeCalories > 0 ? activeCalories : nil
             )
             await MainActor.run { isFinishing = false }
         }

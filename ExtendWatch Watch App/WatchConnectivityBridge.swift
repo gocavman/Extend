@@ -55,7 +55,8 @@ final class WatchConnectivityBridge: NSObject {
                           hkWorkoutUUID: UUID?,
                           exercises: [WatchLoggedExercise]? = nil,
                           notes: String? = nil,
-                          logType: String? = nil) {
+                          logType: String? = nil,
+                          activeCalories: Double? = nil) {
         guard WCSession.isSupported(),
               WCSession.default.activationState == .activated else { return }
         var payload: [String: Any] = [
@@ -72,6 +73,12 @@ final class WatchConnectivityBridge: NSObject {
         }
         if let notes, !notes.isEmpty { payload["notes"] = notes }
         if let logType, !logType.isEmpty { payload["log_type"] = logType }
+        // Watch-measured active kcal from the live HKWorkoutSession — Apple Watch
+        // is the source of truth when available. iPhone falls back to a MET-based
+        // estimate when this field is absent.
+        if let activeCalories, activeCalories > 0 {
+            payload["active_calories"] = activeCalories
+        }
         WCSession.default.transferUserInfo(payload)
     }
 }
