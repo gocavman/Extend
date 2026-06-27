@@ -214,15 +214,23 @@ private struct EquipmentModuleView: View {
                 }
                 .listStyle(.plain)
                 .fullScreenCover(isPresented: $showingAdd) {
-                    EquipmentEditor(title: "Add Equipment") { name, symbol in
-                        state.addItem(name: name, sfSymbol: symbol)
+                    EquipmentEditor(title: "Add Equipment") { name, symbol, startDate, endDate in
+                        state.addItem(name: name, sfSymbol: symbol, startDate: startDate, endDate: endDate)
                     }
                 }
                 .fullScreenCover(item: $editingItem) { item in
-                    EquipmentEditor(title: "Edit Equipment", initialName: item.name, initialSymbol: item.sfSymbol ?? EquipmentState.defaultSFSymbol(for: item.name)) { name, symbol in
+                    EquipmentEditor(
+                        title: "Edit Equipment",
+                        initialName: item.name,
+                        initialSymbol: item.sfSymbol ?? EquipmentState.defaultSFSymbol(for: item.name),
+                        initialStartDate: item.startDate,
+                        initialEndDate: item.endDate
+                    ) { name, symbol, startDate, endDate in
                         var updated = item
                         updated.name = name
                         updated.sfSymbol = symbol
+                        updated.startDate = startDate
+                        updated.endDate = endDate
                         state.updateItem(updated)
                     } onDelete: {
                         state.removeItem(id: item.id)
@@ -257,22 +265,42 @@ private struct EquipmentEditor: View {
     let title: String
     let initialName: String
     let initialSymbol: String
-    let onSave: (String, String) -> Void
+    let initialStartDate: Date?
+    let initialEndDate: Date?
+    let onSave: (String, String, Date?, Date?) -> Void
     let onDelete: (() -> Void)?
 
     @State private var name: String
     @State private var selectedSymbol: String
+    @State private var hasStartDate: Bool
+    @State private var startDate: Date
+    @State private var hasEndDate: Bool
+    @State private var endDate: Date
     @State private var showDeleteConfirm = false
     @State private var showSymbolPicker = false
 
-    init(title: String, initialName: String = "", initialSymbol: String = "dumbbell.fill", onSave: @escaping (String, String) -> Void, onDelete: (() -> Void)? = nil) {
+    init(
+        title: String,
+        initialName: String = "",
+        initialSymbol: String = "dumbbell.fill",
+        initialStartDate: Date? = nil,
+        initialEndDate: Date? = nil,
+        onSave: @escaping (String, String, Date?, Date?) -> Void,
+        onDelete: (() -> Void)? = nil
+    ) {
         self.title = title
         self.initialName = initialName
         self.initialSymbol = initialSymbol
+        self.initialStartDate = initialStartDate
+        self.initialEndDate = initialEndDate
         self.onSave = onSave
         self.onDelete = onDelete
         _name = State(initialValue: initialName)
         _selectedSymbol = State(initialValue: initialSymbol)
+        _hasStartDate = State(initialValue: initialStartDate != nil)
+        _startDate = State(initialValue: initialStartDate ?? Date())
+        _hasEndDate = State(initialValue: initialEndDate != nil)
+        _endDate = State(initialValue: initialEndDate ?? Date())
     }
 
     var body: some View {
@@ -301,6 +329,21 @@ private struct EquipmentEditor: View {
                     }
                     .buttonStyle(.plain)
                 }
+
+                Section {
+                    Toggle("Start Date", isOn: $hasStartDate)
+                    if hasStartDate {
+                        DatePicker("First used", selection: $startDate, displayedComponents: .date)
+                    }
+                    Toggle("End Date", isOn: $hasEndDate)
+                    if hasEndDate {
+                        DatePicker("Last used", selection: $endDate, displayedComponents: .date)
+                    }
+                } header: {
+                    Text("Usage Window")
+                } footer: {
+                    Text("Leave both off to include all matching workouts. Set a Start Date for items like a new pair of shoes so stats don't pull in prior history of the linked exercise.")
+                }
             }
             .scrollContentBackground(.hidden)
             .background(Color(UIColor.systemBackground))
@@ -320,7 +363,16 @@ private struct EquipmentEditor: View {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Save") {
                         UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                        onSave(name, selectedSymbol)
+                        let start = hasStartDate ? Calendar.current.startOfDay(for: startDate) : nil
+                        // Normalise the end-of-day so a same-day "End Date" still includes that day's logs.
+                        let end: Date?
+                        if hasEndDate {
+                            let dayStart = Calendar.current.startOfDay(for: endDate)
+                            end = Calendar.current.date(byAdding: .day, value: 1, to: dayStart).map { $0.addingTimeInterval(-1) }
+                        } else {
+                            end = nil
+                        }
+                        onSave(name, selectedSymbol, start, end)
                         dismiss()
                     }
                     .disabled(name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
@@ -499,8 +551,13 @@ private struct EquipmentHistorySheet: View {
     }
 
     private var sessions: [SessionEntry] {
-        let start = timeRange.startDate
-        return logState.sortedLogs.filter { $0.completedAt >= start }.compactMap { log in
+        // Intersect the picker's lower bound with the equipment's optional in-use window so
+        // a brand-new pair of shoes (startDate = today) doesn't list every prior Running log.
+        let start = max(timeRange.startDate, equipment.startDate ?? .distantPast)
+        let end = equipment.endDate ?? .distantFuture
+        return logState.sortedLogs
+            .filter { $0.completedAt >= start && $0.completedAt <= end }
+            .compactMap { log in
             // Include VoiceTrainer logs that list this equipment directly
             if log.logType == .voiceTrainer && log.logEquipmentIDs.contains(equipment.id) {
                 return SessionEntry(

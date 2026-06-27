@@ -836,14 +836,29 @@ struct EquipmentStatsView: View {
         Set(linkedExercises.map { $0.id })
     }
 
-    /// Logs within the time range that contain at least one linked exercise, or a VoiceTrainer log using this equipment
+    /// Effective lower bound: intersection of the picker's time range and the equipment's
+    /// optional first-used date.
+    private var effectiveStartDate: Date {
+        max(timeRange.startDate, equipment.startDate ?? .distantPast)
+    }
+
+    /// Effective upper bound from the equipment's optional last-used date (open-ended when nil).
+    private var effectiveEndDate: Date {
+        equipment.endDate ?? .distantFuture
+    }
+
+    /// Logs within the active window that include at least one exercise the user marked as
+    /// using THIS specific equipment (matches EquipmentHistorySheet semantics so brand-new
+    /// equipment doesn't inherit the linked exercise's full prior history). VoiceTrainer logs
+    /// are matched via the log-level equipment list since they don't track per-exercise IDs.
     private var filteredLogs: [WorkoutLog] {
-        let start = timeRange.startDate
+        let start = effectiveStartDate
+        let end = effectiveEndDate
         let equipID = equipment.id
         return logState.logs
-            .filter { $0.completedAt >= start }
+            .filter { $0.completedAt >= start && $0.completedAt <= end }
             .filter { log in
-                log.exercises.contains(where: { linkedExerciseIDs.contains($0.exerciseID) }) ||
+                log.exercises.contains(where: { $0.usedEquipmentIDs.contains(equipID) }) ||
                 (log.logType == .voiceTrainer && log.logEquipmentIDs.contains(equipID))
             }
             .sorted { $0.completedAt < $1.completedAt }
@@ -861,15 +876,18 @@ struct EquipmentStatsView: View {
     private var weekBuckets: [WeekBucket] {
         guard !filteredLogs.isEmpty else { return [] }
         let cal = Calendar.current
+        let equipID = equipment.id
         var dict: [Date: WeekBucket] = [:]
         for log in filteredLogs {
             let start = cal.dateInterval(of: .weekOfYear, for: log.completedAt)?.start ?? log.completedAt
-            let linked = log.exercises.filter { linkedExerciseIDs.contains($0.exerciseID) }
-            let volume = linked
+            // Aggregate only over exercises that actually used this equipment so two pieces of
+            // gear in the same workout don't both inherit the full session's totals.
+            let relevant = log.exercises.filter { $0.usedEquipmentIDs.contains(equipID) }
+            let volume = relevant
                 .flatMap { $0.sets }
                 .reduce(0.0) { $0 + Double($1.reps) * $1.weight }
-            let durationMin = Double(linked.reduce(0) { $0 + $1.activeSeconds }) / 60.0
-            let distanceM = linked.reduce(0.0) { $0 + ($1.distanceMeters ?? 0) }
+            let durationMin = Double(relevant.reduce(0) { $0 + $1.activeSeconds }) / 60.0
+            let distanceM = relevant.reduce(0.0) { $0 + ($1.distanceMeters ?? 0) }
             if dict[start] != nil {
                 dict[start]!.sessions += 1
                 dict[start]!.totalVolume += volume

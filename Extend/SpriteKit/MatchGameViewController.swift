@@ -649,6 +649,13 @@ class MatchGameViewController: UIViewController {
             }
         }
 
+        // Safety net: rare corner cases (small item palettes — e.g. level 6's 5 items × 1 color)
+        // let generateNonMatchingPiece's 10-attempt failsafe seat a piece that creates a 3+ run
+        // or 2x2. checkForMatches is not called after startLevel, so any such matches would sit
+        // on the board indefinitely (the swap validator only checks new matches at swap positions,
+        // so swapping within an existing run reverts and frustrates the player).
+        sanitizeInitialGrid()
+
         updateUI()
         renderGrid()
         updateGridDisplay()  // apply shield emoji to armored tiles
@@ -2362,6 +2369,29 @@ class MatchGameViewController: UIViewController {
         let randomItemIndex = Int.random(in: 0..<level.items.count)
         let randomColorIndex = Int.random(in: 0..<level.colors.count)
         return GamePiece(itemId: level.items[randomItemIndex].id, colorIndex: randomColorIndex, row: row, col: col, type: .normal)
+    }
+
+    /// Sweeps the freshly-filled board and regenerates any cell that participates in a
+    /// 3+ horizontal/vertical match or a 2x2 block, repeating until no matches remain
+    /// (or the pass cap is hit). Designed for the initial board only.
+    private func sanitizeInitialGrid() {
+        guard let level = currentLevel else { return }
+        let maxPasses = 12
+        for _ in 0..<maxPasses {
+            var rerolled = false
+            for row in 0..<level.gridHeight {
+                for col in 0..<level.gridWidth {
+                    guard gridShapeMap[row][col],
+                          let piece = gameGrid[row][col],
+                          piece.type == .normal else { continue }
+                    if hasMatchesAtPosition(row, col) || has2x2AtPosition(row, col) {
+                        gameGrid[row][col] = generateNonMatchingPiece(row: row, col: col, level: level, avoidMatches: true)
+                        rerolled = true
+                    }
+                }
+            }
+            if !rerolled { break }
+        }
     }
 
     /// Clears tiles from the grid, awards score, then activates cascading powerups or applies gravity.
