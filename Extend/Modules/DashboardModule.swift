@@ -84,6 +84,9 @@ private struct DashboardModuleView: View {
     @State private var matchGameLevel: Int = 1
     @State private var refreshTrigger: UUID = UUID()
 
+    // Detail sheets opened by tapping a stat tile.
+    @State private var statDetail: StatDetailSheet? = nil
+
     var body: some View {
         VStack(spacing: 0) {
             // Reserve safe area at top so tiles don't bleed under the status bar
@@ -164,6 +167,9 @@ private struct DashboardModuleView: View {
         }
         .fullScreenCover(item: $historyVoiceConfig) { config in
             VoiceTrainerHistorySheet(config: config, logState: logState)
+        }
+        .fullScreenCover(item: $statDetail) { detail in
+            statDetailDestination(for: detail)
         }
         .onAppear {
             matchGameLevel = defaults.integer(forKey: "matchGameCurrentLevel")
@@ -319,10 +325,7 @@ private struct DashboardModuleView: View {
                 .frame(width: tileWidth, height: (dynamicEntryCount > 0 || tileHeight == nil) ? nil : tileHeight)
                 .contentShape(Rectangle())
                 .onTapGesture {
-                    if statCard == .waterIntake14Days {
-                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                        state.selectModule(ModuleIDs.water)
-                    }
+                    handleStatTileTap(statCard: statCard, tile: tile)
                 }
                 .rotationEffect(.degrees(tileRotations[tile.id] ?? 0))
                 .offset(
@@ -605,6 +608,32 @@ private struct DashboardModuleView: View {
     private func isBlankTile(_ tile: DashboardTile) -> Bool {
         tile.targetModuleID == nil && tile.tileType == .moduleShortcut && tile.statCardType == nil
     }
+
+    /// Routes a tap on a stat card to either a related module (water) or a
+    /// full-screen detail sheet (leaderboards, volume, muscle groups).
+    private func handleStatTileTap(statCard: StatCardType, tile: DashboardTile) {
+        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+        switch statCard {
+        case .waterIntake14Days:
+            state.selectModule(ModuleIDs.water)
+        case .personalRecord:
+            statDetail = .personalRecord(tile)
+        case .oneRepMax:
+            statDetail = .oneRepMax(tile)
+        case .topDurations:
+            statDetail = .topDurations(tile)
+        case .topDistances:
+            statDetail = .topDistances(tile)
+        case .favoriteExercise:
+            statDetail = .favoriteExercise(tile)
+        case .volumeThisWeek:
+            statDetail = .volume(tile)
+        case .muscleGroupDistribution:
+            statDetail = .muscleGroups(tile)
+        default:
+            break
+        }
+    }
     
     private func handleBlankTileAction(_ tile: DashboardTile, windUpDegrees: Double = 0) {
         // Increment click counter using persisted state
@@ -723,7 +752,15 @@ private struct DashboardModuleView: View {
             guard let b = best else { return nil }
             return (name: b.name, value: b.value, date: b.date)
         }
-        return rows.sorted { $0.value > $1.value }
+        // Stable order: value desc, then newest date first, then name asc — so
+        // ties don't reshuffle when the view re-renders.
+        return rows.sorted { lhs, rhs in
+            if lhs.value != rhs.value { return lhs.value > rhs.value }
+            let l = lhs.date ?? .distantPast
+            let r = rhs.date ?? .distantPast
+            if l != r { return l > r }
+            return lhs.name < rhs.name
+        }
     }
 
     private func oneRMEntries(for tile: DashboardTile) -> [(name: String, value: Double, date: Date?)] {
@@ -749,7 +786,14 @@ private struct DashboardModuleView: View {
             guard let b = best else { return nil }
             return (name: b.name, value: b.value, date: b.date)
         }
-        return rows.sorted { $0.value > $1.value }
+        // Stable order: value desc, then newest date first, then name asc.
+        return rows.sorted { lhs, rhs in
+            if lhs.value != rhs.value { return lhs.value > rhs.value }
+            let l = lhs.date ?? .distantPast
+            let r = rhs.date ?? .distantPast
+            if l != r { return l > r }
+            return lhs.name < rhs.name
+        }
     }
 
     /// Local copy of WorkoutLogState's Epley formula so the dashboard can
@@ -759,29 +803,209 @@ private struct DashboardModuleView: View {
         return weight * (1.0 + Double(reps) / 30.0)
     }
 
+    /// Full Personal Record leaderboard across every exercise that has any
+    /// logged sets with weight, ranked by the heaviest set's weight. Used by
+    /// the Top 100 detail sheet so it isn't limited to the tile's curated
+    /// 5 exercises.
+    private func personalRecordLeaderboard() -> [(name: String, value: Double, date: Date?)] {
+        var best: [UUID: (name: String, value: Double, date: Date)] = [:]
+        for log in logState.logs {
+            for ex in log.exercises {
+                for s in ex.sets where s.weight > 0 {
+                    if let existing = best[ex.exerciseID] {
+                        if s.weight > existing.value {
+                            best[ex.exerciseID] = (ex.exerciseName, s.weight, log.completedAt)
+                        }
+                    } else {
+                        best[ex.exerciseID] = (ex.exerciseName, s.weight, log.completedAt)
+                    }
+                }
+            }
+        }
+        return best.values
+            .map { (name: $0.name, value: $0.value, date: Optional($0.date)) }
+            .sorted { lhs, rhs in
+                if lhs.value != rhs.value { return lhs.value > rhs.value }
+                let l = lhs.date ?? .distantPast
+                let r = rhs.date ?? .distantPast
+                if l != r { return l > r }
+                return lhs.name < rhs.name
+            }
+    }
+
+    /// Full 1RM leaderboard across every exercise that has any sets producing
+    /// a positive Epley estimate. Used by the Top 100 detail sheet.
+    private func oneRMLeaderboard() -> [(name: String, value: Double, date: Date?)] {
+        var best: [UUID: (name: String, value: Double, date: Date)] = [:]
+        for log in logState.logs {
+            for ex in log.exercises {
+                for s in ex.sets {
+                    let v = Self.epley(weight: s.weight, reps: s.reps)
+                    guard v > 0 else { continue }
+                    if let existing = best[ex.exerciseID] {
+                        if v > existing.value {
+                            best[ex.exerciseID] = (ex.exerciseName, v, log.completedAt)
+                        }
+                    } else {
+                        best[ex.exerciseID] = (ex.exerciseName, v, log.completedAt)
+                    }
+                }
+            }
+        }
+        return best.values
+            .map { (name: $0.name, value: $0.value, date: Optional($0.date)) }
+            .sorted { lhs, rhs in
+                if lhs.value != rhs.value { return lhs.value > rhs.value }
+                let l = lhs.date ?? .distantPast
+                let r = rhs.date ?? .distantPast
+                if l != r { return l > r }
+                return lhs.name < rhs.name
+            }
+    }
+
+    /// Muscle group counts across an arbitrary date window. Mirrors the
+    /// 7-day tile logic but lets the detail sheet swap in any cutoff.
+    private func muscleDistributionSegments(since cutoff: Date) -> [PieSegment] {
+        let recentLogs = logState.logs.filter { $0.completedAt >= cutoff }
+
+        var counts: [String: Int] = [:]
+        for log in recentLogs {
+            let directMuscleIDs = log.primaryMuscleGroupIDs + log.secondaryMuscleGroupIDs
+            if !directMuscleIDs.isEmpty {
+                let names = directMuscleIDs.compactMap { id in
+                    muscleGroupsState.sortedGroups.first { $0.id == id }?.name
+                }
+                for name in names { counts[name, default: 0] += 1 }
+            }
+            for exercise in log.exercises {
+                if let sourceExercise = exercisesState.exercises.first(where: { $0.id == exercise.exerciseID }) {
+                    let muscleIDs = sourceExercise.primaryMuscleGroupIDs + sourceExercise.secondaryMuscleGroupIDs
+                    let names = muscleIDs.compactMap { id in
+                        muscleGroupsState.sortedGroups.first { $0.id == id }?.name
+                    }
+                    for name in names { counts[name, default: 0] += 1 }
+                }
+            }
+        }
+
+        let total = counts.values.reduce(0, +)
+        guard total > 0 else { return [] }
+
+        let sorted = counts.sorted {
+            if $0.value == $1.value { return $0.key < $1.key }
+            return $0.value > $1.value
+        }
+        let top = Array(sorted.prefix(7))
+        let remainder = sorted.dropFirst(7)
+        let otherCount = remainder.reduce(0) { $0 + $1.value }
+        let colors: [Color] = [.black, .red, .blue, .green, .orange, .purple, .pink, .brown]
+
+        var segments: [PieSegment] = top.enumerated().map { index, item in
+            let percentage = Double(item.value) / Double(total)
+            return PieSegment(label: item.key, value: percentage, color: colors[index % colors.count])
+        }
+        if otherCount > 0 {
+            let percentage = Double(otherCount) / Double(total)
+            segments.append(PieSegment(label: "Other", value: percentage, color: .gray))
+        }
+        return segments
+    }
+
+    /// Volume bar series for the detail sheet. Bucket size is chosen by the
+    /// caller — short ranges show per-week bars, longer ranges roll up to
+    /// monthly to keep the chart legible.
+    private func volumeBuckets(since cutoff: Date, workoutName: String?, exerciseID: UUID?, bucket: StatTimeRange.BucketPeriod) -> [(label: String, volume: Double)] {
+        let calendar = Calendar.current
+        let now = Date()
+        let formatter = DateFormatter()
+        switch bucket {
+        case .week:  formatter.dateFormat = "MMM d"
+        case .month: formatter.dateFormat = "MMM yy"
+        case .day:   formatter.dateFormat = "MMM d"
+        }
+
+        var buckets: [(start: Date, end: Date, label: String)] = []
+        switch bucket {
+        case .day:
+            var day = calendar.startOfDay(for: max(cutoff, calendar.date(byAdding: .day, value: -365, to: now) ?? cutoff))
+            let last = calendar.startOfDay(for: now)
+            while day <= last {
+                let end = calendar.date(byAdding: .day, value: 1, to: day) ?? day
+                buckets.append((day, min(end, now), formatter.string(from: day)))
+                day = end
+            }
+        case .week:
+            guard let firstWeek = calendar.dateInterval(of: .weekOfYear, for: cutoff)?.start else { return [] }
+            var weekStart = firstWeek
+            while weekStart <= now {
+                let weekEnd = calendar.date(byAdding: .weekOfYear, value: 1, to: weekStart) ?? weekStart
+                buckets.append((weekStart, min(weekEnd, now), formatter.string(from: weekStart)))
+                weekStart = weekEnd
+            }
+        case .month:
+            guard let firstMonth = calendar.dateInterval(of: .month, for: cutoff)?.start else { return [] }
+            var monthStart = firstMonth
+            while monthStart <= now {
+                let monthEnd = calendar.date(byAdding: .month, value: 1, to: monthStart) ?? monthStart
+                buckets.append((monthStart, min(monthEnd, now), formatter.string(from: monthStart)))
+                monthStart = monthEnd
+            }
+        }
+
+        var results: [(label: String, volume: Double)] = []
+        for b in buckets {
+            var logsInBucket = logState.logsInRange(from: b.start, to: b.end)
+            if let name = workoutName {
+                logsInBucket = logsInBucket.filter { $0.workoutName == name }
+            }
+            var volume: Double = 0
+            for log in logsInBucket {
+                for ex in log.exercises {
+                    if let exerciseID, ex.exerciseID != exerciseID { continue }
+                    for s in ex.sets {
+                        volume += Double(s.reps) * s.weight
+                    }
+                }
+            }
+            results.append((label: b.label, volume: volume))
+        }
+        return results
+    }
+
     /// Top-5 exercises by how often they appear in logs (one count per
     /// LoggedExercise instance, matching the legacy `favoriteExercise`
-    /// scalar). Sorted by count desc, ties broken alphabetically for stable
-    /// ordering across re-renders.
+    /// scalar). Sorted by count desc, ties broken by newest occurrence so the
+    /// most recently used exercise wins ties instead of reshuffling.
     private func topFavoriteExerciseEntries() -> [(name: String, count: Int)] {
+        let entries = favoriteExerciseAggregated()
+        return Array(entries.prefix(5)).map { (name: $0.name, count: $0.count) }
+    }
+
+    /// Full Favorite Exercise leaderboard with deterministic ordering — used
+    /// by both the dashboard tile (top 5) and the Top 100 detail sheet.
+    private func favoriteExerciseAggregated() -> [(name: String, count: Int, lastDate: Date)] {
         var counts: [String: Int] = [:]
+        var lastSeen: [String: Date] = [:]
         for log in logState.logs {
             for ex in log.exercises {
                 counts[ex.exerciseName, default: 0] += 1
+                let prev = lastSeen[ex.exerciseName] ?? .distantPast
+                if log.completedAt > prev { lastSeen[ex.exerciseName] = log.completedAt }
             }
         }
         return counts
+            .map { (name: $0.key, count: $0.value, lastDate: lastSeen[$0.key] ?? .distantPast) }
             .sorted { lhs, rhs in
-                lhs.value != rhs.value ? lhs.value > rhs.value : lhs.key < rhs.key
+                if lhs.count != rhs.count { return lhs.count > rhs.count }
+                if lhs.lastDate != rhs.lastDate { return lhs.lastDate > rhs.lastDate }
+                return lhs.name < rhs.name
             }
-            .prefix(5)
-            .map { (name: $0.key, count: $0.value) }
     }
 
-    /// Top 10 sessions by duration (seconds). Each row references the exact
+    /// Top sessions by duration (seconds). Each row references the exact
     /// LoggedExercise it came from, so a single exercise can appear multiple
     /// times if multiple long sessions stand out.
-    private func topDurationEntries(for tile: DashboardTile) -> [(name: String, value: Double, date: Date)] {
+    private func topDurationEntries(for tile: DashboardTile, limit: Int = 5) -> [(name: String, value: Double, date: Date)] {
         let allowed: Set<UUID>? = tile.topDurationsExerciseIDs.flatMap { $0.isEmpty ? nil : Set($0) }
         let rows: [(name: String, value: Double, date: Date)] = logState.logs.flatMap { log in
             log.exercises.compactMap { ex -> (String, Double, Date)? in
@@ -790,12 +1014,17 @@ private struct DashboardModuleView: View {
                 return (ex.exerciseName, Double(ex.activeSeconds), log.completedAt)
             }.map { (name: $0.0, value: $0.1, date: $0.2) }
         }
-        return Array(rows.sorted { $0.value > $1.value }.prefix(5))
+        let sorted = rows.sorted { lhs, rhs in
+            if lhs.value != rhs.value { return lhs.value > rhs.value }
+            if lhs.date != rhs.date { return lhs.date > rhs.date }
+            return lhs.name < rhs.name
+        }
+        return Array(sorted.prefix(limit))
     }
 
-    /// Top 10 sessions by distance (meters). Filtered to the user-selected
+    /// Top sessions by distance (meters). Filtered to the user-selected
     /// activity set when configured.
-    private func topDistanceEntries(for tile: DashboardTile) -> [(name: String, value: Double, date: Date)] {
+    private func topDistanceEntries(for tile: DashboardTile, limit: Int = 5) -> [(name: String, value: Double, date: Date)] {
         let allowed: Set<UUID>? = tile.topDistancesExerciseIDs.flatMap { $0.isEmpty ? nil : Set($0) }
         let rows: [(name: String, value: Double, date: Date)] = logState.logs.flatMap { log in
             log.exercises.compactMap { ex -> (String, Double, Date)? in
@@ -804,7 +1033,12 @@ private struct DashboardModuleView: View {
                 return (ex.exerciseName, meters, log.completedAt)
             }.map { (name: $0.0, value: $0.1, date: $0.2) }
         }
-        return Array(rows.sorted { $0.value > $1.value }.prefix(5))
+        let sorted = rows.sorted { lhs, rhs in
+            if lhs.value != rhs.value { return lhs.value > rhs.value }
+            if lhs.date != rhs.date { return lhs.date > rhs.date }
+            return lhs.name < rhs.name
+        }
+        return Array(sorted.prefix(limit))
     }
 
     private func workoutFrequencyDays() -> [WeekdayFrequency] {
@@ -991,6 +1225,148 @@ private struct DashboardModuleView: View {
         return CGPoint(x: x, y: y)
     }
 
+    @ViewBuilder
+    private func statDetailDestination(for detail: StatDetailSheet) -> some View {
+        switch detail {
+        case .personalRecord(let tile):
+            LeaderboardDetailView(
+                title: tile.title.isEmpty ? StatCardType.personalRecord.rawValue : tile.title,
+                icon: tile.icon,
+                accentColor: tile.accentColor,
+                kind: .weight(unit: weightUnit),
+                entries: Array(personalRecordLeaderboard().prefix(100))
+            )
+        case .oneRepMax(let tile):
+            LeaderboardDetailView(
+                title: tile.title.isEmpty ? StatCardType.oneRepMax.rawValue : tile.title,
+                icon: tile.icon,
+                accentColor: tile.accentColor,
+                kind: .weight(unit: weightUnit),
+                entries: Array(oneRMLeaderboard().prefix(100))
+            )
+        case .topDurations(let tile):
+            let entries = topDurationEntries(for: tile, limit: 100).map {
+                (name: $0.name, value: $0.value, date: Optional($0.date))
+            }
+            LeaderboardDetailView(
+                title: tile.title.isEmpty ? StatCardType.topDurations.rawValue : tile.title,
+                icon: tile.icon,
+                accentColor: tile.accentColor,
+                kind: .duration,
+                entries: entries
+            )
+        case .topDistances(let tile):
+            let entries = topDistanceEntries(for: tile, limit: 100).map {
+                (name: $0.name, value: $0.value, date: Optional($0.date))
+            }
+            LeaderboardDetailView(
+                title: tile.title.isEmpty ? StatCardType.topDistances.rawValue : tile.title,
+                icon: tile.icon,
+                accentColor: tile.accentColor,
+                kind: .distance(unit: distanceUnit),
+                entries: entries
+            )
+        case .favoriteExercise(let tile):
+            let entries = favoriteExerciseAggregated().prefix(100).map {
+                (name: $0.name, value: Double($0.count), date: Optional($0.lastDate))
+            }
+            LeaderboardDetailView(
+                title: tile.title.isEmpty ? StatCardType.favoriteExercise.rawValue : tile.title,
+                icon: tile.icon,
+                accentColor: tile.accentColor,
+                kind: .count,
+                entries: Array(entries)
+            )
+        case .volume(let tile):
+            VolumeGraphDetailView(
+                title: tile.title.isEmpty ? StatCardType.volumeThisWeek.rawValue : tile.title,
+                icon: tile.icon,
+                accentColor: tile.accentColor,
+                tile: tile,
+                bucketProvider: { range, tile in
+                    volumeBuckets(
+                        since: range.cutoffDate,
+                        workoutName: tile.volumeWorkoutName,
+                        exerciseID: tile.volumeExerciseID,
+                        bucket: range.preferredBucket
+                    )
+                }
+            )
+        case .muscleGroups(let tile):
+            MuscleGroupGraphDetailView(
+                title: tile.title.isEmpty ? StatCardType.muscleGroupDistribution.rawValue : tile.title,
+                icon: tile.icon,
+                accentColor: tile.accentColor,
+                segmentsProvider: { range in
+                    muscleDistributionSegments(since: range.cutoffDate)
+                }
+            )
+        }
+    }
+
+}
+
+// MARK: - Stat Detail Sheet routing
+
+enum StatDetailSheet: Identifiable {
+    case personalRecord(DashboardTile)
+    case oneRepMax(DashboardTile)
+    case topDurations(DashboardTile)
+    case topDistances(DashboardTile)
+    case favoriteExercise(DashboardTile)
+    case volume(DashboardTile)
+    case muscleGroups(DashboardTile)
+
+    var id: String {
+        switch self {
+        case .personalRecord(let t):    return "pr-\(t.id)"
+        case .oneRepMax(let t):         return "rm-\(t.id)"
+        case .topDurations(let t):      return "dur-\(t.id)"
+        case .topDistances(let t):      return "dist-\(t.id)"
+        case .favoriteExercise(let t):  return "fav-\(t.id)"
+        case .volume(let t):            return "vol-\(t.id)"
+        case .muscleGroups(let t):      return "mus-\(t.id)"
+        }
+    }
+}
+
+// MARK: - Stat time range (mirrors WaterTimeRange labels)
+
+enum StatTimeRange: String, CaseIterable {
+    case week        = "7D"
+    case month       = "1M"
+    case threeMonths = "3M"
+    case sixMonths   = "6M"
+    case year        = "1Y"
+    case all         = "All"
+
+    var label: String { rawValue }
+
+    var cutoffDate: Date {
+        let cal = Calendar.current
+        switch self {
+        case .week:        return cal.date(byAdding: .day,   value: -7,   to: Date()) ?? Date()
+        case .month:       return cal.date(byAdding: .month, value: -1,   to: Date()) ?? Date()
+        case .threeMonths: return cal.date(byAdding: .month, value: -3,   to: Date()) ?? Date()
+        case .sixMonths:   return cal.date(byAdding: .month, value: -6,   to: Date()) ?? Date()
+        case .year:        return cal.date(byAdding: .year,  value: -1,   to: Date()) ?? Date()
+        case .all:         return Date.distantPast
+        }
+    }
+
+    enum BucketPeriod { case day, week, month }
+
+    /// Bucket granularity used by the volume graph so bars stay legible.
+    var preferredBucket: BucketPeriod {
+        switch self {
+        case .week:        return .day
+        case .month:       return .day
+        case .threeMonths: return .week
+        case .sixMonths:   return .week
+        case .year:        return .month
+        case .all:         return .month
+        }
+    }
 }
 
 // MARK: - Blank Tile Gesture Modifier
@@ -3179,3 +3555,487 @@ private struct TodaysPlanTileView: View {
 #Preview {
     DashboardModuleView(module: DashboardModule())
 }
+// MARK: - Leaderboard Detail Sheet
+
+/// Generic Top-N leaderboard for a stat tile. Renders the same row design
+/// the dashboard tile uses (rank badge + name/date column + value column +
+/// progress bar) but scrolls and supports up to 100 entries.
+fileprivate struct LeaderboardDetailView: View {
+    enum ValueKind {
+        case weight(unit: String)
+        case duration
+        case distance(unit: String)
+        case count
+    }
+
+    let title: String
+    let icon: String
+    let accentColor: Color
+    let kind: ValueKind
+    let entries: [(name: String, value: Double, date: Date?)]
+
+    @Environment(\.dismiss) private var dismiss
+    @Environment(\.horizontalSizeClass) private var sizeClass
+    private var iPad: Bool { sizeClass == .regular }
+
+    var body: some View {
+        NavigationStack {
+            Group {
+                if entries.isEmpty {
+                    VStack(spacing: 12) {
+                        Image(systemName: icon)
+                            .font(.system(size: 44, weight: .light))
+                            .foregroundColor(.gray)
+                        Text("No data yet")
+                            .font(.headline)
+                            .foregroundColor(.secondary)
+                    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                } else {
+                    let best = entries.map { $0.value }.max() ?? 1
+                    ScrollView {
+                        LazyVStack(alignment: .leading, spacing: 10) {
+                            ForEach(Array(entries.enumerated()), id: \.offset) { index, entry in
+                                row(index: index, entry: entry, best: best)
+                            }
+                        }
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 14)
+                    }
+                }
+            }
+            .navigationTitle(title)
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button("Done") { dismiss() }
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func row(index: Int, entry: (name: String, value: Double, date: Date?), best: Double) -> some View {
+        let highlight = index == 0 ? accentRowColor : Color.gray
+        VStack(alignment: .leading, spacing: 4) {
+            HStack(spacing: 10) {
+                Text("#\(index + 1)")
+                    .font(.system(size: iPad ? 18 : 14, weight: .bold, design: .rounded))
+                    .foregroundColor(index == 0 ? accentRowColor : .gray)
+                    .frame(width: iPad ? 48 : 36, alignment: .leading)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(entry.name)
+                        .font(.system(size: iPad ? 17 : 14, weight: .semibold))
+                        .foregroundColor(.primary)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.7)
+                    if let date = entry.date, date > .distantPast {
+                        Text(date, format: .dateTime.month(.abbreviated).day().year())
+                            .font(.system(size: iPad ? 13 : 11))
+                            .foregroundColor(.gray)
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                Text(valueLabel(entry.value))
+                    .font(.system(size: iPad ? 17 : 14, weight: .bold))
+                    .foregroundColor(.primary)
+            }
+            GeometryReader { geo in
+                ZStack(alignment: .leading) {
+                    RoundedRectangle(cornerRadius: 3)
+                        .fill(Color.primary.opacity(0.08))
+                        .frame(height: 4)
+                    RoundedRectangle(cornerRadius: 3)
+                        .fill(highlight)
+                        .frame(width: geo.size.width * CGFloat(best > 0 ? entry.value / best : 0), height: 4)
+                }
+            }
+            .frame(height: 4)
+        }
+        .padding(.vertical, 4)
+    }
+
+    private var accentRowColor: Color {
+        // Use the tile's accent color if it was customized, otherwise default
+        // to the same gold the dashboard tiles use for the #1 row.
+        accentColor == Color(red: 0.8, green: 0.8, blue: 0.8) ? Color(red: 1, green: 0.8, blue: 0) : accentColor
+    }
+
+    private func valueLabel(_ value: Double) -> String {
+        switch kind {
+        case .weight(let unit):
+            return String(format: "%.0f \(unit)", value)
+        case .duration:
+            return formatDuration(seconds: value)
+        case .distance(let unit):
+            return DistanceFormatter.format(meters: value, unit: unit)
+        case .count:
+            return "\(Int(value))"
+        }
+    }
+
+    private func formatDuration(seconds: Double) -> String {
+        let total = Int(seconds)
+        let h = total / 3600
+        let m = (total % 3600) / 60
+        let s = total % 60
+        if h > 0 { return String(format: "%d:%02d:%02d", h, m, s) }
+        if m > 0 { return String(format: "%d:%02d", m, s) }
+        return "\(s)s"
+    }
+}
+
+// MARK: - Volume Graph Detail Sheet
+
+/// Full-screen Volume This Week detail. Mirrors the Water Graphs sheet's
+/// segmented time-range picker (7D / 1M / 3M / 6M / 1Y / All) and re-uses
+/// the dashboard's VolumeBarChartView so the bars match the tile.
+fileprivate struct VolumeGraphDetailView: View {
+    let title: String
+    let icon: String
+    let accentColor: Color
+    let tile: DashboardTile
+    let bucketProvider: (StatTimeRange, DashboardTile) -> [(label: String, volume: Double)]
+
+    @Environment(\.dismiss) private var dismiss
+    @AppStorage("weightUnit") private var weightUnit: String = "lbs"
+    @State private var selectedRange: StatTimeRange = .week
+
+    var body: some View {
+        NavigationStack {
+            VStack(spacing: 0) {
+                Picker("Range", selection: $selectedRange) {
+                    ForEach(StatTimeRange.allCases, id: \.self) { range in
+                        Text(range.label).tag(range)
+                    }
+                }
+                .pickerStyle(.segmented)
+                .padding(.horizontal, 16)
+                .padding(.vertical, 12)
+
+                Divider()
+
+                ScrollView {
+                    let buckets = bucketProvider(selectedRange, tile)
+                    if buckets.isEmpty || buckets.allSatisfy({ $0.volume == 0 }) {
+                        VStack(spacing: 12) {
+                            Image(systemName: "chart.bar")
+                                .font(.system(size: 44, weight: .light))
+                                .foregroundColor(.gray)
+                            Text("No volume logged in this range")
+                                .font(.system(size: 14))
+                                .foregroundColor(.secondary)
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding(.top, 60)
+                    } else {
+                        VStack(alignment: .leading, spacing: 12) {
+                            HStack(spacing: 8) {
+                                Image(systemName: icon)
+                                    .font(.system(size: 16, weight: .semibold))
+                                Text(selectedRange.label)
+                                    .font(.system(size: 14, weight: .bold))
+                                    .foregroundColor(.secondary)
+                                Spacer()
+                                let total = buckets.reduce(0.0) { $0 + $1.volume }
+                                let totalLabel = total >= 1000
+                                    ? String(format: "%.1fk \(weightUnit)", total / 1000)
+                                    : String(format: "%.0f \(weightUnit)", total)
+                                Text(totalLabel)
+                                    .font(.system(size: 14, weight: .semibold))
+                                    .foregroundColor(.primary)
+                            }
+                            DetailVolumeBarChart(buckets: buckets)
+                                .frame(height: 220)
+                        }
+                        .padding(16)
+                        .background(
+                            RoundedRectangle(cornerRadius: 12)
+                                .fill(Color(UIColor.secondarySystemBackground))
+                        )
+                        .padding(16)
+                    }
+                }
+            }
+            .navigationTitle(title)
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button("Done") { dismiss() }
+                }
+            }
+        }
+    }
+}
+
+/// Standalone bar chart for the Volume detail sheet. Re-implemented (instead
+/// of reusing the private `VolumeBarChartView`) so it can size and scroll
+/// when a range has many buckets without distorting the dashboard tile.
+private struct DetailVolumeBarChart: View {
+    let buckets: [(label: String, volume: Double)]
+
+    @State private var selectedIndex: Int? = nil
+
+    var body: some View {
+        let maxVol = buckets.map { $0.volume }.max() ?? 1
+        let barSpacing: CGFloat = 6
+        // Cap to a minimum bar width so very long ranges scroll horizontally.
+        let minBarWidth: CGFloat = 22
+        GeometryReader { geo in
+            let availableWidth = geo.size.width
+            let proposedBarWidth = (availableWidth - barSpacing * CGFloat(max(buckets.count - 1, 0))) / CGFloat(max(buckets.count, 1))
+            let barWidth = max(minBarWidth, proposedBarWidth)
+            let contentWidth = barWidth * CGFloat(buckets.count) + barSpacing * CGFloat(max(buckets.count - 1, 0))
+
+            ScrollView(.horizontal, showsIndicators: false) {
+                VStack(alignment: .leading, spacing: 4) {
+                    HStack(alignment: .bottom, spacing: barSpacing) {
+                        ForEach(Array(buckets.enumerated()), id: \.offset) { idx, bucket in
+                            let fraction = maxVol > 0 ? CGFloat(bucket.volume / maxVol) : 0
+                            let isSelected = selectedIndex == idx
+                            let hasSelection = selectedIndex != nil
+                            let barOpacity: Double = hasSelection ? (isSelected ? 1.0 : 0.3) : 1.0
+                            VStack(spacing: 4) {
+                                ZStack(alignment: .bottom) {
+                                    Rectangle()
+                                        .fill(Color.clear)
+                                        .frame(width: barWidth, height: 180)
+                                    if bucket.volume > 0 {
+                                        RoundedRectangle(cornerRadius: 4)
+                                            .fill(Color.primary.opacity(barOpacity))
+                                            .frame(width: barWidth, height: max(8, 180 * fraction))
+                                    }
+                                }
+                                Text(bucket.label)
+                                    .font(.system(size: 10, weight: isSelected ? .bold : .regular))
+                                    .foregroundColor(isSelected ? .primary : .gray)
+                                    .lineLimit(1)
+                                    .frame(width: barWidth)
+                            }
+                            .contentShape(Rectangle())
+                            .onTapGesture {
+                                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                                selectedIndex = selectedIndex == idx ? nil : idx
+                            }
+                        }
+                    }
+                    if let idx = selectedIndex, idx < buckets.count {
+                        let b = buckets[idx]
+                        let label = b.volume >= 1000
+                            ? String(format: "%.1fk", b.volume / 1000)
+                            : String(format: "%.0f", b.volume)
+                        Text("\(b.label): \(label)")
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundColor(.primary)
+                            .padding(.leading, 4)
+                    }
+                }
+                .frame(width: max(contentWidth, availableWidth), alignment: .leading)
+            }
+        }
+    }
+}
+
+// MARK: - Muscle Group Distribution Detail Sheet
+
+/// Full-screen Muscle Group Distribution with the standard 7D/1M/3M/6M/1Y/All
+/// picker. Uses the same donut chart canvas the tile renders, just larger.
+fileprivate struct MuscleGroupGraphDetailView: View {
+    let title: String
+    let icon: String
+    let accentColor: Color
+    let segmentsProvider: (StatTimeRange) -> [PieSegment]
+
+    @Environment(\.dismiss) private var dismiss
+    @State private var selectedRange: StatTimeRange = .week
+
+    var body: some View {
+        NavigationStack {
+            VStack(spacing: 0) {
+                Picker("Range", selection: $selectedRange) {
+                    ForEach(StatTimeRange.allCases, id: \.self) { range in
+                        Text(range.label).tag(range)
+                    }
+                }
+                .pickerStyle(.segmented)
+                .padding(.horizontal, 16)
+                .padding(.vertical, 12)
+
+                Divider()
+
+                let segments = segmentsProvider(selectedRange)
+                ScrollView {
+                    if segments.isEmpty {
+                        VStack(spacing: 12) {
+                            Image(systemName: "chart.pie")
+                                .font(.system(size: 44, weight: .light))
+                                .foregroundColor(.gray)
+                            Text("No muscle groups logged in this range")
+                                .font(.system(size: 14))
+                                .foregroundColor(.secondary)
+                                .multilineTextAlignment(.center)
+                                .padding(.horizontal, 32)
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding(.top, 60)
+                    } else {
+                        VStack(spacing: 24) {
+                            DetailPieChart(segments: segments)
+                                .frame(width: 260, height: 260)
+                                .padding(.top, 24)
+
+                            VStack(alignment: .leading, spacing: 10) {
+                                ForEach(Array(segments.enumerated()), id: \.offset) { _, seg in
+                                    HStack(spacing: 10) {
+                                        RoundedRectangle(cornerRadius: 3)
+                                            .fill(seg.color)
+                                            .frame(width: 14, height: 14)
+                                        Text(seg.label)
+                                            .font(.system(size: 15, weight: .semibold))
+                                            .foregroundColor(.primary)
+                                        Spacer()
+                                        Text("\(Int((seg.value * 100).rounded()))%")
+                                            .font(.system(size: 15, weight: .bold))
+                                            .foregroundColor(.secondary)
+                                    }
+                                }
+                            }
+                            .padding(16)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .background(
+                                RoundedRectangle(cornerRadius: 12)
+                                    .fill(Color(UIColor.secondarySystemBackground))
+                            )
+                            .padding(.horizontal, 16)
+                        }
+                        .padding(.bottom, 24)
+                    }
+                }
+            }
+            .navigationTitle(title)
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button("Done") { dismiss() }
+                }
+            }
+        }
+    }
+}
+
+/// Lightweight donut chart used only by the muscle-group detail sheet.
+/// Mirrors the dashboard tile's donut without bringing in its private types.
+private struct DetailPieChart: View {
+    let segments: [PieSegment]
+    @State private var selectedIndex: Int? = nil
+
+    var body: some View {
+        GeometryReader { geo in
+            let size = min(geo.size.width, geo.size.height)
+            let outerR = size / 2
+            let innerR = outerR * 0.36
+            let center = CGPoint(x: geo.size.width / 2, y: geo.size.height / 2)
+            ZStack {
+                ForEach(segments.indices, id: \.self) { i in
+                    let isSelected = selectedIndex == i
+                    let hasSelection = selectedIndex != nil
+                    let opacity = hasSelection ? (isSelected ? 1.0 : 0.3) : 1.0
+                    PieSlicePath(
+                        startAngle: angleStart(i),
+                        endAngle: angleEnd(i),
+                        outerRadius: isSelected ? outerR * 1.05 : outerR,
+                        innerRadius: innerR,
+                        center: center
+                    )
+                    .fill(segments[i].color.opacity(opacity))
+                }
+                Circle()
+                    .fill(Color(UIColor.systemGray6))
+                    .frame(width: innerR * 2, height: innerR * 2)
+                    .position(center)
+
+                if let i = selectedIndex, i < segments.count {
+                    let seg = segments[i]
+                    VStack(spacing: 2) {
+                        Text("\(Int((seg.value * 100).rounded()))%")
+                            .font(.system(size: 22, weight: .bold))
+                            .foregroundColor(.primary)
+                        Text(seg.label)
+                            .font(.system(size: 12))
+                            .foregroundColor(.secondary)
+                            .multilineTextAlignment(.center)
+                            .frame(width: innerR * 1.7)
+                            .lineLimit(2)
+                    }
+                    .position(center)
+                    .allowsHitTesting(false)
+                }
+
+                Color.clear
+                    .contentShape(Rectangle())
+                    .gesture(
+                        DragGesture(minimumDistance: 0)
+                            .onChanged { value in
+                                let newIdx = hitTest(point: value.location, center: center, innerR: innerR, outerR: outerR)
+                                if newIdx != selectedIndex {
+                                    selectedIndex = newIdx
+                                    if newIdx != nil {
+                                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                                    }
+                                }
+                            }
+                            .onEnded { _ in
+                                withAnimation(.easeOut(duration: 0.25)) { selectedIndex = nil }
+                            }
+                    )
+            }
+        }
+    }
+
+    private func angleStart(_ index: Int) -> Angle {
+        let total = segments.map { $0.value }.reduce(0, +)
+        let prior = segments.prefix(index).map { $0.value }.reduce(0, +)
+        return .degrees((prior / total) * 360 - 90)
+    }
+
+    private func angleEnd(_ index: Int) -> Angle {
+        let total = segments.map { $0.value }.reduce(0, +)
+        let current = segments.prefix(index + 1).map { $0.value }.reduce(0, +)
+        return .degrees((current / total) * 360 - 90)
+    }
+
+    private func hitTest(point: CGPoint, center: CGPoint, innerR: CGFloat, outerR: CGFloat) -> Int? {
+        let dx = point.x - center.x
+        let dy = point.y - center.y
+        let dist = sqrt(dx * dx + dy * dy)
+        guard dist >= innerR && dist <= outerR else { return nil }
+        var angle = Foundation.atan2(dy, dx) * 180 / .pi
+        angle += 90
+        if angle < 0 { angle += 360 }
+        let total = segments.map { $0.value }.reduce(0, +)
+        var acc = 0.0
+        for (i, seg) in segments.enumerated() {
+            let sweep = (seg.value / total) * 360
+            if angle < acc + sweep { return i }
+            acc += sweep
+        }
+        return nil
+    }
+}
+
+private struct PieSlicePath: Shape {
+    let startAngle: Angle
+    let endAngle: Angle
+    let outerRadius: CGFloat
+    let innerRadius: CGFloat
+    let center: CGPoint
+
+    func path(in rect: CGRect) -> Path {
+        var p = Path()
+        p.addArc(center: center, radius: outerRadius, startAngle: startAngle, endAngle: endAngle, clockwise: false)
+        p.addArc(center: center, radius: innerRadius, startAngle: endAngle, endAngle: startAngle, clockwise: true)
+        p.closeSubpath()
+        return p
+    }
+}
+
