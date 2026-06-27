@@ -798,8 +798,10 @@ private struct DashboardModuleView: View {
 
     /// Local copy of WorkoutLogState's Epley formula so the dashboard can
     /// rank sets by estimated 1RM without exposing the helper publicly.
+    /// Mirrors WorkoutLogState.epley — only 3–10 rep sets qualify, so the
+    /// tile and the Top 100 detail sheet rank against the same universe.
     private static func epley(weight: Double, reps: Int) -> Double {
-        guard weight > 0, reps > 0 else { return 0 }
+        guard reps >= 3, reps <= 10, weight > 0 else { return 0 }
         return weight * (1.0 + Double(reps) / 30.0)
     }
 
@@ -917,6 +919,15 @@ private struct DashboardModuleView: View {
     private func volumeBuckets(since cutoff: Date, workoutName: String?, exerciseID: UUID?, bucket: StatTimeRange.BucketPeriod) -> [(label: String, volume: Double)] {
         let calendar = Calendar.current
         let now = Date()
+
+        // The "All" range passes Date.distantPast — without clamping, monthly
+        // bucketing would iterate ~24,000+ empty months and freeze the sheet.
+        let earliestLog = logState.logs.map { $0.completedAt }.min()
+        let effectiveCutoff: Date = {
+            guard let earliest = earliestLog else { return cutoff }
+            return max(cutoff, earliest)
+        }()
+
         let formatter = DateFormatter()
         switch bucket {
         case .week:  formatter.dateFormat = "MMM d"
@@ -927,7 +938,7 @@ private struct DashboardModuleView: View {
         var buckets: [(start: Date, end: Date, label: String)] = []
         switch bucket {
         case .day:
-            var day = calendar.startOfDay(for: max(cutoff, calendar.date(byAdding: .day, value: -365, to: now) ?? cutoff))
+            var day = calendar.startOfDay(for: max(effectiveCutoff, calendar.date(byAdding: .day, value: -365, to: now) ?? effectiveCutoff))
             let last = calendar.startOfDay(for: now)
             while day <= last {
                 let end = calendar.date(byAdding: .day, value: 1, to: day) ?? day
@@ -935,7 +946,7 @@ private struct DashboardModuleView: View {
                 day = end
             }
         case .week:
-            guard let firstWeek = calendar.dateInterval(of: .weekOfYear, for: cutoff)?.start else { return [] }
+            guard let firstWeek = calendar.dateInterval(of: .weekOfYear, for: effectiveCutoff)?.start else { return [] }
             var weekStart = firstWeek
             while weekStart <= now {
                 let weekEnd = calendar.date(byAdding: .weekOfYear, value: 1, to: weekStart) ?? weekStart
@@ -943,7 +954,7 @@ private struct DashboardModuleView: View {
                 weekStart = weekEnd
             }
         case .month:
-            guard let firstMonth = calendar.dateInterval(of: .month, for: cutoff)?.start else { return [] }
+            guard let firstMonth = calendar.dateInterval(of: .month, for: effectiveCutoff)?.start else { return [] }
             var monthStart = firstMonth
             while monthStart <= now {
                 let monthEnd = calendar.date(byAdding: .month, value: 1, to: monthStart) ?? monthStart
@@ -3775,62 +3786,95 @@ private struct DetailVolumeBarChart: View {
     let buckets: [(label: String, volume: Double)]
 
     @State private var selectedIndex: Int? = nil
+    @AppStorage("weightUnit") private var weightUnit: String = "lbs"
 
     var body: some View {
         let maxVol = buckets.map { $0.volume }.max() ?? 1
         let barSpacing: CGFloat = 6
-        // Cap to a minimum bar width so very long ranges scroll horizontally.
-        let minBarWidth: CGFloat = 22
+        // 56pt fits "MMM d" / "MMM yy" labels at 10pt without truncating to "..."
+        let minBarWidth: CGFloat = 56
+        let barAreaH: CGFloat = 180
         GeometryReader { geo in
             let availableWidth = geo.size.width
             let proposedBarWidth = (availableWidth - barSpacing * CGFloat(max(buckets.count - 1, 0))) / CGFloat(max(buckets.count, 1))
             let barWidth = max(minBarWidth, proposedBarWidth)
             let contentWidth = barWidth * CGFloat(buckets.count) + barSpacing * CGFloat(max(buckets.count - 1, 0))
 
-            ScrollView(.horizontal, showsIndicators: false) {
-                VStack(alignment: .leading, spacing: 4) {
-                    HStack(alignment: .bottom, spacing: barSpacing) {
-                        ForEach(Array(buckets.enumerated()), id: \.offset) { idx, bucket in
-                            let fraction = maxVol > 0 ? CGFloat(bucket.volume / maxVol) : 0
-                            let isSelected = selectedIndex == idx
-                            let hasSelection = selectedIndex != nil
-                            let barOpacity: Double = hasSelection ? (isSelected ? 1.0 : 0.3) : 1.0
-                            VStack(spacing: 4) {
-                                ZStack(alignment: .bottom) {
-                                    Rectangle()
-                                        .fill(Color.clear)
-                                        .frame(width: barWidth, height: 180)
-                                    if bucket.volume > 0 {
-                                        RoundedRectangle(cornerRadius: 4)
-                                            .fill(Color.primary.opacity(barOpacity))
-                                            .frame(width: barWidth, height: max(8, 180 * fraction))
+            ScrollViewReader { proxy in
+                ScrollView(.horizontal, showsIndicators: false) {
+                    VStack(alignment: .leading, spacing: 4) {
+                        HStack(alignment: .bottom, spacing: barSpacing) {
+                            ForEach(Array(buckets.enumerated()), id: \.offset) { idx, bucket in
+                                let fraction = maxVol > 0 ? CGFloat(bucket.volume / maxVol) : 0
+                                let isSelected = selectedIndex == idx
+                                let hasSelection = selectedIndex != nil
+                                let barOpacity: Double = hasSelection ? (isSelected ? 1.0 : 0.3) : 1.0
+                                let barH: CGFloat = bucket.volume > 0 ? max(20, barAreaH * fraction) : 0
+                                let volLabel = bucket.volume >= 1000
+                                    ? String(format: "%.1fk", bucket.volume / 1000)
+                                    : String(format: "%.0f", bucket.volume)
+                                VStack(spacing: 4) {
+                                    ZStack(alignment: .bottom) {
+                                        Rectangle()
+                                            .fill(Color.clear)
+                                            .frame(width: barWidth, height: barAreaH)
+                                        if bucket.volume > 0 {
+                                            ZStack {
+                                                RoundedRectangle(cornerRadius: 4)
+                                                    .fill(Color.primary.opacity(barOpacity))
+                                                Text(volLabel)
+                                                    .font(.system(size: 11, weight: .bold))
+                                                    .foregroundColor(Color(UIColor.systemBackground))
+                                                    .minimumScaleFactor(0.5)
+                                                    .lineLimit(1)
+                                                    .padding(.horizontal, 3)
+                                                    .opacity(barOpacity)
+                                            }
+                                            .frame(width: barWidth, height: barH)
+                                        }
                                     }
+                                    Text(bucket.label)
+                                        .font(.system(size: 10, weight: isSelected ? .bold : .regular))
+                                        .foregroundColor(isSelected ? .primary : .gray)
+                                        .lineLimit(1)
+                                        .minimumScaleFactor(0.7)
+                                        .frame(width: barWidth)
                                 }
-                                Text(bucket.label)
-                                    .font(.system(size: 10, weight: isSelected ? .bold : .regular))
-                                    .foregroundColor(isSelected ? .primary : .gray)
-                                    .lineLimit(1)
-                                    .frame(width: barWidth)
-                            }
-                            .contentShape(Rectangle())
-                            .onTapGesture {
-                                UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                                selectedIndex = selectedIndex == idx ? nil : idx
+                                .contentShape(Rectangle())
+                                .onTapGesture {
+                                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                                    selectedIndex = selectedIndex == idx ? nil : idx
+                                }
+                                .id(idx)
                             }
                         }
+                        if let idx = selectedIndex, idx < buckets.count {
+                            let b = buckets[idx]
+                            let label = b.volume >= 1000
+                                ? String(format: "%.1fk \(weightUnit)", b.volume / 1000)
+                                : String(format: "%.0f \(weightUnit)", b.volume)
+                            Text("\(b.label): \(label)")
+                                .font(.system(size: 12, weight: .semibold))
+                                .foregroundColor(.primary)
+                                .padding(.leading, 4)
+                        }
                     }
-                    if let idx = selectedIndex, idx < buckets.count {
-                        let b = buckets[idx]
-                        let label = b.volume >= 1000
-                            ? String(format: "%.1fk", b.volume / 1000)
-                            : String(format: "%.0f", b.volume)
-                        Text("\(b.label): \(label)")
-                            .font(.system(size: 12, weight: .semibold))
-                            .foregroundColor(.primary)
-                            .padding(.leading, 4)
-                    }
+                    .frame(width: max(contentWidth, availableWidth), alignment: .leading)
                 }
-                .frame(width: max(contentWidth, availableWidth), alignment: .leading)
+                .onAppear { scrollToLatest(proxy: proxy) }
+                .onChange(of: buckets.last?.label ?? "") { _, _ in scrollToLatest(proxy: proxy) }
+                .onChange(of: buckets.count) { _, _ in scrollToLatest(proxy: proxy) }
+            }
+        }
+    }
+
+    private func scrollToLatest(proxy: ScrollViewProxy) {
+        guard !buckets.isEmpty else { return }
+        let lastIdx = buckets.count - 1
+        // Defer one tick so the ScrollView has measured its content width.
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+            withAnimation(.easeOut(duration: 0.25)) {
+                proxy.scrollTo(lastIdx, anchor: .trailing)
             }
         }
     }
