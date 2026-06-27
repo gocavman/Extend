@@ -423,8 +423,21 @@ public final class HealthKitService {
             primaryMuscleGroupIDs: exercise.primaryMuscleGroupIDs,
             secondaryMuscleGroupIDs: exercise.secondaryMuscleGroupIDs,
             logEquipmentIDs: resolvedEquipment,
-            isIndoor: isIndoor
+            isIndoor: isIndoor,
+            activeCalories: activeCalories(for: hkWorkout)
         )
+    }
+
+    /// Pulls active energy (kcal) off an `HKWorkout` via its statistics for
+    /// `.activeEnergyBurned`. Mirrors the distance helper — `nil` when Apple
+    /// Health didn't record any active energy for the session (e.g. some
+    /// third-party imports). The Progress UI surfaces this as the "cal"
+    /// label on the session row and detail view.
+    private func activeCalories(for hkWorkout: HKWorkout) -> Double? {
+        guard let stats = hkWorkout.statistics(for: HKQuantityType(.activeEnergyBurned)),
+              let qty = stats.sumQuantity() else { return nil }
+        let kcal = qty.doubleValue(for: .kilocalorie())
+        return kcal > 0 ? kcal : nil
     }
 
     /// Pulls total distance (meters) off an `HKWorkout` by checking each known
