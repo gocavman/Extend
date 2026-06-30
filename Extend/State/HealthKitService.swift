@@ -206,7 +206,15 @@ public final class HealthKitService {
         store.execute(query)
         workoutObserverQuery = query
 
-        store.enableBackgroundDelivery(for: workoutType, frequency: .immediate) { _, _ in
+        // `.hourly` instead of `.immediate`: `.immediate` wakes the app for
+        // every new HK workout sample (including each one synced from the
+        // watch / third-party apps), which is meaningful background battery
+        // drain. The foreground path (`willEnterForeground` in `ExtendApp`)
+        // already calls `importFromHealthKit` whenever the user opens the
+        // app, so we don't need real-time background pulls — `.hourly` keeps
+        // recently-saved workouts arriving while the app is closed without
+        // burning power on every single sample.
+        store.enableBackgroundDelivery(for: workoutType, frequency: .hourly) { _, _ in
             // Best-effort: silent if the user denied background delivery permission.
         }
     }

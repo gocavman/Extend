@@ -122,17 +122,17 @@ struct WatchActiveWorkoutView: View {
     }
 
     private func metric(icon: String, color: Color, value: String, unit: String) -> some View {
-        VStack(spacing: 0) {
-            HStack(spacing: 3) {
-                Image(systemName: icon).font(.system(size: 11)).foregroundColor(color)
+        VStack(spacing: 1) {
+            HStack(spacing: 4) {
+                Image(systemName: icon).font(.system(size: 15)).foregroundColor(color)
                 Text(value)
-                    .font(.system(size: 18, weight: .semibold).monospacedDigit())
+                    .font(.system(size: 26, weight: .bold).monospacedDigit())
                     .foregroundColor(.primary)
                     .lineLimit(1)
-                    .minimumScaleFactor(0.7)
+                    .minimumScaleFactor(0.6)
             }
             Text(unit)
-                .font(.system(size: 9))
+                .font(.system(size: 11))
                 .foregroundColor(.secondary)
         }
         .frame(maxWidth: .infinity)

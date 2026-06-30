@@ -1131,6 +1131,12 @@ struct ActiveTimerView: View {
                 watchUUID = await MirroredWorkoutCoordinator.shared.requestEnd()
             }
             await MainActor.run {
+                // Claim the UUID before adding so a concurrent HK observer
+                // import doesn't create a parallel duplicate keyed to the
+                // same HKWorkout.
+                if let uuid = watchUUID {
+                    WorkoutLogState.shared.claimHealthKitUUID(uuid)
+                }
                 WorkoutLogState.shared.addLog(
                     log,
                     exportToHealthKit: exportEnabled,

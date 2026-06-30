@@ -151,16 +151,16 @@ struct WatchWorkoutRunnerView: View {
                 Color.clear.frame(width: 44, height: 1)
             }
             if manager.heartRate > 0 || manager.activeEnergyKcal > 0 {
-                HStack(spacing: 10) {
+                HStack(spacing: 12) {
                     if manager.heartRate > 0 {
                         Label("\(Int(manager.heartRate))", systemImage: "heart.fill")
-                            .font(.system(size: 11, weight: .semibold))
+                            .font(.system(size: 17, weight: .bold).monospacedDigit())
                             .foregroundColor(.red)
                             .labelStyle(.titleAndIcon)
                     }
                     if manager.activeEnergyKcal > 0 {
                         Label("\(Int(manager.activeEnergyKcal))", systemImage: "flame.fill")
-                            .font(.system(size: 11, weight: .semibold))
+                            .font(.system(size: 17, weight: .bold).monospacedDigit())
                             .foregroundColor(.orange)
                             .labelStyle(.titleAndIcon)
                     }

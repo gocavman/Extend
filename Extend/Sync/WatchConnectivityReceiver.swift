@@ -263,6 +263,14 @@ extension WatchConnectivityReceiver: WCSessionDelegate {
                 duration: duration,
                 activeCalories: activeCalories
             )
+            // Claim the UUID before adding so a concurrent HK observer
+            // import doesn't create a parallel duplicate keyed to the same
+            // HKWorkout. The HKObserverQuery can fire on the phone the
+            // instant the watch's saved HKWorkout syncs over, which can
+            // beat this addLog if WatchConnectivity is briefly stalled.
+            if let uuid = hkUUID {
+                WorkoutLogState.shared.claimHealthKitUUID(uuid)
+            }
             // Pass exportToHealthKit: true so the iPhone still records it when
             // the watch couldn't produce a UUID (HK auth missing, session
             // failed, etc.) — when a UUID IS provided, addLog short-circuits

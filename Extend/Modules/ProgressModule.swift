@@ -712,28 +712,19 @@ private struct PlanDayCard: View {
         planDay.timerIDs.compactMap { id in timerState.configs.first { $0.id == id } }
     }
 
-    /// Names of logs completed on this date for checkmark display
+    /// Names of logs completed on this date for checkmark display.
+    /// Computed property — DO NOT call from multiple sites in body. Capture
+    /// once into a local `let` (see `body`) so the O(n) filter over all logs
+    /// runs only once per render instead of once per checkmark lookup.
     private var completedLogNames: Set<String> {
         let cal = Calendar.current
         let logs = logState.logs.filter { cal.isDate($0.completedAt, inSameDayAs: date) }
         return Set(logs.map { $0.workoutName })
     }
 
-    private func isCompleted(workoutName name: String) -> Bool {
-        completedLogNames.contains(name)
-    }
-
-    private func isVoiceCompleted(_ config: VoiceTrainerConfig) -> Bool {
-        completedLogNames.contains("Trainer – \(config.name)")
-    }
-
-    private func isTimerCompleted(_ config: TimerConfig) -> Bool {
-        let displayName = config.name.isEmpty ? config.type.rawValue : config.name
-        return completedLogNames.contains("\(config.type.rawValue) – \(displayName)")
-    }
-
     var body: some View {
-        HStack(spacing: 0) {
+        let completed = completedLogNames
+        return HStack(spacing: 0) {
             // Orange left accent edge
             RoundedRectangle(cornerRadius: 2)
                 .fill(Color(red: 1.0, green: 0.55, blue: 0.0))
@@ -760,7 +751,7 @@ private struct PlanDayCard: View {
                             Text(w.name)
                                 .font(.caption)
                                 .foregroundColor(.primary)
-                            if isCompleted(workoutName: w.name) {
+                            if completed.contains(w.name) {
                                 Image(systemName: "checkmark.circle.fill")
                                     .font(.caption)
                                     .foregroundColor(.green)
@@ -779,7 +770,7 @@ private struct PlanDayCard: View {
                             Text(ex.name)
                                 .font(.caption)
                                 .foregroundColor(.primary)
-                            if isCompleted(workoutName: ex.name) {
+                            if completed.contains(ex.name) {
                                 Image(systemName: "checkmark.circle.fill")
                                     .font(.caption)
                                     .foregroundColor(.green)
@@ -798,7 +789,7 @@ private struct PlanDayCard: View {
                             Text(config.name)
                                 .font(.caption)
                                 .foregroundColor(.primary)
-                            if isVoiceCompleted(config) {
+                            if completed.contains("Trainer – \(config.name)") {
                                 Image(systemName: "checkmark.circle.fill")
                                     .font(.caption)
                                     .foregroundColor(.green)
@@ -818,7 +809,7 @@ private struct PlanDayCard: View {
                             Text(displayName)
                                 .font(.caption)
                                 .foregroundColor(.primary)
-                            if isTimerCompleted(config) {
+                            if completed.contains("\(config.type.rawValue) – \(displayName)") {
                                 Image(systemName: "checkmark.circle.fill")
                                     .font(.caption)
                                     .foregroundColor(.green)
@@ -1030,7 +1021,7 @@ private struct DayCell: View {
                             .fill(Color(red: 1.0, green: 0.55, blue: 0.0).opacity(isCurrentMonth ? 0.85 : 0.4))
                             .frame(width: iPad ? 8 : 5, height: iPad ? 8 : 5)
                     }
-                    if showWater && WaterState.shared.totalOzForDate(date) > 0 {
+                    if showWater && waterOz > 0 {
                         Circle()
                             .fill(Color(red: 0.2, green: 0.55, blue: 1.0).opacity(isCurrentMonth ? 0.85 : 0.4))
                             .frame(width: iPad ? 8 : 5, height: iPad ? 8 : 5)
@@ -1185,6 +1176,7 @@ private struct TimelineLogView: View {
     @Environment(ExercisesState.self) var exercisesState
     @Environment(VoiceTrainerState.self) var voiceTrainerState
     @Environment(TimerState.self) var timerState
+    @Environment(WaterState.self) private var waterState
     let logState: WorkoutLogState
     let month: Date
     let selectedDate: Date
@@ -1196,6 +1188,13 @@ private struct TimelineLogView: View {
     let onTap: (WorkoutLog) -> Void
     var onJournalTap: ((JournalEntry) -> Void)? = nil
     var onWaterTap: ((Date) -> Void)? = nil
+
+    /// Cached output of `computeGroupedItems()`. The computation is O(n) over
+    /// logs/journals/plans/water and runs in tens of ms per call, so leaving
+    /// it as a computed property meant SwiftUI's repeated body re-evaluation
+    /// (especially on module switch / scope toggle) compounded into multi-
+    /// second stalls. Recomputed only when a `depsKey` input changes.
+    @State private var cachedGroupedItems: [(date: Date, items: [TimelineItem])] = []
 
     private let calendar = Calendar.current
 
@@ -1217,7 +1216,17 @@ private struct TimelineLogView: View {
         }
     }
 
-    private var groupedItems: [(date: Date, items: [TimelineItem])] {
+    /// Single string key combining everything the timeline output depends on.
+    /// `.onChange(of: depsKey)` triggers a single recompute per real change
+    /// instead of recomputing inside body on every re-render.
+    private var depsKey: String {
+        "\(showWeek)|\(showWorkouts)|\(showJournals)|\(showPlans)|\(showWater)|" +
+        "\(selectedDate.timeIntervalSince1970)|\(month.timeIntervalSince1970)|" +
+        "\(logState.logs.count)|\(logState.journalEntries.count)|" +
+        "\(waterState.logs.count)|\(planState.activePlans.count)"
+    }
+
+    private func computeGroupedItems() -> [(date: Date, items: [TimelineItem])] {
         let start: Date
         let end: Date
         if showWeek {
@@ -1266,18 +1275,19 @@ private struct TimelineLogView: View {
             }
         }
 
-        // Add water entries (one row per day that has water logged)
+        // Add water entries (one row per day that has water logged).
+        // Pre-aggregate water logs once per call so we don't run an O(n) scan
+        // per day inside the loop.
         if showWater {
-            var current = start
-            while current < end {
-                let day = calendar.startOfDay(for: current)
-                let oz = WaterState.shared.totalOzForDate(day)
-                if oz > 0 {
-                    let goal = WaterState.shared.dailyGoalOz
-                    let unit = WaterState.shared.unit
-                    dayItems[day, default: []].append(.water(oz: oz, goal: goal, unit: unit, date: day))
-                }
-                current = calendar.date(byAdding: .day, value: 1, to: current) ?? end
+            var ozByDay: [Date: Double] = [:]
+            for wl in waterState.logs where wl.loggedAt >= start && wl.loggedAt < end {
+                let day = calendar.startOfDay(for: wl.loggedAt)
+                ozByDay[day, default: 0] += wl.amountOz
+            }
+            let goal = waterState.dailyGoalOz
+            let unit = waterState.unit
+            for (day, oz) in ozByDay where oz > 0 {
+                dayItems[day, default: []].append(.water(oz: oz, goal: goal, unit: unit, date: day))
             }
         }
 
@@ -1305,7 +1315,7 @@ private struct TimelineLogView: View {
             .padding(.horizontal, 16)
             .padding(.vertical, 8)
 
-            if groupedItems.isEmpty {
+            if cachedGroupedItems.isEmpty {
                 VStack(spacing: 8) {
                     Image(systemName: "calendar.badge.clock")
                         .font(.system(size: 44))
@@ -1319,8 +1329,12 @@ private struct TimelineLogView: View {
                 }
                 .padding(.vertical, 40)
             } else {
-                VStack(alignment: .leading, spacing: 0) {
-                    ForEach(Array(groupedItems.enumerated()), id: \.offset) { groupIdx, group in
+                // LazyVStack so day groups instantiate only as they scroll
+                // into view — with a month of entries the eager VStack was
+                // building every row + every contained card up-front, which
+                // dominated the remaining stall after caching landed.
+                LazyVStack(alignment: .leading, spacing: 0) {
+                    ForEach(Array(cachedGroupedItems.enumerated()), id: \.offset) { groupIdx, group in
                         HStack(alignment: .top, spacing: 12) {
                             // Timeline spine
                             VStack(spacing: 0) {
@@ -1377,6 +1391,15 @@ private struct TimelineLogView: View {
                 }
             }
         }
+        .onAppear {
+            // Compute on first appearance — and on return-to-module, since
+            // SwiftUI tears down and rebuilds the view when the parent
+            // selects a different module.
+            cachedGroupedItems = computeGroupedItems()
+        }
+        .onChange(of: depsKey) { _, _ in
+            cachedGroupedItems = computeGroupedItems()
+        }
     }
 
     private func timelineDateString(_ date: Date) -> String {
@@ -1392,6 +1415,7 @@ private struct TimelineLogView: View {
 
 private struct ActivityRibbonView: View {
     @Environment(TrainingPlanState.self) var planState
+    @Environment(WaterState.self) private var waterState
     @Environment(\.horizontalSizeClass) private var sizeClass
     let logState: WorkoutLogState
     let anchorMonth: Date
@@ -1404,8 +1428,23 @@ private struct ActivityRibbonView: View {
     private var cellSize: CGFloat { iPad ? 18 : 11 }
     private var cellSpacing: CGFloat { iPad ? 5 : 3 }
 
+    /// Per-cell bucket data plus an opt-in water flag (driven by `showWater`).
+    private typealias Bucket = (date: Date?, workoutCount: Int, hasJournal: Bool, hasPlan: Bool, hasWater: Bool)
+
+    /// Cached output of `computeBuckets()`. Previously a computed property that
+    /// scanned 63 days × multiple O(n) lookups (logsForDate, journalEntriesForDate,
+    /// planDay) on every body render — a major contributor to the slow
+    /// re-entry into the Progress module.
+    @State private var cachedBuckets: [Bucket] = []
+
+    private var depsKey: String {
+        "\(anchorMonth.timeIntervalSince1970)|\(showWorkouts)|\(showJournals)|\(showPlans)|\(showWater)|" +
+        "\(logState.logs.count)|\(logState.journalEntries.count)|" +
+        "\(waterState.logs.count)|\(planState.activePlans.count)"
+    }
+
     // Nil entries = padding cells before the first real day
-    private var buckets: [(date: Date?, workoutCount: Int, hasJournal: Bool, hasPlan: Bool)] {
+    private func computeBuckets() -> [Bucket] {
         let calendar = Calendar.current
         let today = calendar.startOfDay(for: Date())
 
@@ -1414,14 +1453,39 @@ private struct ActivityRibbonView: View {
         let lastOfMonth = calendar.date(byAdding: DateComponents(month: 1, day: -1), to: firstOfMonth) ?? today
         let anchor = lastOfMonth
 
+        // Pre-aggregate logs/journals/water by startOfDay once, so the 63-day
+        // loop below is O(1) per day instead of O(n) per lookup.
+        var logsByDay: [Date: Int] = [:]
+        if showWorkouts {
+            for log in logState.logs {
+                logsByDay[calendar.startOfDay(for: log.completedAt), default: 0] += 1
+            }
+        }
+        var journalsByDay: [Date: Int] = [:]
+        if showJournals {
+            for entry in logState.journalEntries {
+                journalsByDay[calendar.startOfDay(for: entry.date), default: 0] += 1
+            }
+        }
+        var waterDays: Set<Date> = []
+        if showWater {
+            for wl in waterState.logs where wl.amountOz > 0 {
+                waterDays.insert(calendar.startOfDay(for: wl.loggedAt))
+            }
+        }
+
         // Build 63 real days ending at anchor, oldest first
-        let realDays: [(date: Date?, workoutCount: Int, hasJournal: Bool, hasPlan: Bool)] = (0..<63).reversed().map { offset in
+        let realDays: [Bucket] = (0..<63).reversed().map { offset in
             let date = calendar.date(byAdding: .day, value: -offset, to: anchor)!
-            guard date <= today else { return (date: date, workoutCount: 0, hasJournal: false, hasPlan: false) }
-            let wCount = showWorkouts ? logState.logsForDate(date).count : 0
-            let jCount = showJournals ? logState.journalEntriesForDate(date).count : 0
+            let dayStart = calendar.startOfDay(for: date)
+            guard date <= today else {
+                return (date: date, workoutCount: 0, hasJournal: false, hasPlan: false, hasWater: false)
+            }
+            let wCount = logsByDay[dayStart] ?? 0
+            let jCount = journalsByDay[dayStart] ?? 0
             let plan = showPlans && planState.planDay(for: date) != nil
-            return (date: date, workoutCount: wCount, hasJournal: jCount > 0, hasPlan: plan)
+            let water = waterDays.contains(dayStart)
+            return (date: date, workoutCount: wCount, hasJournal: jCount > 0, hasPlan: plan, hasWater: water)
         }
 
         // Find the weekday of the oldest day (1=Sun … 7=Sat) and pad the front
@@ -1429,8 +1493,8 @@ private struct ActivityRibbonView: View {
         let firstDate = realDays.first!.date!
         let weekday = calendar.component(.weekday, from: firstDate) // 1-based
         let paddingCount = weekday - 1  // number of empty cells before first real day
-        let padding: [(date: Date?, workoutCount: Int, hasJournal: Bool, hasPlan: Bool)] = Array(
-            repeating: (date: nil, workoutCount: -1, hasJournal: false, hasPlan: false), count: paddingCount)
+        let padding: [Bucket] = Array(
+            repeating: (date: nil, workoutCount: -1, hasJournal: false, hasPlan: false, hasWater: false), count: paddingCount)
         return padding + realDays
     }
 
@@ -1447,7 +1511,7 @@ private struct ActivityRibbonView: View {
             }
 
             // Grid — rows of 7, oldest top-left, aligned to weekday columns
-            let rows = buckets.chunked(into: 7)
+            let rows = cachedBuckets.chunked(into: 7)
             VStack(spacing: cellSpacing) {
                 ForEach(Array(rows.enumerated()), id: \.offset) { _, week in
                     HStack(spacing: cellSpacing) {
@@ -1473,7 +1537,7 @@ private struct ActivityRibbonView: View {
                                         .padding(1)
                                 }
                                 // Blue dot for water days (bottom-left corner)
-                                if showWater, let date = bucket.date, WaterState.shared.totalOzForDate(date) > 0 {
+                                if bucket.hasWater {
                                     Circle()
                                         .fill(Color(red: 0.2, green: 0.55, blue: 1.0).opacity(0.9))
                                         .frame(width: cellSize * 0.38, height: cellSize * 0.38)
@@ -1496,6 +1560,8 @@ private struct ActivityRibbonView: View {
         .padding(10)
         .background(Color(UIColor.secondarySystemBackground))
         .cornerRadius(8)
+        .onAppear { cachedBuckets = computeBuckets() }
+        .onChange(of: depsKey) { _, _ in cachedBuckets = computeBuckets() }
     }
 
     private func cellColor(_ count: Int) -> Color {

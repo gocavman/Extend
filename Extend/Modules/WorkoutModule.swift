@@ -4235,6 +4235,12 @@ public struct StartWorkoutView: View {
                 watchUUID = await MirroredWorkoutCoordinator.shared.requestEnd()
             }
             await MainActor.run {
+                // Claim the UUID before adding the log so a concurrent
+                // HKObserverQuery import doesn't create a parallel
+                // "Mixed Cardio" entry keyed to the same HKWorkout.
+                if let uuid = watchUUID {
+                    WorkoutLogState.shared.claimHealthKitUUID(uuid)
+                }
                 WorkoutLogState.shared.addLog(
                     workoutLog,
                     exportToHealthKit: exportEnabled,

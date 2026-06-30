@@ -24,13 +24,27 @@ public final class WorkoutLogState {
     private let logsKey = "workout_logs"
     private let journalKey = "journal_entries"
 
+    /// UUIDs returned by a watch-driven HKWorkoutSession that we're about to
+    /// stamp onto a phone-side log. Closes a race where the HKObserverQuery
+    /// fires (via the watch's just-saved HKWorkout) BEFORE the phone's
+    /// completion handler reaches `addLog` — without this, `importFromHealthKit`
+    /// would create a "Mixed Cardio" duplicate keyed on the same UUID.
+    private var inFlightHealthKitUUIDs: Set<UUID> = []
+
     private init() {
         loadLogs()
         loadJournalEntries()
     }
     
     // MARK: - Log Management
-    
+
+    /// Call when a watch-driven HKWorkoutSession returns its HKWorkout UUID,
+    /// before the phone-side `addLog` has run. Subsequent observer-triggered
+    /// imports skip this UUID until the log lands in `logs`.
+    public func claimHealthKitUUID(_ uuid: UUID) {
+        inFlightHealthKitUUIDs.insert(uuid)
+    }
+
     /// Add a new workout log and optionally export it to Apple Health.
     /// Pass `activityType` as the HKWorkoutActivityType raw value (nil → .other).
     /// `existingHealthKitUUID` lets callers stamp the log with a HKWorkout UUID
@@ -64,6 +78,11 @@ public final class WorkoutLogState {
             )
         }
         logs.append(log)
+        // Now that the UUID is persisted on a log, the in-flight claim is
+        // redundant — `existingUUIDs` in `importFromHealthKit` will dedupe.
+        if let uuid = log.healthKitUUID {
+            inFlightHealthKitUUIDs.remove(uuid)
+        }
         saveLogs()
         // Refresh widget so completion checkboxes update immediately
         TrainingPlanState.shared.refreshWidgetSnapshot()
@@ -798,8 +817,12 @@ public final class WorkoutLogState {
                 activityTypes: activityTypes
             )
 
-            // Collect UUIDs already in the log so we don't duplicate
+            // Collect UUIDs already in the log so we don't duplicate.
+            // Union with `inFlightHealthKitUUIDs` to also skip workouts the
+            // phone has just claimed via a watch-mirror end-handshake but
+            // hasn't yet appended to `logs`.
             let existingUUIDs = Set(logs.compactMap { $0.healthKitUUID })
+                .union(inFlightHealthKitUUIDs)
 
             var addedAny = false
             for hkWorkout in hkWorkouts {

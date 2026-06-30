@@ -126,7 +126,7 @@ struct WatchTimerRunnerView: View {
             Spacer()
             if manager.heartRate > 0 {
                 Label("\(Int(manager.heartRate))", systemImage: "heart.fill")
-                    .font(.system(size: 10, weight: .semibold))
+                    .font(.system(size: 16, weight: .bold).monospacedDigit())
                     .foregroundColor(.red)
                     .labelStyle(.titleAndIcon)
             }
