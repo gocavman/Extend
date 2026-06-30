@@ -78,23 +78,27 @@ enum SyncKey: String, CaseIterable {
     case voiceTrainerConfigs     = "extend_voice_trainer_configs"
     case generateFilterPresets   = "extend_generate_filter_presets"
     case uiPreferences           = "extend_ui_preferences"
+    case deletedHealthKitWorkoutUUIDs = "extend_deleted_hk_workout_uuids"
+    case deletedHealthKitWaterUUIDs   = "extend_deleted_hk_water_uuids"
 
     /// The CloudKit record type name (must match the CloudKit Dashboard schema).
     var recordType: String {
         switch self {
-        case .workoutLogs:           return "WorkoutLogs"
-        case .journalEntries:        return "JournalEntries"
-        case .workouts:              return "Workouts"
-        case .waterLogs:             return "WaterLogs"
-        case .exercises:             return "Exercises"
-        case .muscleGroups:          return "MuscleGroups"
-        case .equipment:             return "Equipment"
-        case .trainingPlans:         return "TrainingPlans"
-        case .dashboardTiles:        return "DashboardTiles"
-        case .timerConfigs:          return "TimerConfigs"
-        case .voiceTrainerConfigs:   return "VoiceTrainerConfigs"
-        case .generateFilterPresets: return "GenerateFilterPresets"
-        case .uiPreferences:         return "UIPreferences"
+        case .workoutLogs:                  return "WorkoutLogs"
+        case .journalEntries:               return "JournalEntries"
+        case .workouts:                     return "Workouts"
+        case .waterLogs:                    return "WaterLogs"
+        case .exercises:                    return "Exercises"
+        case .muscleGroups:                 return "MuscleGroups"
+        case .equipment:                    return "Equipment"
+        case .trainingPlans:                return "TrainingPlans"
+        case .dashboardTiles:               return "DashboardTiles"
+        case .timerConfigs:                 return "TimerConfigs"
+        case .voiceTrainerConfigs:          return "VoiceTrainerConfigs"
+        case .generateFilterPresets:        return "GenerateFilterPresets"
+        case .uiPreferences:                return "UIPreferences"
+        case .deletedHealthKitWorkoutUUIDs: return "DeletedHKWorkoutUUIDs"
+        case .deletedHealthKitWaterUUIDs:   return "DeletedHKWaterUUIDs"
         }
     }
 
@@ -469,6 +473,12 @@ final class CloudKitSyncEngine {
 
         case .uiPreferences:
             return buildUIPreferencesPayload()
+
+        case .deletedHealthKitWorkoutUUIDs:
+            return defaults.data(forKey: "deleted_hk_workout_uuids")
+
+        case .deletedHealthKitWaterUUIDs:
+            return defaults.data(forKey: "deleted_hk_water_uuids")
         }
     }
 
@@ -574,6 +584,12 @@ final class CloudKitSyncEngine {
 
         case .uiPreferences:
             applyUIPreferencesPayload(data)
+
+        case .deletedHealthKitWorkoutUUIDs:
+            defaults.set(data, forKey: "deleted_hk_workout_uuids")
+
+        case .deletedHealthKitWaterUUIDs:
+            defaults.set(data, forKey: "deleted_hk_water_uuids")
         }
     }
 
@@ -645,6 +661,10 @@ final class CloudKitSyncEngine {
             GenerateState.shared.reloadFromDefaults()
         case .uiPreferences:
             ModuleState.shared.reloadFromDefaults()
+        case .deletedHealthKitWorkoutUUIDs:
+            WorkoutLogState.shared.reloadDeletedHealthKitUUIDsFromDefaults()
+        case .deletedHealthKitWaterUUIDs:
+            WaterState.shared.reloadDeletedHealthKitUUIDsFromDefaults()
         }
     }
 

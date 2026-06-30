@@ -2397,14 +2397,33 @@ private struct WorkoutLogDetailView: View {
                     }
                 }
             }
-            .alert("Delete Workout Log?", isPresented: $showDeleteAlert) {
-                Button("Cancel", role: .cancel) {}
-                Button("Delete", role: .destructive) {
-                    logState.deleteLog(id: log.id)
-                    dismiss()
+            .confirmationDialog(
+                "Delete Workout Log?",
+                isPresented: $showDeleteAlert,
+                titleVisibility: .visible
+            ) {
+                if log.healthKitUUID != nil {
+                    Button("Delete from Extend", role: .destructive) {
+                        logState.deleteLog(id: log.id, alsoDeleteFromHealth: false)
+                        dismiss()
+                    }
+                    Button("Delete from Extend & Apple Health", role: .destructive) {
+                        logState.deleteLog(id: log.id, alsoDeleteFromHealth: true)
+                        dismiss()
+                    }
+                } else {
+                    Button("Delete", role: .destructive) {
+                        logState.deleteLog(id: log.id, alsoDeleteFromHealth: false)
+                        dismiss()
+                    }
                 }
+                Button("Cancel", role: .cancel) {}
             } message: {
-                Text("This will permanently delete this workout log.")
+                if log.healthKitUUID != nil {
+                    Text("This workout is also in Apple Health. Apple Health may refuse removal for samples authored by another app — when that happens, this app will still hide it from future imports.")
+                } else {
+                    Text("This will permanently delete this workout log.")
+                }
             }
         }
     }

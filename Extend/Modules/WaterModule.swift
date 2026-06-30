@@ -409,17 +409,36 @@ struct WaterHistorySheet: View {
             WaterEditSheet(log: log)
                 .environment(waterState)
         }
-        .alert("Delete Entry?", isPresented: $showDeleteConfirm) {
-            Button("Cancel", role: .cancel) { deletingLog = nil }
-            Button("Delete", role: .destructive) {
-                if let log = deletingLog {
+        .confirmationDialog(
+            "Delete Entry?",
+            isPresented: $showDeleteConfirm,
+            titleVisibility: .visible
+        ) {
+            if let log = deletingLog, log.healthKitUUID != nil {
+                Button("Delete from Extend", role: .destructive) {
                     UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-                    waterState.deleteLog(id: log.id)
+                    waterState.deleteLog(id: log.id, alsoDeleteFromHealth: false)
+                    deletingLog = nil
                 }
-                deletingLog = nil
+                Button("Delete from Extend & Apple Health", role: .destructive) {
+                    UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                    waterState.deleteLog(id: log.id, alsoDeleteFromHealth: true)
+                    deletingLog = nil
+                }
+            } else if let log = deletingLog {
+                Button("Delete", role: .destructive) {
+                    UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                    waterState.deleteLog(id: log.id, alsoDeleteFromHealth: false)
+                    deletingLog = nil
+                }
             }
+            Button("Cancel", role: .cancel) { deletingLog = nil }
         } message: {
-            Text("This will permanently delete this water entry.")
+            if deletingLog?.healthKitUUID != nil {
+                Text("This entry is also in Apple Health. Apple Health may refuse removal for samples authored by another app — when that happens, this app will still hide it from future imports.")
+            } else {
+                Text("This will permanently delete this water entry.")
+            }
         }
     }
 
@@ -553,12 +572,29 @@ private struct WaterEditSheet: View {
                 loggedAt = log.loggedAt
             }
             .confirmationDialog("Delete this entry?", isPresented: $showDeleteConfirm, titleVisibility: .visible) {
-                Button("Delete Entry", role: .destructive) {
-                    UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-                    waterState.deleteLog(id: log.id)
-                    dismiss()
+                if log.healthKitUUID != nil {
+                    Button("Delete from Extend", role: .destructive) {
+                        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                        waterState.deleteLog(id: log.id, alsoDeleteFromHealth: false)
+                        dismiss()
+                    }
+                    Button("Delete from Extend & Apple Health", role: .destructive) {
+                        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                        waterState.deleteLog(id: log.id, alsoDeleteFromHealth: true)
+                        dismiss()
+                    }
+                } else {
+                    Button("Delete Entry", role: .destructive) {
+                        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                        waterState.deleteLog(id: log.id, alsoDeleteFromHealth: false)
+                        dismiss()
+                    }
                 }
                 Button("Cancel", role: .cancel) {}
+            } message: {
+                if log.healthKitUUID != nil {
+                    Text("This entry is also in Apple Health. Apple Health may refuse removal for samples authored by another app — when that happens, this app will still hide it from future imports.")
+                }
             }
         }
 

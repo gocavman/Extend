@@ -18,6 +18,7 @@ private let exportHKKey = "water_export_healthkit"
 private let importHKKey = "water_import_healthkit"
 private let lastSyncKey = "water_last_hk_sync"
 private let authRequestedKey = "water_hk_auth_requested"
+private let deletedHKUUIDsKey = "deleted_hk_water_uuids"
 
 @Observable
 public final class WaterState {
@@ -26,6 +27,12 @@ public final class WaterState {
     // MARK: - Stored data
 
     public var logs: [WaterLog] = []
+
+    /// HKQuantitySample UUIDs for water entries the user has explicitly deleted
+    /// from the Water history. `syncFromHealthKit` unions this with current log
+    /// UUIDs when deduping new HK samples, so a deleted-then-re-fetched water
+    /// entry doesn't reappear just because Apple Health still has the sample.
+    public private(set) var deletedHealthKitWaterUUIDs: Set<UUID> = []
 
     /// Set to true by a deep link (e.g. from the widget "Other" button) to open the custom entry sheet.
     public var pendingOpenAddLog: Bool = false
@@ -87,6 +94,7 @@ public final class WaterState {
         self.importFromHealthKit = ud.object(forKey: importHKKey) as? Bool ?? true
         self.lastHealthKitSync = ud.object(forKey: lastSyncKey) as? Date
         loadLogs()
+        loadDeletedHealthKitUUIDs()
         importPendingWidgetLogs()
         // Seed App Group widget keys immediately so the iPhone water widget
         // and the watch complication can render correct values without
@@ -108,8 +116,26 @@ public final class WaterState {
         addLog(WaterLog(amountOz: oz))
     }
 
-    public func deleteLog(id: UUID) {
+    /// Delete a water log.
+    /// If the log carries a `healthKitUUID`, the UUID is added to
+    /// `deletedHealthKitWaterUUIDs` so `syncFromHealthKit` won't recreate the
+    /// log on the next sync. When `alsoDeleteFromHealth` is true, the matching
+    /// `dietaryWater` sample is also deleted from Apple Health (only possible
+    /// for samples this app authored — other-app samples are silently left in
+    /// Health and the tombstone alone prevents re-import).
+    public func deleteLog(id: UUID, alsoDeleteFromHealth: Bool = false) {
+        let hkUUID = logs.first(where: { $0.id == id })?.healthKitUUID
         logs.removeAll { $0.id == id }
+
+        if let hkUUID {
+            deletedHealthKitWaterUUIDs.insert(hkUUID)
+            saveDeletedHealthKitUUIDs()
+
+            if alsoDeleteFromHealth {
+                Task { await HealthKitService.shared.deleteWaterSample(uuid: hkUUID) }
+            }
+        }
+
         saveLogs()
         persistWidgetData()
     }
@@ -262,6 +288,25 @@ public final class WaterState {
         persistWidgetData()
     }
 
+    private func saveDeletedHealthKitUUIDs() {
+        let encodable = deletedHealthKitWaterUUIDs.map { $0.uuidString }
+        if let encoded = try? JSONEncoder().encode(encodable) {
+            defaults.set(encoded, forKey: deletedHKUUIDsKey)
+        }
+        CloudKitSyncEngine.shared.push(.deletedHealthKitWaterUUIDs)
+    }
+
+    private func loadDeletedHealthKitUUIDs() {
+        guard let data = defaults.data(forKey: deletedHKUUIDsKey),
+              let decoded = try? JSONDecoder().decode([String].self, from: data) else { return }
+        deletedHealthKitWaterUUIDs = Set(decoded.compactMap { UUID(uuidString: $0) })
+    }
+
+    /// Called by CloudKitSyncEngine after a remote pull updates UserDefaults.
+    public func reloadDeletedHealthKitUUIDsFromDefaults() {
+        loadDeletedHealthKitUUIDs()
+    }
+
     /// Write today's totals + 7-day history to shared UserDefaults so the widget/watch can read them.
     public func persistWidgetData() {
         let cal = Calendar.current
@@ -315,6 +360,8 @@ public final class WaterState {
         lastHealthKitSync = nil
         defaults.removeObject(forKey: authRequestedKey)
         saveLogs()
+        deletedHealthKitWaterUUIDs = []
+        saveDeletedHealthKitUUIDs()
         persistWidgetData()
     }
 
@@ -367,7 +414,11 @@ public final class WaterState {
         let start = cal.date(byAdding: .day, value: -30, to: cal.startOfDay(for: Date())) ?? Date()
         let pred = HKQuery.predicateForSamples(withStart: start, end: Date(), options: .strictStartDate)
 
+        // Union with `deletedHealthKitWaterUUIDs` so a user-deleted log stays
+        // gone — without this, importing from HK would resurrect it on the
+        // next sync.
         let existingHKIDs = Set(logs.compactMap { $0.healthKitUUID })
+            .union(deletedHealthKitWaterUUIDs)
 
         let samples: [HKQuantitySample] = await withCheckedContinuation { cont in
             let q = HKSampleQuery(sampleType: type, predicate: pred, limit: HKObjectQueryNoLimit, sortDescriptors: nil) { _, results, _ in

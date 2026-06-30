@@ -21,8 +21,15 @@ public final class WorkoutLogState {
     public var logs: [WorkoutLog] = []
     public var journalEntries: [JournalEntry] = []
 
+    /// HKWorkout UUIDs the user has explicitly deleted from the Progress view.
+    /// `importFromHealthKit` unions this with current log UUIDs when deduping
+    /// new HK samples, so a deleted-then-re-fetched workout doesn't reappear
+    /// just because Apple Health still has the sample.
+    public private(set) var deletedHealthKitWorkoutUUIDs: Set<UUID> = []
+
     private let logsKey = "workout_logs"
     private let journalKey = "journal_entries"
+    private let deletedHKUUIDsKey = "deleted_hk_workout_uuids"
 
     /// UUIDs returned by a watch-driven HKWorkoutSession that we're about to
     /// stamp onto a phone-side log. Closes a race where the HKObserverQuery
@@ -34,6 +41,7 @@ public final class WorkoutLogState {
     private init() {
         loadLogs()
         loadJournalEntries()
+        loadDeletedHealthKitUUIDs()
     }
     
     // MARK: - Log Management
@@ -217,9 +225,26 @@ public final class WorkoutLogState {
         }
     }
     
-    /// Delete a workout log
-    public func deleteLog(id: UUID) {
+    /// Delete a workout log.
+    /// If the log carries a `healthKitUUID`, the UUID is added to
+    /// `deletedHealthKitWorkoutUUIDs` so `importFromHealthKit` won't recreate
+    /// the log on the next sync. When `alsoDeleteFromHealth` is true, the
+    /// matching HKWorkout sample is also deleted from Apple Health (only
+    /// possible for samples this app authored — other-app samples are silently
+    /// left in Health and the tombstone alone prevents re-import).
+    public func deleteLog(id: UUID, alsoDeleteFromHealth: Bool = false) {
+        let hkUUID = logs.first(where: { $0.id == id })?.healthKitUUID
         logs.removeAll { $0.id == id }
+
+        if let hkUUID {
+            deletedHealthKitWorkoutUUIDs.insert(hkUUID)
+            saveDeletedHealthKitUUIDs()
+
+            if alsoDeleteFromHealth {
+                Task { await HealthKitService.shared.deleteWorkout(uuid: hkUUID) }
+            }
+        }
+
         saveLogs()
     }
     
@@ -769,6 +794,25 @@ public final class WorkoutLogState {
     public func reloadJournalFromDefaults() {
         loadJournalEntries()
     }
+
+    private func saveDeletedHealthKitUUIDs() {
+        let encodable = deletedHealthKitWorkoutUUIDs.map { $0.uuidString }
+        if let encoded = try? JSONEncoder().encode(encodable) {
+            defaults.set(encoded, forKey: deletedHKUUIDsKey)
+        }
+        CloudKitSyncEngine.shared.push(.deletedHealthKitWorkoutUUIDs)
+    }
+
+    private func loadDeletedHealthKitUUIDs() {
+        guard let data = defaults.data(forKey: deletedHKUUIDsKey),
+              let decoded = try? JSONDecoder().decode([String].self, from: data) else { return }
+        deletedHealthKitWorkoutUUIDs = Set(decoded.compactMap { UUID(uuidString: $0) })
+    }
+
+    /// Called by CloudKitSyncEngine after a remote pull updates UserDefaults.
+    public func reloadDeletedHealthKitUUIDsFromDefaults() {
+        loadDeletedHealthKitUUIDs()
+    }
     
     /// Reset all logs (for app reset)
     public func resetLogs() {
@@ -776,6 +820,8 @@ public final class WorkoutLogState {
         saveLogs()
         journalEntries = []
         saveJournalEntries()
+        deletedHealthKitWorkoutUUIDs = []
+        saveDeletedHealthKitUUIDs()
     }
 
     #if DEBUG
@@ -820,9 +866,13 @@ public final class WorkoutLogState {
             // Collect UUIDs already in the log so we don't duplicate.
             // Union with `inFlightHealthKitUUIDs` to also skip workouts the
             // phone has just claimed via a watch-mirror end-handshake but
-            // hasn't yet appended to `logs`.
+            // hasn't yet appended to `logs`. Union with
+            // `deletedHealthKitWorkoutUUIDs` so a user-deleted log stays gone
+            // — without this, importing from HK would resurrect it on the
+            // next sync.
             let existingUUIDs = Set(logs.compactMap { $0.healthKitUUID })
                 .union(inFlightHealthKitUUIDs)
+                .union(deletedHealthKitWorkoutUUIDs)
 
             var addedAny = false
             for hkWorkout in hkWorkouts {

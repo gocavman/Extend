@@ -382,6 +382,70 @@ public final class HealthKitService {
         }
     }
 
+    // MARK: - Delete: Workout
+
+    /// Deletes the HKWorkout with `uuid` from Apple Health, if it exists and was
+    /// authored by this app. HealthKit refuses to delete samples authored by other
+    /// apps (Strava, Apple Watch, etc.) — those calls throw and the caller should
+    /// fall back to tombstoning the UUID so it doesn't re-import.
+    /// Returns `true` if the sample was deleted, `false` if it wasn't found or HK
+    /// refused the deletion.
+    @discardableResult
+    public func deleteWorkout(uuid: UUID) async -> Bool {
+        guard isAvailable else { return false }
+
+        let workout: HKWorkout? = await withCheckedContinuation { continuation in
+            let predicate = HKQuery.predicateForObject(with: uuid)
+            let query = HKSampleQuery(
+                sampleType: HKObjectType.workoutType(),
+                predicate: predicate,
+                limit: 1,
+                sortDescriptors: nil
+            ) { _, samples, _ in
+                continuation.resume(returning: (samples as? [HKWorkout])?.first)
+            }
+            store.execute(query)
+        }
+
+        guard let workout else { return false }
+        do {
+            try await store.delete(workout)
+            return true
+        } catch {
+            return false
+        }
+    }
+
+    /// Deletes a `dietaryWater` sample with `uuid` from Apple Health. Same
+    /// authoring rule as `deleteWorkout(uuid:)`: HealthKit refuses to delete
+    /// samples another app wrote, so the caller should also tombstone the
+    /// UUID locally to keep the entry from re-importing.
+    @discardableResult
+    public func deleteWaterSample(uuid: UUID) async -> Bool {
+        guard isAvailable else { return false }
+
+        let sample: HKQuantitySample? = await withCheckedContinuation { continuation in
+            let predicate = HKQuery.predicateForObject(with: uuid)
+            let query = HKSampleQuery(
+                sampleType: HKQuantityType(.dietaryWater),
+                predicate: predicate,
+                limit: 1,
+                sortDescriptors: nil
+            ) { _, samples, _ in
+                continuation.resume(returning: (samples as? [HKQuantitySample])?.first)
+            }
+            store.execute(query)
+        }
+
+        guard let sample else { return false }
+        do {
+            try await store.delete(sample)
+            return true
+        } catch {
+            return false
+        }
+    }
+
     // MARK: - Convert HKWorkout to WorkoutLog
 
     /// Builds a `WorkoutLog` with a single `LoggedExercise` tied to `exercise`,
