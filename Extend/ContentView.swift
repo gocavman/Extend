@@ -60,6 +60,30 @@ struct ContentView: View {
         }
     }
 
+    /// Apply the chosen color scheme via UIKit window override.
+    ///
+    /// We can't rely on SwiftUI's `.preferredColorScheme(nil)` to clear a
+    /// previously applied override — it's a long-standing SwiftUI bug where
+    /// switching from `.light`/`.dark` back to `nil` doesn't release the
+    /// override until the next view-graph teardown. Setting the underlying
+    /// `UIWindow.overrideUserInterfaceStyle` directly bypasses that and
+    /// updates every connected scene's windows immediately, including any
+    /// presented sheets.
+    private func applyColorSchemeOverride() {
+        let style: UIUserInterfaceStyle
+        switch appColorScheme {
+        case "dark": style = .dark
+        case "light": style = .light
+        default: style = .unspecified
+        }
+        for scene in UIApplication.shared.connectedScenes {
+            guard let windowScene = scene as? UIWindowScene else { continue }
+            for window in windowScene.windows {
+                window.overrideUserInterfaceStyle = style
+            }
+        }
+    }
+
     var body: some View {
         let hasTopModules = !state.topNavBarModules.isEmpty
         let selectedModule = state.selectedModuleID.flatMap { registry.moduleWithID($0) }
@@ -143,7 +167,8 @@ struct ContentView: View {
         }
         .animation(.easeInOut(duration: 0.25), value: showWelcome)
         .animation(.easeInOut(duration: 0.25), value: showTour)
-        .preferredColorScheme(preferredScheme)
+        .onAppear { applyColorSchemeOverride() }
+        .onChange(of: appColorScheme) { _, _ in applyColorSchemeOverride() }
         .fullScreenCover(isPresented: $showHelpFromWelcome) {
             NavigationStack {
                 HelpView()

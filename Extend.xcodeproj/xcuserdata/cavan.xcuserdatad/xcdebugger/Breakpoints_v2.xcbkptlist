@@ -14,8 +14,8 @@
             filePath = "Extend/Modules/SettingsModule.swift"
             startingColumnNumber = "9223372036854775807"
             endingColumnNumber = "9223372036854775807"
-            startingLineNumber = "1479"
-            endingLineNumber = "1479"
+            startingLineNumber = "1470"
+            endingLineNumber = "1470"
             landmarkName = "NavBarCustomizationView"
             landmarkType = "14">
          </BreakpointContent>
@@ -30,8 +30,8 @@
             filePath = "Extend/Modules/SettingsModule.swift"
             startingColumnNumber = "9223372036854775807"
             endingColumnNumber = "9223372036854775807"
-            startingLineNumber = "1476"
-            endingLineNumber = "1476"
+            startingLineNumber = "1467"
+            endingLineNumber = "1467"
             landmarkName = "topCount"
             landmarkType = "24">
          </BreakpointContent>
@@ -46,8 +46,8 @@
             filePath = "Extend/Modules/SettingsModule.swift"
             startingColumnNumber = "9223372036854775807"
             endingColumnNumber = "9223372036854775807"
-            startingLineNumber = "1480"
-            endingLineNumber = "1480"
+            startingLineNumber = "1471"
+            endingLineNumber = "1471"
             landmarkName = "availableCount"
             landmarkType = "24">
          </BreakpointContent>
@@ -62,8 +62,8 @@
             filePath = "Extend/Modules/SettingsModule.swift"
             startingColumnNumber = "9223372036854775807"
             endingColumnNumber = "9223372036854775807"
-            startingLineNumber = "1468"
-            endingLineNumber = "1468"
+            startingLineNumber = "1459"
+            endingLineNumber = "1459"
             landmarkName = "dashboardModuleID"
             landmarkType = "24">
          </BreakpointContent>

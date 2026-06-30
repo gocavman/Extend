@@ -3,205 +3,498 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Extend – Help Center</title>
+  <title>Extend</title>
+  <meta name="description" content="Extend — fitness tracking, planning, hydration, and more. No subscriptions, no ads." />
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
     :root {
-      --accent: #007AFF;
-      --bg: #f5f5f7;
+      --accent: #4f46e5;
+      --accent-soft: #6366f1;
+      --accent-tint: rgba(79, 70, 229, 0.08);
+      --bg: #fafafa;
       --card: #ffffff;
-      --text: #1d1d1f;
-      --secondary: #6e6e73;
-      --border: #e5e5ea;
-      --radius: 12px;
+      --subtle: #f3f4f6;
+      --text: #1f2937;
+      --secondary: #6b7280;
+      --border: #e5e7eb;
+      --check: #10b981;
+      --partial: #f59e0b;
+      --radius: 14px;
+      --radius-sm: 10px;
+      --shadow: 0 1px 3px rgba(0, 0, 0, 0.04), 0 2px 8px rgba(0, 0, 0, 0.04);
+      --shadow-hover: 0 4px 12px rgba(0, 0, 0, 0.06), 0 8px 24px rgba(0, 0, 0, 0.06);
     }
 
+    html { scroll-behavior: smooth; }
     body {
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, sans-serif;
       background: var(--bg);
       color: var(--text);
       line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
     }
 
     header {
-      background: var(--accent);
-      color: #fff;
-      padding: 48px 24px 36px;
+      background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
+      color: #f1f5f9;
+      padding: 72px 24px 64px;
       text-align: center;
     }
-    header h1 { font-size: 2rem; font-weight: 700; letter-spacing: -0.5px; }
-    header p  { margin-top: 8px; font-size: 1rem; opacity: 0.85; }
+    header h1 {
+      font-size: 2.4rem;
+      font-weight: 600;
+      letter-spacing: -0.02em;
+      margin-bottom: 10px;
+    }
+    header p {
+      font-size: 1rem;
+      opacity: 0.78;
+      max-width: 560px;
+      margin: 0 auto;
+    }
 
-    main { max-width: 800px; margin: 0 auto; padding: 32px 16px 64px; }
+    main { max-width: 960px; margin: 0 auto; padding: 40px 20px 80px; }
 
+    /* ─── Tile dashboard ─── */
+    .tiles {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 16px;
+      margin-bottom: 40px;
+    }
+    .tile {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 22px 20px 20px;
+      cursor: pointer;
+      text-align: left;
+      font-family: inherit;
+      color: inherit;
+      transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+      box-shadow: var(--shadow);
+      display: block;
+      width: 100%;
+    }
+    .tile:hover {
+      transform: translateY(-2px);
+      box-shadow: var(--shadow-hover);
+      border-color: var(--accent-soft);
+    }
+    .tile.active {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.14), var(--shadow);
+    }
+    a.tile { text-decoration: none; }
+    .tile.app-store .tile-icon {
+      background: linear-gradient(135deg, #0f172a 0%, #475569 100%);
+    }
+    .tile-icon {
+      width: 40px;
+      height: 40px;
+      border-radius: var(--radius-sm);
+      background: linear-gradient(135deg, var(--accent) 0%, var(--accent-soft) 100%);
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.15rem;
+      margin-bottom: 14px;
+    }
+    .tile h2 {
+      font-size: 1.02rem;
+      font-weight: 600;
+      margin-bottom: 4px;
+    }
+    .tile p {
+      font-size: 0.85rem;
+      color: var(--secondary);
+    }
+
+    /* ─── Panels ─── */
+    .panel {
+      display: none;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 32px;
+      box-shadow: var(--shadow);
+    }
+    .panel.active { display: block; }
+    .panel-title {
+      font-size: 1.35rem;
+      font-weight: 600;
+      letter-spacing: -0.01em;
+      margin-bottom: 4px;
+    }
+    .panel-subtitle {
+      color: var(--secondary);
+      font-size: 0.95rem;
+      margin-bottom: 28px;
+    }
+
+    /* ─── Compare ─── */
+    .compare-wrap { overflow-x: auto; }
+    .compare-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.92rem;
+    }
+    .compare-table thead th {
+      text-align: left;
+      font-size: 0.74rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--secondary);
+      padding: 14px 12px;
+      border-bottom: 1px solid var(--border);
+    }
+    .compare-table thead th:nth-child(2),
+    .compare-table thead th:nth-child(3) {
+      text-align: center;
+      width: 130px;
+    }
+    .compare-table tbody td {
+      padding: 12px;
+      border-bottom: 1px solid var(--border);
+    }
+    .compare-table tbody tr:last-child td { border-bottom: none; }
+    .compare-table tbody td:nth-child(2),
+    .compare-table tbody td:nth-child(3) {
+      text-align: center;
+      font-size: 1.05rem;
+    }
+    .check { color: var(--check); font-weight: 600; }
+    .cross { color: #cbd5e1; }
+    .partial { color: var(--partial); font-weight: 600; }
+    .compare-note {
+      margin-top: 20px;
+      font-size: 0.82rem;
+      color: var(--secondary);
+      padding: 12px 14px;
+      background: var(--subtle);
+      border-radius: var(--radius-sm);
+    }
+
+    /* ─── Contact ─── */
+    .contact-section {
+      padding: 18px 0;
+      border-bottom: 1px solid var(--border);
+    }
+    .contact-section:last-of-type { border-bottom: none; }
+    .contact-section h3 {
+      font-size: 0.98rem;
+      font-weight: 600;
+      margin-bottom: 4px;
+    }
+    .contact-section p {
+      color: var(--secondary);
+      font-size: 0.9rem;
+    }
+    .contact-cta {
+      margin-top: 24px;
+      text-align: center;
+    }
+    .button {
+      display: inline-block;
+      padding: 12px 22px;
+      background: var(--accent);
+      color: #fff;
+      border-radius: var(--radius-sm);
+      font-weight: 500;
+      text-decoration: none;
+      font-size: 0.95rem;
+      transition: background 0.15s ease, transform 0.15s ease;
+    }
+    .button:hover { background: var(--accent-soft); transform: translateY(-1px); }
+
+    /* ─── Donate ─── */
+    .donate-intro { margin-bottom: 20px; }
+    .donate-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 16px;
+    }
+    .donate-card {
+      display: block;
+      padding: 28px 22px;
+      background: var(--subtle);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      text-decoration: none;
+      color: inherit;
+      text-align: center;
+      transition: transform 0.15s ease, box-shadow 0.15s ease;
+    }
+    .donate-card:hover {
+      transform: translateY(-2px);
+      box-shadow: var(--shadow-hover);
+    }
+    .donate-card .label {
+      font-size: 0.72rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--secondary);
+      margin-bottom: 6px;
+    }
+    .donate-card .name {
+      font-size: 1.15rem;
+      font-weight: 600;
+      margin-bottom: 4px;
+    }
+    .donate-card .handle {
+      font-size: 0.85rem;
+      color: var(--secondary);
+    }
+
+    /* ─── Help / search + accordion ─── */
+    .help-search { margin-bottom: 8px; }
+    .help-search input {
+      width: 100%;
+      padding: 12px 14px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      background: var(--bg);
+      color: var(--text);
+      font-family: inherit;
+      font-size: 0.95rem;
+      outline: none;
+      transition: border-color 0.15s, box-shadow 0.15s;
+    }
+    .help-search input:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.14);
+    }
+    .help-no-results {
+      display: none;
+      padding: 22px;
+      text-align: center;
+      color: var(--secondary);
+      font-size: 0.9rem;
+      background: var(--bg);
+      border: 1px dashed var(--border);
+      border-radius: var(--radius);
+      margin-top: 12px;
+    }
     .category-label {
-      font-size: 0.7rem;
+      font-size: 0.72rem;
       font-weight: 700;
       letter-spacing: 0.08em;
       text-transform: uppercase;
       color: var(--secondary);
-      margin: 40px 0 12px;
+      margin: 32px 0 12px;
     }
-    .category-label:first-child { margin-top: 0; }
-
+    .category-label:first-of-type { margin-top: 4px; }
     .article {
-      background: var(--card);
-      border-radius: var(--radius);
+      background: var(--bg);
       border: 1px solid var(--border);
-      margin-bottom: 16px;
+      border-radius: var(--radius);
+      margin-bottom: 12px;
       overflow: hidden;
     }
-
     .article-header {
       display: flex;
       align-items: center;
       gap: 12px;
-      padding: 18px 20px;
+      padding: 16px 18px;
       cursor: pointer;
       user-select: none;
     }
-    .article-header:hover { background: #f9f9fb; }
-
+    .article-header:hover { background: var(--accent-tint); }
     .article-icon {
-      width: 36px;
-      height: 36px;
-      border-radius: 8px;
+      width: 34px;
+      height: 34px;
+      border-radius: 9px;
       background: var(--accent);
+      color: #fff;
       display: flex;
       align-items: center;
       justify-content: center;
+      font-size: 0.95rem;
       flex-shrink: 0;
-      font-size: 1rem;
     }
-
-    .article-title { flex: 1; }
-    .article-title h2 { font-size: 1rem; font-weight: 600; }
-    .article-title p  { font-size: 0.82rem; color: var(--secondary); margin-top: 2px; }
-
+    .article-title { flex: 1; min-width: 0; }
+    .article-title h3 { font-size: 0.98rem; font-weight: 600; }
+    .article-title p { font-size: 0.8rem; color: var(--secondary); margin-top: 2px; }
     .chevron {
       color: var(--secondary);
-      font-size: 0.75rem;
+      font-size: 0.7rem;
       transition: transform 0.2s;
     }
     .article.open .chevron { transform: rotate(90deg); }
-
     .article-body {
       display: none;
       border-top: 1px solid var(--border);
+      background: var(--card);
     }
     .article.open .article-body { display: block; }
-
     .section {
-      padding: 16px 20px;
+      padding: 14px 18px;
       border-bottom: 1px solid var(--border);
     }
     .section:last-child { border-bottom: none; }
-
-    .section h3 {
-      font-size: 0.85rem;
-      font-weight: 600;
+    .section h4 {
+      font-size: 0.74rem;
+      font-weight: 700;
       color: var(--accent);
       margin-bottom: 6px;
       text-transform: uppercase;
-      letter-spacing: 0.04em;
+      letter-spacing: 0.05em;
     }
-
     .section p {
-      font-size: 0.9rem;
+      font-size: 0.88rem;
       color: var(--text);
       white-space: pre-wrap;
     }
 
+    /* ─── Privacy ─── */
+    .privacy-summary p { margin-bottom: 14px; font-size: 0.95rem; }
+    .privacy-summary ul { padding-left: 22px; margin: 10px 0 16px; }
+    .privacy-summary li { font-size: 0.92rem; margin-bottom: 6px; }
+
     footer {
       text-align: center;
-      padding: 24px;
-      font-size: 0.8rem;
+      padding: 28px 20px;
+      font-size: 0.82rem;
       color: var(--secondary);
       border-top: 1px solid var(--border);
+      background: var(--card);
     }
+    footer a { color: var(--accent); text-decoration: none; }
+    footer a:hover { text-decoration: underline; }
 
     @media (prefers-color-scheme: dark) {
       :root {
-        --bg: #1c1c1e;
-        --card: #2c2c2e;
-        --text: #f5f5f7;
-        --secondary: #aeaeb2;
-        --border: #3a3a3c;
+        --bg: #0f172a;
+        --card: #1e293b;
+        --subtle: #0b1224;
+        --text: #f1f5f9;
+        --secondary: #94a3b8;
+        --border: #334155;
+        --accent-tint: rgba(99, 102, 241, 0.14);
+        --shadow: 0 1px 3px rgba(0, 0, 0, 0.3), 0 2px 8px rgba(0, 0, 0, 0.22);
+        --shadow-hover: 0 4px 12px rgba(0, 0, 0, 0.4), 0 8px 24px rgba(0, 0, 0, 0.3);
       }
-      .article-header:hover { background: #3a3a3c; }
+      header { background: linear-gradient(135deg, #0b1224 0%, #1e293b 100%); }
+      .cross { color: #475569; }
     }
   </style>
 </head>
 <body>
 
 <header>
-  <h1>Extend Help Center</h1>
-  <p>Tap any section to expand it.</p>
+  <h1>Extend (for iOS)</h1>
+  <p>Extend your fitness tracking and planning today. Log workouts, exercises, sets, reps, weight, distance, duration, hydration, shoe life and more. <br>No subscriptions. No ads. No tracking.</p>
 </header>
 
 <main>
 
-  <!-- ── GENERAL ── -->
-  <div class="category-label" id="general">General</div>
-
-  <div class="article" id="getting-started">
-    <div class="article-header" onclick="toggle(this)">
-      <div class="article-icon">⭐</div>
-      <div class="article-title">
-        <h2>Getting Started</h2>
-        <p>Start here.</p>
-      </div>
-      <span class="chevron">▶</span>
-    </div>
-    <div class="article-body">
-      <div class="section">
-        <h3>The Purpose of Extend</h3>
-        <p>Extend your fitness tracking and planning with this easy to use app. Log exercises, weights, sets, reps and durations. No subscriptions, no ads, no unnecessary bloat.
-
-Personal records, volume trends, streaks, muscle distribution, and more. Important stats and charts you want to focus on are readily available where you want them.</p>
-      </div>
-      <div class="section">
-        <h3>What You Can Track</h3>
-        <p>Olympic weights, kettlebells, dumbbells, cardio, bodyweight — any exercise you do. Build routines, log sessions, and watch your progress and personal records build over time. Also track water intake if so desired.</p>
-      </div>
-      <div class="section">
-        <h3>Customization</h3>
-        <p>Make it yours. Rearrange the navigation bar(s), build a custom Dashboard with the stats and shortcuts you care about, choose light or dark theme. Customize what you see and how you access it.</p>
-      </div>
-      <div class="section">
-        <h3>Getting Started Fast</h3>
-        <p>1. Review muscles.
-2. Review equipment.
-3. Review exercises.
-4. Build workout routines. Standard exercise sets, complexes, supersets, circuits. Lots of options to choose from. Need a voice to speak while working out? Explore the Voice Trainer module. Just need a timer? Explore a variety in the Timer module.
-5. Do a workout! Want one selected randomly for you, explore the Generate Workout module. Want to do a single exercise quickly? Tap the play button on any exercise in the Exercises module.
-6. Save what you've completed and review your progress in the Log and in all related modules.
-7. Optionally, set up a Training Plan to schedule workouts and exercises across your week.</p>
-      </div>
-    </div>
+  <div class="tiles" role="tablist">
+    <!-- TODO: update href once the App Store link is live -->
+    <a class="tile app-store" href="#" target="_blank" rel="noopener">
+      <div class="tile-icon">📱</div>
+      <h2>Get Extend</h2>
+      <p>Download on the App Store.</p>
+    </a>
+    <button class="tile" data-target="help" type="button" role="tab" aria-selected="false">
+      <div class="tile-icon">📚</div>
+      <h2>Help Center</h2>
+      <p>Module guides, settings, and tips for every part of the app.</p>
+    </button>
+    <button class="tile" data-target="compare" type="button" role="tab" aria-selected="false">
+      <div class="tile-icon">✓</div>
+      <h2>Compare</h2>
+      <p>How Extend stacks up against typical fitness apps.</p>
+    </button>
+    <button class="tile" data-target="contact" type="button" role="tab" aria-selected="false">
+      <div class="tile-icon">✉</div>
+      <h2>Contact</h2>
+      <p>Bug reports, feature ideas, business inquiries, and feedback.</p>
+    </button>
+    <button class="tile" data-target="donate" type="button" role="tab" aria-selected="false">
+      <div class="tile-icon">♥</div>
+      <h2>Donate</h2>
+      <p>Support development via PayPal or Venmo. Always optional.</p>
+    </button>
+    <button class="tile" data-target="privacy" type="button" role="tab" aria-selected="false">
+      <div class="tile-icon">🔒</div>
+      <h2>Privacy</h2>
+      <p>What we collect (spoiler: nothing). Full policy inside.</p>
+    </button>
   </div>
 
-  <div class="article" id="settings">
-    <div class="article-header" onclick="toggle(this)">
-      <div class="article-icon">⚙️</div>
-      <div class="article-title">
-        <h2>Settings</h2>
-        <p>Theme, units, navigation, dashboard, HealthKit, and data import/export.</p>
-      </div>
-      <span class="chevron">▶</span>
+  <!-- ─────────────────────── HELP PANEL ─────────────────────── -->
+  <section class="panel" id="panel-help" role="tabpanel">
+    <h2 class="panel-title">Help Center</h2>
+    <p class="panel-subtitle">Search or tap any article to expand it.</p>
+
+    <div class="help-search">
+      <input type="search" id="help-search-input" placeholder="Search help…" autocomplete="off" aria-label="Search help articles" />
     </div>
-    <div class="article-body">
-      <div class="section">
-        <h3>Navigation Bar(s)</h3>
-        <p>Add, remove, and reorder modules across the top and bottom navigation bars. Each bar is configured independently.
+    <div class="help-no-results" id="help-no-results">No matching articles. Try a different keyword.</div>
+
+    <div class="category-label">General</div>
+
+    <div class="article">
+      <div class="article-header" onclick="toggleArticle(this)">
+        <div class="article-icon">⭐</div>
+        <div class="article-title">
+          <h3>Getting Started</h3>
+          <p>Start here.</p>
+        </div>
+        <span class="chevron">▶</span>
+      </div>
+      <div class="article-body">
+        <div class="section">
+          <h4>The Purpose of Extend</h4>
+          <p>Extend your fitness tracking and planning with this easy to use app. Log exercises, weights, sets, reps and durations. No subscriptions, no ads, no unnecessary bloat.
+
+Personal records, volume trends, streaks, muscle distribution, and more. Important stats and charts you want to focus on, are readily available where you want them.</p>
+        </div>
+        <div class="section">
+          <h4>What You Can Track</h4>
+          <p>Olympic weights, kettlebells, dumbbells, cardio, bodyweight — any exercise you do. Build routines, log sessions, and watch your progress and personal records build over time. Track water intake. Add shoes as "equipment" and track distance in them.</p>
+        </div>
+        <div class="section">
+          <h4>Customization</h4>
+          <p>Make it yours. Rearrange the navigation bar(s), build a custom Dashboard with the stats and shortcuts you care about, choose light or dark theme. Customize what you see and how you access it.</p>
+        </div>
+        <div class="section">
+          <h4>Getting Started Fast</h4>
+          <p>1. Review muscles.
+2. Review equipment.
+3. Review exercises (which can be linked to muscles and equipment).
+4. Build workout routines. Standard exercise sets, complexes, supersets, circuits. Lots of options to choose from. Need a voice to speak while working out? Explore the Voice Trainer module. Just need a timer? Explore a variety in the Timer module.
+5. Do a workout! Want one selected randomly for you, explore the Generate Workout module. Want to do a single exercise quickly? Tap ▶ on any exercise in the Exercises module.
+   a. Start/Control from your watch (iPhone/iPad can be close by or not).
+   b. Start/Control from your iPhone/iPad (will mirror on your watch).
+6. Save what you've completed and review your progress in the Log and in all related modules.
+7. Optionally, set up a Training Plan to schedule workouts and activities across your week.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="article">
+      <div class="article-header" onclick="toggleArticle(this)">
+        <div class="article-icon">⚙️</div>
+        <div class="article-title">
+          <h3>Settings</h3>
+          <p>Theme, units, navigation, dashboard, iCloud, HealthKit, Water, and data import/export.</p>
+        </div>
+        <span class="chevron">▶</span>
+      </div>
+      <div class="article-body">
+        <div class="section">
+          <h4>Navigation Bar(s)</h4>
+          <p>Add, remove, and reorder modules across the top and bottom navigation bars. Each bar is configured independently.
 
 • Color — set a background color, optional gradient, gradient direction, and text color.
 • Customize — opens the full nav bar editor to add, remove, and reorder module icons.</p>
-      </div>
-      <div class="section">
-        <h3>Dashboard</h3>
-        <p>Configure the appearance and contents of your Dashboard.
+        </div>
+        <div class="section">
+          <h4>Dashboard</h4>
+          <p>Configure the appearance and contents of your Dashboard.
 
 • Color — set a background color and optional gradient for the Dashboard.
 • Customize — opens the tile editor to add, remove, resize, and reorder tiles.
@@ -212,495 +505,942 @@ Tile types:
 • Shortcut — launches a specific workout, timer, voice trainer, or exercise.
 • Blank — fill in space with an animated emoticon.
 
-Stat cards available: Total Workouts, Day Streaks, Longest Streak, Total Time, Favorite Exercise, Favorite Day, Workout Frequency (14 days), Muscle Group Distribution (7 days), Volume This Week, Rest Days (14 days), Personal Record, 1RM Leaderboard, Water Intake (14 days).
+Stat cards available: Today's Plan, Favorite Exercise, Favorite Day, Workout Frequency, Muscle Group Distribution (7 days), Volume This Week, Personal Record, 1RM Leaderboard, Top Durations, Top Distances, Water Intake (14 Days).
 
-Each tile supports: custom title, icon, size (small/medium/large), accent color and placement, and optional background tint.</p>
-      </div>
-      <div class="section">
-        <h3>System Preferences</h3>
-        <p>• Theme — Light or Dark.
-• Image Set — chooses the built-in anatomy images — Option 1, Option 2, or None.
-• Weight Unit — lbs or kg. Affects all weight display and entry throughout the app.
-• Apple Health — Export: sends completed workout sessions to Apple Health. Import Activities: pulls workout data from Health into your Log. Sync Now: manually trigger a sync.
-• Apple Watch — set your daily step and distance goals shown on the watch.
-• Water — set your daily intake goal and preferred unit (oz, mL). Optionally export/import water logs to/from Apple Health.
-• Keep Screen On During Sessions — prevents the screen from locking during active timers, workouts, and voice trainer sessions.</p>
-      </div>
-      <div class="section">
-        <h3>Data</h3>
-        <p>• Export Workouts — exports selected workout routines as a JSON file.
-• Import Workouts — imports workout routines from a previously exported JSON file.
-• Export Plans — exports selected training plans as a JSON file, including all dependencies.
-• Import Plans — imports training plans from a previously exported plan JSON file.
+Each tile supports: custom title, icon, size (small/medium/large), accent color and placement (none/left/top/right/bottom), and optional background tint.</p>
+        </div>
+        <div class="section">
+          <h4>System Preferences</h4>
+          <p>• Theme — Light or Dark. (The Stick Figure Editor, Animation Studio, and Match Game always stay light regardless of this setting.)
+• Image Set — chooses the built-in anatomy images used in workout and muscle views — Option 1, Option 2, or None.
+• Weight Unit — lbs or kg. Affects all weight display and entry throughout the app — logs, stat cards, personal records.
+• Distance Unit — mi or km. Affects distance display in stats and complications.
+• Keep Screen On During Sessions — prevents the screen from locking during active timers, workouts, and voice trainer sessions. Uses more battery.</p>
+        </div>
+        <div class="section">
+          <h4>iCloud Sync</h4>
+          <p>Your data syncs automatically to your iCloud account so it's available on every device signed in with the same Apple ID — and survives a reinstall.
+
+• Account — shows your current iCloud status. Sync requires you to be signed in to iCloud on the device.
+• Last Sync — when the most recent push/pull completed.
+• Sync Now — pulls the latest workouts, logs, exercises, water, and settings from iCloud. Use this if a reinstall didn't restore your data, or after a long offline period.
+• Sync Appearance Settings — when on, nav bar and dashboard colors also sync across your devices. Turn off if you want different looks per device.
+
+What syncs: workout logs, routines, exercises, muscles, equipment, timers, voice trainer configs, training plans, water logs, journal entries, and (optionally) appearance settings.</p>
+        </div>
+        <div class="section">
+          <h4>Apple Health</h4>
+          <p>• Export Workouts to Health — sends completed workout sessions to the Health app as HKWorkouts (with heart-rate and calories when available).
+• Use Apple Watch for Workouts — when on, starting a workout on the phone runs a live session on your Watch for accurate heart-rate and calorie tracking. Falls back to an iPhone estimate when the Watch isn't reachable.
+• Mirror Log — diagnostic log showing the iPhone↔Watch handshake for mirrored workout sessions.
+• Import Activities — opens a chooser to pick which HealthKit activity types pull into your Log (running, cycling, hiking, swimming, etc.).
+• Body Weight — optional. Used to tighten calorie estimates for exported workouts. Leave blank to use the default ~70 kg baseline.
+• Last Synced — relative time since the most recent HealthKit sync.
+• Sync Now — manually triggers an import (from Health) and an export (to Health) of pending logs.</p>
+        </div>
+        <div class="section">
+          <h4>Water</h4>
+          <p>• Daily Goal — your target intake for the day, in your chosen unit.
+• Unit — oz or mL. Used everywhere water is shown.
+• Export to Apple Health — when on, every logged entry is also written to the Health app as a water intake sample.
+• Import from Apple Health — when on, water samples logged elsewhere (other apps, Siri, Watch) are pulled into Extend.
+• Last Synced — relative time since the most recent Apple Health water sync.
+• Sync Now — manually triggers an import from Apple Health (only shown when Import is enabled).</p>
+        </div>
+        <div class="section">
+          <h4>Data</h4>
+          <p>• Export Workouts — exports selected workout routines as a JSON file. Useful as a backup or for transferring to another device. Exports routine definitions only, not logged session history.
+• Import Workouts — imports workout routines from a previously exported JSON file. Missing exercises, muscles, or equipment are created automatically.
+• Export Plans — exports selected training plans as a JSON file, including all referenced workouts, exercises, muscles, equipment, voice trainer configs, and timer configs.
+• Import Plans — imports training plans from a previously exported plan JSON file. All dependencies are resolved by name — created if missing, matched if found.
 • Export Log Data — exports your full session history as a CSV file.
-• Reset App — deletes everything. Cannot be undone.</p>
-      </div>
-      <div class="section">
-        <h3>Help Center</h3>
-        <p>Opens this help system. Browse articles by module, or search for any topic.</p>
-      </div>
-      <div class="section">
-        <h3>Support the Developer</h3>
-        <p>If you enjoy Extend, consider leaving a tip via PayPal or Venmo. No pressure — just appreciated.</p>
-      </div>
-    </div>
-  </div>
-
-  <div class="article">
-    <div class="article-header" onclick="toggle(this)">
-      <div class="article-icon">🟦</div>
-      <div class="article-title">
-        <h2>Widget</h2>
-        <p>Add Today's Plan to your Home Screen or Lock Screen.</p>
-      </div>
-      <span class="chevron">▶</span>
-    </div>
-    <div class="article-body">
-      <div class="section">
-        <h3>Today's Plan Widget</h3>
-        <p>The widget shows today's scheduled items from your active Training Plan — workouts, exercises, voice trainer sessions, and timers. Three sizes are available: small, medium, and large.</p>
-      </div>
-      <div class="section">
-        <h3>Adding the Widget</h3>
-        <p>Long-press your Home Screen → tap + in the top-left corner → search for Extend → choose a size and tap Add Widget.</p>
-      </div>
-      <div class="section">
-        <h3>Completion Checkmarks</h3>
-        <p>Items completed today show a green checkmark next to their name. The widget updates automatically when you complete a session inside the app.</p>
-      </div>
-      <div class="section">
-        <h3>Rest Days</h3>
-        <p>When today has no scheduled items, the widget shows "Rest day".</p>
-      </div>
-      <div class="section">
-        <h3>Requirements</h3>
-        <p>A Training Plan must be active and have items scheduled. Set one up in the Plan module.</p>
+• Erase All Data (including iCloud) — wipes everything: logs, routines, exercises, muscles, equipment, timers, voice trainer configs, training plans, and all customizations. This also clears your iCloud copy and syncs the empty state to your other devices. Workouts in Apple Health will reimport if Import is enabled. Cannot be undone — this is not the same as deleting and reinstalling the app (a reinstall would restore your data from iCloud).</p>
+        </div>
+        <div class="section">
+          <h4>Help Center</h4>
+          <p>Opens this help system. Browse articles by module, or search for any topic.</p>
+        </div>
+        <div class="section">
+          <h4>About</h4>
+          <p>• App Version and Build number.
+• Developer Website link.
+• Privacy Policy link.</p>
+        </div>
+        <div class="section">
+          <h4>Support the Developer</h4>
+          <p>If you enjoy Extend, consider leaving a tip via PayPal or Venmo. No pressure — just appreciated.</p>
+        </div>
       </div>
     </div>
-  </div>
 
-  <div class="article" id="watch-complications">
-    <div class="article-header" onclick="toggle(this)">
-      <div class="article-icon">⌚</div>
-      <div class="article-title">
-        <h2>Apple Watch Complications</h2>
-        <p>Add Extend complications to your watch face for at-a-glance stats.</p>
+    <div class="article">
+      <div class="article-header" onclick="toggleArticle(this)">
+        <div class="article-icon">⌚</div>
+        <div class="article-title">
+          <h3>Apple Watch</h3>
+          <p>Extend on your wrist — pages, complications, and watch-side settings.</p>
+        </div>
+        <span class="chevron">▶</span>
       </div>
-      <span class="chevron">▶</span>
+      <div class="article-body">
+        <div class="section">
+          <h4>Overview</h4>
+          <p>The Watch app mirrors what you care about on your wrist:
+• Swipe through pages for Today's Plan, Library (quick-start), Steps &amp; Distance, Water, and Settings.
+• Add complications to your watch face for at-a-glance stats and one-tap deep links.
+• Mirror an iPhone workout session to capture accurate heart rate and calories.
+
+Long-press your watch face → Edit → Complications → scroll to find Extend to add complications.</p>
+        </div>
+        <div class="section">
+          <h4>Pages (Watch App)</h4>
+          <p>Swipe horizontally to move between pages. Hide pages you don't use in Settings → Pages on the Watch — Settings always stays visible so you can re-enable them.
+
+• Today's Plan — your scheduled items for today, with check-off tracking.
+• Library — quick-launch any workout, exercise, timer, or voice trainer config from your library.
+• Steps &amp; Distance — today's totals with progress toward your goals.
+• Water — current intake with quick-add buttons.
+• Settings — pages, goals, complication appearance, voice countdown, diagnostics.</p>
+        </div>
+        <div class="section">
+          <h4>Watch Settings — Pages</h4>
+          <p>Toggle which pages appear when swiping. Hidden pages won't show, but Settings is always available so nothing is unrecoverable.</p>
+        </div>
+        <div class="section">
+          <h4>Watch Settings — Workouts</h4>
+          <p>• Voice Countdown — speaks the last 5 seconds of timed sets and announces complex rounds during workouts run on the Watch.</p>
+        </div>
+        <div class="section">
+          <h4>Watch Settings — Goals</h4>
+          <p>• Steps — your daily step goal (used by the Steps complication and page).
+• Distance — your daily distance goal.
+• Unit — mi or km. Affects the Distance complication and Steps &amp; Distance page.</p>
+        </div>
+        <div class="section">
+          <h4>Watch Settings — Complication Shape</h4>
+          <p>Choose the shape used by each complication: Ring (default), Circle, Square, Heart, Star, Hexagon, Shield, Seal, Diamond, Triangle, Pentagon, or Octagon. Configurable per complication (Steps, Distance, Steps &amp; Distance, Water, Today's Plan, Library).</p>
+        </div>
+        <div class="section">
+          <h4>Watch Settings — Complication Color</h4>
+          <p>Pick the shape (outline/fill) color per complication. "Watch Face" follows your watch face's tint; pick a specific color (White, Orange, Blue, Green, Pink) to override.</p>
+        </div>
+        <div class="section">
+          <h4>Watch Settings — Complication Text Color</h4>
+          <p>Pick the color of the value shown in the middle of each complication. "Watch Face" follows the shape color.</p>
+        </div>
+        <div class="section">
+          <h4>Watch Settings — Diagnostics</h4>
+          <p>• Mirror Log — recent handshake messages between the iPhone and Watch (useful when debugging a mirrored workout).
+• Version — the Watch app's version and build. Confirm it matches the iPhone build before chasing a sync issue.</p>
+        </div>
+        <div class="section">
+          <h4>Complication — Today's Plan</h4>
+          <p>Shows a ring filling up as you complete today's scheduled items. Shows number completed vs. total count. Shows "Rest" on rest days and a full checkmark when everything is done. Tapping opens the Today's Plan page.</p>
+        </div>
+        <div class="section">
+          <h4>Complication — Steps</h4>
+          <p>A ring showing your step count progress toward your daily step goal. The ring turns green when you hit your goal. Numbers over 1,000 are shown compactly (e.g. 8.4k).
+
+Set your step goal in the Watch's Settings → Goals.</p>
+        </div>
+        <div class="section">
+          <h4>Complication — Distance</h4>
+          <p>A ring showing how far you've walked or run today toward your daily distance goal. Displays in km or miles depending on your Goals setting. The ring turns green when you hit your goal.</p>
+        </div>
+        <div class="section">
+          <h4>Complication — Steps &amp; Distance</h4>
+          <p>Combines both into one complication — the ring tracks steps, with your current distance shown as a second line below.</p>
+        </div>
+        <div class="section">
+          <h4>Complication — Water</h4>
+          <p>Shows today's water intake as a percentage of your daily goal. Turns green when your goal is reached.
+
+Set your water goal on the iPhone in Settings → Water.</p>
+        </div>
+        <div class="section">
+          <h4>Complication — Library (Extend)</h4>
+          <p>Shows the app's name and displays the number of activities you've completed for the day. Tapping opens directly to the Library page for kickstarting activities.</p>
+        </div>
+        <div class="section">
+          <h4>Mirrored Workouts</h4>
+          <p>When "Use Apple Watch for Workouts" is on (iPhone Settings → Apple Health), starting a workout on the phone runs a live HKWorkoutSession on your Watch. The Watch overlay shows duration, heart rate, and calories. Stop / Finish from either device saves the session; the system X button on the Watch prompts to discard.</p>
+        </div>
+      </div>
     </div>
-    <div class="article-body">
-      <div class="section">
-        <h3>Adding Complications</h3>
-        <p>Long-press your watch face → tap Edit → swipe to the Complications screen → tap a complication slot → scroll to find Extend. Five complications are available.</p>
-      </div>
-      <div class="section">
-        <h3>Today's Plan</h3>
-        <p>Shows a ring filling up as you complete today's scheduled items. The circular version shows completed vs. total count. The rectangular version lists your first three items with checkmarks as you finish them. Shows "Rest" on rest days and a full checkmark when everything is done.</p>
-      </div>
-      <div class="section">
-        <h3>Steps</h3>
-        <p>An orange ring showing your step count progress toward your daily step goal. The ring turns green when you hit your goal. Numbers over 1,000 are shown compactly (e.g. 8.4k).
 
-Set your step goal in Settings → Apple Watch.</p>
+    <div class="article">
+      <div class="article-header" onclick="toggleArticle(this)">
+        <div class="article-icon">🟦</div>
+        <div class="article-title">
+          <h3>Widgets</h3>
+          <p>Add Today's Plan and Water Intake to your Home Screen or Lock Screen.</p>
+        </div>
+        <span class="chevron">▶</span>
       </div>
-      <div class="section">
-        <h3>Distance</h3>
-        <p>A cyan ring showing how far you've walked or run today toward your daily distance goal. Displays in km or miles depending on your settings. The ring turns green when you hit your goal.
+      <div class="article-body">
+        <div class="section">
+          <h4>Adding the Widgets</h4>
+          <p>Long-press your Home Screen → tap ➕ in the top-left corner → search for Extend → choose a size and tap Add Widget.</p>
+        </div>
+        <div class="section">
+          <h4>Keeping It Current</h4>
+          <p>The widget refreshes immediately whenever you complete a session or make plan changes inside the app. It also refreshes on its own every hour so it stays accurate even when the app hasn't been opened.</p>
+        </div>
+        <div class="section">
+          <h4>Water Widget</h4>
+          <p>The widget shows today's water intake. A quick and easy way to add/log as you drink.</p>
+        </div>
+        <div class="section">
+          <h4>Today's Plan Widget</h4>
+          <p>The widget shows today's scheduled items from your active Training Plan — workouts, exercises, voice trainer sessions, and timers.
 
-Set your distance goal in Settings → Apple Watch.</p>
-      </div>
-      <div class="section">
-        <h3>Steps &amp; Distance</h3>
-        <p>Combines both into one complication — the ring tracks steps, with your current distance shown as a second line below. No icon is shown so the text has more room.</p>
-      </div>
-      <div class="section">
-        <h3>Water</h3>
-        <p>Shows today's water intake as a percentage of your daily goal. The circular version displays a fill ring with your logged amount inside. The rectangular version adds a small progress bar and your intake vs. goal. Turns green when your goal is reached.
+Items that have been completed today show a green ✅ next to their name. The widget updates automatically when you complete a workout, exercise, timer, or voice trainer session inside the app.
 
-Set your water goal in Settings → Water.</p>
+When today has no scheduled items, the widget shows "Rest day".</p>
+        </div>
       </div>
     </div>
-  </div>
 
-  <!-- ── MODULES ── -->
-  <div class="category-label" id="dashboard" style="margin-top:40px">Modules</div>
+    <div class="category-label">Modules</div>
 
-  <div class="article">
-    <div class="article-header" onclick="toggle(this)">
-      <div class="article-icon">🟩</div>
-      <div class="article-title">
-        <h2>Dashboard</h2>
-        <p>Home screen with customizable stat tiles and shortcuts.</p>
+    <div class="article">
+      <div class="article-header" onclick="toggleArticle(this)">
+        <div class="article-icon">🟩</div>
+        <div class="article-title">
+          <h3>Dashboard</h3>
+          <p>Home screen with customizable stat tiles and shortcuts.</p>
+        </div>
+        <span class="chevron">▶</span>
       </div>
-      <span class="chevron">▶</span>
-    </div>
-    <div class="article-body">
-      <div class="section">
-        <h3>Tiles</h3>
-        <p>The Dashboard is a grid of tiles you build yourself. Each tile can be a module shortcut, a stat card, or a shortcut to a specific workout, exercise, timer, or voice trainer config.
+      <div class="article-body">
+        <div class="section">
+          <h4>Tiles</h4>
+          <p>The Dashboard is a grid of tiles you build yourself. Choose which ones, and in which order they appear. Each tile can be a module shortcut, a stat card, or a shortcut to a specific workout, exercise, timer, or voice trainer config.
 
 Sizes: small (1 column), medium (2 columns), large (full row).</p>
-      </div>
-      <div class="section">
-        <h3>Stat Cards</h3>
-        <p>• Total Workouts — lifetime count.
-• Day Streaks — current consecutive days.
-• Longest Streak — best streak ever.
-• Total Time — total logged time.
-• Favorite Exercise — most performed.
+        </div>
+        <div class="section">
+          <h4>Stat Cards</h4>
+          <p>• Today's Plan — your scheduled activities for today, with quick-launch.
+• Favorite Exercise — top 5 exercises you perform most often, as a horizontal bar chart.
 • Favorite Day — bar chart by day of week.
-• Workout Frequency (14 days) — daily activity dots.
-• Muscle Group Distribution — interactive donut chart, last 7 days.
-• Volume This Week — bar chart, last 7 weeks.
-• Rest Days (14 days) — non-workout days in past two weeks.
-• Personal Record — recent PRs per exercise.
-• 1RM Leaderboard — top estimated one-rep maxes.
-• Water Intake (14 days) — daily bar chart vs. goal.</p>
-      </div>
-      <div class="section">
-        <h3>Shortcut Tiles</h3>
-        <p>A Shortcut tile links to a specific saved workout, exercise, timer, or voice trainer config. Each has three zones: top to launch, bottom-left for stats, bottom-right for history.</p>
-      </div>
-    </div>
-  </div>
+• Workout Frequency — 14-day daily activity dots, plus your longest and current workout streaks listed underneath.
+• Muscle Group Distribution — interactive donut chart, last 7 days. Long-press a slice to highlight it and see its label and percentage.
+• Volume This Week — bar chart, last 7 weeks. Tap a bar to highlight and see its value. Configurable per Workout or Exercise.
+• Personal Record — recent PRs. Configurable per Exercise.
+• 1RM Leaderboard — top estimated one-rep maxes. Configurable per Exercise.
+• Top Durations / Top Distances — longest sessions by duration or distance. Configurable per Exercise.
+• Water Intake (14 Days) — daily bar chart of water logged vs. goal. Tap a bar to highlight. A dashed goal line marks your daily target.</p>
+        </div>
+        <div class="section">
+          <h4>Shortcut Tiles</h4>
+          <p>A Shortcut tile links to a specific saved workout, exercise, timer, or voice trainer config.
 
-  <div class="article" id="workouts">
-    <div class="article-header" onclick="toggle(this)">
-      <div class="article-icon">🏋️</div>
-      <div class="article-title">
-        <h2>Workouts</h2>
-        <p>Build routines and log training sessions.</p>
+Workout, exercise, timer, and voice trainer shortcuts use a 3-piece tile:
+• Top — tap to launch the item directly.
+• Bottom-left 📊 — opens stats for that item.
+• Bottom-right 🕐 — opens session history for that item.</p>
+        </div>
+        <div class="section">
+          <h4>Tile Deep Dive (tap to expand)</h4>
+          <p>Tapping a stat card opens a full-screen detail view with a time-range picker (7D / 1M / 3M / 6M / 1Y / All) so you can scope the data to any window.
+
+Supported stat cards:
+• Personal Record — full leaderboard of your top PRs (up to 100 entries).
+• 1RM Leaderboard — full estimated one-rep max leaderboard.
+• Top Durations — longest-duration sessions, ranked.
+• Top Distances — longest-distance sessions, ranked.
+• Favorite Exercise — full ranked list of exercises by frequency, with last-performed date.
+• Volume This Week — expanded volume graph that re-buckets automatically based on the selected range (daily, weekly, or monthly).
+• Muscle Group Distribution — donut chart over the selected range, with tappable slices and percentages.
+
+The tile's title, icon, and accent color carry through to the detail view.</p>
+        </div>
       </div>
-      <span class="chevron">▶</span>
     </div>
-    <div class="article-body">
-      <div class="section">
-        <h3>Header Buttons</h3>
-        <p>• + — create a new workout routine.
-• 🔍 — search your workout list.</p>
+
+    <div class="article">
+      <div class="article-header" onclick="toggleArticle(this)">
+        <div class="article-icon">🏋️</div>
+        <div class="article-title">
+          <h3>Workouts</h3>
+          <p>Build routines and log training sessions.</p>
+        </div>
+        <span class="chevron">▶</span>
       </div>
-      <div class="section">
-        <h3>Row Buttons</h3>
-        <p>• ▶ — start a session immediately.
-• ★ — toggle favorite (pins to the Favorites grid at the top).
+      <div class="article-body">
+        <div class="section">
+          <h4>Header Buttons</h4>
+          <p>• ➕ — create a new workout routine.
+• 🔍 — search your workout list.</p>
+        </div>
+        <div class="section">
+          <h4>Row Buttons</h4>
+          <p>Each workout row shows buttons:
+• ▶ — start a session immediately.
+• ☆ / ★ — toggle favorite (pins to the Favorites grid at the top).
 • 🕐 — view session history for this workout.
 • 📊 — view stats (volume, frequency) for this workout.
 • ✏️ — edit the workout routine.</p>
-      </div>
-      <div class="section">
-        <h3>Creating a Workout</h3>
-        <p>Tap +. Name it, then add exercises from your library.
+        </div>
+        <div class="section">
+          <h4>Favorites Grid</h4>
+          <p>Favorited workouts appear as 3-piece tiles at the top:
+• Top — tap to launch the workout.
+• Bottom-left 📊 — opens stats.
+• Bottom-right 🕐 — opens history.</p>
+        </div>
+        <div class="section">
+          <h4>Creating a Workout</h4>
+          <p>Tap ➕. Name it, then add exercises from your library.
 
-Exercises can be left ungrouped — each is performed independently. Or group them together:
-• Complex — exercises back to back, usually same weight throughout.
-• Superset — two or more exercises back to back, typically opposing muscle groups.
-• Circuit — three or more exercises cycled in sequence.</p>
-      </div>
-      <div class="section">
-        <h3>Logging a Session</h3>
-        <p>Tap ▶ to start. Log each exercise by entering sets (weight, reps, duration). Previous session values are shown as reference. Tap "Complete Workout" when done.</p>
-      </div>
-      <div class="section">
-        <h3>ⓘ Button (during session)</h3>
-        <p>Tap ⓘ next to an exercise during a session to see a larger muscle anatomy diagram and any reference image you've added for how to perform it.</p>
+Exercises can be left ungrouped — each is performed independently.
+
+Or group them together. Each group gets a color and a type:
+• Complex — exercises performed back to back with no rest, usually using the same weight/implement throughout.
+• Superset — two or more exercises performed back to back, typically targeting opposing muscle groups.
+• Circuit — three or more exercises cycled through in sequence, usually for conditioning or time efficiency.
+
+Tap the group label to modify the configuration.</p>
+        </div>
+        <div class="section">
+          <h4>Logging a Session</h4>
+          <p>Tap ▶ to start. Log each exercise by entering sets (weight, reps, duration). Skip forward or back. Previous session values are shown as reference. A history sheet is a tap away. "Complete Workout" when done and the session will appear in the log.</p>
+        </div>
+        <div class="section">
+          <h4>ⓘ Button (during session)</h4>
+          <p>Tap the ⓘ button next to an exercise during a session to expand its detail panel. This shows a larger muscle anatomy diagram for that exercise (if muscles are assigned) and any reference image you've added for how to perform it.</p>
+        </div>
+        <div class="section">
+          <h4>Personal Records, 1RM and Volume</h4>
+          <p>The app tracks PRs, estimated one-rep maxes, and Volume automatically as you log sets. View them on the Dashboard (stat cards) or per-exercise in the Exercises module.</p>
+        </div>
       </div>
     </div>
-  </div>
 
-  <div class="article" id="exercises">
-    <div class="article-header" onclick="toggle(this)">
-      <div class="article-icon">💪</div>
-      <div class="article-title">
-        <h2>Exercises</h2>
-        <p>Your exercise library — create, organize, and track stats per movement.</p>
+    <div class="article">
+      <div class="article-header" onclick="toggleArticle(this)">
+        <div class="article-icon">💪</div>
+        <div class="article-title">
+          <h3>Exercises</h3>
+          <p>Your exercise library — create, organize, launch quick sessions, and track stats per movement.</p>
+        </div>
+        <span class="chevron">▶</span>
       </div>
-      <span class="chevron">▶</span>
-    </div>
-    <div class="article-body">
-      <div class="section">
-        <h3>Row Buttons</h3>
-        <p>• ▶ — launch an immediate single-exercise session (no routine needed).
-• ★ — toggle favorite.
+      <div class="article-body">
+        <div class="section">
+          <h4>Header Buttons</h4>
+          <p>• ➕ — add a new exercise.
+• 🔍 — search the exercise list.</p>
+        </div>
+        <div class="section">
+          <h4>Row Buttons</h4>
+          <p>Each exercise row shows buttons:
+• ▶ — launch an immediate single-exercise session (no routine needed).
+• ☆ / ★ — toggle favorite (pins to the Favorites grid).
 • 🕐 — view session history for this exercise.
 • 📊 — view stats (total sets, average weight, PRs, 1RM).
 • ✏️ — edit the exercise.</p>
-      </div>
-      <div class="section">
-        <h3>Quick Sessions</h3>
-        <p>Tapping any exercise row launches a quick session for just that movement. Log sets, reps, and weight, then complete it. The session is saved to the Log.</p>
-      </div>
-      <div class="section">
-        <h3>Stats and History</h3>
-        <p>Tap 📊 to see total sets, average weight, PRs, and estimated 1RM over time. Tap 🕐 for a full list of every session that included this exercise.</p>
+        </div>
+        <div class="section">
+          <h4>Tapping a Row</h4>
+          <p>Tapping anywhere on an exercise row also launches a quick session for that exercise.</p>
+        </div>
+        <div class="section">
+          <h4>Favorites Grid</h4>
+          <p>Favorited exercises appear as 3-piece tiles at the top:
+• Top 🔥 — tap to launch a quick session.
+• Bottom-left 📊 — opens stats.
+• Bottom-right 🕐 — opens history.</p>
+        </div>
+        <div class="section">
+          <h4>Quick Sessions</h4>
+          <p>Launching an exercise opens a full workout session for just that one movement. Log sets, reps, and weight, then complete it. The session is saved to the Log.</p>
+        </div>
+        <div class="section">
+          <h4>Stats and History</h4>
+          <p>Tap 📊 to see total sets, average weight, PRs, and estimated 1RM over time. Tap 🕐 for a full list of every session that included this exercise.</p>
+        </div>
       </div>
     </div>
-  </div>
 
-  <div class="article" id="plan">
-    <div class="article-header" onclick="toggle(this)">
-      <div class="article-icon">📅</div>
-      <div class="article-title">
-        <h2>Plan</h2>
-        <p>Schedule workouts across your week.</p>
+    <div class="article">
+      <div class="article-header" onclick="toggleArticle(this)">
+        <div class="article-icon">📅</div>
+        <div class="article-title">
+          <h3>Plan</h3>
+          <p>Schedule workouts, exercises, timers, and voice trainer sessions across your week.</p>
+        </div>
+        <span class="chevron">▶</span>
       </div>
-      <span class="chevron">▶</span>
-    </div>
-    <div class="article-body">
-      <div class="section">
-        <h3>What a Plan Is</h3>
-        <p>A Training Plan is a weekly schedule that tells you what to do each day. It can be a repeating weekly template (runs forever) or a fixed-length program (e.g. 8 weeks with different content each week).</p>
-      </div>
-      <div class="section">
-        <h3>Creating a Plan</h3>
-        <p>Tap +. Give it a name and choose:
+      <div class="article-body">
+        <div class="section">
+          <h4>Header Buttons</h4>
+          <p>• ☰ — manage plans (rename, set active, edit, delete). Only visible when at least one plan exists.
+• ➕ — create a new training plan.</p>
+        </div>
+        <div class="section">
+          <h4>What a Plan Is</h4>
+          <p>A Training Plan is a weekly schedule that tells you what to do each day. It can be a repeating weekly template (runs forever) or a fixed-length program (e.g. 8 weeks with different content each week).</p>
+        </div>
+        <div class="section">
+          <h4>Creating a Plan</h4>
+          <p>Tap ➕. Give it a name and choose:
 • Repeating — the same weekly template repeats every week.
 • Fixed length — specify a number of weeks; each week can have its own schedule.
 
-Fill in each day with workouts, exercises, timers, and/or voice trainer configs.</p>
-      </div>
-      <div class="section">
-        <h3>Active Plan</h3>
-        <p>One plan is "active" at a time. The active plan's schedule appears in the Log module's calendar, shows today's tasks at the top, and is referenced by the Plan shortcut tile on the Dashboard.</p>
-      </div>
-      <div class="section">
-        <h3>Exporting and Importing Plans</h3>
-        <p>Plans can be exported and imported via Settings → Data. The export bundles all referenced workouts, exercises, muscles, equipment, voice trainer configs, and timer configs so the plan is fully portable.</p>
+Then fill in each day with workouts, exercises, timers, and/or voice trainer configs from your saved lists. Add a note to any day for extra context.</p>
+        </div>
+        <div class="section">
+          <h4>Active Plan</h4>
+          <p>Multiple plans can be "active" at a time. The active plan's schedule appears in the Log module's calendar, shows today's tasks at the top, and is referenced by the Plan shortcut tile on the Dashboard.</p>
+        </div>
+        <div class="section">
+          <h4>Manage Plans</h4>
+          <p>Tap ☰ to open the manage sheet. From here you can switch which plan is active, edit any plan, or delete plans.</p>
+        </div>
+        <div class="section">
+          <h4>Exporting and Importing Plans</h4>
+          <p>Plans can be exported and imported via Settings → Data → Export Plans / Import Plans. The export bundles all referenced workouts, exercises, muscles, equipment, voice trainer configs, and timer configs so the plan is fully portable.</p>
+        </div>
       </div>
     </div>
-  </div>
 
-  <div class="article" id="log">
-    <div class="article-header" onclick="toggle(this)">
-      <div class="article-icon">📈</div>
-      <div class="article-title">
-        <h2>Log</h2>
-        <p>Your full workout history — calendar and timeline views, plus journal.</p>
+    <div class="article">
+      <div class="article-header" onclick="toggleArticle(this)">
+        <div class="article-icon">📈</div>
+        <div class="article-title">
+          <h3>Log</h3>
+          <p>Your full workout history — calendar and timeline views, plus journal.</p>
+        </div>
+        <span class="chevron">▶</span>
       </div>
-      <span class="chevron">▶</span>
+      <div class="article-body">
+        <div class="section">
+          <h4>Header Buttons</h4>
+          <p>• 🔍 — search all logged sessions by name or exercise.
+• ✎ — create a new journal entry for the selected date.
+• 📅 — open your Training Plan. Turns orange when a plan is active.
+• ⊞ — toggle the 60-day Activity Ribbon on/off. Green when the ribbon is showing.
+• ▤ / 📅 — switch between Timeline view and Calendar view.
+• ☰ — filter what appears on the calendar: Workouts, Journal entries, Plan days, and Water. Turns accent color when any filter is off.</p>
+        </div>
+        <div class="section">
+          <h4>Calendar Navigation</h4>
+          <p>• ‹ / › — move backward or forward by month (or by week when the calendar is collapsed or in weekly timeline mode).
+• Month/week label (center) — tap to jump to any month using the month picker.
+• ⌄ at the bottom of the single week strip — expand back to the full month view.</p>
+        </div>
+        <div class="section">
+          <h4>Calendar View</h4>
+          <p>Days with activity are marked with colored pills: green for workouts, purple for journal entries, orange for plan days, and blue for water logged. Tap a date to see everything logged for that day.</p>
+        </div>
+        <div class="section">
+          <h4>Timeline View</h4>
+          <p>All entries as cards in reverse chronological order. Workouts have a green left edge, journal entries have a purple left edge, plan days have an orange left edge, and water entries have a blue left edge. Use the Week/Month toggle at the top to scope the list.</p>
+        </div>
+        <div class="section">
+          <h4>Activity Ribbon</h4>
+          <p>A 60-day heat map of training frequency. Darker green squares mean more workouts. Colored corner dots: purple (top-right) = journal entry, orange (bottom-right) = plan day, blue (bottom-left) = water logged.</p>
+        </div>
+        <div class="section">
+          <h4>Journal</h4>
+          <p>Tap ✎ to write a free-form note for any date. These appear as purple dots on the Activity Ribbon and as purple-edged cards in the timeline.</p>
+        </div>
+      </div>
     </div>
-    <div class="article-body">
-      <div class="section">
-        <h3>Calendar View</h3>
-        <p>Days with activity are marked with colored pills: green for workouts, purple for journal entries, orange for plan days, and blue for water logged. Tap a date to see everything logged for that day.</p>
-      </div>
-      <div class="section">
-        <h3>Timeline View</h3>
-        <p>All entries as cards in reverse chronological order. Workouts have a green left edge, journal entries purple, plan days orange, and water entries blue.</p>
-      </div>
-      <div class="section">
-        <h3>Activity Ribbon</h3>
-        <p>A 60-day heat map of training frequency. Darker green squares mean more workouts. Corner dots indicate journal entries (purple), plan days (orange), and water logged (blue).</p>
-      </div>
-      <div class="section">
-        <h3>Journal</h3>
-        <p>Tap the pencil icon to write a free-form note for any date. These appear as purple dots on the Activity Ribbon and as purple-edged cards in the timeline.</p>
-      </div>
-    </div>
-  </div>
 
-  <div class="article" id="trainer">
-    <div class="article-header" onclick="toggle(this)">
-      <div class="article-icon">🔊</div>
-      <div class="article-title">
-        <h2>Trainer</h2>
-        <p>Voice-guided sessions — the app calls out your cues at timed intervals.</p>
+    <div class="article">
+      <div class="article-header" onclick="toggleArticle(this)">
+        <div class="article-icon">🔊</div>
+        <div class="article-title">
+          <h3>Trainer</h3>
+          <p>Voice-guided sessions — the app calls out your cues at timed intervals.</p>
+        </div>
+        <span class="chevron">▶</span>
       </div>
-      <span class="chevron">▶</span>
-    </div>
-    <div class="article-body">
-      <div class="section">
-        <h3>How It Works</h3>
-        <p>Write cues (one per line), set your timing, and the app reads them aloud during your session. Works great for boxing, martial arts, circuits, or any interval training.</p>
-      </div>
-      <div class="section">
-        <h3>Creating a Config</h3>
-        <p>Tap +. Name it, enter cues (e.g. "Jab", "1-2", "Right Hook"), then set:
+      <div class="article-body">
+        <div class="section">
+          <h4>Header Buttons</h4>
+          <p>• ➕ — create a new voice trainer config.</p>
+        </div>
+        <div class="section">
+          <h4>Row Buttons</h4>
+          <p>Each config row shows buttons:
+• ▶ — start a session immediately.
+• ☆ / ★ — toggle favorite (pins to the Favorites grid).
+• 🕐 — view session history.
+• 📊 — view usage stats.
+• ✏️ — edit the config.</p>
+        </div>
+        <div class="section">
+          <h4>Favorites Grid</h4>
+          <p>Favorited configs appear as 3-piece tiles at the top:
+• Top — tap to launch a session.
+• Bottom-left 📊 — opens stats.
+• Bottom-right 🕐 — opens history.</p>
+        </div>
+        <div class="section">
+          <h4>How It Works</h4>
+          <p>Write cues (one per line), set your timing, and the app reads them aloud during your session. Works great for boxing, martial arts, circuits, or any interval training.</p>
+        </div>
+        <div class="section">
+          <h4>Creating a Config</h4>
+          <p>Tap ➕. Name it, enter cues (e.g. "Jab", "1-2", "Right Hook"), then set:
 • Rounds and round length
 • Rest between rounds
 • Delay between spoken cues
 • Start warning countdown
 • Rest end warning
 • Cooldown period</p>
-      </div>
-      <div class="section">
-        <h3>Random Order</h3>
-        <p>Shuffles cues each round so sessions stay unpredictable.</p>
-      </div>
-      <div class="section">
-        <h3>Running a Session</h3>
-        <p>Tap ▶ to start. The screen shows the current cue, round, and elapsed time. Tap Pause to pause. Completing saves the session to the Log.</p>
+        </div>
+        <div class="section">
+          <h4>Random Order</h4>
+          <p>Shuffles cues each round so sessions stay unpredictable.</p>
+        </div>
+        <div class="section">
+          <h4>Running a Session</h4>
+          <p>Tap ▶ to start. The screen shows the current cue, round, and elapsed time. Tap Pause to pause. Completing saves the session to the Log.</p>
+        </div>
       </div>
     </div>
-  </div>
 
-  <div class="article" id="generate">
-    <div class="article-header" onclick="toggle(this)">
-      <div class="article-icon">✨</div>
-      <div class="article-title">
-        <h2>Generate</h2>
-        <p>Auto-generate a workout from your equipment and muscle filters.</p>
+    <div class="article">
+      <div class="article-header" onclick="toggleArticle(this)">
+        <div class="article-icon">✨</div>
+        <div class="article-title">
+          <h3>Generate</h3>
+          <p>Auto-generate a workout from your equipment and muscle filters.</p>
+        </div>
+        <span class="chevron">▶</span>
       </div>
-      <span class="chevron">▶</span>
+      <div class="article-body">
+        <div class="section">
+          <h4>Header Buttons</h4>
+          <p>• ⚙ — modify saved configurations.
+• ☆ — save selected configuration for quick generation later.</p>
+        </div>
+        <div class="section">
+          <h4>How It Works</h4>
+          <p>Choose which equipment and muscle groups to include, then tap Generate. The app picks a random set of matching exercises and builds a workout for you.</p>
+        </div>
+        <div class="section">
+          <h4>Saving</h4>
+          <p>Tap Save as Workout, give it a name, and it appears in your Workouts list. Or, tap Start Workout to kickoff the session.</p>
+        </div>
+        <div class="section">
+          <h4>Filter Presets</h4>
+          <p>Saved filter combinations appear as tiles at the top. Tap one to apply that filter instantly (e.g. "Home" vs. "Gym").</p>
+        </div>
+      </div>
     </div>
-    <div class="article-body">
-      <div class="section">
-        <h3>How It Works</h3>
-        <p>Choose which equipment and muscle groups to include, then tap Generate. The app picks a random set of matching exercises and builds a workout for you.</p>
-      </div>
-      <div class="section">
-        <h3>Saving</h3>
-        <p>Tap "Save as Workout", give it a name, and it appears in your Workouts list. Or tap "Start Workout" to begin the session immediately.</p>
-      </div>
-      <div class="section">
-        <h3>Filter Presets</h3>
-        <p>Saved filter combinations appear as tiles at the top. Tap one to apply that filter instantly (e.g. "Home" vs. "Gym").</p>
-      </div>
-    </div>
-  </div>
 
-  <div class="article" id="timer">
-    <div class="article-header" onclick="toggle(this)">
-      <div class="article-icon">⏱️</div>
-      <div class="article-title">
-        <h2>Timer</h2>
-        <p>Create and run interval timers for any training style.</p>
+    <div class="article">
+      <div class="article-header" onclick="toggleArticle(this)">
+        <div class="article-icon">⏱️</div>
+        <div class="article-title">
+          <h3>Timer</h3>
+          <p>Create and run interval timers for any training style.</p>
+        </div>
+        <span class="chevron">▶</span>
       </div>
-      <span class="chevron">▶</span>
+      <div class="article-body">
+        <div class="section">
+          <h4>Header Buttons</h4>
+          <p>• ➕ — create a new timer config.</p>
+        </div>
+        <div class="section">
+          <h4>Row Buttons</h4>
+          <p>Each timer row shows buttons:
+• ▶ — start the timer immediately.
+• ☆ / ★ — toggle favorite (pins to the Favorites grid).
+• 🕐 — view session history for this timer.
+• 📊 — view usage stats.
+• ✏️ — edit the timer config.</p>
+        </div>
+        <div class="section">
+          <h4>Favorites Grid</h4>
+          <p>Favorited timers appear as 3-piece tiles at the top:
+• Top — tap to launch the timer.
+• Bottom-left 📊 — opens stats.
+• Bottom-right 🕐 — opens history.</p>
+        </div>
+        <div class="section">
+          <h4>Creating a Timer</h4>
+          <p>Tap ➕. Set a name, type, duration, and round count. Optional: warmup, cooldown.</p>
+        </div>
+        <div class="section">
+          <h4>Running</h4>
+          <p>Tap ▶ to start. The screen shows current phase (work/rest), time remaining, and round. Tap Pause to pause, Resume to continue.</p>
+        </div>
+        <div class="section">
+          <h4>Completing</h4>
+          <p>Tap Complete to add the session to Logs.</p>
+        </div>
+      </div>
     </div>
-    <div class="article-body">
-      <div class="section">
-        <h3>Creating a Timer</h3>
-        <p>Tap +. Set a name, type, duration, and round count. Optional: warmup, cooldown.</p>
-      </div>
-      <div class="section">
-        <h3>Running</h3>
-        <p>Tap ▶ to start. The screen shows the current phase (work/rest), time remaining, and round. Tap Pause to pause, Resume to continue.</p>
-      </div>
-      <div class="section">
-        <h3>Completing</h3>
-        <p>Tap Complete to add the session to the Log.</p>
-      </div>
-    </div>
-  </div>
 
-  <div class="article" id="muscles">
-    <div class="article-header" onclick="toggle(this)">
-      <div class="article-icon">🫀</div>
-      <div class="article-title">
-        <h2>Muscles</h2>
-        <p>Define muscle groups used in exercise tracking and anatomy views.</p>
+    <div class="article">
+      <div class="article-header" onclick="toggleArticle(this)">
+        <div class="article-icon">🧍</div>
+        <div class="article-title">
+          <h3>Muscles</h3>
+          <p>Define muscle groups used in exercise tracking and anatomy views.</p>
+        </div>
+        <span class="chevron">▶</span>
       </div>
-      <span class="chevron">▶</span>
+      <div class="article-body">
+        <div class="section">
+          <h4>Header Buttons</h4>
+          <p>• ➕ — add a new muscle group.</p>
+        </div>
+        <div class="section">
+          <h4>Row Buttons</h4>
+          <p>Each muscle row shows buttons:
+• 📊 — view training frequency and which exercises target this muscle.
+• ✏️ — edit the muscle group name or custom image.</p>
+        </div>
+        <div class="section">
+          <h4>Favorites Grid</h4>
+          <p>Favorited muscles appear as 3-piece tiles at the top:
+• Top 🧍 — tap to view detail.
+• Bottom-left 📊 — opens stats.
+• Bottom-right 🕐 — opens history.</p>
+        </div>
+        <div class="section">
+          <h4>Adding Muscle Groups</h4>
+          <p>Tap ➕. Name the muscle group. It becomes available to assign to exercises, which powers anatomy diagrams and distribution stats.</p>
+        </div>
+        <div class="section">
+          <h4>Custom Images</h4>
+          <p>Each new muscle group created can have custom images assigned.</p>
+        </div>
+      </div>
     </div>
-    <div class="article-body">
-      <div class="section">
-        <h3>Adding Muscle Groups</h3>
-        <p>Tap +. Name the muscle group. It becomes available to assign to exercises, which powers anatomy diagrams and distribution stats.</p>
-      </div>
-      <div class="section">
-        <h3>Custom Images</h3>
-        <p>Each muscle group can have custom images assigned to appear in anatomy views.</p>
-      </div>
-      <div class="section">
-        <h3>Stats</h3>
-        <p>Tap 📊 to see training frequency and which exercises target this muscle.</p>
-      </div>
-    </div>
-  </div>
 
-  <div class="article" id="equipment">
-    <div class="article-header" onclick="toggle(this)">
-      <div class="article-icon">🏃</div>
-      <div class="article-title">
-        <h2>Equipment</h2>
-        <p>Add equipment to categorize exercises and filter generated workouts.</p>
+    <div class="article">
+      <div class="article-header" onclick="toggleArticle(this)">
+        <div class="article-icon">🏃</div>
+        <div class="article-title">
+          <h3>Equipment</h3>
+          <p>Add equipment to categorize exercises and filter generated workouts.</p>
+        </div>
+        <span class="chevron">▶</span>
       </div>
-      <span class="chevron">▶</span>
+      <div class="article-body">
+        <div class="section">
+          <h4>Header Buttons</h4>
+          <p>• ➕ — add a new equipment item.</p>
+        </div>
+        <div class="section">
+          <h4>Row Buttons</h4>
+          <p>Each equipment row shows buttons:
+• 📊 — view which exercises use this equipment and how often it appears in your logs.
+• ✏️ — rename or edit the equipment item.</p>
+        </div>
+        <div class="section">
+          <h4>Favorites Grid</h4>
+          <p>Favorited equipment appears as 3-piece tiles at the top:
+• Top — tap to view detail.
+• Bottom-left 📊 — opens stats.
+• Bottom-right 🕐 — opens history.</p>
+        </div>
+        <div class="section">
+          <h4>Adding Equipment</h4>
+          <p>Tap ➕. Name it (e.g. Barbell, Dumbbell, Resistance Band). Assign equipment to exercises in the Exercise editor.</p>
+        </div>
+        <div class="section">
+          <h4>Filtering in Generate</h4>
+          <p>In the Generate module, enable the Equipment filter to only include exercises matching your available gear.</p>
+        </div>
+      </div>
     </div>
-    <div class="article-body">
-      <div class="section">
-        <h3>Adding Equipment</h3>
-        <p>Tap +. Name it (e.g. Barbell, Dumbbell, Resistance Band). Assign equipment to exercises in the Exercise editor.</p>
-      </div>
-      <div class="section">
-        <h3>Filtering in Generate</h3>
-        <p>In the Generate module, enable the Equipment filter to only include exercises matching your available gear.</p>
-      </div>
-    </div>
-  </div>
 
-  <div class="article" id="water">
-    <div class="article-header" onclick="toggle(this)">
-      <div class="article-icon">💧</div>
-      <div class="article-title">
-        <h2>Water</h2>
-        <p>Track daily water intake with goals, history, and Apple Health sync.</p>
+    <div class="article">
+      <div class="article-header" onclick="toggleArticle(this)">
+        <div class="article-icon">💧</div>
+        <div class="article-title">
+          <h3>Water</h3>
+          <p>Track daily water intake with goals, history, and Apple Health sync.</p>
+        </div>
+        <span class="chevron">▶</span>
       </div>
-      <span class="chevron">▶</span>
-    </div>
-    <div class="article-body">
-      <div class="section">
-        <h3>Logging Water</h3>
-        <p>Tap one of the quick-add buttons (+4 oz, +8 oz, etc.) to instantly add water. Or enter a custom amount. Each entry is timestamped and saved to your history.</p>
-      </div>
-      <div class="section">
-        <h3>Daily Goal</h3>
-        <p>The large water droplet shows today's progress toward your daily goal. The percentage and total logged amount update as you add entries.
+      <div class="article-body">
+        <div class="section">
+          <h4>Logging Water</h4>
+          <p>Tap one of the quick-add buttons (+4 oz, +8 oz, etc.) to instantly add water. Or enter a custom amount. Each entry is timestamped and saved to your history.</p>
+        </div>
+        <div class="section">
+          <h4>Daily Goal</h4>
+          <p>The large water droplet shows today's progress toward your daily goal. The percentage and total logged amount update as you add entries. The droplet fills and turns solid blue when you hit your goal.
 
 Set your goal in Settings → Water → Daily Goal.</p>
-      </div>
-      <div class="section">
-        <h3>History and Chart</h3>
-        <p>Tap History to view all past entries by week, month, or year. The bar chart shows daily intake vs. goal. A dashed goal line marks your daily target.</p>
-      </div>
-      <div class="section">
-        <h3>Apple Health Sync</h3>
-        <p>In Settings → Water, enable Export to Apple Health to send logged entries to the Health app, or Import from Apple Health to pull water data in.</p>
+        </div>
+        <div class="section">
+          <h4>History</h4>
+          <p>Tap History to view all past entries. Filter by week, month, or year. Tap the pencil ✏️ on any row to edit an entry, or the trash 🗑 to delete it. A confirmation appears before deleting.</p>
+        </div>
+        <div class="section">
+          <h4>Bar Chart</h4>
+          <p>The chart shows daily intake for the selected range. Bars that reach your goal appear in solid blue; partial days are lighter. A dashed goal line marks your daily target. Tap any bar to see the exact value and date.</p>
+        </div>
+        <div class="section">
+          <h4>Apple Health Sync</h4>
+          <p>In Settings → Water, enable Export to Apple Health to send logged entries to the Health app, or Import from Apple Health to pull water data in. Tap Sync Now to trigger a manual sync.</p>
+        </div>
+        <div class="section">
+          <h4>Dashboard Stat Card</h4>
+          <p>Add the Water Intake (14 days) stat card to your Dashboard to see your recent hydration at a glance. It shows a bar chart of daily totals with a goal line.</p>
+        </div>
+        <div class="section">
+          <h4>Log Module Integration</h4>
+          <p>Water entries appear as blue pills on calendar day cells, blue dots in the Activity Ribbon, and blue-edged cards in the Timeline view. Tapping any water entry in the Log opens the filtered water history for that day.</p>
+        </div>
       </div>
     </div>
-  </div>
 
-  <div class="article" id="extras">
-    <div class="article-header" onclick="toggle(this)">
-      <div class="article-icon">🎮</div>
-      <div class="article-title">
-        <h2>Extras</h2>
-        <p>Fun extras built into the app.</p>
+    <div class="article">
+      <div class="article-header" onclick="toggleArticle(this)">
+        <div class="article-icon">🎮</div>
+        <div class="article-title">
+          <h3>Extras</h3>
+          <p>Fun extras built into the app.</p>
+        </div>
+        <span class="chevron">▶</span>
       </div>
-      <span class="chevron">▶</span>
-    </div>
-    <div class="article-body">
-      <div class="section">
-        <h3>Workout Match</h3>
-        <p>A match-3 puzzle game with 1000 levels. Swap adjacent tiles to match 3 or more of the same type. Larger matches earn powerups. Your level saves automatically.</p>
-      </div>
-      <div class="section">
-        <h3>Stick Figure Animator</h3>
-        <p>Build frame-by-frame stick figure animations, export as GIFs, and attach them to exercises as how-to references.
+      <div class="article-body">
+        <div class="section">
+          <h4>Match 3 — mini game</h4>
+          <p>A match-3 puzzle game with 1000 levels.
 
-• Frame Editor — drag joints to pose the figure. Adjust scale, limb thickness, and proportions.
-• Animation Studio — arrange frames into a sequence, set speed, preview, and export as a GIF.
-• Add Objects — place emojis, images, or colored boxes on the canvas.</p>
-      </div>
-      <div class="section">
-        <h3>Empty Tiles</h3>
-        <p>Add an empty tile to the Dashboard and choose an emoticon. Wind it up counter-clockwise and let it spin. Keeps track of how many times you've done it.</p>
+Swap adjacent tiles to match 3 or more of the same type. Larger matches earn powerups. If you get stuck, a tile will visibly shake as a hint. If you can't beat a level first try, no worries — the next attempt(s) will have more moves available.
+
+Your level saves automatically. Add the Match 3 tile to your Dashboard to see your current level at a glance.</p>
+        </div>
+        <div class="section">
+          <h4>Stick Figure Animator</h4>
+          <p>Build frame-by-frame stick figure animations, export as GIFs, and attach them to exercises as how-to references.
+
+• Frame Editor — drag joints to pose the figure. Use X/Y controls to position it on the canvas. Adjust scale, limb thickness, and body proportions with the sliders below.
+• Saving Frames — tap "Save Frame", give it a name. Open the frame list to load, copy, rename, or delete frames.
+• Animation Studio — tap "Open Studio" to arrange frames into a sequence, set speed, preview, and export as a GIF.
+• Adding Objects — tap "Add Object" to place emojis, images, or colored boxes on the canvas. Each object can be moved, scaled, and rotated independently.</p>
+        </div>
+        <div class="section">
+          <h4>Empty Tiles on Dashboard</h4>
+          <p>Add an empty tile to the dashboard and choose an emoticon to go with it. Wind it up counter-clockwise and let it go to spin forward. For your OCD, it keeps track of how many times you've done it.</p>
+        </div>
       </div>
     </div>
-  </div>
+
+  </section>
+
+  <!-- ─────────────────────── COMPARE PANEL ─────────────────────── -->
+  <section class="panel" id="panel-compare" role="tabpanel">
+    <h2 class="panel-title">Compare</h2>
+    <p class="panel-subtitle">How Extend stacks up against typical fitness apps.</p>
+
+    <div class="compare-wrap">
+      <table class="compare-table">
+        <thead>
+          <tr>
+            <th>Feature</th>
+            <th>Extend</th>
+            <th>Other Apps</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td>iPhone, iPad, iWatch</td><td><span class="check">✓</span></td><td><span class="check">✓</span></td></tr>
+          <tr><td>No subscriptions / paywalls</td><td><span class="check">✓</span></td><td><span class="cross">✗</span></td></tr>
+          <tr><td>&nbsp;&nbsp;&nbsp;&nbsp;No analytics or tracking</td><td><span class="check">✓</span></td><td><span class="cross">✗</span></td></tr>
+          <tr><td>&nbsp;&nbsp;&nbsp;&nbsp;No account</td><td><span class="check">✓</span></td><td><span class="cross">✗</span></td></tr>
+          <tr><td>&nbsp;&nbsp;&nbsp;&nbsp;No ads</td><td><span class="check">✓</span></td><td><span class="cross">✗</span></td></tr>
+          <tr><td>Workout routines (complexes, supersets, circuits)</td><td><span class="check">✓</span></td><td><span class="check">✓</span></td></tr>
+          <tr><td>Training plans (repeating or fixed-length)</td><td><span class="check">✓</span></td><td><span class="check">✓</span></td></tr>
+          <tr><td>Voice trainer with cues, rounds, and intervals (ie. heavy bag combo work)</td><td><span class="check">✓</span></td><td><span class="partial">~</span></td></tr>
+          <tr><td>Water tracking with goal, chart, &amp; Health sync</td><td><span class="check">✓</span></td><td><span class="partial">~</span></td></tr>
+          <tr><td>Calendar &amp; timeline log views with filtering</td><td><span class="check">✓</span></td><td><span class="partial">~</span></td></tr>
+          <tr><td>60-day activity ribbon (heat map)</td><td><span class="check">✓</span></td><td><span class="cross">✗</span></td></tr>
+          <tr><td>Reporting/Graphs/Data - PRs, volume tracking, estimated 1RM, muscle distribution, distance, duration, and more!</td><td><span class="check">✓</span></td><td><span class="partial">~</span></td></tr>
+          <tr><td>iCloud sync (included)</td><td><span class="check">✓</span></td><td><span class="partial">~</span></td></tr>
+          <tr><td>Apple Health export &amp; import</td><td><span class="check">✓</span></td><td><span class="partial">~</span></td></tr>
+          <tr><td>Watch complications (customizable shape &amp; color)</td><td><span class="check">✓</span></td><td><span class="partial">~</span></td></tr>
+          <tr><td>iPhone↔Watch workout mirroring (HR, calories)</td><td><span class="check">✓</span></td><td><span class="partial">~</span></td></tr>
+          <tr><td>Widgets - Home Screen &amp; Lock Screen</td><td><span class="check">✓</span></td><td><span class="partial">~</span></td></tr>
+          <tr><td>Customizable navigation bars</td><td><span class="check">✓</span></td><td><span class="cross">✗</span></td></tr>
+          <tr><td>Customizable dashboard</td><td><span class="check">✓</span></td><td><span class="partial">~</span></td></tr>
+          <tr><td>Exercise library (allows custom)</td><td><span class="check">✓</span></td><td><span class="partial">~</span></td></tr>
+          <tr><td>Muscle library (allows custom)</td><td><span class="check">✓</span></td><td><span class="cross">✗</span></td></tr>
+          <tr><td>Equipment library (allows custom)</td><td><span class="check">✓</span></td><td><span class="partial">~</span></td></tr>
+          <tr><td>Workout generator with saved filter presets</td><td><span class="check">✓</span></td><td><span class="partial">~</span></td></tr>
+          <tr><td>Interval timer module</td><td><span class="check">✓</span></td><td><span class="check">✓</span></td></tr>
+          <tr><td>Journal entries</td><td><span class="check">✓</span></td><td><span class="partial">~</span></td></tr>
+          <tr><td>JSON &amp; CSV export (own your data)</td><td><span class="check">✓</span></td><td><span class="cross">✗</span></td></tr>
+          <tr><td>Built-in match-3 mini game (1000 levels)</td><td><span class="check">✓</span></td><td><span class="cross">✗</span></td></tr>
+          <tr><td>Built-in stick figure animator (GIF export)</td><td><span class="check">✓</span></td><td><span class="cross">✗</span></td></tr>
+          
+        </tbody>
+      </table>
+    </div>
+
+    <p class="compare-note"><span class="check">✓</span> included &nbsp;·&nbsp; <span class="partial">~</span> sometimes / partial / paywalled &nbsp;·&nbsp; <span class="cross">✗</span> not offered. "Other apps" refers to typical fitness/workout apps on the App Store; individual apps vary.</p>
+  </section>
+
+  <!-- ─────────────────────── CONTACT PANEL ─────────────────────── -->
+  <section class="panel" id="panel-contact" role="tabpanel">
+    <h2 class="panel-title">Contact</h2>
+    <p class="panel-subtitle">All inquiries go to the developer directly — no support queues, no auto-responders.</p>
+
+    <div class="contact-section">
+      <h3>🐞 Bug Reports</h3>
+      <p>Hit a crash, a sync hiccup, or something that just looks wrong? Send a short description plus your iOS / watchOS version and the build number (Settings → About in the app).</p>
+    </div>
+    <div class="contact-section">
+      <h3>💡 Feature Ideas</h3>
+      <p>Got something you'd love to see in Extend? Big or small — a new stat card, a new tile type, a workflow tweak. Ideas drive the roadmap.</p>
+    </div>
+    <div class="contact-section">
+      <h3>📝 General Feedback</h3>
+      <p>What's working, what isn't, what feels off. Honest feedback is welcome and read every time.</p>
+    </div>
+    <div class="contact-section">
+      <h3>💼 Business Opportunities</h3>
+      <p>Partnerships, sponsorships, integrations, or licensing — happy to chat.</p>
+    </div>
+
+    <div class="contact-cta">
+      <a class="button" href="mailto:gocavman@icloud.com">✉ gocavman@icloud.com</a>
+    </div>
+  </section>
+
+  <!-- ─────────────────────── DONATE PANEL ─────────────────────── -->
+  <section class="panel" id="panel-donate" role="tabpanel">
+    <h2 class="panel-title">Donate</h2>
+    <p class="panel-subtitle">Extend has no subscriptions, no ads, and no paywalls. If it's earned a spot on your home screen, a tip keeps development moving — always optional.</p>
+
+    <div class="donate-intro">
+      <p>Pick whichever is easier — both go directly to the developer.</p>
+    </div>
+
+    <div class="donate-grid">
+      <a class="donate-card" href="https://paypal.me/gocavman" target="_blank" rel="noopener">
+        <div class="label">PayPal</div>
+        <div class="name">paypal.me/gocavman</div>
+        <div class="handle">Any amount, any currency</div>
+      </a>
+      <a class="donate-card" href="https://venmo.com/u/Cavan-Mannenbach" target="_blank" rel="noopener">
+        <div class="label">Venmo</div>
+        <div class="name">@Cavan-Mannenbach</div>
+        <div class="handle">US only</div>
+      </a>
+    </div>
+  </section>
+
+  <!-- ─────────────────────── PRIVACY PANEL ─────────────────────── -->
+  <section class="panel" id="panel-privacy" role="tabpanel">
+    <h2 class="panel-title">Privacy</h2>
+    <p class="panel-subtitle">Privacy as a first principle — short version below, full policy linked.</p>
+
+    <div class="privacy-summary">
+      <p><strong>Extend collects nothing.</strong> No accounts. No analytics. No tracking SDKs. No ads. No third-party services.</p>
+      <p>What lives where:</p>
+      <ul>
+        <li><strong>On your device</strong> — all workout logs, routines, exercises, plans, water, journal, and preferences.</li>
+        <li><strong>Your iCloud (optional)</strong> — if iCloud sync is on, data syncs to your private iCloud database across your own devices. Apple's terms govern that storage. We can't see it.</li>
+        <li><strong>Apple HealthKit (optional)</strong> — opt-in import / export of workouts and water. Stays on your device.</li>
+        <li><strong>Apple Watch</strong> — data flows between iPhone and Watch over WatchConnectivity. No external server is involved.</li>
+        <li><strong>Exports</strong> — JSON / CSV files go wherever you choose to save them.</li>
+      </ul>
+      <p>
+        <a class="button" href="extend-privacy.html" target="_blank">Read the full Privacy Policy →</a>
+      </p>
+    </div>
+  </section>
 
 </main>
 
 <footer>
-  &copy; 2026 Extend. All rights reserved.<p>
-  <a href="https://www.gocavman.com/extend-privacy.html" target="_blank">Privacy Policy</a>
+  &copy; 2026 Extend · <a href="extend-privacy.html" target="_blank">Privacy Policy</a>
 </footer>
 
 <script>
-  function toggle(header) {
-    const article = header.closest('.article');
+  // Tile switcher — show only the selected panel. Only tiles with data-target
+  // toggle a panel; the App Store tile is a plain link and is skipped here.
+  document.querySelectorAll('.tile[data-target]').forEach(function (tile) {
+    tile.addEventListener('click', function () {
+      var target = tile.getAttribute('data-target');
+      document.querySelectorAll('.tile').forEach(function (t) {
+        t.classList.remove('active');
+        if (t.hasAttribute('aria-selected')) t.setAttribute('aria-selected', 'false');
+      });
+      document.querySelectorAll('.panel').forEach(function (p) {
+        p.classList.remove('active');
+      });
+      tile.classList.add('active');
+      tile.setAttribute('aria-selected', 'true');
+      var panel = document.getElementById('panel-' + target);
+      if (panel) {
+        panel.classList.add('active');
+        panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    });
+  });
+
+  // Accordion for help articles.
+  function toggleArticle(header) {
+    var article = header.closest('.article');
     article.classList.toggle('open');
   }
+
+  // Help search — filters articles by title, summary, and section text.
+  (function () {
+    var input = document.getElementById('help-search-input');
+    if (!input) return;
+    var panel = document.getElementById('panel-help');
+    var articles = panel.querySelectorAll('.article');
+    var labels = panel.querySelectorAll('.category-label');
+    var noResults = document.getElementById('help-no-results');
+
+    function applyFilter() {
+      var q = input.value.toLowerCase().trim();
+      var anyVisible = false;
+      articles.forEach(function (article) {
+        if (!q) {
+          article.style.display = '';
+          article.classList.remove('open');
+          anyVisible = true;
+          return;
+        }
+        var text = article.textContent.toLowerCase();
+        if (text.indexOf(q) !== -1) {
+          article.style.display = '';
+          article.classList.add('open');
+          anyVisible = true;
+        } else {
+          article.style.display = 'none';
+          article.classList.remove('open');
+        }
+      });
+
+      // Hide category labels that have no visible articles following them.
+      labels.forEach(function (label) {
+        var node = label.nextElementSibling;
+        var hasVisible = false;
+        while (node && !node.classList.contains('category-label')) {
+          if (node.classList.contains('article') && node.style.display !== 'none') {
+            hasVisible = true;
+            break;
+          }
+          node = node.nextElementSibling;
+        }
+        label.style.display = hasVisible ? '' : 'none';
+      });
+
+      noResults.style.display = (q && !anyVisible) ? 'block' : 'none';
+    }
+
+    input.addEventListener('input', applyFilter);
+  })();
 </script>
 
 </body>

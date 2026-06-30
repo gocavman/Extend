@@ -2759,7 +2759,20 @@ public struct StartWorkoutView: View {
             }
             .alert("Cancel Workout?", isPresented: $showingCancelConfirm) {
                 Button("Keep Going", role: .cancel) { }
-                Button("Cancel Workout", role: .destructive) { dismiss() }
+                Button("Cancel Workout", role: .destructive) {
+                    // Send the cancel signal directly rather than relying on
+                    // .onDisappear's watchWorkoutStarted check — that flag can
+                    // be stuck false (async race during startup, or .onAppear
+                    // re-firing after a sub-cover dismisses and re-running
+                    // requestStart which returns false when already mirroring),
+                    // leaving the wrist session orphaned. The coordinator's
+                    // requestCancel no-ops when no mirror is active, so this
+                    // is safe to call unconditionally. Clear the flag first so
+                    // .onDisappear doesn't fire a duplicate.
+                    watchWorkoutStarted = false
+                    Task { await MirroredWorkoutCoordinator.shared.requestCancel() }
+                    dismiss()
+                }
             } message: {
                 Text("Your progress will not be saved.")
             }
@@ -2802,7 +2815,13 @@ public struct StartWorkoutView: View {
                         activityTypeRaw: workout.healthKitActivityType,
                         name: workout.name
                     )
-                    await MainActor.run { watchWorkoutStarted = ok }
+                    // Only latch true — never overwrite a previously-true flag
+                    // with false. SwiftUI re-fires .onAppear when a child cover
+                    // dismisses, which re-runs requestStart; the coordinator
+                    // early-returns false when already mirroring, and without
+                    // this guard the flag would flip to false even though the
+                    // wrist session is still running, defeating the cancel path.
+                    if ok { await MainActor.run { watchWorkoutStarted = true } }
                 }
             }
         }
@@ -3377,6 +3396,14 @@ public struct StartWorkoutView: View {
 
     @ViewBuilder private func setRow(index: Int, set: WorkoutSet, we: WorkoutExercise) -> some View {
         let isActiveRound = isInLoop && index == loopRound
+        // In dark mode, `tertiarySystemBackground` is almost identical to the
+        // active-row tint (secondarySystemBackground + 7% white), making the
+        // reps/weight fields disappear. Swap to `systemBackground` (pure black
+        // in dark / pure white in light — no visual change in light mode) so
+        // the fields stay legible on the highlighted row.
+        let fieldBackground: Color = isActiveRound
+            ? Color(UIColor.systemBackground)
+            : Color(UIColor.tertiarySystemBackground)
         let isTimed: Bool = {
             guard !we.predefinedSets.isEmpty, index < we.predefinedSets.count else { return false }
             if case .timed = we.predefinedSets[index].target { return true }
@@ -3407,7 +3434,7 @@ public struct StartWorkoutView: View {
                         .fontWeight(.semibold)
                         .frame(maxWidth: .infinity, minHeight: isIPad ? 50 : 28, alignment: .center)
                         .padding(.horizontal, isIPad ? 10 : 6)
-                        .background(Color(UIColor.tertiarySystemBackground))
+                        .background(fieldBackground)
                         .cornerRadius(isIPad ? 8 : 4)
                 }
 
@@ -3426,7 +3453,7 @@ public struct StartWorkoutView: View {
                     .font(isIPad ? .title3 : .caption)
                     .frame(minHeight: isIPad ? 50 : 28)
                     .padding(.horizontal, isIPad ? 10 : 6)
-                    .background(Color(UIColor.tertiarySystemBackground))
+                    .background(fieldBackground)
                     .cornerRadius(isIPad ? 8 : 4)
                 }
 
@@ -3442,7 +3469,7 @@ public struct StartWorkoutView: View {
                     .font(isIPad ? .title3 : .caption)
                     .frame(minHeight: isIPad ? 50 : 28)
                     .padding(.horizontal, isIPad ? 10 : 6)
-                    .background(Color(UIColor.tertiarySystemBackground))
+                    .background(fieldBackground)
                     .cornerRadius(isIPad ? 8 : 4)
                     .onSubmit {
                         let parsed = Double(sets[index].weightText.replacingOccurrences(of: ",", with: ".")) ?? 0

@@ -56,14 +56,6 @@ private struct SettingsModuleView: View {
     @AppStorage("appColorScheme") private var appColorScheme: String = "system"
     @AppStorage("keepScreenOnDuringSession") private var keepScreenOnDuringSession: Bool = true
 
-    private var preferredScheme: ColorScheme? {
-        switch appColorScheme {
-        case "dark": return .dark
-        case "light": return .light
-        default: return nil
-        }
-    }
-
     @State private var showingResetAlert = false
     @State private var isSyncingHealthKit = false
     @State private var isWaterSectionExpanded = false
@@ -642,9 +634,9 @@ private struct SettingsModuleView: View {
                                     UIImpactFeedbackGenerator(style: .light).impactOccurred()
                                     showingResetAlert = true
                                 } label: {
-                                    Text("Reset App")
+                                    Text("Erase All Data (including iCloud)")
                                 }
-                                Text("Clears all data and customizations — logs, workouts, exercises, muscles, equipment, timers, voice trainer configs, and settings. Cannot be undone.")
+                                Text("Clears all data and customizations — logs, workouts, exercises, muscles, equipment, timers, voice trainer configs, training plans, and settings.\n\nThis also clears your iCloud copy and will sync the empty state to your other devices. Workouts in Apple Health will reimport if Import is enabled. Cannot be undone.")
                                     .font(.caption)
                                     .foregroundColor(.secondary)
                             }
@@ -762,14 +754,14 @@ private struct SettingsModuleView: View {
                 .background(Color(UIColor.systemBackground))
                 .toolbar(.hidden, for: .navigationBar)
                 .navigationBarTitleDisplayMode(.inline)
-                .alert("Reset App?", isPresented: $showingResetAlert) {
+                .alert("Erase All Data?", isPresented: $showingResetAlert) {
                     Button("Cancel", role: .cancel) {}
-                    Button("Reset", role: .destructive) {
+                    Button("Erase", role: .destructive) {
                         UIImpactFeedbackGenerator(style: .medium).impactOccurred()
                         resetApp()
                     }
                 } message: {
-                    Text("This will reset the whole app back to default settings; clearing history, logs, favorites and customizations (navbars, dashboard tiles, exercises, workouts, muscle groups, equipment, timers, voice trainers and training plans).")
+                    Text("This resets the whole app back to default settings — clearing history, logs, favorites and customizations (navbars, dashboard tiles, exercises, workouts, muscle groups, equipment, timers, voice trainers and training plans).\n\nThis also clears your iCloud copy and syncs the empty state to your other devices. Workouts in Apple Health will reimport if Import is enabled.")
                 }
                 .fullScreenCover(isPresented: $showingExportSheet) {
                     WorkoutExportSheet(
@@ -857,7 +849,6 @@ private struct SettingsModuleView: View {
                 }
             }
         }
-        .preferredColorScheme(preferredScheme)
     }
 
     // MARK: - iCloud Sync labels

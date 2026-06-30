@@ -13,7 +13,7 @@
       },
       {
         "heading": "What You Can Track",
-        "body": "Olympic weights, kettlebells, dumbbells, cardio, bodyweight — any exercise you do. Build routines, log sessions, and watch your progress and personal records build over time. Also track water intake if so desired."
+        "body": "Olympic weights, kettlebells, dumbbells, cardio, bodyweight — any exercise you do. Build routines, log sessions, and watch your progress and personal records build over time. Track water intake. Add shoes as 'equipment' and track distance in them."
       },
       {
         "heading": "Customization",
@@ -21,7 +21,7 @@
       },
       {
         "heading": "Getting Started Fast",
-        "body": "1. Review muscles.\n2. Review equipment.\n3. Review exercises.\n4. Build workout routines. Standard exercise sets, complexes, supersets, circuits. Lots of options to choose from. Need a voice to speak while working out? Explore the Voice Trainer module. Just need a timer? Explore a variety in the Timer module.\n5. Do a workout! Want one selected randomly for you, explore the Generate Workout module. Want to do a single exercise quickly? Tap [sf:play.circle.fill] on any exercise in the Exercises module.\n6. Save what you've completed and review your progress in the Log and in all related modules.\n7. Optionally, set up a Training Plan to schedule workouts and exercises across your week."
+        "body": "1. Review muscles.\n2. Review equipment.\n3. Review exercises (which can be linked to muscles and equipment).\n4. Build workout routines. Standard exercise sets, complexes, supersets, circuits. Lots of options to choose from. Need a voice to speak while working out? Explore the Voice Trainer module. Just need a timer? Explore a variety in the Timer module.\n5. Do a workout! Want one selected randomly for you, explore the Generate Workout module. Want to do a single exercise quickly? Tap [sf:play.circle.fill] on any exercise in the Exercises module.\na. Start/Control from your watch (iphone/ipad can be close by or not).\nb. Start/Control from your iphone/ipad (will mirror on your watch).\n6. Save what you've completed and review your progress in the Log and in all related modules.\n7. Optionally, set up a Training Plan to schedule workouts and activities across your week."
       }
     ]
   },
@@ -30,8 +30,8 @@
     "category": "General",
     "title": "Settings",
     "icon": "gear",
-    "summary": "Theme, units, navigation, dashboard, HealthKit, and data import/export.",
-    "keywords": ["settings", "theme", "dark", "light", "dark mode", "lbs", "kg", "weight unit", "screen on", "keep screen on", "health", "healthkit", "export", "import", "reset", "navbar", "nav bar", "navigation bar", "dashboard", "image set", "male", "female", "gradient", "color", "background", "tint", "accent", "icon", "reorder", "modules", "tile", "stat card", "header", "paypal", "venmo", "donate", "support", "backup", "restore", "sync", "customize", "plan"],
+    "summary": "Theme, units, navigation, dashboard, iCloud, HealthKit, Water, and data import/export.",
+    "keywords": ["settings", "theme", "dark", "light", "dark mode", "lbs", "kg", "weight unit", "screen on", "keep screen on", "health", "healthkit", "apple health", "export", "import", "reset", "erase", "navbar", "nav bar", "navigation bar", "dashboard", "image set", "male", "female", "gradient", "color", "background", "tint", "accent", "icon", "reorder", "modules", "tile", "stat card", "header", "paypal", "venmo", "donate", "support", "backup", "restore", "sync", "icloud", "cloudkit", "customize", "plan", "water", "hydration", "oz", "ml", "goal", "appearance"],
     "sections": [
       {
         "heading": "Navigation Bar(s)",
@@ -43,11 +43,23 @@
       },
       {
         "heading": "System Preferences",
-        "body": "• Theme — Light or Dark. (The Stick Figure Editor, Animation Studio, and Match Game always stay light regardless of this setting.)\n• Image Set — chooses the built-in anatomy images used in workout and muscle views — Option 1, Option 2, or None.\n• Weight Unit — lbs or kg. Affects all weight display and entry throughout the app — logs, stat cards, personal records.\n• Apple Health — Export: sends completed workout sessions to Apple Health. Import Activities: pulls workout data from Health into your Log. Sync Now: manually trigger a sync.\n• Water — set your daily intake goal and preferred unit (oz, mL). Optionally export water logs to Apple Health or import from Apple Health.\n• Keep Screen On During Sessions — prevents the screen from locking during active timers, workouts, and voice trainer sessions. Uses more battery."
+        "body": "• Theme — Light or Dark. (The Stick Figure Editor, Animation Studio, and Match Game always stay light regardless of this setting.)\n• Image Set — chooses the built-in anatomy images used in workout and muscle views — Option 1, Option 2, or None.\n• Weight Unit — lbs or kg. Affects all weight display and entry throughout the app — logs, stat cards, personal records.\n• Distance Unit — mi or km. Affects distance display in stats and complications.\n• Keep Screen On During Sessions — prevents the screen from locking during active timers, workouts, and voice trainer sessions. Uses more battery."
+      },
+      {
+        "heading": "iCloud Sync",
+        "body": "Your data syncs automatically to your iCloud account so it's available on every device signed in with the same Apple ID — and survives a reinstall.\n\n• Account — shows your current iCloud status. Sync requires you to be signed in to iCloud on the device.\n• Last Sync — when the most recent push/pull completed.\n• Sync Now — pulls the latest workouts, logs, exercises, water, and settings from iCloud. Use this if a reinstall didn't restore your data, or after a long offline period.\n• Sync Appearance Settings — when on, nav bar and dashboard colors also sync across your devices. Turn off if you want different looks per device.\n\nWhat syncs: workout logs, routines, exercises, muscles, equipment, timers, voice trainer configs, training plans, water logs, journal entries, and (optionally) appearance settings."
+      },
+      {
+        "heading": "Apple Health",
+        "body": "• Export Workouts to Health — sends completed workout sessions to the Health app as HKWorkouts (with heart-rate and calories when available).\n• Use Apple Watch for Workouts — when on, starting a workout on the phone runs a live session on your Watch for accurate heart-rate and calorie tracking. Falls back to an iPhone estimate when the Watch isn't reachable.\n• Mirror Log — diagnostic log showing the iPhone↔Watch handshake for mirrored workout sessions.\n• Import Activities — opens a chooser to pick which HealthKit activity types pull into your Log (running, cycling, hiking, swimming, etc.).\n• Body Weight — optional. Used to tighten calorie estimates for exported workouts. Leave blank to use the default ~70 kg baseline.\n• Last Synced — relative time since the most recent HealthKit sync.\n• Sync Now — manually triggers an import (from Health) and an export (to Health) of pending logs."
+      },
+      {
+        "heading": "Water",
+        "body": "• Daily Goal — your target intake for the day, in your chosen unit.\n• Unit — oz or mL. Used everywhere water is shown.\n• Export to Apple Health — when on, every logged entry is also written to the Health app as a water intake sample.\n• Import from Apple Health — when on, water samples logged elsewhere (other apps, Siri, Watch) are pulled into Extend.\n• Last Synced — relative time since the most recent Apple Health water sync.\n• Sync Now — manually triggers an import from Apple Health (only shown when Import is enabled)."
       },
       {
         "heading": "Data",
-        "body": "• Export Workouts — exports selected workout routines as a JSON file. Useful as a backup or for transferring to another device. Exports routine definitions only, not logged session history.\n• Import Workouts — imports workout routines from a previously exported JSON file. Missing exercises, muscles, or equipment are created automatically.\n• Export Plans — exports selected training plans as a JSON file, including all referenced workouts, exercises, muscles, equipment, voice trainer configs, and timer configs.\n• Import Plans — imports training plans from a previously exported plan JSON file. All dependencies are resolved by name — created if missing, matched if found.\n• Export Log Data — exports your full session history as a CSV file.\n• Reset App — deletes everything: logs, routines, exercises, muscles, equipment, timers, voice trainer configs, training plans, and all customizations. Cannot be undone."
+        "body": "• Export Workouts — exports selected workout routines as a JSON file. Useful as a backup or for transferring to another device. Exports routine definitions only, not logged session history.\n• Import Workouts — imports workout routines from a previously exported JSON file. Missing exercises, muscles, or equipment are created automatically.\n• Export Plans — exports selected training plans as a JSON file, including all referenced workouts, exercises, muscles, equipment, voice trainer configs, and timer configs.\n• Import Plans — imports training plans from a previously exported plan JSON file. All dependencies are resolved by name — created if missing, matched if found.\n• Export Log Data — exports your full session history as a CSV file.\n• Erase All Data (including iCloud) — wipes everything: logs, routines, exercises, muscles, equipment, timers, voice trainer configs, training plans, and all customizations. This also clears your iCloud copy and syncs the empty state to your other devices. Workouts in Apple Health will reimport if Import is enabled. Cannot be undone — this is not the same as deleting and reinstalling the app (a reinstall would restore your data from iCloud)."
       },
       {
         "heading": "Help Center",
@@ -64,70 +76,102 @@
     ]
   },
   {
-    "id": "watch-complications",
+    "id": "apple-watch",
     "category": "General",
-    "title": "Apple Watch Complications",
+    "title": "Apple Watch",
     "icon": "applewatch",
-    "summary": "Add Extend complications to your watch face for at-a-glance stats.",
-    "keywords": ["watch", "complication", "apple watch", "steps", "distance", "water", "plan", "ring", "gauge", "face", "watchface", "goal"],
+    "summary": "Extend on your wrist — pages, complications, and watch-side settings.",
+    "keywords": ["watch", "apple watch", "complication", "complications", "page", "pages", "steps", "distance", "water", "plan", "library", "ring", "gauge", "face", "watchface", "goal", "shape", "color", "tint", "voice", "countdown", "speech", "mirror", "session", "heart rate", "calories", "diagnostics"],
     "sections": [
       {
-        "heading": "Adding Complications",
-        "body": "Long-press your watch face → tap Edit → swipe to the Complications screen → tap a complication slot → scroll to find Extend. Five complications are available."
+        "heading": "Overview",
+        "body": "The Watch app mirrors what you care about on your wrist:\n• Swipe through pages for Today's Plan, Library (quick-start), Steps & Distance, Water, and Settings.\n• Add complications to your watch face for at-a-glance stats and one-tap deep links.\n• Mirror an iPhone workout session to capture accurate heart rate and calories.\n\nLong-press your watch face → Edit → Complications → scroll to find Extend to add complications."
       },
       {
-        "heading": "Today's Plan",
-        "body": "Shows a ring filling up as you complete today's scheduled items. The circular version shows completed vs. total count. The rectangular version lists your first three items with checkmarks as you finish them. Shows 'Rest' on rest days and a full checkmark when everything is done."
+        "heading": "Pages (Watch App)",
+        "body": "Swipe horizontally to move between pages. Hide pages you don't use in Settings → Pages on the Watch — Settings always stays visible so you can re-enable them.\n\n• Today's Plan — your scheduled items for today, with check-off tracking.\n• Library — quick-launch any workout, exercise, timer, or voice trainer config from your library.\n• Steps & Distance — today's totals with progress toward your goals.\n• Water — current intake with quick-add buttons.\n• Settings — pages, goals, complication appearance, voice countdown, diagnostics."
       },
       {
-        "heading": "Steps",
-        "body": "An orange ring showing your step count progress toward your daily step goal. The ring turns green when you hit your goal. Numbers over 1,000 are shown compactly (e.g. 8.4k).\n\nSet your step goal in Settings → Apple Watch."
+        "heading": "Watch Settings — Pages",
+        "body": "Toggle which pages appear when swiping. Hidden pages won't show, but Settings is always available so nothing is unrecoverable."
       },
       {
-        "heading": "Distance",
-        "body": "A cyan ring showing how far you've walked or run today toward your daily distance goal. Displays in km or miles depending on your settings. The ring turns green when you hit your goal.\n\nSet your distance goal in Settings → Apple Watch."
+        "heading": "Watch Settings — Workouts",
+        "body": "• Voice Countdown — speaks the last 5 seconds of timed sets and announces complex rounds during workouts run on the Watch."
       },
       {
-        "heading": "Steps & Distance",
+        "heading": "Watch Settings — Goals",
+        "body": "• Steps — your daily step goal (used by the Steps complication and page).\n• Distance — your daily distance goal.\n• Unit — mi or km. Affects the Distance complication and Steps & Distance page."
+      },
+      {
+        "heading": "Watch Settings — Complication Shape",
+        "body": "Choose the shape used by each complication: Ring (default), Circle, Square, Heart, Star, Hexagon, Shield, Seal, Diamond, Triangle, Pentagon, or Octagon. Configurable per complication (Steps, Distance, Steps & Distance, Water, Today's Plan, Library)."
+      },
+      {
+        "heading": "Watch Settings — Complication Color",
+        "body": "Pick the shape (outline/fill) color per complication. 'Watch Face' follows your watch face's tint; pick a specific color (White, Orange, Blue, Green, Pink) to override."
+      },
+      {
+        "heading": "Watch Settings — Complication Text Color",
+        "body": "Pick the color of the value shown in the middle of each complication. 'Watch Face' follows the shape color."
+      },
+      {
+        "heading": "Watch Settings — Diagnostics",
+        "body": "• Mirror Log — recent handshake messages between the iPhone and Watch (useful when debugging a mirrored workout).\n• Version — the Watch app's version and build. Confirm it matches the iPhone build before chasing a sync issue."
+      },
+      {
+        "heading": "Complication — Today's Plan",
+        "body": "Shows a ring filling up as you complete today's scheduled items. Shows number completed vs. total count. Shows 'Rest' on rest days and a full checkmark when everything is done. Tapping opens the Today's Plan page."
+      },
+      {
+        "heading": "Complication — Steps",
+        "body": "A ring showing your step count progress toward your daily step goal. The ring turns green when you hit your goal. Numbers over 1,000 are shown compactly (e.g. 8.4k).\n\nSet your step goal in the Watch's Settings → Goals."
+      },
+      {
+        "heading": "Complication — Distance",
+        "body": "A ring showing how far you've walked or run today toward your daily distance goal. Displays in km or miles depending on your Goals setting. The ring turns green when you hit your goal."
+      },
+      {
+        "heading": "Complication — Steps & Distance",
         "body": "Combines both into one complication — the ring tracks steps, with your current distance shown as a second line below."
       },
       {
-        "heading": "Water",
-        "body": "Shows today's water intake as a percentage of your daily goal. The circular version displays a fill ring with your logged amount inside. The rectangular version adds a small progress bar and your intake vs. goal. Turns green when your goal is reached.\n\nSet your water goal in Settings → Water."
+        "heading": "Complication — Water",
+        "body": "Shows today's water intake as a percentage of your daily goal. Turns green when your goal is reached.\n\nSet your water goal on the iPhone in Settings → Water."
+      },
+      {
+        "heading": "Complication — Library (Extend)",
+        "body": "Shows the app's name and displays the number of activities you've completed for the day. Tapping opens directly to the Library page for kickstarting activities."
+      },
+      {
+        "heading": "Mirrored Workouts",
+        "body": "When 'Use Apple Watch for Workouts' is on (iPhone Settings → Apple Health), starting a workout on the phone runs a live HKWorkoutSession on your Watch. The Watch overlay shows duration, heart rate, and calories. Stop / Finish from either device saves the session; the system X button on the Watch prompts to discard."
       }
     ]
   },
   {
     "id": "widget",
     "category": "General",
-    "title": "Widget",
+    "title": "Widgets",
     "icon": "rectangle.on.rectangle",
-    "summary": "Add Today's Plan to your Home Screen or Lock Screen.",
-    "keywords": ["widget", "home screen", "lock screen", "today's plan", "plan", "checkmark", "completed", "small", "medium", "large", "add widget", "widgetkit", "rest day"],
+    "summary": "Add Today's Plan and Water Intake to your Home Screen or Lock Screen.",
+    "keywords": ["widget", "home screen", "lock screen", "today's plan", "plan", "checkmark", "completed", "small", "medium", "large", "add widget", "widgetkit", "rest day", "water"],
     "sections": [
+        {
+          "heading": "Adding the Widgets",
+          "body": "Long-press your Home Screen → tap [sf:plus] in the top-left corner → search for Extend → choose a size and tap Add Widget."
+        },
+        {
+          "heading": "Keeping It Current",
+          "body": "The widget refreshes immediately whenever you complete a session or make plan changes inside the app. It also refreshes on its own every hour so it stays accurate even when the app hasn't been opened."
+        },
+        {
+          "heading": "Water Widget",
+          "body": "The widget shows today's water intake. A quick and easy way to add/log as you drink."
+        },
       {
         "heading": "Today's Plan Widget",
-        "body": "The widget shows today's scheduled items from your active Training Plan — workouts, exercises, voice trainer sessions, and timers. Three sizes are available: small, medium, and large."
-      },
-      {
-        "heading": "Adding the Widget",
-        "body": "Long-press your Home Screen → tap [sf:plus] in the top-left corner → search for Extend → choose a size and tap Add Widget."
-      },
-      {
-        "heading": "Completion Checkmarks",
-        "body": "Items that have been completed today show a green [sf:checkmark.circle.fill] next to their name. The widget updates automatically when you complete a workout, exercise, timer, or voice trainer session inside the app."
-      },
-      {
-        "heading": "Rest Days",
-        "body": "When today has no scheduled items, the widget shows 'Rest day'."
-      },
-      {
-        "heading": "Keeping It Current",
-        "body": "The widget refreshes immediately whenever you complete a session or make plan changes inside the app. It also refreshes on its own every hour so it stays accurate even when the app hasn't been opened."
-      },
-      {
-        "heading": "Requirements",
-        "body": "A Training Plan must be active and have items scheduled. Set one up in the Plan module."
+        "body": "The widget shows today's scheduled items from your active Training Plan — workouts, exercises, voice trainer sessions, and timers.\n\nItems that have been completed today show a green [sf:checkmark.circle.fill] next to their name. The widget updates automatically when you complete a workout, exercise, timer, or voice trainer session inside the app.\n\nWhen today has no scheduled items, the widget shows 'Rest day'."
       }
     ]
   },
@@ -150,6 +194,10 @@
       {
         "heading": "Shortcut Tiles",
         "body": "A Shortcut tile links to a specific saved workout, exercise, timer, or voice trainer config.\n\nWorkout, exercise, timer, and voice trainer shortcuts use a 3-piece tile:\n• Top — tap to launch the item directly.\n• Bottom-left [sf:chart.bar.fill] — opens stats for that item.\n• Bottom-right [sf:clock.arrow.circlepath] — opens session history for that item."
+      },
+      {
+        "heading": "Tile Deep Dive (tap to expand)",
+        "body": "Tapping a stat card opens a full-screen detail view with a time-range picker (7D / 1M / 3M / 6M / 1Y / All) so you can scope the data to any window.\n\nSupported stat cards:\n• Personal Record — full leaderboard of your top PRs (up to 100 entries).\n• 1RM Leaderboard — full estimated one-rep max leaderboard.\n• Top Durations — longest-duration sessions, ranked.\n• Top Distances — longest-distance sessions, ranked.\n• Favorite Exercise — full ranked list of exercises by frequency, with last-performed date.\n• Volume This Week — expanded volume graph that re-buckets automatically based on the selected range (daily, weekly, or monthly).\n• Muscle Group Distribution — donut chart over the selected range, with tappable slices and percentages.\n\nThe tile's title, icon, and accent color carry through to the detail view."
       }
     ]
   },
@@ -247,7 +295,7 @@
       },
       {
         "heading": "Active Plan",
-        "body": "One plan is 'active' at a time. The active plan's schedule appears in the Log module's calendar, shows today's tasks at the top, and is referenced by the Plan shortcut tile on the Dashboard."
+        "body": "Multiple plans can be 'active' at a time. The active plan's schedule appears in the Log module's calendar, shows today's tasks at the top, and is referenced by the Plan shortcut tile on the Dashboard."
       },
       {
         "heading": "Manage Plans",
@@ -507,7 +555,7 @@
       },
       {
         "heading": "Empty Tiles on dashboard",
-        "body": "Add an empty tile to the dashboard and choose an emoticon to go with it.  Wind it up counter-clockwise and let it go to spin forward. For your OCD ticks, it keeps track of how many times you've done it."
+        "body": "Add an empty tile to the dashboard and choose an emoticon to go with it.  Wind it up counter-clockwise and let it go to spin forward. For your OCD, it keeps track of how many times you've done it."
       }
     ]
   }
