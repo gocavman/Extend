@@ -439,32 +439,50 @@ struct PlanComplicationView: View {
     }
 
     private var rectangularView: some View {
-        VStack(alignment: .leading, spacing: 2) {
-            if let name = entry.snapshot.planName {
-                Text(name)
-                    .font(.caption.weight(.medium))
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
-            }
-            if entry.snapshot.isRestDay {
-                Text("Rest Day").font(.title3.weight(.semibold)).applyTint(textTint)
-            } else if isNoteOnlyDay, let note = trimmedNote {
-                HStack(spacing: 4) {
+        // Left badge mirrors the circular layout (X/Y stacked over checkmark),
+        // right column shows plan name + today's overall activity tally so the
+        // rectangle reads as a richer companion to the small round version.
+        HStack(alignment: .center, spacing: 10) {
+            VStack(spacing: 0) {
+                if isNoteOnlyDay {
                     Image(systemName: "note.text")
-                        .font(.caption)
+                        .font(.system(size: 18, weight: .bold))
                         .applyTint(textTint)
-                    Text(note)
-                        .font(.callout.weight(.medium))
+                } else {
+                    Text(entry.snapshot.isRestDay ? "Rest" : "\(completedCount)/\(totalCount)")
+                        .font(.system(size: showCheckmark ? 16 : 18, weight: .bold).monospacedDigit())
+                        .lineLimit(1).minimumScaleFactor(0.6)
                         .applyTint(textTint)
-                        .lineLimit(2)
+                    if showCheckmark {
+                        Image(systemName: "checkmark")
+                            .font(.system(size: 10, weight: .bold))
+                            .applyTint(textTint)
+                    }
                 }
-            } else if totalCount > 0 {
-                Text("\(completedCount) of \(totalCount) done")
-                    .font(.title3.weight(.semibold))
-                    .applyTint(textTint)
-            } else {
-                Text("No activities").font(.title3).foregroundStyle(.secondary)
             }
+            .frame(width: 44)
+
+            VStack(alignment: .leading, spacing: 1) {
+                if let name = entry.snapshot.planName {
+                    Text(name)
+                        .font(.system(size: 13, weight: .semibold))
+                        .lineLimit(1).minimumScaleFactor(0.7)
+                        .applyTint(textTint)
+                }
+                if isNoteOnlyDay, let note = trimmedNote {
+                    Text(note)
+                        .font(.system(size: 11))
+                        .foregroundStyle(.secondary)
+                        .lineLimit(2).minimumScaleFactor(0.7)
+                } else {
+                    let doneToday = readTodayLogCount()
+                    Text("\(doneToday) done today")
+                        .font(.system(size: 11))
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1).minimumScaleFactor(0.7)
+                }
+            }
+            Spacer(minLength: 0)
         }
     }
 }
@@ -727,16 +745,27 @@ struct WaterComplicationView: View {
     }
 
     private var rectangularView: some View {
-        VStack(alignment: .leading, spacing: 2) {
-            Text("Water")
-                .font(.caption.weight(.medium))
-                .foregroundStyle(.secondary)
-            Text("\(displayValue) \(entry.unit)")
-                .font(.title2.weight(.semibold).monospacedDigit())
-                .applyTint(textTint)
-            Text("of \(Int(entry.goalOz)) \(entry.unit)")
-                .font(.caption)
-                .foregroundStyle(.secondary)
+        // Droplet on the left rises with intake, value stack on the right —
+        // gives the rectangular slot the same at-a-glance fill signal the
+        // circular complication already conveys via the gauge ring.
+        HStack(alignment: .center, spacing: 10) {
+            ComplicationFillShape(fraction: fraction, shape: "drop.fill")
+                .applyTint(shapeTint)
+                .frame(width: 32, height: 44)
+
+            VStack(alignment: .leading, spacing: 1) {
+                Text("Water")
+                    .font(.caption.weight(.medium))
+                    .foregroundStyle(.secondary)
+                Text("\(displayValue) \(entry.unit)")
+                    .font(.title3.weight(.semibold).monospacedDigit())
+                    .lineLimit(1).minimumScaleFactor(0.7)
+                    .applyTint(textTint)
+                Text("of \(Int(entry.goalOz)) \(entry.unit)")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+            }
+            Spacer(minLength: 0)
         }
     }
 }
@@ -985,23 +1014,36 @@ struct StepsComplicationView: View {
                     .foregroundStyle(.secondary)
 
             case .both:
-                HStack(spacing: 4) {
-                    Text(fmt(entry.steps))
-                        .font(.system(size: 15, weight: .bold).monospacedDigit())
-                        .applyTint(textTint)
-                    Spacer()
-                    Text("/ \(fmt(settings.stepsGoal))")
-                        .font(.system(size: 12))
-                        .foregroundStyle(.secondary)
+                // Each metric gets its own labeled row + slim linear gauge so
+                // the rectangular slot mirrors what the small ring conveys —
+                // current value vs goal, at a glance, for both stats.
+                VStack(alignment: .leading, spacing: 1) {
+                    HStack(spacing: 4) {
+                        Text("Steps")
+                            .font(.system(size: 11, weight: .medium))
+                            .foregroundStyle(.secondary)
+                        Spacer()
+                        Text("\(fmt(entry.steps)) / \(fmt(settings.stepsGoal))")
+                            .font(.system(size: 12, weight: .semibold).monospacedDigit())
+                            .applyTint(textTint)
+                    }
+                    Gauge(value: stepsFrac) { EmptyView() }
+                        .gaugeStyle(.accessoryLinearCapacity)
+                        .applyTint(shapeTint)
                 }
-                HStack(spacing: 4) {
-                    Text("\(fmtDist(displayDist)) \(settings.distanceUnit.rawValue)")
-                        .font(.system(size: 15).monospacedDigit())
-                        .applyTint(textTint)
-                    Spacer()
-                    Text("/ \(fmtDist(settings.distanceGoal))")
-                        .font(.system(size: 12))
-                        .foregroundStyle(.secondary)
+                VStack(alignment: .leading, spacing: 1) {
+                    HStack(spacing: 4) {
+                        Text("Distance")
+                            .font(.system(size: 11, weight: .medium))
+                            .foregroundStyle(.secondary)
+                        Spacer()
+                        Text("\(fmtDist(displayDist)) / \(fmtDist(settings.distanceGoal)) \(settings.distanceUnit.rawValue)")
+                            .font(.system(size: 12, weight: .semibold).monospacedDigit())
+                            .applyTint(textTint)
+                    }
+                    Gauge(value: distFrac) { EmptyView() }
+                        .gaugeStyle(.accessoryLinearCapacity)
+                        .applyTint(shapeTint)
                 }
             }
         }

@@ -44,10 +44,23 @@ public struct DashboardTile: Identifiable, Hashable, Codable {
     /// Volume This Week tile: optional exercise ID filter (nil = all exercises)
     public var volumeExerciseID: UUID?
 
-    /// Top Durations tile: user-selected exercise IDs to include (nil = all activities)
+    /// Top Durations tile: user-selected exercise IDs (nil = all activities).
+    /// Interpreted as include-list or exclude-list per `topDurationsFilterMode`.
     public var topDurationsExerciseIDs: [UUID]?
-    /// Top Distances tile: user-selected exercise IDs to include (nil = all activities)
+    /// Top Distances tile: user-selected exercise IDs (nil = all activities).
+    /// Interpreted as include-list or exclude-list per `topDistancesFilterMode`.
     public var topDistancesExerciseIDs: [UUID]?
+
+    /// Favorite Exercise tile: user-selected exercise IDs (nil = all exercises).
+    /// Interpreted as include-list or exclude-list per `favoriteExerciseFilterMode`.
+    public var favoriteExerciseIDs: [UUID]?
+
+    /// Whether the selected IDs are an include-list (default) or exclude-list.
+    /// Exclude mode means "new exercises are automatically counted" — useful so
+    /// the user doesn't have to revisit settings after logging a new activity.
+    public var topDurationsFilterMode: FilterMode
+    public var topDistancesFilterMode: FilterMode
+    public var favoriteExerciseFilterMode: FilterMode
 
     public init(
         id: UUID = UUID(),
@@ -69,7 +82,11 @@ public struct DashboardTile: Identifiable, Hashable, Codable {
         volumeWorkoutName: String? = nil,
         volumeExerciseID: UUID? = nil,
         topDurationsExerciseIDs: [UUID]? = nil,
-        topDistancesExerciseIDs: [UUID]? = nil
+        topDistancesExerciseIDs: [UUID]? = nil,
+        favoriteExerciseIDs: [UUID]? = nil,
+        topDurationsFilterMode: FilterMode = .include,
+        topDistancesFilterMode: FilterMode = .include,
+        favoriteExerciseFilterMode: FilterMode = .include
     ) {
         self.id = id
         self.title = title
@@ -91,6 +108,10 @@ public struct DashboardTile: Identifiable, Hashable, Codable {
         self.volumeExerciseID = volumeExerciseID
         self.topDurationsExerciseIDs = topDurationsExerciseIDs
         self.topDistancesExerciseIDs = topDistancesExerciseIDs
+        self.favoriteExerciseIDs = favoriteExerciseIDs
+        self.topDurationsFilterMode = topDurationsFilterMode
+        self.topDistancesFilterMode = topDistancesFilterMode
+        self.favoriteExerciseFilterMode = favoriteExerciseFilterMode
     }
 
     public func hash(into hasher: inout Hasher) {
@@ -108,7 +129,10 @@ public struct DashboardTile: Identifiable, Hashable, Codable {
              size, blankAction, accentPlacement, accentColorHex, tileTintHex,
              shortcutType, shortcutItemID, oneRMExerciseIDs,
              personalRecordExerciseIDs, volumeWorkoutName, volumeExerciseID,
-             topDurationsExerciseIDs, topDistancesExerciseIDs
+             topDurationsExerciseIDs, topDistancesExerciseIDs,
+             favoriteExerciseIDs,
+             topDurationsFilterMode, topDistancesFilterMode,
+             favoriteExerciseFilterMode
     }
 
     /// Tolerant decoder: unknown / removed `statCardType` rawValues decode
@@ -141,6 +165,10 @@ public struct DashboardTile: Identifiable, Hashable, Codable {
         volumeExerciseID = try? c.decodeIfPresent(UUID.self, forKey: .volumeExerciseID)
         topDurationsExerciseIDs = try? c.decodeIfPresent([UUID].self, forKey: .topDurationsExerciseIDs)
         topDistancesExerciseIDs = try? c.decodeIfPresent([UUID].self, forKey: .topDistancesExerciseIDs)
+        favoriteExerciseIDs = try? c.decodeIfPresent([UUID].self, forKey: .favoriteExerciseIDs)
+        topDurationsFilterMode = (try? c.decodeIfPresent(FilterMode.self, forKey: .topDurationsFilterMode)) ?? .include
+        topDistancesFilterMode = (try? c.decodeIfPresent(FilterMode.self, forKey: .topDistancesFilterMode)) ?? .include
+        favoriteExerciseFilterMode = (try? c.decodeIfPresent(FilterMode.self, forKey: .favoriteExerciseFilterMode)) ?? .include
     }
 }
 
@@ -241,3 +269,12 @@ public enum ShortcutType: String, Codable, CaseIterable {
     case voiceTrainer  = "Voice Trainer"
     case quickExercise = "Quick Exercise"
 }
+/// How a stat-card tile's exercise-ID selection is interpreted. Include is the
+/// default (selected = counted). Exclude flips it: selected = ignored, and any
+/// exercise not in the list — including ones logged after the tile was set up —
+/// is counted automatically.
+public enum FilterMode: String, Codable, CaseIterable {
+    case include = "Include"
+    case exclude = "Exclude"
+}
+

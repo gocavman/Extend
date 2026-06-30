@@ -2402,6 +2402,12 @@ private struct DashboardEditTileSheet: View {
     @State private var topDurationsExerciseIDs: [UUID]? = nil
     /// For Top Distances tile: nil = all activities
     @State private var topDistancesExerciseIDs: [UUID]? = nil
+    /// For Favorite Exercise tile: nil = all exercises
+    @State private var favoriteExerciseIDs: [UUID]? = nil
+    /// Filter modes — when .exclude, the IDs above are treated as a denylist.
+    @State private var topDurationsFilterMode: FilterMode = .include
+    @State private var topDistancesFilterMode: FilterMode = .include
+    @State private var favoriteExerciseFilterMode: FilterMode = .include
 
     let onSave: (DashboardTile) -> Void
 
@@ -2424,7 +2430,10 @@ private struct DashboardEditTileSheet: View {
                 || statCard == .favoriteExercise {
                 return [.large]
             }
-            if statCard == .oneRepMax || statCard == .personalRecord || statCard == .todaysPlan {
+            if statCard == .oneRepMax || statCard == .personalRecord {
+                return [.large]
+            }
+            if statCard == .todaysPlan {
                 return [.medium, .large]
             }
             if statCard == .topDurations || statCard == .topDistances {
@@ -2660,12 +2669,30 @@ private struct DashboardEditTileSheet: View {
                 if tile.statCardType == .topDurations || tile.statCardType == .topDistances {
                     settingsActivityFilterSection(
                         title: "Activities",
-                        footerOn: "Showing top sessions across selected activities only.",
-                        footerOff: "Showing top sessions across all activities. Select to restrict.",
+                        includeFooterEmpty: "Showing top sessions across all activities. Select to restrict.",
+                        includeFooterSelected: "Showing top sessions across selected activities only.",
+                        excludeFooterEmpty: "Showing top sessions across all activities. Select to exclude.",
+                        excludeFooterSelected: "Excluding selected activities. New activities are included automatically.",
                         eligiblePredicate: anyLoggedExercisePredicate,
                         selection: tile.statCardType == .topDurations
                             ? $topDurationsExerciseIDs
-                            : $topDistancesExerciseIDs
+                            : $topDistancesExerciseIDs,
+                        mode: tile.statCardType == .topDurations
+                            ? $topDurationsFilterMode
+                            : $topDistancesFilterMode
+                    )
+                }
+
+                if tile.statCardType == .favoriteExercise {
+                    settingsActivityFilterSection(
+                        title: "Exercises",
+                        includeFooterEmpty: "Counting all exercises. Select to restrict.",
+                        includeFooterSelected: "Counting only selected exercises.",
+                        excludeFooterEmpty: "Counting all exercises. Select to exclude.",
+                        excludeFooterSelected: "Excluding selected exercises. New exercises are counted automatically.",
+                        eligiblePredicate: anyLoggedExercisePredicate,
+                        selection: $favoriteExerciseIDs,
+                        mode: $favoriteExerciseFilterMode
                     )
                 }
 
@@ -2730,6 +2757,10 @@ private struct DashboardEditTileSheet: View {
                 volumeExerciseID = tile.volumeExerciseID
                 topDurationsExerciseIDs = tile.topDurationsExerciseIDs
                 topDistancesExerciseIDs = tile.topDistancesExerciseIDs
+                favoriteExerciseIDs = tile.favoriteExerciseIDs
+                topDurationsFilterMode = tile.topDurationsFilterMode
+                topDistancesFilterMode = tile.topDistancesFilterMode
+                favoriteExerciseFilterMode = tile.favoriteExerciseFilterMode
             }
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
@@ -2752,6 +2783,10 @@ private struct DashboardEditTileSheet: View {
                         updatedTile.volumeExerciseID = volumeExerciseID
                         updatedTile.topDurationsExerciseIDs = topDurationsExerciseIDs
                         updatedTile.topDistancesExerciseIDs = topDistancesExerciseIDs
+                        updatedTile.favoriteExerciseIDs = favoriteExerciseIDs
+                        updatedTile.topDurationsFilterMode = topDurationsFilterMode
+                        updatedTile.topDistancesFilterMode = topDistancesFilterMode
+                        updatedTile.favoriteExerciseFilterMode = favoriteExerciseFilterMode
                         onSave(updatedTile)
                         dismiss()
                     }
@@ -2770,16 +2805,35 @@ private struct DashboardEditTileSheet: View {
         return { ex in loggedIDs.contains(ex.id) }
     }
 
-    /// Activity-filter section shared by the Top Durations / Top Distances
-    /// tiles in the Settings-side editor.
+    /// Activity-filter section shared by the Top Durations / Top Distances /
+    /// Favorite Exercise tiles in the Settings-side editor. `mode` toggles the
+    /// selected IDs between include-list (default) and exclude-list semantics.
     @ViewBuilder
     private func settingsActivityFilterSection(
         title: String,
-        footerOn: String,
-        footerOff: String,
+        includeFooterEmpty: String,
+        includeFooterSelected: String,
+        excludeFooterEmpty: String,
+        excludeFooterSelected: String,
         eligiblePredicate: (Exercise) -> Bool,
-        selection: Binding<[UUID]?>
+        selection: Binding<[UUID]?>,
+        mode: Binding<FilterMode>
     ) -> some View {
+        Section {
+            Picker("Mode", selection: mode) {
+                Text("Include").tag(FilterMode.include)
+                Text("Exclude").tag(FilterMode.exclude)
+            }
+            .pickerStyle(.segmented)
+        } header: {
+            Text("Filter Mode")
+        } footer: {
+            Text(mode.wrappedValue == .include
+                 ? "Include: only checked items are counted."
+                 : "Exclude: checked items are skipped; new ones count automatically.")
+                .font(.caption)
+        }
+
         Section {
             let eligible = exercisesState.exercises
                 .filter(eligiblePredicate)
@@ -2818,8 +2872,16 @@ private struct DashboardEditTileSheet: View {
         } header: {
             Text(title)
         } footer: {
-            Text(selection.wrappedValue == nil ? footerOff : footerOn)
-                .font(.caption)
+            let isEmpty = selection.wrappedValue == nil
+            let text: String = {
+                switch (mode.wrappedValue, isEmpty) {
+                case (.include, true):  return includeFooterEmpty
+                case (.include, false): return includeFooterSelected
+                case (.exclude, true):  return excludeFooterEmpty
+                case (.exclude, false): return excludeFooterSelected
+                }
+            }()
+            Text(text).font(.caption)
         }
     }
 }

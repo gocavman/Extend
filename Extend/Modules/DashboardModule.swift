@@ -311,7 +311,7 @@ private struct DashboardModuleView: View {
                     personalRecordEntries: prEntries,
                     volumeWeeks: statCard == .volumeThisWeek ? logState.volumeByWeek(weeks: 7, workoutName: tile.volumeWorkoutName, exerciseID: tile.volumeExerciseID) : [],
                     dayOfWeekCounts: statCard == .favoriteDay ? logState.workoutCountByDayOfWeek : [],
-                    favoriteExerciseEntries: statCard == .favoriteExercise ? topFavoriteExerciseEntries() : [],
+                    favoriteExerciseEntries: statCard == .favoriteExercise ? topFavoriteExerciseEntries(for: tile) : [],
                     waterDailyTotals: statCard == .waterIntake14Days ? waterState.dailyTotals(days: 14) : [],
                     waterGoalOz: waterState.dailyGoalOz,
                     waterUnit: waterState.unit,
@@ -809,10 +809,14 @@ private struct DashboardModuleView: View {
     /// logged sets with weight, ranked by the heaviest set's weight. Used by
     /// the Top 100 detail sheet so it isn't limited to the tile's curated
     /// 5 exercises.
-    private func personalRecordLeaderboard() -> [(name: String, value: Double, date: Date?)] {
+    private func personalRecordLeaderboard(for tile: DashboardTile? = nil) -> [(name: String, value: Double, date: Date?)] {
+        // Honor the tile's pinned-exercise filter so the deep-dive page mirrors
+        // what the user is seeing on the tile. nil/empty = no filter.
+        let allowed: Set<UUID>? = tile?.personalRecordExerciseIDs.flatMap { $0.isEmpty ? nil : Set($0) }
         var best: [UUID: (name: String, value: Double, date: Date)] = [:]
         for log in logState.logs {
             for ex in log.exercises {
+                if let allowed, !allowed.contains(ex.exerciseID) { continue }
                 for s in ex.sets where s.weight > 0 {
                     if let existing = best[ex.exerciseID] {
                         if s.weight > existing.value {
@@ -837,10 +841,14 @@ private struct DashboardModuleView: View {
 
     /// Full 1RM leaderboard across every exercise that has any sets producing
     /// a positive Epley estimate. Used by the Top 100 detail sheet.
-    private func oneRMLeaderboard() -> [(name: String, value: Double, date: Date?)] {
+    private func oneRMLeaderboard(for tile: DashboardTile? = nil) -> [(name: String, value: Double, date: Date?)] {
+        // Honor the tile's pinned-exercise filter so the deep-dive page mirrors
+        // what the user is seeing on the tile. nil/empty = no filter.
+        let allowed: Set<UUID>? = tile?.oneRMExerciseIDs.flatMap { $0.isEmpty ? nil : Set($0) }
         var best: [UUID: (name: String, value: Double, date: Date)] = [:]
         for log in logState.logs {
             for ex in log.exercises {
+                if let allowed, !allowed.contains(ex.exerciseID) { continue }
                 for s in ex.sets {
                     let v = Self.epley(weight: s.weight, reps: s.reps)
                     guard v > 0 else { continue }
@@ -987,18 +995,21 @@ private struct DashboardModuleView: View {
     /// LoggedExercise instance, matching the legacy `favoriteExercise`
     /// scalar). Sorted by count desc, ties broken by newest occurrence so the
     /// most recently used exercise wins ties instead of reshuffling.
-    private func topFavoriteExerciseEntries() -> [(name: String, count: Int)] {
-        let entries = favoriteExerciseAggregated()
+    private func topFavoriteExerciseEntries(for tile: DashboardTile? = nil) -> [(name: String, count: Int)] {
+        let entries = favoriteExerciseAggregated(for: tile)
         return Array(entries.prefix(5)).map { (name: $0.name, count: $0.count) }
     }
 
     /// Full Favorite Exercise leaderboard with deterministic ordering — used
     /// by both the dashboard tile (top 5) and the Top 100 detail sheet.
-    private func favoriteExerciseAggregated() -> [(name: String, count: Int, lastDate: Date)] {
+    private func favoriteExerciseAggregated(for tile: DashboardTile? = nil) -> [(name: String, count: Int, lastDate: Date)] {
+        let selected: Set<UUID>? = tile?.favoriteExerciseIDs.flatMap { $0.isEmpty ? nil : Set($0) }
+        let mode = tile?.favoriteExerciseFilterMode ?? .include
         var counts: [String: Int] = [:]
         var lastSeen: [String: Date] = [:]
         for log in logState.logs {
             for ex in log.exercises {
+                if let selected, !passesFilter(id: ex.exerciseID, selected: selected, mode: mode) { continue }
                 counts[ex.exerciseName, default: 0] += 1
                 let prev = lastSeen[ex.exerciseName] ?? .distantPast
                 if log.completedAt > prev { lastSeen[ex.exerciseName] = log.completedAt }
@@ -1017,11 +1028,12 @@ private struct DashboardModuleView: View {
     /// LoggedExercise it came from, so a single exercise can appear multiple
     /// times if multiple long sessions stand out.
     private func topDurationEntries(for tile: DashboardTile, limit: Int = 5) -> [(name: String, value: Double, date: Date)] {
-        let allowed: Set<UUID>? = tile.topDurationsExerciseIDs.flatMap { $0.isEmpty ? nil : Set($0) }
+        let selected: Set<UUID>? = tile.topDurationsExerciseIDs.flatMap { $0.isEmpty ? nil : Set($0) }
+        let mode = tile.topDurationsFilterMode
         let rows: [(name: String, value: Double, date: Date)] = logState.logs.flatMap { log in
             log.exercises.compactMap { ex -> (String, Double, Date)? in
                 guard ex.activeSeconds > 0 else { return nil }
-                if let allowed, !allowed.contains(ex.exerciseID) { return nil }
+                if let selected, !passesFilter(id: ex.exerciseID, selected: selected, mode: mode) { return nil }
                 return (ex.exerciseName, Double(ex.activeSeconds), log.completedAt)
             }.map { (name: $0.0, value: $0.1, date: $0.2) }
         }
@@ -1036,11 +1048,12 @@ private struct DashboardModuleView: View {
     /// Top sessions by distance (meters). Filtered to the user-selected
     /// activity set when configured.
     private func topDistanceEntries(for tile: DashboardTile, limit: Int = 5) -> [(name: String, value: Double, date: Date)] {
-        let allowed: Set<UUID>? = tile.topDistancesExerciseIDs.flatMap { $0.isEmpty ? nil : Set($0) }
+        let selected: Set<UUID>? = tile.topDistancesExerciseIDs.flatMap { $0.isEmpty ? nil : Set($0) }
+        let mode = tile.topDistancesFilterMode
         let rows: [(name: String, value: Double, date: Date)] = logState.logs.flatMap { log in
             log.exercises.compactMap { ex -> (String, Double, Date)? in
                 guard let meters = ex.distanceMeters, meters > 0 else { return nil }
-                if let allowed, !allowed.contains(ex.exerciseID) { return nil }
+                if let selected, !passesFilter(id: ex.exerciseID, selected: selected, mode: mode) { return nil }
                 return (ex.exerciseName, meters, log.completedAt)
             }.map { (name: $0.0, value: $0.1, date: $0.2) }
         }
@@ -1050,6 +1063,16 @@ private struct DashboardModuleView: View {
             return lhs.name < rhs.name
         }
         return Array(sorted.prefix(limit))
+    }
+
+    /// Shared check used by the leaderboard filters (favorite exercise, top
+    /// durations, top distances). Include-mode keeps IDs in the set; exclude-mode
+    /// keeps IDs NOT in the set, so newly-logged exercises are counted by default.
+    private func passesFilter(id: UUID, selected: Set<UUID>, mode: FilterMode) -> Bool {
+        switch mode {
+        case .include: return selected.contains(id)
+        case .exclude: return !selected.contains(id)
+        }
     }
 
     private func workoutFrequencyDays() -> [WeekdayFrequency] {
@@ -1245,7 +1268,7 @@ private struct DashboardModuleView: View {
                 icon: tile.icon,
                 accentColor: tile.accentColor,
                 kind: .weight(unit: weightUnit),
-                entries: Array(personalRecordLeaderboard().prefix(100))
+                entries: Array(personalRecordLeaderboard(for: tile).prefix(100))
             )
         case .oneRepMax(let tile):
             LeaderboardDetailView(
@@ -1253,7 +1276,7 @@ private struct DashboardModuleView: View {
                 icon: tile.icon,
                 accentColor: tile.accentColor,
                 kind: .weight(unit: weightUnit),
-                entries: Array(oneRMLeaderboard().prefix(100))
+                entries: Array(oneRMLeaderboard(for: tile).prefix(100))
             )
         case .topDurations(let tile):
             let entries = topDurationEntries(for: tile, limit: 100).map {
@@ -1278,7 +1301,7 @@ private struct DashboardModuleView: View {
                 entries: entries
             )
         case .favoriteExercise(let tile):
-            let entries = favoriteExerciseAggregated().prefix(100).map {
+            let entries = favoriteExerciseAggregated(for: tile).prefix(100).map {
                 (name: $0.name, value: Double($0.count), date: Optional($0.lastDate))
             }
             LeaderboardDetailView(
@@ -1805,6 +1828,12 @@ private struct EditTileSheet: View {
     @State private var topDurationsExerciseIDs: [UUID]? = nil
     /// For Top Distances tile: nil = all activities; non-nil = restricted set
     @State private var topDistancesExerciseIDs: [UUID]? = nil
+    /// For Favorite Exercise tile: nil = all exercises; non-nil = restricted set
+    @State private var favoriteExerciseIDs: [UUID]? = nil
+    /// Filter modes — when .exclude, the IDs above are treated as a denylist.
+    @State private var topDurationsFilterMode: FilterMode = .include
+    @State private var topDistancesFilterMode: FilterMode = .include
+    @State private var favoriteExerciseFilterMode: FilterMode = .include
 
     let onSave: (DashboardTile) -> Void
 
@@ -2057,12 +2086,30 @@ private struct EditTileSheet: View {
                 if tile.statCardType == .topDurations || tile.statCardType == .topDistances {
                     activityFilterSection(
                         title: "Activities",
-                        footerOn: "Showing top sessions across selected activities only.",
-                        footerOff: "Showing top sessions across all activities. Select to restrict.",
+                        includeFooterEmpty: "Showing top sessions across all activities. Select to restrict.",
+                        includeFooterSelected: "Showing top sessions across selected activities only.",
+                        excludeFooterEmpty: "Showing top sessions across all activities. Select to exclude.",
+                        excludeFooterSelected: "Excluding selected activities. New activities are included automatically.",
                         eligiblePredicate: anyLoggedExercisePredicate,
                         selection: tile.statCardType == .topDurations
                             ? $topDurationsExerciseIDs
-                            : $topDistancesExerciseIDs
+                            : $topDistancesExerciseIDs,
+                        mode: tile.statCardType == .topDurations
+                            ? $topDurationsFilterMode
+                            : $topDistancesFilterMode
+                    )
+                }
+
+                if tile.statCardType == .favoriteExercise {
+                    activityFilterSection(
+                        title: "Exercises",
+                        includeFooterEmpty: "Counting all exercises. Select to restrict.",
+                        includeFooterSelected: "Counting only selected exercises.",
+                        excludeFooterEmpty: "Counting all exercises. Select to exclude.",
+                        excludeFooterSelected: "Excluding selected exercises. New exercises are counted automatically.",
+                        eligiblePredicate: anyLoggedExercisePredicate,
+                        selection: $favoriteExerciseIDs,
+                        mode: $favoriteExerciseFilterMode
                     )
                 }
 
@@ -2102,6 +2149,10 @@ private struct EditTileSheet: View {
                 volumeExerciseID = tile.volumeExerciseID
                 topDurationsExerciseIDs = tile.topDurationsExerciseIDs
                 topDistancesExerciseIDs = tile.topDistancesExerciseIDs
+                favoriteExerciseIDs = tile.favoriteExerciseIDs
+                topDurationsFilterMode = tile.topDurationsFilterMode
+                topDistancesFilterMode = tile.topDistancesFilterMode
+                favoriteExerciseFilterMode = tile.favoriteExerciseFilterMode
             }
             #if os(iOS)
             .toolbar {
@@ -2117,6 +2168,10 @@ private struct EditTileSheet: View {
                         updatedTile.volumeExerciseID = volumeExerciseID
                         updatedTile.topDurationsExerciseIDs = topDurationsExerciseIDs
                         updatedTile.topDistancesExerciseIDs = topDistancesExerciseIDs
+                        updatedTile.favoriteExerciseIDs = favoriteExerciseIDs
+                        updatedTile.topDurationsFilterMode = topDurationsFilterMode
+                        updatedTile.topDistancesFilterMode = topDistancesFilterMode
+                        updatedTile.favoriteExerciseFilterMode = favoriteExerciseFilterMode
                         onSave(updatedTile)
                         dismiss()
                     }
@@ -2142,16 +2197,36 @@ private struct EditTileSheet: View {
     }
 
     /// Shared activity-filter section used by the Top Durations / Top Distances
-    /// tiles. Eligibility is decided per-tile via `eligiblePredicate` (e.g. has
-    /// a logged duration vs. has a logged distance).
+    /// / Favorite Exercise tiles. Eligibility is decided per-tile via
+    /// `eligiblePredicate`. `mode` toggles whether the selected IDs form an
+    /// include-list (default) or an exclude-list, so users can opt for "count
+    /// everything except these" — newly-logged exercises then count by default.
     @ViewBuilder
     private func activityFilterSection(
         title: String,
-        footerOn: String,
-        footerOff: String,
+        includeFooterEmpty: String,
+        includeFooterSelected: String,
+        excludeFooterEmpty: String,
+        excludeFooterSelected: String,
         eligiblePredicate: (Exercise) -> Bool,
-        selection: Binding<[UUID]?>
+        selection: Binding<[UUID]?>,
+        mode: Binding<FilterMode>
     ) -> some View {
+        Section {
+            Picker("Mode", selection: mode) {
+                Text("Include").tag(FilterMode.include)
+                Text("Exclude").tag(FilterMode.exclude)
+            }
+            .pickerStyle(.segmented)
+        } header: {
+            Text("Filter Mode")
+        } footer: {
+            Text(mode.wrappedValue == .include
+                 ? "Include: only checked items are counted."
+                 : "Exclude: checked items are skipped; new ones count automatically.")
+                .font(.caption)
+        }
+
         Section {
             let eligible = exercisesState.exercises
                 .filter(eligiblePredicate)
@@ -2190,8 +2265,16 @@ private struct EditTileSheet: View {
         } header: {
             Text(title)
         } footer: {
-            Text(selection.wrappedValue == nil ? footerOff : footerOn)
-                .font(.caption)
+            let isEmpty = selection.wrappedValue == nil
+            let text: String = {
+                switch (mode.wrappedValue, isEmpty) {
+                case (.include, true):  return includeFooterEmpty
+                case (.include, false): return includeFooterSelected
+                case (.exclude, true):  return excludeFooterEmpty
+                case (.exclude, false): return excludeFooterSelected
+                }
+            }()
+            Text(text).font(.caption)
         }
     }
 }
@@ -2252,9 +2335,15 @@ private struct StatCardTileView: View {
                         .multilineTextAlignment(.leading)
                         .fixedSize(horizontal: false, vertical: true)
                     // Tap-hint glyph for stat cards that route the user into
-                    // a module on tap (currently water — others render purely
-                    // informational data and shouldn't suggest interactivity).
-                    if statType == .waterIntake14Days {
+                    // a deep-dive page or module on tap.
+                    if statType == .waterIntake14Days
+                        || statType == .muscleGroupDistribution
+                        || statType == .volumeThisWeek
+                        || statType == .personalRecord
+                        || statType == .oneRepMax
+                        || statType == .topDurations
+                        || statType == .topDistances
+                        || statType == .favoriteExercise {
                         Image(systemName: "chevron.right")
                             .font(.system(size: iPad ? 13 : 9, weight: .semibold))
                             .foregroundColor(.secondary)
