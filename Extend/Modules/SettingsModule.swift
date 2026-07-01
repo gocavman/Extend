@@ -67,6 +67,7 @@ private struct SettingsModuleView: View {
     @State private var isDashboardColorExpanded = false
     @State private var isMusclesSectionExpanded = false
     @State private var isAppleHealthSectionExpanded = false
+    @State private var isEraseAllDataSectionExpanded = false
     @State private var isWorkoutsSectionExpanded = false
     @State private var isICloudSectionExpanded = false
     /// CloudKit sync diagnostics — bound here so the iCloud section can
@@ -628,17 +629,18 @@ private struct SettingsModuleView: View {
                                         .foregroundColor(.primary)
                                 }
                             }
-
-                            VStack(alignment: .leading, spacing: 4) {
-                                Button(role: .destructive) {
-                                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                                    showingResetAlert = true
-                                } label: {
-                                    Text("Erase All Data (including iCloud)")
+                            DisclosureGroup("Erase All Data", isExpanded: $isEraseAllDataSectionExpanded) {
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Button(role: .destructive) {
+                                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                                        showingResetAlert = true
+                                    } label: {
+                                        Text("Erase All Data (including iCloud)")
+                                    }
+                                    Text("Clears all data and customizations — logs, workouts, exercises, muscles, equipment, timers, voice trainer configs, training plans, and settings.\n\nThis also clears your iCloud copy and will sync the empty state to your other devices. Workouts in Apple Health will reimport if Import is enabled. Cannot be undone.")
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
                                 }
-                                Text("Clears all data and customizations — logs, workouts, exercises, muscles, equipment, timers, voice trainer configs, training plans, and settings.\n\nThis also clears your iCloud copy and will sync the empty state to your other devices. Workouts in Apple Health will reimport if Import is enabled. Cannot be undone.")
-                                    .font(.caption)
-                                    .foregroundColor(.secondary)
                             }
                         }
                         

@@ -207,15 +207,18 @@ class AnimationStudioViewController: UIViewController, UITableViewDelegate, UITa
         bar.addSubview(btnStack)
 
         // --- Row 2: speed + loop ---
+        // Studio is pinned to light appearance; force explicit label colors
+        // so a stray dark-mode trait can't render these white-on-white.
         let speedLabel = UILabel()
         speedLabel.text = "Speed"
         speedLabel.font = UIFont.systemFont(ofSize: 12, weight: .semibold)
+        speedLabel.textColor = .black
         speedLabel.translatesAutoresizingMaskIntoConstraints = false
 
         let valLabel = UILabel()
         valLabel.text = String(format: "%.2fs", frameDelay)
         valLabel.font = UIFont.monospacedSystemFont(ofSize: 11, weight: .regular)
-        valLabel.textColor = .secondaryLabel
+        valLabel.textColor = .darkGray
         valLabel.translatesAutoresizingMaskIntoConstraints = false
         valLabel.setContentHuggingPriority(.required, for: .horizontal)
         delayValueLabel = valLabel
@@ -235,6 +238,7 @@ class AnimationStudioViewController: UIViewController, UITableViewDelegate, UITa
         let loopLabel = UILabel()
         loopLabel.text = "Loop"
         loopLabel.font = UIFont.systemFont(ofSize: 12, weight: .semibold)
+        loopLabel.textColor = .black
         loopLabel.translatesAutoresizingMaskIntoConstraints = false
 
         let loopSw = UISwitch()
@@ -566,6 +570,7 @@ class AnimationStudioViewController: UIViewController, UITableViewDelegate, UITa
         let label = UILabel()
         label.text = "Frame \(frame.frameNumber)"
         label.font = UIFont.systemFont(ofSize: 11, weight: .medium)
+        label.textColor = .black
         label.translatesAutoresizingMaskIntoConstraints = false
 
         let badge = UILabel()
@@ -671,7 +676,7 @@ class AnimationStudioViewController: UIViewController, UITableViewDelegate, UITa
         let lbl = UILabel()
         lbl.text = label
         lbl.font = UIFont.systemFont(ofSize: 11, weight: .medium)
-        lbl.textColor = .label
+        lbl.textColor = .black
         lbl.translatesAutoresizingMaskIntoConstraints = false
 
         let xBtn = UIButton(type: .system)
@@ -1192,13 +1197,14 @@ class SavedAnimationsBrowserViewController: UIViewController, UITableViewDelegat
         let nameLabel = UILabel()
         nameLabel.text = anim.name
         nameLabel.font = UIFont.systemFont(ofSize: 15, weight: .semibold)
+        nameLabel.textColor = .black
         nameLabel.translatesAutoresizingMaskIntoConstraints = false
 
         // Sub info
         let countLabel = UILabel()
         countLabel.text = "\(anim.frameCount) frame\(anim.frameCount == 1 ? "" : "s")  •  \(formatter.string(from: anim.updatedAt))"
         countLabel.font = UIFont.systemFont(ofSize: 11)
-        countLabel.textColor = .secondaryLabel
+        countLabel.textColor = .darkGray
         countLabel.translatesAutoresizingMaskIntoConstraints = false
 
         let textStack = UIStackView(arrangedSubviews: [nameLabel, countLabel])

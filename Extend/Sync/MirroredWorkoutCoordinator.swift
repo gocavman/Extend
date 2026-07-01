@@ -254,7 +254,24 @@ public final class MirroredWorkoutCoordinator: NSObject {
     /// Asks the watch to discard its primary session without saving. The
     /// wrist drops the HKWorkout, no log is sent back, and the iPhone is
     /// expected to drop whatever local UI was driving the session.
+    ///
+    /// Sends the cancel over BOTH channels so it lands reliably:
+    /// • `sendToRemoteWorkoutSession` — fast in-session HK channel; works
+    ///   when the watch app is in the foreground, but can silently drop
+    ///   when the wrist screen is dark and the app is in the workout-
+    ///   background state.
+    /// • `WCSession.transferUserInfo` — queued in the outbox and delivered
+    ///   the moment the watch app runs, guaranteed even after suspension
+    ///   or a reboot. The watch-side receiver forwards it back into
+    ///   `cancelFromRemote`, which no-ops when nothing is active.
     public func requestCancel() async {
+        // Always fire the WC fallback, even when `isMirroring` is false on
+        // our side — the wrist may still have an active primary session
+        // (e.g. our own mirror state got cleared by a transient disconnect
+        // while the wrist stayed running). The watch-side handler is
+        // idempotent when nothing is active.
+        sendWCCancelFallback()
+
         guard let session, isMirroring else { return }
         pendingTeardown = true
         do {
@@ -263,6 +280,22 @@ public final class MirroredWorkoutCoordinator: NSObject {
             print("⚠️ Mirrored workout: cancel signal failed — \(error.localizedDescription)")
         }
         clearState()
+    }
+
+    /// Queues a `cancel_mirrored_workout` payload on the WatchConnectivity
+    /// outbox. Guaranteed delivery on next contact, even when
+    /// `sendToRemoteWorkoutSession` isn't being processed (dark screen /
+    /// suspended app). Fire-and-forget — WC handles retry.
+    private func sendWCCancelFallback() {
+        guard WCSession.isSupported() else { return }
+        let wc = WCSession.default
+        guard wc.activationState == .activated,
+              wc.isPaired,
+              wc.isWatchAppInstalled else { return }
+        wc.transferUserInfo([
+            "type": "cancel_mirrored_workout",
+            "sent_at": Date().timeIntervalSince1970
+        ])
     }
 
     // MARK: - Mirror lifecycle

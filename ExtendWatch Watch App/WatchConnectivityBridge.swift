@@ -159,6 +159,17 @@ extension WatchConnectivityBridge: WCSessionDelegate {
             DispatchQueue.main.async {
                 WidgetCenter.shared.reloadTimelines(ofKind: "PlanComplication")
             }
+        case "cancel_mirrored_workout":
+            // Backup path for the phone's "Cancel Workout" button. The
+            // primary HK data channel (`sendToRemoteWorkoutSession`) can
+            // silently drop when the wrist screen is dark, leaving the
+            // wrist session orphaned. This WC payload is queued in iOS's
+            // outbox and delivered the moment the watch app runs, so
+            // raising the wrist tears the session down cleanly.
+            // Idempotent: cancelFromRemote no-ops when nothing is active.
+            Task { @MainActor in
+                await WatchWorkoutSessionManager.shared.cancelFromRemote()
+            }
         default:
             break
         }

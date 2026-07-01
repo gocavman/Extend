@@ -571,17 +571,19 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
             let label = UILabel()
             label.text = "Zoom"
             label.font = UIFont.systemFont(ofSize: 12, weight: .semibold)
+            label.textColor = .black
             label.translatesAutoresizingMaskIntoConstraints = false
-            
+
             let slider = UISlider()
             slider.minimumValue = 0.5
             slider.maximumValue = 3.0
             slider.value = Float(sceneZoom)
             slider.translatesAutoresizingMaskIntoConstraints = false
-            
+
             let valueLabel = UILabel()
             valueLabel.text = String(format: "%.1f×", sceneZoom)
             valueLabel.font = UIFont.systemFont(ofSize: 12)
+            valueLabel.textColor = .darkGray
             valueLabel.translatesAutoresizingMaskIntoConstraints = false
             valueLabel.widthAnchor.constraint(equalToConstant: 40).isActive = true
             
@@ -839,10 +841,13 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
         container.axis = .horizontal
         container.spacing = 12
         container.translatesAutoresizingMaskIntoConstraints = false
-        
+
         let labelView = UILabel()
         labelView.text = label
         labelView.font = UIFont.systemFont(ofSize: 14)
+        // Editor is pinned to light appearance; force explicit label color
+        // so a stray dark-mode trait can't render this white-on-white.
+        labelView.textColor = .black
         
         let colorBtn = UIButton(type: .system)
         colorBtn.backgroundColor = currentColor
@@ -874,6 +879,7 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
         let lbl = UILabel()
         lbl.text = label
         lbl.font = UIFont.systemFont(ofSize: 14)
+        lbl.textColor = .black
         lbl.translatesAutoresizingMaskIntoConstraints = false
         
         let toggle = UISwitch()
@@ -901,19 +907,20 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
     
     private func addSliderCell(_ cell: UITableViewCell, label: String, value: CGFloat, min minVal: CGFloat, max maxVal: CGFloat, increment: CGFloat = 1.0, onChange: @escaping (CGFloat) -> Void) {
         cell.contentView.subviews.forEach { $0.removeFromSuperview() }
-        
+
         let lbl = UILabel()
         lbl.text = label
         lbl.font = UIFont.systemFont(ofSize: 12, weight: .semibold)
+        lbl.textColor = .black
         lbl.translatesAutoresizingMaskIntoConstraints = false
         lbl.setContentHuggingPriority(.defaultHigh, for: .horizontal)
-        
+
         let slider = UISlider()
         slider.minimumValue = Float(minVal)
         slider.maximumValue = Float(maxVal)
         slider.value = Float(value)
         slider.translatesAutoresizingMaskIntoConstraints = false
-        
+
         // Determine if we should show decimals based on increment
         let showDecimals = increment < 1.0
         let valLbl = UILabel()
@@ -923,6 +930,7 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
             valLbl.text = String(format: "%.0f", value)
         }
         valLbl.font = UIFont.systemFont(ofSize: 11)
+        valLbl.textColor = .darkGray
         valLbl.translatesAutoresizingMaskIntoConstraints = false
         valLbl.widthAnchor.constraint(equalToConstant: 50).isActive = true
         
@@ -1001,10 +1009,11 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
     
     private func addSegmentedControlCell(_ cell: UITableViewCell, label: String, value: String, options: [String], onChange: @escaping (String) -> Void) {
         cell.contentView.subviews.forEach { $0.removeFromSuperview() }
-        
+
         let lbl = UILabel()
         lbl.text = label
         lbl.font = UIFont.systemFont(ofSize: 12, weight: .semibold)
+        lbl.textColor = .black
         lbl.translatesAutoresizingMaskIntoConstraints = false
         lbl.setContentHuggingPriority(.defaultHigh, for: .horizontal)
         
@@ -1037,10 +1046,11 @@ class StickFigureGameplayEditorViewController: UIViewController, UIColorPickerVi
         container.axis = .horizontal
         container.spacing = 12
         container.translatesAutoresizingMaskIntoConstraints = false
-        
+
         let labelView = UILabel()
         labelView.text = label
         labelView.font = UIFont.systemFont(ofSize: 14)
+        labelView.textColor = .black
         
         let colorBtn = UIButton(type: .system)
         colorBtn.backgroundColor = bodyPartColors[colorKey] ?? .black
