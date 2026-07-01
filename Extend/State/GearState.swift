@@ -80,6 +80,13 @@ public final class GearState {
         saveItems()
     }
 
+    /// Wipe all gear items — used by Settings' "Erase All Data" flow. Gear
+    /// ships with no defaults, so reset means "empty".
+    public func resetItems() {
+        items = []
+        saveItems()
+    }
+
     // MARK: - Usage resolution
 
     /// Logs that a piece of gear should count toward. A log qualifies when:

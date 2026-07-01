@@ -849,12 +849,18 @@ public final class WorkoutLogState {
         // when an earlier import ran mid-walk and stamped `lastImportDate`
         // partway through the session. The 24h overshoot picks those up,
         // and dedup on `healthKitUUID` below prevents duplicates.
-        let since: Date = {
+        var since: Date = {
             if let last = hkState.lastImportDate {
                 return Calendar.current.date(byAdding: .hour, value: -24, to: last) ?? last
             }
             return Calendar.current.date(byAdding: .year, value: -1, to: Date()) ?? Date()
         }()
+        // Honor the post-erase watermark: even if the user re-enables import
+        // types after "Erase All Data", historical samples that predate the
+        // wipe should stay gone.
+        if let cutoff = hkState.importCutoffDate, cutoff > since {
+            since = cutoff
+        }
         let activityTypes = HealthKitService.shared.enabledActivityTypes(state: hkState)
 
         do {

@@ -25,6 +25,7 @@ public final class HealthKitState {
     private let userWeightKgKey          = "hk_userWeightKg"
     private let userWeightUnitKey        = "hk_userWeightUnit"
     private let useWatchSessionKey       = "hk_useWatchWorkoutSession"
+    private let importCutoffDateKey      = "hk_importCutoffDate"
 
     // MARK: - Default imported activity types (raw UInt values)
     /// All activity types enabled by default.
@@ -80,6 +81,22 @@ public final class HealthKitState {
         didSet { hkDefaults.set(useWatchWorkoutSession, forKey: useWatchSessionKey) }
     }
 
+    /// Floor for the HealthKit import window. When set (typically by "Erase
+    /// All Data"), `importFromHealthKit` refuses to pull samples that ended
+    /// before this date, so historical HK workouts don't resurrect on the
+    /// next import — even if the user opts import back on after wiping the
+    /// app. `nil` means no floor (default fresh-install behavior: import the
+    /// last year).
+    public var importCutoffDate: Date? {
+        didSet {
+            if let date = importCutoffDate {
+                hkDefaults.set(date, forKey: importCutoffDateKey)
+            } else {
+                hkDefaults.removeObject(forKey: importCutoffDateKey)
+            }
+        }
+    }
+
     // MARK: - Init
 
     private init() {
@@ -111,6 +128,7 @@ public final class HealthKitState {
         userWeightKg           = hkDefaults.object(forKey: userWeightKgKey)   as? Double ?? 0
         userWeightUnit         = hkDefaults.object(forKey: userWeightUnitKey) as? String ?? "lb"
         useWatchWorkoutSession = hkDefaults.object(forKey: useWatchSessionKey) as? Bool ?? true
+        importCutoffDate       = hkDefaults.object(forKey: importCutoffDateKey) as? Date
     }
 
     // MARK: - Computed
@@ -138,11 +156,20 @@ public final class HealthKitState {
 
     public func resetAll() {
         exportStrengthWorkouts = false
-        importActivityTypes    = HealthKitState.defaultImportActivityTypes
+        // Zero-out import types so the reset actually stays reset. Previous
+        // behavior restored `defaultImportActivityTypes` (every type), which
+        // meant the very next launch would silently re-import a year of HK
+        // history the user had just wiped.
+        importActivityTypes    = []
         lastImportDate         = nil
         authorizationRequested = false
         userWeightKg           = 0
         userWeightUnit         = "lb"
         useWatchWorkoutSession = true
+        // Watermark HK import: even if the user opts import back on later,
+        // only samples that ended after this instant are eligible. Prevents
+        // historical HK workouts (that were tombstoned before the wipe)
+        // from resurrecting.
+        importCutoffDate       = Date()
     }
 }

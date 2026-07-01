@@ -51,6 +51,10 @@ public struct DashboardTile: Identifiable, Hashable, Codable {
     /// Interpreted as include-list or exclude-list per `topDistancesFilterMode`.
     public var topDistancesExerciseIDs: [UUID]?
 
+    /// Top Gear Distances tile: user-selected gear IDs (nil = all gear).
+    /// Interpreted as include-list or exclude-list per `topGearDistancesFilterMode`.
+    public var topGearDistancesGearIDs: [UUID]?
+
     /// Favorite Exercise tile: user-selected exercise IDs (nil = all exercises).
     /// Interpreted as include-list or exclude-list per `favoriteExerciseFilterMode`.
     public var favoriteExerciseIDs: [UUID]?
@@ -60,6 +64,7 @@ public struct DashboardTile: Identifiable, Hashable, Codable {
     /// the user doesn't have to revisit settings after logging a new activity.
     public var topDurationsFilterMode: FilterMode
     public var topDistancesFilterMode: FilterMode
+    public var topGearDistancesFilterMode: FilterMode
     public var favoriteExerciseFilterMode: FilterMode
 
     public init(
@@ -83,9 +88,11 @@ public struct DashboardTile: Identifiable, Hashable, Codable {
         volumeExerciseID: UUID? = nil,
         topDurationsExerciseIDs: [UUID]? = nil,
         topDistancesExerciseIDs: [UUID]? = nil,
+        topGearDistancesGearIDs: [UUID]? = nil,
         favoriteExerciseIDs: [UUID]? = nil,
         topDurationsFilterMode: FilterMode = .include,
         topDistancesFilterMode: FilterMode = .include,
+        topGearDistancesFilterMode: FilterMode = .include,
         favoriteExerciseFilterMode: FilterMode = .include
     ) {
         self.id = id
@@ -108,9 +115,11 @@ public struct DashboardTile: Identifiable, Hashable, Codable {
         self.volumeExerciseID = volumeExerciseID
         self.topDurationsExerciseIDs = topDurationsExerciseIDs
         self.topDistancesExerciseIDs = topDistancesExerciseIDs
+        self.topGearDistancesGearIDs = topGearDistancesGearIDs
         self.favoriteExerciseIDs = favoriteExerciseIDs
         self.topDurationsFilterMode = topDurationsFilterMode
         self.topDistancesFilterMode = topDistancesFilterMode
+        self.topGearDistancesFilterMode = topGearDistancesFilterMode
         self.favoriteExerciseFilterMode = favoriteExerciseFilterMode
     }
 
@@ -130,8 +139,10 @@ public struct DashboardTile: Identifiable, Hashable, Codable {
              shortcutType, shortcutItemID, oneRMExerciseIDs,
              personalRecordExerciseIDs, volumeWorkoutName, volumeExerciseID,
              topDurationsExerciseIDs, topDistancesExerciseIDs,
+             topGearDistancesGearIDs,
              favoriteExerciseIDs,
              topDurationsFilterMode, topDistancesFilterMode,
+             topGearDistancesFilterMode,
              favoriteExerciseFilterMode
     }
 
@@ -165,9 +176,11 @@ public struct DashboardTile: Identifiable, Hashable, Codable {
         volumeExerciseID = try? c.decodeIfPresent(UUID.self, forKey: .volumeExerciseID)
         topDurationsExerciseIDs = try? c.decodeIfPresent([UUID].self, forKey: .topDurationsExerciseIDs)
         topDistancesExerciseIDs = try? c.decodeIfPresent([UUID].self, forKey: .topDistancesExerciseIDs)
+        topGearDistancesGearIDs = try? c.decodeIfPresent([UUID].self, forKey: .topGearDistancesGearIDs)
         favoriteExerciseIDs = try? c.decodeIfPresent([UUID].self, forKey: .favoriteExerciseIDs)
         topDurationsFilterMode = (try? c.decodeIfPresent(FilterMode.self, forKey: .topDurationsFilterMode)) ?? .include
         topDistancesFilterMode = (try? c.decodeIfPresent(FilterMode.self, forKey: .topDistancesFilterMode)) ?? .include
+        topGearDistancesFilterMode = (try? c.decodeIfPresent(FilterMode.self, forKey: .topGearDistancesFilterMode)) ?? .include
         favoriteExerciseFilterMode = (try? c.decodeIfPresent(FilterMode.self, forKey: .favoriteExerciseFilterMode)) ?? .include
     }
 }
@@ -229,6 +242,7 @@ public enum StatCardType: String, Codable, CaseIterable {
     case waterIntake14Days = "Water Intake (14 Days)"
     case topDurations = "Top Durations"
     case topDistances = "Top Distances"
+    case topGearDistances = "Gear Life"
 }
 
 /// Tile sizes for the dashboard grid

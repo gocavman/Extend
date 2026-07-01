@@ -169,6 +169,9 @@ public final class DashboardState {
         tiles.append(graphCard(.topDistances, icon: "ruler"))
         order += 1
 
+        tiles.append(graphCard(.topGearDistances, icon: "shoe"))
+        order += 1
+
         // Favorite Exercise → leaderboard tile, placed directly above
         // Favorite Day so the two "what do I do most" cards sit together.
         tiles.append(graphCard(.favoriteExercise, icon: "star"))

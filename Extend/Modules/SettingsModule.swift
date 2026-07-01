@@ -57,6 +57,7 @@ private struct SettingsModuleView: View {
     @AppStorage("keepScreenOnDuringSession") private var keepScreenOnDuringSession: Bool = true
 
     @State private var showingResetAlert = false
+    @State private var showingResetSettingsAlert = false
     @State private var isSyncingHealthKit = false
     @State private var isWaterSectionExpanded = false
     @State private var waterGoalText: String = ""
@@ -630,6 +631,24 @@ private struct SettingsModuleView: View {
                                 }
                             }
                             DisclosureGroup("Erase All Data", isExpanded: $isEraseAllDataSectionExpanded) {
+                                // Each destructive button lives in its own row.
+                                // Inside a Form, multiple Buttons stacked in a
+                                // single row all fire on tap because the row
+                                // itself becomes the hit target — putting them
+                                // on their own rows (and using .borderless so
+                                // the row doesn't proxy the tap) isolates them.
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Button(role: .destructive) {
+                                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                                        showingResetSettingsAlert = true
+                                    } label: {
+                                        Text("Reset App Settings")
+                                    }
+                                    .buttonStyle(.borderless)
+                                    Text("Restores customizations to defaults — navbar layout & colors, dashboard tiles & colors, theme, units, screen-on toggle, game progress, and log view state.\n\nKeeps all your data: logs, workouts, exercises, muscles, equipment, gear, plans, journal, water history, timers, voice trainer configs, favorites, filter presets, and Apple Health / iCloud settings.")
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                }
                                 VStack(alignment: .leading, spacing: 4) {
                                     Button(role: .destructive) {
                                         UIImpactFeedbackGenerator(style: .light).impactOccurred()
@@ -637,7 +656,8 @@ private struct SettingsModuleView: View {
                                     } label: {
                                         Text("Erase All Data (including iCloud)")
                                     }
-                                    Text("Clears all data and customizations — logs, workouts, exercises, muscles, equipment, timers, voice trainer configs, training plans, and settings.\n\nThis also clears your iCloud copy and will sync the empty state to your other devices. Workouts in Apple Health will reimport if Import is enabled. Cannot be undone.")
+                                    .buttonStyle(.borderless)
+                                    Text("Clears all data and customizations — logs, workouts, exercises, muscles, equipment, timers, voice trainer configs, training plans, and settings.\n\nThis also clears your iCloud copy and will sync the empty state to your other devices. Apple Health import is disabled and a cutoff is set so historical HK workouts don't resurrect if you re-enable Import later. Cannot be undone.")
                                         .font(.caption)
                                         .foregroundColor(.secondary)
                                 }
@@ -763,7 +783,16 @@ private struct SettingsModuleView: View {
                         resetApp()
                     }
                 } message: {
-                    Text("This resets the whole app back to default settings — clearing history, logs, favorites and customizations (navbars, dashboard tiles, exercises, workouts, muscle groups, equipment, timers, voice trainers and training plans).\n\nThis also clears your iCloud copy and syncs the empty state to your other devices. Workouts in Apple Health will reimport if Import is enabled.")
+                    Text("This resets the whole app back to default settings — clearing history, logs, favorites and customizations (navbars, dashboard tiles, exercises, workouts, muscle groups, equipment, timers, voice trainers and training plans).\n\nThis also clears your iCloud copy and syncs the empty state to your other devices. Apple Health import is disabled and a cutoff is set so historical HK workouts don't resurrect if you re-enable Import later.")
+                }
+                .alert("Reset App Settings?", isPresented: $showingResetSettingsAlert) {
+                    Button("Cancel", role: .cancel) {}
+                    Button("Reset", role: .destructive) {
+                        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                        resetSettings()
+                    }
+                } message: {
+                    Text("Restores navbar, dashboard, theme, units, game progress and log view state to defaults. Keeps all your data (logs, workouts, exercises, plans, water history, favorites, filter presets, HealthKit settings, iCloud).")
                 }
                 .fullScreenCover(isPresented: $showingExportSheet) {
                     WorkoutExportSheet(
@@ -881,9 +910,11 @@ private struct SettingsModuleView: View {
         return formatter.localizedString(for: date, relativeTo: Date())
     }
 
-    private func resetApp() {
+    /// Restores every user-facing customization/preference to its fresh-install
+    /// value. Split out from `resetApp()` so the "Reset App Settings" path can
+    /// reuse it without touching workout data / iCloud / HealthKit content.
+    private func resetCustomizations() {
         // Reset to default navbar configuration using ModuleIDs (UUID-based identification)
-
         let bottomModules: [UUID] = [
             ModuleIDs.dashboard,
             ModuleIDs.workouts,
@@ -911,11 +942,66 @@ private struct SettingsModuleView: View {
         moduleState.updateDashboardTileBackgroundColor(nil)
         moduleState.updateDashboardTileBorderColor(nil)
 
-        // Reset data
+        // Dashboard tile layout is a customization — order/visibility choices,
+        // not workout data — so it belongs in the settings-only reset.
         dashboardState.resetTiles()
+
+        // Reset Game Progress - Workout Match (Match Game)
+        defaults.removeObject(forKey: "matchGameCurrentLevel")
+        defaults.set(1, forKey: "matchGameCurrentLevel")
+        defaults.removeObject(forKey: "matchGameUnlockedLevels")
+        defaults.set([1], forKey: "matchGameUnlockedLevels")
+
+        // Reset any per-level scores
+        if let savedLevels = defaults.array(forKey: "matchGameUnlockedLevels") as? [Int] {
+            for levelId in savedLevels {
+                defaults.removeObject(forKey: "matchGameScore_\(levelId)")
+            }
+        }
+
+        // Reset Progress module calendar view state
+        UserDefaults.standard.removeObject(forKey: "logViewMode")
+        UserDefaults.standard.removeObject(forKey: "logShowRibbon")
+        UserDefaults.standard.removeObject(forKey: "logListShowWeek")
+
+        // Reset App Store review request state
+        defaults.removeObject(forKey: "hasRequestedAppReview")
+        defaults.removeObject(forKey: "appReviewThreshold")
+
+        // Reset units + screen-on toggle back to fresh-install defaults so a
+        // "settings reset" actually feels like a settings reset.
+        weightUnit = "lbs"
+        distanceUnit = "mi"
+        keepScreenOnDuringSession = true
+
+        // Reset theme to system default
+        appColorScheme = "system"
+    }
+
+    /// "Reset App Settings" — restore customizations to defaults, keep all
+    /// user data intact (logs, workouts, exercises, plans, water history,
+    /// favorites, filter presets, HealthKit settings, iCloud).
+    private func resetSettings() {
+        resetCustomizations()
+
+        // Route back to Dashboard so the user sees the effect of the reset.
+        moduleState.selectModule(ModuleIDs.dashboard)
+        if presentedAsSheet {
+            let dismiss = dismiss
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+                dismiss()
+            }
+        }
+    }
+
+    private func resetApp() {
+        resetCustomizations()
+
+        // Reset data
         muscleGroupsState.resetGroups()
         muscleGroupsState.applyBodyOption(.male)
         equipmentState.resetItems()
+        GearState.shared.resetItems()
         ExercisesState.shared.resetExercises()
         WorkoutsState.shared.resetWorkouts()
         WorkoutsState.shared.resetFavorites()
@@ -927,33 +1013,6 @@ private struct SettingsModuleView: View {
         planState.resetPlans()
         HealthKitState.shared.resetAll()
         WaterState.shared.resetAll()
-
-        // Reset Game Progress - Workout Match (Match Game)
-        defaults.removeObject(forKey: "matchGameCurrentLevel")
-        defaults.set(1, forKey: "matchGameCurrentLevel")
-        defaults.removeObject(forKey: "matchGameUnlockedLevels")
-        defaults.set([1], forKey: "matchGameUnlockedLevels")
-        
-        // Reset any per-level scores
-        if let savedLevels = defaults.array(forKey: "matchGameUnlockedLevels") as? [Int] {
-            for levelId in savedLevels {
-                defaults.removeObject(forKey: "matchGameScore_\(levelId)")
-            }
-        }
-        
-        //print("🔄 Game progress reset: Workout Match back to level 1")
-
-        // Reset Progress module calendar view state
-        UserDefaults.standard.removeObject(forKey: "logViewMode")
-        UserDefaults.standard.removeObject(forKey: "logShowRibbon")
-        UserDefaults.standard.removeObject(forKey: "logListShowWeek")
-
-        // Reset App Store review request state
-        defaults.removeObject(forKey: "hasRequestedAppReview")
-        defaults.removeObject(forKey: "appReviewThreshold")
-
-        // Reset theme to system default
-        appColorScheme = "system"
 
         // Route back to Dashboard after reset
         moduleState.selectModule(ModuleIDs.dashboard)
@@ -1869,8 +1928,8 @@ private struct DashboardAddTileSheet: View {
     }
 
     // PR, 1RM, Volume, and Top leaderboards can be added multiple times
-    // (they're customizable per-tile via activity/exercise filters).
-    private let multipleAllowed: Set<StatCardType> = [.personalRecord, .oneRepMax, .volumeThisWeek, .topDurations, .topDistances]
+    // (they're customizable per-tile via activity/exercise/gear filters).
+    private let multipleAllowed: Set<StatCardType> = [.favoriteExercise, .personalRecord, .oneRepMax, .volumeThisWeek, .topDurations, .topDistances, .topGearDistances]
 
     private var statCardOptions: [StatCardType] {
         let used = Set(dashboardState.tiles.compactMap { $0.statCardType })
@@ -1894,6 +1953,7 @@ private struct DashboardAddTileSheet: View {
         case .waterIntake14Days: return "drop"
         case .topDurations: return "stopwatch"
         case .topDistances: return "ruler"
+        case .topGearDistances: return "shoe"
         }
     }
 
@@ -1910,6 +1970,7 @@ private struct DashboardAddTileSheet: View {
         case .waterIntake14Days:       return "14-day daily water intake bar chart with streak."
         case .topDurations:            return "Top 5 longest sessions across all activities."
         case .topDistances:            return "Top 5 longest-distance sessions across all activities."
+        case .topGearDistances:        return "Gear ranked by percentage of retirement threshold used."
         }
     }
 
@@ -2262,6 +2323,7 @@ private struct DashboardAddTileSheet: View {
                                 || statCard == .volumeThisWeek || statCard == .favoriteDay
                                 || statCard == .todaysPlan
                                 || statCard == .topDurations || statCard == .topDistances
+                                || statCard == .topGearDistances
                             let tile = DashboardTile(
                                 title: statCard.rawValue,
                                 icon: iconForStatCard(statCard),
@@ -2373,6 +2435,7 @@ private struct DashboardEditTileSheet: View {
     @Environment(ExercisesState.self) var exercisesState
     @Environment(WorkoutLogState.self) var logState
     @Environment(WorkoutsState.self) var workoutsState
+    @Environment(GearState.self) var gearState
 
     let tile: DashboardTile
 
@@ -2396,11 +2459,14 @@ private struct DashboardEditTileSheet: View {
     @State private var topDurationsExerciseIDs: [UUID]? = nil
     /// For Top Distances tile: nil = all activities
     @State private var topDistancesExerciseIDs: [UUID]? = nil
+    /// For Top Gear Distances tile: nil = all gear; non-nil = restricted set
+    @State private var topGearDistancesGearIDs: [UUID]? = nil
     /// For Favorite Exercise tile: nil = all exercises
     @State private var favoriteExerciseIDs: [UUID]? = nil
     /// Filter modes — when .exclude, the IDs above are treated as a denylist.
     @State private var topDurationsFilterMode: FilterMode = .include
     @State private var topDistancesFilterMode: FilterMode = .include
+    @State private var topGearDistancesFilterMode: FilterMode = .include
     @State private var favoriteExerciseFilterMode: FilterMode = .include
 
     let onSave: (DashboardTile) -> Void
@@ -2430,7 +2496,8 @@ private struct DashboardEditTileSheet: View {
             if statCard == .todaysPlan {
                 return [.medium, .large]
             }
-            if statCard == .topDurations || statCard == .topDistances {
+            if statCard == .topDurations || statCard == .topDistances
+                || statCard == .topGearDistances {
                 return [.large]
             }
         }
@@ -2690,6 +2757,10 @@ private struct DashboardEditTileSheet: View {
                     )
                 }
 
+                if tile.statCardType == .topGearDistances {
+                    settingsGearFilterSection()
+                }
+
                 Section("Accent") {
                     Picker("Placement", selection: $accentPlacement) {
                         ForEach(AccentPlacement.allCases, id: \.self) { p in
@@ -2751,9 +2822,11 @@ private struct DashboardEditTileSheet: View {
                 volumeExerciseID = tile.volumeExerciseID
                 topDurationsExerciseIDs = tile.topDurationsExerciseIDs
                 topDistancesExerciseIDs = tile.topDistancesExerciseIDs
+                topGearDistancesGearIDs = tile.topGearDistancesGearIDs
                 favoriteExerciseIDs = tile.favoriteExerciseIDs
                 topDurationsFilterMode = tile.topDurationsFilterMode
                 topDistancesFilterMode = tile.topDistancesFilterMode
+                topGearDistancesFilterMode = tile.topGearDistancesFilterMode
                 favoriteExerciseFilterMode = tile.favoriteExerciseFilterMode
             }
             .toolbar {
@@ -2777,9 +2850,11 @@ private struct DashboardEditTileSheet: View {
                         updatedTile.volumeExerciseID = volumeExerciseID
                         updatedTile.topDurationsExerciseIDs = topDurationsExerciseIDs
                         updatedTile.topDistancesExerciseIDs = topDistancesExerciseIDs
+                        updatedTile.topGearDistancesGearIDs = topGearDistancesGearIDs
                         updatedTile.favoriteExerciseIDs = favoriteExerciseIDs
                         updatedTile.topDurationsFilterMode = topDurationsFilterMode
                         updatedTile.topDistancesFilterMode = topDistancesFilterMode
+                        updatedTile.topGearDistancesFilterMode = topGearDistancesFilterMode
                         updatedTile.favoriteExerciseFilterMode = favoriteExerciseFilterMode
                         onSave(updatedTile)
                         dismiss()
@@ -2873,6 +2948,76 @@ private struct DashboardEditTileSheet: View {
                 case (.include, false): return includeFooterSelected
                 case (.exclude, true):  return excludeFooterEmpty
                 case (.exclude, false): return excludeFooterSelected
+                }
+            }()
+            Text(text).font(.caption)
+        }
+    }
+
+    /// Gear filter for the Top Gear Distances tile — iterates over gear items
+    /// (not exercises) and toggles the same include/exclude semantics.
+    @ViewBuilder
+    private func settingsGearFilterSection() -> some View {
+        Section {
+            Picker("Mode", selection: $topGearDistancesFilterMode) {
+                Text("Include").tag(FilterMode.include)
+                Text("Exclude").tag(FilterMode.exclude)
+            }
+            .pickerStyle(.segmented)
+        } header: {
+            Text("Filter Mode")
+        } footer: {
+            Text(topGearDistancesFilterMode == .include
+                 ? "Include: only checked gear is ranked."
+                 : "Exclude: checked gear is skipped; new gear is ranked automatically.")
+                .font(.caption)
+        }
+
+        Section {
+            let eligible = gearState.sortedItems
+            if eligible.isEmpty {
+                Text("No gear yet — add gear from the Gear module.")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            } else {
+                let selected = topGearDistancesGearIDs ?? []
+                ForEach(eligible) { gear in
+                    Button(action: {
+                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                        var ids = topGearDistancesGearIDs ?? []
+                        if ids.contains(gear.id) {
+                            ids.removeAll { $0 == gear.id }
+                        } else {
+                            ids.append(gear.id)
+                        }
+                        topGearDistancesGearIDs = ids.isEmpty ? nil : ids
+                    }) {
+                        HStack {
+                            Image(systemName: gear.sfSymbol ?? GearState.defaultSFSymbol(for: gear.name))
+                                .foregroundColor(.secondary)
+                            Text(gear.name)
+                                .foregroundColor(.primary)
+                            Spacer()
+                            if selected.contains(gear.id) {
+                                Image(systemName: "checkmark")
+                                    .foregroundColor(.accentColor)
+                            }
+                        }
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+        } header: {
+            Text("Gear")
+        } footer: {
+            let isEmpty = topGearDistancesGearIDs == nil
+            let text: String = {
+                switch (topGearDistancesFilterMode, isEmpty) {
+                case (.include, true):  return "Ranking all gear by lifetime distance. Select to restrict."
+                case (.include, false): return "Ranking selected gear only."
+                case (.exclude, true):  return "Ranking all gear by lifetime distance. Select to exclude."
+                case (.exclude, false): return "Excluding selected gear. New gear is ranked automatically."
                 }
             }()
             Text(text).font(.caption)

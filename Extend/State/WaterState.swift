@@ -411,7 +411,13 @@ public final class WaterState {
 
         let cal = Calendar.current
         // Import last 30 days
-        let start = cal.date(byAdding: .day, value: -30, to: cal.startOfDay(for: Date())) ?? Date()
+        var start = cal.date(byAdding: .day, value: -30, to: cal.startOfDay(for: Date())) ?? Date()
+        // Honor the post-erase watermark set by HealthKitState.resetAll() so
+        // historical water samples don't resurrect if the user re-enables
+        // water import after "Erase All Data".
+        if let cutoff = HealthKitState.shared.importCutoffDate, cutoff > start {
+            start = cutoff
+        }
         let pred = HKQuery.predicateForSamples(withStart: start, end: Date(), options: .strictStartDate)
 
         // Union with `deletedHealthKitWaterUUIDs` so a user-deleted log stays

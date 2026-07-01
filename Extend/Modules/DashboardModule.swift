@@ -51,6 +51,7 @@ private struct DashboardModuleView: View {
     @Environment(VoiceTrainerState.self) var voiceTrainerState
     @Environment(WaterState.self) var waterState
     @Environment(TrainingPlanState.self) var planState
+    @Environment(GearState.self) var gearState
 
     @State private var quickStartWorkout: Workout? = nil
     @State private var showingPlanLauncher = false
@@ -239,11 +240,13 @@ private struct DashboardModuleView: View {
         let rmEntries: [(name: String, value: Double, date: Date?)] = tile.statCardType == .oneRepMax ? oneRMEntries(for: tile) : []
         let topDurationEntries: [(name: String, value: Double, date: Date)] = tile.statCardType == .topDurations ? topDurationEntries(for: tile) : []
         let topDistanceEntries: [(name: String, value: Double, date: Date)] = tile.statCardType == .topDistances ? topDistanceEntries(for: tile) : []
+        let topGearDistanceEntries: [(name: String, meters: Double, threshold: Double?, pctUsed: Double, icon: String)] = tile.statCardType == .topGearDistances ? topGearDistanceEntries(for: tile) : []
         // PR, 1RM, leaderboard, and todaysPlan tiles use content-driven height (nil) so layout flows naturally
         let dynamicEntryCount: Int = tile.statCardType == .personalRecord ? 1
             : tile.statCardType == .oneRepMax ? 1
             : tile.statCardType == .topDurations ? 1
             : tile.statCardType == .topDistances ? 1
+            : tile.statCardType == .topGearDistances ? 1
             : tile.statCardType == .todaysPlan ? 1
             : 0
         let isIPad = sizeClass == .regular
@@ -320,6 +323,7 @@ private struct DashboardModuleView: View {
                     currentStreak: statCard == .workoutFrequency ? logState.currentStreak : 0,
                     topDurationEntries: topDurationEntries,
                     topDistanceEntries: topDistanceEntries,
+                    topGearDistanceEntries: topGearDistanceEntries,
                     distanceUnit: distanceUnit
                 )
                 .frame(width: tileWidth, height: (dynamicEntryCount > 0 || tileHeight == nil) ? nil : tileHeight)
@@ -624,6 +628,8 @@ private struct DashboardModuleView: View {
             statDetail = .topDurations(tile)
         case .topDistances:
             statDetail = .topDistances(tile)
+        case .topGearDistances:
+            state.selectModule(ModuleIDs.gear)
         case .favoriteExercise:
             statDetail = .favoriteExercise(tile)
         case .volumeThisWeek:
@@ -706,7 +712,7 @@ private struct DashboardModuleView: View {
             let oz = waterState.todayOz
             let display = waterState.unit.fromOz(oz)
             return String(format: "%.0f %@", display, waterState.unit.rawValue)
-        case .topDurations, .topDistances:
+        case .topDurations, .topDistances, .topGearDistances:
             // Value not shown as text; tile renders its own leaderboard list
             return ""
         }
@@ -924,7 +930,7 @@ private struct DashboardModuleView: View {
     /// Volume bar series for the detail sheet. Bucket size is chosen by the
     /// caller — short ranges show per-week bars, longer ranges roll up to
     /// monthly to keep the chart legible.
-    private func volumeBuckets(since cutoff: Date, workoutName: String?, exerciseID: UUID?, bucket: StatTimeRange.BucketPeriod) -> [(label: String, volume: Double)] {
+    private func volumeBuckets(since cutoff: Date, workoutName: String?, exerciseID: UUID?, bucket: StatTimeRange.BucketPeriod) -> [(date: Date, volume: Double)] {
         let calendar = Calendar.current
         let now = Date()
 
@@ -936,21 +942,14 @@ private struct DashboardModuleView: View {
             return max(cutoff, earliest)
         }()
 
-        let formatter = DateFormatter()
-        switch bucket {
-        case .week:  formatter.dateFormat = "MMM d"
-        case .month: formatter.dateFormat = "MMM yy"
-        case .day:   formatter.dateFormat = "MMM d"
-        }
-
-        var buckets: [(start: Date, end: Date, label: String)] = []
+        var buckets: [(start: Date, end: Date)] = []
         switch bucket {
         case .day:
             var day = calendar.startOfDay(for: max(effectiveCutoff, calendar.date(byAdding: .day, value: -365, to: now) ?? effectiveCutoff))
             let last = calendar.startOfDay(for: now)
             while day <= last {
                 let end = calendar.date(byAdding: .day, value: 1, to: day) ?? day
-                buckets.append((day, min(end, now), formatter.string(from: day)))
+                buckets.append((day, min(end, now)))
                 day = end
             }
         case .week:
@@ -958,7 +957,7 @@ private struct DashboardModuleView: View {
             var weekStart = firstWeek
             while weekStart <= now {
                 let weekEnd = calendar.date(byAdding: .weekOfYear, value: 1, to: weekStart) ?? weekStart
-                buckets.append((weekStart, min(weekEnd, now), formatter.string(from: weekStart)))
+                buckets.append((weekStart, min(weekEnd, now)))
                 weekStart = weekEnd
             }
         case .month:
@@ -966,12 +965,12 @@ private struct DashboardModuleView: View {
             var monthStart = firstMonth
             while monthStart <= now {
                 let monthEnd = calendar.date(byAdding: .month, value: 1, to: monthStart) ?? monthStart
-                buckets.append((monthStart, min(monthEnd, now), formatter.string(from: monthStart)))
+                buckets.append((monthStart, min(monthEnd, now)))
                 monthStart = monthEnd
             }
         }
 
-        var results: [(label: String, volume: Double)] = []
+        var results: [(date: Date, volume: Double)] = []
         for b in buckets {
             var logsInBucket = logState.logsInRange(from: b.start, to: b.end)
             if let name = workoutName {
@@ -986,7 +985,7 @@ private struct DashboardModuleView: View {
                     }
                 }
             }
-            results.append((label: b.label, volume: volume))
+            results.append((date: b.start, volume: volume))
         }
         return results
     }
@@ -1060,6 +1059,44 @@ private struct DashboardModuleView: View {
         let sorted = rows.sorted { lhs, rhs in
             if lhs.value != rhs.value { return lhs.value > rhs.value }
             if lhs.date != rhs.date { return lhs.date > rhs.date }
+            return lhs.name < rhs.name
+        }
+        return Array(sorted.prefix(limit))
+    }
+
+    /// Gear ranked by how much of its retirement threshold has been used.
+    /// Each entry carries the gear's cumulative meters, retirement threshold
+    /// (nil if the gear has none set), and a `pctUsed` in [0, 1] used to draw
+    /// the bar. Gear without a threshold falls back to distance-only bars,
+    /// normalized against the max distance across the entry set so the tile
+    /// still shows something useful.
+    private func topGearDistanceEntries(for tile: DashboardTile, limit: Int = 5) -> [(name: String, meters: Double, threshold: Double?, pctUsed: Double, icon: String)] {
+        let selected: Set<UUID>? = tile.topGearDistancesGearIDs.flatMap { $0.isEmpty ? nil : Set($0) }
+        let mode = tile.topGearDistancesFilterMode
+        let rows: [(name: String, meters: Double, threshold: Double?, pctUsed: Double, icon: String)] = gearState.items.compactMap { gear in
+            if let selected, !passesFilter(id: gear.id, selected: selected, mode: mode) { return nil }
+            let meters = gearState.totalDistanceMeters(for: gear, in: logState.logs)
+            guard meters > 0 || gear.retirementThresholdMeters != nil else { return nil }
+            let icon = gear.sfSymbol ?? GearState.defaultSFSymbol(for: gear.name)
+            let threshold = gear.retirementThresholdMeters
+            let pct: Double = {
+                guard let threshold, threshold > 0 else { return 0 }
+                return min(meters / threshold, 1.0)
+            }()
+            return (name: gear.name, meters: meters, threshold: threshold, pctUsed: pct, icon: icon)
+        }
+        // Gear with a threshold ranks by %-used descending; gear without a
+        // threshold ranks below (by raw distance) so the leaderboard still
+        // surfaces the most-used items.
+        let sorted = rows.sorted { lhs, rhs in
+            let lHas = lhs.threshold != nil
+            let rHas = rhs.threshold != nil
+            if lHas != rHas { return lHas && !rHas }
+            if lHas && rHas {
+                if lhs.pctUsed != rhs.pctUsed { return lhs.pctUsed > rhs.pctUsed }
+            } else {
+                if lhs.meters != rhs.meters { return lhs.meters > rhs.meters }
+            }
             return lhs.name < rhs.name
         }
         return Array(sorted.prefix(limit))
@@ -1563,8 +1600,9 @@ private struct AddTileSheet: View {
 
     private var statCardOptions: [StatCardType] {
         let used = Set(dashboardState.tiles.compactMap { $0.statCardType })
-        // volumeThisWeek can be added multiple times (each instance can be filtered differently)
-        return StatCardType.allCases.filter { !used.contains($0) || $0 == .volumeThisWeek }
+        // These stat cards can be added multiple times (each instance can be filtered differently)
+        let multipleAllowed: Set<StatCardType> = [.favoriteExercise, .volumeThisWeek, .topGearDistances]
+        return StatCardType.allCases.filter { !used.contains($0) || multipleAllowed.contains($0) }
     }
 
     private var hasSelection: Bool {
@@ -1599,6 +1637,8 @@ private struct AddTileSheet: View {
             return "stopwatch"
         case .topDistances:
             return "ruler"
+        case .topGearDistances:
+            return "shoe"
         }
     }
 
@@ -1748,7 +1788,7 @@ private struct AddTileSheet: View {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Add") {
                         for statCard in selectedStatCards {
-                            let size: TileSize = (statCard == .workoutFrequency || statCard == .muscleGroupDistribution || statCard == .oneRepMax || statCard == .personalRecord || statCard == .topDurations || statCard == .topDistances || statCard == .favoriteDay || statCard == .favoriteExercise || statCard == .volumeThisWeek || statCard == .waterIntake14Days || statCard == .todaysPlan) ? .large : .small
+                            let size: TileSize = (statCard == .workoutFrequency || statCard == .muscleGroupDistribution || statCard == .oneRepMax || statCard == .personalRecord || statCard == .topDurations || statCard == .topDistances || statCard == .topGearDistances || statCard == .favoriteDay || statCard == .favoriteExercise || statCard == .volumeThisWeek || statCard == .waterIntake14Days || statCard == .todaysPlan) ? .large : .small
                             let tile = DashboardTile(
                                 title: statCard.rawValue,
                                 icon: iconForStatCard(statCard),
@@ -1810,9 +1850,10 @@ private struct EditTileSheet: View {
     @Environment(ExercisesState.self) var exercisesState
     @Environment(WorkoutLogState.self) var logState
     @Environment(WorkoutsState.self) var workoutsState
+    @Environment(GearState.self) var gearState
 
     let tile: DashboardTile
-    
+
     @State private var title: String = ""
     @State private var selectedIcon: String = ""
     @State private var selectedSize: TileSize = .small
@@ -1828,11 +1869,14 @@ private struct EditTileSheet: View {
     @State private var topDurationsExerciseIDs: [UUID]? = nil
     /// For Top Distances tile: nil = all activities; non-nil = restricted set
     @State private var topDistancesExerciseIDs: [UUID]? = nil
+    /// For Top Gear Distances tile: nil = all gear; non-nil = restricted set
+    @State private var topGearDistancesGearIDs: [UUID]? = nil
     /// For Favorite Exercise tile: nil = all exercises; non-nil = restricted set
     @State private var favoriteExerciseIDs: [UUID]? = nil
     /// Filter modes — when .exclude, the IDs above are treated as a denylist.
     @State private var topDurationsFilterMode: FilterMode = .include
     @State private var topDistancesFilterMode: FilterMode = .include
+    @State private var topGearDistancesFilterMode: FilterMode = .include
     @State private var favoriteExerciseFilterMode: FilterMode = .include
 
     let onSave: (DashboardTile) -> Void
@@ -1860,7 +1904,8 @@ private struct EditTileSheet: View {
                 return [.large]
             }
             if statCard == .oneRepMax || statCard == .personalRecord
-                || statCard == .topDurations || statCard == .topDistances {
+                || statCard == .topDurations || statCard == .topDistances
+                || statCard == .topGearDistances {
                 return [.large]
             }
         }
@@ -2113,6 +2158,10 @@ private struct EditTileSheet: View {
                     )
                 }
 
+                if tile.statCardType == .topGearDistances {
+                    gearFilterSection()
+                }
+
                 Section("Icon") {
                     LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible()), GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
                         ForEach(icons, id: \.self) { icon in
@@ -2149,9 +2198,11 @@ private struct EditTileSheet: View {
                 volumeExerciseID = tile.volumeExerciseID
                 topDurationsExerciseIDs = tile.topDurationsExerciseIDs
                 topDistancesExerciseIDs = tile.topDistancesExerciseIDs
+                topGearDistancesGearIDs = tile.topGearDistancesGearIDs
                 favoriteExerciseIDs = tile.favoriteExerciseIDs
                 topDurationsFilterMode = tile.topDurationsFilterMode
                 topDistancesFilterMode = tile.topDistancesFilterMode
+                topGearDistancesFilterMode = tile.topGearDistancesFilterMode
                 favoriteExerciseFilterMode = tile.favoriteExerciseFilterMode
             }
             #if os(iOS)
@@ -2168,9 +2219,11 @@ private struct EditTileSheet: View {
                         updatedTile.volumeExerciseID = volumeExerciseID
                         updatedTile.topDurationsExerciseIDs = topDurationsExerciseIDs
                         updatedTile.topDistancesExerciseIDs = topDistancesExerciseIDs
+                        updatedTile.topGearDistancesGearIDs = topGearDistancesGearIDs
                         updatedTile.favoriteExerciseIDs = favoriteExerciseIDs
                         updatedTile.topDurationsFilterMode = topDurationsFilterMode
                         updatedTile.topDistancesFilterMode = topDistancesFilterMode
+                        updatedTile.topGearDistancesFilterMode = topGearDistancesFilterMode
                         updatedTile.favoriteExerciseFilterMode = favoriteExerciseFilterMode
                         onSave(updatedTile)
                         dismiss()
@@ -2277,6 +2330,78 @@ private struct EditTileSheet: View {
             Text(text).font(.caption)
         }
     }
+
+    /// Gear filter — dedicated section for the Top Gear Distances tile.
+    /// Mirrors `activityFilterSection` but iterates over gear items instead of
+    /// exercises. Include mode counts selected gear only; Exclude counts all
+    /// gear except selected (new gear items are picked up automatically).
+    @ViewBuilder
+    private func gearFilterSection() -> some View {
+        Section {
+            Picker("Mode", selection: $topGearDistancesFilterMode) {
+                Text("Include").tag(FilterMode.include)
+                Text("Exclude").tag(FilterMode.exclude)
+            }
+            .pickerStyle(.segmented)
+        } header: {
+            Text("Filter Mode")
+        } footer: {
+            Text(topGearDistancesFilterMode == .include
+                 ? "Include: only checked gear is ranked."
+                 : "Exclude: checked gear is skipped; new gear is ranked automatically.")
+                .font(.caption)
+        }
+
+        Section {
+            let eligible = gearState.sortedItems
+            if eligible.isEmpty {
+                Text("No gear yet — add gear from the Gear module.")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            } else {
+                let selected = topGearDistancesGearIDs ?? []
+                ForEach(eligible) { gear in
+                    Button(action: {
+                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                        var ids = topGearDistancesGearIDs ?? []
+                        if ids.contains(gear.id) {
+                            ids.removeAll { $0 == gear.id }
+                        } else {
+                            ids.append(gear.id)
+                        }
+                        topGearDistancesGearIDs = ids.isEmpty ? nil : ids
+                    }) {
+                        HStack {
+                            Image(systemName: gear.sfSymbol ?? GearState.defaultSFSymbol(for: gear.name))
+                                .foregroundColor(.secondary)
+                            Text(gear.name)
+                                .foregroundColor(.primary)
+                            Spacer()
+                            if selected.contains(gear.id) {
+                                Image(systemName: "checkmark.circle.fill")
+                                    .foregroundColor(.accentColor)
+                            }
+                        }
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+        } header: {
+            Text("Gear")
+        } footer: {
+            let isEmpty = topGearDistancesGearIDs == nil
+            let text: String = {
+                switch (topGearDistancesFilterMode, isEmpty) {
+                case (.include, true):  return "Ranking all gear by lifetime distance. Select to restrict."
+                case (.include, false): return "Ranking selected gear only."
+                case (.exclude, true):  return "Ranking all gear by lifetime distance. Select to exclude."
+                case (.exclude, false): return "Excluding selected gear. New gear is ranked automatically."
+                }
+            }()
+            Text(text).font(.caption)
+        }
+    }
 }
 
 // MARK: - Stat Card Tile View
@@ -2313,6 +2438,7 @@ private struct StatCardTileView: View {
     var currentStreak: Int = 0
     var topDurationEntries: [(name: String, value: Double, date: Date)] = []
     var topDistanceEntries: [(name: String, value: Double, date: Date)] = []
+    var topGearDistanceEntries: [(name: String, meters: Double, threshold: Double?, pctUsed: Double, icon: String)] = []
     var distanceUnit: String = "mi"
 
     @Environment(\.horizontalSizeClass) private var sizeClass
@@ -2343,6 +2469,7 @@ private struct StatCardTileView: View {
                         || statType == .oneRepMax
                         || statType == .topDurations
                         || statType == .topDistances
+                        || statType == .topGearDistances
                         || statType == .favoriteExercise {
                         Image(systemName: "chevron.right")
                             .font(.system(size: iPad ? 13 : 9, weight: .semibold))
@@ -2632,6 +2759,77 @@ private struct StatCardTileView: View {
                         }
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                     }
+                } else if statType == .topGearDistances {
+                    if topGearDistanceEntries.isEmpty {
+                        VStack(spacing: 4) {
+                            Spacer()
+                            Image(systemName: "shoe")
+                                .font(.system(size: iPad ? 35 : 22, weight: .light))
+                                .foregroundColor(.gray)
+                            Text("Add gear with a retirement\nthreshold to see gear life")
+                                .font(.system(size: iPad ? 16 : 10))
+                                .foregroundColor(.gray)
+                                .multilineTextAlignment(.center)
+                            Spacer()
+                        }
+                        .frame(maxWidth: .infinity)
+                    } else {
+                        // Bar width uses the retirement threshold percentage
+                        // when available. For gear without a threshold, fall
+                        // back to the max meters across the entry set so the
+                        // bar still communicates relative usage — but the
+                        // primary metric being shown is "% of life used".
+                        let maxMeters = topGearDistanceEntries.map { $0.meters }.max() ?? 1
+                        VStack(alignment: .leading, spacing: 5) {
+                            ForEach(Array(topGearDistanceEntries.prefix(10).enumerated()), id: \.offset) { index, entry in
+                                VStack(alignment: .leading, spacing: 2) {
+                                    HStack(spacing: 6) {
+                                        Text("#\(index + 1)")
+                                            .font(.system(size: iPad ? 16 : 12, weight: .bold, design: .rounded))
+                                            .foregroundColor(index == 0 ? .yellow : .gray)
+                                            .frame(width: iPad ? 36 : 24, alignment: .leading)
+                                        Image(systemName: entry.icon)
+                                            .font(.system(size: iPad ? 14 : 10, weight: .semibold))
+                                            .foregroundColor(.secondary)
+                                        Text(entry.threshold != nil
+                                             ? "\(entry.name) (\(DistanceFormatter.format(meters: entry.meters, unit: distanceUnit)))"
+                                             : entry.name)
+                                            .font(.system(size: iPad ? 16 : 12, weight: .semibold))
+                                            .foregroundColor(.primary)
+                                            .lineLimit(1)
+                                            .minimumScaleFactor(0.7)
+                                            .frame(maxWidth: .infinity, alignment: .leading)
+                                        Text(gearLifeLabel(for: entry))
+                                            .font(.system(size: iPad ? 16 : 12, weight: .bold))
+                                            .foregroundColor(entry.pctUsed >= 1.0 ? .red : .primary)
+                                    }
+                                    GeometryReader { geo in
+                                        let fillPct: Double = {
+                                            if entry.threshold != nil { return entry.pctUsed }
+                                            return maxMeters > 0 ? entry.meters / maxMeters : 0
+                                        }()
+                                        let barColor: Color = {
+                                            if entry.threshold != nil {
+                                                if entry.pctUsed >= 1.0 { return .red }
+                                                if entry.pctUsed >= 0.8 { return .orange }
+                                            }
+                                            return index == 0 ? Color.yellow : Color.primary.opacity(0.35)
+                                        }()
+                                        ZStack(alignment: .leading) {
+                                            RoundedRectangle(cornerRadius: 2)
+                                                .fill(Color.primary.opacity(0.08))
+                                                .frame(height: 3)
+                                            RoundedRectangle(cornerRadius: 2)
+                                                .fill(barColor)
+                                                .frame(width: geo.size.width * CGFloat(fillPct), height: 3)
+                                        }
+                                    }
+                                    .frame(height: 3)
+                                }
+                            }
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    }
                 } else if statType == .topDurations || statType == .topDistances {
                     let entries = statType == .topDurations ? topDurationEntries : topDistanceEntries
                     if entries.isEmpty {
@@ -2767,6 +2965,17 @@ private struct StatCardTileView: View {
                 .foregroundColor(.primary)
         }
         .frame(maxWidth: .infinity)
+    }
+
+    /// Right-column label for the Gear Life tile. Shows "%N%" when a
+    /// retirement threshold is set (this is the primary metric); falls back
+    /// to a compact distance when no threshold exists so the value column
+    /// isn't blank.
+    private func gearLifeLabel(for entry: (name: String, meters: Double, threshold: Double?, pctUsed: Double, icon: String)) -> String {
+        if entry.threshold != nil {
+            return "\(Int((entry.pctUsed * 100).rounded()))%"
+        }
+        return DistanceFormatter.format(meters: entry.meters, unit: distanceUnit)
     }
 
     /// "1:23:45" / "12:34" / "45s" — compact duration formatting for the
@@ -3795,7 +4004,7 @@ fileprivate struct VolumeGraphDetailView: View {
     let icon: String
     let accentColor: Color
     let tile: DashboardTile
-    let bucketProvider: (StatTimeRange, DashboardTile) -> [(label: String, volume: Double)]
+    let bucketProvider: (StatTimeRange, DashboardTile) -> [(date: Date, volume: Double)]
 
     @Environment(\.dismiss) private var dismiss
     @AppStorage("weightUnit") private var weightUnit: String = "lbs"
@@ -3829,6 +4038,10 @@ fileprivate struct VolumeGraphDetailView: View {
                         .frame(maxWidth: .infinity)
                         .padding(.top, 60)
                     } else {
+                        let points: [(Date, Double)] = buckets.map { ($0.date, $0.volume) }
+                        let maxVol = points.map { $0.1 }.max() ?? 1
+                        let labelMode: BarLabelMode = selectedRange.preferredBucket == .week ? .week : .date
+
                         VStack(alignment: .leading, spacing: 12) {
                             HStack(spacing: 8) {
                                 Image(systemName: icon)
@@ -3845,7 +4058,7 @@ fileprivate struct VolumeGraphDetailView: View {
                                     .font(.system(size: 14, weight: .semibold))
                                     .foregroundColor(.primary)
                             }
-                            DetailVolumeBarChart(buckets: buckets)
+                            BarChartView(points: points, maxValue: maxVol, barColor: .primary, labelMode: labelMode)
                                 .frame(height: 220)
                         }
                         .padding(16)
@@ -3863,107 +4076,6 @@ fileprivate struct VolumeGraphDetailView: View {
                 ToolbarItem(placement: .topBarLeading) {
                     Button("Done") { dismiss() }
                 }
-            }
-        }
-    }
-}
-
-/// Standalone bar chart for the Volume detail sheet. Re-implemented (instead
-/// of reusing the private `VolumeBarChartView`) so it can size and scroll
-/// when a range has many buckets without distorting the dashboard tile.
-private struct DetailVolumeBarChart: View {
-    let buckets: [(label: String, volume: Double)]
-
-    @State private var selectedIndex: Int? = nil
-    @AppStorage("weightUnit") private var weightUnit: String = "lbs"
-
-    var body: some View {
-        let maxVol = buckets.map { $0.volume }.max() ?? 1
-        let barSpacing: CGFloat = 6
-        // 56pt fits "MMM d" / "MMM yy" labels at 10pt without truncating to "..."
-        let minBarWidth: CGFloat = 56
-        let barAreaH: CGFloat = 180
-        GeometryReader { geo in
-            let availableWidth = geo.size.width
-            let proposedBarWidth = (availableWidth - barSpacing * CGFloat(max(buckets.count - 1, 0))) / CGFloat(max(buckets.count, 1))
-            let barWidth = max(minBarWidth, proposedBarWidth)
-            let contentWidth = barWidth * CGFloat(buckets.count) + barSpacing * CGFloat(max(buckets.count - 1, 0))
-
-            ScrollViewReader { proxy in
-                ScrollView(.horizontal, showsIndicators: false) {
-                    VStack(alignment: .leading, spacing: 4) {
-                        HStack(alignment: .bottom, spacing: barSpacing) {
-                            ForEach(Array(buckets.enumerated()), id: \.offset) { idx, bucket in
-                                let fraction = maxVol > 0 ? CGFloat(bucket.volume / maxVol) : 0
-                                let isSelected = selectedIndex == idx
-                                let hasSelection = selectedIndex != nil
-                                let barOpacity: Double = hasSelection ? (isSelected ? 1.0 : 0.3) : 1.0
-                                let barH: CGFloat = bucket.volume > 0 ? max(20, barAreaH * fraction) : 0
-                                let volLabel = bucket.volume >= 1000
-                                    ? String(format: "%.1fk", bucket.volume / 1000)
-                                    : String(format: "%.0f", bucket.volume)
-                                VStack(spacing: 4) {
-                                    ZStack(alignment: .bottom) {
-                                        Rectangle()
-                                            .fill(Color.clear)
-                                            .frame(width: barWidth, height: barAreaH)
-                                        if bucket.volume > 0 {
-                                            ZStack {
-                                                RoundedRectangle(cornerRadius: 4)
-                                                    .fill(Color.primary.opacity(barOpacity))
-                                                Text(volLabel)
-                                                    .font(.system(size: 11, weight: .bold))
-                                                    .foregroundColor(Color(UIColor.systemBackground))
-                                                    .minimumScaleFactor(0.5)
-                                                    .lineLimit(1)
-                                                    .padding(.horizontal, 3)
-                                                    .opacity(barOpacity)
-                                            }
-                                            .frame(width: barWidth, height: barH)
-                                        }
-                                    }
-                                    Text(bucket.label)
-                                        .font(.system(size: 10, weight: isSelected ? .bold : .regular))
-                                        .foregroundColor(isSelected ? .primary : .gray)
-                                        .lineLimit(1)
-                                        .minimumScaleFactor(0.7)
-                                        .frame(width: barWidth)
-                                }
-                                .contentShape(Rectangle())
-                                .onTapGesture {
-                                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                                    selectedIndex = selectedIndex == idx ? nil : idx
-                                }
-                                .id(idx)
-                            }
-                        }
-                        if let idx = selectedIndex, idx < buckets.count {
-                            let b = buckets[idx]
-                            let label = b.volume >= 1000
-                                ? String(format: "%.1fk \(weightUnit)", b.volume / 1000)
-                                : String(format: "%.0f \(weightUnit)", b.volume)
-                            Text("\(b.label): \(label)")
-                                .font(.system(size: 12, weight: .semibold))
-                                .foregroundColor(.primary)
-                                .padding(.leading, 4)
-                        }
-                    }
-                    .frame(width: max(contentWidth, availableWidth), alignment: .leading)
-                }
-                .onAppear { scrollToLatest(proxy: proxy) }
-                .onChange(of: buckets.last?.label ?? "") { _, _ in scrollToLatest(proxy: proxy) }
-                .onChange(of: buckets.count) { _, _ in scrollToLatest(proxy: proxy) }
-            }
-        }
-    }
-
-    private func scrollToLatest(proxy: ScrollViewProxy) {
-        guard !buckets.isEmpty else { return }
-        let lastIdx = buckets.count - 1
-        // Defer one tick so the ScrollView has measured its content width.
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
-            withAnimation(.easeOut(duration: 0.25)) {
-                proxy.scrollTo(lastIdx, anchor: .trailing)
             }
         }
     }
