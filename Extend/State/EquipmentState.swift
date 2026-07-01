@@ -38,10 +38,10 @@ public final class EquipmentState {
         }
     }
     
-    public func addItem(name: String, imageAssetName: String? = nil, sfSymbol: String? = nil, startDate: Date? = nil, endDate: Date? = nil) {
+    public func addItem(name: String, imageAssetName: String? = nil, sfSymbol: String? = nil) {
         let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return }
-        items.append(Equipment(name: trimmed, imageAssetName: imageAssetName, sfSymbol: sfSymbol, startDate: startDate, endDate: endDate))
+        items.append(Equipment(name: trimmed, imageAssetName: imageAssetName, sfSymbol: sfSymbol))
         saveItems()
     }
 

@@ -899,6 +899,7 @@ private struct SettingsModuleView: View {
             ModuleIDs.muscles,
             ModuleIDs.equipment,
             ModuleIDs.water,
+            ModuleIDs.gear,
             ModuleIDs.matchGame,
             ModuleIDs.settings
         ]

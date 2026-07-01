@@ -52,6 +52,9 @@ public struct ModuleIDs {
 
     /// Water module - daily hydration tracking
     public static let water = UUID(uuidString: "00000010-0000-0000-0000-000000000000")!
+
+    /// Gear module - wearable/consumable gear (shoes, bikes, straps)
+    public static let gear = UUID(uuidString: "00000011-0000-0000-0000-000000000000")!
 }
 
 /// Module Registry - manages all registered modules in the app

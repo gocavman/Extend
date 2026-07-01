@@ -1158,6 +1158,78 @@ Then fill in each day with workouts, exercises, timers, and/or voice trainer con
 
     <div class="article">
       <div class="article-header" onclick="toggleArticle(this)">
+        <div class="article-icon">👟</div>
+        <div class="article-title">
+          <h3>Gear</h3>
+          <p>Track wearable / consumable gear like shoes and bikes with ownership dates, mileage, and retirement thresholds.</p>
+        </div>
+        <span class="chevron">▶</span>
+      </div>
+      <div class="article-body">
+        <div class="section">
+          <h4>What Gear Is (and Isn't)</h4>
+          <p>Gear is for items with an ownership window and cumulative wear — shoes, bikes, straps, watches. Unlike Equipment, Gear is not attached to individual workout logs at log time. Instead, each gear item resolves usage on the fly by matching a log's date to its ownership window and the log's exercises to its linked activities.
+
+Why the split: a new pair of running shoes should automatically count every run from the day you got them, without you tagging every past log — and old runs should keep their prior gear (or none). Doing that with the Equipment model would require rewriting historical logs. Gear resolves at read time, so nothing is mutated.</p>
+        </div>
+        <div class="section">
+          <h4>Header Buttons</h4>
+          <p>• ➕ — add a new gear item.</p>
+        </div>
+        <div class="section">
+          <h4>Row Buttons</h4>
+          <p>Each gear row shows buttons:
+• ⭐ — favorite / unfavorite.
+• 🕐 — history of qualifying logs for this gear.
+• 📊 — stats (lifetime + selected time range).
+• ✏️ — edit name, brand, icon, activities, dates, threshold.</p>
+        </div>
+        <div class="section">
+          <h4>Favorites Grid</h4>
+          <p>Favorited gear appears as 3-piece tiles at the top:
+• Top — tap to open stats.
+• Bottom-left 📊 — stats.
+• Bottom-right 🕐 — history.</p>
+        </div>
+        <div class="section">
+          <h4>Adding &amp; Editing Gear</h4>
+          <p>Tap ➕. Fill in:
+• Name (e.g. Nike Pegasus 40).
+• Brand (optional).
+• Icon — pick an SF Symbol.
+• Linked Activities — the exercises this gear applies to (e.g. Running for a pair of shoes). Only logs of these exercises inside the ownership window count toward this gear's stats.
+• First used — the day you started using this gear.
+• Retired — toggle on and pick a date when you stop using it, so a replacement pair's stats don't overlap.
+• Retirement Threshold (optional) — target distance (e.g. 500 mi). The stats screen surfaces a progress bar and warns as lifetime distance approaches the threshold.</p>
+        </div>
+        <div class="section">
+          <h4>Stats</h4>
+          <p>Opens a stats sheet with:
+• Lifetime — total sessions, cumulative distance, and start date. Always full history, not affected by the time-range picker.
+• Retirement Threshold — progress bar toward the target distance (only shown if set). Turns orange at 90%, red at 100%.
+• Time Range Picker — 7D / 1M / 3M / 6M / 1Y / All. Filters the range summary below (sessions, distance, duration).
+• Linked Activities — the exercises this gear resolves against.</p>
+        </div>
+        <div class="section">
+          <h4>History</h4>
+          <p>Lists every log inside the selected time range whose date falls within the gear's ownership window AND that includes at least one linked activity. Each row shows the date, workout name, and the matching exercises with their distance when available.</p>
+        </div>
+        <div class="section">
+          <h4>Retiring &amp; Replacing</h4>
+          <p>When you get a new pair, edit the old pair, toggle Retired on, and pick the last-used date. Then add the new pair with its own start date — the two won't overlap. Retired gear stays visible in the list (marked "Retired") so its lifetime stats remain accessible.</p>
+        </div>
+        <div class="section">
+          <h4>Gear vs Equipment</h4>
+          <p>• Equipment = static gym items (barbell, rower, dumbbell). Attached to a workout log explicitly at log time. Filters and history use the tagged IDs.
+• Gear = items you own with a lifespan (shoes, bikes, wearables). Resolved dynamically from ownership dates + linked activities. Never mutates prior logs when you add or replace an item.
+
+If you're tempted to give an Equipment item a start date, it's probably Gear.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="article">
+      <div class="article-header" onclick="toggleArticle(this)">
         <div class="article-icon">💧</div>
         <div class="article-title">
           <h3>Water</h3>

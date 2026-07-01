@@ -836,27 +836,14 @@ struct EquipmentStatsView: View {
         Set(linkedExercises.map { $0.id })
     }
 
-    /// Effective lower bound: intersection of the picker's time range and the equipment's
-    /// optional first-used date.
-    private var effectiveStartDate: Date {
-        max(timeRange.startDate, equipment.startDate ?? .distantPast)
-    }
-
-    /// Effective upper bound from the equipment's optional last-used date (open-ended when nil).
-    private var effectiveEndDate: Date {
-        equipment.endDate ?? .distantFuture
-    }
-
-    /// Logs within the active window that include at least one exercise the user marked as
-    /// using THIS specific equipment (matches EquipmentHistorySheet semantics so brand-new
-    /// equipment doesn't inherit the linked exercise's full prior history). VoiceTrainer logs
-    /// are matched via the log-level equipment list since they don't track per-exercise IDs.
+    /// Logs in the picker window that include at least one exercise the user marked as
+    /// using THIS specific equipment. VoiceTrainer logs are matched via the log-level
+    /// equipment list since they don't track per-exercise IDs.
     private var filteredLogs: [WorkoutLog] {
-        let start = effectiveStartDate
-        let end = effectiveEndDate
+        let start = timeRange.startDate
         let equipID = equipment.id
         return logState.logs
-            .filter { $0.completedAt >= start && $0.completedAt <= end }
+            .filter { $0.completedAt >= start }
             .filter { log in
                 log.exercises.contains(where: { $0.usedEquipmentIDs.contains(equipID) }) ||
                 (log.logType == .voiceTrainer && log.logEquipmentIDs.contains(equipID))

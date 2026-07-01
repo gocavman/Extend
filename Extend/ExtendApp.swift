@@ -35,6 +35,7 @@ struct ExtendApp: App {
     let generateState = GenerateState.shared
     let muscleGroupsState = MuscleGroupsState.shared
     let equipmentState = EquipmentState.shared
+    let gearState = GearState.shared
     let workoutLogState = WorkoutLogState.shared
     let timerState = TimerState.shared
     let voiceTrainerState = VoiceTrainerState.shared
@@ -77,6 +78,7 @@ struct ExtendApp: App {
         registry.registerModule(ExercisesModule())
         registry.registerModule(MuscleGroupsModule())
         registry.registerModule(EquipmentModule())
+        registry.registerModule(GearModule())
         registry.registerModule(GenerateModule())
         registry.registerModule(SettingsModule())
         registry.registerModule(VoiceTrainerModule())
@@ -101,6 +103,7 @@ struct ExtendApp: App {
                 ModuleIDs.muscles,
                 ModuleIDs.equipment,
                 ModuleIDs.water,
+                ModuleIDs.gear,
                 ModuleIDs.matchGame,
                 ModuleIDs.settings
             ])
@@ -124,6 +127,7 @@ struct ExtendApp: App {
                 .environment(generateState)
                 .environment(muscleGroupsState)
                 .environment(equipmentState)
+                .environment(gearState)
                 .environment(workoutLogState)
                 .environment(timerState)
                 .environment(voiceTrainerState)

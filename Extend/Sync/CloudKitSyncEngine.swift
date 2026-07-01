@@ -72,6 +72,7 @@ enum SyncKey: String, CaseIterable {
     case exercises               = "extend_exercises"
     case muscleGroups            = "extend_muscle_groups"
     case equipment               = "extend_equipment"
+    case gear                    = "extend_gear"
     case trainingPlans           = "extend_training_plans"
     case dashboardTiles          = "extend_dashboard_tiles"
     case timerConfigs            = "extend_timer_configs"
@@ -91,6 +92,7 @@ enum SyncKey: String, CaseIterable {
         case .exercises:                    return "Exercises"
         case .muscleGroups:                 return "MuscleGroups"
         case .equipment:                    return "Equipment"
+        case .gear:                         return "Gear"
         case .trainingPlans:                return "TrainingPlans"
         case .dashboardTiles:               return "DashboardTiles"
         case .timerConfigs:                 return "TimerConfigs"
@@ -444,6 +446,9 @@ final class CloudKitSyncEngine {
         case .equipment:
             return defaults.data(forKey: "equipment_items")
 
+        case .gear:
+            return defaults.data(forKey: "gear_items")
+
         case .trainingPlans:
             guard let plansData = defaults.data(forKey: "training_plans_data") else { return nil }
             guard let plans = try? JSONDecoder().decode([TrainingPlan].self, from: plansData) else { return nil }
@@ -552,6 +557,9 @@ final class CloudKitSyncEngine {
         case .equipment:
             defaults.set(data, forKey: "equipment_items")
 
+        case .gear:
+            defaults.set(data, forKey: "gear_items")
+
         case .trainingPlans:
             guard let payload = try? decoder.decode(TrainingPlanPayload.self, from: data) else { return }
             if let encoded = try? JSONEncoder().encode(payload.plans) {
@@ -648,6 +656,8 @@ final class CloudKitSyncEngine {
             MuscleGroupsState.shared.reloadFromDefaults()
         case .equipment:
             EquipmentState.shared.reloadFromDefaults()
+        case .gear:
+            GearState.shared.reloadFromDefaults()
         case .trainingPlans:
             TrainingPlanState.shared.reloadFromDefaults()
             TrainingPlanState.shared.refreshWidgetSnapshot()
