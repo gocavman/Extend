@@ -62,7 +62,7 @@ private struct EquipmentModuleView: View {
                 .padding(.vertical, 12)
 
                 // Favorites grid — 3-piece tiles: top=name, bottom-left=stats, bottom-right=history
-                if !state.favoriteItems.isEmpty && searchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                if !state.favoriteItems.isEmpty {
                     LazyVGrid(columns: [GridItem(.adaptive(minimum: 100), spacing: 10)], spacing: 10) {
                         ForEach(state.favoriteItems) { item in
                             VStack(spacing: 0) {

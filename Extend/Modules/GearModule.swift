@@ -67,7 +67,7 @@ private struct GearModuleView: View {
                 .padding(.horizontal, 16)
                 .padding(.vertical, 12)
 
-                if !state.favoriteItems.isEmpty && searchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                if !state.favoriteItems.isEmpty {
                     LazyVGrid(columns: [GridItem(.adaptive(minimum: 100), spacing: 10)], spacing: 10) {
                         ForEach(state.favoriteItems) { item in
                             VStack(spacing: 0) {

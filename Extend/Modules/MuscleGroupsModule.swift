@@ -64,7 +64,7 @@ private struct MuscleGroupsModuleView: View {
                 .padding(.vertical, 12)
 
                 // Favorites grid — 3-piece tiles: top=name, bottom-left=stats, bottom-right=history
-                if !state.favoriteGroups.isEmpty && searchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                if !state.favoriteGroups.isEmpty {
                     LazyVGrid(columns: [GridItem(.adaptive(minimum: 100), spacing: 10)], spacing: 10) {
                         ForEach(state.favoriteGroups) { group in
                             VStack(spacing: 0) {
