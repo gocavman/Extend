@@ -207,7 +207,7 @@ public final class WorkoutsState {
             complexes: [dblComplexID.uuidString: dblComplex],
             warmupSeconds: 10,
             cooldownSeconds: 10,
-            showNotes: false
+            showNotes: true
         )
 
         // ── ABC - Single Kettlebell ───────────────────────────────────────
@@ -219,7 +219,7 @@ public final class WorkoutsState {
             intervalSeconds: 90,
             autoAdvance: true,
             roundCountdown: true,
-            timerStyle: .bar
+            timerStyle: .ring
         )
         let sglItems: [WorkoutItem] = [
             .exercise(WorkoutExercise(

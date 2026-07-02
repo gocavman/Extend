@@ -96,20 +96,24 @@ public struct WorkoutLoop: Identifiable, Codable {
     public var rounds: Int
     /// Timer mode for this loop. nil = no timer (same as .none).
     public var timerMode: WorkoutTimerMode?
+    /// When true, a spoken 3-2-1 countdown plays on the last 3 seconds of each timed phase.
+    public var roundCountdown: Bool
 
-    public init(id: UUID = UUID(), rounds: Int = 1, timerMode: WorkoutTimerMode? = nil) {
-        self.id        = id
-        self.rounds    = rounds
-        self.timerMode = timerMode
+    public init(id: UUID = UUID(), rounds: Int = 1, timerMode: WorkoutTimerMode? = nil, roundCountdown: Bool = false) {
+        self.id             = id
+        self.rounds         = rounds
+        self.timerMode      = timerMode
+        self.roundCountdown = roundCountdown
     }
 
-    private enum CodingKeys: String, CodingKey { case id, rounds, timerMode }
+    private enum CodingKeys: String, CodingKey { case id, rounds, timerMode, roundCountdown }
 
     public init(from decoder: Decoder) throws {
-        let c      = try decoder.container(keyedBy: CodingKeys.self)
-        id         = try c.decode(UUID.self, forKey: .id)
-        rounds     = try c.decodeIfPresent(Int.self, forKey: .rounds) ?? 1
-        timerMode  = try c.decodeIfPresent(WorkoutTimerMode.self, forKey: .timerMode)
+        let c          = try decoder.container(keyedBy: CodingKeys.self)
+        id             = try c.decode(UUID.self, forKey: .id)
+        rounds         = try c.decodeIfPresent(Int.self, forKey: .rounds) ?? 1
+        timerMode      = try c.decodeIfPresent(WorkoutTimerMode.self, forKey: .timerMode)
+        roundCountdown = try c.decodeIfPresent(Bool.self, forKey: .roundCountdown) ?? false
     }
 
     public func encode(to encoder: Encoder) throws {
@@ -117,6 +121,7 @@ public struct WorkoutLoop: Identifiable, Codable {
         try c.encode(id, forKey: .id)
         try c.encode(rounds, forKey: .rounds)
         try c.encodeIfPresent(timerMode, forKey: .timerMode)
+        try c.encode(roundCountdown, forKey: .roundCountdown)
     }
 }
 

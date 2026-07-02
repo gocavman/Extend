@@ -3261,30 +3261,10 @@ public struct StartWorkoutView: View {
 
             // Controls
             if phaseTimerDone {
-                if !isAtLastItem {
-                    Button(action: { nextItem() }) {
-                        Text("Next Exercise")
-                            .font(.headline)
-                            .foregroundColor(Color(UIColor.systemBackground))
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 12)
-                            .background(Color.primary)
-                            .cornerRadius(10)
-                    }
-                    .buttonStyle(.plain)
-                } else if workout.cooldownSeconds > 0 {
-                    Button(action: { triggerCooldownOrComplete() }) {
-                        Text("Continue to Cooldown")
-                            .font(.headline)
-                            .foregroundColor(Color(UIColor.systemBackground))
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 12)
-                            .background(Color.primary)
-                            .cornerRadius(10)
-                    }
-                    .buttonStyle(.plain)
-                }
-                // At last item with no cooldown: only Finish button in toolbar is shown
+                // Intentionally empty: allPhasesDone() auto-advances to the next
+                // item (or cooldown / completion at the last item), so the green
+                // "Done" ring stands on its own for the brief handoff.
+                EmptyView()
             } else {
                 HStack(spacing: 32) {
                     // Restart
@@ -3831,9 +3811,18 @@ public struct StartWorkoutView: View {
             notes = savedData.notes
             timerSeconds = savedData.timerSeconds
             usedEquipmentIDs = savedData.usedEquipmentIDs
-            phaseIndex = savedData.phaseIndex
-            phaseElapsed = savedData.phaseElapsed
-            phaseTimerDone = savedData.phaseTimerDone
+            // Each fresh visit in a timed mode starts a new work→rest phase run;
+            // reset the phase counters so a completed prior round doesn't leave
+            // phaseTimerDone=true and block the tick from starting for this round.
+            if isTimedMode {
+                phaseIndex = 0
+                phaseElapsed = 0
+                phaseTimerDone = false
+            } else {
+                phaseIndex = savedData.phaseIndex
+                phaseElapsed = savedData.phaseElapsed
+                phaseTimerDone = savedData.phaseTimerDone
+            }
             previousSets = []
             previousLogDate = nil
         } else {
@@ -3933,8 +3922,16 @@ public struct StartWorkoutView: View {
                 workLabel = setCount == 1 ? "Work" : "Set \(i + 1) of \(setCount) — Work"
             }
             phases.append(WorkoutTimerPhase(label: workLabel, duration: mode.workSeconds, isWork: true, setIndex: setIdx))
-            if mode.restSeconds > 0 && i < setCount - 1 {
-                let restLabel = setCount == 1 ? "Rest" : "Set \(i + 1) of \(setCount) — Rest"
+            // Always append a trailing rest phase when the mode defines one. This gives Interval mode
+            // its work → rest cycle even on the last set / single-set loop visit, and the auto-advance
+            // in allPhasesDone() then rolls straight into the next exercise's work phase.
+            if mode.restSeconds > 0 {
+                let restLabel: String
+                if isInLoop {
+                    restLabel = totalRounds > 1 ? "Set \(loopRound + 1) of \(totalRounds) — Rest" : "Rest"
+                } else {
+                    restLabel = setCount == 1 ? "Rest" : "Set \(i + 1) of \(setCount) — Rest"
+                }
                 phases.append(WorkoutTimerPhase(label: restLabel, duration: mode.restSeconds, isWork: false, setIndex: setIdx))
             }
         }
@@ -3960,6 +3957,8 @@ public struct StartWorkoutView: View {
     private func startPhaseTick() {
         guard !phaseTimerRunning else { return }
         phaseTimerRunning = true
+        // Prime the speech engine so the first countdown number isn't clipped.
+        if currentLoopRoundCountdown { primeSynthesizer() }
         phaseTimerTask = Task {
             while !Task.isCancelled {
                 try? await Task.sleep(nanoseconds: 1_000_000_000)
@@ -3967,6 +3966,36 @@ public struct StartWorkoutView: View {
                 await MainActor.run { tickPhase() }
             }
         }
+    }
+
+    /// True if the current exercise's loop has the 3-2-1 countdown enabled.
+    private var currentLoopRoundCountdown: Bool {
+        guard let lid = currentLoopID,
+              let loop = workout.loops[lid.uuidString] else { return false }
+        return loop.roundCountdown
+    }
+
+    @MainActor
+    private func speakPhaseNumber(_ n: Int) {
+        let utterance = AVSpeechUtterance(string: "\(n)")
+        utterance.rate = 0.45
+        utterance.pitchMultiplier = 1.15
+        // AVSpeechSynthesizer.speak() takes internal locks that trip Swift's
+        // "unsafeForcedSync called from Swift Concurrent context" runtime check
+        // when invoked directly from a Task / MainActor.run. Hopping through GCD
+        // dispatches the call outside the concurrency context and clears it.
+        let syn = synthesizer
+        DispatchQueue.main.async { syn.speak(utterance) }
+        UIImpactFeedbackGenerator(style: .rigid).impactOccurred()
+    }
+
+    @MainActor
+    private func primeSynthesizer() {
+        let warmup = AVSpeechUtterance(string: "ready")
+        warmup.volume = 0
+        warmup.rate = AVSpeechUtteranceMaximumSpeechRate
+        let syn = synthesizer
+        DispatchQueue.main.async { syn.speak(warmup) }
     }
 
     private func pausePhaseTimer() {
@@ -4000,7 +4029,13 @@ public struct StartWorkoutView: View {
     private func tickPhase() {
         guard !phaseTimerDone, phaseIndex < exercisePhases.count else { return }
         phaseElapsed += 1
-        if phaseElapsed >= exercisePhases[phaseIndex].duration {
+        let duration = exercisePhases[phaseIndex].duration
+        let remaining = duration - phaseElapsed
+        // Spoken 3-2-1 in the final seconds of every timed phase when the loop opts in.
+        if currentLoopRoundCountdown && remaining > 0 && remaining <= 3 {
+            speakPhaseNumber(remaining)
+        }
+        if phaseElapsed >= duration {
             let nextIdx = phaseIndex + 1
             if nextIdx < exercisePhases.count {
                 phaseIndex = nextIdx
@@ -4015,6 +4050,15 @@ public struct StartWorkoutView: View {
         pausePhaseTimer()
         phaseTimerDone = true
         UINotificationFeedbackGenerator().notificationOccurred(.success)
+        // Interval and EMOM modes should flow continuously: once the final phase for this
+        // exercise's visit is complete, roll straight into the next exercise (or, at the last
+        // item, into cooldown / completion). A brief delay lets the "Done" state render first.
+        Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 600_000_000)
+            // Bail out if the user paused, reset, or navigated away in the meantime.
+            guard phaseTimerDone, isTimedMode else { return }
+            nextItem()
+        }
     }
 
     // MARK: Per-set timed countdown
@@ -4552,6 +4596,9 @@ private struct ComplexScreen: View {
     @State private var countdownValue: Int = 3
     // Synthesizer kept as a stored property so ARC doesn't release it mid-speech
     @State private var synthesizer = AVSpeechSynthesizer()
+    /// When true, the exercise rows are hidden and the ring timer + round label
+    /// expand to fill the available space. Toggled by the arrow overlaid on the ring.
+    @State private var isExpanded: Bool = false
 
     private var complex: WorkoutComplex? {
         workout.complexes[complexID.uuidString]
@@ -4623,6 +4670,17 @@ private struct ComplexScreen: View {
     var body: some View {
         ScrollView {
             VStack(spacing: 12) {
+                // In expanded mode, hoist a large "Round X of Y" label above the timer
+                // so it's readable at a glance without the nav-bar text.
+                if isExpanded {
+                    Text("Round \(currentRound + 1) of \(totalRounds)")
+                        .font(.system(size: 40, weight: .bold, design: .rounded))
+                        .foregroundColor(.primary)
+                        .minimumScaleFactor(0.5)
+                        .lineLimit(1)
+                        .padding(.horizontal, 16)
+                        .padding(.top, 4)
+                }
                 // Timer display — ring or bar depending on complex setting
                 if complex?.timerStyle == .bar {
                     // BAR STYLE: slim horizontal strip
@@ -4678,22 +4736,26 @@ private struct ComplexScreen: View {
                         .padding(.horizontal, 16)
                     }
                 } else {
-                    // RING STYLE: size relative to available width so it's naturally larger on iPad
+                    // RING STYLE: size relative to available width so it's naturally larger on iPad.
+                    // When expanded, the ring grows to fill most of the visible area.
+                    let ringMax: CGFloat = isExpanded ? 420 : 220
                     HStack {
                         Spacer(minLength: 0)
                         GeometryReader { geo in
-                            let ringSize: CGFloat = min(max(geo.size.width, 140), 220)
-                            let timeFontSize: CGFloat = ringSize < 180 ? 28 : 36
-                            let controlSize: CGFloat = ringSize < 180 ? 24 : 32
-                            let resetSize: CGFloat = ringSize < 180 ? 18 : 24
+                            let ringSize: CGFloat = min(max(geo.size.width, 140), ringMax)
+                            let timeFontSize: CGFloat = ringSize < 180 ? 28 : (ringSize < 300 ? 36 : 64)
+                            let unitFontSize: CGFloat = ringSize < 300 ? 12 : 18
+                            let controlSize: CGFloat = ringSize < 180 ? 24 : (ringSize < 300 ? 32 : 44)
+                            let resetSize: CGFloat = ringSize < 180 ? 18 : (ringSize < 300 ? 24 : 32)
+                            let ringStroke: CGFloat = ringSize < 300 ? 10 : 14
                             ZStack {
                                 Circle()
-                                    .stroke(Color(UIColor.tertiarySystemBackground), lineWidth: 10)
+                                    .stroke(Color(UIColor.tertiarySystemBackground), lineWidth: ringStroke)
                                 Circle()
                                     .trim(from: 0, to: ringProgress)
                                     .stroke(
                                         timerDone ? Color.green : ringColor,
-                                        style: StrokeStyle(lineWidth: 10, lineCap: .round)
+                                        style: StrokeStyle(lineWidth: ringStroke, lineCap: .round)
                                     )
                                     .rotationEffect(.degrees(-90))
                                     .animation(.linear(duration: 0.5), value: ringProgress)
@@ -4702,16 +4764,11 @@ private struct ComplexScreen: View {
                                         .font(.system(size: timeFontSize, weight: .semibold, design: .monospaced))
                                         .foregroundColor(timerDone ? .green : (secondsRemaining <= 10 ? .red : .primary))
                                     Text("of \(formatTime(totalSeconds))")
-                                        .font(.caption2)
+                                        .font(.system(size: unitFontSize))
                                         .foregroundColor(.secondary)
-                                    // Controls inside the ring
+                                    // Controls inside the ring: reset · play/pause · expand.
+                                    // Outer two use resetSize so play/pause is visually dominant.
                                     HStack(spacing: 16) {
-                                        Button(action: { isTimerRunning.toggle() }) {
-                                            Image(systemName: isTimerRunning ? "pause.circle.fill" : "play.circle.fill")
-                                                .font(.system(size: controlSize))
-                                                .foregroundColor(.primary)
-                                        }
-                                        .buttonStyle(.plain)
                                         Button(action: {
                                             isTimerRunning = false
                                             secondsRemaining = totalSeconds
@@ -4722,34 +4779,56 @@ private struct ComplexScreen: View {
                                                 .foregroundColor(.secondary)
                                         }
                                         .buttonStyle(.plain)
+                                        Button(action: { isTimerRunning.toggle() }) {
+                                            Image(systemName: isTimerRunning ? "pause.circle.fill" : "play.circle.fill")
+                                                .font(.system(size: controlSize))
+                                                .foregroundColor(.primary)
+                                        }
+                                        .buttonStyle(.plain)
+                                        Button(action: {
+                                            withAnimation(.easeInOut(duration: 0.25)) {
+                                                isExpanded.toggle()
+                                            }
+                                        }) {
+                                            Image(systemName: isExpanded
+                                                  ? "arrow.down.forward.and.arrow.up.backward.circle"
+                                                  : "arrow.up.backward.and.arrow.down.forward.circle")
+                                                .font(.system(size: resetSize))
+                                                .foregroundColor(.secondary)
+                                        }
+                                        .buttonStyle(.plain)
                                     }
                                 }
                             }
                             .frame(width: ringSize, height: ringSize)
                         }
                         .aspectRatio(1, contentMode: .fit)
-                        .frame(maxWidth: 220, maxHeight: 220)
+                        .frame(maxWidth: ringMax, maxHeight: ringMax)
                         Spacer(minLength: 0)
                     }
                 }
 
-                Divider().padding(.horizontal, 16)
+                // Exercise rows collapse out of the layout entirely in expanded mode
+                // so the timer and round label can dominate the screen.
+                if !isExpanded {
+                    Divider().padding(.horizontal, 16)
 
-                // All exercises in the complex shown simultaneously
-                VStack(spacing: 10) {
-                    ForEach(complexIndices, id: \.self) { itemIndex in
-                        if case .exercise(let we) = workout.items[safe: itemIndex],
-                           let exercise = exercisesState.exercises.first(where: { $0.id == we.exerciseID }) {
-                            ComplexExerciseRow(
-                                exercise: exercise,
-                                workoutExercise: we,
-                                round: currentRound,
-                                exerciseData: $exerciseData
-                            )
+                    // All exercises in the complex shown simultaneously
+                    VStack(spacing: 10) {
+                        ForEach(complexIndices, id: \.self) { itemIndex in
+                            if case .exercise(let we) = workout.items[safe: itemIndex],
+                               let exercise = exercisesState.exercises.first(where: { $0.id == we.exerciseID }) {
+                                ComplexExerciseRow(
+                                    exercise: exercise,
+                                    workoutExercise: we,
+                                    round: currentRound,
+                                    exerciseData: $exerciseData
+                                )
+                            }
                         }
                     }
+                    .padding(.horizontal, 16)
                 }
-                .padding(.horizontal, 16)
 
                 // +Round / Done button
                 let isLastRound = currentRound >= totalRounds - 1
@@ -5037,6 +5116,7 @@ private struct LoopEditorSheet: View {
     @State private var intervalWork: Int = 45
     @State private var intervalRest: Int = 15
     @State private var emomDuration: Int = 60
+    @State private var roundCountdown: Bool = false
     @State private var showingDeleteConfirm = false
 
     private enum LoopTimerModeTag: String, CaseIterable, Hashable {
@@ -5087,6 +5167,14 @@ private struct LoopEditorSheet: View {
                     }
                 }
 
+                if timerModeTag == .interval || timerModeTag == .emom {
+                    Section("Round Countdown") {
+                        Toggle("3-2-1 countdown", isOn: $roundCountdown)
+                        Text("Speaks a 3, 2, 1 countdown on the final seconds of each timed phase.")
+                            .font(.caption).foregroundColor(.secondary)
+                    }
+                }
+
                 Section("Rounds") {
                     Picker("Rounds", selection: $rounds) {
                         ForEach(1...50, id: \.self) { n in
@@ -5122,7 +5210,7 @@ private struct LoopEditorSheet: View {
                             case .emom:     return .emom(intervalSeconds: emomDuration)
                             }
                         }()
-                        loops[loopID.uuidString] = WorkoutLoop(id: loopID, rounds: rounds, timerMode: resolvedMode)
+                        loops[loopID.uuidString] = WorkoutLoop(id: loopID, rounds: rounds, timerMode: resolvedMode, roundCountdown: roundCountdown)
                         UIImpactFeedbackGenerator(style: .light).impactOccurred()
                         dismiss()
                     }
@@ -5143,6 +5231,7 @@ private struct LoopEditorSheet: View {
             .onAppear {
                 let existing = loops[loopID.uuidString]
                 rounds = existing?.rounds ?? 1
+                roundCountdown = existing?.roundCountdown ?? false
                 switch existing?.timerMode {
                 case .interval(let w, let r):
                     timerModeTag = .interval
