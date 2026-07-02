@@ -61,6 +61,12 @@ private struct ProgressModuleView: View {
     @State private var waterHistoryDate: IdentifiableDate? = nil
 
     private let calendar = Calendar.current
+    /// Column layout used by both the fixed weekday header and the calendar
+    /// grid — keep in sync with `CalendarView.columns` so they line up.
+    private let weekdayColumns: [GridItem] = Array(
+        repeating: GridItem(.flexible(), spacing: 2),
+        count: 7
+    )
 
     private var monthYearString: String {
         let formatter = DateFormatter()
@@ -266,6 +272,34 @@ private struct ProgressModuleView: View {
             .padding(.horizontal, 16)
             .padding(.bottom, 8)
 
+            // Fixed sub-header row that sits between the month nav and the
+            // scrollable content:
+            //   • Calendar (expanded): Sun–Sat weekday labels, aligned with
+            //     the grid columns below.
+            //   • List (timeline): Week / Month scope picker.
+            // Neither should scroll away with the content.
+            if logViewMode == "calendar" && isCalendarExpanded {
+                LazyVGrid(columns: weekdayColumns, spacing: 2) {
+                    ForEach(["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"], id: \.self) { day in
+                        Text(day)
+                            .font(.caption)
+                            .fontWeight(.semibold)
+                            .foregroundColor(.gray)
+                    }
+                }
+                .padding(.horizontal, 10)
+                .padding(.bottom, 6)
+            } else if logViewMode == "timeline" {
+                Picker("Scope", selection: $listShowWeek) {
+                    Text("Week").tag(true)
+                    Text("Month").tag(false)
+                }
+                .pickerStyle(.segmented)
+                .padding(.horizontal, 16)
+                .padding(.bottom, 8)
+            }
+
+            ScrollViewReader { proxy in
             ScrollView {
                 VStack(spacing: 16) {
                     // Activity ribbon (optional)
@@ -413,11 +447,12 @@ private struct ProgressModuleView: View {
                             logState: logState,
                             month: currentMonth,
                             selectedDate: selectedDate,
-                            showWeek: $listShowWeek,
+                            showWeek: listShowWeek,
                             showWorkouts: showWorkouts,
                             showJournals: showJournals,
                             showPlans: showPlans,
-                            showWater: showWater
+                            showWater: showWater,
+                            scrollProxy: proxy
                         ) { log in
                             selectedLog = log
                         } onJournalTap: { entry in
@@ -442,6 +477,7 @@ private struct ProgressModuleView: View {
                 await waterState.syncFromHealthKit()
                 planState.refreshWidgetSnapshot()
             }
+            } // ScrollViewReader
         }
         .fullScreenCover(item: $selectedLog) { log in
             WorkoutLogDetailView(log: log)
@@ -635,17 +671,9 @@ private struct CalendarView: View {
     var body: some View {
         let cellHeight: CGFloat = sizeClass == .regular ? 140 : 85
         VStack(spacing: 8) {
-            // Weekday headers
-            LazyVGrid(columns: columns, spacing: 2) {
-                ForEach(["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"], id: \.self) { day in
-                    Text(day)
-                        .font(.caption)
-                        .fontWeight(.semibold)
-                        .foregroundColor(.gray)
-                }
-            }
-
             // Days grid
+            // Weekday header (Sun–Sat) is rendered in the parent view so it
+            // stays fixed while the calendar/day-detail content scrolls.
             // PERFORMANCE FIX: Pre-compute data for all visible days to avoid repeated filtering
             let dayData = computeDayData(for: days)
             
@@ -1180,11 +1208,15 @@ private struct TimelineLogView: View {
     let logState: WorkoutLogState
     let month: Date
     let selectedDate: Date
-    @Binding var showWeek: Bool
+    let showWeek: Bool
     var showWorkouts: Bool = true
     var showJournals: Bool = true
     var showPlans: Bool = true
     var showWater: Bool = true
+    /// Scroll proxy from the parent's ScrollViewReader — used to auto-scroll
+    /// to today's group (or the closest existing group) when the timeline
+    /// appears, so users don't have to scroll past future-planned entries.
+    let scrollProxy: ScrollViewProxy?
     let onTap: (WorkoutLog) -> Void
     var onJournalTap: ((JournalEntry) -> Void)? = nil
     var onWaterTap: ((Date) -> Void)? = nil
@@ -1306,14 +1338,8 @@ private struct TimelineLogView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            // Scope toggle
-            Picker("Scope", selection: $showWeek) {
-                Text("Week").tag(true)
-                Text("Month").tag(false)
-            }
-            .pickerStyle(.segmented)
-            .padding(.horizontal, 16)
-            .padding(.vertical, 8)
+            // Scope toggle (Week / Month) lives in the parent view so it
+            // stays fixed while the timeline content scrolls.
 
             if cachedGroupedItems.isEmpty {
                 VStack(spacing: 8) {
@@ -1387,6 +1413,7 @@ private struct TimelineLogView: View {
                             .padding(.trailing, 16)
                             .padding(.bottom, 16)
                         }
+                        .id(timelineRowID(for: group.date))
                     }
                 }
             }
@@ -1395,10 +1422,44 @@ private struct TimelineLogView: View {
             // Compute on first appearance — and on return-to-module, since
             // SwiftUI tears down and rebuilds the view when the parent
             // selects a different module.
-            cachedGroupedItems = computeGroupedItems()
+            let items = computeGroupedItems()
+            cachedGroupedItems = items
+            scrollToTodayIfPossible(items: items)
         }
         .onChange(of: depsKey) { _, _ in
             cachedGroupedItems = computeGroupedItems()
+        }
+        .onChange(of: showWeek) { _, _ in
+            // Toggling scope regroups the list, which shifts today's row to
+            // a new position — re-anchor to today so users don't have to
+            // manually scroll past future-planned entries after each toggle.
+            let items = computeGroupedItems()
+            cachedGroupedItems = items
+            scrollToTodayIfPossible(items: items)
+        }
+    }
+
+    /// Stable identifier for a timeline day group so we can target it with
+    /// `ScrollViewProxy.scrollTo`. Uses the day's `timeIntervalSince1970` at
+    /// startOfDay so the value is unambiguous.
+    private func timelineRowID(for date: Date) -> String {
+        "timeline-\(calendar.startOfDay(for: date).timeIntervalSince1970)"
+    }
+
+    /// After the timeline first appears, jump the scroll position to today's
+    /// group if it exists; otherwise the most recent day at-or-before today;
+    /// otherwise (all future) the last group. Runs async so SwiftUI has laid
+    /// out the row IDs before we call `scrollTo`.
+    private func scrollToTodayIfPossible(items: [(date: Date, items: [TimelineItem])]) {
+        guard let proxy = scrollProxy, !items.isEmpty else { return }
+        let today = calendar.startOfDay(for: Date())
+        let target: Date? = items.first(where: {
+            calendar.startOfDay(for: $0.date) <= today
+        })?.date ?? items.last?.date
+        guard let targetDate = target else { return }
+        let rowID = timelineRowID(for: targetDate)
+        DispatchQueue.main.async {
+            proxy.scrollTo(rowID, anchor: .top)
         }
     }
 
